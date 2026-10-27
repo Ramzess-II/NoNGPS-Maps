@@ -205,13 +205,13 @@
 </message>
 <message id="share_place_subject">
 <extracomment>Email subject when sharing a place. %1$@ is the place name or address.</extracomment>
-<source>%1 on Organic Maps</source>
-<translation>%1 - Organic Maps</translation>
+<source>%1 on NonGPS Maps</source>
+<translation>%1 - NonGPS Maps</translation>
 </message>
 <message id="share_place_subject_default">
 <extracomment>Email subject when sharing a place that has no name or address.</extracomment>
-<source>A place on Organic Maps</source>
-<translation>Organic Maps 上的地點</translation>
+<source>A place on NonGPS Maps</source>
+<translation>NonGPS Maps 上的地點</translation>
 </message>
 <message id="share_open_in_om_or_browser">
 <extracomment>Shared email link text; opens the shared place in Organic Maps or in a web browser.</extracomment>

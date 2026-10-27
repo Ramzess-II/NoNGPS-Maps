@@ -35,15 +35,6 @@
     <string name="country_status_download_failed">Methodd y lawrlwythiad</string>
     <!-- Button text for the button under the country_status_download_failed message -->
     <string name="try_again">Ceisio eto</string>
-    <string name="about_menu_title">Ynglŷn ag Organic Maps</string>
-    <!-- Text in About screen -->
-    <string name="about_headline">Am ddim i bawb, wedi\'i wneud gyda chariad</string>
-    <!-- Text in About screen -->
-    <string name="about_proposition_1">• Dim hysbysebion, dim olrhain, dim casglu data</string>
-    <!-- Text in About screen -->
-    <string name="about_proposition_2">• Dim draenio batri, yn gweithio all-lein</string>
-    <!-- Text in About screen -->
-    <string name="about_proposition_3">• Cyflym, minimalaidd, wedi\'i ddatblygu gan y gymuned</string>
     <!-- Text in About screen -->
     <string name="about_developed_by_enthusiasts">Rhaglen cod agored wedi\'i chreu gan selogion a gwirfoddolwyr.</string>
     <!-- The button that opens system location settings -->
@@ -52,7 +43,7 @@
     <string name="unsupported_phone">Mae angen cyflymiad caledwedd OpenGL ar yr ap. Yn anffodus, nid yw eich dyfais yn cael ei chefnogi.</string>
     <string name="download">Lawrlwytho</string>
     <!-- Used in DownloadResources startup screen -->
-    <string name="disconnect_usb_cable">Datgysylltwch y cebl USB neu mewnosodwch gerdyn cof i ddefnyddio Organic Maps</string>
+    <string name="disconnect_usb_cable">Datgysylltwch y cebl USB neu mewnosodwch gerdyn cof i ddefnyddio NonGPS Maps</string>
     <!-- Used in DownloadResources startup screen -->
     <string name="not_enough_free_space_on_sdcard">Rhyddhewch rywfaint o le ar y cerdyn SD/storfa USB yn gyntaf er mwyn defnyddio\'r ap</string>
     <string name="download_resources">Cyn i chi ddechrau defnyddio\'r ap, lawrlwythwch fap trosolwg y byd i\'ch dyfais.\nBydd yn defnyddio %s o storfa.</string>
@@ -151,8 +142,8 @@
     <!-- Notes field in Bookmarks view -->
     <string name="description">Nodiadau</string>
     <!-- Email Subject when sharing bookmark list -->
-    <string name="share_bookmarks_email_subject">Rhannwyd nodau tudalen Organic Maps gyda chi</string>
-    <string name="share_bookmarks_email_body">Helo!\n\nWedi\'u hatodi mae fy nodau tudalen; agorwch nhw yn Organic Maps. Os nad oes gennych chi\'r ap gallwch ei lawrlwytho yma: https://omaps.app/get?kmz\n\nMwynhewch deithio gydag Organic Maps!</string>
+    <string name="share_bookmarks_email_subject">Rhannwyd nodau tudalen NonGPS Maps gyda chi</string>
+    <string name="share_bookmarks_email_body">Helo!\n\nWedi\'u hatodi mae fy nodau tudalen; agorwch nhw yn NonGPS Maps. Os nad oes gennych chi\'r ap gallwch ei lawrlwytho yma: https://omaps.app/get?kmz\n\nMwynhewch deithio gydag NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Llwytho nodau tudalen</string>
     <!-- Kmz file successful loading -->
@@ -174,9 +165,9 @@
     <!-- Share button text which opens menu with more buttons, like Message, EMail, Facebook etc. -->
     <string name="share">Rhannu</string>
     <!-- Email subject when sharing a place. %1$@ is the place name or address. -->
-    <string name="share_place_subject">%1$s ar Organic Maps</string>
+    <string name="share_place_subject">%1$s ar NonGPS Maps</string>
     <!-- Email subject when sharing a place that has no name or address. -->
-    <string name="share_place_subject_default">Lle ar Organic Maps</string>
+    <string name="share_place_subject_default">Lle ar NonGPS Maps</string>
     <!-- Share by email button text, also used in editor and About. -->
     <string name="email">E-bost</string>
     <!-- Text for message when used successfully copied something -->
@@ -445,7 +436,7 @@
     <!-- Text in About and OSM Login screens. First %@ is replaced by a local, human readable date. -->
     <string name="osm_presentation">Data OpenStreetMap a grëwyd gan y gymuned, fel yr oedd ar %s. Dysgwch fwy am sut i olygu a diweddaru\'r map yn OpenStreetMap.org</string>
     <!-- OSM explanation on Android login screen -->
-    <string name="login_osm_presentation">Mae OpenStreetMap.org (OSM) yn brosiect cymunedol i adeiladu map agored ac am ddim. Dyma brif ffynhonnell data map yn Organic Maps ac mae\'n gweithio\'n debyg i Wicipedia. Gallwch ychwanegu neu olygu lleoedd a byddant ar gael i filiynau o ddefnyddwyr ledled y byd.\nYmunwch â\'r gymuned a helpwch i wneud map gwell i bawb!</string>
+    <string name="login_osm_presentation">Mae OpenStreetMap.org (OSM) yn brosiect cymunedol i adeiladu map agored ac am ddim. Dyma brif ffynhonnell data map yn NonGPS Maps ac mae\'n gweithio\'n debyg i Wicipedia. Gallwch ychwanegu neu olygu lleoedd a byddant ar gael i filiynau o ddefnyddwyr ledled y byd.\nYmunwch â\'r gymuned a helpwch i wneud map gwell i bawb!</string>
     <string name="login_to_make_edits_visible">Crëwch gyfrif OpenStreetMap neu mewngofnodwch i gyhoeddi eich golygiadau map i\'r byd.</string>
     <!-- Downloaded 10 **of** 20 <- it is that "of" -->
     <string name="downloader_of">%1$d o %2$d</string>
@@ -460,7 +451,7 @@
     <!-- Title for OSM note section in the editor -->
     <string name="editor_other_info">Nodyn i wirfoddolwyr OpenStreetMap (dewisol)</string>
     <!-- Hint of the input field in the OSM note section of the editor -->
-    <string name="editor_note_hint">Disgrifiwch wallau ar y map neu bethau na ellir eu golygu gydag Organic Maps</string>
+    <string name="editor_note_hint">Disgrifiwch wallau ar y map neu bethau na ellir eu golygu gydag NonGPS Maps</string>
     <!-- Information about OSM at the top of the editing page -->
     <string name="editor_about_osm">Mae eich golygiadau\'n cael eu huwchlwytho i gronfa ddata gyhoeddus <a href="https://wiki.openstreetmap.org/wiki/About_OpenStreetMap">OpenStreetMap</a>. Peidiwch ag ychwanegu gwybodaeth bersonol na gwybodaeth sydd dan hawlfraint.</string>
     <string name="editor_more_about_osm">Mwy am OpenStreetMap</string>
@@ -470,7 +461,7 @@
     <!-- To indicate the operator of ATMs, bicycle rentals, electric vehicle charging stations… -->
     <string name="operator">Gweithredwr: %s</string>
     <string name="editor_category_unsuitable_title">Allwch chi ddim dod o hyd i gategori addas?</string>
-    <string name="editor_category_unsuitable_text">Mae Organic Maps yn caniatáu ychwanegu categorïau pwynt syml yn unig, sy\'n golygu dim trefi, ffyrdd, llynnoedd, amlinelliadau adeiladau, ac ati. Ychwanegwch gategorïau o\'r fath yn uniongyrchol at <a href="https://www.openstreetmap.org">OpenStreetMap.org</a>. Edrychwch ar ein <a href="https://organicmaps.app/faq/editing/advanced-map-editing">canllaw</a> am gyfarwyddiadau manwl cam wrth gam.</string>
+    <string name="editor_category_unsuitable_text">Mae NonGPS Maps yn caniatáu ychwanegu categorïau pwynt syml yn unig, sy\'n golygu dim trefi, ffyrdd, llynnoedd, amlinelliadau adeiladau, ac ati. Ychwanegwch gategorïau o\'r fath yn uniongyrchol at <a href="https://www.openstreetmap.org">OpenStreetMap.org</a>. Edrychwch ar ein <a href="https://organicmaps.app/faq/editing/advanced-map-editing">canllaw</a> am gyfarwyddiadau manwl cam wrth gam.</string>
     <string name="downloader_no_downloaded_maps_title">Nid ydych wedi lawrlwytho unrhyw fapiau</string>
     <string name="downloader_no_downloaded_maps_message">Lawrlwythwch fapiau i chwilio a llywio all-lein.</string>
     <string name="current_location_unknown_error_title">Mae\'r lleoliad presennol yn anhysbys.</string>
@@ -764,12 +755,6 @@
     <string name="enable_show_on_lock_screen_description">Pan fydd wedi\'i alluogi, bydd yr ap yn gweithio ar y sgrin gloi hyd yn oed pan fydd y ddyfais wedi\'i chloi.</string>
     <!-- Current language of the map! -->
     <string name="change_map_locale">Iaith y map</string>
-    <!-- OpenStreetMap text on splash screen -->
-    <string name="splash_subtitle">Data map o OpenStreetMap</string>
-    <!-- Telegram group url for the "?" About page -->
-    <string name="telegram_url">https://t.me/OrganicMapsApp</string>
-    <!-- Instagram account url for the "?" About page -->
-    <string name="instagram_url">https://www.instagram.com/organicmaps.app</string>
     <!-- A link to the TTS FAQ -->
     <string name="tts_info_link">https://organicmaps.app/faq/text-to-speech-android-tts/</string>
     <!-- Include only languages supported on the website, add new translations here: https://github.com/organicmaps/website/tree/master/content -->
@@ -799,9 +784,9 @@
     <!-- App tip #09 -->
     <string name="app_tip_09">Ein prif nod yw creu mapiau cyflym, hawdd eu defnyddio sy\'n parchu eich preifatrwydd ac y byddwch yn eu caru.</string>
     <!-- Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen -->
-    <string name="car_used_on_the_phone_screen">Rydych chi nawr yn defnyddio Organic Maps ar sgrin y ffôn</string>
+    <string name="car_used_on_the_phone_screen">Rydych chi nawr yn defnyddio NonGPS Maps ar sgrin y ffôn</string>
     <!-- Text on the phone placeholder screen that maps are displayed on the car screen -->
-    <string name="car_used_on_the_car_screen">Rydych chi nawr yn defnyddio Organic Maps ar sgrin y car</string>
+    <string name="car_used_on_the_car_screen">Rydych chi nawr yn defnyddio NonGPS Maps ar sgrin y car</string>
     <!-- Displayed on the phone screen. Android Auto connected -->
     <string name="aa_connected_title">Rydych chi wedi\'ch cysylltu ag Android Auto</string>
     <!-- Displayed on the phone screen. Button to display maps on the phone screen instead of a car -->
@@ -809,7 +794,7 @@
     <!-- Displayed on the Android Auto or CarPlay screen. Button to display maps on the car screen instead of a phone. Must be no more than 18 symbols! -->
     <string name="car_continue_in_the_car">I sgrin y car</string>
     <!-- Ask user to grant location permissions -->
-    <string name="aa_location_permissions_request">Mae angen mynediad at leoliad ar Organic Maps. Pan fydd yn ddiogel, gwiriwch yr hysbysiad ar eich ffôn.</string>
+    <string name="aa_location_permissions_request">Mae angen mynediad at leoliad ar NonGPS Maps. Pan fydd yn ddiogel, gwiriwch yr hysbysiad ar eich ffôn.</string>
     <!-- Notification title for permission request from AA. -->
     <string name="aa_request_permission_notification">Mae angen eich caniatâd ar yr ap hwn</string>
     <!-- Grant Permissions button. -->
