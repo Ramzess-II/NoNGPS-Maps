@@ -52,4 +52,18 @@ int const kRawDurations[] = {
   }
 }
 
+// A new entity comes at every position, and the route preview renders again only when its estimate changes.
+- (void)testTransitEstimateWithWalkIconIsEqualForTheSameInfo
+{
+  TransitRouteInfo info;
+  info.m_totalTimeInSec = 600;
+  info.m_totalPedestrianDistanceStr = "300";
+  info.m_totalPedestrianUnitsSuffix = "m";
+  auto estimate = [[[MWMNavigationDashboardEntity alloc] initWithTransitInfo:info] estimate];
+  XCTAssertEqualObjects(estimate, [[[MWMNavigationDashboardEntity alloc] initWithTransitInfo:info] estimate]);
+
+  info.m_totalPedestrianDistanceStr = "400";
+  XCTAssertNotEqualObjects(estimate, [[[MWMNavigationDashboardEntity alloc] initWithTransitInfo:info] estimate]);
+}
+
 @end

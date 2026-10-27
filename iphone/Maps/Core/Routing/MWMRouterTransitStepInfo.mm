@@ -38,6 +38,11 @@ UIColor * convertColor(uint32_t colorARGB)
   CGFloat const blue = CGFloat(colorARGB & 0xFF) / 255;
   return [UIColor colorWithRed:red green:green blue:blue alpha:alpha];
 }
+
+BOOL equalOrBothNil(id lhs, id rhs)
+{
+  return lhs == rhs || [lhs isEqual:rhs];
+}
 }  // namespace
 
 @implementation MWMRouterTransitStepInfo
@@ -55,6 +60,24 @@ UIColor * convertColor(uint32_t colorARGB)
     _intermediateIndex = info.m_intermediateIndex;
   }
   return self;
+}
+
+// The steps are made again at every position, so the route preview compares them by what they show.
+- (BOOL)isEqual:(id)object
+{
+  if (self == object)
+    return YES;
+  if (![object isKindOfClass:[MWMRouterTransitStepInfo class]])
+    return NO;
+  MWMRouterTransitStepInfo * other = object;
+  return self.type == other.type && self.intermediateIndex == other.intermediateIndex &&
+         equalOrBothNil(self.distance, other.distance) && equalOrBothNil(self.distanceUnits, other.distanceUnits) &&
+         equalOrBothNil(self.number, other.number) && equalOrBothNil(self.color, other.color);
+}
+
+- (NSUInteger)hash
+{
+  return self.type ^ self.distance.hash ^ self.number.hash;
 }
 
 @end

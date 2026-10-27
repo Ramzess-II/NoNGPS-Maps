@@ -48,4 +48,21 @@
   }
 }
 
+- (void)testStepsMadeAgainAreEqualByWhatTheyShow
+{
+  TransitStepInfo info(TransitType::Bus, 42, 20, "12", 0xFF2F6499, 2);
+  info.m_distanceStr = "42";
+  info.m_distanceUnitsSuffix = "m";
+  auto step = [[MWMRouterTransitStepInfo alloc] initWithStepInfo:info];
+  auto same = [[MWMRouterTransitStepInfo alloc] initWithStepInfo:info];
+  XCTAssertEqualObjects(step, same);
+  XCTAssertEqual(step.hash, same.hash);
+
+  info.m_number = "13";
+  XCTAssertNotEqualObjects(step, [[MWMRouterTransitStepInfo alloc] initWithStepInfo:info]);
+
+  // Ruler steps have no number and no colour.
+  XCTAssertEqualObjects([[MWMRouterTransitStepInfo alloc] init], [[MWMRouterTransitStepInfo alloc] init]);
+}
+
 @end

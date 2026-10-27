@@ -58,9 +58,11 @@ final class RouteActionsBottomMenuView: UIView {
   }
 
   func setShadowVisible(_ visible: Bool) {
-    guard !isHidden else { return }
+    let opacity: Float = visible ? 0.1 : 0
+    // Called at every layout pass, and the menu takes no touches while it is animated.
+    guard !isHidden, layer.shadowOpacity != opacity else { return }
     UIView.animate(withDuration: Constants.animationDuration) {
-      self.layer.shadowOpacity = visible ? 0.1 : 0
+      self.layer.shadowOpacity = opacity
     }
   }
 

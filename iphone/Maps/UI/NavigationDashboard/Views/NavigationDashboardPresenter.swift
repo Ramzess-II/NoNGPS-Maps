@@ -12,14 +12,16 @@ extension NavigationDashboard {
     func process(_ response: Response) {
       guard viewModel.dashboardState != .closed else { return }
       let newViewModel = resolve(action: response, with: viewModel)
-      if viewModel != newViewModel {
-        viewModel = newViewModel
+      let needsRender = newViewModel.needsRender(after: viewModel)
+      viewModel = newViewModel
+      if needsRender {
         view?.render(newViewModel)
       }
     }
 
     private func resolve(action: Response, with previousViewModel: ViewModel) -> ViewModel {
       var viewModel = previousViewModel
+      viewModel.isRouteValid = MWMRouter.isRouteValid()
       switch action {
       case .none:
         break
