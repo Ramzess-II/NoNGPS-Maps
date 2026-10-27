@@ -334,6 +334,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">Niżżel ir-reġjun fejn qed tfittex jew ipprova żid isem ta’ belt/raħal fil-qrib.</string>
     <string name="search_history_title">Kronoloġija tat-tiftix</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">Rizerva tal-werrejja u t-traċċi</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">Il-werrejja u t-traċċi jistgħu jiġu inklużi fir-rizervi tas-sistema Android meta r-rizerva tkun attivata f’dan it-tagħmir u ma jaqbżux il-limitu tad-daqs tagħha.</string>
     <string name="search_history_text">Ara t-tfittxijiet riċenti tiegħek.</string>
     <string name="clear_search">Neħħi l-kronoloġija tat-tiftix</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
@@ -498,7 +502,7 @@
     <string name="editor_share_to_all_dialog_message_1">Kun ċert li ma daħħalt l-ebda informazzjoni privata jew personali.</string>
     <string name="editor_share_to_all_dialog_message_2">L-edituri ta’ OpenStreetMap ser jiċċekkjaw il-bidliet u jikkuntattjawk jekk ikollhom xi mistoqsijiet.</string>
     <string name="navigation_stop_button">Waqqaf</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">Reġistrazzjoni tal-korsija</string>
     <!-- For the first routing -->
     <string name="accept">Aċċetta</string>
@@ -523,6 +527,8 @@
     <string name="transliteration_title">Jittraduċi ruħu fl-alfabett Latin</string>
     <string name="learn_more">Tgħallem iktar</string>
     <string name="placepage_remove_stop">Neħħi l-Waqfa</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">Żid destinazzjoni</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">Żid waqfa</string>
     <string name="drag_to_reorder">Irranġa mill-ġdid</string>
@@ -810,7 +816,7 @@
     <string name="start_track_recording">Rekord Track</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">Waqqaf ir-reġistrazzjoni tal-korsa</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">Irrekordjar tat-Traċċa</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">Il-Korsija hija vojta - xejn x’ tissejvja</string>
@@ -891,6 +897,8 @@
     <string name="choose_point_on_map_hint">Mexxi u kabbar il-mappa biex tqiegħed is-salib</string>
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">Waqqaf u ssejvja</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">Temm</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">Aqleb ir-rotta</string>
 </resources>

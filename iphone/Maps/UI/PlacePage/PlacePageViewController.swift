@@ -46,6 +46,7 @@ final class PlacePageScrollView: UIScrollView {
   private var isNavigationBarVisible = false
   private var isFirstOpening = true
   private var isVisible: Bool = false
+  private var closingAnimator: UIViewPropertyAnimator?
 
   var layout: IPlacePageLayout!
   var interactor: PlacePageInteractorProtocol?
@@ -81,7 +82,6 @@ final class PlacePageScrollView: UIScrollView {
     super.viewWillDisappear(animated)
     currentScrollContentOffset = scrollView.contentOffset
     isVisible = false
-    interactor?.viewWillDisappear()
   }
 
   override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -200,7 +200,9 @@ final class PlacePageScrollView: UIScrollView {
     }
 
     scrollView.isScrollEnabled = true
-    beginDragging = false
+    // Keep only an active drag: its release re-targets with the new steps.
+    // isDragging alone stays true while decelerating.
+    beginDragging = scrollView.isTracking && scrollView.isDragging
     if let actionBar = layout.actionBar {
       hideActionBar(false)
       addActionBar(actionBar)
@@ -392,9 +394,11 @@ extension PlacePageViewController: PlacePageViewProtocol {
 
   @objc
   func close(completion: @escaping (() -> Void)) {
+    // The completion removes the current Place Page, so it must run only once.
+    guard closingAnimator?.state != .active else { return }
     view.isUserInteractionEnabled = false
     updateTopBound(.zero)
-    ModalPresentationAnimator.animate(
+    closingAnimator = ModalPresentationAnimator.animate(
       animations: {
         self.alternativeSizeClass(iPhone: {
           let frame = self.view.frame.offsetBy(dx: 0, dy: self.view.height - self.stackView.convert(self.stackView.origin, to: self.view).y)
@@ -404,10 +408,20 @@ extension PlacePageViewController: PlacePageViewProtocol {
         })
       },
       completion: { _ in
-        completion()
+        self.closingAnimator = nil
+        self.interactor?.didClose()
+        self.interactor = nil
         MWMKeyboard.remove(self)
+        completion()
       }
     )
+  }
+
+  @objc
+  func finishClosingIfNeeded() {
+    guard let closingAnimator, closingAnimator.state == .active else { return }
+    closingAnimator.stopAnimation(false)
+    closingAnimator.finishAnimation(at: .end)
   }
 
   func showAlert(_ alert: UIAlertController) {
@@ -455,6 +469,11 @@ extension PlacePageViewController: UIScrollViewDelegate {
     }
 
     let nextStep = findNextStop(scrollView.contentOffset.y, velocity: velocity.y)
+    if case .closed = nextStep, !isiPad, !layout.headerViewController.isEditingTitle {
+      targetContentOffset.pointee = scrollView.contentOffset
+      interactor?.close()
+      return
+    }
     targetContentOffset.pointee = CGPoint(x: 0, y: nextStep.offset)
     userDefinedStep = nextStep
   }

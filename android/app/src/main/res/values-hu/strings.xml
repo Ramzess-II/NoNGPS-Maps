@@ -334,6 +334,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">Töltse le a keresett régiót, vagy próbálja meg hozzáadni egy közeli város vagy település nevét.</string>
     <string name="search_history_title">Keresési előzmények</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">Könyvjelzők és nyomvonalak biztonsági mentése</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">A könyvjelzők és nyomvonalak bekerülhetnek az Android rendszer biztonsági mentéseibe, ha a biztonsági mentés be van kapcsolva ezen az eszközön, és nem lépik túl a mérethatárát.</string>
     <string name="search_history_text">Legutóbbi keresések megtekintése.</string>
     <string name="clear_search">A keresési előzmények törlése</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
@@ -498,7 +502,7 @@
     <string name="editor_share_to_all_dialog_message_1">Győződjön meg arról, hogy nem ad meg semmilyen személyes információt.</string>
     <string name="editor_share_to_all_dialog_message_2">Az OpenStreetMap szerkesztői ellenőrzik a változásokat, és felveszik Önnel a kapcsolatot, ha kérdéseik vannak.</string>
     <string name="navigation_stop_button">Megállítás</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">Nyomvonal rögzítése</string>
     <!-- For the first routing -->
     <string name="accept">Elfogadás</string>
@@ -523,6 +527,8 @@
     <string name="transliteration_title">Átírás latin betűkre</string>
     <string name="learn_more">Tudjon meg többet</string>
     <string name="placepage_remove_stop">Megálló eltávolítása</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">Úticél hozzáadása</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">Új megálló</string>
     <string name="drag_to_reorder">Átsorolás</string>
@@ -816,7 +822,7 @@
     <string name="start_track_recording">Nyomvonal rögzítése</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">Nyomvonal rögzítésének megállítása</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">Nyomvonal rögzítése</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">A nyomvonal üres – nincs mit menteni</string>
@@ -897,6 +903,8 @@
     <string name="choose_point_on_map_hint">Mozgassa és nagyítsa/kicsinyítse a térképet a kereszt elhelyezéséhez</string>
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">Megállítás és mentés</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">Befejezés</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">Útvonal megfordítása</string>
 </resources>

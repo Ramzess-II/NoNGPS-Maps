@@ -145,6 +145,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
   public static final String EXTRA_BOOKMARK_ID = "bookmark_id";
   public static final String EXTRA_TRACK_ID = "track_id";
   public static final String EXTRA_UPDATE_THEME = "update_theme";
+  public static final String EXTRA_START_TRACK_RECORDING = "start_track_recording";
+  public static final String EXTRA_FINISH_TRACK_RECORDING = "finish_track_recording";
   // Stored both in the saved instance state and, when the core restarts, in the intent itself.
   static final String EXTRA_CONSUMED = "mwm.extra.intent.processed";
   private boolean mIntentConsumed = false;
@@ -289,6 +291,19 @@ public class MwmActivity extends BaseMwmFragmentActivity
       return;
     mIntentConsumed = true;
 
+    if (intent.getBooleanExtra(EXTRA_START_TRACK_RECORDING, false))
+    {
+      if (!TrackRecorder.nativeIsTrackRecordingEnabled())
+        startTrackRecording();
+      return;
+    }
+    if (intent.getBooleanExtra(EXTRA_FINISH_TRACK_RECORDING, false))
+    {
+      if (TrackRecorder.nativeIsTrackRecordingEnabled() && !isTrackRecordingPPOpened())
+        showTrackRecordingPP();
+      return;
+    }
+
     final long categoryId = intent.getLongExtra(EXTRA_CATEGORY_ID, -1);
     final long bookmarkId = intent.getLongExtra(EXTRA_BOOKMARK_ID, -1);
     final long trackId = intent.getLongExtra(EXTRA_TRACK_ID, -1);
@@ -412,7 +427,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
 
   private void runViewportOnlySearch(@NonNull String query, @Nullable String locale)
   {
-    // Match the pre-refactor flow: clear any prior interactive search + API points before starting.
+    // Clear prior search results and API points so only the new query owns the map markers.
     SearchEngine.INSTANCE.cancel();
 
     final String lang = locale != null ? locale : Language.getKeyboardLocale(this);
@@ -505,14 +520,18 @@ public class MwmActivity extends BaseMwmFragmentActivity
    * Tells whether the intent this activity starts with has already been processed. A configuration
    * change restores the mark from the instance's own state, while a core restart through
    * {@link SplashActivity} re-creates the activity from scratch and only the intent survives.
+   * A relaunch from Recents re-delivers the original intent, so it counts as consumed.
    */
   @VisibleForTesting
   static boolean isIntentConsumed(@Nullable Bundle savedInstanceState, @Nullable Intent intent)
   {
     if (savedInstanceState != null)
       return savedInstanceState.getBoolean(EXTRA_CONSUMED, false);
-
-    return intent != null && intent.getBooleanExtra(EXTRA_CONSUMED, false);
+    if (intent == null)
+      return false;
+    if (intent.hasExtra(EXTRA_CONSUMED))
+      return intent.getBooleanExtra(EXTRA_CONSUMED, false);
+    return (intent.getFlags() & Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0;
   }
 
   @SuppressLint("InlinedApi")
@@ -532,9 +551,11 @@ public class MwmActivity extends BaseMwmFragmentActivity
     mSearchPageViewModel = new ViewModelProvider(this).get(SearchPageViewModel.class);
     mMapButtonsViewModel = new ViewModelProvider(this).get(MapButtonsViewModel.class);
     TrackRecordingService.isRecording().observe(this, recording -> {
-      // Recording can be stopped from the notification, tear down the UI when it happens.
-      if (Boolean.FALSE.equals(recording)
-          && Boolean.TRUE.equals(mMapButtonsViewModel.getTrackRecorderState().getValue()))
+      // Recording can also be started from the widget or stopped from the notification.
+      final boolean uiShown = Boolean.TRUE.equals(mMapButtonsViewModel.getTrackRecorderState().getValue());
+      if (Boolean.TRUE.equals(recording) && !uiShown)
+        showTrackRecordingUi();
+      else if (Boolean.FALSE.equals(recording) && uiShown)
         stopTrackRecording();
     });
     // We don't need to manually handle removing the observers it follows the activity lifecycle
@@ -825,8 +846,15 @@ public class MwmActivity extends BaseMwmFragmentActivity
   @Override
   public void onSearchCanceled()
   {
-    mMapButtonsViewModel.setSearchOption(null);
+    cancelNavigationSearch();
     forceCloseSearchFragment();
+  }
+
+  private void cancelNavigationSearch()
+  {
+    mMapButtonsViewModel.setSearchOption(null);
+    // The navigation search wheel runs a viewport search without the sheet, so closing the sheet doesn't cancel it.
+    SearchEngine.INSTANCE.cancelInteractiveSearch();
   }
 
   @Override
@@ -1562,7 +1590,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     ThemeSwitcher.INSTANCE.synchronizeApplicationTheme();
     ThemeSwitcher.INSTANCE.synchronizeMapStyle(this, mMapController.isRenderingActive());
     NavigationService.stopService(this);
-    mMapButtonsViewModel.setSearchOption(null);
+    cancelNavigationSearch();
     mMapButtonsViewModel.setLayoutMode(MapButtonsController.LayoutMode.regular);
     refreshLightStatusBar();
     Utils.keepScreenOn(Config.isKeepScreenOnEnabled(), getWindow());
@@ -1624,7 +1652,11 @@ public class MwmActivity extends BaseMwmFragmentActivity
     ThemeSwitcher.INSTANCE.synchronizeApplicationTheme();
     ThemeSwitcher.INSTANCE.synchronizeMapStyle(this, mMapController.isRenderingActive());
     NavigationService.stopService(this);
-    mMapButtonsViewModel.setSearchOption(null);
+    // Route edits while planning land here too. The routing state is already PREPARE, hence the layout check.
+    if (mMapButtonsViewModel.getLayoutMode().getValue() == MapButtonsController.LayoutMode.navigation)
+      cancelNavigationSearch();
+    else
+      mMapButtonsViewModel.setSearchOption(null);
     mMapButtonsViewModel.setLayoutMode(MapButtonsController.LayoutMode.planning);
     refreshLightStatusBar();
   }
@@ -2262,15 +2294,20 @@ public class MwmActivity extends BaseMwmFragmentActivity
 
     requestPostNotificationsPermission();
 
+    showTrackRecordingUi();
+    Toast.makeText(this, R.string.track_recording, Toast.LENGTH_SHORT).show();
+    TrackRecordingService.startForegroundService(getApplicationContext());
+    return true;
+  }
+
+  private void showTrackRecordingUi()
+  {
     if (mCurrentWindowInsets != null)
     {
       final int offset = mCurrentWindowInsets.getInsets(WindowInsetsCompat.Type.systemBars()).top;
       updateCompassOffset(offset + dimen(this, R.dimen.map_button_size));
     }
-    Toast.makeText(this, R.string.track_recording, Toast.LENGTH_SHORT).show();
-    TrackRecordingService.startForegroundService(getApplicationContext());
     mMapButtonsViewModel.setTrackRecorderState(true);
-    return true;
   }
 
   private void stopTrackRecording()
@@ -2285,8 +2322,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     mMapButtonsViewModel.setTrackRecorderState(false);
     TrackRecordingService.stopService(getApplicationContext());
     closeBottomSheet(MAIN_MENU_ID);
-    if (mPlacePageViewModel.getMapObject().getValue() != null
-        && mPlacePageViewModel.getMapObject().getValue().isTrackRecording())
+    if (isTrackRecordingPPOpened())
       closePlacePage();
   }
 
@@ -2306,15 +2342,23 @@ public class MwmActivity extends BaseMwmFragmentActivity
 
   private void toggleTrackRecordingPP()
   {
-    if (mPlacePageViewModel.getMapObject().getValue() != null
-        && mPlacePageViewModel.getMapObject().getValue().isTrackRecording())
+    if (isTrackRecordingPPOpened())
       mPlacePageViewModel.setMapObject(null);
     else
-    {
-      String title = StringUtils.nativeFormatDistance(0).toString(this) + " • "
-                   + Utils.formatRoutingTime(this, 0, R.dimen.text_size_body_3);
-      mPlacePageViewModel.setMapObject(new TrackRecording(title, getString(R.string.track_recording_title)));
-    }
+      showTrackRecordingPP();
+  }
+
+  private boolean isTrackRecordingPPOpened()
+  {
+    final MapObject mapObject = mPlacePageViewModel.getMapObject().getValue();
+    return mapObject != null && mapObject.isTrackRecording();
+  }
+
+  private void showTrackRecordingPP()
+  {
+    String title = StringUtils.nativeFormatDistance(0).toString(this) + " • "
+                 + Utils.formatDuration(this, 0, R.dimen.text_size_body_3);
+    mPlacePageViewModel.setMapObject(new TrackRecording(title, getString(R.string.track_recording_title)));
   }
 
   public void onShareLocationOptionSelected()
@@ -2377,6 +2421,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
 
   public void onTrackRecordingCancelled()
   {
+    TrackRecorder.nativeDiscardTrackRecording();
     stopTrackRecording();
   }
 

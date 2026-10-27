@@ -828,7 +828,7 @@ std::vector<Track::TrackSelectionInfo> Framework::FindRelationTracksInTapPositio
   std::vector<Track::TrackSelectionInfo> candidates;
 
   df::RelationsDrawSettings sett;
-  sett.Load();
+  sett.Load(GetMapStyle());
   if (sett.IsEmpty())
     return candidates;
 
@@ -1881,7 +1881,7 @@ void Framework::CreateDrapeEngine(ref_ptr<dp::GraphicsContextFactory> contextFac
   {
     auto & tracker = GpsTracker::Instance();
     if (tracker.IsEnabled())
-      tracker.Connect(std::bind(&Framework::OnUpdateGpsTrackPointsCallback, this, _1, _2, _3));
+      tracker.Connect(std::bind(&Framework::OnUpdateGpsTrackPointsCallback, this, _1, _2));
   }
 
   GetBookmarkManager().SetDrapeEngine(make_ref(m_drapeEngine));
@@ -1994,15 +1994,17 @@ void Framework::StartTrackRecording()
   if (m_drapeEngine)
   {
     m_drapeEngine->ClearGpsTrackPoints();
-    tracker.Connect(std::bind(&Framework::OnUpdateGpsTrackPointsCallback, this, _1, _2, _3));
+    tracker.Connect(std::bind(&Framework::OnUpdateGpsTrackPointsCallback, this, _1, _2));
   }
 }
 
 void Framework::SetTrackRecordingUpdateHandler(TrackRecordingUpdateHandler && trackRecordingDidUpdate)
 {
-  m_trackRecordingUpdateHandler = std::move(trackRecordingDidUpdate);
-  if (m_trackRecordingUpdateHandler)
-    m_trackRecordingUpdateHandler(GpsTracker::Instance().GetTrackStatistics());
+  // Converting an empty std::function gives a non-empty one.
+  GpsTrack::TGpsTrackStatisticsCallback callback;
+  if (trackRecordingDidUpdate)
+    callback = std::move(trackRecordingDidUpdate);
+  GpsTracker::Instance().SetStatisticsCallback(callback);
 }
 
 ElevationInfo const & Framework::GetTrackRecordingElevationInfo()
@@ -2017,6 +2019,12 @@ void Framework::StopTrackRecording()
   tracker.SetEnabled(false);
   if (m_drapeEngine)
     m_drapeEngine->ClearGpsTrackPoints();
+}
+
+void Framework::DiscardTrackRecording()
+{
+  StopTrackRecording();
+  GpsTracker::Instance().Clear();
 }
 
 void Framework::SaveTrackRecordingWithName(std::string const & name)
@@ -2046,8 +2054,7 @@ void Framework::SaveRoute()
 }
 
 void Framework::OnUpdateGpsTrackPointsCallback(std::vector<std::pair<size_t, location::GpsInfo>> && toAdd,
-                                               std::pair<size_t, size_t> const & toRemove,
-                                               TrackStatistics const & trackStatistics)
+                                               std::pair<size_t, size_t> const & toRemove)
 {
   ASSERT(m_drapeEngine, ());
 
@@ -2074,9 +2081,6 @@ void Framework::OnUpdateGpsTrackPointsCallback(std::vector<std::pair<size_t, loc
   }
 
   m_drapeEngine->UpdateGpsTrackPoints(std::move(pointsAdd), std::move(indicesRemove));
-
-  if (m_trackRecordingUpdateHandler)
-    m_trackRecordingUpdateHandler(trackStatistics);
 }
 
 void Framework::MarkMapStyle(MapStyle mapStyle)
@@ -2829,7 +2833,6 @@ void Framework::CreateBackgroundTilesProvider(std::string const & url, uint32_t 
 {
   RasterTileProvider::Params rp;
   rp.m_urlTemplate = url;
-  rp.m_cacheSubdir = "bg_tiles";
   rp.m_maxZoom = 19;  // standard web-mercator detail; deeper OM tiles reuse the ancestor sub-rect.
   rp.m_maxCacheBytes = static_cast<uint64_t>(cacheSizeMB) * 1024 * 1024;
   // Global coverage (whole world) — min zoom and the lat/lon box keep their defaults.
@@ -2842,7 +2845,10 @@ void Framework::CreateBackgroundTilesProvider(std::string const & url, uint32_t 
     // messages, so they are safe to call from any thread.
     if (m_drapeEngine)
     {
-      m_drapeEngine->AddTileBackgroundImage(imageUid, width, height, dp::TextureFormat::RGBA8, mode, std::move(rgba));
+      // Report failed reads without an upload so the renderer can retain fallback imagery.
+      if (!imageUid.empty())
+        m_drapeEngine->AddTileBackgroundImage(tileKey, imageUid, width, height, dp::TextureFormat::RGBA8, mode,
+                                              std::move(rgba));
       m_drapeEngine->SetTileBackgroundData(tileKey, imageUid, rect);
     }
   });

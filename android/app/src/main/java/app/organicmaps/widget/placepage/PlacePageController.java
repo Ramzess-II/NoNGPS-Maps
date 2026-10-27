@@ -92,6 +92,7 @@ public class PlacePageController
 
   private ValueAnimator mCustomPeekHeightAnimator;
   private PlacePageListener mPlacePageListener;
+  @Nullable
   private Dialog mAlertDialog;
 
   private final BottomSheetBehavior.BottomSheetCallback mDefaultBottomSheetCallback =
@@ -512,7 +513,7 @@ public class PlacePageController
     case BACK -> onBackBtnClicked();
     case ROUTE_FROM -> onRouteFromBtnClicked();
     case ROUTE_TO -> onRouteToBtnClicked();
-    case ROUTE_ADD -> onRouteAddBtnClicked();
+    case ROUTE_ADD, ROUTE_APPEND -> onRouteAddBtnClicked();
     case ROUTE_REPLACE -> onRouteReplaceBtnClicked();
     case ROUTE_REMOVE -> onRouteRemoveBtnClicked();
     case ROUTE_AVOID_TOLL -> onAvoidTollBtnClicked();
@@ -538,41 +539,31 @@ public class PlacePageController
   {
     // mMapObject is set to null when the place page closes
     // We don't want users to interact with the buttons when the PP is closing
-    if (mMapObject == null)
-      return;
-    showTrackDeleteAlertDialog();
-  }
-
-  void showTrackDeleteAlertDialog()
-  {
     if (!(mMapObject instanceof Track track))
-    {
-      dismissAlertDialog();
       return;
-    }
-    final long trackId = track.getTrackId();
+    // A second tap on the button may be queued behind the one that shows the dialog.
     dismissAlertDialog();
-    mViewModel.isAlertDialogShowing = true;
-    if (mAlertDialog != null)
-    {
-      mAlertDialog.show();
-      return;
-    }
-    mAlertDialog =
-        new MaterialAlertDialogBuilder(requireContext(), R.style.MwmTheme_AlertDialog)
-            .setTitle(requireContext().getString(R.string.delete_track_dialog_title, track.getTitle()))
-            .setCancelable(true)
-            .setNegativeButton(R.string.cancel, null)
-            .setPositiveButton(R.string.delete, (dialog, which) -> BookmarkManager.INSTANCE.deleteTrack(trackId))
-            .setOnDismissListener(dialog -> dismissAlertDialog())
-            .show();
+    final long trackId = track.getTrackId();
+    mAlertDialog = new MaterialAlertDialogBuilder(requireContext(), R.style.MwmTheme_AlertDialog)
+                       .setTitle(requireContext().getString(R.string.delete_track_dialog_title, track.getTitle()))
+                       .setCancelable(true)
+                       .setNegativeButton(R.string.cancel, null)
+                       .setPositiveButton(R.string.delete,
+                                          (dialog, which) -> {
+                                            // A queued second tap comes after the first one's dismissal.
+                                            if (((Dialog) dialog).isShowing())
+                                              BookmarkManager.INSTANCE.deleteTrack(trackId);
+                                          })
+                       .show();
   }
 
-  void dismissAlertDialog()
+  private void dismissAlertDialog()
   {
-    mViewModel.isAlertDialogShowing = false;
     if (mAlertDialog != null)
+    {
       mAlertDialog.dismiss();
+      mAlertDialog = null;
+    }
   }
 
   private void onBackBtnClicked()
@@ -724,15 +715,16 @@ public class PlacePageController
 
       // A pick for an empty start or finish slot (the plan sheet's partial-slot row) must fall through to the regular
       // routing buttons: this branch would hide ROUTE_FROM/ROUTE_TO and leave only the bookmark button.
-      if (RoutingController.get().isWaitingStopPick())
+      if (RoutingController.get().isWaitingStopPick() && !mapObject.isTrackRecording())
       {
         if (RoutingController.get().isPoiPickReplaceStop())
         {
           buttons.add(PlacePageButtons.ButtonType.ROUTE_REPLACE);
         }
-        else if (RoutingController.get().isStopPointAllowed())
+        else
         {
-          buttons.add(PlacePageButtons.ButtonType.ROUTE_ADD);
+          // Unlike Add Stop, appending needs no built route; the points limit was checked when the pick started.
+          buttons.add(PlacePageButtons.ButtonType.ROUTE_APPEND);
         }
         buttons.add(mapObject.isBookmark() ? PlacePageButtons.ButtonType.BOOKMARK_DELETE
                                            : PlacePageButtons.ButtonType.BOOKMARK_SAVE);
@@ -795,9 +787,6 @@ public class PlacePageController
       // Place page will automatically open when the bottom sheet content is loaded so we can compute the peek height
       createPlacePageFragments();
       updateButtons(mapObject, showBackButton, !(mMapObject.isMyPosition() || mMapObject.isTrackRecording()));
-      mAlertDialog = null;
-      if (mViewModel.isAlertDialogShowing)
-        showTrackDeleteAlertDialog();
       if (mMapObject.isTrackRecording())
         onTrackRecordingSelected();
     }
@@ -821,13 +810,16 @@ public class PlacePageController
   public void onResume()
   {
     super.onResume();
-    if (mPlacePageBehavior.getState() != BottomSheetBehavior.STATE_HIDDEN && !Framework.nativeHasPlacePageInfo())
+    if (mPlacePageBehavior.getState() != BottomSheetBehavior.STATE_HIDDEN
+        && (mMapObject == null || !mMapObject.isTrackRecording()) && !Framework.nativeHasPlacePageInfo())
       mViewModel.setMapObject(null);
   }
 
   @Override
   public void onDestroyView()
   {
+    // Not restored after the view recreation, like other plain dialogs.
+    dismissAlertDialog();
     if (mCustomPeekHeightAnimator != null)
     {
       mCustomPeekHeightAnimator.cancel();

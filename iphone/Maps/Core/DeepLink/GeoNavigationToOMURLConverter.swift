@@ -114,12 +114,10 @@ struct GeoNavigationToOMURLConverter {
           } else {
             LOG(.warning, "Source and destination must have coordinates to build a route: \(geoURL.absoluteString)")
           }
+        } else if destination.coordinate != nil {
+          omAction = .map(destination)
         } else {
-          if destination.coordinate != nil {
-            omAction = .map(destination)
-          } else {
-            omAction = .search(destination)
-          }
+          omAction = .search(destination)
         }
       } else {
         LOG(.warning, "Destination is missing: \(geoURL.absoluteString)")
@@ -170,7 +168,10 @@ struct GeoNavigationToOMURLConverter {
       items.append(URLQueryItem(name: OMQueryKey.destinationAddress, value: n))
     }
 
-    items.append(URLQueryItem(name: OMQueryKey.routerType, value: MWMRouter.string(from: MWMRouter.type())))
+    // Ruler is not a navigation mode supported by the route URL API.
+    let routingType = MWMRouter.type()
+    let navigationType: MWMRouterType = routingType == .ruler ? .vehicle : routingType
+    items.append(URLQueryItem(name: OMQueryKey.routerType, value: MWMRouter.string(from: navigationType)))
     urlComponents.queryItems = items.isEmpty ? nil : items
     return urlComponents.url
   }

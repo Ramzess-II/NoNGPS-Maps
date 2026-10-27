@@ -169,6 +169,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">Descargue la región en la que está buscando o pruebe a añadir el nombre de una ciudad o pueblo cercano.</string>
     <string name="search_history_title">Historial de búsqueda</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">Respaldo de marcadores y pistas</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">Los marcadores y pistas pueden incluirse en los respaldos del sistema Android si el respaldo está activado en este dispositivo y no superan su límite de tamaño.</string>
     <string name="search_history_text">Ver tus búsquedas recientes.</string>
     <string name="clear_search">Eliminar el historial de búsqueda</string>
     <string name="p2p_your_location">Tu ubicación</string>
@@ -254,7 +258,7 @@
     <!-- Dialog before publishing the modifications to the public map. -->
     <string name="editor_share_to_all_dialog_message_1">Asegúrate de que no has introducido ningún dato personal.</string>
     <string name="editor_share_to_all_dialog_message_2">Los editores de OpenStreetMap comprobarán los cambios y se pondrán en contacto contigo si tienen alguna duda.</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">Grabación de la pista</string>
     <!-- For the first routing -->
     <string name="accept">Acepte</string>
@@ -277,6 +281,8 @@
     <string name="transliteration_title">Transliterar al alfabeto latino</string>
     <string name="learn_more">Más información</string>
     <string name="placepage_remove_stop">Quitar Stop</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">Agregar destino</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">Agregar parada</string>
     <string name="drag_to_reorder">Reordenar</string>
@@ -443,7 +449,7 @@
     <string name="power_save_dialog_summary">Para una navegación más precisa, recomendamos desactivar el modo de ahorro de energía en los ajustes de la batería del teléfono.</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">Detener grabación de pista</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">Grabación de pistas</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">La pista está vacía - no hay nada que guardar</string>

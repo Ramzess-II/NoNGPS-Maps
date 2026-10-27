@@ -334,6 +334,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">तुम्ही जिथे शोधत आहात तो प्रदेश डाउनलोड करा किंवा जवळच्या शहर/गावाचे नाव जोडण्याचा प्रयत्न करा.</string>
     <string name="search_history_title">शोध इतिहास</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">खूणपत्रे आणि ट्रॅकचा बॅकअप</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">या डिव्हाइसवर बॅकअप सुरू असल्यास आणि खूणपत्रे व ट्रॅक त्याच्या आकार मर्यादेपेक्षा जास्त नसल्यास, ते Android सिस्टम बॅकअपमध्ये समाविष्ट केले जाऊ शकतात.</string>
     <string name="search_history_text">अलीकडील शोध पहा.</string>
     <string name="clear_search">शोध इतिहास पुसून टाका</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
@@ -498,7 +502,7 @@
     <string name="editor_share_to_all_dialog_message_1">आपण कोणतीही वैयक्तिक माहिती प्रविष्ट केला नाही याची खात्री करा.</string>
     <string name="editor_share_to_all_dialog_message_2">OpenStreetMap संपादक बदल तपासतील व काही प्रश्न असल्यास तुमच्याशी संपर्क साधतील.</string>
     <string name="navigation_stop_button">थांबा</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">ट्रॅक रेकॉर्ड करत आहे</string>
     <!-- For the first routing -->
     <string name="accept">स्वीकारा</string>
@@ -523,6 +527,8 @@
     <string name="transliteration_title">रोमन लिपीत लिप्यंतरण</string>
     <string name="learn_more">अधिक जाणून घ्या</string>
     <string name="placepage_remove_stop">थांबा काढा</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">गंतव्य जोडा</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">थांबा जोडा</string>
     <string name="drag_to_reorder">पुनःक्रमवारी</string>
@@ -809,7 +815,7 @@
     <string name="start_track_recording">ट्रॅक रेकॉर्ड करा</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">ट्रॅक रेकॉर्डिंग थांबवा</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">ट्रॅक रेकॉर्डिंग</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">मार्ग रिकामा आहे - साठवण्यासाठी काहीही नाही</string>
@@ -888,6 +894,8 @@
     <string name="choose_point_on_map_hint">क्रॉस ठेवण्यासाठी नकाशा हलवा आणि झूम करा</string>
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">थांबवा आणि जतन करा</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">समाप्त करा</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">मार्ग उलटा करा</string>
 </resources>

@@ -334,6 +334,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">יש להוריד את האזור בו החיפוש מתבצע או להוסיף שם עיר/כפר קרוב.</string>
     <string name="search_history_title">חיפושים קודמים</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">גיבוי סימניות ומסלולים</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">סימניות ומסלולים יכולים להיכלל בגיבויי המערכת של Android כשהגיבוי מופעל במכשיר זה והם אינם חורגים ממגבלת הגודל שלו.</string>
     <string name="search_history_text">צפה בחיפושים האחרונים שלך.</string>
     <string name="clear_search">נקה היסטוריית חיפוש</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
@@ -498,7 +502,7 @@
     <string name="editor_share_to_all_dialog_message_1">יש לוודא שלא הזנת מידע אישי או פרטי.</string>
     <string name="editor_share_to_all_dialog_message_2">עורכי OpenStreetMap יבדקו את השינויים ויצרו איתך קשר אם יש להם שאלות כלשהן.</string>
     <string name="navigation_stop_button">עצור</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">הקלטת המסלול</string>
     <!-- For the first routing -->
     <string name="accept">קבל</string>
@@ -523,6 +527,8 @@
     <string name="transliteration_title">תעתיק לאותיות לטיניות</string>
     <string name="learn_more">למידע נוסף</string>
     <string name="placepage_remove_stop">הסר עצירה</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">הוספת יעד</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">הוספת עצירה</string>
     <string name="drag_to_reorder">סידור מחדש</string>
@@ -807,7 +813,7 @@
     <string name="start_track_recording">הקלט מסלול</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">הפסק הקלטת מסלול</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">הקלטת מסלול</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">המסלול ריק - אין מה לשמור</string>
@@ -886,6 +892,8 @@
     <string name="choose_point_on_map_hint">הזז את המפה ושנה את רמת הזום כדי למקם את הצלב</string>
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">הפסק ושמור</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">סיום</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">הפוך את המסלול</string>
 </resources>

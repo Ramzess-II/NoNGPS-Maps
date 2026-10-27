@@ -650,6 +650,9 @@
 "transliteration_title" = "ترجمة حرفية إلى الأبجدية اللاتينية";
 "placepage_remove_stop" = "إزالة نقطة توقف";
 
+/* Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. */
+"route_add_destination" = "إضافة وجهة";
+
 /* Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. */
 "placepage_add_stop" = "إضافة نقطة توقف";
 "error_enter_correct_name" = "الرجاء إدخال اسم صحيح";
@@ -964,6 +967,36 @@
 
 /* Link to OSM wiki for Editor, Profile and About pages */
 "osm_wiki_about_url" = "https://wiki.openstreetmap.org/wiki/Ar:About_OpenStreetMap";
+
+/* App Tip #00 */
+"app_tip_00" = "شكرًا لك على استخدام الخرائط التي أنشأها مجتمعنا!";
+
+/* App tip #01 */
+"app_tip_01" = "بتبرعاتكم ودعمكم، يمكننا إنشاء أفضل الخرائط في العالم!";
+
+/* App tip #02 */
+"app_tip_02" = "هل تحب التطبيق لدينا؟ يرجى التبرع لدعم التنمية! لا أحب ذلك حتى الآن؟ واسمحوا لنا أن نعرف، وسوف نقوم بإصلاحه!";
+
+/* App tip #03 */
+"app_tip_03" = "إذا كنت تعرف أحد مطوري البرامج، فيمكنك أن تطلب منه تنفيذ الميزة التي تحتاجها.";
+
+/* App tip #04 */
+"app_tip_04" = "اضغط على أي مكان على الخريطة لتحديد أي شيء. اضغط لفترة طويلة لإخفاء الواجهة وإظهارها مرة أخرى.";
+
+/* App tip #05 */
+"app_tip_05" = "هل تعلم أنه يمكنك تحديد موقعك الحالي على الخريطة؟";
+
+/* App tip #06 */
+"app_tip_06" = "يمكنك المساعدة في ترجمة تطبيقنا إلى لغتك.";
+
+/* App tip #07 */
+"app_tip_07" = "تم تطوير تطبيقنا من قبل عدد قليل من المتحمسين والمجتمع.";
+
+/* App tip #08 */
+"app_tip_08" = "يمكنك بسهولة إصلاح وتحسين بيانات الخريطة.";
+
+/* App tip #09 */
+"app_tip_09" = "هدفنا الرئيسي هو إنشاء خرائط سريعة وسهلة الاستخدام تركز على الخصوصية والتي ستعجبك.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
 "car_used_on_the_phone_screen" = "أنت تستخدم الآن NonGPS Maps على شاشة الهاتف";

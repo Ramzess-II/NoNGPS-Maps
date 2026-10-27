@@ -334,6 +334,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">Κατεβάστε την περιοχή στην οποία ψάχνετε ή δοκιμάστε να προσθέσετε το όνομα μιας κοντινής πόλης/χωριού.</string>
     <string name="search_history_title">Ιστορικό αναζητήσεων</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">Αντίγραφο ασφαλείας αγαπημένων και διαδρομών</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">Τα αγαπημένα και οι διαδρομές μπορούν να συμπεριληφθούν στα αντίγραφα ασφαλείας συστήματος του Android, εάν η δημιουργία αντιγράφων ασφαλείας είναι ενεργοποιημένη σε αυτήν τη συσκευή και δεν υπερβαίνουν το όριο μεγέθους της.</string>
     <string name="search_history_text">Προβολή πρόσφατων αναζητήσεων.</string>
     <string name="clear_search">Εκκαθάριση ιστορικού αναζητήσεων</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
@@ -498,7 +502,7 @@
     <string name="editor_share_to_all_dialog_message_1">Βεβαιωθείτε ότι δεν έχετε εισάγει προσωπικά δεδομένα.</string>
     <string name="editor_share_to_all_dialog_message_2">Οι συντάκτες του OpenStreetMap θα ελέγξουν τις αλλαγές και θα επικοινωνήσουν μαζί σας εάν έχουν απορίες.</string>
     <string name="navigation_stop_button">τέλος</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">Καταγραφή της διαδρομής</string>
     <!-- For the first routing -->
     <string name="accept">Συμφωνώ</string>
@@ -523,6 +527,8 @@
     <string name="transliteration_title">Μεταγραφή στο λατινικό αλφάβητο</string>
     <string name="learn_more">Μάθετε περισσότερα</string>
     <string name="placepage_remove_stop">Αφαίρεση στάσης</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">Προσθήκη προορισμού</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">Προσθήκη στάσης</string>
     <string name="drag_to_reorder">Αναδιάταξη</string>
@@ -814,7 +820,7 @@
     <string name="start_track_recording">Εγγραφή διαδρομής</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">Σταματήστε την εγγραφή διαδρομής</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">Καταγραφή διαδρομής</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">Η διαδρομή είναι άδεια - δεν υπάρχει τίποτα να αποθηκεύσετε</string>
@@ -893,6 +899,8 @@
     <string name="choose_point_on_map_hint">Μετακινήστε και μεγεθύνετε τον χάρτη για να τοποθετήσετε τον σταυρό</string>
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">Διακοπή και αποθήκευση</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">Ολοκλήρωση</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">Αντιστροφή διαδρομής</string>
 </resources>

@@ -650,6 +650,9 @@
 "transliteration_title" = "Translitterointi latinalaisiksi aakkosiksi";
 "placepage_remove_stop" = "Poista pysähdys";
 
+/* Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. */
+"route_add_destination" = "Lisää määränpää";
+
 /* Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. */
 "placepage_add_stop" = "Lisää pysähdys";
 "error_enter_correct_name" = "Anna oikea nimi";
@@ -964,6 +967,36 @@
 
 /* Link to OSM wiki for Editor, Profile and About pages */
 "osm_wiki_about_url" = "https://wiki.openstreetmap.org/wiki/About_OpenStreetMap";
+
+/* App Tip #00 */
+"app_tip_00" = "Kiitos, että käytät yhteisön laatimia karttojamme!";
+
+/* App tip #01 */
+"app_tip_01" = "Lahjoituksellasi ja tuellasi voimme luoda maailman parhaat kartat!";
+
+/* App tip #02 */
+"app_tip_02" = "Pidätkö sovelluksestamme? Lahjoita tukemaan kehitystä! Etkö pidä siitä vielä? Kerro meille, niin korjaamme asian!";
+
+/* App tip #03 */
+"app_tip_03" = "Jos tunnet ohjelmistokehittäjän, voit pyytää häntä ottamaan käyttöön tarvitsemasi ominaisuuden.";
+
+/* App tip #04 */
+"app_tip_04" = "Voit valita mitä tahansa napauttamalla mitä tahansa kohtaa kartalla. Piilota ja näytä käyttöliittymä takaisin pitkällä napautuksella.";
+
+/* App tip #05 */
+"app_tip_05" = "Tiesitkö, että voit valita nykyisen sijaintisi kartalta?";
+
+/* App tip #06 */
+"app_tip_06" = "Voit auttaa kääntämään sovelluksemme kielellesi.";
+
+/* App tip #07 */
+"app_tip_07" = "Sovelluksemme on muutaman harrastajan ja yhteisön kehittämä.";
+
+/* App tip #08 */
+"app_tip_08" = "Voit helposti korjata ja parantaa karttatietoja.";
+
+/* App tip #09 */
+"app_tip_09" = "Päätavoitteemme on rakentaa nopeita, yksityisyyteen keskittyviä, helppokäyttöisiä karttoja, joista pidät.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
 "car_used_on_the_phone_screen" = "Käytät nyt puhelimen näytöllä NonGPS Maps -palvelua.";

@@ -334,6 +334,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">Laadi alla otsitav piirkond või proovi lisada lähedalasuva linna/küla nimi.</string>
     <string name="search_history_title">Otsinguajalugu</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">Järjehoidjate ja radade varundus</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">Järjehoidjad ja rajad võivad sattuda Androidi süsteemi varukoopiatesse, kui varundamine on selles seadmes sisse lülitatud ja need ei ületa selle mahupiirangut.</string>
     <string name="search_history_text">Vaata hiljutisi otsinguid.</string>
     <string name="clear_search">Kustuta otsinguajalugu</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
@@ -498,7 +502,7 @@
     <string name="editor_share_to_all_dialog_message_1">Palun kontrolli, et sa ei sisestanud isiklikke andmeid.</string>
     <string name="editor_share_to_all_dialog_message_2">OpenStreetMapi haldajad kontrollivad muudatused üle ja võtavad küsimuste korral sinuga ühendust.</string>
     <string name="navigation_stop_button">Lõpeta</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">Rada on salvestamisel</string>
     <!-- For the first routing -->
     <string name="accept">Nõustu</string>
@@ -523,6 +527,8 @@
     <string name="transliteration_title">Transliteratsioon ladina tähestikku</string>
     <string name="learn_more">Lisateave</string>
     <string name="placepage_remove_stop">Eemalda peatus</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">Lisa sihtkoht</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">Lisa peatus</string>
     <string name="drag_to_reorder">Järjestuse muutmine</string>
@@ -816,7 +822,7 @@
     <string name="start_track_recording">Salvesta rada</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">Peata raja salvestamine</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">Rada salvestamine</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">Rada on tühi - ei ole midagi salvestada</string>
@@ -897,6 +903,8 @@
     <string name="choose_point_on_map_hint">Liiguta ja suumi kaarti, et paigutada rist õigesse kohta</string>
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">Lõpeta ja salvesta</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">Lõpeta</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">Pööra marsruut ümber</string>
 </resources>

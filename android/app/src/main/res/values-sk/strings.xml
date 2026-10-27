@@ -334,6 +334,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">Stiahnite si región, v ktorom hľadáte, alebo skúste pridať názov blízkeho mesta/obce.</string>
     <string name="search_history_title">História vyhľadávania</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">Záloha záložiek a stôp</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">Záložky a stopy môžu byť zahrnuté do systémových záloh Androidu, ak je na tomto zariadení zapnuté zálohovanie a neprekračujú jeho limit veľkosti.</string>
     <string name="search_history_text">Rýchlo pristupujte k nedávnym hľadaným výrazom.</string>
     <string name="clear_search">Vymazať históriu vyhľadávania</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
@@ -498,7 +502,7 @@
     <string name="editor_share_to_all_dialog_message_1">Nezadávajte žiadne osobné udaje.</string>
     <string name="editor_share_to_all_dialog_message_2">Redaktori OpenStreetMap skontrolujú zmeny a budú vás kontaktovať, ak budú mať nejaké otázky.</string>
     <string name="navigation_stop_button">Zastavte</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">Zaznamenávanie trasy</string>
     <!-- For the first routing -->
     <string name="accept">Prijať</string>
@@ -523,6 +527,8 @@
     <string name="transliteration_title">Prepis do latinky</string>
     <string name="learn_more">Zistiť viac</string>
     <string name="placepage_remove_stop">Odstrániť zastávku</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">Pridať cieľ</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">Pridať zastávku</string>
     <string name="drag_to_reorder">Zmeniť poradie</string>
@@ -808,7 +814,7 @@
     <string name="start_track_recording">Nahrať trasu</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">Zastaviť nahrávanie trasy</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">Záznam trasy</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">Trasa je prázdna - nie je čo ukladať</string>
@@ -889,6 +895,8 @@
     <string name="choose_point_on_map_hint">Posúvajte a zväčšujte mapu, aby ste umiestnili krížik</string>
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">Zastaviť a uložiť</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">Ukončiť</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">Otočiť trasu</string>
 </resources>

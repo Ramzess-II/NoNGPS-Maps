@@ -334,6 +334,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">Deskargatu bilatzen ari zaren eskualdea edo saiatu inguruko herri/hiri izena gehitzen.</string>
     <string name="search_history_title">Bilaketa historia</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">Markagailuen eta arrastoen babeskopia</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">Markagailuak eta arrastoak Android sistemaren babeskopietan sar daitezke, babeskopiak gailu honetan gaituta badaude eta haren tamaina-muga gainditzen ez badute.</string>
     <string name="search_history_text">Ikusi azken bilaketak.</string>
     <string name="clear_search">Garbitu bilaketa historia</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
@@ -498,7 +502,7 @@
     <string name="editor_share_to_all_dialog_message_1">Ziurtatu ez duzula datu pertsonalik sartu.</string>
     <string name="editor_share_to_all_dialog_message_2">OpenStreetMap editoreek aldaketak egiaztatuko dituzte eta zurekin harremanetan jarriko dira zalantzaren bat izanez gero.</string>
     <string name="navigation_stop_button">Gelditu</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">Arrastoa grabatzen</string>
     <!-- For the first routing -->
     <string name="accept">Onartu</string>
@@ -523,6 +527,8 @@
     <string name="transliteration_title">Latinezko transliterazioa</string>
     <string name="learn_more">Irakurri gehiago</string>
     <string name="placepage_remove_stop">Kendu geltokia</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">Gehitu helmuga</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">Gehitu geldialdia</string>
     <string name="drag_to_reorder">Berrantolatu</string>
@@ -813,7 +819,7 @@
     <string name="start_track_recording">Grabatu arrastoa</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">Gelditu arrastoaren grabaketa</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">Ibilbidearen grabaketa</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">Arrastoa hutsik dago; ez dago ezer gordetzeko</string>
@@ -892,6 +898,8 @@
     <string name="choose_point_on_map_hint">Mugitu eta handitu mapa gurutzea kokatzeko</string>
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">Gelditu eta gorde</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">Amaitu</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">Ibilbidea alderantzikatu</string>
 </resources>
