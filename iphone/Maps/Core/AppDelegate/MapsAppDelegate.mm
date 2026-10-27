@@ -227,7 +227,7 @@ using namespace osm_auth_ios;
   if ([MWMSettings isTrackWarningAlertShown])
     return;
 
-  [topVc.alertController presentTrackWarningAlertWithCancelBlock:^{ GpsTracker::Instance().SetEnabled(false); }];
+  [topVc.alertController presentTrackWarningAlertWithCancelBlock:^{ GetFramework().DiscardTrackRecording(); }];
 
   [MWMSettings setTrackWarningAlertShown:YES];
   LOG(LINFO, ("applicationWillEnterForeground - end"));
@@ -278,7 +278,7 @@ using namespace osm_auth_ios;
   }
   else if ([userActivity.activityType isEqualToString:NSUserActivityTypeBrowsingWeb] && userActivity.webpageURL != nil)
   {
-    LOG(LINFO, ("application:continueUserActivity:restorationHandler: %@", userActivity.webpageURL));
+    LOG(LINFO, ("handleUserActivity", userActivity.webpageURL.absoluteString.UTF8String));
     return [DeepLinkHandler.shared applicationDidReceiveUniversalLink:userActivity.webpageURL];
   }
 

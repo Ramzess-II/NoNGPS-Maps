@@ -650,6 +650,9 @@
 "transliteration_title" = "Транслітарацыя лацінкай";
 "placepage_remove_stop" = "Выдаліць прыпынак";
 
+/* Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. */
+"route_add_destination" = "Дадаць пункт прызначэння";
+
 /* Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. */
 "placepage_add_stop" = "Дадаць прыпынак";
 "error_enter_correct_name" = "Увядзіце правільную назву";
@@ -964,6 +967,36 @@
 
 /* Link to OSM wiki for Editor, Profile and About pages */
 "osm_wiki_about_url" = "https://wiki.openstreetmap.org/wiki/About_OpenStreetMap";
+
+/* App Tip #00 */
+"app_tip_00" = "Дзякуй за выкарыстанне нашых мап, створаных супольнасцю!";
+
+/* App tip #01 */
+"app_tip_01" = "Дзякуючы вашым ахвяраванням і падтрымцы мы можам стварыць лепшыя мапы ў свеце!";
+
+/* App tip #02 */
+"app_tip_02" = "Вам падабаецца наша праграма? Калі ласка, ахвяруйце, каб падтрымаць яе распрацоўку. Яшчэ не падабаецца? Напішыце чаму, і мы гэта выправім!";
+
+/* App tip #03 */
+"app_tip_03" = "Калі вы ведаеце распрацоўшчыка праграмнага забеспячэння, вы можаце папрасіць яго рэалізаваць неабходную вам функцыю.";
+
+/* App tip #04 */
+"app_tip_04" = "Націсніце ў любое месца на карце, каб што-небудзь выбраць. Выкарыстоўвайце працяглае націсканне, каб схаваць або зноў паказаць інтэрфейс.";
+
+/* App tip #05 */
+"app_tip_05" = "А вы ведалі, што сваё месцазнаходжанне на карце можна выбраць?";
+
+/* App tip #06 */
+"app_tip_06" = "Вы можаце дапамагчы перакласці нашу праграму на вашу мову.";
+
+/* App tip #07 */
+"app_tip_07" = "Наша праграма распрацавана некалькімі энтузіястамі і супольнасцю.";
+
+/* App tip #08 */
+"app_tip_08" = "Вы можаце лёгка выпраўляць і палепшаць даныя мапы.";
+
+/* App tip #09 */
+"app_tip_09" = "Наша галоўная мэта - ствараць хуткія, арыентаваныя на прыватнасць і простыя ў выкарыстанні мапы, якія вам спадабаюцца.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
 "car_used_on_the_phone_screen" = "Вы выкарыстоўваеце NonGPS Maps на экране тэлефона";

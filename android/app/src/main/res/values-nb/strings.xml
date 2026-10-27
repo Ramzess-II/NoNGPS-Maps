@@ -334,6 +334,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">Last ned regionen du søker i, eller prøv å legge til et bynavn i nærheten.</string>
     <string name="search_history_title">Søkehistorikk</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">Sikkerhetskopi av bokmerker og spor</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">Bokmerker og spor kan inkluderes i Androids systemsikkerhetskopier når sikkerhetskopiering er aktivert på denne enheten og de ikke overskrider størrelsesgrensen.</string>
     <string name="search_history_text">Vis de siste søkene raskt.</string>
     <string name="clear_search">Tøm søkehistorikk</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
@@ -498,7 +502,7 @@
     <string name="editor_share_to_all_dialog_message_1">Sørg for at du ikke har skrevet noe personlig informasjon.</string>
     <string name="editor_share_to_all_dialog_message_2">OpenStreetMap-redaktører vil sjekke endringene og ta kontakt med deg hvis de har spørsmål.</string>
     <string name="navigation_stop_button">Stopp</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">Registrere sporet</string>
     <!-- For the first routing -->
     <string name="accept">Godta</string>
@@ -523,6 +527,8 @@
     <string name="transliteration_title">Omskrivning til latin</string>
     <string name="learn_more">Finn ut mer</string>
     <string name="placepage_remove_stop">Fjern stopp</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">Legg til destinasjon</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">Legg til stopp</string>
     <string name="drag_to_reorder">Omorganiser</string>
@@ -807,7 +813,7 @@
     <string name="start_track_recording">Ta opp rute</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">Stopp opptak av rute</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">Opptak av rute</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">Ruten er tom - ingenting å lagre</string>
@@ -886,6 +892,8 @@
     <string name="choose_point_on_map_hint">Flytt og zoom på kartet for å plassere korset</string>
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">Stopp og lagre</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">Avslutt</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">Snu ruten</string>
 </resources>

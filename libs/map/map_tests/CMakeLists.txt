@@ -30,6 +30,7 @@ set(SRC
   nogps_test_roads.hpp
   nogps_turn_sign_checker_tests.cpp
   power_manager_tests.cpp
+  raster_tile_provider_tests.cpp
   road_warning_tests.cpp
   share_tests.cpp
   search_api_tests.cpp
@@ -40,6 +41,8 @@ set(SRC
   relation_track_tests.cpp
   routing_manager_tests.cpp
   track_tests.cpp
+  transit_display_tests.cpp
+  transit_rendering_tests.cpp
 )
 
 omim_add_test(${PROJECT_NAME} ${SRC} REQUIRE_QT REQUIRE_SERVER)

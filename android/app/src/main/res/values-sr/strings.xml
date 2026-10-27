@@ -334,6 +334,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">Преузмите регион где вршите претрагу, или пробајте да додате име оближњег насеља.</string>
     <string name="search_history_title">Историја претраге</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">Резервна копија маркера и путања</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">Маркери и путање могу бити укључени у резервне копије система Android ако је на овом уређају укључено прављење резервних копија и не прелазе његово ограничење величине.</string>
     <string name="search_history_text">Погледајте ваше недавне претраге.</string>
     <string name="clear_search">Обриши историју претраге</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
@@ -498,7 +502,7 @@
     <string name="editor_share_to_all_dialog_message_1">Проверите да нисте унели приватне или личне податке.</string>
     <string name="editor_share_to_all_dialog_message_2">OpenStreetMap мапери ће проверити промене и контактирати Вас уколико буду имали питања.</string>
     <string name="navigation_stop_button">Стоп</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">Снимање путање</string>
     <!-- For the first routing -->
     <string name="accept">Прихвати</string>
@@ -523,6 +527,8 @@
     <string name="transliteration_title">Транслитерација у латиницу</string>
     <string name="learn_more">Сазнај више</string>
     <string name="placepage_remove_stop">Уклони међуодредиште</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">Додај одредиште</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">Додај међуодредиште</string>
     <string name="drag_to_reorder">Преуредити</string>
@@ -814,7 +820,7 @@
     <string name="start_track_recording">Сними путању</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">Заустави снимање путање</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">Снимање путање</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">Путања је празна, нема шта да се сачува</string>
@@ -891,6 +897,8 @@
     <string name="choose_point_on_map_hint">Померите и зумирајте мапу да бисте поставили крст</string>
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">Заустави и сачувај</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">Заврши</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">Обрни руту</string>
 </resources>

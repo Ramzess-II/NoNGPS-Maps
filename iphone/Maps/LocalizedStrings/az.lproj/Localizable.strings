@@ -650,6 +650,9 @@
 "transliteration_title" = "Latın transliterasiyası";
 "placepage_remove_stop" = "Kəsmə nöqtəsini silin";
 
+/* Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. */
+"route_add_destination" = "Təyinat əlavə et";
+
 /* Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. */
 "placepage_add_stop" = "Dayanacaq əlavə et";
 "error_enter_correct_name" = "Düzgün ad daxil edin";
@@ -964,6 +967,36 @@
 
 /* Link to OSM wiki for Editor, Profile and About pages */
 "osm_wiki_about_url" = "https://wiki.openstreetmap.org/wiki/Tr:About";
+
+/* App Tip #00 */
+"app_tip_00" = "İcma tərəfindən yaradılmış xəritələrimizdən istifadə etdiyiniz üçün təşəkkür edirik!";
+
+/* App tip #01 */
+"app_tip_01" = "Sizin ianələriniz və dəstəyinizlə biz dünyanın ən yaxşı xəritələrini yarada bilərik!";
+
+/* App tip #02 */
+"app_tip_02" = "Tətbiqimizi bəyənirsiniz? İnkişafı dəstəkləmək üçün ianə edin! Hələ bəyənmirsiniz? Niyə belə olduğunu bizə bildirin, biz də düzəldək!";
+
+/* App tip #03 */
+"app_tip_03" = "Əgər proqram tərtibatçısını tanıyırsınızsa, ona ehtiyac duyduğunuz funksiyanı əlavə etməsini xahiş edə bilərsiniz.";
+
+/* App tip #04 */
+"app_tip_04" = "Nəyisə seçmək üçün xəritədə istənilən yerə toxunun. Gizlətmək və interfeysi geri göstərmək üçün uzun müddət toxunun.";
+
+/* App tip #05 */
+"app_tip_05" = "Xəritədə cari yerinizi seçə biləcəyinizi bilirdinizmi?";
+
+/* App tip #06 */
+"app_tip_06" = "Tətbiqimizi dilinizə tərcümə etməyə kömək edə bilərsiniz.";
+
+/* App tip #07 */
+"app_tip_07" = "Tətbiqimiz bir neçə həvəskar və icma tərəfindən hazırlanıb.";
+
+/* App tip #08 */
+"app_tip_08" = "Xəritə məlumatlarını asanlıqla düzəldə və təkmilləşdirə bilərsiniz.";
+
+/* App tip #09 */
+"app_tip_09" = "Əsas məqsədimiz sizin sevəcəyiniz sürətli, məxfiliyə yönəlmiş, istifadəsi asan xəritələr yaratmaqdır.";
 
 /* Text on the Android Auto or CarPlay placeholder screen that maps are displayed on the phone screen */
 "car_used_on_the_phone_screen" = "İndi telefon ekranında NonGPS Maps istifadə edirsiniz";

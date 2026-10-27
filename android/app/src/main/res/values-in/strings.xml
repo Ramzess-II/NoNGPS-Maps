@@ -334,6 +334,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">Unduh wilayah tempat Anda mencari atau coba tambahkan nama kota/desa terdekat.</string>
     <string name="search_history_title">Riwayat Pencarian</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">Cadangan penanda dan jalur</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">Penanda dan jalur dapat disertakan dalam cadangan sistem Android jika pencadangan diaktifkan di perangkat ini dan tidak melebihi batas ukurannya.</string>
     <string name="search_history_text">Akses kueri pencarian terbaru dengan cepat.</string>
     <string name="clear_search">Bersihkan riwayat pencarian</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
@@ -498,7 +502,7 @@
     <string name="editor_share_to_all_dialog_message_1">Pastikan Anda tidak memasukkan data pribadi apa pun.</string>
     <string name="editor_share_to_all_dialog_message_2">Editor OpenStreetMap akan memeriksa perubahan dan menghubungi Anda jika ada pertanyaan.</string>
     <string name="navigation_stop_button">Berhenti</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">Merekam jejak</string>
     <!-- For the first routing -->
     <string name="accept">Terima</string>
@@ -523,6 +527,8 @@
     <string name="transliteration_title">Transliterasi ke dalam bahasa Latin</string>
     <string name="learn_more">Pelajari selengkapnya</string>
     <string name="placepage_remove_stop">Hapus pemberhentian</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">Tambah tujuan</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">Tambah perhentian</string>
     <string name="drag_to_reorder">Mengatur ulang</string>
@@ -807,7 +813,7 @@
     <string name="start_track_recording">Merekam jalur</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">Hentikan perekaman jalur</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">Perekaman Jalur</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">Jalur kosong - tidak ada yang bisa disimpan</string>
@@ -884,6 +890,8 @@
     <string name="choose_point_on_map_hint">Gerakkan dan perbesar/perkecil peta untuk menempatkan tanda silang</string>
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">Berhenti dan simpan</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">Selesai</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">Balikkan rute</string>
 </resources>

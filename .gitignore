@@ -106,3 +106,8 @@ CMakeUserPresets.json
 # Trip logs pulled from the phone: they have real coordinates, never commit them.
 /trip-logs/
 /credentials
+
+# Local files that should not be tracked or committed
+AGENTS.override.md
+CLAUDE.local.md
+plans

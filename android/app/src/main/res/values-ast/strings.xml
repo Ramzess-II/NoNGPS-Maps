@@ -158,6 +158,10 @@
     <string name="hide">Anubrir</string>
     <string name="categories">Categoríes</string>
     <string name="search_history_title">Historial de guetes</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">Copia de seguranza de marcadores y trayeutos</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">Los marcadores y trayeutos puen incluyise nes copies de seguranza del sistema Android cuando la copia de seguranza ta activada nesti preséu y nun superen la so llende de tamañu.</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
     <string name="read_in_wikipedia">Wikipedia</string>
     <string name="p2p_start">Entamar</string>
@@ -224,7 +228,7 @@
     <string name="osm_note_toast">La nota va unviase a OpenStreetMap</string>
     <!-- Displayed when saving some edits to the map to warn against publishing personal data -->
     <string name="editor_share_to_all_dialog_title">¿Quies unvialu a tolos usuarios?</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">Grabando’l trayeutu</string>
     <!-- For the first routing -->
     <string name="accept">Aceutar</string>
@@ -235,6 +239,8 @@
     <string name="mobile_data_option_ask">Entrugar siempres</string>
     <string name="learn_more">Deprende más</string>
     <string name="placepage_remove_stop">Desaniciar parada</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">Amestar destín</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">Amestar parada</string>
     <string name="bookmark_lists">Llistes</string>
@@ -392,6 +398,8 @@
     <!-- SECTION: gps strings -->
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">Parar y guardar</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">Acabar</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">Invertir la ruta</string>
 </resources>

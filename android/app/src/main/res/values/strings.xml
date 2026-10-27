@@ -334,6 +334,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">Download the region where you are searching or try adding a nearby town/village name.</string>
     <string name="search_history_title">Search History</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">Bookmarks and Tracks backup</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">Bookmarks and tracks can be included in Android system backups when backup is enabled on this device and they fit within its size limit.</string>
     <string name="search_history_text">View your recent searches.</string>
     <string name="clear_search">Clear Search History</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
@@ -498,7 +502,7 @@
     <string name="editor_share_to_all_dialog_message_1">Make sure you did not enter any private or personal data.</string>
     <string name="editor_share_to_all_dialog_message_2">OpenStreetMap editors will check the changes and contact you if they have any questions.</string>
     <string name="navigation_stop_button">Stop</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">Recording the track</string>
     <!-- For the first routing -->
     <string name="accept">Accept</string>
@@ -523,6 +527,8 @@
     <string name="transliteration_title">Transliterate into Latin alphabet</string>
     <string name="learn_more">Learn more</string>
     <string name="placepage_remove_stop">Remove Stop</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">Add destination</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">Add Stop</string>
     <string name="drag_to_reorder">Reorder</string>
@@ -817,7 +823,7 @@
     <string name="start_track_recording">Record Track</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">Stop Track Recording</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">Track Recording</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">Track is empty - nothing to save</string>
@@ -896,6 +902,8 @@
     <string name="choose_point_on_map_hint">Move and zoom the map to place the cross</string>
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">Stop and Save</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">Finish</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">Reverse route</string>
 

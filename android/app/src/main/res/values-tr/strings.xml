@@ -334,6 +334,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">Arama yapmak istediğiniz bölgenin haritasını indirin veya yakındaki bir yerleşim yeri adını eklemeyi deneyin.</string>
     <string name="search_history_title">Arama Geçmişi</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">Yer imleri ve izler yedeği</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">Bu cihazda yedekleme etkinse ve yer imleri ile izler yedeğin boyut sınırını aşmıyorsa, bunlar Android sistem yedeklerine dahil edilebilir.</string>
     <string name="search_history_text">Son aramalarınızı görüntüleyin.</string>
     <string name="clear_search">Arama Geçmişini Temizle</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
@@ -498,7 +502,7 @@
     <string name="editor_share_to_all_dialog_message_1">Herhangi bir kişisel bilgi girmediğinizden emin olun.</string>
     <string name="editor_share_to_all_dialog_message_2">OpenStreetMap editörleri değişikliklerinizi denetleyecek ve bir soruları olursa sizinle iletişime geçecek.</string>
     <string name="navigation_stop_button">Dur</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">İz kaydediliyor</string>
     <!-- For the first routing -->
     <string name="accept">Kabul Et</string>
@@ -523,6 +527,8 @@
     <string name="transliteration_title">Latin alfabesine çevir</string>
     <string name="learn_more">Daha fazla bilgi edinin</string>
     <string name="placepage_remove_stop">Durağı Kaldır</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">Hedef ekle</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">Ara nokta ekle</string>
     <string name="drag_to_reorder">Sırayı değiştir</string>
@@ -815,7 +821,7 @@
     <string name="start_track_recording">İzi Kaydet</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">İz Kaydını Durdur</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">Rota Kaydı</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">İz boş - kaydedilecek bir şey yok</string>
@@ -896,6 +902,8 @@
     <string name="choose_point_on_map_hint">Çarpı imini yerleştirmek için haritayı kaydırın ve yakınlaştırın</string>
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">Durdur ve Kaydet</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">Bitir</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">Rotayı tersine çevir</string>
 </resources>

@@ -334,6 +334,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">下載您要搜尋的區域的地圖，或嘗試輸入附近的城鎮或村莊名稱。</string>
     <string name="search_history_title">搜尋歷史紀錄</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">書籤和軌跡備份</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">如果此裝置已啟用備份，且書籤和軌跡未超過其容量上限，它們可以包含在 Android 系統備份中。</string>
     <string name="search_history_text">查看您最近的搜尋記錄。</string>
     <string name="clear_search">清除搜尋記錄</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
@@ -498,7 +502,7 @@
     <string name="editor_share_to_all_dialog_message_1">確保您沒有輸入任何個人資料。</string>
     <string name="editor_share_to_all_dialog_message_2">OpenStreetMap 編輯人員將檢查更改並在有任何問題時與您聯繫。</string>
     <string name="navigation_stop_button">停止</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">記錄軌跡</string>
     <!-- For the first routing -->
     <string name="accept">接受</string>
@@ -523,6 +527,8 @@
     <string name="transliteration_title">拉丁字母音譯</string>
     <string name="learn_more">瞭解更多資訊</string>
     <string name="placepage_remove_stop">刪除停止</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">新增目的地</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">新增途經點</string>
     <string name="drag_to_reorder">重新排序</string>
@@ -814,7 +820,7 @@
     <string name="start_track_recording">錄製軌跡</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">停止軌跡記錄</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">軌跡記錄</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">軌跡為空 - 沒有可保存的內容</string>
@@ -893,6 +899,8 @@
     <string name="choose_point_on_map_hint">移動並縮放地圖以定位十字</string>
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">停止並儲存</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">結束</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">反轉路線</string>
 </resources>

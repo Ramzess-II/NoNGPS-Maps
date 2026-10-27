@@ -7,7 +7,6 @@
 #include "map/isolines_manager.hpp"
 #include "map/mwm_url.hpp"
 #include "map/place_page_info.hpp"
-#include "map/position_provider.hpp"
 #include "map/power_management/power_management_schemas.hpp"
 #include "map/power_management/power_manager.hpp"
 #include "map/routing_manager.hpp"
@@ -104,8 +103,7 @@ struct FrameworkParams
 };
 
 class Framework
-  : public PositionProvider
-  , public SearchAPI::Delegate
+  : public SearchAPI::Delegate
   , public RoutingManager::Delegate
   , private power_management::PowerManager::Subscriber
 {
@@ -324,7 +322,6 @@ public:
   using SearchResultsIterT = SearchAPI::Delegate::ResultsIterT;
   void ShowViewportSearchResults(SearchResultsIterT begin, SearchResultsIterT end, bool clear) override;
   void ClearViewportSearchResults() override;
-  // PositionProvider, SearchApi::Delegate and TipsApi::Delegate override.
   std::optional<m2::PointD> GetCurrentPosition() const override;
   bool ParseSearchQueryCommand(search::SearchParams const & params) override;
   m2::PointD GetMinDistanceBetweenResults() const override;
@@ -469,7 +466,9 @@ public:
   using TrackRecordingUpdateHandler = platform::SafeCallback<void(TrackStatistics const & trackStatistics)>;
   void StartTrackRecording();
   void SetTrackRecordingUpdateHandler(TrackRecordingUpdateHandler && trackRecordingDidUpdate);
+  /// Finishes recording, retaining its backup until saved or explicitly discarded.
   void StopTrackRecording();
+  void DiscardTrackRecording();
   void SaveTrackRecordingWithName(std::string const & name);
   bool IsTrackRecordingEmpty() const;
   bool IsTrackRecordingEnabled() const;
@@ -500,10 +499,7 @@ private:
   TCurrentCountryChanged m_currentCountryChanged;
 
   void OnUpdateGpsTrackPointsCallback(std::vector<std::pair<size_t, location::GpsInfo>> && toAdd,
-                                      std::pair<size_t, size_t> const & toRemove,
-                                      TrackStatistics const & trackStatistics);
-
-  TrackRecordingUpdateHandler m_trackRecordingUpdateHandler;
+                                      std::pair<size_t, size_t> const & toRemove);
 
   std::unique_ptr<descriptions::Loader> m_descriptionsLoader;
   SelectionProcessor m_selectionProcessor;

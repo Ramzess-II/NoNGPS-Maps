@@ -334,6 +334,10 @@
     <!-- The message when user did not find anything in the search. -->
     <string name="search_not_found_query">Descargue la región en la que está buscando o pruebe a añadir el nombre de una ciudad/pueblo cercano.</string>
     <string name="search_history_title">Historial de búsquedas</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_title">Copia de seguridad de marcadores y trayectos</string>
+    <!-- Tracks are recorded or imported GPS paths. -->
+    <string name="bookmarks_backup_description">Los marcadores y trayectos pueden incluirse en las copias de seguridad del sistema Android si la copia de seguridad está activada en este dispositivo y no superan su límite de tamaño.</string>
     <string name="search_history_text">Ver búsquedas recientes.</string>
     <string name="clear_search">Vaciar historial de búsquedas</string>
     <!-- Place Page link to Wikipedia article (if map object has it). -->
@@ -498,7 +502,7 @@
     <string name="editor_share_to_all_dialog_message_1">Cerciórese de que no ha introducido ningún dato privado o personal.</string>
     <string name="editor_share_to_all_dialog_message_2">Los editores de OpenStreetMap comprobarán los cambios y se pondrán en contacto con usted si tienen alguna pregunta.</string>
     <string name="navigation_stop_button">Detener</string>
-    <!-- Shown as toast when starting the recent track recording -->
+    <!-- Shown while a track is being recorded: the start toast, the notification title and the home screen widget status. -->
     <string name="track_recording">Grabando el trayecto</string>
     <!-- For the first routing -->
     <string name="accept">Aceptar</string>
@@ -523,6 +527,8 @@
     <string name="transliteration_title">Transliteración al alfabeto latino</string>
     <string name="learn_more">Conocer más</string>
     <string name="placepage_remove_stop">Eliminar parada</string>
+    <!-- Keep it short: route planner button below the destination, PlacePage button, search field hint and full-screen map point picker title shown while choosing another destination. The picked place becomes the new destination, the previous one becomes a stop. -->
+    <string name="route_add_destination">Añadir destino</string>
     <!-- Keep it short: PlacePage button, search field hint and full-screen map point picker title shown while choosing a new intermediate stop of a route. -->
     <string name="placepage_add_stop">Añadir parada</string>
     <string name="drag_to_reorder">Reordenar</string>
@@ -819,7 +825,7 @@
     <string name="start_track_recording">Grabar trayecto</string>
     <!-- Prompt for stopping a track recording. -->
     <string name="stop_track_recording">Detener grabación de trayecto</string>
-    <!-- Title for the "Stop Without Saving" action for the alert when saving a track recording. -->
+    <!-- Subtitle of the place page of the track being recorded, and the name and title of the home screen widget. -->
     <string name="track_recording_title">Grabación de pista</string>
     <!-- Message for the toast when saving the track recording is finished but nothing to save. -->
     <string name="track_recording_toast_nothing_to_save">El trayecto está vacío; no hay nada que guardar</string>
@@ -902,6 +908,8 @@
     <string name="choose_point_on_map_hint">Mueva y amplíe o reduzca el mapa para situar la cruz</string>
     <!-- Track recording notification button: stops the recording and saves the recorded track. -->
     <string name="track_recording_stop_and_save">Parar y guardar</string>
+    <!-- Track recording home screen widget button: opens the app to save or delete the recorded track. -->
+    <string name="track_recording_finish">Finalizar</string>
     <!-- Accessibility label for the button that reverses the complete planned route, including intermediate stops. -->
     <string name="reverse_route">Invertir ruta</string>
 </resources>

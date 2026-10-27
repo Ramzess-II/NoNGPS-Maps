@@ -948,6 +948,7 @@ drape_ptr<UserLineRenderParams> DrapeEngine::GenerateLineRenderInfo(UserLineMark
   renderInfo->m_minZoom = mark->GetMinZoom();
   renderInfo->m_depthLayer = mark->GetDepthLayer();
   renderInfo->m_visible = mark->IsVisible();
+  renderInfo->m_hasDirection = mark->HasDirection();
 
   mark->ForEachGeometry([&renderInfo](std::vector<m2::PointD> && points)
   { renderInfo->m_splines.emplace_back(std::move(points)); });
@@ -989,13 +990,13 @@ void DrapeEngine::SetCustomArrow3d(std::optional<Arrow3dCustomDecl> arrow3dCusto
                                   MessagePriority::High);
 }
 
-void DrapeEngine::AddTileBackgroundImage(std::string const & uid, uint32_t width, uint32_t height,
-                                         dp::TextureFormat format, dp::BackgroundMode mode,
+void DrapeEngine::AddTileBackgroundImage(TileKey const & tileKey, std::string const & uid, uint32_t width,
+                                         uint32_t height, dp::TextureFormat format, dp::BackgroundMode mode,
                                          std::vector<uint8_t> && bytes)
 {
   m_threadCommutator->PostMessage(
       ThreadsCommutator::ResourceUploadThread,
-      make_unique_dp<AddTileBackgroundImageMessage>(uid, width, height, format, mode, std::move(bytes)),
+      make_unique_dp<AddTileBackgroundImageMessage>(tileKey, uid, width, height, format, mode, std::move(bytes)),
       MessagePriority::Normal);
 }
 
