@@ -162,6 +162,8 @@ void setShowLocationAlert(BOOL needShow)
 @property(nonatomic) GeoMode geoMode;
 @property(nonatomic) CLHeading * lastHeadingInfo;
 @property(nonatomic) CLLocation * lastLocationInfo;
+// The navigation without GPS has put the car there by a mark of the user or by the sensor box, not by CoreLocation.
+@property(nonatomic) BOOL lastLocationWithoutGps;
 @property(nonatomic) MWMLocationStatus lastLocationStatus;
 @property(nonatomic) BOOL useNavigationOtherLocationActivity;
 @property(nonatomic) MWMLocationPredictor * predictor;
@@ -258,8 +260,10 @@ void setShowLocationAlert(BOOL needShow)
 + (CLLocation *)lastLocation
 {
   MWMLocationManager * manager = [self manager];
-  if (!manager.started || !manager.lastLocationInfo || manager.lastLocationInfo.horizontalAccuracy < 0 ||
-      manager.lastLocationStatus != MWMLocationStatusNoError)
+  if (!manager.lastLocationInfo || manager.lastLocationInfo.horizontalAccuracy < 0)
+    return nil;
+  // Such a position doesn't need the location services, e.g. when the user has denied them.
+  if (!manager.lastLocationWithoutGps && (!manager.started || manager.lastLocationStatus != MWMLocationStatusNoError))
     return nil;
   return manager.lastLocationInfo;
 }
@@ -306,7 +310,7 @@ void setShowLocationAlert(BOOL needShow)
 
 - (void)processLocationUpdate:(CLLocation *)locationInfo
 {
-  if (!locationInfo || self.lastLocationStatus != MWMLocationStatusNoError)
+  if (!locationInfo || (self.lastLocationStatus != MWMLocationStatusNoError && !self.lastLocationWithoutGps))
     return;
   [self onLocationUpdate:locationInfo source:self.locationSource];
   if (![self.lastLocationInfo isEqual:locationInfo])
@@ -316,6 +320,8 @@ void setShowLocationAlert(BOOL needShow)
 + (void)onNoGpsPosition:(CLLocation *)location fromGps:(BOOL)fromGps
 {
   MWMLocationManager * manager = [self manager];
+  // Set first: the observers take +lastLocation.
+  manager.lastLocationWithoutGps = !fromGps;
   [manager onLocationUpdate:location source:manager.locationSource];
   // A position not from GPS is not extrapolated: e.g. when the car speed stops coming, the car stands.
   [manager.predictor reset:fromGps ? location
@@ -620,7 +626,11 @@ void setShowLocationAlert(BOOL needShow)
     // In the background the navigation without GPS keeps following the car by the sensor box, which stays connected
     // over Bluetooth: the screen may be locked or another app open while driving.
     if (UIApplication.sharedApplication.applicationState != UIApplicationStateBackground)
+    {
       [MWMNoGps stop];
+      // Its position doesn't move any more.
+      self.lastLocationWithoutGps = NO;
+    }
     [notificationCenter removeObserver:self];
   }
 }

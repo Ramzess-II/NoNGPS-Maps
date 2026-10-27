@@ -39,4 +39,27 @@ final class MWMRoutePointTests: XCTestCase {
 
     XCTAssertEqual(routePoint.title, routePoint.latLonString)
   }
+
+  /// The navigation without GPS shows the car by a mark of the user or by the sensor box also when the location
+  /// services are off or denied, and the route starts there.
+  func test_GivenNoGpsMarkWithoutLocationServices_WhenInitializedFromLastLocation_ThenStartsAtTheMark() throws {
+    let wasStarted = LocationManager.isStarted()
+    LocationManager.stop()
+    defer {
+      if wasStarted {
+        LocationManager.start()
+      }
+    }
+    let mark = CLLocation(latitude: 50.45, longitude: 30.52)
+    LocationManager.onNoGpsPosition(mark, fromGps: false)
+
+    let routePoint = try XCTUnwrap(MWMRoutePoint(lastLocationAndType: .start, intermediateIndex: 0))
+    XCTAssertTrue(routePoint.isMyPosition)
+    XCTAssertEqual(routePoint.latitude, 50.45, accuracy: 1e-6)
+    XCTAssertEqual(routePoint.longitude, 30.52, accuracy: 1e-6)
+
+    // A GPS position needs the location services.
+    LocationManager.onNoGpsPosition(mark, fromGps: true)
+    XCTAssertNil(MWMRoutePoint(lastLocationAndType: .start, intermediateIndex: 0))
+  }
 }
