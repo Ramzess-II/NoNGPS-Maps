@@ -157,7 +157,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "Helo!\n\nWedi'u hatodi mae fy nodau tudalen; agorwch nhw yn NonGPS Maps. Os nad oes gennych chi'r ap gallwch ei lawrlwytho yma: https://omaps.app/get?kmz\n\nMwynhewch deithio gydag NonGPS Maps!";
+"share_bookmarks_email_body" = "Helo!\n\nWedi'u hatodi mae fy nodau tudalen; agorwch nhw yn NonGPS Maps. Os nad oes gennych chi'r ap gallwch ei lawrlwytho yma: https://omaps.app/get?kmz\n\nMwynhewch deithio gyda NonGPS Maps!";
 
 /* message title of loading file */
 "load_kmz_title" = "Llwytho nodau tudalen";
