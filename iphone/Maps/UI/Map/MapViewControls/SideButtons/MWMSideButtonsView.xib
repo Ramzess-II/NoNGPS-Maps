@@ -17,17 +17,17 @@
             </connections>
         </placeholder>
         <view contentMode="scaleToFill" id="ek2-ZW-pCm" customClass="MWMSideButtonsView" propertyAccessControl="none">
-            <rect key="frame" x="0.0" y="0.0" width="56" height="228"/>
+            <rect key="frame" x="0.0" y="0.0" width="56" height="144"/>
             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
             <subviews>
                 <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="NO3-Xl-Oka" userLabel="ZoomIn" customClass="MWMButton">
-                    <rect key="frame" x="0.0" y="0.0" width="56" height="56"/>
+                    <rect key="frame" x="0.0" y="0.0" width="56" height="48"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                    <state key="normal" image="btn_zoom_in_light">
+                    <state key="normal">
                         <color key="titleShadowColor" red="0.5" green="0.5" blue="0.5" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                     </state>
                     <userDefinedRuntimeAttributes>
-                        <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="ButtonZoomIn"/>
+                        <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="mapPanelButton"/>
                     </userDefinedRuntimeAttributes>
                     <connections>
                         <action selector="zoomTouchDown:" destination="-1" eventType="touchDown" id="5VF-m8-Lwc"/>
@@ -36,13 +36,13 @@
                     </connections>
                 </button>
                 <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="hwn-8L-cFX" userLabel="ZoomOut" customClass="MWMButton">
-                    <rect key="frame" x="0.0" y="64" width="56" height="56"/>
+                    <rect key="frame" x="0.0" y="48" width="56" height="48"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                    <state key="normal" image="btn_zoom_out_light">
+                    <state key="normal">
                         <color key="titleShadowColor" red="0.5" green="0.5" blue="0.5" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                     </state>
                     <userDefinedRuntimeAttributes>
-                        <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="ButtonZoomOut"/>
+                        <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="mapPanelButton"/>
                     </userDefinedRuntimeAttributes>
                     <connections>
                         <action selector="zoomTouchDown:" destination="-1" eventType="touchDown" id="o4X-Kp-9ka"/>
@@ -51,9 +51,9 @@
                     </connections>
                 </button>
                 <button opaque="NO" contentMode="scaleToFill" fixedFrame="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="fUK-2V-4ya" userLabel="Location" customClass="MWMButton">
-                    <rect key="frame" x="0.0" y="172" width="56" height="56"/>
+                    <rect key="frame" x="0.0" y="96" width="56" height="48"/>
                     <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                    <state key="normal" image="btn_get_position_light">
+                    <state key="normal">
                         <color key="titleShadowColor" red="0.5" green="0.5" blue="0.5" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                     </state>
                     <connections>
@@ -83,9 +83,4 @@
             </connections>
         </panGestureRecognizer>
     </objects>
-    <resources>
-        <image name="btn_get_position_light" width="56" height="56"/>
-        <image name="btn_zoom_in_light" width="56" height="56"/>
-        <image name="btn_zoom_out_light" width="56" height="56"/>
-    </resources>
 </document>

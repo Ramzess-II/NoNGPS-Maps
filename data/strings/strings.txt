@@ -45741,7 +45741,7 @@ en = GPS
 
 [nogps_source_box]
 comment = The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored
-tags = android-app
+tags = apple-maps
 en = Box
 ru = Блок
 uk = Блок
@@ -46109,9 +46109,9 @@ uk = Вимкнути GPS
 
 [nogps_disable_gps_hint]
 tags = android-app,apple-maps
-en = For testing: the app ignores GPS as if it were jammed, the rest of the location works. It is turned off when the app restarts.
-ru = Для проверки: приложение не видит GPS, как при глушении, остальная геолокация работает. Выключается при перезапуске приложения.
-uk = Для перевірки: застосунок не бачить GPS, як під час глушіння, решта геолокації працює. Вимикається під час перезапуску застосунку.
+en = The app ignores GPS as if it were jammed, the rest of the location works.
+ru = Приложение не видит GPS, как при глушении, остальная геолокация работает.
+uk = Застосунок не бачить GPS, як під час глушіння, решта геолокації працює.
 
 [nogps_status_road_lost]
 comment = Status of the position: the mark of the car stands and waits for the user
@@ -46534,7 +46534,7 @@ ru = Поправки скорости, измеренные по GPS на ра�
 uk = Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або машини. Поки працює GPS, вони вимірюються наново.
 
 [nogps_about_title]
-tags = android-app
+tags = android-app,apple-maps
 en = About NonGPS Maps
 ru = О NonGPS Maps
 uk = Про NonGPS Maps

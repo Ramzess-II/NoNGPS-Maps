@@ -32,6 +32,8 @@ final class NoGpsSensorsViewController: MWMTableViewController {
   private var sections: [Section] = []
   private var status = NoGps.status()
   private var timer: Timer?
+  /// Called once the screen is closed.
+  var onClose: (() -> Void)?
 
   init() {
     super.init(style: .grouped)
@@ -63,6 +65,15 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     super.viewWillDisappear(animated)
     timer?.invalidate()
     timer = nil
+  }
+
+  override func viewDidDisappear(_ animated: Bool) {
+    super.viewDidDisappear(animated)
+    // Closed by the button or swiped down.
+    if navigationController?.isBeingDismissed ?? isBeingDismissed {
+      onClose?()
+      onClose = nil
+    }
   }
 
   private func refresh() {
@@ -129,7 +140,7 @@ final class NoGpsSensorsViewController: MWMTableViewController {
       cell.accessoryView = makeSwitch(isOn: status.inertialEnabled, action: #selector(enabledChanged))
     case .box:
       let name = status.inertialStarted && !status.deviceName.isEmpty ? status.deviceName : "ESP32"
-      let box = status.inertialStarted ? name + " · " + boxStateText(status.sourceState) : name
+      let box = status.inertialStarted ? name + " · " + Self.boxStateText(status) : name
       content.text = String(format: L("nogps_sensors_box"), box)
     case .firmware:
       content.text = String(format: L("nogps_sensors_firmware"), firmwareText())
@@ -213,10 +224,11 @@ final class NoGpsSensorsViewController: MWMTableViewController {
 
   // MARK: - Texts
 
-  private func boxStateText(_ state: NoGpsSourceState) -> String {
-    switch state {
+  /// Also read out by the box segment of the bottom bar.
+  static func boxStateText(_ status: NoGpsStatus) -> String {
+    switch status.sourceState {
     case .disconnected: return L("nogps_elm_disconnected")
-    case .connecting: return boxSearchText()
+    case .connecting: return boxSearchText(status)
     case .noAdapter: return L("nogps_elm_no_adapter")
     case .obdDisabled: return L("nogps_box_obd_disabled")
     case .obdConnecting: return L("nogps_box_obd_connecting")
@@ -231,7 +243,7 @@ final class NoGpsSensorsViewController: MWMTableViewController {
   }
 
   /// The box is not heard yet: what the phone does to reach it.
-  private func boxSearchText() -> String {
+  private static func boxSearchText(_ status: NoGpsStatus) -> String {
     switch status.bleState {
     case .noPermission: return L("nogps_box_bt_no_permission")
     // Off: the phone has no Bluetooth LE.

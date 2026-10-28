@@ -5,12 +5,15 @@ protocol BottomMenuPresenterProtocol: UITableViewDelegate, UITableViewDataSource
 
 class BottomMenuPresenter: NSObject {
   enum CellType: Int, CaseIterable {
+    case bookmarks
     case addPlace
     case recordTrack
     case downloadMaps
     case donate
     case settings
+    case nogpsSensors
     case share
+    case about
   }
 
   enum Sections: Int {
@@ -97,6 +100,8 @@ extension BottomMenuPresenter {
     case .items:
       let cell = tableView.dequeueReusableCell(cell: BottomMenuItemCell.self)!
       switch menuCells[indexPath.row] {
+      case .bookmarks:
+        cell.configure(image: UIImage(resource: .icMenuBookmarkList), title: L("bookmarks"))
       case .addPlace:
         cell.configure(image: shouldUpdateMapToContribute ? UIImage(resource: .icMenuAddPlaceExclamation) : UIImage(resource: .icMenuAddPlace),
                        title: L("placepage_add_place_button"),
@@ -119,9 +124,13 @@ extension BottomMenuPresenter {
       case .settings:
         cell.configure(image: UIImage(resource: .icMenuSettings),
                        title: L("settings"))
+      case .nogpsSensors:
+        cell.configure(image: UIImage(systemName: "speedometer")!, title: L("nogps_sensors_title"))
       case .share:
         cell.configure(image: UIImage(resource: .icMenuShare),
                        title: L("share_my_location"))
+      case .about:
+        cell.configure(image: UIImage(systemName: "info.circle")!, title: L("nogps_about_title"))
       }
       return cell
     }
@@ -145,6 +154,8 @@ extension BottomMenuPresenter {
       return;
     case .items:
       switch menuCells[indexPath.row] {
+      case .bookmarks:
+        interactor.openBookmarks()
       case .addPlace:
         if shouldUpdateMapToContribute {
           guard let countryId else {
@@ -170,10 +181,14 @@ extension BottomMenuPresenter {
         interactor.donate()
       case .settings:
         interactor.openSettings()
+      case .nogpsSensors:
+        interactor.openNoGpsSensors()
       case .share:
         if let cell = tableView.cellForRow(at: indexPath) as? BottomMenuItemCell {
           interactor.shareLocation(cell: cell)
         }
+      case .about:
+        interactor.openAbout()
       }
     }
   }

@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Non-GPS Organic Maps — навігація без GPS</title>
+  <meta name="description" content="Форк Organic Maps, який веде по карті без GPS: невеликий пристрій в OBD-II роз'ємі авто передає телефону швидкість і поворот. Не залежить від глушіння та підміни GPS.">
+  <meta name="theme-color" content="#070b0a">
+  <meta property="og:title" content="Non-GPS Organic Maps — навігація, яку не можна заглушити">
+  <meta property="og:description" content="Офлайн-навігація без супутників: пристрій в OBD-II + форк Organic Maps.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://ramzess-ii.github.io/NoNGPS-Maps/assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="#top" aria-label="Non-GPS Organic Maps">
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 19 19 5" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
+    <span>Non-GPS <b>Organic Maps</b></span>
+  </a>
+  <nav>
+    <a href="#how">Як це працює</a>
+    <a href="#features">Можливості</a>
+    <a class="btn btn-small" href="#preorder">Передзамовити</a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <svg class="hero-bg" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+          <path d="M60 0H0V60" fill="none" stroke="#39ff88" stroke-opacity=".08"/>
+        </pattern>
+      </defs>
+      <rect width="1200" height="600" fill="url(#grid)"/>
+      <path id="hero-route" d="M-20 480 C 200 480 260 300 450 320 S 700 520 860 380 S 1050 150 1240 200" fill="none" stroke="#39ff88" stroke-opacity=".5" stroke-width="2" stroke-dasharray="6 8"/>
+      <circle r="9" fill="#39ff88">
+        <animateMotion dur="9s" repeatCount="indefinite"><mpath href="#hero-route"/></animateMotion>
+      </circle>
+      <circle r="9" fill="none" stroke="#39ff88">
+        <animateMotion dur="9s" repeatCount="indefinite"><mpath href="#hero-route"/></animateMotion>
+        <animate attributeName="r" values="9;30" dur="1.5s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values=".8;0" dur="1.5s" repeatCount="indefinite"/>
+      </circle>
+    </svg>
+
+    <div class="wrap hero-inner">
+      <p class="badge warn"><span class="blink"></span> GPS: сигнал заглушено</p>
+      <h1>Навігація, яку <span class="accent">не можна заглушити</span></h1>
+      <p class="lead">
+        Non-GPS Organic Maps веде вас по карті без супутників.
+        Маленький пристрій в OBD-II роз'ємі авто передає телефону швидкість і поворот —
+        і додаток сам знає, де ви.
+      </p>
+      <div class="cta-row">
+        <a class="btn" href="#preorder">Передзамовити</a>
+        <a class="btn btn-ghost" href="#how">Подивитися, як це працює ↓</a>
+      </div>
+      <p class="fine">Форк відкритого додатка <a href="https://organicmaps.app" target="_blank" rel="noopener">Organic Maps</a> · Android та iOS</p>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS: sticky scroll-driven story -->
+  <section id="how" class="scroll" aria-labelledby="how-title">
+    <div class="sticky">
+      <div class="wrap">
+        <h2 id="how-title" class="section-title">Як це працює</h2>
+
+        <div class="stage at-1" id="stage">
+          <svg viewBox="0 0 860 470" role="img" aria-label="Схема: пристрій в OBD-II роз'ємі авто передає дані через Bluetooth у телефон, який рахує позицію без GPS">
+
+            <!-- Satellite + jammed GPS signal -->
+            <g class="sat">
+              <g transform="translate(120 70) rotate(-25)">
+                <rect x="-36" y="-6" width="26" height="12" fill="none" stroke="currentColor" stroke-width="2"/>
+                <rect x="10" y="-6" width="26" height="12" fill="none" stroke="currentColor" stroke-width="2"/>
+                <rect x="-10" y="-11" width="20" height="22" rx="3" fill="#0d1513" stroke="currentColor" stroke-width="2"/>
+              </g>
+              <text x="120" y="118" class="mono small" text-anchor="middle">GPS</text>
+            </g>
+            <path class="gps-line" d="M150 82 Q 400 60 640 130" fill="none" stroke="var(--amber)" stroke-width="2" stroke-dasharray="4 10"/>
+            <g class="jam" transform="translate(395 82)">
+              <path d="M-26 0 l8 -14 l8 28 l8 -28 l8 28 l8 -14" fill="none" stroke="var(--amber)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </g>
+            <g class="gps-x" stroke="var(--amber)" stroke-width="4" stroke-linecap="round">
+              <path d="M100 52 l40 40 M140 52 l-40 40" opacity=".85"/>
+            </g>
+
+            <!-- Car -->
+            <g class="car">
+              <path d="M30 380V340Q30 325 50 322L120 312L160 270Q170 260 190 260H320Q340 260 352 275L385 315L410 322Q430 328 430 345V380Z" fill="#0d1513" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+              <path d="M172 302L196 272H255V304ZM265 272H318Q330 272 338 283L356 304H265Z" fill="none" stroke="currentColor" stroke-opacity=".6" stroke-width="2"/>
+              <g class="wheel" transform="translate(110 385)">
+                <circle r="32" fill="#070b0a" stroke="currentColor" stroke-width="2.5"/>
+                <g class="spin"><path d="M-22 0H22M0 -22V22M-15 -15L15 15M-15 15L15 -15" stroke="currentColor" stroke-opacity=".6" stroke-width="2"/></g>
+              </g>
+              <g class="wheel" transform="translate(350 385)">
+                <circle r="32" fill="#070b0a" stroke="currentColor" stroke-width="2.5"/>
+                <g class="spin"><path d="M-22 0H22M0 -22V22M-15 -15L15 15M-15 15L15 -15" stroke="currentColor" stroke-opacity=".6" stroke-width="2"/></g>
+              </g>
+              <!-- OBD-II port -->
+              <rect x="216" y="356" width="48" height="12" rx="3" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"/>
+              <text x="240" y="392" class="mono small accent-t" text-anchor="middle">OBD-II</text>
+            </g>
+
+            <!-- Device -->
+            <g class="device">
+              <rect x="218" y="326" width="44" height="26" rx="4" fill="#0d1513" stroke="var(--accent)" stroke-width="2.5"/>
+              <path d="M228 352v6M240 352v6M252 352v6" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>
+              <circle class="led" cx="230" cy="339" r="3.5" fill="var(--accent)"/>
+              <path d="M240 336h14M240 342h9" stroke="var(--accent)" stroke-opacity=".5" stroke-width="2"/>
+            </g>
+
+            <!-- Data packets: car -> device -->
+            <path id="data-path" d="M110 353 C 110 330 170 345 220 340" fill="none" stroke="var(--accent)" stroke-opacity=".35" stroke-width="2" class="data"/>
+            <g class="data">
+              <circle r="5" fill="var(--accent)"><animateMotion dur="1.6s" repeatCount="indefinite" begin="0s"><mpath href="#data-path"/></animateMotion></circle>
+              <circle r="5" fill="var(--accent)"><animateMotion dur="1.6s" repeatCount="indefinite" begin="-.55s"><mpath href="#data-path"/></animateMotion></circle>
+              <circle r="5" fill="var(--accent)"><animateMotion dur="1.6s" repeatCount="indefinite" begin="-1.1s"><mpath href="#data-path"/></animateMotion></circle>
+              <text x="120" y="236" class="mono small accent-t">швидкість · колеса · кермо</text>
+              <path d="M130 244 C 150 262 190 290 215 322" fill="none" stroke="var(--accent)" stroke-opacity=".4" stroke-dasharray="3 4"/>
+            </g>
+
+            <!-- Bluetooth: device -> phone -->
+            <g class="bt">
+              <path id="bt-path" d="M265 332 Q 450 230 640 270" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="3 9" stroke-linecap="round">
+                <animate attributeName="stroke-dashoffset" from="0" to="-24" dur=".8s" repeatCount="indefinite"/>
+              </path>
+              <circle r="5" fill="#4aa3ff"><animateMotion dur="2s" repeatCount="indefinite"><mpath href="#bt-path"/></animateMotion></circle>
+              <circle r="5" fill="#4aa3ff"><animateMotion dur="2s" begin="-1s" repeatCount="indefinite"><mpath href="#bt-path"/></animateMotion></circle>
+              <g fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round">
+                <path class="arc a1" d="M276 322 a16 16 0 0 1 0 22"/>
+                <path class="arc a2" d="M284 316 a26 26 0 0 1 0 34"/>
+                <path class="arc a3" d="M292 310 a36 36 0 0 1 0 46"/>
+              </g>
+              <text x="420" y="300" class="mono small" fill="#4aa3ff" text-anchor="middle">Bluetooth</text>
+            </g>
+
+            <!-- Phone -->
+            <g class="phone">
+              <rect x="640" y="50" width="170" height="400" rx="24" fill="#070b0a" stroke="currentColor" stroke-width="2.5"/>
+              <rect x="651" y="76" width="148" height="362" rx="6" fill="#0a1210" stroke="currentColor" stroke-opacity=".25"/>
+              <rect x="705" y="58" width="40" height="6" rx="3" fill="currentColor" fill-opacity=".4"/>
+              <!-- map -->
+              <g stroke="var(--accent)" stroke-opacity=".12" stroke-width="2" fill="none">
+                <path d="M651 150H799M651 250H799M651 350H799M690 76V438M750 76V438"/>
+                <path d="M651 400L799 300" />
+              </g>
+              <path class="route" d="M690 410 C 690 350 765 350 752 290 S 700 210 745 130" pathLength="1" fill="none" stroke="var(--accent)" stroke-width="4" stroke-linecap="round"/>
+              <path id="route-path" d="M690 410 C 690 350 765 350 752 290 S 700 210 745 130" fill="none" stroke="none"/>
+              <!-- positions -->
+              <circle class="dot static" cx="690" cy="410" r="7" fill="#4aa3ff" stroke="#fff" stroke-width="2"/>
+              <circle class="freeze" cx="690" cy="410" r="14" fill="none" stroke="var(--amber)" stroke-width="2"/>
+              <g class="dot moving">
+                <circle r="7" fill="#4aa3ff" stroke="#fff" stroke-width="2"/>
+                <animateMotion dur="6s" repeatCount="indefinite" calcMode="spline" keyTimes="0;1" keySplines=".4 0 .6 1"><mpath href="#route-path"/></animateMotion>
+              </g>
+              <!-- status line -->
+              <text class="st st1 mono small" x="725" y="98" text-anchor="middle" fill="var(--amber)">GPS: немає сигналу</text>
+              <text class="st st2 mono small" x="725" y="98" text-anchor="middle" fill="currentColor">чекаю пристрій…</text>
+              <text class="st st4 mono small" x="725" y="98" text-anchor="middle" fill="#4aa3ff">дані отримано</text>
+              <text class="st st5 mono small" x="725" y="98" text-anchor="middle" fill="var(--accent)">позиція: OK · без GPS</text>
+            </g>
+          </svg>
+
+          <div class="captions" aria-live="polite">
+            <ol>
+              <li data-step="1"><b>1</b> GPS заглушено або підмінено — карта зависає.</li>
+              <li data-step="2"><b>2</b> Вставте пристрій у OBD-II роз'єм авто.</li>
+              <li data-step="3"><b>3</b> Він читає швидкість, колеса й поворот керма.</li>
+              <li data-step="4"><b>4</b> Дані летять на телефон через Bluetooth.</li>
+              <li data-step="5"><b>5</b> Додаток сам рахує позицію — без супутників.</li>
+            </ol>
+            <div class="progress" role="tablist" aria-label="Кроки">
+              <button data-go="1" aria-label="Крок 1"></button>
+              <button data-go="2" aria-label="Крок 2"></button>
+              <button data-go="3" aria-label="Крок 3"></button>
+              <button data-go="4" aria-label="Крок 4"></button>
+              <button data-go="5" aria-label="Крок 5"></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Technical details for enthusiasts -->
+  <section class="wrap tech">
+    <details>
+      <summary>Технічні деталі (для цікавих)</summary>
+      <div class="tech-body">
+        <p><b>Dead reckoning.</b> Додаток бере останню відому точку, а далі щосекунди додає пройдену відстань (із швидкості/обертання коліс з OBD-II) у напрямку руху (курс з керма/датчиків). Так виникає нова позиція.</p>
+        <p><b>Прив'язка до дороги.</b> Рух підганяється до графа доріг офлайн-карти (map matching), тому похибка не накопичується на прямих і перехрестях.</p>
+        <p><b>Дрейф.</b> Будь-яка інерційна навігація поступово накопичує похибку. Але пристрій бере швидкість, колеса і кермо безпосередньо з авто, тому точність максимально висока — значно вища, ніж за датчиками телефону. Коли справжній GPS доступний, додаток може калібруватися.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features" class="wrap features" aria-labelledby="feat-title">
+    <h2 id="feat-title" class="section-title">Можливості</h2>
+    <div class="cards">
+      <article class="card">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="11" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 24 24 8" stroke="currentColor" stroke-width="2"/></svg>
+        <h3>Не залежить від GPS</h3>
+        <p>Глушіння й підміна сигналу не впливають: додаток не слухає супутники.</p>
+      </article>
+      <article class="card">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M3 24V14a13 13 0 0 1 26 0v10" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 24h26" stroke="currentColor" stroke-width="2"/></svg>
+        <h3>Тунелі та паркінги</h3>
+        <p>Позиція не зникає під землею й серед щільної забудови.</p>
+      </article>
+      <article class="card">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M6 6h14l6 6v14H6z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M11 18h10M11 23h6" stroke="currentColor" stroke-width="2"/></svg>
+        <h3>Офлайн-карти</h3>
+        <p>Усе працює без інтернету — на основі Organic Maps.</p>
+      </article>
+      <article class="card">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="7" y="14" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M11 14v-3a5 5 0 0 1 10 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        <h3>Приватність</h3>
+        <p>Без трекінгу й акаунтів. Дані лишаються на вашому телефоні.</p>
+      </article>
+      <article class="card">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 9 4 16l7 7M21 9l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <h3>Відкритий код</h3>
+        <p>Форк відкритого проєкту Organic Maps. <a href="https://github.com/Ramzess-II/NoNGPS-Maps" target="_blank" rel="noopener">Код на GitHub ↗</a></p>
+      </article>
+      <article class="card">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="9" y="3" width="14" height="26" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 25h4" stroke="currentColor" stroke-width="2"/></svg>
+        <h3>Android та iOS</h3>
+        <p>Пристрій з'єднується з телефоном через Bluetooth.</p>
+      </article>
+    </div>
+
+    <dl class="specs">
+      <div><dt>Сумісність авто</dt><dd>Будь-яке авто з OBD‑II, від 2010 року</dd></div>
+      <div><dt>Тип Bluetooth</dt><dd>BLE 5.0 (на базі ESP32)</dd></div>
+      <div><dt>Точність</dt><dd>Максимальна — дані з датчиків авто, а не телефону</dd></div>
+      <div><dt>Ціна</dt><dd>3000 грн</dd></div>
+      <div><dt>Термін доставки</dt><dd>Повідомимо після передзамовлення</dd></div>
+    </dl>
+  </section>
+
+  <!-- PRE-ORDER -->
+  <section id="preorder" class="wrap preorder" aria-labelledby="pre-title" data-form-url="https://docs.google.com/forms/d/e/1FAIpQLSe8MEvbe5sRBpzkvULzpusyOymBXoLkv6OtlaodqKrVr6ijcA/viewform?embedded=true">
+    <h2 id="pre-title" class="section-title">Передзамовлення</h2>
+    <p class="lead">Залиште контакти — ми напишемо, коли пристрій буде готовий до відправлення.</p>
+    <div class="form-box">
+      <iframe id="form-frame" title="Форма передзамовлення" loading="lazy" hidden></iframe>
+      <p id="form-placeholder" class="todo">Форму ще не підключено. Вкажіть посилання на вбудовування Google Form в атрибуті <code>data-form-url</code> цієї секції (див. README).</p>
+    </div>
+    <p class="fine"><a id="form-link" href="#preorder" target="_blank" rel="noopener" hidden>Відкрити форму в новій вкладці ↗</a></p>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p>Non-GPS Organic Maps — незалежний форк <a href="https://github.com/organicmaps/organicmaps" target="_blank" rel="noopener">Organic Maps</a> (Apache 2.0). Не афілійований з командою Organic Maps.</p>
+    <p><a href="https://github.com/Ramzess-II/NoNGPS-Maps" target="_blank" rel="noopener">GitHub</a> · <a href="mailto:nongps.organic@gmail.com">nongps.organic@gmail.com</a></p>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

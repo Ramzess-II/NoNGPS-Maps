@@ -987,7 +987,7 @@
     <string name="nogps_mark_no_road">Тут немає дороги, поставте мітку на дорогу</string>
     <string name="nogps_gps_lost_auto">GPS зник або збився, увімкнено ручний режим</string>
     <string name="nogps_disable_gps">Вимкнути GPS</string>
-    <string name="nogps_disable_gps_hint">Для перевірки: застосунок не бачить GPS, як під час глушіння, решта геолокації працює. Вимикається під час перезапуску застосунку.</string>
+    <string name="nogps_disable_gps_hint">Застосунок не бачить GPS, як під час глушіння, решта геолокації працює.</string>
     <!-- Status of the position: the mark of the car stands and waits for the user -->
     <string name="nogps_status_road_lost">Дорогу втрачено</string>
     <!-- Second line of the status "Road lost" -->

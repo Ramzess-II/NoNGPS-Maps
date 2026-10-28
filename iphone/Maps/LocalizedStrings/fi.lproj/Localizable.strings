@@ -1231,6 +1231,9 @@
 "nogps_gps_spoofed" = "GPS is spoofed! Using cell towers and Wi-Fi. You can also set your position manually.";
 "nogps_gps_restored" = "GPS is fine again";
 "nogps_status_gps" = "GPS";
+
+/* The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored */
+"nogps_source_box" = "Box";
 "nogps_status_network_spoofed" = "GPS spoofed · towers ±%@";
 "nogps_status_network_no_gps" = "No GPS · towers ±%@";
 "nogps_status_manual_just_now" = "Manual · just now";
@@ -1277,7 +1280,7 @@
 "nogps_mark_no_road" = "There is no road here, set the mark on a road";
 "nogps_gps_lost_auto" = "GPS is lost or wrong, the manual mode is on";
 "nogps_disable_gps" = "Disable GPS";
-"nogps_disable_gps_hint" = "For testing: the app ignores GPS as if it were jammed, the rest of the location works. It is turned off when the app restarts.";
+"nogps_disable_gps_hint" = "The app ignores GPS as if it were jammed, the rest of the location works.";
 
 /* Status of the position: the mark of the car stands and waits for the user */
 "nogps_status_road_lost" = "Road lost";
@@ -1419,6 +1422,7 @@
 "nogps_clear_speed" = "Reset";
 "nogps_clear_speed_title" = "Reset the speed calibration?";
 "nogps_clear_speed_message" = "The speed corrections learned from GPS at different speeds and from your corrections will be forgotten. Do it after new tyres or another car. They are learned anew while GPS works.";
+"nogps_about_title" = "About NonGPS Maps";
 "nogps_speed_no_data" = "NO";
 "nogps_speed_no_box" = "ESP32";
 "nogps_speed_no_elm" = "ELM";

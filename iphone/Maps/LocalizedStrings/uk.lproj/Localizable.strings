@@ -1231,6 +1231,9 @@
 "nogps_gps_spoofed" = "GPS підмінено! Використовуємо вежі та Wi-Fi. Також можна вказати позицію вручну.";
 "nogps_gps_restored" = "GPS знову в нормі";
 "nogps_status_gps" = "GPS";
+
+/* The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored */
+"nogps_source_box" = "Блок";
 "nogps_status_network_spoofed" = "GPS підмінено · вежі ±%@";
 "nogps_status_network_no_gps" = "Немає GPS · вежі ±%@";
 "nogps_status_manual_just_now" = "Ручний режим · щойно";
@@ -1277,7 +1280,7 @@
 "nogps_mark_no_road" = "Тут немає дороги, поставте мітку на дорогу";
 "nogps_gps_lost_auto" = "GPS зник або збився, увімкнено ручний режим";
 "nogps_disable_gps" = "Вимкнути GPS";
-"nogps_disable_gps_hint" = "Для перевірки: застосунок не бачить GPS, як під час глушіння, решта геолокації працює. Вимикається під час перезапуску застосунку.";
+"nogps_disable_gps_hint" = "Застосунок не бачить GPS, як під час глушіння, решта геолокації працює.";
 
 /* Status of the position: the mark of the car stands and waits for the user */
 "nogps_status_road_lost" = "Дорогу втрачено";
@@ -1419,6 +1422,7 @@
 "nogps_clear_speed" = "Скинути";
 "nogps_clear_speed_title" = "Скинути калібрування швидкості?";
 "nogps_clear_speed_message" = "Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або машини. Поки працює GPS, вони вимірюються наново.";
+"nogps_about_title" = "Про NonGPS Maps";
 "nogps_speed_no_data" = "NO";
 "nogps_speed_no_box" = "ESP32";
 "nogps_speed_no_elm" = "ELM";
