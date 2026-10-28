@@ -32,7 +32,7 @@ final class NoGpsControls: NSObject {
   private let shiftForwardButton = NoGpsControls.makeButton("chevron.up")
   private let shiftStepButton = UIButton(type: .system)
   private let shiftBackButton = NoGpsControls.makeButton("chevron.down")
-  private let reverseButton = NoGpsControls.makeButton("arrow.uturn.left")
+  private let reverseButton = NoGpsControls.makeButton("arrow.triangle.2.circlepath")
   private let switchMarkButton = NoGpsControls.makeButton("arrow.left.arrow.right")
   private let manualButton = NoGpsControls.makeButton("hand.point.up.left")
   private var statusTop = NSLayoutConstraint()

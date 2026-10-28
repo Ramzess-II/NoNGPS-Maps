@@ -30,7 +30,7 @@ CGFloat const kButtonsBottomOffset = 6;
       [[MapControlsPanel alloc] initWithEdge:self.isRTL ? MapControlsPanelEdgeLeft : MapControlsPanelEdgeRight];
   [self insertSubview:self.panel atIndex:0];
   [MapControlsPanel addDividerAbove:self.zoomOut];
-  self.locationDivider = [MapControlsPanel addDividerAbove:self.location];
+  self.locationDivider = [MapControlsPanel addGroupDividerAbove:self.location];
 }
 
 - (void)layoutSubviews

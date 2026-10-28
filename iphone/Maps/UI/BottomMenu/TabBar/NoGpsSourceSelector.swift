@@ -98,13 +98,19 @@ final class NoGpsSourceSelector: UIView {
 
   private func applyGps(_ status: NoGpsStatus) {
     gps.accessibilityValue = Self.gpsText(status)
+    let antenna = UIImage(systemName: Constants.gpsSymbol)
     if status.gpsSpoofed {
-      gps.show(UIImage(systemName: Constants.gpsSymbol), color: .systemOrange, badge: ("exclamationmark", .systemOrange))
+      gps.show(antenna, color: .systemOrange, badge: ("exclamationmark", .systemOrange))
+    } else if status.source == .gps {
+      gps.show(antenna, color: .label, badge: ("checkmark", Constants.goodColor))
     } else if status.workingGpsAccuracyM >= 0 {
-      gps.show(UIImage(systemName: Constants.gpsSymbol), color: Constants.goodColor)
+      // Works, but the position comes from elsewhere: GPS is ignored or not trusted yet.
+      gps.show(antenna, color: Constants.goodColor)
+    } else if status.gpsDisabled {
+      gps.show(UIImage(systemName: Constants.gpsSymbol + ".slash") ?? antenna, color: .secondaryLabel)
     } else {
-      let slashed = UIImage(systemName: Constants.gpsSymbol + ".slash") ?? UIImage(systemName: Constants.gpsSymbol)
-      gps.show(slashed, color: .secondaryLabel)
+      // Searching the satellites.
+      gps.show(antenna, color: .systemBlue, pulsing: true)
     }
   }
 
@@ -162,8 +168,12 @@ final class NoGpsSourceSelector: UIView {
   private func boxTapped() {
     if box.isChosen {
       NoGpsControls.showSensors()
-    } else {
-      choose(gpsDisabled: true)
+      return
+    }
+    choose(gpsDisabled: true)
+    // The box doesn't drive the car yet: the sensors screen tells why.
+    if status.sourceState != .connected {
+      NoGpsControls.showSensors()
     }
   }
 
