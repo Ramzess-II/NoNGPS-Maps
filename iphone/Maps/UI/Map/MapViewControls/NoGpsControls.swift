@@ -238,7 +238,7 @@ final class NoGpsControls: NSObject {
     shiftBackButton.alpha = status.shiftBackBlocked ? Constants.disabledAlpha : 1
     // The car is marked by hand only while the position is not from GPS. The button is blue while the next tap on the
     // map shows where the car is, the tap is taken back when GPS is used again.
-    let canMark = status.source != .gps
+    let canMark = status.source != .gps && status.gpsDisabled
     if !canMark, status.markByTap {
       NoGps.setMarkByTap(false)
     }
@@ -247,8 +247,8 @@ final class NoGpsControls: NSObject {
                      reverseButton: !status.movedByHand,
                      switchMarkButton: !(status.movedByHand && status.otherMarks > 0),
                      manualButton: !canMark]
-    // GPS is chosen and good: nothing to correct by hand, even while the core waits to trust it again.
-    if !status.gpsDisabled, !status.gpsSpoofed, status.workingGpsAccuracyM >= 0 {
+    // The car is corrected by hand only while the box drives it: GPS is chosen in the bottom bar otherwise.
+    if !status.gpsDisabled {
       buttonsHidden = buttonsHidden.mapValues { _ in true }
     }
     hasButtons = buttonsHidden.values.contains(false)
