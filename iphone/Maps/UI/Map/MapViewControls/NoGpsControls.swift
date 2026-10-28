@@ -29,6 +29,9 @@ final class NoGpsControls: NSObject {
   private let buttons = UIStackView()
   // Of every button but the first one.
   private var dividers = [UIView: UIView]()
+  private var isPanelShown = true
+  private var hasButtons = true
+  private var buttonsHidden = [UIView: Bool]()
   private let shiftForwardButton = NoGpsControls.makeButton("chevron.up")
   private let shiftStepButton = UIButton(type: .system)
   private let shiftBackButton = NoGpsControls.makeButton("chevron.down")
@@ -163,13 +166,38 @@ final class NoGpsControls: NSObject {
     } else {
       place()
     }
-    // The buttons are hidden when a panel leaves no place for them.
-    buttons.alpha = buttons.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height > area.height ? 0 : 1
+    // A panel can leave no place for the buttons.
+    let fits = buttons.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height <= area.height
+    showPanel(hasButtons && fits)
+  }
+
+  private func applyButtonsHidden() {
+    for (button, hidden) in buttonsHidden where button.isHidden != hidden {
+      button.isHidden = hidden
+    }
     let shown = buttons.arrangedSubviews.filter { !$0.isHidden }
     for (button, divider) in dividers {
       divider.isHidden = button === shown.first
     }
-    panel.isHidden = shown.isEmpty || buttons.alpha == 0
+  }
+
+  /// Slides the panel with its buttons in from the left edge of the screen, or out there.
+  private func showPanel(_ show: Bool) {
+    guard show != isPanelShown else { return }
+    isPanelShown = show
+    UIView.animate(withDuration: AppConstants.defaultAnimationDuration, delay: 0, options: [.beginFromCurrentState],
+                   animations: {
+                     let offset = show ? CGAffineTransform.identity
+                       : CGAffineTransform(translationX: -self.panel.frame.maxX, y: 0)
+                     for view in [self.panel, self.buttons] as [UIView] {
+                       view.alpha = show ? 1 : 0
+                       view.transform = offset
+                     }
+                   }, completion: { _ in
+                     if !self.isPanelShown {
+                       self.applyButtonsHidden()
+                     }
+                   })
   }
 
   // MARK: - State
@@ -203,23 +231,27 @@ final class NoGpsControls: NSObject {
     blinkStatus(status.roadLost)
 
     // The buttons moving the position along the road calibrate the speed, they are shown while the user calibrates it.
-    shiftForwardButton.isHidden = !(status.movedByHand && status.shiftButtonsShown)
-    shiftStepButton.isHidden = shiftForwardButton.isHidden
-    shiftBackButton.isHidden = shiftForwardButton.isHidden
+    let shifts = status.movedByHand && status.shiftButtonsShown
     shiftStepButton.setTitle(String(format: L("nogps_meters"), status.shiftStepM), for: .normal)
     // The position waits at a turn until the car leaves it, otherwise it would go to another street.
     shiftForwardButton.alpha = status.shiftForwardBlocked ? Constants.disabledAlpha : 1
     shiftBackButton.alpha = status.shiftBackBlocked ? Constants.disabledAlpha : 1
-    reverseButton.isHidden = !status.movedByHand
-    switchMarkButton.isHidden = !(status.movedByHand && status.otherMarks > 0)
     // The car is marked by hand only while the position is not from GPS. The button is blue while the next tap on the
     // map shows where the car is, the tap is taken back when GPS is used again.
     let canMark = status.source != .gps
     if !canMark, status.markByTap {
       NoGps.setMarkByTap(false)
     }
-    manualButton.isHidden = !canMark
     manualButton.tintColor = canMark && status.markByTap ? .linkBlue : .blackSecondaryText
+    buttonsHidden = [shiftForwardButton: !shifts, shiftStepButton: !shifts, shiftBackButton: !shifts,
+                     reverseButton: !status.movedByHand,
+                     switchMarkButton: !(status.movedByHand && status.otherMarks > 0),
+                     manualButton: !canMark]
+    hasButtons = buttonsHidden.values.contains(false)
+    // Nothing to correct, e.g. with GPS: the panel slides out as it is, its buttons are hidden after that.
+    if hasButtons || !isPanelShown {
+      applyButtonsHidden()
+    }
     updateLayout()
     NoGpsSourceSelector.update(status)
   }
