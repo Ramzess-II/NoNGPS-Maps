@@ -3,8 +3,9 @@ package app.organicmaps.maplayer;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.view.Gravity;
 import android.view.View;
-import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -31,6 +32,11 @@ class SourceSelector
      * @param backToGps GPS comes back if the box is still not connected when the user closes the screen.
      */
     void showSensors(boolean backToGps);
+
+    /**
+     * The user has chosen a source: what depends on it is updated at once.
+     */
+    void onSourceChosen();
   }
 
   private static final long BLINK_DURATION_MS = 700;
@@ -77,10 +83,12 @@ class SourceSelector
     final View chosen = mStatus != null && mStatus.gpsDisabled ? mBox.mView : mGps.mView;
     if (chosen.getWidth() == 0)
       return;
-    final ViewGroup.LayoutParams params = mThumb.getLayoutParams();
-    if (params.width != chosen.getWidth())
+    final FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) mThumb.getLayoutParams();
+    // From the physical left, as getLeft() is, also in a right-to-left layout.
+    if (params.width != chosen.getWidth() || params.gravity != Gravity.LEFT)
     {
       params.width = chosen.getWidth();
+      params.gravity = Gravity.LEFT;
       mThumb.setLayoutParams(params);
     }
     if (animated)
@@ -195,6 +203,16 @@ class SourceSelector
   {
     NoGps.nativeSetGpsDisabled(gpsDisabled);
     update(NoGps.getStatus());
+    mListener.onSourceChosen();
+  }
+
+  /**
+   * Stops the blinking in the background, the next update starts it again.
+   */
+  void stop()
+  {
+    mGps.blink(false);
+    mBox.blink(false);
   }
 
   /**
@@ -249,7 +267,7 @@ class SourceSelector
       blink(blinking);
     }
 
-    private void blink(boolean on)
+    void blink(boolean on)
     {
       if (on == (mBlinking != null))
         return;

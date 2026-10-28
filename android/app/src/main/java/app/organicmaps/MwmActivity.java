@@ -401,12 +401,6 @@ public class MwmActivity extends BaseMwmFragmentActivity
     BookmarkCategoriesActivity.start(this);
   }
 
-  private void showSensors()
-  {
-    if (getSupportFragmentManager().findFragmentByTag(SensorsBottomSheet.TAG) == null)
-      new SensorsBottomSheet().show(getSupportFragmentManager(), SensorsBottomSheet.TAG);
-  }
-
   private void showHelp()
   {
     Intent intent = new Intent(this, HelpActivity.class);
@@ -887,7 +881,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     case help -> showHelp();
     case trackRecordingStatus -> toggleTrackRecordingPP();
     case manualPosition -> toggleMarkByTap();
-    case positionStatus -> showSensors();
+    case positionStatus -> showSensorsSheet();
     case shiftPositionForward -> shiftPosition(true /* forward */);
     case shiftPositionBack -> shiftPosition(false /* forward */);
     case reverseDirection -> NoGps.nativeReverseDirection();
@@ -2391,7 +2385,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
       if (!TextUtils.isEmpty(mDonatesUrl))
         items.add(new MenuBottomSheetItem(R.string.donate, R.drawable.ic_donate, this::onDonateOptionSelected));
       items.add(new MenuBottomSheetItem(R.string.settings, R.drawable.ic_settings, this::onSettingsOptionSelected));
-      items.add(new MenuBottomSheetItem(R.string.nogps_sensors_title, R.drawable.ic_nogps_sensors, this::showSensors));
+      items.add(
+          new MenuBottomSheetItem(R.string.nogps_sensors_title, R.drawable.ic_nogps_sensors, this::showSensorsSheet));
       items.add(new MenuBottomSheetItem(R.string.start_track_recording, R.drawable.ic_track_recording_off, -1,
                                         this::onTrackRecordingOptionSelected));
       items.add(new MenuBottomSheetItem(R.string.share_my_location, R.drawable.ic_share,

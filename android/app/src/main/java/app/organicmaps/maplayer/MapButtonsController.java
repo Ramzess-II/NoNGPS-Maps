@@ -198,7 +198,19 @@ public class MapButtonsController extends Fragment
     UiUtils.hide(mPositionStatus);
     final View sourceSelector = mFrame.findViewById(R.id.source_selector);
     if (sourceSelector != null)
-      mSourceSelector = new SourceSelector(sourceSelector, this::showSensors);
+      mSourceSelector = new SourceSelector(sourceSelector, new SourceSelector.Listener() {
+        @Override
+        public void showSensors(boolean backToGps)
+        {
+          MapButtonsController.this.showSensors(backToGps);
+        }
+
+        @Override
+        public void onSourceChosen()
+        {
+          updatePositionStatus();
+        }
+      });
     mManualPositionButton.setOnClickListener((v) -> {
       mMapButtonClickListener.onMapButtonClick(MapButtons.manualPosition);
       updatePositionStatus();
@@ -338,7 +350,8 @@ public class MapButtonsController extends Fragment
     final NoGps.Status status = NoGps.getStatus();
     final NoGps.PositionSource source = status.getSource();
 
-    if (mPositionStatus != null)
+    // Hidden while the map controls are redesigned.
+    if (mPositionStatus != null && UiUtils.isVisible(mPositionStatus))
     {
       String text;
       int color;
@@ -919,6 +932,8 @@ public class MapButtonsController extends Fragment
     super.onStop();
     mHandler.removeCallbacks(mPositionStatusUpdater);
     blinkPositionStatus(false);
+    if (mSourceSelector != null)
+      mSourceSelector.stop();
     if (mBlinkingAnimator != null)
     {
       mBlinkingAnimator.cancel();
