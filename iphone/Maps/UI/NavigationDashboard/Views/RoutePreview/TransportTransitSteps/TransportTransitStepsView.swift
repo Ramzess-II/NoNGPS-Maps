@@ -42,7 +42,9 @@ final class TransportTransitStepsView: SolidTouchView {
 
   func setNavigationInfo(_ navigationInfo: MWMNavigationDashboardEntity?) {
     if let steps = navigationInfo?.transitSteps {
-      stepsCollectionView.steps = steps
+      if stepsCollectionView.steps != steps {
+        stepsCollectionView.steps = steps
+      }
       isHidden = steps.isEmpty
     } else {
       isHidden = true
@@ -52,8 +54,11 @@ final class TransportTransitStepsView: SolidTouchView {
 
   private func updateHeight() {
     layoutIfNeeded()
+    let height = stepsCollectionView.collectionViewLayout.collectionViewContentSize.height
+    // The steps take no touches while animated, and the route preview renders often.
+    guard stepsCollectionViewHeight.constant != height else { return }
     animateConstraints(animations: {
-      self.stepsCollectionViewHeight.constant = self.stepsCollectionView.collectionViewLayout.collectionViewContentSize.height
+      self.stepsCollectionViewHeight.constant = height
     })
   }
 

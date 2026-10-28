@@ -59,6 +59,7 @@ final class NavigationDashboardViewController: UIViewController {
   private var navigationControlView: NavigationControlView!
   private let impactGenerator = UIImpactFeedbackGenerator(style: .medium)
   private var internalScrollViewContentOffset: CGFloat = .zero
+  private var renderedViewModel: NavigationDashboard.ViewModel?
 
   var interactor: NavigationDashboard.Interactor?
   private var presentationStepStrategy = NavigationDashboardModalPresentationStepStrategy()
@@ -118,6 +119,12 @@ final class NavigationDashboardViewController: UIViewController {
     routePointsView.viewWillTransition(to: size, with: coordinator)
     coordinator.animate(alongsideTransition: { _ in
       self.updateFrameOfPresentedViewInContainerView()
+    }, completion: { _ in
+      // At another width the transit steps wrap into another number of rows. Nothing else renders the preview
+      // while what it shows stays the same.
+      if let viewModel = self.renderedViewModel, viewModel.dashboardState != .closed {
+        self.render(viewModel)
+      }
     })
   }
 
@@ -540,6 +547,7 @@ extension NavigationDashboardViewController: UIScrollViewDelegate {
 
 extension NavigationDashboardViewController {
   func render(_ viewModel: NavigationDashboard.ViewModel) {
+    renderedViewModel = viewModel
     switch viewModel.dashboardState {
     case .closed:
       close()

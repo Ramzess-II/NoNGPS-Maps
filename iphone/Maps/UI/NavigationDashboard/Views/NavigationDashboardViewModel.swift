@@ -24,6 +24,8 @@ enum NavigationDashboard {
     var navigationSearchState: NavigationSearchState?
     var canSaveRouteAsTrack: Bool
     var errorMessage: String?
+    /// Taken from the core at every response: e.g. the core rebuilds the route without a state change.
+    var isRouteValid: Bool
   }
 
   struct NavigationInfo: Equatable {
@@ -51,18 +53,29 @@ extension NavigationDashboard.ViewModel {
       progress: 0,
       navigationSearchState: nil,
       canSaveRouteAsTrack: false,
-      errorMessage: nil
+      errorMessage: nil,
+      isRouteValid: MWMRouter.isRouteValid()
     )
   }
 
   var isBottomActionsMenuHidden: Bool { presentationStep == .hidden }
+
+  /// A new entity comes at every position, 5 times a second with the sensor box. Outside the navigation the dashboard
+  /// shows only its estimates and transit steps, so another entity alone doesn't change what is shown.
+  func needsRender(after previous: Self) -> Bool {
+    var previous = previous
+    if dashboardState != .navigation, entity.transitSteps == previous.entity.transitSteps {
+      previous.entity = entity
+    }
+    return self != previous
+  }
 
   var canReverseRoutePoints: Bool {
     // A fixed start leaves a valid preview in RouteNoFollowing, where isRouteBuilt() is false.
     routePoints.hasStartAndFinish &&
       (dashboardState == .ready || dashboardState == .prepare) &&
       progress == 1 &&
-      MWMRouter.isRouteValid()
+      isRouteValid
   }
 
   var startButtonState: StartRouteButton.State {

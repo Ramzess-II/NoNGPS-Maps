@@ -103,6 +103,25 @@ NSArray<MWMRouterTransitStepInfo *> * buildRouteTransitSteps(NSArray<MWMRoutePoi
 
   return steps;
 }
+
+// The route preview compares the estimates made at every position, and an attachment is equal only to itself.
+NSTextAttachment * walkAttachment(UIFont * font)
+{
+  static NSTextAttachment * attachment;
+  static CGFloat attachmentLineHeight;
+  CGFloat const height = font.lineHeight;
+  if (attachment && attachmentLineHeight == height)
+    return attachment;
+
+  UIImage * image = [UIImage imageNamed:@"ic_walk"];
+  attachment = [[NSTextAttachment alloc] init];
+  attachment.image = image;
+  auto const y = height - image.size.height;
+  auto const width = image.size.width * height / image.size.height;
+  attachment.bounds = CGRectIntegral({{0, y}, {width, height}});
+  attachmentLineHeight = height;
+  return attachment;
+}
 }  // namespace
 
 @interface MWMNavigationDashboardEntity ()
@@ -212,17 +231,9 @@ NSArray<MWMRouterTransitStepInfo *> * buildRouteTransitSteps(NSArray<MWMRoutePoi
 
   if (self.isWalk)
   {
-    UIFont * font = primaryAttributes[NSFontAttributeName];
-    auto textAttachment = [[NSTextAttachment alloc] init];
-    auto image = [UIImage imageNamed:@"ic_walk"];
-    textAttachment.image = image;
-    auto const height = font.lineHeight;
-    auto const y = height - image.size.height;
-    auto const width = image.size.width * height / image.size.height;
-    textAttachment.bounds = CGRectIntegral({{0, y}, {width, height}});
-
     NSMutableAttributedString * attrStringWithImage =
-        [NSAttributedString attributedStringWithAttachment:textAttachment].mutableCopy;
+        [NSAttributedString attributedStringWithAttachment:walkAttachment(primaryAttributes[NSFontAttributeName])]
+            .mutableCopy;
     [attrStringWithImage addAttributes:secondaryAttributes range:NSMakeRange(0, attrStringWithImage.length)];
     [result appendAttributedString:attrStringWithImage];
   }

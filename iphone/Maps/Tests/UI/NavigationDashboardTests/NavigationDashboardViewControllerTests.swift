@@ -34,6 +34,43 @@ final class NavigationDashboardViewControllerTests: XCTestCase {
     XCTAssertEqual(menu.alpha, 1)
   }
 
+  /// A new entity comes at every position. The route preview shows only its estimates and transit steps.
+  func test_GivenRoutePreview_WhenAnotherEntityComes_ThenItRendersOnlyIfWhatItShowsChanged() {
+    var shown = NavigationDashboard.ViewModel.initial
+    shown.dashboardState = .ready
+    shown.entity = entity(stepDistance: "100")
+    var next = shown
+    next.entity = entity(stepDistance: "100")
+    XCTAssertFalse(next.needsRender(after: shown))
+
+    next.estimates = NSAttributedString(string: "5 min")
+    XCTAssertTrue(next.needsRender(after: shown))
+
+    next = shown
+    next.entity = entity(stepDistance: "90")
+    XCTAssertTrue(next.needsRender(after: shown))
+
+    // Reverse depends on it.
+    next = shown
+    next.isRouteValid.toggle()
+    XCTAssertTrue(next.needsRender(after: shown))
+
+    shown.dashboardState = .navigation
+    next = shown
+    next.entity = entity(stepDistance: "100")
+    XCTAssertTrue(next.needsRender(after: shown))
+  }
+
+  private func entity(stepDistance: String) -> MWMNavigationDashboardEntity {
+    let step = MWMRouterTransitStepInfo()
+    step.type = .ruler
+    step.distance = stepDistance
+    let entity = MWMNavigationDashboardEntity()
+    // Only the core info sets the steps.
+    entity.setValue([step], forKey: "transitSteps")
+    return entity
+  }
+
   private func findSubview<T: UIView>(_ type: T.Type, in view: UIView) -> T? {
     if let view = view as? T {
       return view
