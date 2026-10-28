@@ -203,14 +203,14 @@ final class NoGpsControls: NSObject {
     shiftBackButton.alpha = status.shiftBackBlocked ? Constants.disabledAlpha : 1
     reverseButton.isHidden = !status.movedByHand
     switchMarkButton.isHidden = !(status.movedByHand && status.otherMarks > 0)
-    // The car is marked by hand only while the position is not from GPS. The button is red while the next tap on the
+    // The car is marked by hand only while the position is not from GPS. The button is blue while the next tap on the
     // map shows where the car is, the tap is taken back when GPS is used again.
     let canMark = status.source != .gps
     if !canMark, status.markByTap {
       NoGps.setMarkByTap(false)
     }
     manualButton.isHidden = !canMark
-    manualButton.tintColor = canMark && status.markByTap ? Constants.noneColor : nil
+    manualButton.tintColor = canMark && status.markByTap ? .linkBlue : .blackSecondaryText
     updateLayout()
     NoGpsSourceSelector.update(status)
   }
