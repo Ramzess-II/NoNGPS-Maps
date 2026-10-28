@@ -143,7 +143,7 @@
     <string name="description">Nodiadau</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Rhannwyd nodau tudalen NonGPS Maps gyda chi</string>
-    <string name="share_bookmarks_email_body">Helo!\n\nWedi\'u hatodi mae fy nodau tudalen; agorwch nhw yn NonGPS Maps. Os nad oes gennych chi\'r ap gallwch ei lawrlwytho yma: https://omaps.app/get?kmz\n\nMwynhewch deithio gydag NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Helo!\n\nWedi\'u hatodi mae fy nodau tudalen; agorwch nhw yn NonGPS Maps. Os nad oes gennych chi\'r ap gallwch ei lawrlwytho yma: https://omaps.app/get?kmz\n\nMwynhewch deithio gyda NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Llwytho nodau tudalen</string>
     <!-- Kmz file successful loading -->
@@ -451,7 +451,7 @@
     <!-- Title for OSM note section in the editor -->
     <string name="editor_other_info">Nodyn i wirfoddolwyr OpenStreetMap (dewisol)</string>
     <!-- Hint of the input field in the OSM note section of the editor -->
-    <string name="editor_note_hint">Disgrifiwch wallau ar y map neu bethau na ellir eu golygu gydag NonGPS Maps</string>
+    <string name="editor_note_hint">Disgrifiwch wallau ar y map neu bethau na ellir eu golygu gyda NonGPS Maps</string>
     <!-- Information about OSM at the top of the editing page -->
     <string name="editor_about_osm">Mae eich golygiadau\'n cael eu huwchlwytho i gronfa ddata gyhoeddus <a href="https://wiki.openstreetmap.org/wiki/About_OpenStreetMap">OpenStreetMap</a>. Peidiwch ag ychwanegu gwybodaeth bersonol na gwybodaeth sydd dan hawlfraint.</string>
     <string name="editor_more_about_osm">Mwy am OpenStreetMap</string>
