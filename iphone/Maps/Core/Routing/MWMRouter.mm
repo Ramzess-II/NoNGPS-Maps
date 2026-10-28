@@ -456,7 +456,7 @@ using namespace routing;
         // restoreRouteIfNeeded.
         [self saveRoute];
 
-        BOOL const needToRebuild = lastLocation && [MWMLocationManager isStarted] && !p2.isMyPosition;
+        BOOL const needToRebuild = lastLocation && !p2.isMyPosition;
 
         [[MWMAlertViewController activeAlertController]
             presentPoint2PointAlertWithOkBlock:^{
