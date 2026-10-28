@@ -26,6 +26,7 @@ final class MapControlsPanel: UIView {
 
   private let edge: Edge
   private let material = UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterial))
+  private let border = CAShapeLayer()
 
   @objc
   init(edge: Edge) {
@@ -39,10 +40,12 @@ final class MapControlsPanel: UIView {
     material.layer.cornerRadius = radius
     material.layer.cornerCurve = .continuous
     material.layer.maskedCorners = maskedCorners
-    material.layer.borderWidth = Constants.borderWidth
     material.contentView.backgroundColor = Constants.tintColor
-    updateBorderColor()
     addSubview(material)
+    border.fillColor = nil
+    border.lineWidth = Constants.borderWidth
+    layer.addSublayer(border)
+    updateBorderColor()
   }
 
   override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
@@ -53,7 +56,7 @@ final class MapControlsPanel: UIView {
   }
 
   private func updateBorderColor() {
-    material.layer.borderColor = Constants.borderColor.resolvedColor(with: traitCollection).cgColor
+    border.strokeColor = Constants.borderColor.resolvedColor(with: traitCollection).cgColor
   }
 
   @available(*, unavailable)
@@ -66,6 +69,37 @@ final class MapControlsPanel: UIView {
     layer.shadowPath = UIBezierPath(roundedRect: bounds,
                                     byRoundingCorners: roundedCorners,
                                     cornerRadii: CGSize(width: radius, height: radius)).cgPath
+    border.path = borderPath().cgPath
+  }
+
+  /// The edge along the sides away from the edge of the screen: none is drawn at the screen.
+  private func borderPath() -> UIBezierPath {
+    let inset = Constants.borderWidth / 2
+    let (w, h, r) = (bounds.width, bounds.height, radius)
+    let arc = r - inset
+    let path = UIBezierPath()
+    switch edge {
+    case .right:
+      path.move(to: CGPoint(x: w, y: inset))
+      path.addLine(to: CGPoint(x: r, y: inset))
+      path.addArc(withCenter: CGPoint(x: r, y: r), radius: arc, startAngle: -.pi / 2, endAngle: .pi, clockwise: false)
+      path.addLine(to: CGPoint(x: inset, y: h - r))
+      path.addArc(withCenter: CGPoint(x: r, y: h - r), radius: arc, startAngle: .pi, endAngle: .pi / 2, clockwise: false)
+      path.addLine(to: CGPoint(x: w, y: h - inset))
+    case .left:
+      path.move(to: CGPoint(x: 0, y: inset))
+      path.addLine(to: CGPoint(x: w - r, y: inset))
+      path.addArc(withCenter: CGPoint(x: w - r, y: r), radius: arc, startAngle: -.pi / 2, endAngle: 0, clockwise: true)
+      path.addLine(to: CGPoint(x: w - inset, y: h - r))
+      path.addArc(withCenter: CGPoint(x: w - r, y: h - r), radius: arc, startAngle: 0, endAngle: .pi / 2, clockwise: true)
+      path.addLine(to: CGPoint(x: 0, y: h - inset))
+    case .bottom:
+      path.move(to: CGPoint(x: inset, y: r))
+      path.addArc(withCenter: CGPoint(x: r, y: r), radius: arc, startAngle: .pi, endAngle: -.pi / 2, clockwise: true)
+      path.addLine(to: CGPoint(x: w - r, y: inset))
+      path.addArc(withCenter: CGPoint(x: w - r, y: r), radius: arc, startAngle: -.pi / 2, endAngle: 0, clockwise: true)
+    }
+    return path
   }
 
   /// The gap between buttons that holds a group divider, see addGroupDivider(above:).
