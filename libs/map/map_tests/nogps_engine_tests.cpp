@@ -297,6 +297,23 @@ UNIT_TEST(NoGps_Engine_CarIsWhereItWasLeftAfterRestart)
   TestAlmostEqualAbs(North(after.Last().m_position), 0, 1);
 }
 
+UNIT_TEST(NoGps_Engine_DisabledGpsIsKeptAfterRestart)
+{
+  Env before(false /* inertial */);
+  before.m_engine.SetGpsDisabled(true);
+
+  Env disabled(false /* inertial */, nullptr, SavedBy(before));
+  TEST(disabled.m_engine.GetStatus().m_gpsDisabled, ());
+  disabled.DriveGps(3, 0, 10);
+  TEST(disabled.m_delegate.m_positions.empty(), ());
+
+  disabled.m_engine.SetGpsDisabled(false);
+  Env enabled(false /* inertial */, nullptr, SavedBy(disabled));
+  TEST(!enabled.m_engine.GetStatus().m_gpsDisabled, ());
+  enabled.DriveGps(3, 0, 10);
+  TEST_EQUAL(enabled.m_engine.GetStatus().m_source, PositionSource::Gps, ());
+}
+
 UNIT_TEST(NoGps_Engine_DrivingCarIsSavedSeldom)
 {
   Env env(true /* inertial */);

@@ -367,7 +367,7 @@ def make_input(args):
         records.append((first, -3, 'S %d 1' % first))
         if state.get('link', '').endswith('/CONNECTED'):
             records.append((first, -3, 'L %d CONNECTED' % first))
-        # GPS switched off in the sheet stays so until the application is closed: on October 19 it was switched off
+        # GPS switched off stays so: since the choice is kept after a restart too. On October 19 it was switched off
         # the day before, and the first GPS position came minutes after the file begins.
         disabled = None
         for ms, text, function in others:

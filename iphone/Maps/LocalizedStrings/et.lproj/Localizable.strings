@@ -1277,7 +1277,7 @@
 "nogps_mark_no_road" = "There is no road here, set the mark on a road";
 "nogps_gps_lost_auto" = "GPS is lost or wrong, the manual mode is on";
 "nogps_disable_gps" = "Disable GPS";
-"nogps_disable_gps_hint" = "For testing: the app ignores GPS as if it were jammed, the rest of the location works. It is turned off when the app restarts.";
+"nogps_disable_gps_hint" = "The app ignores GPS as if it were jammed, the rest of the location works.";
 
 /* Status of the position: the mark of the car stands and waits for the user */
 "nogps_status_road_lost" = "Road lost";
