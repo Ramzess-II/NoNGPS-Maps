@@ -101,16 +101,11 @@ final class NoGpsSourceSelector: UIView {
     let antenna = UIImage(systemName: Constants.gpsSymbol)
     if status.gpsSpoofed {
       gps.show(antenna, color: .systemOrange, badge: ("exclamationmark", .systemOrange))
-    } else if status.source == .gps {
-      gps.show(antenna, color: .label, badge: ("checkmark", Constants.goodColor))
     } else if status.workingGpsAccuracyM >= 0 {
-      // Works, but the position comes from elsewhere: GPS is ignored or not trusted yet.
+      // Also while it is ignored or not trusted yet.
       gps.show(antenna, color: Constants.goodColor)
-    } else if status.gpsDisabled {
-      gps.show(UIImage(systemName: Constants.gpsSymbol + ".slash") ?? antenna, color: .secondaryLabel)
     } else {
-      // Searching the satellites.
-      gps.show(antenna, color: .systemBlue, pulsing: true)
+      gps.show(UIImage(systemName: Constants.gpsSymbol + ".slash") ?? antenna, color: .systemRed)
     }
   }
 
@@ -124,7 +119,7 @@ final class NoGpsSourceSelector: UIView {
       return
     }
     switch status.sourceState {
-    case .connected: box.show(chip, color: .label, badge: ("checkmark", Constants.goodColor))
+    case .connected: box.show(chip, color: Constants.goodColor)
     case .updating: box.show(chip, color: .label, badge: ("arrow.down", .systemBlue))
     case .boxSleeping, .obdSleeping: box.show(chip, color: .secondaryLabel, badge: ("moon.fill", .systemGray))
     case .noCarData, .obdDisabled, .obdConnecting, .obdError, .noAdapter:
@@ -134,14 +129,14 @@ final class NoGpsSourceSelector: UIView {
     }
   }
 
-  /// The box is not heard yet: first the phone looks for it by Bluetooth, then waits for its data.
+  /// The box is not heard yet: first the phone looks for it by Bluetooth (red), then waits for its data (blue).
   private func showBoxSearch(_ status: NoGpsStatus) {
     switch status.bleState {
     case .connected: box.show(UIImage(systemName: Constants.boxSymbol), color: .systemBlue, pulsing: true)
     case .off, .noPermission, .disabled: box.show(UIImage(resource: .icNogpsBluetoothOff), color: .secondaryLabel)
     case .searching, .pairingClosed, .connecting, .pairing:
-      box.show(UIImage(resource: .icNogpsBluetooth), color: .systemBlue, pulsing: true)
-    @unknown default: box.show(UIImage(resource: .icNogpsBluetooth), color: .systemBlue, pulsing: true)
+      box.show(UIImage(resource: .icNogpsBluetooth), color: .systemRed, pulsing: true)
+    @unknown default: box.show(UIImage(resource: .icNogpsBluetooth), color: .systemRed, pulsing: true)
     }
   }
 
