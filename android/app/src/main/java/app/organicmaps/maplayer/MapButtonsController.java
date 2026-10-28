@@ -430,7 +430,7 @@ public class MapButtonsController extends Fragment
     // tap on the map shows where the car is, the tap is taken back when GPS is used again.
     if (mManualPositionButton != null)
     {
-      final boolean shown = source != NoGps.PositionSource.GPS;
+      final boolean shown = source != NoGps.PositionSource.GPS && status.gpsDisabled;
       if (!shown && status.markByTap)
         NoGps.nativeSetMarkByTap(false);
       mCarButtonsShown.put(mManualPositionButton, shown);
@@ -439,8 +439,8 @@ public class MapButtonsController extends Fragment
       ImageViewCompat.setImageTintList(mManualPositionButton, ColorStateList.valueOf(color));
     }
 
-    // GPS is chosen and good: nothing to correct by hand, even while the core waits to trust it again.
-    if (!status.gpsDisabled && !status.gpsSpoofed && status.workingGpsAccuracyM >= 0)
+    // The car is corrected by hand only while the box drives it: GPS is chosen in the bottom bar otherwise.
+    if (!status.gpsDisabled)
       mCarButtonsShown.replaceAll((button, shown) -> false);
     final boolean hasCarButtons = mCarButtonsShown.containsValue(true);
     // Nothing to correct, e.g. with GPS: the panel slides out as it is, its buttons are hidden after that.
