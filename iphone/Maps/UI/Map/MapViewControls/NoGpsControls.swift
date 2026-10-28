@@ -247,6 +247,10 @@ final class NoGpsControls: NSObject {
                      reverseButton: !status.movedByHand,
                      switchMarkButton: !(status.movedByHand && status.otherMarks > 0),
                      manualButton: !canMark]
+    // GPS is chosen and good: nothing to correct by hand, even while the core waits to trust it again.
+    if !status.gpsDisabled, !status.gpsSpoofed, status.workingGpsAccuracyM >= 0 {
+      buttonsHidden = buttonsHidden.mapValues { _ in true }
+    }
     hasButtons = buttonsHidden.values.contains(false)
     // Nothing to correct, e.g. with GPS: the panel slides out as it is, its buttons are hidden after that.
     if hasButtons || !isPanelShown {
