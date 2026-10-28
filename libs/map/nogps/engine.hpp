@@ -252,8 +252,8 @@ public:
   /// Shows the car on the next of the other roads it may be on, see Status::m_otherMarks, and rebuilds the route
   /// from there. The road it was shown on stays one of them.
   void SwitchMark();
-  /// Ignores GPS as if it were jammed, e.g. to test the navigation without GPS where GPS works. It is not
-  /// kept after a restart, so it is not left on by mistake.
+  /// Ignores GPS as if it were jammed: the user drives by the sensor box where GPS works. It is kept after a
+  /// restart, the map shows the choice.
   void SetGpsDisabled(bool disabled);
 
   void SetInertialNavigationEnabled(bool enabled);

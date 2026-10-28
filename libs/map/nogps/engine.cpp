@@ -115,6 +115,9 @@ void Engine::Start()
   RestoreTrustedPosition();
   StartInertialNavigation();
   RestoreCarPosition();
+  // After the car: GPS ignored before the restart is not trusted anew by its first position either.
+  if (m_storage.Get<bool>(Storage::kGpsDisabled, false))
+    SetGpsDisabled(true);
   m_tripLogTimer.Start(0, [this] { LogTrip(); });
   if (m_manualLocation)
     m_manualRepeatTimer.Start(0, [this] { ApplyManualLocation(); });
@@ -1110,6 +1113,7 @@ void Engine::SetGpsDisabled(bool disabled)
 {
   LOG(LINFO, ("disabled =", disabled));
   m_gpsDisabled = disabled;
+  m_storage.Set(Storage::kGpsDisabled, disabled);
   m_lastGoodGps.reset();
   // GPS turned off for a test is not trusted anew by its first position.
   if (disabled)

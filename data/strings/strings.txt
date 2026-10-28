@@ -46102,9 +46102,9 @@ uk = Вимкнути GPS
 
 [nogps_disable_gps_hint]
 tags = android-app,apple-maps
-en = For testing: the app ignores GPS as if it were jammed, the rest of the location works. It is turned off when the app restarts.
-ru = Для проверки: приложение не видит GPS, как при глушении, остальная геолокация работает. Выключается при перезапуске приложения.
-uk = Для перевірки: застосунок не бачить GPS, як під час глушіння, решта геолокації працює. Вимикається під час перезапуску застосунку.
+en = The app ignores GPS as if it were jammed, the rest of the location works.
+ru = Приложение не видит GPS, как при глушении, остальная геолокация работает.
+uk = Застосунок не бачить GPS, як під час глушіння, решта геолокації працює.
 
 [nogps_status_road_lost]
 comment = Status of the position: the mark of the car stands and waits for the user
