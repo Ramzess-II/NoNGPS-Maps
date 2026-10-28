@@ -1,14 +1,9 @@
 #import "MWMSideButtonsView.h"
 #import "MWMButton.h"
-#import "MWMMapViewControlsCommon.h"
 #import "SwiftBridge.h"
-
-#include "base/math.hpp"
 
 namespace
 {
-CGFloat const kLocationButtonSpacingMax = 52;
-CGFloat const kLocationButtonSpacingMin = 8;
 CGFloat const kButtonsTopOffset = 6;
 CGFloat const kButtonsBottomOffset = 6;
 }  // namespace
@@ -20,6 +15,8 @@ CGFloat const kButtonsBottomOffset = 6;
 @property(weak, nonatomic) IBOutlet MWMButton * location;
 
 @property(nonatomic) CGRect availableArea;
+@property(nonatomic) MapControlsPanel * panel;
+@property(nonatomic) UIView * locationDivider;
 
 @end
 
@@ -29,21 +26,51 @@ CGFloat const kButtonsBottomOffset = 6;
 {
   [super awakeFromNib];
   self.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+  self.panel =
+      [[MapControlsPanel alloc] initWithEdge:self.isRTL ? MapControlsPanelEdgeLeft : MapControlsPanelEdgeRight];
+  [self insertSubview:self.panel atIndex:0];
+  [MapControlsPanel addDividerAbove:self.zoomOut];
+  self.locationDivider = [MapControlsPanel addDividerAbove:self.location];
 }
 
 - (void)layoutSubviews
 {
-  CGFloat spacing = self.availableHeight - self.zoomOut.maxY - self.location.height;
-  spacing = math::Clamp(spacing, kLocationButtonSpacingMin, kLocationButtonSpacingMax);
-
-  self.location.minY = self.zoomOut.maxY + spacing;
+  self.zoomOut.minY = self.zoomIn.maxY;
+  self.location.minY = self.zoomOut.maxY;
   self.bounds = {{}, {self.zoomOut.width, self.location.maxY}};
   if (self.zoomHidden)
     self.height = self.location.height;
   self.location.maxY = self.height;
 
   [self animate];
+  [self layoutPanel];
   [super layoutSubviews];
+}
+
+- (BOOL)isRTL
+{
+  return UIApplication.sharedApplication.userInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft;
+}
+
+- (BOOL)isZoomShown
+{
+  return !self.zoomHidden && self.location.maxY <= self.availableHeight;
+}
+
+// The panel goes on to the edge of the screen, under the safe area too.
+- (void)layoutPanel
+{
+  BOOL const zoomShown = self.isZoomShown;
+  CGFloat const top = zoomShown ? 0 : self.location.minY;
+  CGFloat const edgeGap =
+      self.isRTL ? self.availableArea.origin.x : self.superview.width - CGRectGetMaxX(self.availableArea);
+  CGRect const frame = {{self.isRTL ? -edgeGap : 0, top}, {self.width + edgeGap, self.height - top}};
+  self.locationDivider.hidden = !zoomShown;
+  if (CGRectEqualToRect(self.panel.frame, frame))
+    return;
+  BOOL const animated = !CGRectIsEmpty(self.panel.frame) && self.panel.frame.origin.y != frame.origin.y;
+  [UIView animateWithDuration:animated ? AppConstants.defaultAnimationDuration : 0
+                   animations:^{ self.panel.frame = frame; }];
 }
 
 - (void)layoutXPosition:(BOOL)hidden
@@ -53,7 +80,7 @@ CGFloat const kButtonsBottomOffset = 6;
     if (hidden)
       self.maxX = 0;
     else
-      self.minX = self.availableArea.origin.x + kViewControlsOffsetToBounds;
+      self.minX = self.availableArea.origin.x;
   }
   else
   {
@@ -61,16 +88,16 @@ CGFloat const kButtonsBottomOffset = 6;
     if (hidden)
       self.minX = self.superview.width;
     else
-      self.maxX = availableAreaMaxX - kViewControlsOffsetToBounds;
+      self.maxX = availableAreaMaxX;
   }
 }
 
+// The panel on the left side of the map has the same center.
 - (void)layoutYPosition
 {
-  CGFloat const centerShift = (self.height - self.zoomIn.midY - self.zoomOut.midY) / 2;
   [UIView animateWithDuration:AppConstants.defaultAnimationDuration
                    animations:^{
-                     self.midY = centerShift + self.superview.height / 2;
+                     self.midY = CGRectGetMidY(self.availableArea);
                      if (self.maxY > self.bottomBound)
                        self.maxY = self.bottomBound;
                    }];

@@ -45739,6 +45739,13 @@ uk = GPS знову в нормі
 tags = android-app,apple-maps
 en = GPS
 
+[nogps_source_box]
+comment = The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored
+tags = apple-maps
+en = Box
+ru = Блок
+uk = Блок
+
 [nogps_status_network_spoofed]
 tags = android-app,apple-maps
 en = GPS spoofed · towers ±%@
@@ -46527,7 +46534,7 @@ ru = Поправки скорости, измеренные по GPS на ра�
 uk = Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або машини. Поки працює GPS, вони вимірюються наново.
 
 [nogps_about_title]
-tags = android-app
+tags = android-app,apple-maps
 en = About NonGPS Maps
 ru = О NonGPS Maps
 uk = Про NonGPS Maps

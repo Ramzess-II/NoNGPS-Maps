@@ -5,6 +5,9 @@ protocol BottomMenuInteractorProtocol: AnyObject {
   func startDownloadingMapForCountry(_ countryId: String)
   func donate()
   func openSettings()
+  func openBookmarks()
+  func openNoGpsSensors()
+  func openAbout()
   func shareLocation(cell: BottomMenuItemCell)
   func toggleTrackRecording()
 }
@@ -61,6 +64,21 @@ extension BottomMenuInteractor: BottomMenuInteractorProtocol {
 
   func openSettings() {
     mapViewController?.openSettings()
+  }
+
+  func openBookmarks() {
+    close()
+    mapViewController?.bookmarksCoordinator.open()
+  }
+
+  func openNoGpsSensors() {
+    close()
+    NoGpsControls.showSensors()
+  }
+
+  func openAbout() {
+    close()
+    mapViewController?.navigationController?.pushViewController(AboutController(), animated: true)
   }
 
   func startDownloadingMapForCountry(_ countryId: String) {

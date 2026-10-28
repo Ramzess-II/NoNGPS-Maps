@@ -52,6 +52,9 @@ NSString * const kUDDidShowLongTapToShowSideButtonsToast = @"kUDDidShowLongTapTo
   if (self)
   {
     [NSBundle.mainBundle loadNibNamed:kMWMSideButtonsViewNibName owner:self options:nil];
+    [self.zoomInButton setImage:[MWMSideButtons symbol:@"plus"] forState:UIControlStateNormal];
+    [self.zoomOutButton setImage:[MWMSideButtons symbol:@"minus"] forState:UIControlStateNormal];
+    [self.locationButton setStyleNameAndApply:@"mapPanelButton"];
     [view addSubview:self.sideView];
     [self.sideView setNeedsLayout];
     self.zoomSwipeEnabled = NO;
@@ -83,23 +86,29 @@ NSString * const kUDDidShowLongTapToShowSideButtonsToast = @"kUDDidShowLongTapTo
 
 #pragma mark - Location button
 
+// The buttons lie on a panel, the images have no background of their own.
++ (UIImage *)symbol:(NSString *)name
+{
+  auto const config = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightMedium];
+  return [UIImage systemImageNamed:name withConfiguration:config];
+}
+
 - (void)refreshLocationButtonState:(MWMMyPositionMode)state
 {
   MWMButton * locBtn = self.locationButton;
   [locBtn.imageView stopRotation];
+  NSString * symbol = @"location";
   switch (state)
   {
   case MWMMyPositionModePendingPosition:
-  {
-    [locBtn setStyleNameAndApply:@"ButtonPending"];
-    [locBtn.imageView startRotation:1];
-    break;
-  }
   case MWMMyPositionModeNotFollow:
-  case MWMMyPositionModeNotFollowNoPosition: [locBtn setStyleNameAndApply:@"ButtonGetPosition"]; break;
-  case MWMMyPositionModeFollow: [locBtn setStyleNameAndApply:@"ButtonFollow"]; break;
-  case MWMMyPositionModeFollowAndRotate: [locBtn setStyleNameAndApply:@"ButtonFollowAndRotate"]; break;
+  case MWMMyPositionModeNotFollowNoPosition: break;
+  case MWMMyPositionModeFollow: symbol = @"location.fill"; break;
+  case MWMMyPositionModeFollowAndRotate: symbol = @"location.north.line.fill"; break;
   }
+  [locBtn setImage:[MWMSideButtons symbol:symbol] forState:UIControlStateNormal];
+  if (state == MWMMyPositionModePendingPosition)
+    [locBtn.imageView startRotation:1];
 }
 
 #pragma mark - Actions

@@ -313,7 +313,8 @@ NSString * const kMapToCategorySelectorSegue = @"MapToCategorySelectorSegue";
 {
   BOOL const isNavigation = self.navigationManager.state == MWMNavigationDashboardStateNavigation;
   _trafficButtonHidden = isNavigation || trafficButtonHidden;
-  self.trafficButton.hidden = self.hidden || _trafficButtonHidden;
+  // NonGPS Maps: the layers are in the menu. The button stays alive, it shows the toasts and alerts of the layers.
+  self.trafficButton.hidden = YES;
 }
 
 - (void)setTrackRecordingButtonState:(TrackRecordingButtonState)state
