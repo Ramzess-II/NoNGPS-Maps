@@ -331,13 +331,17 @@ final class NoGpsControls: NSObject {
     Self.showSensors()
   }
 
-  /// \param onClose is called when the screen is closed, not if it is shown already.
+  /// \param onClose is called when the screen is closed.
   static func showSensors(onClose: (() -> Void)? = nil) {
     // The calibration alert may come while the screen is open, under another alert too.
     let top = UIViewController.topViewController()
     var shown: UIViewController? = top
     while let controller = shown {
-      if (controller as? UINavigationController)?.viewControllers.first is NoGpsSensorsViewController {
+      if let sensors = (controller as? UINavigationController)?.viewControllers.first as? NoGpsSensorsViewController {
+        // Shown already, e.g. under the calibration alert: its closing is told as well.
+        if let onClose {
+          sensors.onClose = onClose
+        }
         return
       }
       shown = controller.presentingViewController

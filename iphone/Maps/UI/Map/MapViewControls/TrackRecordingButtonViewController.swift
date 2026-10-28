@@ -23,7 +23,8 @@ final class TrackRecordingButtonViewController: MWMViewController {
   private static var widthConstraintValue: CGFloat {
     let edgeGap = UIApplication.shared.userInterfaceLayoutDirection == .rightToLeft
       ? availableArea.minX
-      : UIScreen.main.bounds.maxX - availableArea.maxX
+      // The window may be narrower than the screen, e.g. in Split View.
+      : (MapViewController.shared()?.view.bounds.maxX ?? UIScreen.main.bounds.maxX) - availableArea.maxX
     return Constants.buttonWidth + max(edgeGap, 0)
   }
 

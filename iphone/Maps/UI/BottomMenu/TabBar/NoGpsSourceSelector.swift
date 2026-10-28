@@ -43,6 +43,8 @@ final class NoGpsSourceSelector: UIView {
 
   override func layoutSubviews() {
     super.layoutSubviews()
+    // The segments are laid out by the stack view, the thumb takes the place of the chosen one.
+    segments.layoutIfNeeded()
     let chosen = gps.isChosen ? gps : box
     thumb.frame = segments.convert(chosen.frame, to: self)
   }

@@ -68,6 +68,8 @@ CGFloat const kButtonsBottomOffset = 6;
       self.isRTL ? self.availableArea.origin.x : self.superview.width - CGRectGetMaxX(self.availableArea);
   CGRect const frame = {{self.isRTL ? -edgeGap : 0, top}, {self.width + edgeGap, self.height - top}};
   self.locationDivider.hidden = !zoomShown;
+  // No empty panel when even the location button has no place.
+  self.panel.hidden = self.location.height > self.availableHeight;
   // The line between the zoom buttons and the location button, with margins on every side.
   CGFloat const margin = MapControlsPanel.groupDividerMargin;
   CGFloat const height = MapControlsPanel.groupDividerHeight;
