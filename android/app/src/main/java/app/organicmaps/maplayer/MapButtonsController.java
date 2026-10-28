@@ -439,6 +439,9 @@ public class MapButtonsController extends Fragment
       ImageViewCompat.setImageTintList(mManualPositionButton, ColorStateList.valueOf(color));
     }
 
+    // GPS is chosen and good: nothing to correct by hand, even while the core waits to trust it again.
+    if (!status.gpsDisabled && !status.gpsSpoofed && status.workingGpsAccuracyM >= 0)
+      mCarButtonsShown.replaceAll((button, shown) -> false);
     final boolean hasCarButtons = mCarButtonsShown.containsValue(true);
     // Nothing to correct, e.g. with GPS: the panel slides out as it is, its buttons are hidden after that.
     if (hasCarButtons || !mCarPanelShown)
