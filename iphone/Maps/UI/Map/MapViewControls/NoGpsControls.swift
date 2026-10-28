@@ -62,7 +62,7 @@ final class NoGpsControls: NSObject {
   static func updateAvailableArea(_ frame: CGRect) {
     availableArea = frame
     DispatchQueue.main.async {
-      shared?.updateLayout()
+      shared?.updateLayout(animated: true)
     }
   }
 
@@ -146,14 +146,22 @@ final class NoGpsControls: NSObject {
     updateLayout()
   }
 
-  private func updateLayout() {
+  /// \param animated moves the buttons as the side buttons on the right move, when a panel opens or closes.
+  private func updateLayout(animated: Bool = false) {
     let area = Self.availableArea
     guard !area.isEmpty else { return }
-    statusTop.constant = area.minY + Constants.statusTopOffset
-    statusCenterX.constant = area.midX
-    buttonsLeading.constant = area.minX
-    // The side buttons on the right have the same center.
-    buttonsCenterY.constant = area.midY
+    let place = {
+      self.statusTop.constant = area.minY + Constants.statusTopOffset
+      self.statusCenterX.constant = area.midX
+      self.buttonsLeading.constant = area.minX
+      // The side buttons on the right have the same center.
+      self.buttonsCenterY.constant = area.midY
+    }
+    if animated, let superview = buttons.superview {
+      superview.animateConstraints(animations: place)
+    } else {
+      place()
+    }
     // The buttons are hidden when a panel leaves no place for them.
     buttons.alpha = buttons.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height > area.height ? 0 : 1
     let shown = buttons.arrangedSubviews.filter { !$0.isHidden }
