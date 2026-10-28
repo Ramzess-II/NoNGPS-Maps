@@ -59,4 +59,14 @@
   <color name="widget_text_primary">@color/white_primary</color>
   <color name="widget_text_secondary">@color/white_secondary</color>
 
+  <!-- Lighter than the dark map, the edge keeps the panel apart from it. -->
+  <color name="map_panel">#F2333539</color>
+  <color name="map_panel_edge">#2EFFFFFF</color>
+  <color name="map_panel_divider">#38FFFFFF</color>
+  <color name="source_selector_track">#3D767680</color>
+  <color name="source_selector_thumb">#FF636366</color>
+  <color name="source_good">#FF32D74B</color>
+  <color name="source_bad">#FFFF453A</color>
+  <color name="source_connecting">#FF4AA3FF</color>
+  <color name="source_warning">#FFFF9F0A</color>
 </resources>

@@ -19,12 +19,14 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.widget.ImageViewCompat;
@@ -35,6 +37,7 @@ import androidx.lifecycle.ViewModelProvider;
 import app.organicmaps.BuildConfig;
 import app.organicmaps.MwmActivity;
 import app.organicmaps.R;
+import app.organicmaps.nogps.SensorsBottomSheet;
 import app.organicmaps.routing.RoutingPlanViewModel;
 import app.organicmaps.sdk.Framework;
 import app.organicmaps.sdk.downloader.MapManager;
@@ -51,7 +54,6 @@ import app.organicmaps.search.SearchPageViewModel;
 import app.organicmaps.util.ThemeUtils;
 import app.organicmaps.util.UiUtils;
 import app.organicmaps.util.Utils;
-import app.organicmaps.util.WindowInsetUtils;
 import app.organicmaps.widget.menu.MyPositionButton;
 import app.organicmaps.widget.placepage.PlacePageViewModel;
 import com.google.android.material.badge.BadgeDrawable;
@@ -59,6 +61,7 @@ import com.google.android.material.badge.BadgeUtils;
 import com.google.android.material.badge.ExperimentalBadgeUtils;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class MapButtonsController extends Fragment
@@ -66,16 +69,6 @@ public class MapButtonsController extends Fragment
   private static final String TAG = MapButtonsController.class.getSimpleName();
   // The moments of a test drive marked in the log, see the button flag_log.
   private static int sLogFlags;
-
-  // In debug builds a hidden control of the car keeps its place in the row: the button marking the log at the start
-  // of the row stays where it is, whatever controls are shown.
-  private static void showCarControl(boolean show, @NonNull View control)
-  {
-    if (BuildConfig.DEBUG)
-      UiUtils.visibleIf(show, control);
-    else
-      UiUtils.showIf(show, control);
-  }
 
   Map<MapButtons, View> mButtonsMap;
   private View mFrame;
@@ -91,6 +84,22 @@ public class MapButtonsController extends Fragment
   private MyPositionButton mNavMyPosition;
   @Nullable
   private View mCarControls;
+  // The frame of the car buttons, it moves with the right buttons.
+  @Nullable
+  private View mCarButtonsFrame;
+  @Nullable
+  private View mFlagLogButton;
+  // What car buttons the status asks for, applied after the panel slides out when it asks for none.
+  private final Map<View, Boolean> mCarButtonsShown = new LinkedHashMap<>();
+  // Of every car button but the first one.
+  private final Map<View, View> mCarDividers = new HashMap<>();
+  private boolean mCarPanelShown = true;
+  @Nullable
+  private View mTrackRecordingPanel;
+  @Nullable
+  private SourceSelector mSourceSelector;
+  // The sensors screen was opened from the selector: GPS comes back if the box is still not connected.
+  private boolean mBackToGpsOnSensorsClosed;
   @Nullable
   private FloatingActionButton mManualPositionButton;
   @Nullable
@@ -165,6 +174,7 @@ public class MapButtonsController extends Fragment
 
     mInnerLeftButtonsFrame = mFrame.findViewById(R.id.map_buttons_inner_left);
     mInnerRightButtonsFrame = mFrame.findViewById(R.id.map_buttons_inner_right);
+    mCarButtonsFrame = mFrame.findViewById(R.id.map_buttons_inner_car);
     mBottomButtonsFrame = mFrame.findViewById(R.id.map_buttons_bottom);
 
     final FloatingActionButton helpButton = mFrame.findViewById(R.id.help_button);
@@ -173,8 +183,10 @@ public class MapButtonsController extends Fragment
         .setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.zoomIn));
     mFrame.findViewById(R.id.nav_zoom_out)
         .setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.zoomOut));
+    // Only in the navigation, the bookmarks are in the menu otherwise.
     final View bookmarksButton = mFrame.findViewById(R.id.btn_bookmarks);
-    bookmarksButton.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.bookmarks));
+    if (bookmarksButton != null)
+      bookmarksButton.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.bookmarks));
     final View myPosition = mFrame.findViewById(R.id.my_position);
     mNavMyPosition =
         new MyPositionButton(myPosition, (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.myPosition));
@@ -182,6 +194,11 @@ public class MapButtonsController extends Fragment
     mManualPositionButton = mFrame.findViewById(R.id.manual_position);
     mPositionStatus = mFrame.findViewById(R.id.position_status);
     mPositionStatus.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.positionStatus));
+    // Hidden while the map controls are redesigned: the source and the box are shown in the bottom bar.
+    UiUtils.hide(mPositionStatus);
+    final View sourceSelector = mFrame.findViewById(R.id.source_selector);
+    if (sourceSelector != null)
+      mSourceSelector = new SourceSelector(sourceSelector, this::showSensors);
     mManualPositionButton.setOnClickListener((v) -> {
       mMapButtonClickListener.onMapButtonClick(MapButtons.manualPosition);
       updatePositionStatus();
@@ -200,7 +217,7 @@ public class MapButtonsController extends Fragment
     mSwitchMarkButton.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.switchMark));
     // The log of a test drive is analysed afterwards: the tester marks the moments the car was shown wrong at.
     final View flagLog = mFrame.findViewById(R.id.flag_log);
-    UiUtils.showIf(BuildConfig.DEBUG, flagLog);
+    mFlagLogButton = flagLog;
     flagLog.setOnClickListener((v) -> {
       Logger.i(TAG, "FLAG " + ++sLogFlags);
       v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
@@ -210,6 +227,7 @@ public class MapButtonsController extends Fragment
       NoGps.nativeCycleShiftStep();
       updatePositionStatus();
     });
+    addCarDividers();
 
     // Some buttons do not exist in navigation mode
     mToggleMapLayerButton = mFrame.findViewById(R.id.layers_button);
@@ -224,6 +242,7 @@ public class MapButtonsController extends Fragment
     if (mMapButtonsViewModel.getLayoutMode().getValue() != LayoutMode.navigation)
       mMapButtonsViewModel.setTopButtonsMarginTop(-1);
     mTrackRecordingStatusButton = mFrame.findViewById(R.id.track_recording_status);
+    mTrackRecordingPanel = mFrame.findViewById(R.id.track_recording_panel);
     if (mTrackRecordingStatusButton != null)
       mTrackRecordingStatusButton.setOnClickListener(
           view -> mMapButtonClickListener.onMapButtonClick(MapButtons.trackRecordingStatus));
@@ -258,7 +277,8 @@ public class MapButtonsController extends Fragment
     mButtonsMap = new HashMap<>();
     mButtonsMap.put(MapButtons.zoom, zoomFrame);
     mButtonsMap.put(MapButtons.myPosition, myPosition);
-    mButtonsMap.put(MapButtons.bookmarks, bookmarksButton);
+    if (bookmarksButton != null)
+      mButtonsMap.put(MapButtons.bookmarks, bookmarksButton);
     mButtonsMap.put(MapButtons.search, searchButton);
 
     if (mToggleMapLayerButton != null)
@@ -303,6 +323,8 @@ public class MapButtonsController extends Fragment
     case menu: UiUtils.showIf(show, buttonView); break;
     case trackRecordingStatus:
       UiUtils.showIf(show, buttonView);
+      if (mTrackRecordingPanel != null)
+        UiUtils.showIf(show, mTrackRecordingPanel);
       animateIconBlinking(show, (FloatingActionButton) buttonView);
     }
   }
@@ -382,34 +404,152 @@ public class MapButtonsController extends Fragment
       blinkPositionStatus(status.roadLost);
     }
 
+    if (mSourceSelector != null)
+      mSourceSelector.update(status);
+
+    mCarButtonsShown.clear();
     // The buttons moving the position along the road calibrate the speed, they are shown while the user calibrates
     // it.
     if (mShiftPositionContainer != null)
-      UiUtils.showIf(status.movedByHand && status.shiftButtonsShown, mShiftPositionContainer);
+      mCarButtonsShown.put(mShiftPositionContainer, status.movedByHand && status.shiftButtonsShown);
     if (mShiftPositionStep != null)
       mShiftPositionStep.setText(getString(R.string.nogps_meters, status.shiftStepM));
     if (mReverseButton != null)
-      showCarControl(status.movedByHand, mReverseButton);
+      mCarButtonsShown.put(mReverseButton, status.movedByHand);
     // A turn has fitted several roads: the user may see the car is on another one.
     if (mSwitchMarkButton != null)
-      UiUtils.showIf(status.movedByHand && status.otherMarks > 0, mSwitchMarkButton);
+      mCarButtonsShown.put(mSwitchMarkButton, status.movedByHand && status.otherMarks > 0);
+    if (mFlagLogButton != null)
+      mCarButtonsShown.put(mFlagLogButton, BuildConfig.DEBUG);
 
     // The position waits at a turn until the car leaves it, otherwise it would go to another street.
     setShiftEnabled(mShiftPositionForward, !status.shiftForwardBlocked);
     setShiftEnabled(mShiftPositionBack, !status.shiftBackBlocked);
 
-    // The car is marked by hand only while the position does not come from GPS. The button is red while the next
+    // The car is marked by hand only while the position does not come from GPS. The button is blue while the next
     // tap on the map shows where the car is, the tap is taken back when GPS is used again.
     if (mManualPositionButton != null)
     {
       final boolean shown = source != NoGps.PositionSource.GPS;
       if (!shown && status.markByTap)
         NoGps.nativeSetMarkByTap(false);
-      showCarControl(shown, mManualPositionButton);
-      final int color = shown && status.markByTap ? ContextCompat.getColor(context, R.color.base_red)
+      mCarButtonsShown.put(mManualPositionButton, shown);
+      final int color = shown && status.markByTap ? ContextCompat.getColor(context, R.color.source_connecting)
                                                   : ThemeUtils.getColor(context, R.attr.iconTint);
       ImageViewCompat.setImageTintList(mManualPositionButton, ColorStateList.valueOf(color));
     }
+
+    final boolean hasCarButtons = mCarButtonsShown.containsValue(true);
+    // Nothing to correct, e.g. with GPS: the panel slides out as it is, its buttons are hidden after that.
+    if (hasCarButtons || !mCarPanelShown)
+      applyCarButtons();
+    showCarPanel(hasCarButtons);
+  }
+
+  private void addCarDividers()
+  {
+    if (!(mCarControls instanceof LinearLayout panel))
+      return;
+    final Context context = panel.getContext();
+    for (int i = panel.getChildCount() - 1; i > 0; --i)
+    {
+      final View divider = new View(context);
+      divider.setBackgroundColor(ContextCompat.getColor(context, R.color.map_panel_divider));
+      final LinearLayout.LayoutParams params =
+          new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(2, context));
+      final int margin = dpToPx(10, context);
+      final int gap = dpToPx(3, context);
+      params.setMargins(margin, gap, margin, gap);
+      final View button = panel.getChildAt(i);
+      panel.addView(divider, i, params);
+      mCarDividers.put(button, divider);
+    }
+  }
+
+  private void applyCarButtons()
+  {
+    for (Map.Entry<View, Boolean> entry : mCarButtonsShown.entrySet())
+      UiUtils.showIf(entry.getValue(), entry.getKey());
+    if (!(mCarControls instanceof LinearLayout panel))
+      return;
+    boolean first = true;
+    for (int i = 0; i < panel.getChildCount(); ++i)
+    {
+      final View child = panel.getChildAt(i);
+      final View divider = mCarDividers.get(child);
+      if (divider == null && mCarDividers.containsValue(child))
+        continue;
+      final boolean shown = UiUtils.isVisible(child);
+      if (divider != null)
+        UiUtils.showIf(shown && !first, divider);
+      if (shown)
+        first = false;
+    }
+  }
+
+  /**
+   * Slides the panel of the car buttons in from the start edge of the screen, or out there.
+   */
+  private void showCarPanel(boolean show)
+  {
+    if (mCarControls == null || show == mCarPanelShown)
+      return;
+    mCarPanelShown = show;
+    final boolean rtl = mCarControls.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+    final float out = rtl ? mCarControls.getRight() : -mCarControls.getRight();
+    mCarControls.animate().translationX(show ? 0 : out).alpha(show ? 1f : 0f).withEndAction(() -> {
+      if (!mCarPanelShown)
+        applyCarButtons();
+    });
+  }
+
+  /**
+   * @param backToGps GPS comes back if the box is still not connected when the user closes the screen.
+   */
+  private void showSensors(boolean backToGps)
+  {
+    mBackToGpsOnSensorsClosed = backToGps;
+    mMapButtonClickListener.onMapButtonClick(MapButtons.positionStatus);
+  }
+
+  private void onSensorsClosed()
+  {
+    if (!mBackToGpsOnSensorsClosed)
+      return;
+    mBackToGpsOnSensorsClosed = false;
+    if (NoGps.getStatus().getSourceState() != NoGps.SourceState.CONNECTED)
+    {
+      NoGps.nativeSetGpsDisabled(false);
+      updatePositionStatus();
+    }
+  }
+
+  /**
+   * The panels docked to the edges of the screen go on under the system bars, their buttons stay out of them.
+   */
+  private void dockPanels(@NonNull Insets insets)
+  {
+    final boolean rtl = mFrame.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+    final int start = rtl ? insets.right : insets.left;
+    final int end = rtl ? insets.left : insets.right;
+    final Context context = mFrame.getContext();
+    final int panelPadding = dpToPx(4, context);
+    dock(mFrame.findViewById(R.id.right_panel), rtl ? end : 0, rtl ? 0 : end, 0, panelPadding);
+    dock(mTrackRecordingPanel, rtl ? end : 0, rtl ? 0 : end, 0, 0);
+    dock(mCarControls, rtl ? 0 : start, rtl ? start : 0, 0, panelPadding);
+    dock(mBottomButtonsFrame, insets.left, insets.right, insets.bottom, dpToPx(6, context));
+  }
+
+  private static void dock(@Nullable View panel, int left, int right, int bottom, int verticalPadding)
+  {
+    if (panel == null)
+      return;
+    final ViewGroup.MarginLayoutParams params = (ViewGroup.MarginLayoutParams) panel.getLayoutParams();
+    params.leftMargin = -left;
+    params.rightMargin = -right;
+    params.bottomMargin = -bottom;
+    panel.setLayoutParams(params);
+    panel.setPadding(left, verticalPadding, right, verticalPadding + bottom);
   }
 
   private static void setShiftEnabled(@Nullable View button, boolean enabled)
@@ -475,9 +615,7 @@ public class MapButtonsController extends Fragment
   @NonNull
   private String formatAccuracy(float meters)
   {
-    if (meters < 1000)
-      return getString(R.string.nogps_meters, Math.round(meters));
-    return getString(R.string.nogps_kilometers, meters / 1000);
+    return SourceSelector.formatAccuracy(requireContext(), meters);
   }
 
   void animateIconBlinking(boolean show, @NonNull FloatingActionButton button)
@@ -509,7 +647,7 @@ public class MapButtonsController extends Fragment
     if (margin == -1)
       return;
     // The navigation panel at the top must not cover these views.
-    for (View view : new View[] {mTrackRecordingStatusButton, mPositionStatus})
+    for (View view : new View[] {mTrackRecordingPanel, mPositionStatus})
     {
       if (view == null)
         continue;
@@ -637,6 +775,8 @@ public class MapButtonsController extends Fragment
       return;
     if (mInnerRightButtonsFrame != null)
       applyMove(mInnerRightButtonsFrame, translationY);
+    if (mCarButtonsFrame != null)
+      mCarButtonsFrame.setTranslationY(mInnerRightButtonsFrame != null ? mInnerRightButtonsFrame.getTranslationY() : 0);
   }
 
   private void moveForSearch(float translationY)
@@ -730,9 +870,15 @@ public class MapButtonsController extends Fragment
     // itself only happens on the next layout pass — so a listener attached here still receives it.
     // Attaching in onResume() is too late: the dispatch has already run and nothing re-requests
     // insets for an already attached view, leaving the padding at zero.
-    ViewCompat.setOnApplyWindowInsetsListener(
-        view, WindowInsetUtils.PaddingInsetsListener.allSides(WindowInsetsCompat.Type.systemBars()
-                                                              | WindowInsetsCompat.Type.displayCutout()));
+    ViewCompat.setOnApplyWindowInsetsListener(view, (v, windowInsets) -> {
+      final Insets insets =
+          windowInsets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
+      v.setPadding(insets.left, insets.top, insets.right, insets.bottom);
+      dockPanels(insets);
+      return windowInsets;
+    });
+    requireActivity().getSupportFragmentManager().setFragmentResultListener(
+        SensorsBottomSheet.RESULT_CLOSED, getViewLifecycleOwner(), (key, result) -> onSensorsClosed());
   }
 
   @Override

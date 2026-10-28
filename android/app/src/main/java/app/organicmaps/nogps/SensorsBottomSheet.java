@@ -4,6 +4,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -36,6 +37,8 @@ import java.util.Locale;
 public class SensorsBottomSheet extends BottomSheetDialogFragment
 {
   public static final String TAG = SensorsBottomSheet.class.getSimpleName();
+  // The fragment result told when the user closes the sheet.
+  public static final String RESULT_CLOSED = TAG + ".closed";
   private static final long UPDATE_INTERVAL_MS = 500;
 
   private final Handler mHandler = new Handler(Looper.getMainLooper());
@@ -531,5 +534,14 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       case NO_CAR_DATA, BOX_SLEEPING, OBD_SLEEPING, UPDATING -> R.string.nogps_elm_no_car;
       case CONNECTED -> R.string.nogps_elm_connected;
     };
+  }
+
+  @Override
+  public void onDismiss(@NonNull DialogInterface dialog)
+  {
+    super.onDismiss(dialog);
+    // Not closed by the user when the activity is recreated.
+    if (!requireActivity().isChangingConfigurations())
+      getParentFragmentManager().setFragmentResult(RESULT_CLOSED, Bundle.EMPTY);
   }
 }

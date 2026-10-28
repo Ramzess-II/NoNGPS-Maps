@@ -1,8 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.floatingactionbutton.FloatingActionButton
+<!-- Docked to the end edge of the screen, shown while a track is recorded. -->
+<FrameLayout
   xmlns:android="http://schemas.android.com/apk/res/android"
   xmlns:app="http://schemas.android.com/apk/res-auto"
-  android:id="@+id/track_recording_status"
-  style="@style/MwmWidget.MapButton"
-  android:tint="@color/accent_color_selector"
-  app:srcCompat="@drawable/ic_track_recording_status" />
+  android:id="@+id/track_recording_panel"
+  android:layout_width="wrap_content"
+  android:layout_height="wrap_content"
+  android:background="@drawable/bg_map_panel_end"
+  android:elevation="4dp"
+  android:visibility="gone">
+  <com.google.android.material.floatingactionbutton.FloatingActionButton
+    android:id="@+id/track_recording_status"
+    style="@style/MwmWidget.MapButton.InPanel"
+    android:tint="@color/accent_color_selector"
+    app:srcCompat="@drawable/ic_track_recording_status" />
+</FrameLayout>

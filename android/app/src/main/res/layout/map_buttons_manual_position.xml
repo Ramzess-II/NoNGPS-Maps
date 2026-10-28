@@ -1,38 +1,67 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- The buttons correcting the position of the car, docked to the start edge of the screen. The controller divides
+     them and slides the panel out when none is shown. -->
 <LinearLayout
   xmlns:android="http://schemas.android.com/apk/res/android"
   xmlns:app="http://schemas.android.com/apk/res-auto"
   android:id="@+id/car_controls"
   android:layout_width="wrap_content"
   android:layout_height="wrap_content"
-  android:gravity="center_vertical"
-  android:orientation="horizontal">
-  <!-- Shown while a turn has fitted several roads: shows the car on the next of them. The first one, so that the
-       others keep their places when it comes and goes. -->
+  android:background="@drawable/bg_map_panel_start"
+  android:elevation="4dp"
+  android:gravity="center_horizontal"
+  android:orientation="vertical"
+  android:paddingTop="4dp"
+  android:paddingBottom="4dp">
+  <LinearLayout
+    android:id="@+id/shift_position_container"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:gravity="center_horizontal"
+    android:orientation="vertical">
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+      android:id="@+id/shift_position_forward"
+      style="@style/MwmWidget.MapButton.InPanel"
+      app:srcCompat="@drawable/ic_plus"
+      android:contentDescription="@string/nogps_shift_forward" />
+    <TextView
+      android:id="@+id/shift_position_step"
+      android:layout_width="wrap_content"
+      android:layout_height="40dp"
+      android:contentDescription="@string/nogps_shift_step"
+      android:gravity="center"
+      android:minWidth="@dimen/map_button_size"
+      android:textColor="?android:textColorPrimary"
+      android:textSize="13sp"
+      android:textStyle="bold" />
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+      android:id="@+id/shift_position_back"
+      style="@style/MwmWidget.MapButton.InPanel"
+      app:srcCompat="@drawable/ic_minus"
+      android:contentDescription="@string/nogps_shift_back" />
+  </LinearLayout>
+  <com.google.android.material.floatingactionbutton.FloatingActionButton
+    android:id="@+id/reverse_direction"
+    style="@style/MwmWidget.MapButton.InPanel"
+    app:srcCompat="@drawable/ic_reverse_direction"
+    android:contentDescription="@string/nogps_reverse_direction" />
+  <!-- Shown while a turn has fitted several roads: shows the car on the next of them. -->
   <com.google.android.material.floatingactionbutton.FloatingActionButton
     android:id="@+id/switch_mark"
-    style="@style/MwmWidget.MapButton.Zoom"
-    android:layout_marginEnd="@dimen/margin_half"
+    style="@style/MwmWidget.MapButton.InPanel"
     android:visibility="gone"
     app:srcCompat="@drawable/ic_switch_mark"
     android:contentDescription="@string/nogps_switch_mark" />
   <!-- For the test drives, shown in debug builds only: marks in the log the moment the car was shown wrong at. -->
   <com.google.android.material.floatingactionbutton.FloatingActionButton
     android:id="@+id/flag_log"
-    style="@style/MwmWidget.MapButton.Zoom"
-    android:layout_marginEnd="@dimen/margin_half"
+    style="@style/MwmWidget.MapButton.InPanel"
     android:visibility="gone"
     android:importantForAccessibility="no"
     app:srcCompat="@drawable/ic_flag_log" />
   <com.google.android.material.floatingactionbutton.FloatingActionButton
-    android:id="@+id/reverse_direction"
-    style="@style/MwmWidget.MapButton.Zoom"
-    android:layout_marginEnd="@dimen/margin_half"
-    app:srcCompat="@drawable/ic_reverse_direction"
-    android:contentDescription="@string/nogps_reverse_direction" />
-  <com.google.android.material.floatingactionbutton.FloatingActionButton
     android:id="@+id/manual_position"
-    style="@style/MwmWidget.MapButton"
+    style="@style/MwmWidget.MapButton.InPanel"
     app:srcCompat="@drawable/ic_manual_position"
     android:contentDescription="@string/nogps_manual_position" />
 </LinearLayout>
