@@ -12,7 +12,6 @@ final class MapControlsPanel: UIView {
   private enum Constants {
     static let cornerRadius = CGFloat(14)
     static let bottomCornerRadius = CGFloat(16)
-    static let dividerInset = CGFloat(10)
     // The edge keeps the panel apart from a dark map, where the shadow is not seen.
     static let borderWidth = CGFloat(1)
     static let borderColor = UIColor { $0.userInterfaceStyle == .dark
@@ -120,23 +119,6 @@ final class MapControlsPanel: UIView {
       divider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: groupDividerMargin),
       divider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -groupDividerMargin),
       divider.heightAnchor.constraint(equalToConstant: groupDividerHeight),
-    ])
-    return divider
-  }
-
-  /// A hairline at the top of a button that follows another one in a panel.
-  @objc @discardableResult
-  static func addDivider(above view: UIView) -> UIView {
-    let divider = UIView()
-    divider.setStyleAndApply(.divider)
-    divider.isUserInteractionEnabled = false
-    divider.translatesAutoresizingMaskIntoConstraints = false
-    view.addSubview(divider)
-    NSLayoutConstraint.activate([
-      divider.topAnchor.constraint(equalTo: view.topAnchor),
-      divider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.dividerInset),
-      divider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.dividerInset),
-      divider.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
     ])
     return divider
   }
