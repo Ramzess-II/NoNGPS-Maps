@@ -166,14 +166,18 @@ final class NoGpsSourceSelector: UIView {
 
   @objc
   private func boxTapped() {
-    if box.isChosen {
-      NoGpsControls.showSensors()
-      return
+    if !box.isChosen {
+      choose(gpsDisabled: true)
+      // The box drives the car, nothing to tell.
+      if status.sourceState == .connected {
+        return
+      }
     }
-    choose(gpsDisabled: true)
-    // The box doesn't drive the car yet: the sensors screen tells why.
-    if status.sourceState != .connected {
-      NoGpsControls.showSensors()
+    // The sensors screen tells why the box doesn't drive the car. GPS comes back if the user leaves it unconnected.
+    NoGpsControls.showSensors { [weak self] in
+      if NoGps.status().sourceState != .connected {
+        self?.choose(gpsDisabled: false)
+      }
     }
   }
 

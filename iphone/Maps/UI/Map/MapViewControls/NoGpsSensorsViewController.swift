@@ -32,6 +32,8 @@ final class NoGpsSensorsViewController: MWMTableViewController {
   private var sections: [Section] = []
   private var status = NoGps.status()
   private var timer: Timer?
+  /// Called once the screen is closed.
+  var onClose: (() -> Void)?
 
   init() {
     super.init(style: .grouped)
@@ -63,6 +65,15 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     super.viewWillDisappear(animated)
     timer?.invalidate()
     timer = nil
+  }
+
+  override func viewDidDisappear(_ animated: Bool) {
+    super.viewDidDisappear(animated)
+    // Closed by the button or swiped down.
+    if navigationController?.isBeingDismissed ?? isBeingDismissed {
+      onClose?()
+      onClose = nil
+    }
   }
 
   private func refresh() {

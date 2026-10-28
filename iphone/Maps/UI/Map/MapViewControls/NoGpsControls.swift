@@ -286,8 +286,8 @@ final class NoGpsControls: NSObject {
     Self.showSensors()
   }
 
-  @objc
-  static func showSensors() {
+  /// \param onClose is called when the screen is closed, not if it is shown already.
+  static func showSensors(onClose: (() -> Void)? = nil) {
     // The calibration alert may come while the screen is open, under another alert too.
     let top = UIViewController.topViewController()
     var shown: UIViewController? = top
@@ -297,7 +297,9 @@ final class NoGpsControls: NSObject {
       }
       shown = controller.presentingViewController
     }
-    top.present(UINavigationController(rootViewController: NoGpsSensorsViewController()), animated: true)
+    let sensors = NoGpsSensorsViewController()
+    sensors.onClose = onClose
+    top.present(UINavigationController(rootViewController: sensors), animated: true)
   }
 
   /// The sensor box has been plugged in: asks the user to calibrate it, the car should stand on a level place.
