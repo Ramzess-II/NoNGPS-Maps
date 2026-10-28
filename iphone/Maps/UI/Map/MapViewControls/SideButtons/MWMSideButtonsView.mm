@@ -6,10 +6,6 @@ namespace
 {
 CGFloat const kButtonsTopOffset = 6;
 CGFloat const kButtonsBottomOffset = 6;
-// The line between the zoom buttons and the location button, with margins on every side.
-CGFloat const kGroupDividerHeight = 2;
-CGFloat const kGroupDividerMargin = 10;
-CGFloat const kGroupGap = 8;
 }  // namespace
 
 @interface MWMSideButtonsView ()
@@ -43,7 +39,7 @@ CGFloat const kGroupGap = 8;
 - (void)layoutSubviews
 {
   self.zoomOut.minY = self.zoomIn.maxY;
-  self.location.minY = self.zoomOut.maxY + kGroupGap;
+  self.location.minY = self.zoomOut.maxY + MapControlsPanel.groupGap;
   self.bounds = {{}, {self.zoomOut.width, self.location.maxY}};
   if (self.zoomHidden)
     self.height = self.location.height;
@@ -73,8 +69,11 @@ CGFloat const kGroupGap = 8;
       self.isRTL ? self.availableArea.origin.x : self.superview.width - CGRectGetMaxX(self.availableArea);
   CGRect const frame = {{self.isRTL ? -edgeGap : 0, top}, {self.width + edgeGap, self.height - top}};
   self.locationDivider.hidden = !zoomShown;
-  self.locationDivider.frame = {{kGroupDividerMargin, self.zoomOut.maxY + (kGroupGap - kGroupDividerHeight) / 2},
-                                {self.width - 2 * kGroupDividerMargin, kGroupDividerHeight}};
+  // The line between the zoom buttons and the location button, with margins on every side.
+  CGFloat const margin = MapControlsPanel.groupDividerMargin;
+  CGFloat const height = MapControlsPanel.groupDividerHeight;
+  self.locationDivider.frame = {{margin, self.zoomOut.maxY + (MapControlsPanel.groupGap - height) / 2},
+                                {self.width - 2 * margin, height}};
   if (CGRectEqualToRect(self.panel.frame, frame))
     return;
   BOOL const animated = !CGRectIsEmpty(self.panel.frame) && self.panel.frame.origin.y != frame.origin.y;

@@ -117,13 +117,14 @@ final class NoGpsControls: NSObject {
 
     buttons.axis = .vertical
     buttons.alignment = .center
+    buttons.spacing = MapControlsPanel.groupGap
     buttons.translatesAutoresizingMaskIntoConstraints = false
     let items = [shiftForwardButton, shiftStepButton, shiftBackButton, reverseButton, switchMarkButton, manualButton]
     for item in items {
       buttons.addArrangedSubview(item)
     }
     for item in items.dropFirst() {
-      dividers[item] = MapControlsPanel.addDivider(above: item)
+      dividers[item] = MapControlsPanel.addGroupDivider(above: item)
     }
     panel.translatesAutoresizingMaskIntoConstraints = false
     superview.addSubview(panel)

@@ -45,6 +45,28 @@ final class MapControlsPanel: UIView {
                                     cornerRadii: CGSize(width: radius, height: radius)).cgPath
   }
 
+  /// The gap between buttons that holds a group divider, see addGroupDivider(above:).
+  @objc static let groupGap = CGFloat(8)
+  @objc static let groupDividerHeight = CGFloat(2)
+  @objc static let groupDividerMargin = CGFloat(10)
+
+  /// A line in the middle of the gap of groupGap above a button, with margins on every side.
+  @discardableResult
+  static func addGroupDivider(above view: UIView) -> UIView {
+    let divider = UIView()
+    divider.setStyleAndApply(.solidDivider)
+    divider.isUserInteractionEnabled = false
+    divider.translatesAutoresizingMaskIntoConstraints = false
+    view.addSubview(divider)
+    NSLayoutConstraint.activate([
+      divider.centerYAnchor.constraint(equalTo: view.topAnchor, constant: -groupGap / 2),
+      divider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: groupDividerMargin),
+      divider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -groupDividerMargin),
+      divider.heightAnchor.constraint(equalToConstant: groupDividerHeight),
+    ])
+    return divider
+  }
+
   /// A hairline at the top of a button that follows another one in a panel.
   @objc @discardableResult
   static func addDivider(above view: UIView) -> UIView {
