@@ -84,6 +84,12 @@ public class ToggleMapLayerFragment extends Fragment
 
   private void closeLayerBottomSheet()
   {
+    // The layers are also the header of the main menu.
+    if (getParentFragment() instanceof MenuBottomSheetFragment menu)
+    {
+      menu.dismiss();
+      return;
+    }
     MenuBottomSheetFragment bottomSheet =
         (MenuBottomSheetFragment) requireActivity().getSupportFragmentManager().findFragmentByTag(LAYERS_MENU_ID);
     if (bottomSheet != null)

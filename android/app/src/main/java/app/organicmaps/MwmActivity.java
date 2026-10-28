@@ -881,7 +881,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     case help -> showHelp();
     case trackRecordingStatus -> toggleTrackRecordingPP();
     case manualPosition -> toggleMarkByTap();
-    case positionStatus -> new SensorsBottomSheet().show(getSupportFragmentManager(), SensorsBottomSheet.TAG);
+    case positionStatus -> showSensorsSheet();
     case shiftPositionForward -> shiftPosition(true /* forward */);
     case shiftPositionBack -> shiftPosition(false /* forward */);
     case reverseDirection -> NoGps.nativeReverseDirection();
@@ -2374,6 +2374,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
     if (id.equals(MAIN_MENU_ID))
     {
       ArrayList<MenuBottomSheetItem> items = new ArrayList<>();
+      // The bottom bar of the map has no button for them.
+      items.add(new MenuBottomSheetItem(R.string.bookmarks, R.drawable.ic_bookmarks_and_tracks, this::showBookmarks));
       if (BuildConfig.MAP_EDITING)
         items.add(new MenuBottomSheetItem(R.string.placepage_add_place_button, R.drawable.ic_plus,
                                           this::onAddPlaceOptionSelected));
@@ -2383,6 +2385,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
       if (!TextUtils.isEmpty(mDonatesUrl))
         items.add(new MenuBottomSheetItem(R.string.donate, R.drawable.ic_donate, this::onDonateOptionSelected));
       items.add(new MenuBottomSheetItem(R.string.settings, R.drawable.ic_settings, this::onSettingsOptionSelected));
+      items.add(
+          new MenuBottomSheetItem(R.string.nogps_sensors_title, R.drawable.ic_nogps_sensors, this::showSensorsSheet));
       items.add(new MenuBottomSheetItem(R.string.start_track_recording, R.drawable.ic_track_recording_off, -1,
                                         this::onTrackRecordingOptionSelected));
       items.add(new MenuBottomSheetItem(R.string.share_my_location, R.drawable.ic_share,
@@ -2398,7 +2402,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
   @Nullable
   public Fragment getMenuBottomSheetFragment(String id)
   {
-    if (id.equals(LAYERS_MENU_ID))
+    // The map has no layers button, the layers are on top of the menu.
+    if (id.equals(LAYERS_MENU_ID) || id.equals(MAIN_MENU_ID))
       return new ToggleMapLayerFragment();
     return null;
   }
