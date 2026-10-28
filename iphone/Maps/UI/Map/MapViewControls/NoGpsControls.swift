@@ -1,13 +1,11 @@
 /// The controls of the navigation without GPS on the map: where the position comes from, the manual mode and the
-/// buttons correcting the position of the car. They are laid out in the free area of the side buttons.
+/// buttons correcting the position of the car. They are laid out in the free area of the side buttons, the buttons on
+/// a panel at the left edge of the screen.
 @objc
 final class NoGpsControls: NSObject {
   private enum Constants {
-    static let buttonSize = CGFloat(48)
-    static let spacing = CGFloat(8)
-    static let sideOffset = CGFloat(10)
-    // The scale ruler of the map is below the buttons.
-    static let bottomOffset = CGFloat(40)
+    static let buttonWidth = CGFloat(52)
+    static let buttonHeight = CGFloat(48)
     static let statusTopOffset = CGFloat(8)
     static let statusMinHeight = CGFloat(36)
     static let statusMaxWidth = CGFloat(260)
@@ -27,17 +25,23 @@ final class NoGpsControls: NSObject {
   private static var availableArea = CGRect.zero
 
   private let statusButton = UIButton(type: .custom)
+  private let panel = MapControlsPanel(edge: .left)
   private let buttons = UIStackView()
+  // Of every button but the first one.
+  private var dividers = [UIView: UIView]()
+  private var isPanelShown = true
+  private var hasButtons = true
+  private var buttonsHidden = [UIView: Bool]()
   private let shiftForwardButton = NoGpsControls.makeButton("chevron.up")
   private let shiftStepButton = UIButton(type: .system)
   private let shiftBackButton = NoGpsControls.makeButton("chevron.down")
-  private let reverseButton = NoGpsControls.makeButton("arrow.uturn.left")
+  private let reverseButton = NoGpsControls.makeButton("arrow.triangle.2.circlepath")
   private let switchMarkButton = NoGpsControls.makeButton("arrow.left.arrow.right")
   private let manualButton = NoGpsControls.makeButton("hand.point.up.left")
   private var statusTop = NSLayoutConstraint()
   private var statusCenterX = NSLayoutConstraint()
   private var buttonsLeading = NSLayoutConstraint()
-  private var buttonsBottom = NSLayoutConstraint()
+  private var buttonsCenterY = NSLayoutConstraint()
   private var timer: Timer?
   private weak var calibrationAlert: UIAlertController?
   private weak var firmwareAlert: UIAlertController?
@@ -61,7 +65,7 @@ final class NoGpsControls: NSObject {
   static func updateAvailableArea(_ frame: CGRect) {
     availableArea = frame
     DispatchQueue.main.async {
-      shared?.updateLayout()
+      shared?.updateLayout(animated: true)
     }
   }
 
@@ -69,12 +73,12 @@ final class NoGpsControls: NSObject {
 
   private static func makeButton(_ symbol: String) -> BottomTabBarButton {
     let button = BottomTabBarButton()
-    button.setStyleAndApply(.bottomTabBarButton)
+    button.setStyleAndApply(.mapPanelButton)
     button.translatesAutoresizingMaskIntoConstraints = false
     button.setImage(UIImage(systemName: symbol), for: .normal)
     NSLayoutConstraint.activate([
-      button.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
-      button.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
+      button.widthAnchor.constraint(equalToConstant: Constants.buttonWidth),
+      button.heightAnchor.constraint(equalToConstant: Constants.buttonHeight),
     ])
     return button
   }
@@ -89,15 +93,18 @@ final class NoGpsControls: NSObject {
     statusButton.titleLabel?.numberOfLines = 3
     statusButton.titleLabel?.textAlignment = .center
     statusButton.titleLabel?.lineBreakMode = .byTruncatingTail
-    statusButton.addTarget(self, action: #selector(showSensors), for: .touchUpInside)
+    statusButton.addTarget(self, action: #selector(statusTapped), for: .touchUpInside)
+    // Hidden while the map controls are redesigned: the source and the box are shown in the bottom bar.
+    statusButton.isHidden = true
     superview.addSubview(statusButton)
 
     shiftStepButton.translatesAutoresizingMaskIntoConstraints = false
     shiftStepButton.titleLabel?.font = .boldSystemFont(ofSize: 14)
-    shiftStepButton.setTitleColor(.blackPrimaryText, for: .normal)
-    shiftStepButton.backgroundColor = .white
-    shiftStepButton.layer.cornerRadius = Constants.spacing
-    shiftStepButton.widthAnchor.constraint(equalToConstant: Constants.buttonSize).isActive = true
+    shiftStepButton.setTitleColor(.label, for: .normal)
+    NSLayoutConstraint.activate([
+      shiftStepButton.widthAnchor.constraint(equalToConstant: Constants.buttonWidth),
+      shiftStepButton.heightAnchor.constraint(equalToConstant: Constants.buttonHeight),
+    ])
     shiftStepButton.addTarget(self, action: #selector(cycleShiftStep), for: .touchUpInside)
 
     shiftForwardButton.addTarget(self, action: #selector(shiftForward), for: .touchUpInside)
@@ -113,35 +120,84 @@ final class NoGpsControls: NSObject {
 
     buttons.axis = .vertical
     buttons.alignment = .center
-    buttons.spacing = Constants.spacing
+    buttons.spacing = MapControlsPanel.groupGap
     buttons.translatesAutoresizingMaskIntoConstraints = false
-    for item in [shiftForwardButton, shiftStepButton, shiftBackButton, reverseButton, switchMarkButton, manualButton] {
+    let items = [shiftForwardButton, shiftStepButton, shiftBackButton, reverseButton, switchMarkButton, manualButton]
+    for item in items {
       buttons.addArrangedSubview(item)
     }
+    for item in items.dropFirst() {
+      dividers[item] = MapControlsPanel.addGroupDivider(above: item)
+    }
+    panel.translatesAutoresizingMaskIntoConstraints = false
+    superview.addSubview(panel)
     superview.addSubview(buttons)
 
     statusTop = statusButton.topAnchor.constraint(equalTo: superview.topAnchor)
     statusCenterX = statusButton.centerXAnchor.constraint(equalTo: superview.leftAnchor)
     buttonsLeading = buttons.leftAnchor.constraint(equalTo: superview.leftAnchor)
-    buttonsBottom = buttons.bottomAnchor.constraint(equalTo: superview.topAnchor)
+    buttonsCenterY = buttons.centerYAnchor.constraint(equalTo: superview.topAnchor)
     NSLayoutConstraint.activate([
-      statusTop, statusCenterX, buttonsLeading, buttonsBottom,
+      statusTop, statusCenterX, buttonsLeading, buttonsCenterY,
+      // The panel goes on to the edge of the screen, under the safe area too.
+      panel.leftAnchor.constraint(equalTo: superview.leftAnchor),
+      panel.rightAnchor.constraint(equalTo: buttons.rightAnchor),
+      panel.topAnchor.constraint(equalTo: buttons.topAnchor),
+      panel.bottomAnchor.constraint(equalTo: buttons.bottomAnchor),
       statusButton.heightAnchor.constraint(greaterThanOrEqualToConstant: Constants.statusMinHeight),
       statusButton.widthAnchor.constraint(lessThanOrEqualToConstant: Constants.statusMaxWidth),
     ])
     updateLayout()
   }
 
-  private func updateLayout() {
+  /// \param animated moves the buttons as the side buttons on the right move, when a panel opens or closes.
+  private func updateLayout(animated: Bool = false) {
     let area = Self.availableArea
     guard !area.isEmpty else { return }
-    statusTop.constant = area.minY + Constants.statusTopOffset
-    statusCenterX.constant = area.midX
-    buttonsLeading.constant = area.minX + Constants.sideOffset
-    buttonsBottom.constant = area.maxY - Constants.bottomOffset
-    // The buttons are hidden when a panel leaves no place for them.
-    buttons.alpha = buttons.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height
-      + Constants.statusMinHeight + Constants.bottomOffset + 2 * Constants.spacing > area.height ? 0 : 1
+    let place = {
+      self.statusTop.constant = area.minY + Constants.statusTopOffset
+      self.statusCenterX.constant = area.midX
+      self.buttonsLeading.constant = area.minX
+      // The side buttons on the right have the same center.
+      self.buttonsCenterY.constant = area.midY
+    }
+    if animated, let superview = buttons.superview {
+      superview.animateConstraints(animations: place)
+    } else {
+      place()
+    }
+    // A panel can leave no place for the buttons.
+    let fits = buttons.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height <= area.height
+    showPanel(hasButtons && fits)
+  }
+
+  private func applyButtonsHidden() {
+    for (button, hidden) in buttonsHidden where button.isHidden != hidden {
+      button.isHidden = hidden
+    }
+    let shown = buttons.arrangedSubviews.filter { !$0.isHidden }
+    for (button, divider) in dividers {
+      divider.isHidden = button === shown.first
+    }
+  }
+
+  /// Slides the panel with its buttons in from the left edge of the screen, or out there.
+  private func showPanel(_ show: Bool) {
+    guard show != isPanelShown else { return }
+    isPanelShown = show
+    UIView.animate(withDuration: AppConstants.defaultAnimationDuration, delay: 0, options: [.beginFromCurrentState],
+                   animations: {
+                     let offset = show ? CGAffineTransform.identity
+                       : CGAffineTransform(translationX: -self.panel.frame.maxX, y: 0)
+                     for view in [self.panel, self.buttons] as [UIView] {
+                       view.alpha = show ? 1 : 0
+                       view.transform = offset
+                     }
+                   }, completion: { _ in
+                     if !self.isPanelShown {
+                       self.applyButtonsHidden()
+                     }
+                   })
   }
 
   // MARK: - State
@@ -175,24 +231,33 @@ final class NoGpsControls: NSObject {
     blinkStatus(status.roadLost)
 
     // The buttons moving the position along the road calibrate the speed, they are shown while the user calibrates it.
-    shiftForwardButton.isHidden = !(status.movedByHand && status.shiftButtonsShown)
-    shiftStepButton.isHidden = shiftForwardButton.isHidden
-    shiftBackButton.isHidden = shiftForwardButton.isHidden
+    let shifts = status.movedByHand && status.shiftButtonsShown
     shiftStepButton.setTitle(String(format: L("nogps_meters"), status.shiftStepM), for: .normal)
     // The position waits at a turn until the car leaves it, otherwise it would go to another street.
     shiftForwardButton.alpha = status.shiftForwardBlocked ? Constants.disabledAlpha : 1
     shiftBackButton.alpha = status.shiftBackBlocked ? Constants.disabledAlpha : 1
-    reverseButton.isHidden = !status.movedByHand
-    switchMarkButton.isHidden = !(status.movedByHand && status.otherMarks > 0)
-    // The car is marked by hand only while the position is not from GPS. The button is red while the next tap on the
+    // The car is marked by hand only while the position is not from GPS. The button is blue while the next tap on the
     // map shows where the car is, the tap is taken back when GPS is used again.
-    let canMark = status.source != .gps
+    let canMark = status.source != .gps && status.gpsDisabled
     if !canMark, status.markByTap {
       NoGps.setMarkByTap(false)
     }
-    manualButton.isHidden = !canMark
-    manualButton.tintColor = canMark && status.markByTap ? Constants.noneColor : nil
+    manualButton.tintColor = canMark && status.markByTap ? .linkBlue : .blackSecondaryText
+    buttonsHidden = [shiftForwardButton: !shifts, shiftStepButton: !shifts, shiftBackButton: !shifts,
+                     reverseButton: !status.movedByHand,
+                     switchMarkButton: !(status.movedByHand && status.otherMarks > 0),
+                     manualButton: !canMark]
+    // The car is corrected by hand only while the box drives it: GPS is chosen in the bottom bar otherwise.
+    if !status.gpsDisabled {
+      buttonsHidden = buttonsHidden.mapValues { _ in true }
+    }
+    hasButtons = buttonsHidden.values.contains(false)
+    // Nothing to correct, e.g. with GPS: the panel slides out as it is, its buttons are hidden after that.
+    if hasButtons || !isPanelShown {
+      applyButtonsHidden()
+    }
     updateLayout()
+    NoGpsSourceSelector.update(status)
   }
 
   private func sourceText(_ status: NoGpsStatus) -> (String, UIColor) {
@@ -201,9 +266,9 @@ final class NoGpsControls: NSObject {
       return (L("nogps_status_gps"), Constants.gpsColor)
     case .network:
       let format = L(status.gpsSpoofed ? "nogps_status_network_spoofed" : "nogps_status_network_no_gps")
-      return (String(format: format, formatAccuracy(status.accuracyM)), Constants.networkColor)
+      return (String(format: format, Self.formatAccuracy(status.accuracyM)), Constants.networkColor)
     case .inertial:
-      return (String(format: L("nogps_status_inertial"), formatAccuracy(status.accuracyM)), Constants.inertialColor)
+      return (String(format: L("nogps_status_inertial"), Self.formatAccuracy(status.accuracyM)), Constants.inertialColor)
     case .manual:
       let minutes = Int(status.manualAge / 60)
       let text = minutes == 0 ? L("nogps_status_manual_just_now") : String(format: L("nogps_status_manual_minutes"), minutes)
@@ -217,11 +282,11 @@ final class NoGpsControls: NSObject {
 
   private func otherSourcesText(_ status: NoGpsStatus) -> String {
     if status.workingGpsAccuracyM >= 0 {
-      return String(format: L("nogps_status_gps_back"), formatAccuracy(status.workingGpsAccuracyM))
+      return String(format: L("nogps_status_gps_back"), Self.formatAccuracy(status.workingGpsAccuracyM))
     }
     let gps = L(status.gpsSpoofed ? "nogps_status_gps_spoofed" : "nogps_status_no_gps")
     guard status.workingNetworkAccuracyM >= 0 else { return gps }
-    return gps + " · " + String(format: L("nogps_status_towers"), formatAccuracy(status.workingNetworkAccuracyM))
+    return gps + " · " + String(format: L("nogps_status_towers"), Self.formatAccuracy(status.workingNetworkAccuracyM))
   }
 
   /// Whether the car speed comes from the sensor box, the only source of it on iOS.
@@ -252,7 +317,7 @@ final class NoGpsControls: NSObject {
     layer.add(animation, forKey: Constants.blinkKey)
   }
 
-  private func formatAccuracy(_ meters: Double) -> String {
+  static func formatAccuracy(_ meters: Double) -> String {
     if meters < 1000 {
       return String(format: L("nogps_meters"), Int(meters.rounded()))
     }
@@ -262,17 +327,28 @@ final class NoGpsControls: NSObject {
   // MARK: - Actions
 
   @objc
-  private func showSensors() {
+  private func statusTapped() {
+    Self.showSensors()
+  }
+
+  /// \param onClose is called when the screen is closed.
+  static func showSensors(onClose: (() -> Void)? = nil) {
     // The calibration alert may come while the screen is open, under another alert too.
     let top = UIViewController.topViewController()
     var shown: UIViewController? = top
     while let controller = shown {
-      if (controller as? UINavigationController)?.viewControllers.first is NoGpsSensorsViewController {
+      if let sensors = (controller as? UINavigationController)?.viewControllers.first as? NoGpsSensorsViewController {
+        // Shown already, e.g. under the calibration alert: its closing is told as well.
+        if let onClose {
+          sensors.onClose = onClose
+        }
         return
       }
       shown = controller.presentingViewController
     }
-    top.present(UINavigationController(rootViewController: NoGpsSensorsViewController()), animated: true)
+    let sensors = NoGpsSensorsViewController()
+    sensors.onClose = onClose
+    top.present(UINavigationController(rootViewController: sensors), animated: true)
   }
 
   /// The sensor box has been plugged in: asks the user to calibrate it, the car should stand on a level place.
@@ -284,10 +360,10 @@ final class NoGpsControls: NSObject {
                                   message: L("nogps_box_calibration_offer"),
                                   preferredStyle: .alert)
     alert.addAction(UIAlertAction(title: L("later"), style: .cancel))
-    alert.addAction(UIAlertAction(title: L("nogps_sensors_calibrate_box"), style: .default) { [weak self] _ in
+    alert.addAction(UIAlertAction(title: L("nogps_sensors_calibrate_box"), style: .default) { _ in
       NoGps.calibrate()
       // It shows how the calibration goes.
-      self?.showSensors()
+      Self.showSensors()
     })
     UIViewController.topViewController().present(alert, animated: true)
     calibrationAlert = alert
@@ -306,10 +382,10 @@ final class NoGpsControls: NSObject {
                                   preferredStyle: .alert)
     alert.addAction(UIAlertAction(title: L("later"), style: .cancel))
     alert.addAction(UIAlertAction(title: String(format: L("nogps_firmware_install"), status.bundledFirmware),
-                                  style: .default) { [weak self] _ in
+                                  style: .default) { _ in
         NoGps.startFirmwareUpdate()
         // It shows how the update goes.
-        self?.showSensors()
+        Self.showSensors()
       })
     UIViewController.topViewController().present(alert, animated: true)
     firmwareAlert = alert

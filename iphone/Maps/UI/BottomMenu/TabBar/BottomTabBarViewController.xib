@@ -10,9 +10,7 @@
     <objects>
         <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner" customClass="BottomTabBarViewController" customModule="Organic_Maps" customModuleProvider="target">
             <connections>
-                <outlet property="bookmarksButton" destination="dgG-ki-3tB" id="md5-3T-9tb"/>
                 <outlet property="downloadBadge" destination="uDI-ZC-4wx" id="fAf-cy-Ozn"/>
-                <outlet property="helpButton" destination="dzf-7Z-N6a" id="ORg-VO-5ar"/>
                 <outlet property="moreButton" destination="svD-yi-GrZ" id="kjk-ZW-nZN"/>
                 <outlet property="searchButton" destination="No0-ld-JX3" id="m5F-UT-j94"/>
                 <outlet property="view" destination="zuH-WU-hiP" id="eoa-4I-wKs"/>
@@ -26,41 +24,19 @@
                 <view opaque="NO" clearsContextBeforeDrawing="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="vum-s3-PHx" userLabel="MainButtons" customClass="ExtendedBottomTabBarContainerView" customModule="Organic_Maps" customModuleProvider="target">
                     <rect key="frame" x="0.0" y="0.0" width="373" height="48"/>
                     <subviews>
-                        <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="dzf-7Z-N6a" userLabel="Help" customClass="BottomTabBarButton" customModule="Organic_Maps" customModuleProvider="target">
-                            <rect key="frame" x="22.5" y="0.0" width="48" height="48"/>
-                            <accessibility key="accessibilityConfiguration" identifier="helpButton"/>
-                            <constraints>
-                                <constraint firstAttribute="width" secondItem="dzf-7Z-N6a" secondAttribute="height" id="qNJ-0K-sK0"/>
-                            </constraints>
-                            <fontDescription key="fontDescription" type="system" pointSize="30"/>
-                            <inset key="imageEdgeInsets" minX="9" minY="9" maxX="9" maxY="9"/>
-                            <state key="normal" image="logo"/>
-                            <connections>
-                                <action selector="onHelpButtonPressed:" destination="-1" eventType="touchUpInside" id="1gx-P2-sRJ"/>
-                            </connections>
-                        </button>
                         <button opaque="NO" contentMode="scaleToFill" horizontalHuggingPriority="249" horizontalCompressionResistancePriority="751" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="No0-ld-JX3" userLabel="Search" customClass="BottomTabBarButton" customModule="Organic_Maps" customModuleProvider="target">
-                            <rect key="frame" x="116" y="0.0" width="48" height="48"/>
+                            <rect key="frame" x="22.5" y="0.0" width="48" height="48"/>
                             <accessibility key="accessibilityConfiguration" identifier="searchButton"/>
                             <constraints>
                                 <constraint firstAttribute="width" secondItem="No0-ld-JX3" secondAttribute="height" id="2bW-fc-Hsh"/>
                             </constraints>
                             <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
                             <state key="normal" image="ic_menu_search"/>
+                            <userDefinedRuntimeAttributes>
+                                <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="mapPanelButton"/>
+                            </userDefinedRuntimeAttributes>
                             <connections>
                                 <action selector="onSearchButtonPressed:" destination="-1" eventType="touchUpInside" id="0D5-RB-HBQ"/>
-                            </connections>
-                        </button>
-                        <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="dgG-ki-3tB" userLabel="Bookmarks" customClass="BottomTabBarButton" customModule="Organic_Maps" customModuleProvider="target">
-                            <rect key="frame" x="209" y="0.0" width="48" height="48"/>
-                            <accessibility key="accessibilityConfiguration" identifier="bookmarksButton"/>
-                            <constraints>
-                                <constraint firstAttribute="width" secondItem="dgG-ki-3tB" secondAttribute="height" id="o3b-it-lrV"/>
-                            </constraints>
-                            <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
-                            <state key="normal" image="ic_menu_bookmark_list"/>
-                            <connections>
-                                <action selector="onBookmarksButtonPressed:" destination="-1" eventType="touchUpInside" id="9Z1-eg-xth"/>
                             </connections>
                         </button>
                         <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="svD-yi-GrZ" userLabel="Menu" customClass="BottomTabBarButton" customModule="Organic_Maps" customModuleProvider="target">
@@ -71,6 +47,9 @@
                             </constraints>
                             <inset key="imageEdgeInsets" minX="0.0" minY="0.0" maxX="2.2250738585072014e-308" maxY="0.0"/>
                             <state key="normal" image="ic_menu"/>
+                            <userDefinedRuntimeAttributes>
+                                <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="mapPanelButton"/>
+                            </userDefinedRuntimeAttributes>
                             <connections>
                                 <action selector="onMenuButtonPressed:" destination="-1" eventType="touchUpInside" id="rzb-y4-nR1"/>
                             </connections>
@@ -96,16 +75,10 @@
                         <constraint firstItem="No0-ld-JX3" firstAttribute="centerY" secondItem="vum-s3-PHx" secondAttribute="centerY" id="8nL-zT-Y7b"/>
                         <constraint firstItem="No0-ld-JX3" firstAttribute="height" secondItem="vum-s3-PHx" secondAttribute="height" id="9eR-I7-7at"/>
                         <constraint firstItem="svD-yi-GrZ" firstAttribute="height" secondItem="vum-s3-PHx" secondAttribute="height" id="Fde-um-JL6"/>
-                        <constraint firstItem="dgG-ki-3tB" firstAttribute="centerX" secondItem="vum-s3-PHx" secondAttribute="centerX" multiplier="1.25" id="Jc7-nc-elY"/>
-                        <constraint firstItem="dgG-ki-3tB" firstAttribute="centerY" secondItem="vum-s3-PHx" secondAttribute="centerY" id="JjT-sc-hIY"/>
                         <constraint firstItem="svD-yi-GrZ" firstAttribute="centerX" secondItem="vum-s3-PHx" secondAttribute="centerX" multiplier="1.75" id="Q0b-gd-HwS"/>
-                        <constraint firstItem="dgG-ki-3tB" firstAttribute="height" secondItem="vum-s3-PHx" secondAttribute="height" id="Rs8-Hl-CAc"/>
                         <constraint firstItem="uDI-ZC-4wx" firstAttribute="centerX" secondItem="svD-yi-GrZ" secondAttribute="centerX" constant="8" id="XNb-Ba-Hn7"/>
-                        <constraint firstItem="dzf-7Z-N6a" firstAttribute="centerY" secondItem="vum-s3-PHx" secondAttribute="centerY" id="Zug-zY-KIX"/>
                         <constraint firstItem="svD-yi-GrZ" firstAttribute="centerY" secondItem="vum-s3-PHx" secondAttribute="centerY" id="sja-hO-YY3"/>
-                        <constraint firstItem="No0-ld-JX3" firstAttribute="centerX" secondItem="vum-s3-PHx" secondAttribute="centerX" multiplier="0.75" id="tDb-w1-ueQ"/>
-                        <constraint firstItem="dzf-7Z-N6a" firstAttribute="centerX" secondItem="vum-s3-PHx" secondAttribute="centerX" multiplier="0.25" id="u3G-gY-98J"/>
-                        <constraint firstItem="dzf-7Z-N6a" firstAttribute="height" secondItem="vum-s3-PHx" secondAttribute="height" id="yTg-8g-H1p"/>
+                        <constraint firstItem="No0-ld-JX3" firstAttribute="centerX" secondItem="vum-s3-PHx" secondAttribute="centerX" multiplier="0.25" id="tDb-w1-ueQ"/>
                         <constraint firstItem="uDI-ZC-4wx" firstAttribute="centerY" secondItem="svD-yi-GrZ" secondAttribute="centerY" constant="-8" id="yq3-ui-IaL"/>
                     </constraints>
                 </view>
@@ -129,8 +102,6 @@
     </objects>
     <resources>
         <image name="ic_menu" width="24" height="24"/>
-        <image name="ic_menu_bookmark_list" width="24" height="24"/>
         <image name="ic_menu_search" width="24" height="24"/>
-        <image name="logo" width="24" height="24"/>
     </resources>
 </document>

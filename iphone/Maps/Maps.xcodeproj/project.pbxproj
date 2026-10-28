@@ -104,6 +104,7 @@
 		C01F84D927D2414E9A530001 /* BookmarksListSortingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C01F84D927D2414E9A530002 /* BookmarksListSortingTests.swift */; };
 		C50A71010000000000000001 /* MWMSearchSpotlightTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = C50A71010000000000000002 /* MWMSearchSpotlightTests.mm */; };
 		CF816FBCBE80AAE1FFDC7E66 /* NoGpsControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC2AC3F235F3BA4C5537EEDC /* NoGpsControls.swift */; };
+		606D0D5C89006E2B70BC9470 /* MapControlsPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED1D4A8C14925D512AD764B8 /* MapControlsPanel.swift */; };
 		D48A5E31FA0C45748F11AD48 /* MWMRoutePointSelectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9C7250731AB471A81905386 /* MWMRoutePointSelectionTests.swift */; };
 		DB05F1CC1BF340DE002C974C /* drules_default.bin in Resources */ = {isa = PBXBuildFile; fileRef = DB05F1BC1BF340DE002C974C /* drules_default.bin */; };
 		DB05F1CD1BF340DE002C974C /* drules_outdoors.bin in Resources */ = {isa = PBXBuildFile; fileRef = DB05F1BD1BF340DE002C974C /* drules_outdoors.bin */; };
@@ -180,6 +181,7 @@
 		ED82C5212F90180300FA103D /* BottomTabBarInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED82C2E62F90180300FA103D /* BottomTabBarInteractor.swift */; };
 		ED82C5222F90180300FA103D /* BottomTabBarPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED82C2E72F90180300FA103D /* BottomTabBarPresenter.swift */; };
 		ED82C5232F90180300FA103D /* BottomTabBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED82C2E82F90180300FA103D /* BottomTabBarView.swift */; };
+		9FF04187239555C373D2C160 /* NoGpsSourceSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2473250498ADDAB6FDA1A6 /* NoGpsSourceSelector.swift */; };
 		ED82C5242F90180300FA103D /* BottomTabBarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED82C2E92F90180300FA103D /* BottomTabBarViewController.swift */; };
 		ED82C5252F90180300FA103D /* CarPlayMapViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED82C2EF2F90180300FA103D /* CarPlayMapViewController.swift */; };
 		ED82C5262F90180300FA103D /* ColorPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED82C2F12F90180300FA103D /* ColorPicker.swift */; };
@@ -985,6 +987,7 @@
 		DB05F1BD1BF340DE002C974C /* drules_outdoors.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; name = drules_outdoors.bin; path = ../../data/drules_outdoors.bin; sourceTree = "<group>"; };
 		DB05F1BE1BF340DE002C974C /* drules_vehicle.bin */ = {isa = PBXFileReference; lastKnownFileType = archive.macbinary; name = drules_vehicle.bin; path = ../../data/drules_vehicle.bin; sourceTree = "<group>"; };
 		EC2AC3F235F3BA4C5537EEDC /* NoGpsControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsControls.swift; sourceTree = "<group>"; };
+		ED1D4A8C14925D512AD764B8 /* MapControlsPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MapControlsPanel.swift; sourceTree = "<group>"; };
 		ED097E762BB80C320006ED01 /* OMapsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = OMapsTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED0B1C302BC2951F00FB8EDD /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED0C360E2FE3EC2C00CAF853 /* UserDescriptionHTMLDocumentBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDescriptionHTMLDocumentBuilder.swift; sourceTree = "<group>"; };
@@ -1070,6 +1073,7 @@
 		ED82C2E62F90180300FA103D /* BottomTabBarInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomTabBarInteractor.swift; sourceTree = "<group>"; };
 		ED82C2E72F90180300FA103D /* BottomTabBarPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomTabBarPresenter.swift; sourceTree = "<group>"; };
 		ED82C2E82F90180300FA103D /* BottomTabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomTabBarView.swift; sourceTree = "<group>"; };
+		1A2473250498ADDAB6FDA1A6 /* NoGpsSourceSelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsSourceSelector.swift; sourceTree = "<group>"; };
 		ED82C2E92F90180300FA103D /* BottomTabBarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomTabBarViewController.swift; sourceTree = "<group>"; };
 		ED82C2EA2F90180300FA103D /* BottomTabBarViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = BottomTabBarViewController.xib; sourceTree = "<group>"; };
 		ED82C2EC2F90180300FA103D /* MWMBottomMenuState.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MWMBottomMenuState.h; sourceTree = "<group>"; };
@@ -2502,6 +2506,7 @@
 				ED82C2E62F90180300FA103D /* BottomTabBarInteractor.swift */,
 				ED82C2E72F90180300FA103D /* BottomTabBarPresenter.swift */,
 				ED82C2E82F90180300FA103D /* BottomTabBarView.swift */,
+				1A2473250498ADDAB6FDA1A6 /* NoGpsSourceSelector.swift */,
 				ED82C2E92F90180300FA103D /* BottomTabBarViewController.swift */,
 				ED82C2EA2F90180300FA103D /* BottomTabBarViewController.xib */,
 			);
@@ -2834,6 +2839,7 @@
 			isa = PBXGroup;
 			children = (
 				EC2AC3F235F3BA4C5537EEDC /* NoGpsControls.swift */,
+				ED1D4A8C14925D512AD764B8 /* MapControlsPanel.swift */,
 				FB3EB65C13D5083F5AFA02C8 /* NoGpsSensorsViewController.swift */,
 				ED82C3912F90180300FA103D /* SideButtons */,
 				ED82C3952F90180300FA103D /* TrafficButton */,
@@ -4608,6 +4614,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CF816FBCBE80AAE1FFDC7E66 /* NoGpsControls.swift in Sources */,
+				606D0D5C89006E2B70BC9470 /* MapControlsPanel.swift in Sources */,
 				11E2F6F34E5F12298C3E2AC0 /* NoGpsSensorsViewController.swift in Sources */,
 				3AB2A51C1DF5ED4103358BAF /* MWMNoGps.mm in Sources */,
 				9B5728946390BF79AAED06E1 /* Esp32BleTransport.swift in Sources */,
@@ -4661,6 +4668,7 @@
 				ED82C5212F90180300FA103D /* BottomTabBarInteractor.swift in Sources */,
 				ED82C5222F90180300FA103D /* BottomTabBarPresenter.swift in Sources */,
 				ED82C5232F90180300FA103D /* BottomTabBarView.swift in Sources */,
+				9FF04187239555C373D2C160 /* NoGpsSourceSelector.swift in Sources */,
 				ED82C5242F90180300FA103D /* BottomTabBarViewController.swift in Sources */,
 				ED82C5252F90180300FA103D /* CarPlayMapViewController.swift in Sources */,
 				ED82C5262F90180300FA103D /* ColorPicker.swift in Sources */,

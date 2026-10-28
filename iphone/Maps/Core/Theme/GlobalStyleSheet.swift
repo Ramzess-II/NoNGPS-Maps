@@ -20,6 +20,8 @@ enum GlobalStyleSheet: String, CaseIterable {
   case menuBackground = "MenuBackground"
   case bottomTabBarButton = "BottomTabBarButton"
   case trackRecordingWidgetButton = "TrackRecordingWidgetButton"
+  case mapControlsPanel
+  case mapPanelButton
   case blackOpaqueBackground = "BlackOpaqueBackground"
   case blueBackground = "BlueBackground"
   case fadeBackground = "FadeBackground"
@@ -191,9 +193,21 @@ extension GlobalStyleSheet: IStyleSheet {
         s.onTintColor = .redPrimary
       }
     case .trackRecordingWidgetButton:
-      return .addFrom(Self.bottomTabBarButton) { s in
-        s.cornerRadius = .custom(23)
+      return .addFrom(Self.mapPanelButton) { s in
         s.coloring = .red
+      }
+    case .mapControlsPanel:
+      return .add { s in
+        s.shadowColor = .shadow
+        s.shadowOpacity = 1
+        s.shadowRadius = 6
+        s.shadowOffset = CGSize(width: 0, height: 2)
+      }
+    case .mapPanelButton:
+      return .add { s in
+        s.tintColor = .blackSecondaryText
+        s.coloring = MWMButtonColoring.black
+        s.onTintColor = .redPrimary
       }
     case .blackOpaqueBackground:
       return .add { s in

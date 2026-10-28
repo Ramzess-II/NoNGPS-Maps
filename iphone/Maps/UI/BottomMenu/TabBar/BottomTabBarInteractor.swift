@@ -1,8 +1,5 @@
 protocol BottomTabBarInteractorProtocol: AnyObject {
-  func configureTabBar()
   func openSearch()
-  func openHelp()
-  func openBookmarks()
   func openMenu()
 }
 
@@ -17,32 +14,12 @@ class BottomTabBarInteractor {
     self.mapViewController = mapViewController
     self.controlsManager = controlsManager
     searchManager = mapViewController.searchManager
-    subscribeOnAppLifecycleNotifications()
-  }
-
-  private func subscribeOnAppLifecycleNotifications() {
-    NotificationCenter.default.addObserver(self, selector: #selector(configureTabBar), name: UIApplication.willEnterForegroundNotification, object: nil)
   }
 }
 
 extension BottomTabBarInteractor: BottomTabBarInteractorProtocol {
-  @objc
-  func configureTabBar() {
-    let isCrowdfunding = Settings.canShowCrowdfundingPromo() && Settings.donateUrl() != nil
-    viewController?.updateAboutButtonIcon(isCrowdfunding: isCrowdfunding)
-  }
-
   func openSearch() {
     searchManager.isSearching ? searchManager.close() : searchManager.startSearching(isRouting: false)
-  }
-
-  func openHelp() {
-    let aboutViewController = AboutController(onDidAppearCompletionHandler: configureTabBar)
-    MapViewController.shared()?.navigationController?.pushViewController(aboutViewController, animated: true)
-  }
-
-  func openBookmarks() {
-    mapViewController?.bookmarksCoordinator.open()
   }
 
   func openMenu() {
