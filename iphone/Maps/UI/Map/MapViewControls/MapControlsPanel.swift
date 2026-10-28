@@ -13,7 +13,6 @@ final class MapControlsPanel: UIView {
     static let cornerRadius = CGFloat(14)
     static let bottomCornerRadius = CGFloat(16)
     static let dividerInset = CGFloat(10)
-    static let groupDividerHeight = CGFloat(2)
   }
 
   private let edge: Edge
@@ -49,27 +48,16 @@ final class MapControlsPanel: UIView {
   /// A hairline at the top of a button that follows another one in a panel.
   @objc @discardableResult
   static func addDivider(above view: UIView) -> UIView {
-    addDivider(above: view, style: .divider, inset: Constants.dividerInset, height: 1 / UIScreen.main.scale)
-  }
-
-  /// A full width line at the top of a button that starts another group of buttons in a panel.
-  @objc @discardableResult
-  static func addGroupDivider(above view: UIView) -> UIView {
-    addDivider(above: view, style: .solidDivider, inset: 0, height: Constants.groupDividerHeight)
-  }
-
-  private static func addDivider(above view: UIView, style: GlobalStyleSheet, inset: CGFloat,
-                                 height: CGFloat) -> UIView {
     let divider = UIView()
-    divider.setStyleAndApply(style)
+    divider.setStyleAndApply(.divider)
     divider.isUserInteractionEnabled = false
     divider.translatesAutoresizingMaskIntoConstraints = false
     view.addSubview(divider)
     NSLayoutConstraint.activate([
       divider.topAnchor.constraint(equalTo: view.topAnchor),
-      divider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: inset),
-      divider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -inset),
-      divider.heightAnchor.constraint(equalToConstant: height),
+      divider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.dividerInset),
+      divider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.dividerInset),
+      divider.heightAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
     ])
     return divider
   }
