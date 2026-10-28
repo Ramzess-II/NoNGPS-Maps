@@ -13,10 +13,19 @@ final class MapControlsPanel: UIView {
     static let cornerRadius = CGFloat(14)
     static let bottomCornerRadius = CGFloat(16)
     static let dividerInset = CGFloat(10)
+    // The edge keeps the panel apart from a dark map, where the shadow is not seen.
+    static let borderWidth = CGFloat(1)
+    static let borderColor = UIColor { $0.userInterfaceStyle == .dark
+      ? UIColor(white: 1, alpha: 0.18)
+      : UIColor(white: 0, alpha: 0.06)
+    }
+
+    /// A dark panel lighter than the dark map.
+    static let tintColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 1, alpha: 0.06) : .clear }
   }
 
   private let edge: Edge
-  private let material = UIVisualEffectView(effect: UIBlurEffect(style: .systemMaterial))
+  private let material = UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterial))
 
   @objc
   init(edge: Edge) {
@@ -30,7 +39,21 @@ final class MapControlsPanel: UIView {
     material.layer.cornerRadius = radius
     material.layer.cornerCurve = .continuous
     material.layer.maskedCorners = maskedCorners
+    material.layer.borderWidth = Constants.borderWidth
+    material.contentView.backgroundColor = Constants.tintColor
+    updateBorderColor()
     addSubview(material)
+  }
+
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+      updateBorderColor()
+    }
+  }
+
+  private func updateBorderColor() {
+    material.layer.borderColor = Constants.borderColor.resolvedColor(with: traitCollection).cgColor
   }
 
   @available(*, unavailable)
