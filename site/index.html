@@ -9,6 +9,10 @@
   <meta property="og:title" content="Non-GPS Organic Maps — навігація, яку не можна заглушити">
   <meta property="og:description" content="Офлайн-навігація без супутників: пристрій в OBD-II + форк Organic Maps.">
   <meta property="og:type" content="website">
+  <meta property="og:image" content="https://ramzess-ii.github.io/NoNGPS-Maps/assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="styles.css">
 </head>
@@ -195,7 +199,7 @@
       <div class="tech-body">
         <p><b>Dead reckoning.</b> Додаток бере останню відому точку, а далі щосекунди додає пройдену відстань (із швидкості/обертання коліс з OBD-II) у напрямку руху (курс з керма/датчиків). Так виникає нова позиція.</p>
         <p><b>Прив'язка до дороги.</b> Рух підганяється до графа доріг офлайн-карти (map matching), тому похибка не накопичується на прямих і перехрестях.</p>
-        <p><b>Дрейф.</b> Будь-яка інерційна навігація поступово накопичує похибку. Коли справжній GPS доступний, додаток може калібруватися. <span class="todo">[TODO: реальна точність — уточнити]</span></p>
+        <p><b>Дрейф.</b> Будь-яка інерційна навігація поступово накопичує похибку. Але пристрій бере швидкість, колеса і кермо безпосередньо з авто, тому точність максимально висока — значно вища, ніж за датчиками телефону. Коли справжній GPS доступний, додаток може калібруватися.</p>
       </div>
     </details>
   </section>
@@ -227,7 +231,7 @@
       <article class="card">
         <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M11 9 4 16l7 7M21 9l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
         <h3>Відкритий код</h3>
-        <p>Форк відкритого проєкту Organic Maps. <span class="todo">[TODO: посилання на репозиторій]</span></p>
+        <p>Форк відкритого проєкту Organic Maps. <a href="https://github.com/Ramzess-II/NoNGPS-Maps" target="_blank" rel="noopener">Код на GitHub ↗</a></p>
       </article>
       <article class="card">
         <svg viewBox="0 0 32 32" aria-hidden="true"><rect x="9" y="3" width="14" height="26" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M14 25h4" stroke="currentColor" stroke-width="2"/></svg>
@@ -237,16 +241,16 @@
     </div>
 
     <dl class="specs">
-      <div><dt>Сумісність авто</dt><dd class="todo">[TODO]</dd></div>
-      <div><dt>Тип Bluetooth</dt><dd class="todo">[TODO]</dd></div>
-      <div><dt>Точність</dt><dd class="todo">[TODO]</dd></div>
-      <div><dt>Ціна</dt><dd class="todo">[TODO]</dd></div>
-      <div><dt>Термін доставки</dt><dd class="todo">[TODO]</dd></div>
+      <div><dt>Сумісність авто</dt><dd>Будь-яке авто з OBD‑II, від 2010 року</dd></div>
+      <div><dt>Тип Bluetooth</dt><dd>BLE 5.0 (на базі ESP32)</dd></div>
+      <div><dt>Точність</dt><dd>Максимальна — дані з датчиків авто, а не телефону</dd></div>
+      <div><dt>Ціна</dt><dd>3000 грн</dd></div>
+      <div><dt>Термін доставки</dt><dd>Повідомимо після передзамовлення</dd></div>
     </dl>
   </section>
 
   <!-- PRE-ORDER -->
-  <section id="preorder" class="wrap preorder" aria-labelledby="pre-title" data-form-url="">
+  <section id="preorder" class="wrap preorder" aria-labelledby="pre-title" data-form-url="https://docs.google.com/forms/d/e/1FAIpQLSe8MEvbe5sRBpzkvULzpusyOymBXoLkv6OtlaodqKrVr6ijcA/viewform?embedded=true">
     <h2 id="pre-title" class="section-title">Передзамовлення</h2>
     <p class="lead">Залиште контакти — ми напишемо, коли пристрій буде готовий до відправлення.</p>
     <div class="form-box">
@@ -261,7 +265,7 @@
 <footer class="footer">
   <div class="wrap">
     <p>Non-GPS Organic Maps — незалежний форк <a href="https://github.com/organicmaps/organicmaps" target="_blank" rel="noopener">Organic Maps</a> (Apache 2.0). Не афілійований з командою Organic Maps.</p>
-    <p class="todo">[TODO: контактний e-mail · посилання на репозиторій]</p>
+    <p><a href="https://github.com/Ramzess-II/NoNGPS-Maps" target="_blank" rel="noopener">GitHub</a> · <a href="mailto:nongps.organic@gmail.com">nongps.organic@gmail.com</a></p>
   </div>
 </footer>
 

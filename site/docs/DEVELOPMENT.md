@@ -23,6 +23,7 @@ Everything needed to continue work on this site. Paths are relative to the proje
 | `styles.css` | Theme tokens in `:root`, layout, per-step scene rules under "scene elements". |
 | `script.js` | Maps scroll position in `#how` to steps 1–5; wires the progress buttons; loads the form iframe. |
 | `assets/favicon.svg` | Favicon. |
+| `assets/og.png`, `assets/app-icon.png` | Link-preview image (1200×630) and the Android app icon it is built from. |
 | `README.md` | Quick start / deploy. |
 
 ## How the explainer works
@@ -39,13 +40,11 @@ Everything needed to continue work on this site. Paths are relative to the proje
 - Put the Google Form embed URL (the `src` from Send → `<>`, ending `?embedded=true`) into `data-form-url` on `<section id="preorder">`.
 - `script.js` fills the iframe and the "open in new tab" link from it and hides the placeholder. Iframe height is `900px` in `.form-box iframe`; adjust to the form's length.
 
-## Open TODOs (search `TODO` in `index.html`)
-- Google Form embed URL
-- Specs: car compatibility, Bluetooth type, accuracy, price, delivery time
-- Repo link and contact e-mail (footer, open-source card)
-- `og:image` for link previews (not created yet)
-- Real accuracy claim in "Технічні деталі" (drift paragraph)
-- Visual QA: the SVG was written without being viewed in a browser; check positions of the device, data path, Bluetooth arcs and phone map at desktop and ~375px.
+## Open items
+- `og:image` URL in `index.html` is absolute and uses `https://ramzess-ii.github.io/NoNGPS-Maps/`; change it if a custom domain is attached.
+- Delivery time is "Повідомимо після передзамовлення" until it is fixed.
+- Labels inside the explainer SVG are very small at ~375px width.
+- Accuracy is described qualitatively (car sensors, not phone); no measured figure is published.
 
 ## Verification checklist
 - `python3 -m http.server 8000`, then open it at desktop and mobile widths.
