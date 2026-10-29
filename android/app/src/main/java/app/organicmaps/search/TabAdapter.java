@@ -49,6 +49,20 @@ class TabAdapter extends FragmentPagerAdapter
       {
         return SearchCategoriesFragment.class;
       }
+    },
+
+    BOOKMARKS {
+      @Override
+      public int getTitleRes()
+      {
+        return R.string.bookmarks;
+      }
+
+      @Override
+      public Class<? extends Fragment> getFragmentClass()
+      {
+        return SearchBookmarksFragment.class;
+      }
     };
 
     public abstract int getTitleRes();
@@ -72,7 +86,7 @@ class TabAdapter extends FragmentPagerAdapter
     {
       super.onPageSelected(position);
       if (mTabSelectedListener != null)
-        mTabSelectedListener.onTabSelected(Tab.values()[position]);
+        mTabSelectedListener.onTabSelected(mTabList.get(position));
     }
   }
 
@@ -107,6 +121,7 @@ class TabAdapter extends FragmentPagerAdapter
 
   private final FragmentManager mFragmentManager;
   private final ViewPager mPager;
+  private final List<Tab> mTabList = new ArrayList<>();
   private final List<Class<? extends Fragment>> mClasses = new ArrayList<>();
   private final SparseArray<Fragment> mFragments = new SparseArray<>();
   private OnTabSelectedListener mTabSelectedListener;
@@ -122,6 +137,7 @@ class TabAdapter extends FragmentPagerAdapter
     {
       if (tab == Tab.HISTORY && !historyEnabled)
         continue;
+      mTabList.add(tab);
       mClasses.add(tab.getFragmentClass());
     }
     final List<Fragment> tabFragments = new ArrayList<>();
@@ -145,8 +161,7 @@ class TabAdapter extends FragmentPagerAdapter
 
     mPager = pager;
     mPager.setAdapter(this);
-    if (mHistoryEnabled)
-      attachTo(tabs);
+    attachTo(tabs);
   }
 
   boolean isHistoryEnabled()
@@ -177,7 +192,7 @@ class TabAdapter extends FragmentPagerAdapter
 
   private void attachTo(TabLayout tabs)
   {
-    for (Tab tab : Tab.values())
+    for (Tab tab : mTabList)
     {
       TabLayout.Tab t = tabs.newTab();
       t.setText(tab.getTitleRes());
@@ -189,6 +204,9 @@ class TabAdapter extends FragmentPagerAdapter
     tabs.setOnTabSelectedListener(new OnTabSelectedListenerForViewPager(mPager));
     SharedPreferences preferences = MwmApplication.prefs(mPager.getContext());
     int lastSelectedTabPosition = preferences.getInt(Config.KEY_PREF_LAST_SEARCHED_TAB, 0);
+    // Turning history off shifts the positions down.
+    if (lastSelectedTabPosition >= mTabList.size())
+      lastSelectedTabPosition = 0;
     listener.onPageSelected(lastSelectedTabPosition);
   }
 

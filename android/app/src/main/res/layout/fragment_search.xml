@@ -33,6 +33,17 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:orientation="vertical">
+      <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/bookmarks_strip"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipToPadding="false"
+        android:paddingStart="@dimen/margin_half"
+        android:paddingEnd="@dimen/margin_half"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        tools:visibility="visible"
+        tools:listitem="@layout/item_search_bookmark_strip" />
       <com.google.android.material.tabs.TabLayout
         android:id="@+id/tabs"
         style="@style/MwmWidget.TabLayout"
