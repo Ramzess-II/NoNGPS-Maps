@@ -1243,7 +1243,6 @@
 "nogps_kilometers" = "%.1f km";
 "nogps_status_inertial" = "Inertial · ±%@";
 "nogps_sensors_title" = "Inertial navigation";
-"nogps_sensors_enable" = "Enabled";
 "nogps_elm_disconnected" = "no connection";
 "nogps_elm_no_adapter" = "ELM327 doesn't answer";
 "nogps_box_obd_disabled" = "ELM327 is off in the box";
@@ -1279,8 +1278,6 @@
 "nogps_switch_mark" = "Show the car on another road it may be on";
 "nogps_mark_no_road" = "There is no road here, set the mark on a road";
 "nogps_gps_lost_auto" = "GPS is lost or wrong, the manual mode is on";
-"nogps_disable_gps" = "Disable GPS";
-"nogps_disable_gps_hint" = "The app ignores GPS as if it were jammed, the rest of the location works.";
 
 /* Status of the position: the mark of the car stands and waits for the user */
 "nogps_status_road_lost" = "Road lost";
@@ -1356,8 +1353,21 @@
 
 /* A route is asked for while there is no GPS and no mark of the user */
 "nogps_no_position_for_route" = "No position: the route has nowhere to start from. Press the finger button and tap the road where you are";
-"nogps_shift_buttons" = "Calibration";
-"nogps_shift_buttons_hint" = "Shows the buttons moving the car along the road by 10 m. Moving it where the car really is corrects the speed of the car.";
+
+/* Card on the box screen, shown when no sensor box is connected */
+"nogps_box_buy_title" = "No box yet?";
+
+/* Card on the box screen under "No box yet?" */
+"nogps_box_buy_text" = "The NonGPS box with motion sensors keeps the car on the map where GPS is jammed or lost.";
+
+/* Button opening the page of the shop */
+"nogps_box_buy" = "Buy the box";
+
+/* Button on the box screen: look for the box over Bluetooth and use it */
+"nogps_box_connect" = "I have the box: connect";
+
+/* Button on the box screen: stop using the box */
+"nogps_box_forget" = "Forget the box";
 "nogps_box_stopped" = "No data from the sensor box, the car stands still on the map. Check the box or mark yourself";
 
 /* Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration */

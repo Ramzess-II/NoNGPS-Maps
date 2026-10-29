@@ -924,8 +924,6 @@
     <string name="nogps_mark_by_tap">Торкніться дороги, де зараз машина</string>
     <string name="nogps_gps_spoofed">GPS підмінено! Використовуємо вежі та Wi-Fi. Також можна вказати позицію вручну.</string>
     <string name="nogps_gps_restored">GPS знову в нормі</string>
-    <!-- The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored -->
-    <string name="nogps_source_box">Блок</string>
     <string name="nogps_status_network_spoofed">GPS підмінено · вежі ±%s</string>
     <string name="nogps_status_network_no_gps">Немає GPS · вежі ±%s</string>
     <string name="nogps_status_manual_just_now">Ручний режим · щойно</string>
@@ -935,7 +933,6 @@
     <string name="nogps_kilometers">%.1f км</string>
     <string name="nogps_status_inertial">Інерціально · ±%s</string>
     <string name="nogps_sensors_title">Інерціальна навігація</string>
-    <string name="nogps_sensors_enable">Увімкнено</string>
     <string name="nogps_sensors_hint">Закріпіть телефон нерухомо. Обнуляйте гіроскоп, коли машина стоїть.</string>
     <string name="nogps_sensors_adapter">Адаптер: %1$s</string>
     <string name="nogps_sensors_adapter_none">не вибрано</string>
@@ -986,8 +983,6 @@
     <string name="nogps_switch_mark">Показати машину на іншій можливій дорозі</string>
     <string name="nogps_mark_no_road">Тут немає дороги, поставте мітку на дорогу</string>
     <string name="nogps_gps_lost_auto">GPS зник або збився, увімкнено ручний режим</string>
-    <string name="nogps_disable_gps">Вимкнути GPS</string>
-    <string name="nogps_disable_gps_hint">Застосунок не бачить GPS, як під час глушіння, решта геолокації працює.</string>
     <!-- Status of the position: the mark of the car stands and waits for the user -->
     <string name="nogps_status_road_lost">Дорогу втрачено</string>
     <!-- Second line of the status "Road lost" -->
@@ -1049,8 +1044,16 @@
     <string name="nogps_road_lost">Дорогу втрачено, машину зупинено. Позначте себе на мапі</string>
     <!-- A route is asked for while there is no GPS and no mark of the user -->
     <string name="nogps_no_position_for_route">Немає позиції: маршрут будувати нізвідки. Натисніть кнопку з пальцем і торкніться дороги, де ви знаходитеся</string>
-    <string name="nogps_shift_buttons">Калібрування</string>
-    <string name="nogps_shift_buttons_hint">Показує кнопки зсуву машини вздовж дороги на 10 м. Зсуваючи її туди, де машина насправді, ви уточнюєте швидкість машини.</string>
+    <!-- Card on the box screen, shown when no sensor box is connected -->
+    <string name="nogps_box_buy_title">Ще немає блока?</string>
+    <!-- Card on the box screen under "No box yet?" -->
+    <string name="nogps_box_buy_text">Блок NonGPS із датчиками руху тримає машину на мапі там, де GPS глушать або він зник.</string>
+    <!-- Button opening the page of the shop -->
+    <string name="nogps_box_buy">Купити блок</string>
+    <!-- Button on the box screen: look for the box over Bluetooth and use it -->
+    <string name="nogps_box_connect">Маю блок: підключити</string>
+    <!-- Button on the box screen: stop using the box -->
+    <string name="nogps_box_forget">Забути блок</string>
     <string name="nogps_obd_stopped">Немає швидкості від OBD-адаптера, машина на мапі стоїть. Перевірте адаптер або позначте себе</string>
     <string name="nogps_box_stopped">Немає даних від блока датчиків, машина на мапі стоїть. Перевірте блок або позначте себе</string>
     <!-- Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration -->
