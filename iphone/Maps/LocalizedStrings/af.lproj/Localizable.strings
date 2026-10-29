@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satelliet";
 "button_layer_subway" = "Moltrein";
 "layers_title" = "Kaartstyle en -lae";
+"bookmarks_empty_list_title" = "Hierdie lys is leeg";
+"bookmarks_empty_list_message" = "Tik op ’n plek op die kaart en dan op die sterikoon om ’n boekmerk toe te voeg";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Verander die kleur van alle boekmerke";

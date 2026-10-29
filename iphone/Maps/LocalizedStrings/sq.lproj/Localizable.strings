@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satelit";
 "button_layer_subway" = "Metro";
 "layers_title" = "Stilet e Hartave dhe Shtresat";
+"bookmarks_empty_list_title" = "Kjo listë është boshe";
+"bookmarks_empty_list_message" = "Për të shtuar një faqeshënues, prekni një vend në hartë dhe më pas prekni ikonën e yllit";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Ndrysho ngjyrën e të gjithë faqeshënuesve";

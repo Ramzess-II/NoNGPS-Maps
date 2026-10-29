@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satelit";
 "button_layer_subway" = "Podzemna željeznica";
 "layers_title" = "Stilovi karta i slojevi";
+"bookmarks_empty_list_title" = "Ovaj je popis prazan";
+"bookmarks_empty_list_message" = "Za dodavanje zabilješke dodirni mjesto na karti, a zatim dodirni ikonu zvjezdice";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Promijeni boju svih oznaka";

@@ -688,6 +688,8 @@
 "button_layer_satellite" = "ماهواره";
 "button_layer_subway" = "مترو";
 "layers_title" = "سبک ها و لایه های نقشه";
+"bookmarks_empty_list_title" = "این فهرست خالی است";
+"bookmarks_empty_list_message" = "برای افزودن یک نشانک، روی یک مکان روی نقشه ضربه بزنید و سپس روی نماد ستاره ضربه بزنید";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "تغییر رنگ همه نشانک‌ها";

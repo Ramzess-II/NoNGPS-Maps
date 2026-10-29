@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Спадарожнік";
 "button_layer_subway" = "Метро";
 "layers_title" = "Стылі і слаі мапы";
+"bookmarks_empty_list_title" = "Гэты спіс пусты";
+"bookmarks_empty_list_message" = "Каб дадаць закладку, дакраніцеся да месца на карце, а затым націсніце значок зорачкі";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Змяніць колер усіх закладак";

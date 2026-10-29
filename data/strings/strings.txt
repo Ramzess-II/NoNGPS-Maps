@@ -25950,7 +25950,7 @@ zh-Hans = 地图样式和图层
 zh-Hant = 地圖樣式和圖層
 
 [bookmarks_empty_list_title]
-tags = android-app
+tags = android-app,apple-maps
 en = This list is empty
 af = Hierdie lys is leeg
 ar = هذه اللائحة فارغة
@@ -26006,7 +26006,7 @@ zh-Hans = 该列表为空
 zh-Hant = 該列表為空
 
 [bookmarks_empty_list_message]
-tags = android-app
+tags = android-app,apple-maps
 en = To add a bookmark, tap a place on the map and then tap the star icon
 af = Tik op ’n plek op die kaart en dan op die sterikoon om ’n boekmerk toe te voeg
 ar = لإضافة إشارة مرجعية ، اضغط على مكان على الخريطة ثم انقر على رمز النجمة
@@ -45741,7 +45741,7 @@ en = GPS
 
 [nogps_source_box]
 comment = The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored
-tags = apple-maps
+tags = android-app,apple-maps
 en = Box
 ru = Блок
 uk = Блок

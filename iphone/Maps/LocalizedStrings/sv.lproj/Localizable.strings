@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satellit";
 "button_layer_subway" = "Tunnelbana";
 "layers_title" = "Kartstilar och lager";
+"bookmarks_empty_list_title" = "Listan är tom";
+"bookmarks_empty_list_message" = "För att lägga till bokmärken, tryck på kartan och sedan på stjärnikonen";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Ändra färg på alla bokmärken";

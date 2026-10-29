@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satelliit";
 "button_layer_subway" = "Metroo";
 "layers_title" = "Kaardi stiilid ja kihid";
+"bookmarks_empty_list_title" = "See loend on tühi";
+"bookmarks_empty_list_message" = "Järjehoidja lisamiseks puuduta kohta kaardil ja seejärel puuduta tähekese ikooni";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Muuda kõigi järjehoidjate värvi";

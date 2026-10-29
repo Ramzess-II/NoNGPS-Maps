@@ -34,6 +34,8 @@ import app.organicmaps.downloader.CountrySuggestFragment;
 import app.organicmaps.maplayer.MapButtonsViewModel;
 import app.organicmaps.routing.RoutePointLabels;
 import app.organicmaps.sdk.Framework;
+import app.organicmaps.sdk.bookmarks.data.BookmarkInfo;
+import app.organicmaps.sdk.bookmarks.data.BookmarkManager;
 import app.organicmaps.sdk.bookmarks.data.MapObject;
 import app.organicmaps.sdk.downloader.MapManager;
 import app.organicmaps.sdk.location.LocationListener;
@@ -57,7 +59,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class SearchFragment extends Fragment implements SearchListener, CategoriesAdapter.CategoriesUiListener
+public class SearchFragment extends Fragment
+    implements SearchListener, CategoriesAdapter.CategoriesUiListener, SearchBookmarksAdapter.OnBookmarkClickListener
 {
   @NonNull
   private final List<HiddenCommand> mHiddenCommands = new ArrayList<>();
@@ -103,6 +106,8 @@ public class SearchFragment extends Fragment implements SearchListener, Categori
   private TabAdapter mTabAdapter;
   private ViewPager mPager;
   private TabLayout mTabLayout;
+  private RecyclerView mBookmarksStrip;
+  private SearchBookmarksStripAdapter mBookmarksStripAdapter;
   @Nullable
   private WindowInsetsCompat mLastKnownInsets = null;
 
@@ -144,6 +149,7 @@ public class SearchFragment extends Fragment implements SearchListener, Categori
         return;
       }
 
+      refreshBookmarks();
       final SearchRequest request = mSearchViewModel.getPendingRequest();
       final String query = request != null ? request.query : null;
       if (query != null && !query.isEmpty())
@@ -434,6 +440,13 @@ public class SearchFragment extends Fragment implements SearchListener, Categori
     mToolbarController = new ToolbarController(view);
     mTabLayout = root.findViewById(R.id.tabs);
     mTabFrame = root.findViewById(R.id.tab_frame);
+    mBookmarksStrip = root.findViewById(R.id.bookmarks_strip);
+    mBookmarksStrip.setLayoutManager(new LinearLayoutManager(view.getContext(), RecyclerView.HORIZONTAL, false));
+    mBookmarksStripAdapter = new SearchBookmarksStripAdapter(this);
+    mBookmarksStrip.setAdapter(mBookmarksStripAdapter);
+    // BottomSheetBehavior drags the sheet with the first nested-scrolling child, which must stay the tab's list.
+    ViewCompat.setNestedScrollingEnabled(mBookmarksStrip, false);
+    refreshBookmarks();
     mPickerActions = root.findViewById(R.id.picker_actions);
     mSearchIcon = root.findViewById(R.id.search_icon);
     mSearchIconWidth = mSearchIcon.getLayoutParams().width;
@@ -535,8 +548,6 @@ public class SearchFragment extends Fragment implements SearchListener, Categori
       mNestedScrollingSyncedHasQuery = null;
       mNestedScrollingSyncedActiveTab = null;
     }
-    UiUtils.showIf(historyEnabled, mTabLayout);
-
     final ViewPager pager = mPager;
     final TabAdapter tabAdapter = new TabAdapter(getChildFragmentManager(), pager, mTabLayout, historyEnabled);
     mTabAdapter = tabAdapter;
@@ -675,23 +686,57 @@ public class SearchFragment extends Fragment implements SearchListener, Categori
     SearchEngine.INSTANCE.setQuery(query);
     mToolbarController.deactivate();
 
-    // Commit the pending route pick directly instead of opening a place page that asks the user to
-    // confirm the choice they just made. An append pick also moves the current finish into the stops.
-    final RoutingController controller = RoutingController.get();
-    if (controller.isWaitingPoiPick())
+    if (RoutingController.get().isWaitingPoiPick())
     {
       // Pass an unnamed result through with an empty title: the route point then shows the feature type
       // once, instead of repeating it as its own subtitle.
       final String subtitle = result.description == null ? "" : result.description.localizedFeatureType;
-      controller.onPoiSelected(
-          MapObject.createMapObject(MapObject.SEARCH, result.name, subtitle, result.lat, result.lon));
-      // Only a route build refits the viewport, and it needs both endpoints.
-      if (controller.getStartPoint() == null || controller.getEndPoint() == null)
-        Framework.nativeSetViewportCenter(result.lat, result.lon, PICKED_POINT_ZOOM);
+      pickRoutePoint(result.name, subtitle, result.lat, result.lon);
       return;
     }
 
     SearchEngine.INSTANCE.selectResult(resultIndex);
+  }
+
+  // Commit the pending route pick directly instead of opening a place page that asks the user to
+  // confirm the choice they just made. An append pick also moves the current finish into the stops.
+  private void pickRoutePoint(@NonNull String title, @NonNull String subtitle, double lat, double lon)
+  {
+    final RoutingController controller = RoutingController.get();
+    controller.onPoiSelected(MapObject.createMapObject(MapObject.SEARCH, title, subtitle, lat, lon));
+    // Only a route build refits the viewport, and it needs both endpoints.
+    if (controller.getStartPoint() == null || controller.getEndPoint() == null)
+      Framework.nativeSetViewportCenter(lat, lon, PICKED_POINT_ZOOM);
+  }
+
+  @Override
+  public void onBookmarkClick(long bookmarkId)
+  {
+    final BookmarkInfo info = BookmarkManager.INSTANCE.getBookmarkInfo(bookmarkId);
+    if (info == null)
+      return;
+    mToolbarController.deactivate();
+    if (RoutingController.get().isWaitingPoiPick())
+    {
+      pickRoutePoint(info.getName(), "", info.getLat(), info.getLon());
+      return;
+    }
+    // Search closes first, so the place page that opens next is not covered by the sheet.
+    mSearchFragmentListener.closeSearch();
+    BookmarkManager.INSTANCE.showBookmarkOnMap(bookmarkId);
+  }
+
+  // The strip and the Bookmarks tab show what was saved since the sheet was last open.
+  private void refreshBookmarks()
+  {
+    final long[] ids = SearchBookmarks.firstListIds();
+    mBookmarksStripAdapter.setIds(ids);
+    UiUtils.showIf(ids.length > 0, mBookmarksStrip);
+    for (Fragment fragment : getChildFragmentManager().getFragments())
+    {
+      if (fragment instanceof SearchBookmarksFragment)
+        ((SearchBookmarksFragment) fragment).reload();
+    }
   }
 
   private void onSearchEnd()

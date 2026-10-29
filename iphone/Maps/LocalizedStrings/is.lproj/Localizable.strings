@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Gervitungl";
 "button_layer_subway" = "Neðanjarðarlest";
 "layers_title" = "Stílar landakorta og þekjur";
+"bookmarks_empty_list_title" = "Þessi listi er tómur";
+"bookmarks_empty_list_message" = "Til að bæta við bókamerki, skaltu ýta á stað á kortinu og ýta síðan á stjörnutáknið";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Breyta lit allra bókamerkja";

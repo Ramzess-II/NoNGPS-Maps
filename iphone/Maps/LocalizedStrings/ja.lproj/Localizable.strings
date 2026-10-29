@@ -688,6 +688,8 @@
 "button_layer_satellite" = "衛星";
 "button_layer_subway" = "地下鉄";
 "layers_title" = "マップのスタイルとレイヤー";
+"bookmarks_empty_list_title" = "このリストは空です";
+"bookmarks_empty_list_message" = "ブックマークを追加するには、地図上の場所をタップし、星のアイコンをタップしてください。";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "すべてのブックマークの色を変更";

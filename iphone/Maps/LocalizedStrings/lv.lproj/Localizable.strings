@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satelīts";
 "button_layer_subway" = "Metro";
 "layers_title" = "Kartes stili un slāņi";
+"bookmarks_empty_list_title" = "Saraksts ir tukšs";
+"bookmarks_empty_list_message" = "Lai pievienotu grāmatzīmi, sākumā spiediet uz vietas kartē, bet tad uz zvaigznītes ikonas";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Mainīt visu grāmatzīmju krāsu";

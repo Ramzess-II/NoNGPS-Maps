@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Peyk";
 "button_layer_subway" = "Metro";
 "layers_title" = "Xəritə Üslubları və Qatları";
+"bookmarks_empty_list_title" = "Bu siyahı boşdur";
+"bookmarks_empty_list_message" = "Əlfəcin əlavə etmək üçün xəritədə yerə və sonra ulduz işarəsinə toxunun";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Bütün əlfəcinlərin rəngini dəyişdir";

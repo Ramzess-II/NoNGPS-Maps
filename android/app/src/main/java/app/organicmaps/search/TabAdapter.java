@@ -49,6 +49,20 @@ class TabAdapter extends FragmentPagerAdapter
       {
         return SearchCategoriesFragment.class;
       }
+    },
+
+    BOOKMARKS {
+      @Override
+      public int getTitleRes()
+      {
+        return R.string.bookmarks;
+      }
+
+      @Override
+      public Class<? extends Fragment> getFragmentClass()
+      {
+        return SearchBookmarksFragment.class;
+      }
     };
 
     public abstract int getTitleRes();
@@ -72,11 +86,11 @@ class TabAdapter extends FragmentPagerAdapter
     {
       super.onPageSelected(position);
       if (mTabSelectedListener != null)
-        mTabSelectedListener.onTabSelected(Tab.values()[position]);
+        mTabSelectedListener.onTabSelected(mTabList.get(position));
     }
   }
 
-  private static class OnTabSelectedListenerForViewPager extends TabLayout.ViewPagerOnTabSelectedListener
+  private class OnTabSelectedListenerForViewPager extends TabLayout.ViewPagerOnTabSelectedListener
   {
     @NonNull
     private final Context mContext;
@@ -91,7 +105,8 @@ class TabAdapter extends FragmentPagerAdapter
     public void onTabSelected(TabLayout.Tab tab)
     {
       SharedPreferences.Editor editor = MwmApplication.prefs(mContext).edit();
-      editor.putInt(Config.KEY_PREF_LAST_SEARCHED_TAB, tab.getPosition());
+      // The ordinal, not the position: positions shift when history is turned off.
+      editor.putInt(Config.KEY_PREF_LAST_SEARCHED_TAB, mTabList.get(tab.getPosition()).ordinal());
       editor.apply();
       super.onTabSelected(tab);
       Graphics.tint(mContext, tab.getIcon(), androidx.appcompat.R.attr.colorAccent);
@@ -107,6 +122,7 @@ class TabAdapter extends FragmentPagerAdapter
 
   private final FragmentManager mFragmentManager;
   private final ViewPager mPager;
+  private final List<Tab> mTabList = new ArrayList<>();
   private final List<Class<? extends Fragment>> mClasses = new ArrayList<>();
   private final SparseArray<Fragment> mFragments = new SparseArray<>();
   private OnTabSelectedListener mTabSelectedListener;
@@ -122,6 +138,7 @@ class TabAdapter extends FragmentPagerAdapter
     {
       if (tab == Tab.HISTORY && !historyEnabled)
         continue;
+      mTabList.add(tab);
       mClasses.add(tab.getFragmentClass());
     }
     final List<Fragment> tabFragments = new ArrayList<>();
@@ -145,8 +162,7 @@ class TabAdapter extends FragmentPagerAdapter
 
     mPager = pager;
     mPager.setAdapter(this);
-    if (mHistoryEnabled)
-      attachTo(tabs);
+    attachTo(tabs);
   }
 
   boolean isHistoryEnabled()
@@ -177,7 +193,7 @@ class TabAdapter extends FragmentPagerAdapter
 
   private void attachTo(TabLayout tabs)
   {
-    for (Tab tab : Tab.values())
+    for (Tab tab : mTabList)
     {
       TabLayout.Tab t = tabs.newTab();
       t.setText(tab.getTitleRes());
@@ -188,7 +204,13 @@ class TabAdapter extends FragmentPagerAdapter
     mPager.addOnPageChangeListener(listener);
     tabs.setOnTabSelectedListener(new OnTabSelectedListenerForViewPager(mPager));
     SharedPreferences preferences = MwmApplication.prefs(mPager.getContext());
-    int lastSelectedTabPosition = preferences.getInt(Config.KEY_PREF_LAST_SEARCHED_TAB, 0);
+    final int lastSelectedTab = preferences.getInt(Config.KEY_PREF_LAST_SEARCHED_TAB, 0);
+    int lastSelectedTabPosition = 0;
+    for (int i = 0; i < mTabList.size(); i++)
+    {
+      if (mTabList.get(i).ordinal() == lastSelectedTab)
+        lastSelectedTabPosition = i;
+    }
     listener.onPageSelected(lastSelectedTabPosition);
   }
 

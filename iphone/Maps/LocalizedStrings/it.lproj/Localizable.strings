@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satellite";
 "button_layer_subway" = "Metropolitana";
 "layers_title" = "Stili e livelli della mappa";
+"bookmarks_empty_list_title" = "Questa lista è vuota";
+"bookmarks_empty_list_message" = "Per aggiungere un preferito, tocca un punto sulla mappa e poi tocca l'icona a forma di stella";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Cambia il colore di tutti i preferiti";

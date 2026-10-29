@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Супутник";
 "button_layer_subway" = "Метрополітен";
 "layers_title" = "Стилі та шари мапи";
+"bookmarks_empty_list_title" = "Список порожній";
+"bookmarks_empty_list_message" = "Щоб додати нову мітку, натисніть на значок зірочки в картці об’єкта";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Змінити колір усіх міток";

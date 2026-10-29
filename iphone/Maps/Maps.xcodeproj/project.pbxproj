@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5EA9BB022F9F000000FA103D /* SearchBookmark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EA9BB012F9F000000FA103D /* SearchBookmark.swift */; };
+		5EA9BC022F9F000000FA103D /* SearchBookmarkCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EA9BC012F9F000000FA103D /* SearchBookmarkCell.swift */; };
+		5EA9BD022F9F000000FA103D /* SearchBookmarksViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EA9BD012F9F000000FA103D /* SearchBookmarksViewController.swift */; };
+		5EA9BE022F9F000000FA103D /* SearchBookmarksStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EA9BE012F9F000000FA103D /* SearchBookmarksStripView.swift */; };
 		00A2630ADA97EB2C42945272 /* NavigationDashboardViewControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE938673CC3D8E7866C20B8 /* NavigationDashboardViewControllerTests.swift */; };
 		0F13484A0000000000000002 /* UITableViewCell+SeparatorInset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F13484A0000000000000001 /* UITableViewCell+SeparatorInset.swift */; };
 		11E2F6F34E5F12298C3E2AC0 /* NoGpsSensorsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB3EB65C13D5083F5AFA02C8 /* NoGpsSensorsViewController.swift */; };
@@ -784,6 +788,10 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		5EA9BB012F9F000000FA103D /* SearchBookmark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBookmark.swift; sourceTree = "<group>"; };
+		5EA9BC012F9F000000FA103D /* SearchBookmarkCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBookmarkCell.swift; sourceTree = "<group>"; };
+		5EA9BD012F9F000000FA103D /* SearchBookmarksViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBookmarksViewController.swift; sourceTree = "<group>"; };
+		5EA9BE012F9F000000FA103D /* SearchBookmarksStripView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchBookmarksStripView.swift; sourceTree = "<group>"; };
 		0E4F1ADEAB4383C259A9DCEB /* Esp32BleTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Esp32BleTransport.swift; sourceTree = "<group>"; };
 		0F13484A0000000000000001 /* UITableViewCell+SeparatorInset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UITableViewCell+SeparatorInset.swift"; sourceTree = "<group>"; };
 		165953732CB1D83700CFED7C /* fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = fonts; path = ../../data/fonts; sourceTree = "<group>"; };
@@ -1951,6 +1959,16 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		5EA9BF012F9F000000FA103D /* BookmarksTab */ = {
+			isa = PBXGroup;
+			children = (
+				5EA9BB012F9F000000FA103D /* SearchBookmark.swift */,
+				5EA9BC012F9F000000FA103D /* SearchBookmarkCell.swift */,
+				5EA9BD012F9F000000FA103D /* SearchBookmarksViewController.swift */,
+			);
+			path = BookmarksTab;
+			sourceTree = "<group>";
+		};
 		19C28FACFE9D520D11CA2CBB /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -3476,6 +3494,7 @@
 				ED82C4B72F90180300FA103D /* SearchOnMapPresenter.swift */,
 				ED82C4B82F90180300FA103D /* SearchOnMapViewController.swift */,
 				AB1327742F90180300FA103D /* RoutePointSearchSelection.swift */,
+				5EA9BE012F9F000000FA103D /* SearchBookmarksStripView.swift */,
 			);
 			path = SearchOnMap;
 			sourceTree = "<group>";
@@ -3518,6 +3537,7 @@
 			isa = PBXGroup;
 			children = (
 				ED82C4C52F90180300FA103D /* CategoriesTab */,
+				5EA9BF012F9F000000FA103D /* BookmarksTab */,
 				ED82C4C82F90180300FA103D /* HistoryTab */,
 				ED82C4C92F90180300FA103D /* SearchTabViewController.swift */,
 			);
@@ -5024,6 +5044,10 @@
 				EDAA00012F91000000FA103D /* SearchCategoryIconRenderer.swift in Sources */,
 				ED82C6072F90180300FA103D /* SearchHistoryCell.swift in Sources */,
 				ED82C6082F90180300FA103D /* SearchHistoryViewController.swift in Sources */,
+				5EA9BB022F9F000000FA103D /* SearchBookmark.swift in Sources */,
+				5EA9BC022F9F000000FA103D /* SearchBookmarkCell.swift in Sources */,
+				5EA9BD022F9F000000FA103D /* SearchBookmarksViewController.swift in Sources */,
+				5EA9BE022F9F000000FA103D /* SearchBookmarksStripView.swift in Sources */,
 				ED82C6092F90180300FA103D /* SearchTabViewController.swift in Sources */,
 				ED82C60A2F90180300FA103D /* MWMSearchNoResults.m in Sources */,
 				ED82C7EF2F90186900FA103D /* UIColor+Colors.m in Sources */,

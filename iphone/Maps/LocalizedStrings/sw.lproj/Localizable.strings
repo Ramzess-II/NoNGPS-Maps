@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Setilaiti";
 "button_layer_subway" = "Njia ya chini";
 "layers_title" = "Mitindo ya Ramani na Tabaka";
+"bookmarks_empty_list_title" = "Orodha hii ni tupu";
+"bookmarks_empty_list_message" = "Ili kuongeza ramani, gusa mahali kwenye ramani na kisha gusa ikoni ya nyota";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Badilisha rangi ya alamisho zote";

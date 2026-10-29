@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satelliitti";
 "button_layer_subway" = "Metro";
 "layers_title" = "Karttatyylit ja tasot";
+"bookmarks_empty_list_title" = "Luettelo on tyhjä";
+"bookmarks_empty_list_message" = "Lisätäksesi kirjanmerkin, paina kartasta ja sitten paina tähden kuvaa";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Vaihda kaikkien kirjanmerkkien väri";

@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Lloeren";
 "button_layer_subway" = "Trên tanddaearol";
 "layers_title" = "Arddulliau a haenau map";
+"bookmarks_empty_list_title" = "Mae'r rhestr hon yn wag";
+"bookmarks_empty_list_message" = "I ychwanegu nod tudalen, tapiwch le ar y map ac yna tapiwch yr eicon seren";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Newid lliw pob nod tudalen";

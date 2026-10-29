@@ -1,6 +1,6 @@
-@objc
 protocol SearchTabViewControllerDelegate: UIScrollViewDelegate {
   func searchTabController(_ viewController: SearchTabViewController, didSearch: SearchQuery)
+  func searchTabController(_ viewController: SearchTabViewController, didSelect bookmark: SearchBookmark)
 }
 
 @objc
@@ -8,10 +8,11 @@ final class SearchTabViewController: TabViewController {
   private enum Tab: Int {
     case history
     case categories
+    case bookmarks
   }
 
   private static let selectedIndexKey = "SearchTabViewController_selectedIndexKey"
-  @objc weak var delegate: SearchTabViewControllerDelegate?
+  weak var delegate: SearchTabViewControllerDelegate?
 
   private var frameworkHelper = MWMSearchFrameworkHelper.self
   private var tabs: [Tab] = []
@@ -26,12 +27,11 @@ final class SearchTabViewController: TabViewController {
   override func viewDidLoad() {
     super.viewDidLoad()
 
-    tabs = Settings.searchHistoryEnabled() ? [.history, .categories] : [.categories]
+    tabs = Settings.searchHistoryEnabled() ? [.history, .categories, .bookmarks] : [.categories, .bookmarks]
     viewControllers = tabs.map { viewController(for: $0) }
-    tabView.showsTabBar = tabs.count > 1
 
     let selectedTab: Tab
-    if !tabs.contains(.history) || frameworkHelper.isSearchHistoryEmpty() {
+    if !tabs.contains(activeTab) || (activeTab == .history && frameworkHelper.isSearchHistoryEmpty()) {
       selectedTab = .categories
     } else {
       selectedTab = activeTab
@@ -51,6 +51,11 @@ final class SearchTabViewController: TabViewController {
     (viewControllers[historyIndex] as? SearchHistoryViewController)?.reload()
   }
 
+  func reloadBookmarks() {
+    guard let bookmarksIndex = tabs.firstIndex(of: .bookmarks) else { return }
+    (viewControllers[bookmarksIndex] as? SearchBookmarksViewController)?.reload()
+  }
+
   private func viewController(for tab: Tab) -> UIViewController {
     switch tab {
     case .history:
@@ -63,6 +68,10 @@ final class SearchTabViewController: TabViewController {
                                                       delegate: self)
       categories.title = L("categories")
       return categories
+    case .bookmarks:
+      let bookmarks = SearchBookmarksViewController(delegate: self)
+      bookmarks.title = L("bookmarks")
+      return bookmarks
     }
   }
 }
@@ -99,5 +108,12 @@ extension SearchTabViewController: SearchHistoryViewControllerDelegate {
                                    didSelect query: String) {
     let query = SearchQuery(query.trimmingCharacters(in: .whitespacesAndNewlines) + " ", source: .history)
     delegate?.searchTabController(self, didSearch: query)
+  }
+}
+
+extension SearchTabViewController: SearchBookmarksViewControllerDelegate {
+  func searchBookmarksViewController(_: SearchBookmarksViewController,
+                                     didSelect bookmark: SearchBookmark) {
+    delegate?.searchTabController(self, didSelect: bookmark)
   }
 }

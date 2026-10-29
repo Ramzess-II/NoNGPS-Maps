@@ -7,6 +7,7 @@ final class SearchOnMapTests: XCTestCase {
   private var view: SearchOnMapViewMock!
   private var searchManager: SearchManagerMock.Type!
   private var routePointSelector: RoutePointSelectorMock!
+  private var shownBookmarkIds: [MWMMarkID] = []
   private var currentState: SearchOnMapState = .searching
 
   override func setUp() {
@@ -14,12 +15,15 @@ final class SearchOnMapTests: XCTestCase {
     searchManager = SearchManagerMock.self
     presenter = SearchOnMapPresenter(shouldHideForRouting: false,
                                      didChangeState: { [weak self] in self?.currentState = $0 })
-    interactor = SearchOnMapInteractor(presenter: presenter, searchManager: searchManager)
+    interactor = SearchOnMapInteractor(presenter: presenter,
+                                       searchManager: searchManager,
+                                       showBookmark: { [weak self] in self?.shownBookmarkIds.append($0) })
     view = SearchOnMapViewMock()
     presenter.view = view
   }
 
   override func tearDown() {
+    shownBookmarkIds = []
     presenter = nil
     interactor = nil
     view = nil
@@ -559,6 +563,51 @@ final class SearchOnMapTests: XCTestCase {
     XCTAssertEqual(currentState, .closed)
   }
 
+  func test_GivenSearchIsOpen_WhenBookmarkIsSelected_ThenClosesSearchAndShowsBookmark() {
+    interactor.handle(.openSearch)
+
+    interactor.handle(.didSelectBookmark(.stub(id: 7)))
+
+    XCTAssertEqual(shownBookmarkIds, [7])
+    XCTAssertEqual(view.closeCallCount, 1)
+    XCTAssertEqual(currentState, .closed)
+  }
+
+  func test_GivenRoutePointSearch_WhenBookmarkIsSelected_ThenSelectsRoutePointAndCloses() {
+    configureRoutePointSearch()
+    interactor.handle(.openSearch)
+    let bookmark = SearchBookmark.stub(id: 7)
+
+    interactor.handle(.didSelectBookmark(bookmark))
+
+    XCTAssertEqual(routePointSelector.selectedBookmark, bookmark)
+    XCTAssertEqual(view.closeCallCount, 1)
+    assertRoutePointSearchClosed()
+  }
+
+  func test_GivenRoutePointSearch_WhenBookmarkIsRejected_ThenKeepsSearchOpen() {
+    configureRoutePointSearch()
+    routePointSelector.shouldSelect = false
+    interactor.handle(.openSearch)
+
+    interactor.handle(.didSelectBookmark(.stub(id: 7)))
+
+    XCTAssertEqual(view.closeCallCount, 0)
+    XCTAssertEqual(currentState, .searching)
+  }
+
+  func test_GivenBookmarks_WhenSorted_ThenNearestFirstAndByNameWithoutDistance() {
+    let far = SearchBookmark.stub(id: 1, name: "a", distance: 500)
+    let near = SearchBookmark.stub(id: 2, name: "b", distance: 100)
+    let sameDistance = SearchBookmark.stub(id: 3, name: "A2", distance: 500)
+    XCTAssertEqual(SearchBookmarks.sorted([far, sameDistance, near]).map(\.id), [2, 1, 3])
+
+    let noDistance = ["Item 10", "item 2", "Item 1"].enumerated().map {
+      SearchBookmark.stub(id: MWMMarkID($0.offset), name: $0.element, distance: nil)
+    }
+    XCTAssertEqual(SearchBookmarks.sorted(noDistance).map(\.name), ["Item 1", "item 2", "Item 10"])
+  }
+
   private func configureRoutePointSearch() {
     routePointSelector = RoutePointSelectorMock()
     presenter = SearchOnMapPresenter(shouldHideForRouting: false,
@@ -647,6 +696,7 @@ private final class RoutePointSelectorMock: RoutePointSelecting {
   var selectCurrentLocationCallCount = 0
   var selectedSearchResult: SearchResult?
   var selectedMapPoint: CGPoint?
+  var selectedBookmark: SearchBookmark?
   var cancelCallCount = 0
 
   func selectCurrentLocation() -> Bool {
@@ -661,6 +711,11 @@ private final class RoutePointSelectorMock: RoutePointSelecting {
 
   func select(mapPoint: CGPoint) -> Bool {
     selectedMapPoint = mapPoint
+    return completeSelection()
+  }
+
+  func select(bookmark: SearchBookmark) -> Bool {
+    selectedBookmark = bookmark
     return completeSelection()
   }
 
@@ -684,5 +739,17 @@ private extension SearchResult {
       SearchResult(),
       SearchResult(),
     ])
+  }
+}
+
+private extension SearchBookmark {
+  static func stub(id: MWMMarkID, name: String = "Home", distance: CLLocationDistance? = nil) -> SearchBookmark {
+    SearchBookmark(id: id,
+                   name: name,
+                   listName: "My places",
+                   color: .red,
+                   iconName: "ic_bm_none",
+                   mercatorPoint: CGPoint(x: 10, y: 20),
+                   distance: distance)
   }
 }
