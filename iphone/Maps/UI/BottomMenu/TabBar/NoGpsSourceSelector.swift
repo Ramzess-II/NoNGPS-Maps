@@ -100,13 +100,17 @@ final class NoGpsSourceSelector: UIView {
   private func applyGps(_ status: NoGpsStatus) {
     gps.accessibilityValue = Self.gpsText(status)
     let antenna = UIImage(systemName: Constants.gpsSymbol)
-    if status.gpsSpoofed {
+    let slashed = UIImage(systemName: Constants.gpsSymbol + ".slash") ?? antenna
+    // The color tells the GPS signal, whichever source is chosen.
+    if LocationManager.isLocationProhibited() {
+      gps.show(slashed, color: .secondaryLabel)
+    } else if status.gpsSpoofed {
       gps.show(antenna, color: .systemOrange, badge: ("exclamationmark", .systemOrange))
     } else if status.workingGpsAccuracyM >= 0 {
       // Also while it is ignored or not trusted yet.
       gps.show(antenna, color: Constants.goodColor)
     } else {
-      gps.show(UIImage(systemName: Constants.gpsSymbol + ".slash") ?? antenna, color: .systemRed)
+      gps.show(slashed, color: .systemRed)
     }
   }
 
@@ -140,6 +144,9 @@ final class NoGpsSourceSelector: UIView {
   }
 
   private static func gpsText(_ status: NoGpsStatus) -> String {
+    if LocationManager.isLocationProhibited() {
+      return L("nogps_status_gps_off")
+    }
     if status.gpsSpoofed {
       return L("nogps_status_gps_spoofed")
     }

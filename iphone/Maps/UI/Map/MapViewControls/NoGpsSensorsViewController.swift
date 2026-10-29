@@ -219,8 +219,6 @@ final class NoGpsSensorsViewController: MWMTableViewController {
       refresh()
     case .forget:
       NoGps.setInertialNavigationEnabled(false)
-      // Nothing else would drive the car, the box was the only source.
-      NoGps.setGpsDisabled(false)
       refresh()
     case .firmwareAction:
       // The row does what it shows, if the update still allows it: the box may have gone on since it was drawn.

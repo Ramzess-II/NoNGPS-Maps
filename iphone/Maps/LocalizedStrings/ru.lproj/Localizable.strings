@@ -1272,6 +1272,7 @@
 "nogps_status_gps_back" = "GPS снова есть ±%@";
 "nogps_status_gps_spoofed" = "GPS подменён";
 "nogps_status_no_gps" = "Нет GPS";
+"nogps_status_gps_off" = "GPS выключен в настройках системы";
 "nogps_status_towers" = "вышки ±%@";
 "nogps_gps_back_auto" = "GPS снова надёжный, ручной режим выключен";
 "nogps_reverse_direction" = "Развернуть машину на дороге";

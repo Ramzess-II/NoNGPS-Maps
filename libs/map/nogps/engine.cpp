@@ -15,6 +15,7 @@
 #include <cstdio>
 #include <iterator>
 #include <limits>
+#include <utility>
 
 namespace nogps
 {
@@ -109,6 +110,7 @@ void Engine::Start()
     return;
   LOG(LINFO, ("Start"));
   m_active = true;
+  m_loggedState = {};
   m_startTimeMs = m_clock.NowMs();
   if (m_spoofingDetector.GetPhantomsCount() == 0)
     m_spoofingDetector.DeserializePhantoms(m_storage.Get<std::string>(Storage::kWrongNetworkPoints, ""));
@@ -193,6 +195,9 @@ void Engine::OnFix(Fix const & location)
   if (m_gpsDisabled && !isNetwork && SourceOf(location) == PositionSource::Gps)
   {
     LOG(LDEBUG, ("GPS is disabled, ignoring", location.m_position));
+    // The user sees how GPS works though the car does not follow it.
+    if (trusted)
+      TrackWorkingGps(location);
     return;
   }
 
@@ -214,17 +219,7 @@ void Engine::OnFix(Fix const & location)
     return;
   }
 
-  bool const goodGps = SourceOf(location) == PositionSource::Gps && AgeMs(location) <= kGpsMaxAgeMs &&
-                       IsAccuracySatisfied(location) && location.m_accuracyM <= kGpsMaxAccuracyM;
-  if (goodGps)
-  {
-    // A position given twice tells nothing about how often they come.
-    if (!m_lastGoodGps)
-      m_lastGoodGpsGapMs = std::numeric_limits<int64_t>::max();
-    else if (location.m_timeMs != m_lastGoodGps->m_timeMs)
-      m_lastGoodGpsGapMs = location.m_timeMs - m_lastGoodGps->m_timeMs;
-    m_lastGoodGps = location;
-  }
+  bool const goodGps = TrackWorkingGps(location);
   if (m_manualMode && goodGps && (m_manualUntilGps || IsGpsBack(location)))
   {
     LOG(LINFO, ("GPS is trusted again, leaving the manual mode, location =", location.m_position));
@@ -812,12 +807,17 @@ bool Engine::IsInertialNavigationEnabled() const
 
 void Engine::SetInertialNavigationEnabled(bool enabled)
 {
-  LOG(LINFO, ("enabled =", enabled));
+  LOG(LINFO, ("Box set up by the user =", enabled));
   m_storage.Set(Storage::kInertialEnabled, enabled);
   if (enabled)
+  {
     StartInertialNavigation();
-  else if (m_inertial)
+    return;
+  }
+  if (m_inertial)
     m_inertial->Stop();
+  // Nothing else would drive the car, the box was the only source.
+  SetGpsDisabled(false);
 }
 
 void Engine::SetElm327Address(std::string const & address)
@@ -1110,13 +1110,28 @@ void Engine::OnTurnsReversed()
   Notify(Event::TurnsReversed);
 }
 
+bool Engine::TrackWorkingGps(Fix const & location)
+{
+  bool const goodGps = SourceOf(location) == PositionSource::Gps && AgeMs(location) <= kGpsMaxAgeMs &&
+                       IsAccuracySatisfied(location) && location.m_accuracyM <= kGpsMaxAccuracyM;
+  if (goodGps)
+  {
+    // A position given twice tells nothing about how often they come.
+    if (!m_lastGoodGps)
+      m_lastGoodGpsGapMs = std::numeric_limits<int64_t>::max();
+    else if (location.m_timeMs != m_lastGoodGps->m_timeMs)
+      m_lastGoodGpsGapMs = location.m_timeMs - m_lastGoodGps->m_timeMs;
+    m_lastGoodGps = location;
+  }
+  return goodGps;
+}
+
 void Engine::SetGpsDisabled(bool disabled)
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());
-  LOG(LINFO, ("disabled =", disabled));
+  LOG(LINFO, ("GPS ignored by the user =", disabled));
   m_gpsDisabled = disabled;
   m_storage.Set(Storage::kGpsDisabled, disabled);
-  m_lastGoodGps.reset();
   // GPS ignored by the user is not trusted anew by its first position when it is used again.
   if (disabled)
     m_manualUntilGps = false;
@@ -1128,7 +1143,7 @@ void Engine::SetManualMode(bool enabled)
   if (m_manualMode == enabled)
     return;
 
-  LOG(LINFO, ("enabled =", enabled));
+  LOG(LINFO, ("Manual mode =", enabled));
   m_manualMode = enabled;
   m_manualForNoPosition = false;
   m_manualUntilGps = false;
@@ -1446,6 +1461,30 @@ Status Engine::GetStatus()
   return status;
 }
 
+void Engine::LogStateChanges()
+{
+  auto const status = GetStatus();
+  std::string gps = "NONE";
+  if (status.m_gpsSpoofed)
+    gps = "SPOOFED";
+  else if (status.m_workingGpsAccuracyM)
+    gps = "OK";
+  std::string box = "NOT_SET_UP";
+  if (status.m_inertialEnabled)
+    box = status.m_inertialStarted ? DebugPrint(status.m_sourceState) : "STOPPED";
+  auto const log = [](char const * what, std::string & last, std::string now)
+  {
+    if (last == now)
+      return;
+    LOG(LINFO, (what, last.empty() ? "?" : last, "->", now));
+    last = std::move(now);
+  };
+  log("Position source", m_loggedState.m_source, DebugPrint(status.m_source));
+  log("GPS signal", m_loggedState.m_gps, gps);
+  log("Box state", m_loggedState.m_box, box);
+  log("Box Bluetooth", m_loggedState.m_ble, DebugPrint(status.m_bleState));
+}
+
 void Engine::LogTrip()
 {
   m_tripLogTimer.Stop();
@@ -1457,6 +1496,7 @@ void Engine::LogTrip()
   CheckNotCalibrated();
   CheckFirmwareUpdate();
   CheckBoxCalibration();
+  LogStateChanges();
   SaveCarPosition(false /* now */);
   LOG(LINFO, (GetTripLine()));
   m_positionsBetweenGps = 0;

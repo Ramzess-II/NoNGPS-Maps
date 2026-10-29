@@ -1272,6 +1272,7 @@
 "nogps_status_gps_back" = "GPS is back ±%@";
 "nogps_status_gps_spoofed" = "GPS spoofed";
 "nogps_status_no_gps" = "No GPS";
+"nogps_status_gps_off" = "GPS is off in the system settings";
 "nogps_status_towers" = "towers ±%@";
 "nogps_gps_back_auto" = "GPS is trusted again, the manual mode is off";
 "nogps_reverse_direction" = "Turn the car around on the road";

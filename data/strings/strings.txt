@@ -46058,6 +46058,12 @@ en = No GPS
 ru = Нет GPS
 uk = Немає GPS
 
+[nogps_status_gps_off]
+tags = android-app,apple-maps
+en = GPS is off in the system settings
+ru = GPS выключен в настройках системы
+uk = GPS вимкнено в налаштуваннях системи
+
 [nogps_status_towers]
 tags = android-app,apple-maps
 en = towers ±%@

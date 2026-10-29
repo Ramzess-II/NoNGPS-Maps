@@ -2312,7 +2312,21 @@ UNIT_TEST(NoGps_Engine_DisabledGpsIsIgnored)
   env.m_engine.SetGpsDisabled(true);
   env.DriveGps(3, 0, 10);
   TEST(env.m_delegate.m_positions.empty(), ());
-  TEST(!env.m_engine.GetStatus().m_workingGpsAccuracyM, ());
+  // The user still sees whether GPS works.
+  TEST(env.m_engine.GetStatus().m_workingGpsAccuracyM, ());
+
+  env.m_engine.SetGpsDisabled(false);
+  TEST(env.m_engine.GetStatus().m_workingGpsAccuracyM, ());
+}
+
+UNIT_TEST(NoGps_Engine_ForgettingTheBoxReturnsGps)
+{
+  Env env(true /* inertial */);
+  env.m_engine.SetGpsDisabled(true);
+  env.m_engine.SetInertialNavigationEnabled(false);
+  TEST(!env.m_engine.GetStatus().m_gpsDisabled, ());
+  env.DriveGps(3, 0, 10);
+  TEST(!env.m_delegate.m_positions.empty(), ());
 }
 
 UNIT_TEST(NoGps_Engine_InertialContinuesWhenGpsIsLost)
