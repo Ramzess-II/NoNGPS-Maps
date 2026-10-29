@@ -1245,7 +1245,6 @@
 "nogps_kilometers" = "%.1f км";
 "nogps_status_inertial" = "Інерціально · ±%@";
 "nogps_sensors_title" = "Інерціальна навігація";
-"nogps_sensors_enable" = "Увімкнено";
 "nogps_elm_disconnected" = "немає зв'язку";
 "nogps_elm_no_adapter" = "ELM327 не відповідає";
 "nogps_box_obd_disabled" = "ELM327 вимкнено в блоці";
@@ -1281,8 +1280,6 @@
 "nogps_switch_mark" = "Показати машину на іншій можливій дорозі";
 "nogps_mark_no_road" = "Тут немає дороги, поставте мітку на дорогу";
 "nogps_gps_lost_auto" = "GPS зник або збився, увімкнено ручний режим";
-"nogps_disable_gps" = "Вимкнути GPS";
-"nogps_disable_gps_hint" = "Застосунок не бачить GPS, як під час глушіння, решта геолокації працює.";
 
 /* Status of the position: the mark of the car stands and waits for the user */
 "nogps_status_road_lost" = "Дорогу втрачено";
@@ -1358,8 +1355,21 @@
 
 /* A route is asked for while there is no GPS and no mark of the user */
 "nogps_no_position_for_route" = "Немає позиції: маршрут будувати нізвідки. Натисніть кнопку з пальцем і торкніться дороги, де ви знаходитеся";
-"nogps_shift_buttons" = "Калібрування";
-"nogps_shift_buttons_hint" = "Показує кнопки зсуву машини вздовж дороги на 10 м. Зсуваючи її туди, де машина насправді, ви уточнюєте швидкість машини.";
+
+/* Card on the box screen, shown when no sensor box is connected */
+"nogps_box_buy_title" = "Ще немає блока?";
+
+/* Card on the box screen under "No box yet?" */
+"nogps_box_buy_text" = "Блок NonGPS із датчиками руху тримає машину на мапі там, де GPS глушать або він зник.";
+
+/* Button opening the page of the shop */
+"nogps_box_buy" = "Купити блок";
+
+/* Button on the box screen: look for the box over Bluetooth and use it */
+"nogps_box_connect" = "Маю блок: підключити";
+
+/* Button on the box screen: stop using the box */
+"nogps_box_forget" = "Забути блок";
 "nogps_box_stopped" = "Немає даних від блока датчиків, машина на мапі стоїть. Перевірте блок або позначте себе";
 
 /* Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration */

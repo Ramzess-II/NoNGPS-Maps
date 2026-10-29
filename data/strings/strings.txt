@@ -45800,12 +45800,6 @@ en = Inertial navigation
 ru = Инерциальная навигация
 uk = Інерціальна навігація
 
-[nogps_sensors_enable]
-tags = android-app,apple-maps
-en = Enabled
-ru = Включена
-uk = Увімкнено
-
 [nogps_sensors_hint]
 tags = android-app
 en = Fix the phone so it doesn't move. Zero the gyroscope while the car stands still.
@@ -46101,18 +46095,6 @@ en = GPS is lost or wrong, the manual mode is on
 ru = GPS пропал или сбился, включён ручной режим
 uk = GPS зник або збився, увімкнено ручний режим
 
-[nogps_disable_gps]
-tags = android-app,apple-maps
-en = Disable GPS
-ru = Отключить GPS
-uk = Вимкнути GPS
-
-[nogps_disable_gps_hint]
-tags = android-app,apple-maps
-en = The app ignores GPS as if it were jammed, the rest of the location works.
-ru = Приложение не видит GPS, как при глушении, остальная геолокация работает.
-uk = Застосунок не бачить GPS, як під час глушіння, решта геолокації працює.
-
 [nogps_status_road_lost]
 comment = Status of the position: the mark of the car stands and waits for the user
 tags = android-app,apple-maps
@@ -46344,17 +46326,40 @@ en = No position: the route has nowhere to start from. Press the finger button a
 ru = Нет позиции: маршрут строить неоткуда. Нажмите кнопку с пальцем и коснитесь дороги, где вы находитесь
 uk = Немає позиції: маршрут будувати нізвідки. Натисніть кнопку з пальцем і торкніться дороги, де ви знаходитеся
 
-[nogps_shift_buttons]
+[nogps_box_buy_title]
+comment = Card on the box screen, shown when no sensor box is connected
 tags = android-app,apple-maps
-en = Calibration
-ru = Калибровка
-uk = Калібрування
+en = No box yet?
+ru = Ещё нет блока?
+uk = Ще немає блока?
 
-[nogps_shift_buttons_hint]
+[nogps_box_buy_text]
+comment = Card on the box screen under "No box yet?"
 tags = android-app,apple-maps
-en = Shows the buttons moving the car along the road by 10 m. Moving it where the car really is corrects the speed of the car.
-ru = Показывает кнопки сдвига машины вдоль дороги на 10 м. Сдвигая её туда, где машина на самом деле, вы уточняете скорость машины.
-uk = Показує кнопки зсуву машини вздовж дороги на 10 м. Зсуваючи її туди, де машина насправді, ви уточнюєте швидкість машини.
+en = The NonGPS box with motion sensors keeps the car on the map where GPS is jammed or lost.
+ru = Блок NonGPS с датчиками движения держит машину на карте там, где GPS глушат или он пропал.
+uk = Блок NonGPS із датчиками руху тримає машину на мапі там, де GPS глушать або він зник.
+
+[nogps_box_buy]
+comment = Button opening the page of the shop
+tags = android-app,apple-maps
+en = Buy the box
+ru = Купить блок
+uk = Купити блок
+
+[nogps_box_connect]
+comment = Button on the box screen: look for the box over Bluetooth and use it
+tags = android-app,apple-maps
+en = I have the box: connect
+ru = У меня есть блок: подключить
+uk = Маю блок: підключити
+
+[nogps_box_forget]
+comment = Button on the box screen: stop using the box
+tags = android-app,apple-maps
+en = Forget the box
+ru = Забыть блок
+uk = Забути блок
 
 [nogps_obd_stopped]
 tags = android-app
