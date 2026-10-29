@@ -30,6 +30,9 @@ final class SearchOnMapViewController: UIViewController {
   private let searchResultsView = UIView()
   private let resultsTableView = UITableView()
   private let historyAndCategoryTabViewController = SearchTabViewController()
+  private let bookmarksStripView = SearchBookmarksStripView()
+  /// The strip and the tabs, shown together while there is no search text.
+  private let homeView = UIStackView()
   private var searchingActivityView = PlaceholderView(hasActivityIndicator: true)
   private var searchNoResultsView = PlaceholderView(title: L("search_not_found"),
                                                     subtitle: L("search_not_found_query"))
@@ -168,6 +171,10 @@ final class SearchOnMapViewController: UIViewController {
 
   private func setupHistoryAndCategoryTabView() {
     historyAndCategoryTabViewController.delegate = self
+    bookmarksStripView.didSelect = { [weak self] bookmark in
+      self?.interactor?.handle(.didSelectBookmark(bookmark))
+    }
+    homeView.axis = .vertical
   }
 
   private func layoutViews() {
@@ -221,14 +228,16 @@ final class SearchOnMapViewController: UIViewController {
 
   private func layoutHistoryAndCategoryTabView() {
     addChild(historyAndCategoryTabViewController)
-    searchResultsView.addSubview(historyAndCategoryTabViewController.view)
-    historyAndCategoryTabViewController.view.translatesAutoresizingMaskIntoConstraints = false
+    searchResultsView.addSubview(homeView)
+    homeView.addArrangedSubview(bookmarksStripView)
+    homeView.addArrangedSubview(historyAndCategoryTabViewController.view)
+    homeView.translatesAutoresizingMaskIntoConstraints = false
 
     NSLayoutConstraint.activate([
-      historyAndCategoryTabViewController.view.topAnchor.constraint(equalTo: searchResultsView.topAnchor),
-      historyAndCategoryTabViewController.view.leadingAnchor.constraint(equalTo: searchResultsView.leadingAnchor),
-      historyAndCategoryTabViewController.view.trailingAnchor.constraint(equalTo: searchResultsView.trailingAnchor),
-      historyAndCategoryTabViewController.view.bottomAnchor.constraint(equalTo: searchResultsView.bottomAnchor),
+      homeView.topAnchor.constraint(equalTo: searchResultsView.topAnchor),
+      homeView.leadingAnchor.constraint(equalTo: searchResultsView.leadingAnchor),
+      homeView.trailingAnchor.constraint(equalTo: searchResultsView.trailingAnchor),
+      homeView.bottomAnchor.constraint(equalTo: searchResultsView.bottomAnchor),
     ])
     historyAndCategoryTabViewController.didMove(toParent: self)
   }
@@ -319,6 +328,8 @@ final class SearchOnMapViewController: UIViewController {
     switch content {
     case .historyAndCategory:
       historyAndCategoryTabViewController.reloadSearchHistory()
+      historyAndCategoryTabViewController.reloadBookmarks()
+      bookmarksStripView.setBookmarks(SearchBookmarks.firstList())
     case .results(let results):
       if searchResults != results {
         searchResults = results
@@ -337,7 +348,7 @@ final class SearchOnMapViewController: UIViewController {
   private func viewToShow(for content: Content) -> UIView {
     switch content {
     case .historyAndCategory:
-      return historyAndCategoryTabViewController.view
+      return homeView
     case .results:
       return resultsTableView
     case .noResults:
@@ -349,7 +360,7 @@ final class SearchOnMapViewController: UIViewController {
 
   private func showView(_ view: UIView) {
     let viewsToHide: [UIView] = [resultsTableView,
-                                 historyAndCategoryTabViewController.view,
+                                 homeView,
                                  searchNoResultsView,
                                  searchingActivityView].filter { $0 != view }
     UIView.animate(withDuration: AppConstants.fastAnimationDuration,
@@ -519,6 +530,10 @@ extension SearchOnMapViewController: SearchOnMapHeaderViewDelegate {
 extension SearchOnMapViewController: SearchTabViewControllerDelegate {
   func searchTabController(_: SearchTabViewController, didSearch query: SearchQuery) {
     interactor?.handle(.didSelect(query))
+  }
+
+  func searchTabController(_: SearchTabViewController, didSelect bookmark: SearchBookmark) {
+    interactor?.handle(.didSelectBookmark(bookmark))
   }
 }
 

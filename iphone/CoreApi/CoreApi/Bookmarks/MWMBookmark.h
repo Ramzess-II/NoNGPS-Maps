@@ -15,6 +15,7 @@ NS_SWIFT_NAME(Bookmark)
 @property(nonatomic, readonly) UIColor * bookmarkColor;
 @property(nonatomic, readonly) NSString * bookmarkIconName;
 @property(nonatomic, readonly) CLLocationCoordinate2D locationCoordinate;
+@property(nonatomic, readonly) CGPoint mercatorPoint;
 
 @end
 

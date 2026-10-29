@@ -2,16 +2,19 @@ final class SearchOnMapInteractor: NSObject {
   private let presenter: SearchOnMapPresenter
   private let searchManager: SearchManager.Type
   private let routePointSelector: RoutePointSelecting?
+  private let showBookmark: (MWMMarkID) -> Void
   private weak var mapViewController: MapViewController?
   private var isUpdatesDisabled = false
 
   init(presenter: SearchOnMapPresenter,
        searchManager: SearchManager.Type = Search.self,
        routePointSelector: RoutePointSelecting? = nil,
-       mapViewController: MapViewController? = nil) {
+       mapViewController: MapViewController? = nil,
+       showBookmark: @escaping (MWMMarkID) -> Void = { FrameworkHelper.showBookmark($0) }) {
     self.presenter = presenter
     self.searchManager = searchManager
     self.routePointSelector = routePointSelector
+    self.showBookmark = showBookmark
     self.mapViewController = mapViewController
     super.init()
     searchManager.add(self)
@@ -84,6 +87,9 @@ final class SearchOnMapInteractor: NSObject {
     case .didSelectResult(let result, let query):
       return processSelectedResult(result, query: query)
 
+    case .didSelectBookmark(let bookmark):
+      return processSelectedBookmark(bookmark)
+
     case .didSelectPlaceOnMap:
       return isiPad ? .none : .setSearchScreenHidden(true)
 
@@ -154,6 +160,17 @@ final class SearchOnMapInteractor: NSObject {
     @unknown default:
       fatalError("Unsupported result type")
     }
+  }
+
+  private func processSelectedBookmark(_ bookmark: SearchBookmark) -> SearchOnMap.Response {
+    if let routePointSelector, routePointSelector.isActive {
+      guard routePointSelector.select(bookmark: bookmark) else { return .none }
+      return closeSearch()
+    }
+    // Search closes first, so the place page that opens next doesn't hide it instead.
+    presenter.process(closeSearch())
+    showBookmark(bookmark.id)
+    return .none
   }
 
   /// A debug command starts no search, so nothing would report its completion:

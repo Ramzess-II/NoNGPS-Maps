@@ -6,6 +6,7 @@ protocol RoutePointSelecting: AnyObject {
   func selectCurrentLocation() -> Bool
   func select(searchResult: SearchResult) -> Bool
   func select(mapPoint: CGPoint) -> Bool
+  func select(bookmark: SearchBookmark) -> Bool
   func cancel()
 }
 
@@ -34,6 +35,10 @@ final class RoutePointSearchSelection: RoutePointSelecting {
     select(point: mapPoint,
            title: FrameworkHelper.address(at: mapPoint),
            subtitle: nil)
+  }
+
+  func select(bookmark: SearchBookmark) -> Bool {
+    select(point: bookmark.mercatorPoint, title: bookmark.name, subtitle: nil)
   }
 
   func cancel() {

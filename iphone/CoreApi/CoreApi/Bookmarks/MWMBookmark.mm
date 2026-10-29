@@ -22,6 +22,8 @@
       _bookmarkType = @(kml::GetLocalizedFeatureType(types).c_str());
     auto latlon = bookmark->GetLatLon();
     _locationCoordinate = CLLocationCoordinate2DMake(latlon.m_lat, latlon.m_lon);
+    auto const pivot = bookmark->GetPivot();
+    _mercatorPoint = CGPointMake(pivot.x, pivot.y);
   }
   return self;
 }

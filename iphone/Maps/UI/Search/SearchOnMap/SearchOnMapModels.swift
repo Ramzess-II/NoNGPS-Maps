@@ -67,6 +67,7 @@ enum SearchOnMap {
     case didType(SearchQuery)
     case didSelect(SearchQuery)
     case didSelectResult(SearchResult, withQuery: SearchQuery)
+    case didSelectBookmark(SearchBookmark)
     case searchButtonDidTap(SearchQuery)
     case clearButtonDidTap
     case currentLocationButtonDidTap
