@@ -2,10 +2,14 @@
 
 This repo is a fork of Organic Maps. Two people build the navigation without GPS, each with their own Claude Code:
 
-- **Ramzess** (`Ramzess-II`, repo owner): the core `libs/map/nogps`, its road search (`libs/routing/index_router.*`,
-  `libs/map/routing_manager.*`), and `android/`. Windows: no desktop or iOS build; core tests run on an Android phone
-  and in CI.
-- **koloboid**: `iphone/`, `xcode/`. macOS: can build desktop targets and run `map_tests`.
+- **Ramzess** (`Ramzess-II`, repo owner). Windows: no desktop or iOS build; core tests run on an Android phone and
+  in CI.
+- **koloboid**. macOS: can build desktop targets and run `map_tests`.
+
+Everyone works on every part: the core `libs/map/nogps`, its road search (`libs/routing/index_router.*`,
+`libs/map/routing_manager.*`), `android/` and `iphone/`, `xcode/`. A change to behavior that both apps show is made
+on both platforms in the same PR. The author builds and verifies what their machine can; the rest is checked by CI
+or by the other person on a device.
 
 Keep upstream files (`CLAUDE.md`, nested `CLAUDE.md`, `.claude/settings.json`, upstream skills) unchanged so upstream
 merges stay clean. Fork rules go in `.claude/rules/nogps-*.md`, fork skills in `.claude/skills/nogps-*`.
@@ -18,30 +22,29 @@ merges stay clean. Fork rules go in `.claude/rules/nogps-*.md`, fork skills in `
 3. **Finish with `/nogps-pr`**: tests, living docs, issue for the other platform, review in a fresh context, PR.
 4. **Merge only through a PR.** When the repo variable `CLAUDE_REVIEW` is `on`, CI posts a Claude review when a PR
    opens. Comment `@claude <request>` on a PR to ask for a re-review or a fix. If the PR changes the shared
-   interface or the other person's platform, the other person approves it. Otherwise the author merges after CI
-   passes.
+   interface, the other person approves it. Otherwise the author merges after CI passes.
 
 ## Work you don't do now goes to an issue
 
 IMPORTANT: anything you notice that this session won't finish goes into a GitHub issue before the session ends or
-its PR opens: what the other platform must repeat or should get, a bug or risk you noticed, a TODO, a check on a
-device, a step left for later. Not into docs, PR text, code comments or memory: nobody tracks those.
+its PR opens: a platform part left for later, a bug or risk you noticed, a TODO, a check on a device, a step left for
+later. Not into docs, PR text, code comments or memory: nobody tracks those.
 
 - Look for an open issue first (`gh issue list --state open`) and comment there instead of opening a duplicate.
-- Label it `core`, `ios`, `android` or `firmware`, and assign the owner: `koloboid` for iOS, `Ramzess-II` for the
-  rest. Say what to do and where, and which PR caused it.
+- Label it `core`, `ios`, `android` or `firmware`, and assign whoever will do it (`@me` if it is you). Say what to do
+  and where, and which PR caused it.
 - Link it from the PR's **Other platform** section. CI fails a PR whose **Other platform** section has neither an
-  issue link nor "Nothing to do" and why.
+  issue link nor "Nothing to do" and why. When the PR changes both platforms, write "Nothing to do: both platforms
+  are changed here" and list what is left to check on a device as issues.
 - Give the user the links of the issues you opened.
 
 ## Shared interface
 
-The platforms see the core through `libs/map/nogps/engine.hpp` (public methods, `Status`, `Event`), `delegate.hpp`,
+Both platforms see the core through `libs/map/nogps/engine.hpp` (public methods, `Status`, `Event`), `delegate.hpp`,
 and the order of values in their enums. The bridges are `android/sdk/src/main/cpp/app/organicmaps/sdk/NoGps.cpp` with
 `NoGps.java`, and `iphone/Maps/Core/NoGps/MWMNoGps.h/.mm`. When the interface changes:
 
-- open an issue labeled `ios` or `android` that says exactly what to repeat in the other bridge, and link it from
-  the PR;
+- change both bridges in the same PR;
 - a new file in `libs/map/nogps` goes into `libs/map/CMakeLists.txt` and `xcode/map/map.xcodeproj/project.pbxproj`.
   If the author can't build iOS, the PR says "Xcode project not verified".
 
