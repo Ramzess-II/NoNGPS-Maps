@@ -978,6 +978,7 @@
     <string name="nogps_status_gps_back">GPS снова есть ±%s</string>
     <string name="nogps_status_gps_spoofed">GPS подменён</string>
     <string name="nogps_status_no_gps">Нет GPS</string>
+    <string name="nogps_status_gps_off">GPS выключен в настройках системы</string>
     <string name="nogps_status_towers">вышки ±%s</string>
     <string name="nogps_gps_back_auto">GPS снова надёжный, ручной режим выключен</string>
     <string name="nogps_reverse_direction">Развернуть машину на дороге</string>
