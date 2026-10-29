@@ -688,6 +688,8 @@
 "button_layer_satellite" = "위성";
 "button_layer_subway" = "지하철";
 "layers_title" = "맵 스타일 및 레이어";
+"bookmarks_empty_list_title" = "이 목록은 비어있습니다.";
+"bookmarks_empty_list_message" = "북마크를 추가하려면 맵에서 장소를 탭하고 별 모양 아이콘을 탭하세요.";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "모든 북마크 색상 변경";

@@ -688,6 +688,8 @@
 "button_layer_satellite" = "उपग्रह";
 "button_layer_subway" = "भूमिगत मार्ग";
 "layers_title" = "मानचित्र शैलियाँ और परतें";
+"bookmarks_empty_list_title" = "यह सूची खाली है";
+"bookmarks_empty_list_message" = "बुकमार्क जोड़ने के लिए, नक्शे पर किसी स्थान पर टैप करें और फिर स्टार आइकन पर टैप करें";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "सभी बुकमार्क का रंग बदलें";

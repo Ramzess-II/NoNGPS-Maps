@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Сателит";
 "button_layer_subway" = "Метро";
 "layers_title" = "Стилови мапе и слојеви";
+"bookmarks_empty_list_title" = "Ова листа је празна";
+"bookmarks_empty_list_message" = "Да бисте додали маркер, кратко додирните место на мапи, а онда додирните иконицу са звездом";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Промени боју свих обележивача";

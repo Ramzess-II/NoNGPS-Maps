@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Δορυφόρος";
 "button_layer_subway" = "Μετρό";
 "layers_title" = "Στυλ χάρτη και επίπεδα";
+"bookmarks_empty_list_title" = "Η λίστα είναι άδεια";
+"bookmarks_empty_list_message" = "Για να προσθέσετε σελιδοδείκτη, πατήστε ένα μέρος στο χάρτη και μετά πατήστε το αστεράκι";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Αλλαγή χρώματος όλων των σελιδοδεικτών";

@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satelit";
 "button_layer_subway" = "Metro";
 "layers_title" = "Styly a vrstvy mapy";
+"bookmarks_empty_list_title" = "Seznam je prázdný";
+"bookmarks_empty_list_message" = "Pro přidání nové značky klikněte na symbol hvězdičky na obrázku objektu";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Změnit barvu všech značek";

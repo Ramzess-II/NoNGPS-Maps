@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satelit";
 "button_layer_subway" = "Metrou";
 "layers_title" = "Stiluri și straturi de hartă";
+"bookmarks_empty_list_title" = "Lista este goală";
+"bookmarks_empty_list_message" = "Pentru a adăuga un loc preferat, ține apăsat un loc pe hartă și după aceea atinge simbolul în formă de stea";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Schimbă culoarea tuturor marcajelor";

@@ -688,6 +688,8 @@
 "button_layer_satellite" = "衛星";
 "button_layer_subway" = "捷運";
 "layers_title" = "地圖樣式和圖層";
+"bookmarks_empty_list_title" = "該列表為空";
+"bookmarks_empty_list_message" = "要增加新書籤，請點擊對象卡片中的星型圖標";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "更改所有書籤顏色";

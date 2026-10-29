@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Palydovas";
 "button_layer_subway" = "Metro";
 "layers_title" = "Žemėlapio stiliai ir sluoksniai";
+"bookmarks_empty_list_title" = "Sąrašas tuščias";
+"bookmarks_empty_list_message" = "Jeigu norite pridėti žymę, bakstelėkite vietą žemėlapyje, o tada – žvaigždutės piktogramą";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Keisti visų žymų spalvą";

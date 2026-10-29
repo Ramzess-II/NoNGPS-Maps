@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satelitea";
 "button_layer_subway" = "Metroa";
 "layers_title" = "Maparen estiloak eta geruzak";
+"bookmarks_empty_list_title" = "Zerrenda hau hutsik dago";
+"bookmarks_empty_list_message" = "Markagailu bat gehitzeko, ukitu mapako toki bat eta, ondoren, ukitu izarraren ikonoa";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Aldatu markagailu guztien kolorea";

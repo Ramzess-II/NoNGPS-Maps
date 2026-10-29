@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Сателит";
 "button_layer_subway" = "Метро";
 "layers_title" = "Стилове и слоеве на картата";
+"bookmarks_empty_list_title" = "Този списък е празен";
+"bookmarks_empty_list_message" = "За да добавите отметка, докоснете място на картата, след което докоснете звездообразната икона.";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Промяна на цвета на всички отметки";

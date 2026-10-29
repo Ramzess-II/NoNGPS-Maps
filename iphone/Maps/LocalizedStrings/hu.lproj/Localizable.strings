@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Műhold";
 "button_layer_subway" = "Metró";
 "layers_title" = "Térképstílusok és rétegek";
+"bookmarks_empty_list_title" = "Ez a lista üres";
+"bookmarks_empty_list_message" = "Egy könyvjelző hozzáadásához érintsen meg a térképen egy helyet, majd érintse meg a csillag ikont";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Összes könyvjelző színének módosítása";

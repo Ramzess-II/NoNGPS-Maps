@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satellit";
 "button_layer_subway" = "U-Bahn";
 "layers_title" = "Kartenstile und Ebenen";
+"bookmarks_empty_list_title" = "Die Liste ist leer";
+"bookmarks_empty_list_message" = "Zum Hinzufügen eine Lesezeichens tippe in der Karte auf den Ort und dann unten auf das Sternchen";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Farbe aller Lesezeichen ändern";

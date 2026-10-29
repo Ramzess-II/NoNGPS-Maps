@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satelit";
 "button_layer_subway" = "Kereta bawah tanah";
 "layers_title" = "Gaya dan Lapisan Peta";
+"bookmarks_empty_list_title" = "Daftar ini kosong";
+"bookmarks_empty_list_message" = "Untuk menambahkan bookmark, ketuk satu tempat di peta lalu ketuk ikon bintang";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Ubah warna semua bookmark";

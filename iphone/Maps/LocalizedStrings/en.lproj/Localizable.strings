@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satellite";
 "button_layer_subway" = "Subway";
 "layers_title" = "Map Styles and Layers";
+"bookmarks_empty_list_title" = "This list is empty";
+"bookmarks_empty_list_message" = "To add a bookmark, tap a place on the map and then tap the star icon";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Change color of all bookmarks";

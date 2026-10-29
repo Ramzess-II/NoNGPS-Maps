@@ -688,6 +688,8 @@
 "button_layer_satellite" = "卫星";
 "button_layer_subway" = "地铁";
 "layers_title" = "地图样式和图层";
+"bookmarks_empty_list_title" = "该列表为空";
+"bookmarks_empty_list_message" = "要添加新书签，请点击对象卡片中的星形图标";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "更改所有书签颜色";

@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Արբանյակ";
 "button_layer_subway" = "Մետրո";
 "layers_title" = "Քարտեզի ոճեր և շերտեր";
+"bookmarks_empty_list_title" = "Այս ցուցակը դատարկ է";
+"bookmarks_empty_list_message" = "Էջանիշ ավելացնելու համար հպեք քարտեզի որևէ կետի, ապա՝ աստղիկի պատկերակին";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Փոխել բոլոր էջանիշների գույնը";

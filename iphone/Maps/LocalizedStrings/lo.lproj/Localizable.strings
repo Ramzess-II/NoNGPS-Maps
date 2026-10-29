@@ -688,6 +688,8 @@
 "button_layer_satellite" = "ດາວທຽມ";
 "button_layer_subway" = "ລົດໄຟໃຕ້ດິນ";
 "layers_title" = "ຮູບແບບແຜນທີ່ ແລະ ເລເຢີ້";
+"bookmarks_empty_list_title" = "ລາຍການນີ້ວ່າງເປົ່າ";
+"bookmarks_empty_list_message" = "ເພື່ອເພີ່ມບຸກມາກ, ໃຫ້ແຕະໃສ່ສະຖານທີ່ໃນແຜນທີ່ ແລ້ວແຕະທີ່ໄອຄອນຮູບດາວ";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "ປ່ຽນສີຂອງບຸກມາກທັງໝົດ";

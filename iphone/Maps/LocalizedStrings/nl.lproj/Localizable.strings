@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satelliet";
 "button_layer_subway" = "Metro";
 "layers_title" = "Kaartstijlen en -lagen";
+"bookmarks_empty_list_title" = "Deze lijst is leeg";
+"bookmarks_empty_list_message" = "Om een bladwijzer toe te voegen, tikt u op een plaats op de kaart en vervolgens op het sterpictogram";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Kleur van alle bladwijzers wijzigen";

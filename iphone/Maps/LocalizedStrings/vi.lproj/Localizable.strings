@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Vệ tinh";
 "button_layer_subway" = "Xe điện ngầm";
 "layers_title" = "Kiểu và lớp bản đồ";
+"bookmarks_empty_list_title" = "Danh sách trống";
+"bookmarks_empty_list_message" = "Để thêm dấu trang, hãy nhấn vào một địa điểm trên bản đồ và sau đó nhấn vào biểu tượng dấu sao";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Thay đổi màu của tất cả dấu trang";

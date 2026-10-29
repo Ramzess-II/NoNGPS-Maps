@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satellita";
 "button_layer_subway" = "Metro";
 "layers_title" = "Stili u Saffi tal-Mapep";
+"bookmarks_empty_list_title" = "Din il-lista hija vojta";
+"bookmarks_empty_list_message" = "Biex iżżid bookmark, għafas post fuq il-mappa u mbagħad għafas is-simbolu tal-istilla";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Ibdel il-kulur tal-bookmarks kollha";

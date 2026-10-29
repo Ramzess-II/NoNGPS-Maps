@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Uydu";
 "button_layer_subway" = "Metro";
 "layers_title" = "Harita Stilleri ve Katmanlar";
+"bookmarks_empty_list_title" = "Bu liste boş";
+"bookmarks_empty_list_message" = "Yer imi eklemek için önce haritadaki bir yere sonrasında ise yıldız simgesine dokunun";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Tüm yer imlerinin rengini değiştir";

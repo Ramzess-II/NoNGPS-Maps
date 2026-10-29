@@ -688,6 +688,8 @@
 "button_layer_satellite" = "उपग्रह";
 "button_layer_subway" = "मेट्रो/भुयारी मार्ग";
 "layers_title" = "नकाशा शैली आणि स्तर";
+"bookmarks_empty_list_title" = "ही यादी रिकामी आहे";
+"bookmarks_empty_list_message" = "खूणपत्र जोडण्यासाठी, नकाशातील ठिकाणाला स्पर्श करा आणि नंतर तारा चिन्हाला स्पर्श करा";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "सर्व बुकमार्कचा रंग बदला";

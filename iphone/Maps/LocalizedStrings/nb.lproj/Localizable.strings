@@ -688,6 +688,8 @@
 "button_layer_satellite" = "Satellitt";
 "button_layer_subway" = "T-bane";
 "layers_title" = "Kartstiler og -lag";
+"bookmarks_empty_list_title" = "Denne listen er tom";
+"bookmarks_empty_list_message" = "For å legge til et bokmerke, trykk et sted på kartet og trykk så stjerneikonet";
 
 /* Button to change the color of all bookmarks in the current list */
 "change_all_bookmarks_color" = "Endre farge på alle bokmerker";
