@@ -90,7 +90,7 @@ class TabAdapter extends FragmentPagerAdapter
     }
   }
 
-  private static class OnTabSelectedListenerForViewPager extends TabLayout.ViewPagerOnTabSelectedListener
+  private class OnTabSelectedListenerForViewPager extends TabLayout.ViewPagerOnTabSelectedListener
   {
     @NonNull
     private final Context mContext;
@@ -105,7 +105,8 @@ class TabAdapter extends FragmentPagerAdapter
     public void onTabSelected(TabLayout.Tab tab)
     {
       SharedPreferences.Editor editor = MwmApplication.prefs(mContext).edit();
-      editor.putInt(Config.KEY_PREF_LAST_SEARCHED_TAB, tab.getPosition());
+      // The ordinal, not the position: positions shift when history is turned off.
+      editor.putInt(Config.KEY_PREF_LAST_SEARCHED_TAB, mTabList.get(tab.getPosition()).ordinal());
       editor.apply();
       super.onTabSelected(tab);
       Graphics.tint(mContext, tab.getIcon(), androidx.appcompat.R.attr.colorAccent);
@@ -203,10 +204,13 @@ class TabAdapter extends FragmentPagerAdapter
     mPager.addOnPageChangeListener(listener);
     tabs.setOnTabSelectedListener(new OnTabSelectedListenerForViewPager(mPager));
     SharedPreferences preferences = MwmApplication.prefs(mPager.getContext());
-    int lastSelectedTabPosition = preferences.getInt(Config.KEY_PREF_LAST_SEARCHED_TAB, 0);
-    // Turning history off shifts the positions down.
-    if (lastSelectedTabPosition >= mTabList.size())
-      lastSelectedTabPosition = 0;
+    final int lastSelectedTab = preferences.getInt(Config.KEY_PREF_LAST_SEARCHED_TAB, 0);
+    int lastSelectedTabPosition = 0;
+    for (int i = 0; i < mTabList.size(); i++)
+    {
+      if (mTabList.get(i).ordinal() == lastSelectedTab)
+        lastSelectedTabPosition = i;
+    }
     listener.onPageSelected(lastSelectedTabPosition);
   }
 

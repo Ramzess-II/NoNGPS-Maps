@@ -718,7 +718,7 @@ public class SearchFragment extends Fragment
     mToolbarController.deactivate();
     if (RoutingController.get().isWaitingPoiPick())
     {
-      pickRoutePoint(info.getName(), info.getFeatureType(), info.getLat(), info.getLon());
+      pickRoutePoint(info.getName(), "", info.getLat(), info.getLon());
       return;
     }
     // Search closes first, so the place page that opens next is not covered by the sheet.

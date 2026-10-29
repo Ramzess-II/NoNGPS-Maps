@@ -9,7 +9,6 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 import app.organicmaps.R;
 import app.organicmaps.sdk.bookmarks.data.BookmarkInfo;
@@ -69,7 +68,8 @@ class SearchBookmarksAdapter extends RecyclerView.Adapter<SearchBookmarksAdapter
         item.distance == null ? null : StringUtils.nativeFormatDistance(item.distance).toString(context);
     final String subtitle = TextUtils.isEmpty(distance) ? item.listName : distance + " • " + item.listName;
     holder.mSubtitle.setText(subtitle);
-    holder.mIcon.setImageDrawable(icon(item.id, context));
+    final BookmarkInfo info = BookmarkManager.INSTANCE.getBookmarkInfo(item.id);
+    holder.mIcon.setImageDrawable(info == null ? null : icon(info, context));
   }
 
   @Override
@@ -78,12 +78,9 @@ class SearchBookmarksAdapter extends RecyclerView.Adapter<SearchBookmarksAdapter
     return mItems.size();
   }
 
-  @Nullable
-  static Drawable icon(long bookmarkId, @NonNull Context context)
+  @NonNull
+  static Drawable icon(@NonNull BookmarkInfo info, @NonNull Context context)
   {
-    final BookmarkInfo info = BookmarkManager.INSTANCE.getBookmarkInfo(bookmarkId);
-    if (info == null)
-      return null;
     return Graphics.drawCircleAndImage(info.getIcon().argb(), R.dimen.track_circle_size, info.getIcon().getResId(),
                                        R.dimen.bookmark_icon_size, context);
   }
@@ -106,6 +103,8 @@ class SearchBookmarksAdapter extends RecyclerView.Adapter<SearchBookmarksAdapter
       // The row is the touch target, the icon only shows the color.
       mIcon.setClickable(false);
       mIcon.setBackground(null);
+      mIcon.setContentDescription(null);
+      mIcon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
     }
   }
 }

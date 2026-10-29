@@ -48,12 +48,12 @@ class SearchBookmarksStripAdapter extends RecyclerView.Adapter<SearchBookmarksSt
   @Override
   public void onBindViewHolder(@NonNull ViewHolder holder, int position)
   {
-    final long id = mIds[position];
-    final BookmarkInfo info = BookmarkManager.INSTANCE.getBookmarkInfo(id);
+    final BookmarkInfo info = BookmarkManager.INSTANCE.getBookmarkInfo(mIds[position]);
     final String name = info == null ? "" : info.getName();
     holder.mName.setText(name);
     holder.itemView.setContentDescription(name);
-    holder.mIcon.setImageDrawable(SearchBookmarksAdapter.icon(id, holder.itemView.getContext()));
+    holder.mIcon.setImageDrawable(info == null ? null
+                                               : SearchBookmarksAdapter.icon(info, holder.itemView.getContext()));
   }
 
   @Override

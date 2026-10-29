@@ -39,12 +39,6 @@ public class SearchBookmarksFragment extends BaseMwmRecyclerFragment<SearchBookm
     mPlaceHolder = view.findViewById(R.id.placeholder);
     mPlaceHolder.setContent(R.string.bookmarks_empty_list_title, R.string.bookmarks_empty_list_message);
     ((SearchFragment) requireParentFragment()).setRecyclerScrollListener(getRecyclerView());
-  }
-
-  @Override
-  public void onResume()
-  {
-    super.onResume();
     reload();
   }
 
