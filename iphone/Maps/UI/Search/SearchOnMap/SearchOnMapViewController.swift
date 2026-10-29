@@ -33,6 +33,7 @@ final class SearchOnMapViewController: UIViewController {
   private let bookmarksStripView = SearchBookmarksStripView()
   /// The strip and the tabs, shown together while there is no search text.
   private let homeView = UIStackView()
+  private var isShowingHistoryAndCategory = false
   private var searchingActivityView = PlaceholderView(hasActivityIndicator: true)
   private var searchNoResultsView = PlaceholderView(title: L("search_not_found"),
                                                     subtitle: L("search_not_found_query"))
@@ -172,7 +173,7 @@ final class SearchOnMapViewController: UIViewController {
   private func setupHistoryAndCategoryTabView() {
     historyAndCategoryTabViewController.delegate = self
     bookmarksStripView.didSelect = { [weak self] bookmark in
-      self?.interactor?.handle(.didSelectBookmark(bookmark))
+      self?.didSelectBookmark(bookmark)
     }
     homeView.axis = .vertical
   }
@@ -328,8 +329,10 @@ final class SearchOnMapViewController: UIViewController {
     switch content {
     case .historyAndCategory:
       historyAndCategoryTabViewController.reloadSearchHistory()
-      historyAndCategoryTabViewController.reloadBookmarks()
-      bookmarksStripView.setBookmarks(SearchBookmarks.firstList())
+      // render() runs on every view model change; the bookmarks are read again only when the tabs reappear.
+      if !isShowingHistoryAndCategory {
+        reloadBookmarks()
+      }
     case .results(let results):
       if searchResults != results {
         searchResults = results
@@ -341,6 +344,7 @@ final class SearchOnMapViewController: UIViewController {
     case .searching:
       break
     }
+    isShowingHistoryAndCategory = content == .historyAndCategory
     headerView.setSeparatorHidden(content == .historyAndCategory)
     showView(viewToShow(for: content))
   }
@@ -373,6 +377,20 @@ final class SearchOnMapViewController: UIViewController {
       viewsToHide.forEach { $0.isHidden = true }
       view.isHidden = false
     }
+  }
+
+  private func reloadBookmarks() {
+    historyAndCategoryTabViewController.reloadBookmarks()
+    bookmarksStripView.setBookmarks(SearchBookmarks.firstList())
+  }
+
+  private func didSelectBookmark(_ bookmark: SearchBookmark) {
+    // On iPad search stays open beside the place page, where the bookmark can be deleted.
+    guard BookmarksManager.shared().hasBookmark(bookmark.id) else {
+      reloadBookmarks()
+      return
+    }
+    interactor?.handle(.didSelectBookmark(bookmark))
   }
 
   private func setIsSearching(_ isSearching: Bool) {
@@ -533,7 +551,7 @@ extension SearchOnMapViewController: SearchTabViewControllerDelegate {
   }
 
   func searchTabController(_: SearchTabViewController, didSelect bookmark: SearchBookmark) {
-    interactor?.handle(.didSelectBookmark(bookmark))
+    didSelectBookmark(bookmark)
   }
 }
 
