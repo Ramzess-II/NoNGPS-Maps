@@ -220,6 +220,22 @@ UNIT_TEST(NoGps_Esp32Source_ReadsLinesOfBluetoothStream)
   TEST(!delegate.m_esp32BleOpen, ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_DoesNotCalibrateWithoutBox)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Searching);
+
+  source.Calibrate();
+  TEST(delegate.m_esp32BleSent.empty(), ());
+  TEST_EQUAL(source.GetCalibrationState(), CalibrationState::None, ());
+  clock.Advance(Esp32Source::kCalibrationTimeoutMs + 1);
+  TEST_EQUAL(source.GetCalibrationState(), CalibrationState::None, ());
+}
+
 UNIT_TEST(NoGps_Esp32Source_CallsBoxWhileConnectedOnly)
 {
   // Nothing is sent until the phone is connected, then HELLO goes at once and every second.

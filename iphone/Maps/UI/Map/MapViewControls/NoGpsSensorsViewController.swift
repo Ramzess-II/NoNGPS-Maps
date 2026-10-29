@@ -150,8 +150,8 @@ final class NoGpsSensorsViewController: MWMTableViewController {
       cell.selectionStyle = .default
     case .calibrate:
       content.text = L("nogps_sensors_calibrate_box")
-      content.textProperties.color = status.inertialStarted ? .linkBlue : .blackHintText
-      cell.selectionStyle = .default
+      content.textProperties.color = boxReachable() ? .linkBlue : .blackHintText
+      cell.selectionStyle = boxReachable() ? .default : .none
     case .boxSensors:
       content.text = String(format: L("nogps_sensors_box_sensors"), boxCalibrationText())
     case .speed:
@@ -213,6 +213,8 @@ final class NoGpsSensorsViewController: MWMTableViewController {
       }
       refresh()
     case .calibrate:
+      // The box calibrates itself: there is nobody to calibrate while it is out of reach.
+      guard boxReachable() else { break }
       NoGps.calibrate()
       refresh()
     case .clearSpeed:
@@ -279,6 +281,10 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     case .none, .done, .failed: return status.boxFirmware
     @unknown default: return status.boxFirmware
     }
+  }
+
+  private func boxReachable() -> Bool {
+    status.bleState == .connected
   }
 
   private func isFirmwareUpdating() -> Bool {
