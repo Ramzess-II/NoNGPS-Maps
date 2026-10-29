@@ -6,7 +6,6 @@ final class NoGpsSourceSelector: UIView {
     static let inset = CGFloat(2)
     static let cornerRadius = CGFloat(11)
     static let thumbCornerRadius = CGFloat(9)
-    static let disabledAlpha = CGFloat(0.4)
     static let gpsSymbol = "antenna.radiowaves.left.and.right"
     static let boxSymbol = "cpu"
     static let goodColor = UIColor { $0.userInterfaceStyle == .dark
@@ -112,8 +111,6 @@ final class NoGpsSourceSelector: UIView {
   }
 
   private func applyBox(_ status: NoGpsStatus) {
-    box.isEnabled = status.inertialEnabled
-    box.alpha = status.inertialEnabled ? 1 : Constants.disabledAlpha
     box.accessibilityValue = status.inertialStarted ? NoGpsSensorsViewController.boxStateText(status) : nil
     let chip = UIImage(systemName: Constants.boxSymbol)
     guard status.inertialEnabled else {
@@ -163,6 +160,11 @@ final class NoGpsSourceSelector: UIView {
 
   @objc
   private func boxTapped() {
+    // No box is connected: the sensors screen offers to connect one, GPS stays the source.
+    guard status.inertialEnabled else {
+      NoGpsControls.showSensors()
+      return
+    }
     if !box.isChosen {
       choose(gpsDisabled: true)
       // The box drives the car, nothing to tell.
@@ -205,10 +207,6 @@ private final class Segment: UIControl {
       label.textColor = isChosen ? .label : .secondaryLabel
       updateTraits()
     }
-  }
-
-  override var isEnabled: Bool {
-    didSet { updateTraits() }
   }
 
   init(title: String) {
@@ -289,9 +287,6 @@ private final class Segment: UIControl {
     var traits: UIAccessibilityTraits = .button
     if isChosen {
       traits.insert(.selected)
-    }
-    if !isEnabled {
-      traits.insert(.notEnabled)
     }
     accessibilityTraits = traits
   }

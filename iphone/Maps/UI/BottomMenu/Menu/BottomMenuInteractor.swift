@@ -73,7 +73,12 @@ extension BottomMenuInteractor: BottomMenuInteractorProtocol {
 
   func openNoGpsSensors() {
     close()
-    NoGpsControls.showSensors()
+    // The menu is a modal sheet: the screen can be presented only when it is gone.
+    if let coordinator = viewController?.transitionCoordinator {
+      coordinator.animate(alongsideTransition: nil) { _ in NoGpsControls.showSensors() }
+    } else {
+      NoGpsControls.showSensors()
+    }
   }
 
   func openAbout() {
