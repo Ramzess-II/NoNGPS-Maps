@@ -16,6 +16,7 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
 import app.organicmaps.R;
+import app.organicmaps.sdk.location.LocationUtils;
 import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.util.ThemeUtils;
 
@@ -99,8 +100,11 @@ class SourceSelector
   private void updateGps(@NonNull NoGps.Status status, @NonNull Context context)
   {
     mGps.mView.setContentDescription(context.getString(R.string.nogps_status_gps) + ", " + getGpsText(status, context));
-    // Not blinking: GPS is not connected to, it is there or not.
-    if (status.gpsSpoofed)
+    // Not blinking: GPS is not connected to, it is there or not. The color tells the GPS signal, whichever source is
+    // chosen.
+    if (isGpsOffByOs(context))
+      mGps.show(R.drawable.ic_nogps_gps_off, R.color.source_sleeping, 0, 0, false);
+    else if (status.gpsSpoofed)
       mGps.show(R.drawable.ic_nogps_gps, R.color.source_warning, R.drawable.ic_nogps_badge_alert,
                 R.color.source_warning, false);
     // Also while it is ignored or not trusted yet.
@@ -156,6 +160,8 @@ class SourceSelector
   @NonNull
   private static String getGpsText(@NonNull NoGps.Status status, @NonNull Context context)
   {
+    if (isGpsOffByOs(context))
+      return context.getString(R.string.nogps_status_gps_off);
     if (status.gpsSpoofed)
       return context.getString(R.string.nogps_status_gps_spoofed);
     if (status.workingGpsAccuracyM < 0)
@@ -169,6 +175,11 @@ class SourceSelector
     if (meters < 1000)
       return context.getString(R.string.nogps_meters, Math.round(meters));
     return context.getString(R.string.nogps_kilometers, meters / 1000);
+  }
+
+  private static boolean isGpsOffByOs(@NonNull Context context)
+  {
+    return !LocationUtils.checkFineLocationPermission(context) || !LocationUtils.areLocationServicesTurnedOn(context);
   }
 
   private void onGpsTapped()

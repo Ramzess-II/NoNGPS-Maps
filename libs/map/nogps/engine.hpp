@@ -340,6 +340,8 @@ private:
   int64_t UnixTimeAfterGps(int64_t timeMs) const;
   void ApplyManualLocation();
   void BlockShift(bool forward, ms::LatLon const & at);
+  // Remembers the position as the last good one of GPS. Returns whether it is good.
+  bool TrackWorkingGps(Fix const & location);
   std::optional<Fix> GetWorkingGps() const;
   std::optional<Fix> GetWorkingNetwork() const;
   PositionSource GetPositionSource() const;
