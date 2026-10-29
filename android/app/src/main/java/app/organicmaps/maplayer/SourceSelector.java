@@ -40,7 +40,6 @@ class SourceSelector
   }
 
   private static final long BLINK_DURATION_MS = 700;
-  private static final float DISABLED_ALPHA = 0.4f;
 
   @NonNull
   private final View mThumb;
@@ -114,8 +113,6 @@ class SourceSelector
   private void updateBox(@NonNull NoGps.Status status)
   {
     final Context context = mBox.mView.getContext();
-    mBox.mView.setEnabled(status.inertialEnabled);
-    mBox.mView.setAlpha(status.inertialEnabled ? 1f : DISABLED_ALPHA);
     mBox.mView.setContentDescription(context.getString(R.string.nogps_source_box));
     if (!status.inertialEnabled)
     {
@@ -186,6 +183,12 @@ class SourceSelector
 
   private void onBoxTapped()
   {
+    // No box is set up: the sensors screen offers to connect one, GPS stays the source.
+    if (!NoGps.getStatus().inertialEnabled)
+    {
+      mListener.showSensors(false /* backToGps */);
+      return;
+    }
     if (mStatus == null)
       return;
     if (!mStatus.gpsDisabled)

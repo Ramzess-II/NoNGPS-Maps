@@ -95,6 +95,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     view.findViewById(R.id.nogps_connect).setOnClickListener(v -> connectBox());
     view.findViewById(R.id.nogps_forget).setOnClickListener(v -> {
       NoGps.nativeSetInertialNavigationEnabled(false);
+      // Nothing else would drive the car, the box was the only source.
+      NoGps.nativeSetGpsDisabled(false);
       update();
     });
     mAdapter = view.findViewById(R.id.nogps_adapter);
