@@ -2319,6 +2319,16 @@ UNIT_TEST(NoGps_Engine_DisabledGpsIsIgnored)
   TEST(env.m_engine.GetStatus().m_workingGpsAccuracyM, ());
 }
 
+UNIT_TEST(NoGps_Engine_ForgettingTheBoxReturnsGps)
+{
+  Env env(true /* inertial */);
+  env.m_engine.SetGpsDisabled(true);
+  env.m_engine.SetInertialNavigationEnabled(false);
+  TEST(!env.m_engine.GetStatus().m_gpsDisabled, ());
+  env.DriveGps(3, 0, 10);
+  TEST(!env.m_delegate.m_positions.empty(), ());
+}
+
 UNIT_TEST(NoGps_Engine_InertialContinuesWhenGpsIsLost)
 {
   Env env(true /* inertial */);

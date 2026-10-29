@@ -810,9 +810,14 @@ void Engine::SetInertialNavigationEnabled(bool enabled)
   LOG(LINFO, ("Box set up by the user =", enabled));
   m_storage.Set(Storage::kInertialEnabled, enabled);
   if (enabled)
+  {
     StartInertialNavigation();
-  else if (m_inertial)
+    return;
+  }
+  if (m_inertial)
     m_inertial->Stop();
+  // Nothing else would drive the car, the box was the only source.
+  SetGpsDisabled(false);
 }
 
 void Engine::SetElm327Address(std::string const & address)
