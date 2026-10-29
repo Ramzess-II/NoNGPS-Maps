@@ -45741,7 +45741,7 @@ en = GPS
 
 [nogps_source_box]
 comment = The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored
-tags = apple-maps
+tags = android-app,apple-maps
 en = Box
 ru = Блок
 uk = Блок
