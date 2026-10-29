@@ -1,6 +1,6 @@
 ---
 name: nogps-pr
-description: Finish a NoGPS change and open its pull request. Covers tests, living docs, an issue for the other platform, a review in a fresh context, and the PR description. Use when a change is ready for a PR.
+description: Finish a NoGPS change and open its pull request. Covers tests, living docs, both platforms, a review in a fresh context, and the PR description. Use when a change is ready for a PR.
 argument-hint: "[issue number]"
 ---
 
@@ -13,9 +13,10 @@ argument-hint: "[issue number]"
    On Windows, say that CI runs the C++ tests. Don't claim tests passed if they didn't run.
 3. **Living docs.** If a rule or constant of the core changed, update `docs/nogps/navigation-rules.md`. If the box
    protocol changed, update `docs/nogps/esp32-firmware-spec.md`. Put these in a separate `[docs]` commit.
-4. **Other platform and follow-ups.** Open an issue now for everything this change leaves to do, as "Work you don't
-   do now goes to an issue" in the rule says. That covers an interface change the other bridge must repeat, a
-   feature the other platform should get, a bug noticed on the way, a check on a device. Generated strings go in
+4. **Both platforms and follow-ups.** A change that both apps show is made on iOS and Android in this PR; if one
+   platform is missing, do it now unless the user says otherwise. Then open an issue for everything this change still
+   leaves to do, as "Work you don't do now goes to an issue" in the rule says. That covers a platform part
+   deliberately left out, a bug noticed on the way, a check on a device. Generated strings go in
    their own `[strings] Regenerated` commit, as `CLAUDE.md` says.
 5. **Review.** Run the `/code-review` skill on the branch. It works in a fresh context. Fix the correctness findings.
    Skip style preferences and defensive code for cases that can't happen.
@@ -28,5 +29,5 @@ argument-hint: "[issue number]"
    - **Other platform**: the links of the issues from step 4, or "Nothing to do" and why. CI fails the PR without
      one of them. Add "Xcode project not verified" when that applies;
    - "Written with Claude Code."
-7. **Reviewer.** If the PR touches the shared interface or the other person's platform, request the other person:
+7. **Reviewer.** If the PR touches the shared interface, request the other person:
    `gh pr edit <n> --add-reviewer <Ramzess-II|koloboid>`.

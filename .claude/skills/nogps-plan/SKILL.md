@@ -20,7 +20,7 @@ Input: an idea in words, or an existing issue number. Research only: don't chang
    - **Problem**: what goes wrong, with evidence (trip date and time, log line, numbers).
    - **Behavior after**: the rule as it will read in `navigation-rules.md`.
    - **Changes**: files and functions; new constants with their values.
-   - **Shared interface**: changes to `engine.hpp`, `delegate.hpp`, enums, and what the other platform must repeat,
+   - **Shared interface**: changes to `engine.hpp`, `delegate.hpp`, enums, and the changes in both bridges,
      or "none".
    - **Verification**: the unit tests to add, and which trips to replay with which numbers to compare.
    - **Out of scope**.
