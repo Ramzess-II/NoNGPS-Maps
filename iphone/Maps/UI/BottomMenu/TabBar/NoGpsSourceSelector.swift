@@ -161,7 +161,7 @@ final class NoGpsSourceSelector: UIView {
   @objc
   private func boxTapped() {
     // No box is connected: the sensors screen offers to connect one, GPS stays the source.
-    guard status.inertialEnabled else {
+    guard NoGps.status().inertialEnabled else {
       NoGpsControls.showSensors()
       return
     }
