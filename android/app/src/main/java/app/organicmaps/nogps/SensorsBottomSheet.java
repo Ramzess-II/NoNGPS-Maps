@@ -20,11 +20,11 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
 import app.organicmaps.BuildConfig;
 import app.organicmaps.R;
 import app.organicmaps.sdk.location.NoGps;
+import app.organicmaps.util.Utils;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import java.util.ArrayList;
@@ -32,7 +32,8 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Inertial navigation settings and state: the ELM327 adapter, speed, gyroscope zeroing and the car direction.
+ * Inertial navigation state: the sensor box or the ELM327 adapter, speed and calibration. Without the box it offers
+ * to buy or to connect one.
  */
 public class SensorsBottomSheet extends BottomSheetDialogFragment
 {
@@ -40,6 +41,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   // The fragment result told when the user closes the sheet.
   public static final String RESULT_CLOSED = TAG + ".closed";
   private static final long UPDATE_INTERVAL_MS = 500;
+  private static final String SHOP_URL = "https://non-gps.com";
 
   private final Handler mHandler = new Handler(Looper.getMainLooper());
   private final Runnable mUpdater = new Runnable() {
@@ -61,7 +63,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   // The user has been asked while the sheet is shown.
   private boolean mBoxBluetoothAsked;
 
-  private SwitchCompat mSwitch;
+  private View mNoBox;
+  private View mPaired;
   private TextView mAdapter;
   private View mFirmwareRow;
   private TextView mFirmware;
@@ -86,7 +89,14 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
                            @Nullable Bundle savedInstanceState)
   {
     final View view = inflater.inflate(R.layout.nogps_sensors_sheet, container, false);
-    mSwitch = view.findViewById(R.id.nogps_inertial_switch);
+    mNoBox = view.findViewById(R.id.nogps_no_box);
+    mPaired = view.findViewById(R.id.nogps_paired);
+    view.findViewById(R.id.nogps_buy).setOnClickListener(v -> Utils.openUrl(requireContext(), SHOP_URL));
+    view.findViewById(R.id.nogps_connect).setOnClickListener(v -> connectBox());
+    view.findViewById(R.id.nogps_forget).setOnClickListener(v -> {
+      NoGps.nativeSetInertialNavigationEnabled(false);
+      update();
+    });
     mAdapter = view.findViewById(R.id.nogps_adapter);
     mFirmwareRow = view.findViewById(R.id.nogps_firmware_row);
     mFirmware = view.findViewById(R.id.nogps_firmware);
@@ -112,15 +122,6 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     source.check(status.esp32Source ? R.id.nogps_source_esp32_bt : R.id.nogps_source_phone);
     source.setOnCheckedChangeListener((group, checkedId) -> onSourceChosen(checkedId));
 
-    mSwitch.setChecked(status.inertialEnabled);
-    mSwitch.setOnCheckedChangeListener((v, isChecked) -> onSwitch(isChecked));
-    final SwitchCompat shiftButtons = view.findViewById(R.id.nogps_shift_buttons_switch);
-    shiftButtons.setChecked(status.shiftButtonsShown);
-    shiftButtons.setOnCheckedChangeListener((v, isChecked) -> NoGps.nativeSetShiftButtonsShown(isChecked));
-
-    final SwitchCompat disableGps = view.findViewById(R.id.nogps_disable_gps_switch);
-    disableGps.setChecked(status.gpsDisabled);
-    disableGps.setOnCheckedChangeListener((v, isChecked) -> NoGps.nativeSetGpsDisabled(isChecked));
     mChooseAdapter.setOnClickListener(v -> withBluetoothPermission(this::chooseAdapter));
     mCalibrate.setOnClickListener(v -> NoGps.nativeCalibrate());
     return view;
@@ -162,23 +163,12 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     });
   }
 
-  private void onSwitch(boolean enabled)
+  private void connectBox()
   {
-    final NoGps.Status status = NoGps.getStatus();
-    if (!enabled || status.esp32Source)
-    {
-      NoGps.nativeSetInertialNavigationEnabled(enabled);
-      if (enabled)
-        askBoxBluetooth();
-      update();
-      return;
-    }
-    withBluetoothPermission(() -> {
-      NoGps.nativeSetInertialNavigationEnabled(true);
-      if (NoGps.getStatus().elm327Address.isEmpty())
-        chooseAdapter();
-      update();
-    });
+    NoGps.nativeSetEsp32Source(true);
+    NoGps.nativeSetInertialNavigationEnabled(true);
+    askBoxBluetooth();
+    update();
   }
 
   /**
@@ -222,7 +212,6 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       return;
     }
     Toast.makeText(requireContext(), R.string.nogps_bt_permission_denied, Toast.LENGTH_LONG).show();
-    mSwitch.setChecked(NoGps.getStatus().inertialEnabled);
   }
 
   @SuppressLint("MissingPermission") // Checked in withBluetoothPermission().
@@ -278,6 +267,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       return;
     final NoGps.Status status = NoGps.getStatus();
     final boolean enabled = status.inertialStarted;
+    mNoBox.setVisibility(status.inertialEnabled ? View.GONE : View.VISIBLE);
+    mPaired.setVisibility(status.inertialEnabled ? View.VISIBLE : View.GONE);
 
     final boolean esp32 = status.esp32Source;
     mHint.setText(esp32 ? R.string.nogps_sensors_hint_box : R.string.nogps_sensors_hint);

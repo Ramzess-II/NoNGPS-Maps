@@ -1,13 +1,15 @@
-/// The settings and the state of the inertial navigation by the ESP32 sensor box: the box, the speed, its
-/// calibration, the calibration buttons and the test switch disabling GPS.
+/// The state of the inertial navigation by the ESP32 sensor box: the box, the speed and its calibration. Without
+/// the box it offers to buy or to connect one.
 final class NoGpsSensorsViewController: MWMTableViewController {
   private enum Constants {
     static let refreshInterval: TimeInterval = 0.5
     static let cellId = "NoGpsSensorsCell"
+    static let shopURL = URL(string: "https://non-gps.com")!
   }
 
   private enum Row {
-    case enabled
+    case buy
+    case connect
     case box
     case firmware
     case firmwareAction
@@ -19,8 +21,7 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     case readiness
     case scale
     case clearSpeed
-    case shiftButtons
-    case disableGps
+    case forget
   }
 
   private struct Section {
@@ -78,6 +79,14 @@ final class NoGpsSensorsViewController: MWMTableViewController {
 
   private func refresh() {
     status = NoGps.status()
+    guard status.inertialEnabled else {
+      sections = [
+        Section(header: L("nogps_box_buy_title"), rows: [.buy], footer: L("nogps_box_buy_text")),
+        Section(rows: [.connect], footer: nil),
+      ]
+      tableView.reloadData()
+      return
+    }
     var stateRows: [Row] = [.box]
     // The install row comes where a text was, not a button: a tap made as the box connects doesn't start an update.
     if isFirmwareUpdating() || !status.boxFirmware.isEmpty {
@@ -97,14 +106,12 @@ final class NoGpsSensorsViewController: MWMTableViewController {
       stateRows.append(.readiness)
     }
     sections = [
-      Section(rows: [.enabled], footer: L("nogps_sensors_hint_box")),
-      Section(rows: stateRows, footer: nil),
+      Section(rows: stateRows, footer: L("nogps_sensors_hint_box")),
       // The user calibrates the box when it is put into the car.
       Section(header: L("nogps_box_calibration"), rows: [.boxSensors, .calibrate],
               footer: L("nogps_box_calibration_hint")),
       Section(rows: [.scale, .clearSpeed], footer: nil),
-      Section(rows: [.shiftButtons], footer: L("nogps_shift_buttons_hint")),
-      Section(rows: [.disableGps], footer: L("nogps_disable_gps_hint")),
+      Section(rows: [.forget], footer: nil),
     ]
     tableView.reloadData()
   }
@@ -135,9 +142,18 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     cell.selectionStyle = .none
     let row = sections[indexPath.section].rows[indexPath.row]
     switch row {
-    case .enabled:
-      content.text = L("nogps_sensors_enable")
-      cell.accessoryView = makeSwitch(isOn: status.inertialEnabled, action: #selector(enabledChanged))
+    case .buy:
+      content.text = L("nogps_box_buy")
+      content.textProperties.color = .linkBlue
+      cell.selectionStyle = .default
+    case .connect:
+      content.text = L("nogps_box_connect")
+      content.textProperties.color = .linkBlue
+      cell.selectionStyle = .default
+    case .forget:
+      content.text = L("nogps_box_forget")
+      content.textProperties.color = .buttonRed
+      cell.selectionStyle = .default
     case .box:
       let name = status.inertialStarted && !status.deviceName.isEmpty ? status.deviceName : "ESP32"
       let box = status.inertialStarted ? name + " · " + Self.boxStateText(status) : name
@@ -186,12 +202,6 @@ final class NoGpsSensorsViewController: MWMTableViewController {
       content.text = L("nogps_clear_speed")
       content.textProperties.color = .linkBlue
       cell.selectionStyle = .default
-    case .shiftButtons:
-      content.text = L("nogps_shift_buttons")
-      cell.accessoryView = makeSwitch(isOn: status.shiftButtonsShown, action: #selector(shiftButtonsChanged))
-    case .disableGps:
-      content.text = L("nogps_disable_gps")
-      cell.accessoryView = makeSwitch(isOn: status.gpsDisabled, action: #selector(disableGpsChanged))
     }
     cell.contentConfiguration = content
     return cell
@@ -202,6 +212,14 @@ final class NoGpsSensorsViewController: MWMTableViewController {
   override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
     tableView.deselectRow(at: indexPath, animated: true)
     switch sections[indexPath.section].rows[indexPath.row] {
+    case .buy:
+      UIApplication.shared.open(Constants.shopURL)
+    case .connect:
+      NoGps.setInertialNavigationEnabled(true)
+      refresh()
+    case .forget:
+      NoGps.setInertialNavigationEnabled(false)
+      refresh()
     case .firmwareAction:
       // The row does what it shows, if the update still allows it: the box may have gone on since it was drawn.
       let cancel = canCancelFirmware()
@@ -334,29 +352,6 @@ final class NoGpsSensorsViewController: MWMTableViewController {
   }
 
   // MARK: - Actions
-
-  private func makeSwitch(isOn: Bool, action: Selector) -> UISwitch {
-    let control = UISwitch()
-    control.isOn = isOn
-    control.addTarget(self, action: action, for: .valueChanged)
-    return control
-  }
-
-  @objc
-  private func enabledChanged(_ sender: UISwitch) {
-    NoGps.setInertialNavigationEnabled(sender.isOn)
-    refresh()
-  }
-
-  @objc
-  private func shiftButtonsChanged(_ sender: UISwitch) {
-    NoGps.setShiftButtonsShown(sender.isOn)
-  }
-
-  @objc
-  private func disableGpsChanged(_ sender: UISwitch) {
-    NoGps.setGpsDisabled(sender.isOn)
-  }
 
   private func confirmClearSpeed() {
     let alert = UIAlertController(title: L("nogps_clear_speed_title"),
