@@ -346,6 +346,8 @@ private:
   std::optional<Fix> GetWorkingNetwork() const;
   PositionSource GetPositionSource() const;
   void LogTrip();
+  // Logs the change of the position source, of the GPS signal, of the box and of its Bluetooth link.
+  void LogStateChanges();
   void Notify(Event event);
 
   Delegate & m_delegate;
@@ -419,6 +421,15 @@ private:
   int64_t m_fixShownMs = 0;
   // Positions shown between GPS positions since the last line of the trip log.
   int m_positionsBetweenGps = 0;
+  // What the log says about the states now, to log their changes.
+  struct LoggedState
+  {
+    std::string m_source;
+    std::string m_gps;
+    std::string m_box;
+    std::string m_ble;
+  };
+  LoggedState m_loggedState;
   // The motion source of the inertial navigation gave the car speed, the user is told when it stops.
   bool m_motionSourceWorked = false;
   std::optional<int64_t> m_motionSourceWarnedMs;
