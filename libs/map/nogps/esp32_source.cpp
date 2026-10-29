@@ -433,6 +433,9 @@ CalibrationState Esp32Source::GetCalibrationState()
 
 void Esp32Source::Calibrate()
 {
+  // The box can't hear the command, and no answer would come to end the calibration.
+  if (m_bleState != BleState::Connected)
+    return;
   // The box zeroes the gyroscope and finds its vertical in the car at once.
   m_calibrationId = m_nextCommandId++;
   m_calibrationStartMs = m_clock.NowMs();

@@ -274,6 +274,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mHint.setText(esp32 ? R.string.nogps_sensors_hint_box : R.string.nogps_sensors_hint);
     mChooseAdapter.setVisibility(esp32 ? View.GONE : View.VISIBLE);
     mCalibrate.setText(esp32 ? R.string.nogps_sensors_calibrate_box : R.string.nogps_sensors_calibrate);
+    // The box calibrates itself: there is nobody to calibrate while it is out of reach.
+    mCalibrate.setEnabled(!esp32 || status.getBleState() == NoGps.BleState.CONNECTED);
     if (esp32)
     {
       String box = enabled && !status.deviceName.isEmpty() ? status.deviceName : "ESP32";
