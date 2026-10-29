@@ -924,6 +924,8 @@
     <string name="nogps_mark_by_tap">Коснитесь дороги, где сейчас машина</string>
     <string name="nogps_gps_spoofed">GPS подменён! Используем вышки и Wi-Fi. Можно также указать позицию вручную.</string>
     <string name="nogps_gps_restored">GPS снова в норме</string>
+    <!-- The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored -->
+    <string name="nogps_source_box">Блок</string>
     <string name="nogps_status_network_spoofed">GPS подменён · вышки ±%s</string>
     <string name="nogps_status_network_no_gps">Нет GPS · вышки ±%s</string>
     <string name="nogps_status_manual_just_now">Ручной режим · только что</string>
