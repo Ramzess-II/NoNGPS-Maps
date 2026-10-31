@@ -184,6 +184,8 @@ NS_SWIFT_NAME(NoGps)
 
 /// A position from CoreLocation. The chosen position comes back to MWMLocationManager.
 + (void)onLocation:(CLLocation *)location;
+/// The last position from CoreLocation as it came: the GPS sheet shows its details.
++ (nullable CLLocation *)lastPlatformLocation;
 /// A valid heading of the compass, only written to the log of a drive.
 + (void)onHeading:(CLHeading *)heading;
 

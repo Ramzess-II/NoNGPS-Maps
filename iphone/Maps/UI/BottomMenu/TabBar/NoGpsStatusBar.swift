@@ -1,34 +1,40 @@
-/// Chooses where the position of the car comes from: GPS while it is good with the sensor box taking over by itself,
-/// or the box alone with GPS ignored. Each segment shows how its source works now, tapping the chosen one tells more.
-final class NoGpsSourceSelector: UIView {
+/// The middle of the bottom bar: the sensor box, where the position of the car comes from with its accuracy, and GPS.
+/// The box and GPS show their state by the shape and the color of the icon, and open their sheets.
+final class NoGpsStatusBar: UIView {
   private enum Constants {
-    static let height = CGFloat(40)
-    static let inset = CGFloat(2)
-    static let cornerRadius = CGFloat(11)
-    static let thumbCornerRadius = CGFloat(9)
+    static let buttonSize = CGFloat(48)
+    static let spacing = CGFloat(4)
+    // The word shrinks to fit, but stays readable.
+    static let minScale = CGFloat(0.75)
     static let gpsSymbol = "antenna.radiowaves.left.and.right"
     static let boxSymbol = "cpu"
     static let goodColor = UIColor { $0.userInterfaceStyle == .dark
       ? UIColor(red: 0x32 / 255, green: 0xD7 / 255, blue: 0x4B / 255, alpha: 1)
       : UIColor(red: 0x1E / 255, green: 0x8E / 255, blue: 0x3E / 255, alpha: 1)
     }
-
-    static let thumbColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0.39, alpha: 1) : .white }
   }
 
-  private weak static var shared: NoGpsSourceSelector?
+  /// How a state is drawn: the icon, its color, a badge and if it pulses while something is in progress.
+  struct Look {
+    let image: UIImage?
+    let color: UIColor
+    var badge: (symbol: String, color: UIColor)?
+    var pulsing = false
+  }
 
-  private let thumb = UIView()
-  private let segments = UIStackView()
-  private let gps = Segment(title: L("nogps_status_gps"))
-  private let box = Segment(title: L("nogps_source_box"))
-  private var status = NoGps.status()
+  private weak static var shared: NoGpsStatusBar?
+
+  private let box = StateButton()
+  private let word = UILabel()
+  private let accuracy = UILabel()
+  private let text = UIStackView()
+  private let gps = StateButton()
 
   init() {
     super.init(frame: .zero)
     Self.shared = self
     setupViews()
-    apply(status)
+    apply(NoGps.status())
   }
 
   @available(*, unavailable)
@@ -40,165 +46,186 @@ final class NoGpsSourceSelector: UIView {
     shared?.apply(status)
   }
 
-  override func layoutSubviews() {
-    super.layoutSubviews()
-    // The segments are laid out by the stack view, the thumb takes the place of the chosen one.
-    segments.layoutIfNeeded()
-    let chosen = gps.isChosen ? gps : box
-    thumb.frame = segments.convert(chosen.frame, to: self)
+  /// The background of the buttons of the bar, Search and Menu too.
+  static func styleButton(_ button: UIView) {
+    button.backgroundColor = .tertiarySystemFill
+    button.layer.cornerRadius = 12
+    button.layer.cornerCurve = .continuous
   }
 
   // MARK: - Views
 
   private func setupViews() {
-    backgroundColor = .tertiarySystemFill
-    layer.cornerRadius = Constants.cornerRadius
-    layer.cornerCurve = .continuous
-    heightAnchor.constraint(equalToConstant: Constants.height).isActive = true
+    word.font = .systemFont(ofSize: 15, weight: .semibold)
+    word.textColor = .label
+    word.textAlignment = .center
+    word.adjustsFontSizeToFitWidth = true
+    word.minimumScaleFactor = Constants.minScale
+    word.baselineAdjustment = .alignCenters
+    accuracy.font = .monospacedDigitSystemFont(ofSize: 13, weight: .regular)
+    accuracy.textColor = .secondaryLabel
+    accuracy.textAlignment = .center
+    accuracy.adjustsFontSizeToFitWidth = true
+    accuracy.minimumScaleFactor = Constants.minScale
+    text.addArrangedSubview(word)
+    text.addArrangedSubview(accuracy)
+    text.axis = .vertical
+    text.alignment = .fill
+    text.isAccessibilityElement = true
+    text.accessibilityTraits = .staticText
+    text.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
-    thumb.backgroundColor = Constants.thumbColor
-    thumb.layer.cornerRadius = Constants.thumbCornerRadius
-    thumb.layer.cornerCurve = .continuous
-    thumb.layer.shadowColor = UIColor.black.cgColor
-    thumb.layer.shadowOpacity = 0.15
-    thumb.layer.shadowRadius = 2
-    thumb.layer.shadowOffset = CGSize(width: 0, height: 1)
-    addSubview(thumb)
-
-    segments.axis = .horizontal
-    segments.distribution = .fillEqually
-    segments.translatesAutoresizingMaskIntoConstraints = false
-    segments.addArrangedSubview(gps)
-    segments.addArrangedSubview(box)
-    addSubview(segments)
-    NSLayoutConstraint.activate([
-      segments.leadingAnchor.constraint(equalTo: leadingAnchor, constant: Constants.inset),
-      segments.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -Constants.inset),
-      segments.topAnchor.constraint(equalTo: topAnchor, constant: Constants.inset),
-      segments.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -Constants.inset),
-    ])
-    gps.addTarget(self, action: #selector(gpsTapped), for: .touchUpInside)
+    box.accessibilityLabel = L("nogps_box_title")
+    gps.accessibilityLabel = L("nogps_status_gps")
+    for button in [box, gps] {
+      Self.styleButton(button)
+      NSLayoutConstraint.activate([
+        button.widthAnchor.constraint(equalToConstant: Constants.buttonSize),
+        button.heightAnchor.constraint(equalToConstant: Constants.buttonSize),
+      ])
+    }
     box.addTarget(self, action: #selector(boxTapped), for: .touchUpInside)
+    gps.addTarget(self, action: #selector(gpsTapped), for: .touchUpInside)
+
+    let row = UIStackView(arrangedSubviews: [box, text, gps])
+    row.axis = .horizontal
+    row.alignment = .center
+    row.spacing = Constants.spacing
+    row.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(row)
+    NSLayoutConstraint.activate([
+      row.leadingAnchor.constraint(equalTo: leadingAnchor),
+      row.trailingAnchor.constraint(equalTo: trailingAnchor),
+      row.topAnchor.constraint(equalTo: topAnchor),
+      row.bottomAnchor.constraint(equalTo: bottomAnchor),
+    ])
   }
 
   // MARK: - State
 
   private func apply(_ status: NoGpsStatus) {
-    self.status = status
-    let gpsChosen = !status.gpsDisabled
-    let moved = gpsChosen != gps.isChosen
-    gps.isChosen = gpsChosen
-    box.isChosen = !gpsChosen
-    applyGps(status)
-    applyBox(status)
-    if moved, window != nil {
-      setNeedsLayout()
-      UIView.animate(withDuration: AppConstants.defaultAnimationDuration) { self.layoutIfNeeded() }
-    }
+    let source = Self.sourceText(status)
+    word.text = source.word
+    accuracy.text = source.accuracy
+    accuracy.isHidden = source.accuracy == nil
+    text.accessibilityLabel = [source.word, source.accuracy].compactMap { $0 }.joined(separator: " ")
+    box.show(Self.boxLook(status))
+    box.accessibilityValue = status.inertialEnabled ? NoGpsSensorsViewController.boxStateText(status) : nil
+    gps.show(Self.gpsLook(status))
+    gps.accessibilityValue = Self.gpsStateText(status)
   }
 
-  private func applyGps(_ status: NoGpsStatus) {
-    gps.accessibilityValue = Self.gpsText(status)
+  private static func sourceText(_ status: NoGpsStatus) -> (word: String, accuracy: String?) {
+    let word: String
+    switch status.source {
+    case .gps: word = L("nogps_status_gps")
+    case .network: word = L("nogps_bar_network")
+    case .manual: word = L("nogps_bar_manual")
+    case .inertial: word = L("nogps_bar_inertial")
+    case .none: return ("—", nil)
+    @unknown default: return ("—", nil)
+    }
+    return (word, "±" + NoGpsControls.formatAccuracy(status.accuracyM))
+  }
+
+  static func gpsLook(_ status: NoGpsStatus) -> Look {
     let antenna = UIImage(systemName: Constants.gpsSymbol)
     let slashed = UIImage(systemName: Constants.gpsSymbol + ".slash") ?? antenna
-    // The color tells the GPS signal, whichever source is chosen.
     if LocationManager.isLocationProhibited() {
-      gps.show(slashed, color: .secondaryLabel)
-    } else if status.gpsSpoofed {
-      gps.show(antenna, color: .systemOrange, badge: ("exclamationmark", .systemOrange))
-    } else if status.workingGpsAccuracyM >= 0 {
-      // Also while it is ignored or not trusted yet.
-      gps.show(antenna, color: Constants.goodColor)
-    } else {
-      gps.show(slashed, color: .systemRed)
+      return Look(image: slashed, color: .secondaryLabel)
     }
+    let look: Look
+    switch status.gpsState {
+    case .good: look = Look(image: antenna, color: Constants.goodColor)
+    case .checking: look = Look(image: antenna, color: .systemBlue, pulsing: true)
+    case .coarse: look = Look(image: antenna, color: .systemOrange)
+    case .spoofed: look = Look(image: antenna, color: .systemOrange, badge: ("exclamationmark", .systemOrange))
+    case .none: look = Look(image: slashed, color: .systemRed)
+    @unknown default: look = Look(image: slashed, color: .systemRed)
+    }
+    // The car doesn't follow GPS: its signal is told by the shape only.
+    return status.gpsDisabled ? Look(image: look.image, color: .secondaryLabel, badge: look.badge) : look
   }
 
-  private func applyBox(_ status: NoGpsStatus) {
-    box.accessibilityValue = status.inertialStarted ? NoGpsSensorsViewController.boxStateText(status) : nil
+  static func boxLook(_ status: NoGpsStatus) -> Look {
     let chip = UIImage(systemName: Constants.boxSymbol)
-    guard status.inertialEnabled else {
-      box.show(chip, color: .secondaryLabel)
-      return
-    }
+    guard status.inertialEnabled else { return Look(image: chip, color: .secondaryLabel) }
     switch status.sourceState {
-    case .connected: box.show(chip, color: Constants.goodColor)
-    case .updating: box.show(chip, color: .label, badge: ("arrow.down", .systemBlue))
-    case .boxSleeping, .obdSleeping: box.show(chip, color: .secondaryLabel, badge: ("moon.fill", .systemGray))
+    case .connected: return Look(image: chip, color: Constants.goodColor)
+    case .updating: return Look(image: chip, color: .systemBlue, badge: ("arrow.down", .systemBlue), pulsing: true)
+    case .boxSleeping, .obdSleeping: return Look(image: chip, color: .secondaryLabel, badge: ("moon.fill", .systemGray))
     case .noCarData, .obdDisabled, .obdConnecting, .obdError, .noAdapter:
-      box.show(chip, color: .label, badge: ("exclamationmark", .systemOrange))
-    case .disconnected, .connecting: showBoxSearch(status)
-    @unknown default: showBoxSearch(status)
+      return Look(image: chip, color: .label, badge: ("exclamationmark", .systemOrange))
+    case .disconnected, .connecting: return boxSearchLook(status)
+    @unknown default: return boxSearchLook(status)
     }
   }
 
-  /// The box is not heard yet: first the phone looks for it by Bluetooth (red), then waits for its data (blue).
-  private func showBoxSearch(_ status: NoGpsStatus) {
+  /// The box is not heard yet: the phone looks for it by Bluetooth, then waits for its data.
+  private static func boxSearchLook(_ status: NoGpsStatus) -> Look {
     switch status.bleState {
-    case .connected: box.show(UIImage(systemName: Constants.boxSymbol), color: .systemBlue, pulsing: true)
-    case .off, .noPermission, .disabled: box.show(UIImage(resource: .icNogpsBluetoothOff), color: .secondaryLabel)
+    case .connected: return Look(image: UIImage(systemName: Constants.boxSymbol), color: .systemBlue, pulsing: true)
+    case .off, .noPermission, .disabled:
+      return Look(image: UIImage(resource: .icNogpsBluetoothOff), color: .secondaryLabel)
     case .searching, .pairingClosed, .connecting, .pairing:
-      box.show(UIImage(resource: .icNogpsBluetooth), color: .systemRed, pulsing: true)
-    @unknown default: box.show(UIImage(resource: .icNogpsBluetooth), color: .systemRed, pulsing: true)
+      return Look(image: UIImage(resource: .icNogpsBluetooth), color: .systemBlue, pulsing: true)
+    @unknown default: return Look(image: UIImage(resource: .icNogpsBluetooth), color: .systemBlue, pulsing: true)
     }
   }
 
-  private static func gpsText(_ status: NoGpsStatus) -> String {
+  static func gpsStateText(_ status: NoGpsStatus) -> String {
     if LocationManager.isLocationProhibited() {
       return L("nogps_status_gps_off")
     }
-    if status.gpsSpoofed {
-      return L("nogps_status_gps_spoofed")
+    switch status.gpsState {
+    case .good: return L("nogps_gps_state_good")
+    case .checking: return L("nogps_gps_state_checking")
+    case .coarse: return L("nogps_gps_state_coarse")
+    case .spoofed: return L("nogps_gps_state_spoofed")
+    case .none: return L("nogps_gps_state_none")
+    @unknown default: return L("nogps_gps_state_none")
     }
-    guard status.workingGpsAccuracyM >= 0 else { return L("nogps_status_no_gps") }
-    return L("nogps_status_gps") + " · ±" + NoGpsControls.formatAccuracy(status.workingGpsAccuracyM)
+  }
+
+  /// Why GPS is in its state, and if the car follows it.
+  static func gpsWhyText(_ status: NoGpsStatus) -> String? {
+    if LocationManager.isLocationProhibited() {
+      return nil
+    }
+    if status.gpsDisabled {
+      return L("nogps_gps_why_ignored")
+    }
+    switch status.gpsState {
+    case .good: return L("nogps_gps_why_used")
+    // Good positions are checked in the manual mode, the satellites are searched after the start.
+    case .checking: return L(status.manualMode ? "nogps_gps_why_checking" : "nogps_gps_why_searching")
+    case .coarse:
+      return L(status.workingNetworkAccuracyM >= 0 && status.workingGpsAccuracyM < 0 ? "nogps_gps_why_network"
+        : "nogps_gps_why_coarse")
+    case .spoofed: return L("nogps_gps_why_spoofed")
+    case .none: return L("nogps_gps_why_none")
+    @unknown default: return nil
+    }
   }
 
   // MARK: - Actions
 
   @objc
   private func gpsTapped() {
-    if gps.isChosen {
-      Toast.show(withText: Self.gpsText(status))
-    } else {
-      choose(gpsDisabled: false)
-    }
+    NoGpsGpsSheet.show()
   }
 
   @objc
   private func boxTapped() {
-    // No box is connected: the sensors screen offers to connect one, GPS stays the source.
-    guard NoGps.status().inertialEnabled else {
-      NoGpsControls.showSensors()
-      return
-    }
-    if !box.isChosen {
-      choose(gpsDisabled: true)
-      // The box drives the car, nothing to tell.
-      if status.sourceState == .connected {
-        return
-      }
-    }
-    // The sensors screen tells why the box doesn't drive the car. GPS comes back if the user leaves it unconnected.
-    NoGpsControls.showSensors { [weak self] in
-      if NoGps.status().sourceState != .connected {
-        self?.choose(gpsDisabled: false)
-      }
-    }
-  }
-
-  private func choose(gpsDisabled: Bool) {
-    NoGps.setGpsDisabled(gpsDisabled)
-    apply(NoGps.status())
+    NoGpsBoxSheet.show()
   }
 }
 
-/// A source: its state icon with a badge and its name.
-private final class Segment: UIControl {
+/// A button of the bar showing a state: its icon with a badge.
+final class StateButton: UIControl {
   private enum Constants {
-    static let iconSize = CGFloat(22)
+    static let iconSize = CGFloat(24)
     static let badgeSize = CGFloat(11)
-    static let spacing = CGFloat(6)
     static let pulseKey = "pulse"
     static let pulseDuration: CFTimeInterval = 0.7
     static let pulseOpacity = Float(0.3)
@@ -207,21 +234,15 @@ private final class Segment: UIControl {
 
   private let icon = UIImageView()
   private let badge = UIImageView()
-  private let label = UILabel()
 
-  var isChosen = false {
-    didSet {
-      label.textColor = isChosen ? .label : .secondaryLabel
-      updateTraits()
-    }
-  }
-
-  init(title: String) {
+  init() {
     super.init(frame: .zero)
     isAccessibilityElement = true
-    accessibilityLabel = title
+    accessibilityTraits = .button
+    translatesAutoresizingMaskIntoConstraints = false
 
     icon.contentMode = .scaleAspectFit
+    icon.isUserInteractionEnabled = false
     icon.translatesAutoresizingMaskIntoConstraints = false
     badge.contentMode = .center
     badge.tintColor = .white
@@ -229,31 +250,18 @@ private final class Segment: UIControl {
     badge.clipsToBounds = true
     badge.isHidden = true
     badge.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(icon)
     icon.addSubview(badge)
-
-    label.text = title
-    label.font = .systemFont(ofSize: 14, weight: .semibold)
-    label.textColor = .secondaryLabel
-
-    let content = UIStackView(arrangedSubviews: [icon, label])
-    content.axis = .horizontal
-    content.alignment = .center
-    content.spacing = Constants.spacing
-    content.isUserInteractionEnabled = false
-    content.translatesAutoresizingMaskIntoConstraints = false
-    addSubview(content)
     NSLayoutConstraint.activate([
       icon.widthAnchor.constraint(equalToConstant: Constants.iconSize),
       icon.heightAnchor.constraint(equalToConstant: Constants.iconSize),
+      icon.centerXAnchor.constraint(equalTo: centerXAnchor),
+      icon.centerYAnchor.constraint(equalTo: centerYAnchor),
       badge.widthAnchor.constraint(equalToConstant: Constants.badgeSize),
       badge.heightAnchor.constraint(equalToConstant: Constants.badgeSize),
       badge.centerXAnchor.constraint(equalTo: icon.trailingAnchor, constant: -2),
       badge.centerYAnchor.constraint(equalTo: icon.bottomAnchor, constant: -2),
-      content.centerXAnchor.constraint(equalTo: centerXAnchor),
-      content.centerYAnchor.constraint(equalTo: centerYAnchor),
-      content.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor),
     ])
-    updateTraits()
   }
 
   @available(*, unavailable)
@@ -261,16 +269,19 @@ private final class Segment: UIControl {
     fatalError("init(coder:) has not been implemented")
   }
 
-  func show(_ image: UIImage?, color: UIColor, badge badgeLook: (symbol: String, color: UIColor)? = nil,
-            pulsing: Bool = false) {
-    icon.image = image
-    icon.tintColor = color
-    badge.isHidden = badgeLook == nil
-    if let badgeLook {
+  override var isHighlighted: Bool {
+    didSet { alpha = isHighlighted ? 0.5 : 1 }
+  }
+
+  func show(_ look: NoGpsStatusBar.Look) {
+    icon.image = look.image
+    icon.tintColor = look.color
+    badge.isHidden = look.badge == nil
+    if let badgeLook = look.badge {
       badge.image = UIImage(systemName: badgeLook.symbol, withConfiguration: Constants.badgeSymbol)
       badge.backgroundColor = badgeLook.color
     }
-    pulse(pulsing)
+    pulse(look.pulsing)
   }
 
   private func pulse(_ on: Bool) {
@@ -288,13 +299,5 @@ private final class Segment: UIControl {
     animation.autoreverses = true
     animation.repeatCount = .infinity
     layer.add(animation, forKey: Constants.pulseKey)
-  }
-
-  private func updateTraits() {
-    var traits: UIAccessibilityTraits = .button
-    if isChosen {
-      traits.insert(.selected)
-    }
-    accessibilityTraits = traits
   }
 }
