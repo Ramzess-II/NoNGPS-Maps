@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The theme's primary text color is a plain color, so a disabled button would look enabled with it. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+  <item
+    android:state_enabled="false"
+    android:alpha="?android:disabledAlpha"
+    android:color="?android:textColorPrimary" />
+  <item android:color="?android:textColorPrimary" />
+</selector>
