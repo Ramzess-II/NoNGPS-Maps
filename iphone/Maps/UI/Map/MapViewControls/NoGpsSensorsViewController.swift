@@ -40,7 +40,7 @@ final class NoGpsSensorsViewController: MWMTableViewController {
   private var sections: [Section] = []
   private var status = NoGps.status()
   private var timer: Timer?
-  // Not saved: the screen opens with the table folded.
+  /// Not saved: the screen opens with the table folded.
   private var speedTableShown = false
   /// Called once the screen is closed.
   var onClose: (() -> Void)?
@@ -215,7 +215,7 @@ final class NoGpsSensorsViewController: MWMTableViewController {
       content.text = L(speedTableShown ? "nogps_speed_table_hide" : "nogps_speed_table_show")
       content.textProperties.color = .linkBlue
       cell.selectionStyle = .default
-    case let .speedTableRange(i):
+    case .speedTableRange(let i):
       content.text = speedTableRowText(i)
     }
     cell.contentConfiguration = content
