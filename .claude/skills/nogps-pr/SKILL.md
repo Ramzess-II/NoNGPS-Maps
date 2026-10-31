@@ -18,8 +18,9 @@ argument-hint: "[issue number]"
    leaves to do, as "Work you don't do now goes to an issue" in the rule says. That covers a platform part
    deliberately left out, a bug noticed on the way, a check on a device. Generated strings go in
    their own `[strings] Regenerated` commit, as `CLAUDE.md` says.
-5. **Review.** Run the `/code-review` skill on the branch. It works in a fresh context. Fix the correctness findings.
-   Skip style preferences and defensive code for cases that can't happen.
+5. **Review.** Run `/code-review medium` on the branch. It works in a fresh context; without a level it reuses the
+   last one typed, which can be costly. Fix the correctness findings. Skip style preferences and defensive code for
+   cases that can't happen.
 6. **PR.** The repo is public. Show the title and body to the user, with the links of the issues from step 4, and
    create the PR only after they confirm. Push, then run `gh pr create --base master` with this body:
    - `Fixes #<issue>` when there is one;
