@@ -113,11 +113,9 @@ std::optional<double> NonNegative(double value)
     _accuracyM = status.m_accuracyM;
     _manualMode = status.m_manualMode;
     _markByTap = status.m_markByTap;
-    _manualAge = status.m_manualAgeMs / 1000.0;
     _gpsSpoofed = status.m_gpsSpoofed;
     _gpsDisabled = status.m_gpsDisabled;
     _workingGpsAccuracyM = status.m_workingGpsAccuracyM.value_or(-1);
-    _workingNetworkAccuracyM = status.m_workingNetworkAccuracyM.value_or(-1);
     _movedByHand = status.m_movedByHand;
     _shiftForwardBlocked = status.m_shiftForwardBlocked;
     _shiftBackBlocked = status.m_shiftBackBlocked;

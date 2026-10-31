@@ -100,13 +100,10 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly) BOOL manualMode;
 // The next tap on the map shows where the car is: the button for it is pressed.
 @property(nonatomic, readonly) BOOL markByTap;
-// Since the user has set the position in the manual mode.
-@property(nonatomic, readonly) NSTimeInterval manualAge;
 @property(nonatomic, readonly) BOOL gpsSpoofed;
 @property(nonatomic, readonly) BOOL gpsDisabled;
 // GPS works now, also in the manual mode where it is not used. Negative if it doesn't.
 @property(nonatomic, readonly) double workingGpsAccuracyM;
-@property(nonatomic, readonly) double workingNetworkAccuracyM;
 // The position is not from GPS: the user corrects it with the buttons.
 @property(nonatomic, readonly) BOOL movedByHand;
 // The position stands at a crossing and is moved that way after the car passes it.

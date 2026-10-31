@@ -169,9 +169,6 @@ public final class NoGps
     // The next tap on the map shows where the car is.
     @Keep
     public boolean markByTap;
-    // Since the user has set the position in the manual mode.
-    @Keep
-    public long manualAgeMs;
     @Keep
     public boolean gpsSpoofed;
     @Keep
@@ -179,8 +176,6 @@ public final class NoGps
     // GPS works now, also in the manual mode where it is not used. The accuracy is negative if it doesn't.
     @Keep
     public float workingGpsAccuracyM;
-    @Keep
-    public float workingNetworkAccuracyM;
     // The position is not from GPS: the user corrects it with the buttons.
     @Keep
     public boolean movedByHand;

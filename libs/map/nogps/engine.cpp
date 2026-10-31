@@ -1410,13 +1410,10 @@ Status Engine::GetStatus()
   status.m_accuracyM = m_savedLocation ? m_savedLocation->m_accuracyM : 0;
   status.m_manualMode = m_manualMode;
   status.m_markByTap = m_markByTap;
-  status.m_manualAgeMs = MsSince(m_manualSetTimeMs);
   status.m_gpsSpoofed = m_spoofingDetector.IsSpoofed();
   status.m_gpsDisabled = m_gpsDisabled;
   if (auto const gps = GetWorkingGps())
     status.m_workingGpsAccuracyM = gps->m_accuracyM;
-  if (auto const network = GetWorkingNetwork())
-    status.m_workingNetworkAccuracyM = network->m_accuracyM;
   // The position is moved by hand only when it does not come from GPS: a GPS one is moved by the car.
   status.m_movedByHand =
       m_manualMode || status.m_source == PositionSource::Inertial || status.m_source == PositionSource::Manual;

@@ -49,13 +49,10 @@ struct Status
   bool m_manualMode = false;
   // The next tap on the map shows where the car is: the button for it is pressed.
   bool m_markByTap = false;
-  // Since the user has set the position in the manual mode.
-  int64_t m_manualAgeMs = 0;
   bool m_gpsSpoofed = false;
   bool m_gpsDisabled = false;
   // GPS works now, also in the manual mode where it is not used.
   std::optional<double> m_workingGpsAccuracyM;
-  std::optional<double> m_workingNetworkAccuracyM;
   // The position is not from GPS: the user corrects it with the buttons.
   bool m_movedByHand = false;
   // The position stands at a crossing and is moved that way after the car passes it.
