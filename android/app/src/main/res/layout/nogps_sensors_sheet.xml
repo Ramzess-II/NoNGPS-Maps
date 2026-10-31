@@ -61,11 +61,13 @@
     android:layout_height="wrap_content"
     android:orientation="vertical">
 
+  <!-- The box is the only source: the choice of the ELM327 adapter of the phone is hidden. -->
   <RadioGroup
     android:id="@+id/nogps_source"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:visibility="gone">
     <RadioButton
       android:id="@+id/nogps_source_phone"
       android:layout_width="match_parent"

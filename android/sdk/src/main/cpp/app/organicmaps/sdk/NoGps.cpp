@@ -160,7 +160,10 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeCreate(JNIEnv *, jc
 {
   CHECK(!g_noGpsDelegate, ());
   g_noGpsDelegate = std::make_unique<NoGpsJniDelegate>(delegate);
-  g_framework->NativeFramework()->CreateNoGps(*g_noGpsDelegate);
+  auto & engine = g_framework->NativeFramework()->CreateNoGps(*g_noGpsDelegate);
+  // The box is the only source of the car movement: the ELM327 adapter of the phone is not offered any more.
+  if (!engine.GetStatus().m_esp32Source)
+    engine.SetEsp32Source(true);
 }
 
 JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeStart(JNIEnv *, jclass)
