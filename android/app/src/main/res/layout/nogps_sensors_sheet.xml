@@ -245,7 +245,8 @@
       style="?borderlessButtonStyle"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
-      android:text="@string/nogps_sensors_calibrate" />
+      android:text="@string/nogps_sensors_calibrate"
+      android:textColor="@color/text_primary_disableable" />
   </LinearLayout>
 
   <TextView
