@@ -52,8 +52,10 @@ using namespace storage;
 
 - (void)routeTo:(PlacePageData *)data
 {
-  // Without a position there is nowhere to build the route from: the last location may be an old or spoofed one.
-  if ([MWMNoGps status].source == MWMNoGpsPositionSourceNone)
+  // Without GPS and without a mark of the user there is nowhere to build the route from: the last location may be
+  // an old or spoofed one.
+  MWMNoGpsStatus * noGps = [MWMNoGps status];
+  if (noGps.manualMode && noGps.source == MWMNoGpsPositionSourceNone)
   {
     [Toast showWithText:L(@"nogps_no_position_for_route")];
     return;

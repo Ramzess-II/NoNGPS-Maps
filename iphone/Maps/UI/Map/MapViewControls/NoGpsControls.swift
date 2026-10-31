@@ -420,7 +420,6 @@ final class NoGpsControls: NSObject {
     case .manualModeChanged: text = nil
     case .gpsBack: text = L("nogps_gps_back_auto")
     case .gpsLost: text = L("nogps_gps_lost_auto")
-    case .boxLost: text = L("nogps_box_lost_auto")
     case .gpsSpoofed: text = L("nogps_gps_spoofed")
     case .gpsRestored: text = L("nogps_gps_restored")
     case .roadLost: text = L("nogps_road_lost")

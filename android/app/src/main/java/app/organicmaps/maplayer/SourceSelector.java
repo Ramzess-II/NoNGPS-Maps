@@ -21,9 +21,8 @@ import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.util.ThemeUtils;
 
 /**
- * Chooses where the position of the car comes from: GPS, or the sensor box with GPS ignored. The core moves the choice
- * by itself when the chosen source fails. Each segment shows how its source works now, tapping the chosen one tells
- * more.
+ * Chooses where the position of the car comes from: GPS while it is good with the sensor box taking over by itself,
+ * or the box alone with GPS ignored. Each segment shows how its source works now, tapping the chosen one tells more.
  */
 class SourceSelector
 {
@@ -101,24 +100,18 @@ class SourceSelector
   private void updateGps(@NonNull NoGps.Status status, @NonNull Context context)
   {
     mGps.mView.setContentDescription(context.getString(R.string.nogps_status_gps) + ", " + getGpsText(status, context));
-    // Not blinking: GPS is not connected to, it is there or not. The color tells what GPS is worth, whichever source
-    // is chosen.
+    // Not blinking: GPS is not connected to, it is there or not. The color tells the GPS signal, whichever source is
+    // chosen.
     if (isGpsOffByOs(context))
-    {
       mGps.show(R.drawable.ic_nogps_gps_off, R.color.source_sleeping, 0, 0, false);
-      return;
-    }
-    switch (status.getGpsState())
-    {
-    case GOOD -> mGps.show(R.drawable.ic_nogps_gps, R.color.source_good, 0, 0, false);
-    // GPS works, it is not trusted until it has agreed with the box for a while.
-    case CHECKING -> mGps.show(R.drawable.ic_nogps_gps, R.color.source_connecting, 0, 0, false);
-    case SPOOFED ->
+    else if (status.gpsSpoofed)
       mGps.show(R.drawable.ic_nogps_gps, R.color.source_warning, R.drawable.ic_nogps_badge_alert,
                 R.color.source_warning, false);
-    case COARSE -> mGps.show(R.drawable.ic_nogps_gps, R.color.source_warning, 0, 0, false);
-    case NONE -> mGps.show(R.drawable.ic_nogps_gps_off, R.color.source_bad, 0, 0, false);
-    }
+    // Also while it is ignored or not trusted yet.
+    else if (status.workingGpsAccuracyM >= 0)
+      mGps.show(R.drawable.ic_nogps_gps, R.color.source_good, 0, 0, false);
+    else
+      mGps.show(R.drawable.ic_nogps_gps_off, R.color.source_bad, 0, 0, false);
   }
 
   private void updateBox(@NonNull NoGps.Status status)
@@ -169,15 +162,11 @@ class SourceSelector
   {
     if (isGpsOffByOs(context))
       return context.getString(R.string.nogps_status_gps_off);
-    final String accuracy = " · ±" + formatAccuracy(context, status.workingGpsAccuracyM);
-    return switch (status.getGpsState())
-    {
-      case NONE -> context.getString(R.string.nogps_status_no_gps);
-      case COARSE -> context.getString(R.string.nogps_status_gps_coarse);
-      case SPOOFED -> context.getString(R.string.nogps_status_gps_spoofed);
-      case CHECKING -> context.getString(R.string.nogps_status_gps_checking) + accuracy;
-      case GOOD -> context.getString(R.string.nogps_status_gps) + accuracy;
-    };
+    if (status.gpsSpoofed)
+      return context.getString(R.string.nogps_status_gps_spoofed);
+    if (status.workingGpsAccuracyM < 0)
+      return context.getString(R.string.nogps_status_no_gps);
+    return context.getString(R.string.nogps_status_gps) + " · ±" + formatAccuracy(context, status.workingGpsAccuracyM);
   }
 
   @NonNull

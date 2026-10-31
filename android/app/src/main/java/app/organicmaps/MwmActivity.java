@@ -945,7 +945,6 @@ public class MwmActivity extends BaseMwmFragmentActivity
       case MANUAL_MODE_CHANGED -> 0;
       case GPS_BACK -> R.string.nogps_gps_back_auto;
       case GPS_LOST -> R.string.nogps_gps_lost_auto;
-      case BOX_LOST -> R.string.nogps_box_lost_auto;
       case GPS_SPOOFED -> R.string.nogps_gps_spoofed;
       case GPS_RESTORED -> R.string.nogps_gps_restored;
       case ROAD_LOST -> R.string.nogps_road_lost;
@@ -1121,9 +1120,10 @@ public class MwmActivity extends BaseMwmFragmentActivity
 
   public void startLocationToPoint(final @Nullable MapObject endPoint)
   {
-    // Without a position there is nowhere to build the route from: the plan of the route would open and wait, as if
-    // the application hung.
-    if (NoGps.getStatus().getSource() == NoGps.PositionSource.NONE)
+    // Without GPS and without a mark of the user there is nowhere to build the route from: the plan of the route
+    // would open and wait, as if the application hung.
+    final NoGps.Status noGps = NoGps.getStatus();
+    if (noGps.manualMode && noGps.getSource() == NoGps.PositionSource.NONE)
     {
       Toast.makeText(this, R.string.nogps_no_position_for_route, Toast.LENGTH_LONG).show();
       return;

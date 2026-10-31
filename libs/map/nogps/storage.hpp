@@ -18,10 +18,8 @@ public:
   static std::string_view constexpr kEsp32Source = "NoGpsEsp32Source";
   static std::string_view constexpr kShiftStepM = "NoGpsShiftStep";
   static std::string_view constexpr kShiftButtonsShown = "NoGpsShiftButtons";
-  // Box is chosen: GPS is ignored, see Engine::SetGpsDisabled().
+  // The user has chosen to ignore GPS, see Engine::SetGpsDisabled().
   static std::string_view constexpr kGpsDisabled = "NoGpsGpsDisabled";
-  // The choice of GPS or Box was made by the engine, not by the user.
-  static std::string_view constexpr kGpsChosenByApp = "NoGpsGpsChosenByApp";
   static std::string_view constexpr kSpeedScale = "NoGpsSpeedScale";
   static std::string_view constexpr kSpeedTable = "NoGpsSpeedTable";
   static std::string_view constexpr kRoughSpeedTable = "NoGpsRoughSpeedTable";
@@ -31,7 +29,7 @@ public:
   static std::string_view constexpr kWrongNetworkPoints = "NoGpsWrongNetworkPoints";
   static std::string_view constexpr kLastTrusted = "NoGpsLastTrusted";
   // Where the car was left and the way it looked, "lat,lon,bearing,manual,unixMs": "-" for an unknown bearing, 1 if
-  // Box was chosen then.
+  // GPS was not trusted then.
   static std::string_view constexpr kCarPosition = "NoGpsCarPosition";
   // When the ESP32 sensor box was powered on the last time, milliseconds since the Unix epoch: for a box that
   // doesn't count its power-ons.
