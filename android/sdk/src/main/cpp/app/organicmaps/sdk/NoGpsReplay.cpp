@@ -510,13 +510,6 @@ private:
         engine.SetGpsDisabled(disabled != 0);
       break;
     }
-    case 'A':
-    {
-      int enabled = 0;
-      if (in >> enabled)
-        engine.SetManualMode(enabled != 0);
-      break;
-    }
     case 'T':
     {
       // The buttons and the taps of the manual mode do nothing without it, as in the application.

@@ -99,10 +99,10 @@ void TestAlmostEqualAbs(double actual, double expected, double eps)
   TEST_ALMOST_EQUAL_ABS(actual, expected, eps, ());
 }
 
-// The car is marked on the street going east, the box tells it stands.
+// The user chooses Box and marks the car on the street going east, the box tells it stands.
 void MarkCar(Env & env, double eastM)
 {
-  env.m_engine.SetManualMode(true);
+  env.m_engine.SetGpsDisabled(true);
   env.Drive(500, 0, 0);
   TEST(env.m_engine.PlaceMarkByTap(At(eastM, 3)), ());
   TEST_EQUAL(env.Last().m_provider, Provider::Manual, ());
@@ -187,7 +187,7 @@ UNIT_TEST(NoGps_Engine_StartsTheBox)
 UNIT_TEST(NoGps_Engine_MarkIsOnRoadAndShowsCarHeading)
 {
   Env env(false /* inertial */);
-  env.m_engine.SetManualMode(true);
+  env.m_engine.SetGpsDisabled(true);
   TEST(env.m_delegate.HasEvent(Event::ManualModeChanged), ());
   // A tap between the streets is not where the car is.
   TEST(!env.m_engine.PlaceMarkByTap(At(50, 50)), ());
@@ -238,7 +238,7 @@ UNIT_TEST(NoGps_Engine_ButtonLetsNextTapMarkCar)
 UNIT_TEST(NoGps_Engine_ShiftStopsAtCrossing)
 {
   Env env(false /* inertial */);
-  env.m_engine.SetManualMode(true);
+  env.m_engine.SetGpsDisabled(true);
   TEST(env.m_engine.PlaceMarkByTap(At(60, 2)), ());
   // There is no route, the position is moved along the road up to the crossing.
   TestAlmostEqualAbs(env.m_engine.ShiftPosition(100), 40, 0.5);
@@ -351,13 +351,17 @@ UNIT_TEST(NoGps_Engine_CarLeftWithGpsWaitsForGps)
   TEST(!before.m_engine.IsManualMode(), ());
   before.m_clock.Advance(2000);
 
+  // GPS is chosen: the car is shown where it was left until a position comes, GPS is not ignored.
   Env after(false /* inertial */, nullptr, SavedBy(before));
   after.m_clock.Advance(1000);
-  TEST(after.m_engine.IsManualMode(), ());
+  TEST(!after.m_engine.IsManualMode(), ());
   TEST_EQUAL(after.Last().m_provider, Provider::Manual, ());
   TestAlmostEqualAbs(East(after.Last().m_position), 40, 0.1);
   TEST_EQUAL(after.Last().m_bearingDeg, 90.0, ());
-  // GPS absent since the start is not untrusted: the car is still left with GPS.
+  // It is shown again and again meanwhile, and left with GPS chosen.
+  size_t const shown = after.m_delegate.m_positions.size();
+  after.m_clock.Advance(Engine::kManualRepeatIntervalMs);
+  TEST_GREATER(after.m_delegate.m_positions.size(), shown, ());
   after.m_engine.Stop();
   auto const saved = after.m_storage.Get<std::string>(Storage::kCarPosition, "");
   TEST(saved.find(",90.0,0,") != std::string::npos, (saved));
@@ -368,36 +372,73 @@ UNIT_TEST(NoGps_Engine_CarLeftWithGpsWaitsForGps)
   TEST(!after.m_engine.IsManualMode(), ());
   TEST_EQUAL(after.Last().m_provider, Provider::Gps, ());
   TEST(!after.m_delegate.HasEvent(Event::GpsBack), ());
+  // The car where it was left is not shown again.
+  after.m_clock.Advance(Engine::kManualRepeatIntervalMs);
+  TEST_EQUAL(after.Last().m_provider, Provider::Gps, ());
 }
 
-UNIT_TEST(NoGps_Engine_CarLeftWithGpsAndMovedSinceChecksGps)
+// iOS gives the positions of GPS mixed with Wi-Fi and cell towers.
+Fix FusedAt(Env const & env, ms::LatLon const & position, double accuracyM)
 {
-  Env before(true /* inertial */);
-  before.DriveGps(5, 0, 10);
-  before.DriveGps(2, 40, 0);
-  TEST(!before.m_engine.IsManualMode(), ());
+  Fix fix = GpsAt(env.m_clock, 0, 0, {}, {}, accuracyM);
+  fix.m_provider = Provider::Fused;
+  fix.m_position = position;
+  return fix;
+}
 
-  // The car has driven away from where GPS was trusted: one position does not take it over.
-  Env driven(true /* inertial */, nullptr, SavedBy(before));
-  driven.Drive(500, 0, 0);
-  driven.Drive(5000, 36, 0);
-  TEST_EQUAL(driven.Last().m_provider, Provider::Inertial, ());
-  driven.m_engine.OnFix(GpsAt(driven.m_clock, East(driven.Last().m_position), 0, 90.0, 10.0));
-  TEST(driven.m_engine.IsManualMode(), ());
+UNIT_TEST(NoGps_Engine_GpsChosenShowsLastValidFix)
+{
+  // October 29, iPhone, GPS chosen, no box: the car was left 5.6 h before 5 km away.
+  ms::LatLon const left = {48.5136, 35.0177};
+  ms::LatLon const car = {48.471, 35.044};
+  Env env(false /* inertial */, nullptr, [&left](TestStorage & storage)
+  {
+    char saved[96];
+    std::snprintf(saved, sizeof(saved), "%.7f,%.7f,-,0,%lld", left.m_lat, left.m_lon,
+                  static_cast<long long>(TestClock::kStartMs + TestClock::kUnixOffsetMs - 5.6 * 3600 * 1000));
+    storage.SetString(Storage::kCarPosition, saved);
+  });
+  env.m_clock.Advance(1000);
+  TestAlmostEqualAbs(Distance(env.Last().m_position, left), 0, 0.1);
 
-  // The user shows that GPS is wrong.
-  Env marked(true /* inertial */, nullptr, SavedBy(before));
-  marked.Drive(500, 0, 0);
-  TEST(marked.m_engine.PlaceMarkByTap(At(60, 3)), ());
-  marked.m_engine.OnFix(GpsAt(marked.m_clock, 60, 0, 90.0, 0.0));
-  TEST(marked.m_engine.IsManualMode(), ());
+  // The cell towers tell where the car is, roughly: it is there and not where it was left.
+  for (int i = 0; i < 3; ++i)
+  {
+    env.m_clock.Advance(1000);
+    env.m_engine.OnFix(FusedAt(env, car, 2400));
+  }
+  TEST_EQUAL(env.Last().m_provider, Provider::Fused, ());
+  TestAlmostEqualAbs(Distance(env.Last().m_position, car), 0, 0.1);
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Coarse, ());
 
-  // GPS is turned off for a test and on again.
-  Env disabled(true /* inertial */, nullptr, SavedBy(before));
-  disabled.m_engine.SetGpsDisabled(true);
-  disabled.m_engine.SetGpsDisabled(false);
-  disabled.m_engine.OnFix(GpsAt(disabled.m_clock, 40, 0, 90.0, 0.0));
-  TEST(disabled.m_engine.IsManualMode(), ());
+  // A position in Crimea is spoofed, the right ones after it are not trusted for a while: the last trusted one stays.
+  env.m_clock.Advance(1000);
+  env.m_engine.OnFix(FusedAt(env, {45.3619, 33.0648}, 143));
+  TEST(env.m_delegate.HasEvent(Event::GpsSpoofed), ());
+  for (int i = 0; i < 3; ++i)
+  {
+    env.m_clock.Advance(1000);
+    env.m_engine.OnFix(FusedAt(env, {48.47, 35.04}, 24'000));
+  }
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Spoofed, ());
+  TestAlmostEqualAbs(Distance(env.Last().m_position, car), 0, 0.1);
+  // There is no box to choose.
+  TEST(!env.m_engine.IsManualMode(), ());
+  TEST(!env.m_delegate.HasEvent(Event::GpsLost), ());
+}
+
+UNIT_TEST(NoGps_Engine_GpsChosenShowsNetworkWithoutBox)
+{
+  // No box, no GPS: a network position is shown, as it always was.
+  Env env(false /* inertial */);
+  env.m_clock.Advance(Engine::kGpsFirstFixMs + 5000);
+  Fix network = GpsAt(env.m_clock, 300, 0, {}, {}, 100);
+  network.m_provider = Provider::Network;
+  env.m_engine.OnFix(network);
+  TEST_EQUAL(env.Last().m_provider, Provider::Network, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_source, PositionSource::Network, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Coarse, ());
+  TEST(!env.m_engine.IsManualMode(), ());
 }
 
 // The value of a field of the trip line, e.g. "turn".
@@ -1529,7 +1570,7 @@ UNIT_TEST(NoGps_Engine_WeavingCarIsNotAheadOfItself)
   }
 }
 
-UNIT_TEST(NoGps_Engine_GpsIsBackAfterRoadIsLost)
+UNIT_TEST(NoGps_Engine_GpsIsGoodAfterRoadIsLost)
 {
   Env env(true /* inertial */);
   MarkCar(env, -400);
@@ -1539,14 +1580,18 @@ UNIT_TEST(NoGps_Engine_GpsIsBackAfterRoadIsLost)
   TEST(env.m_delegate.HasEvent(Event::RoadLost), ());
   TEST(env.m_engine.IsManualMode(), ());
   // GPS works again, far from where the calculation has stopped: there is nothing to compare it with, it
-  // is trusted after it has worked for long enough.
+  // is good after it has worked for long enough.
   for (int i = 0; i <= GpsReturnDetector::kMinStreakMs / 1000 + 1; ++i)
   {
     env.Drive(1000, 36, 0);
     env.m_engine.OnFix(GpsAt(env.m_clock, 10 * i, 300, 90.0, 10.0));
   }
-  TEST(!env.m_engine.IsManualMode(), ());
-  TEST(env.m_delegate.HasEvent(Event::GpsBack), ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Good, ());
+  // Box is chosen by the user: it stays, the user chooses GPS.
+  TEST(env.m_engine.IsManualMode(), ());
+  env.m_engine.SetGpsDisabled(false);
+  env.Drive(1000, 36, 0);
+  env.m_engine.OnFix(GpsAt(env.m_clock, 200, 300, 90.0, 10.0));
   TEST_EQUAL(env.Last().m_provider, Provider::Gps, ());
 }
 
@@ -2059,7 +2104,14 @@ UNIT_TEST(NoGps_Engine_InertialDrivingBackIsNotShownBetweenGpsPositions)
   MarkCar(env, -450);
   BoxCar car(env, -450, true /* accelerometer */);
   car.SpeedUpAndBrake();
-  env.m_engine.SetManualMode(false);
+  // GPS agrees with the box long enough to be followed by it.
+  for (int i = 0; i <= GpsReturnDetector::kMinStreakMs / 1000; ++i)
+  {
+    car.Drive(1, 0, 0);
+    env.m_engine.OnFix(GpsAt(env.m_clock, car.East(), 0, 90.0, 0.0));
+  }
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Good, ());
+  env.m_engine.SetGpsDisabled(false);
 
   // The street goes down from where the car stood: the car starts forward, the accelerometer feels a start backward.
   // GPS tells the way the car goes.
@@ -2232,40 +2284,41 @@ UNIT_TEST(NoGps_Engine_AccelerometerIsNotLearnedFromManeuvers)
   TEST(env.m_engine.GetTripLine().find(" back=1") != std::string::npos, (env.m_engine.GetTripLine()));
 }
 
-UNIT_TEST(NoGps_Engine_ManualModeWhenGpsIsLostWhileNavigating)
+UNIT_TEST(NoGps_Engine_GpsLostWithoutBoxKeepsGps)
 {
+  // Nothing else can drive the car: GPS stays chosen, the mark stands where GPS has left it.
   Env env(false /* inertial */);
   env.m_map.m_navigating = true;
   env.DriveGps(10, 0, 10);
   TEST_EQUAL(env.Last().m_provider, Provider::Gps, ());
-  TEST(!env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Good, ());
 
   // GPS is jammed.
   env.m_clock.Advance(Engine::kGpsLostMs + 1500);
-  TEST(env.m_engine.IsManualMode(), ());
-  TEST(env.m_delegate.HasEvent(Event::GpsLost), ());
-  // The car is where it was shown, on the road.
-  TEST_EQUAL(env.Last().m_provider, Provider::Manual, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::None, ());
+  TEST(!env.m_engine.IsManualMode(), ());
+  TEST(!env.m_delegate.HasEvent(Event::GpsLost), ());
+  TEST_EQUAL(env.Last().m_provider, Provider::Gps, ());
   TestAlmostEqualAbs(East(env.Last().m_position), 90, 1);
 
-  // GPS works again for long enough near the car.
-  for (int i = 0; i < 16; ++i)
+  // GPS works again: it is shown and good at once, there is no box to check it by.
+  for (int i = 0; i < 2; ++i)
   {
     env.m_clock.Advance(1000);
-    env.m_engine.OnFix(GpsAt(env.m_clock, 90, 0, {}, 0.0));
+    env.m_engine.OnFix(GpsAt(env.m_clock, 95, 0, {}, 0.0));
   }
-  TEST(!env.m_engine.IsManualMode(), ());
-  TEST(env.m_delegate.HasEvent(Event::GpsBack), ());
   TEST_EQUAL(env.Last().m_provider, Provider::Gps, ());
+  TestAlmostEqualAbs(East(env.Last().m_position), 95, 1);
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Good, ());
+  TEST(!env.m_delegate.HasEvent(Event::GpsBack), ());
 }
 
-UNIT_TEST(NoGps_Engine_SeldomAccuratePositionsAreNotGpsBack)
+UNIT_TEST(NoGps_Engine_SeldomAccuratePositionsAreNotGps)
 {
   Env env(false /* inertial */);
-  env.m_map.m_navigating = true;
   env.DriveGps(10, 0, 10);
   env.m_clock.Advance(Engine::kGpsLostMs + 1500);
-  TEST(env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::None, ());
 
   // The fused provider repeats the Wi-Fi positions as accurate ones now and then, sometimes twice.
   auto const fused = [&env]
@@ -2281,7 +2334,7 @@ UNIT_TEST(NoGps_Engine_SeldomAccuratePositionsAreNotGpsBack)
     env.m_engine.OnFix(fused());
   }
   TEST(!env.m_engine.GetStatus().m_workingGpsAccuracyM, ());
-  TEST(env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Coarse, ());
 
   // GPS gives a position every second.
   for (int i = 0; i < 2; ++i)
@@ -2292,9 +2345,10 @@ UNIT_TEST(NoGps_Engine_SeldomAccuratePositionsAreNotGpsBack)
   auto const accuracyM = env.m_engine.GetStatus().m_workingGpsAccuracyM;
   TEST(accuracyM, ());
   TEST_EQUAL(*accuracyM, 5, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Good, ());
 }
 
-UNIT_TEST(NoGps_Engine_ManualModeWhenGpsIsSpoofed)
+UNIT_TEST(NoGps_Engine_SpoofedGpsWithoutBoxShowsNetwork)
 {
   Env env(false /* inertial */);
   env.m_map.m_navigating = true;
@@ -2302,20 +2356,20 @@ UNIT_TEST(NoGps_Engine_ManualModeWhenGpsIsSpoofed)
   network.m_provider = Provider::Network;
   env.m_engine.OnFix(network);
   env.DriveGps(3, 0, 10);
-  TEST(!env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.Last().m_provider, Provider::Gps, ());
 
   // GPS is on another continent.
   env.m_clock.Advance(1000);
   Fix spoofed = GpsAt(env.m_clock, 0, 0, 90.0, 10.0);
   spoofed.m_position = {-12.0453, -77.0569};
   env.m_engine.OnFix(spoofed);
-  TEST(env.m_engine.GetStatus().m_gpsSpoofed, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Spoofed, ());
   TEST(env.m_delegate.HasEvent(Event::GpsSpoofed), ());
-  TEST(env.m_engine.IsManualMode(), ());
-  TEST_EQUAL(env.Last().m_provider, Provider::Manual, ());
+  TEST(!env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.Last().m_provider, Provider::Network, ());
 }
 
-UNIT_TEST(NoGps_Engine_ManualModeWhenGpsLeavesRoads)
+UNIT_TEST(NoGps_Engine_GpsLeavingRoadsIsSpoofed)
 {
   Env env(false /* inertial */);
   env.m_map.m_navigating = true;
@@ -2326,12 +2380,19 @@ UNIT_TEST(NoGps_Engine_ManualModeWhenGpsLeavesRoads)
     env.m_clock.Advance(1000);
     env.m_engine.OnFix(GpsAt(env.m_clock, 50, 50, 90.0, 10.0));
   }
-  TEST(!env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Good, ());
   env.m_clock.Advance(1000);
   env.m_engine.OnFix(GpsAt(env.m_clock, 50, 50, 90.0, 10.0));
-  TEST(env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Spoofed, ());
+  TEST(!env.m_engine.IsManualMode(), ());
   // The car stays on the road where GPS was trusted the last time.
   TestAlmostEqualAbs(North(env.Last().m_position), 0, 0.5);
+
+  // GPS on the road again is shown, without the box there is nothing to check it by.
+  env.m_clock.Advance(1000);
+  env.m_engine.OnFix(GpsAt(env.m_clock, 60, 0, 90.0, 10.0));
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Good, ());
+  TestAlmostEqualAbs(East(env.Last().m_position), 60, 0.5);
 }
 
 UNIT_TEST(NoGps_Engine_DisabledGpsIsIgnored)
@@ -2367,13 +2428,375 @@ UNIT_TEST(NoGps_Engine_InertialContinuesWhenGpsIsLost)
     env.m_engine.OnFix(GpsAt(env.m_clock, 10 * i, 0, 90.0, 10.0));
   }
   TEST_EQUAL(env.Last().m_provider, Provider::Gps, ());
-  // GPS is lost: the manual mode is turned on by itself and the car is followed by the inertial navigation.
+  // GPS is lost: Box is chosen by itself and the car is followed by the inertial navigation.
   env.Drive(Engine::kGpsLostMs + 2000, 36, 0);
   TEST(env.m_engine.IsManualMode(), ());
+  TEST(env.m_delegate.HasEvent(Event::GpsLost), ());
   TEST_EQUAL(env.Last().m_provider, Provider::Inertial, ());
   TEST_EQUAL(env.m_engine.GetStatus().m_source, PositionSource::Inertial, ());
   TEST_GREATER(East(env.Last().m_position), 90, ());
   TestAlmostEqualAbs(North(env.Last().m_position), 0, 1);
+}
+
+// The car drives east along the street at 36 km/h from |eastM| for |seconds|, the box tells it, and GPS once a
+// second if |gps|. \returns where the car is.
+double DriveEast(Env & env, double eastM, int seconds, bool gps)
+{
+  for (int i = 0; i < seconds; ++i)
+  {
+    env.Drive(1000, 36, 0);
+    eastM += 10;
+    if (gps)
+      env.m_engine.OnFix(GpsAt(env.m_clock, eastM, 0, 90.0, 10.0));
+  }
+  return eastM;
+}
+
+// GPS tells where the standing car is for long enough to agree with the box.
+void GpsAgrees(Env & env, double eastM)
+{
+  for (int i = 0; i <= GpsReturnDetector::kMinStreakMs / 1000; ++i)
+  {
+    env.Drive(1000, 0, 0);
+    env.m_engine.OnFix(GpsAt(env.m_clock, eastM, 0, 90.0, 0.0));
+  }
+}
+
+size_t Count(Env const & env, Event event)
+{
+  return std::count(env.m_delegate.m_events.begin(), env.m_delegate.m_events.end(), event);
+}
+
+UNIT_TEST(NoGps_Engine_BadGpsSwitchesToBoxAfterHold)
+{
+  // The box drives the car from a mark, then the user chooses GPS, which is not found.
+  Env env(true /* inertial */);
+  MarkCar(env, 0);
+  env.m_engine.SetGpsDisabled(false);
+  env.Drive(Engine::kUserChoiceHoldMs - 1000, 0, 0);
+  TEST(!env.m_engine.IsManualMode(), ());
+  env.Drive(2000, 0, 0);
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(Count(env, Event::GpsLost), 1, ());
+  TEST_EQUAL(TripField(env, "choice"), "BOX/APP", ());
+
+  // GPS is good again and is chosen by itself. It is lost soon: Box is chosen by itself sooner than after the
+  // choice of the user, but not at once.
+  GpsAgrees(env, 0);
+  TEST(!env.m_engine.IsManualMode(), ());
+  env.Drive(Engine::kAppChoiceHoldMs - 1000, 0, 0);
+  TEST(!env.m_engine.IsManualMode(), ());
+  env.Drive(2000, 0, 0);
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(Count(env, Event::GpsLost), 2, ());
+}
+
+UNIT_TEST(NoGps_Engine_BoxChosenByAppReturnsToGps)
+{
+  Env env(true /* inertial */);
+  double east = DriveEast(env, -10, 5, true /* gps */);
+  east = DriveEast(env, east, Engine::kGpsLostMs / 1000 + 2, false /* gps */);
+  TEST(env.m_engine.IsManualMode(), ());
+
+  // GPS is back where the box has driven the car to: Box stays until GPS has agreed with the box for long enough.
+  east = DriveEast(env, east, GpsReturnDetector::kMinStreakMs / 1000, true /* gps */);
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Checking, ());
+  TEST_EQUAL(env.Last().m_provider, Provider::Inertial, ());
+  DriveEast(env, east, 1, true /* gps */);
+  TEST(!env.m_engine.IsManualMode(), ());
+  TEST(env.m_delegate.HasEvent(Event::GpsBack), ());
+  TEST_EQUAL(env.Last().m_provider, Provider::Gps, ());
+  TEST_EQUAL(TripField(env, "choice"), "GPS/APP", ());
+}
+
+UNIT_TEST(NoGps_Engine_BoxChosenByUserStays)
+{
+  Env env(true /* inertial */);
+  MarkCar(env, 0);
+  GpsAgrees(env, 0);
+  GpsAgrees(env, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Good, ());
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST(!env.m_delegate.HasEvent(Event::GpsBack), ());
+  TEST_NOT_EQUAL(env.Last().m_provider, Provider::Gps, ());
+}
+
+UNIT_TEST(NoGps_Engine_LostBoxReturnsOnlyToGoodGps)
+{
+  Env env(true /* inertial */);
+  MarkCar(env, 0);
+  env.Drive(Engine::kBoxStartWaitMs, 0, 0);
+
+  // The box is gone and there is no GPS: the mark stands, the user is told.
+  env.m_clock.Advance(Engine::kBoxLostMs + 5000);
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST(env.m_delegate.HasEvent(Event::MotionSourceStopped), ());
+
+  // GPS is found: Box stays until GPS is good.
+  for (int i = 0; i < GpsReturnDetector::kMinStreakMs / 1000; ++i)
+  {
+    env.m_clock.Advance(1000);
+    env.m_engine.OnFix(GpsAt(env.m_clock, 0, 0, 90.0, 0.0));
+  }
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Checking, ());
+  env.m_clock.Advance(1000);
+  env.m_engine.OnFix(GpsAt(env.m_clock, 0, 0, 90.0, 0.0));
+  TEST(!env.m_engine.IsManualMode(), ());
+  TEST(env.m_delegate.HasEvent(Event::BoxLost), ());
+  TEST_EQUAL(env.Last().m_provider, Provider::Gps, ());
+}
+
+UNIT_TEST(NoGps_Engine_SleepingBoxIsNotLost)
+{
+  Env env(true /* inertial */);
+  MarkCar(env, 0);
+  env.Drive(Engine::kBoxStartWaitMs, 0, 0);
+
+  // The engine is stopped: the box tells it and sleeps. GPS is good, but the car is where the box has left it.
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGS,1,0.2.0,ICM20602,500,SLEEP,,12,331,0,OK,0x12,NONE,38400,-386,12"));
+  for (int i = 0; i < 30; ++i)
+  {
+    env.m_clock.Advance(1000);
+    env.m_engine.OnFix(GpsAt(env.m_clock, 0, 0, 90.0, 0.0));
+  }
+  TEST_EQUAL(env.m_engine.GetStatus().m_sourceState, SourceState::BoxSleeping, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Good, ());
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST(!env.m_delegate.HasEvent(Event::BoxLost), ());
+}
+
+UNIT_TEST(NoGps_Engine_BoxIsWaitedForAtStart)
+{
+  Env before(true /* inertial */);
+  MarkCar(before, 0);
+  before.Drive(1000, 0, 0);
+
+  // The app starts with Box chosen, the box is not heard yet. GPS is good, the car where it was left is the mark
+  // while the box is waited for.
+  Env env(true /* inertial */, nullptr, SavedBy(before));
+  int64_t const waitS = Engine::kBoxStartWaitMs / 1000;
+  for (int i = 0; i < waitS - 2; ++i)
+  {
+    env.m_clock.Advance(1000);
+    env.m_engine.OnFix(GpsAt(env.m_clock, 0, 0, 90.0, 0.0));
+  }
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Good, ());
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.Last().m_provider, Provider::Manual, ());
+  for (int i = 0; i < 3; ++i)
+  {
+    env.m_clock.Advance(1000);
+    env.m_engine.OnFix(GpsAt(env.m_clock, 0, 0, 90.0, 0.0));
+  }
+  TEST(!env.m_engine.IsManualMode(), ());
+  TEST(env.m_delegate.HasEvent(Event::BoxLost), ());
+}
+
+UNIT_TEST(NoGps_Engine_FrozenMarkErrorFromLastBoxPosition)
+{
+  PieceRoads roads({{-5000, 0, 5000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -2000);
+  env.Drive(60'000, 36, 0);
+  auto const left = env.Last().m_position;
+
+  // The box is gone, GPS is 2 km from where the box has left the car a few seconds ago: the car can't be there.
+  for (int i = 0; i <= GpsReturnDetector::kMinStreakMs / 1000; ++i)
+  {
+    env.m_clock.Advance(1000);
+    env.m_engine.OnFix(GpsAt(env.m_clock, East(left) + 2000, 0, 90.0, 0.0));
+  }
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Checking, ());
+}
+
+UNIT_TEST(NoGps_Engine_GpsStates)
+{
+  Env env(false /* inertial */);
+  auto const state = [&env] { return env.m_engine.GetStatus().m_gpsState; };
+  TEST_EQUAL(state(), GpsState::None, ());
+  // GPS found at the start is good at once.
+  env.DriveGps(2, 0, 10);
+  TEST_EQUAL(state(), GpsState::Good, ());
+
+  // Less accurate positions are coarse, after a pause GPS may have just been missed.
+  for (int i = 0; i < Engine::kGpsLostMs / 1000; ++i)
+  {
+    env.m_clock.Advance(1000);
+    env.m_engine.OnFix(GpsAt(env.m_clock, 20, 0, 90.0, 10.0, 50));
+  }
+  TEST_EQUAL(state(), GpsState::Good, ());
+  env.m_clock.Advance(1000);
+  env.m_engine.OnFix(GpsAt(env.m_clock, 20, 0, 90.0, 10.0, 50));
+  TEST_EQUAL(state(), GpsState::Coarse, ());
+
+  // GPS lost for a while is good again at once without the box to check it by, see BoxChosenByAppReturnsToGps.
+  env.DriveGps(2, 30, 10);
+  TEST_EQUAL(state(), GpsState::Good, ());
+
+  // Nothing at all.
+  env.m_clock.Advance(Engine::kNetworkStatusMaxAgeMs + 1000);
+  TEST_EQUAL(state(), GpsState::None, ());
+
+  // On another continent.
+  Fix spoofed = GpsAt(env.m_clock, 0, 0, 90.0, 10.0);
+  spoofed.m_position = {-12.0453, -77.0569};
+  env.m_engine.OnFix(spoofed);
+  TEST_EQUAL(state(), GpsState::Spoofed, ());
+  TEST_EQUAL(TripField(env, "gpsst"), "SPOOFED", ());
+}
+
+UNIT_TEST(NoGps_Engine_NetworkKeepsBox)
+{
+  // The box drives the car, there is no GPS: Box is chosen by itself.
+  Env env(true /* inertial */);
+  double east = DriveEast(env, -10, 5, true /* gps */);
+  east = DriveEast(env, east, Engine::kGpsLostMs / 1000 + 2, false /* gps */);
+  TEST(env.m_engine.IsManualMode(), ());
+
+  // The first network positions of the trip, 300 m off: they don't move the mark, Box stays.
+  for (int i = 0; i < 2; ++i)
+  {
+    Fix network = GpsAt(env.m_clock, east + 300, 0, {}, {}, 41);
+    network.m_provider = Provider::Network;
+    env.m_engine.OnFix(network);
+    east = DriveEast(env, east, 2, false /* gps */);
+  }
+  east = DriveEast(env, east, Engine::kGpsLostMs / 1000, false /* gps */);
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.Last().m_provider, Provider::Inertial, ());
+  TestAlmostEqualAbs(East(env.Last().m_position), east, 5);
+  TEST_EQUAL(Count(env, Event::GpsLost), 1, ());
+}
+
+UNIT_TEST(NoGps_Engine_CoarseFixKeepsBoxCount)
+{
+  // The user has chosen GPS, which is lost: the box counts from the last trusted GPS position.
+  Env env(true /* inertial */);
+  double east = DriveEast(env, -10, 5, true /* gps */);
+  env.m_engine.SetGpsDisabled(true);
+  env.m_engine.SetGpsDisabled(false);
+  east = DriveEast(env, east, Engine::kGpsLostMs / 1000 + 2, false /* gps */);
+  TEST(!env.m_engine.IsManualMode(), ());
+
+  // A network position 300 m off is shown, the box is not moved there.
+  Fix network = GpsAt(env.m_clock, east + 300, 0, {}, {}, 35);
+  network.m_provider = Provider::Network;
+  env.m_engine.OnFix(network);
+  TEST_EQUAL(env.Last().m_provider, Provider::Network, ());
+  east = DriveEast(env, east, 1, false /* gps */);
+  env.m_engine.SetGpsDisabled(true);
+  east = DriveEast(env, east, 1, false /* gps */);
+  TEST_EQUAL(env.Last().m_provider, Provider::Inertial, ());
+  TestAlmostEqualAbs(East(env.Last().m_position), east, 5);
+}
+
+UNIT_TEST(NoGps_Engine_GoodGpsEndsHoldOfUser)
+{
+  // The user chooses GPS, which is good for a while: the box follows it again and takes over in a tunnel at once.
+  Env env(true /* inertial */);
+  double east = DriveEast(env, -10, 5, true /* gps */);
+  env.m_engine.SetGpsDisabled(true);
+  env.m_engine.SetGpsDisabled(false);
+  east = DriveEast(env, east, 30, true /* gps */);
+  east = DriveEast(env, east, Engine::kGpsLostMs / 1000 + 2, false /* gps */);
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.Last().m_provider, Provider::Inertial, ());
+  TestAlmostEqualAbs(East(env.Last().m_position), east, 5);
+}
+
+UNIT_TEST(NoGps_Engine_WrongGpsIsNotHeld)
+{
+  // GPS is chosen by itself after Box was, and soon jumps away from the box: Box is chosen again at once.
+  Env env(true /* inertial */);
+  double east = DriveEast(env, -10, 5, true /* gps */);
+  east = DriveEast(env, east, Engine::kGpsLostMs / 1000 + 2, false /* gps */);
+  east = DriveEast(env, east, GpsReturnDetector::kMinStreakMs / 1000 + 4, true /* gps */);
+  TEST(!env.m_engine.IsManualMode(), ());
+  for (int i = 0; i < 3; ++i)
+  {
+    env.Drive(1000, 36, 0);
+    east += 10;
+    env.m_engine.OnFix(GpsAt(env.m_clock, east + 150, 0, 90.0, 10.0));
+  }
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(Count(env, Event::GpsLost), 2, ());
+  TestAlmostEqualAbs(East(env.Last().m_position), east, 5);
+}
+
+UNIT_TEST(NoGps_Engine_CarDrivenFromWhereLeftChecksGps)
+{
+  Env before(true /* inertial */);
+  DriveEast(before, -10, 5, true /* gps */);
+  before.Drive(3000, 0, 0);
+
+  // The app starts again while the car drives: the box counts from where the car was left, GPS far from where the
+  // box has driven the car to doesn't take it over.
+  Env after(true /* inertial */, nullptr, SavedBy(before));
+  after.Drive(10'000, 36, 0);
+  for (int i = 0; i < 3; ++i)
+  {
+    after.Drive(1000, 36, 0);
+    after.m_engine.OnFix(GpsAt(after.m_clock, 400 + 10 * i, 0, 90.0, 10.0));
+  }
+  TEST(after.m_engine.IsManualMode(), ());
+  TEST_EQUAL(after.m_engine.GetStatus().m_gpsState, GpsState::Checking, ());
+  after.Drive(1000, 36, 0);
+  TEST_EQUAL(after.Last().m_provider, Provider::Inertial, ());
+  TEST_LESS(East(after.Last().m_position), 250, ());
+}
+
+UNIT_TEST(NoGps_Engine_MarkStandsWhenBoxChosenByAppIsLost)
+{
+  Env env(true /* inertial */);
+  double east = DriveEast(env, -10, 5, true /* gps */);
+  DriveEast(env, east, Engine::kGpsLostMs / 1000 + 2, false /* gps */);
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_source, PositionSource::Inertial, ());
+  auto const left = env.Last().m_position;
+
+  // The box is gone: the mark stands where the box has left the car, the core is told it again and again.
+  env.m_clock.Advance(3000);
+  TEST_EQUAL(env.m_engine.GetStatus().m_source, PositionSource::Manual, ());
+  size_t const shown = env.m_delegate.m_positions.size();
+  env.m_clock.Advance(4 * Engine::kManualRepeatIntervalMs);
+  TEST_GREATER(env.m_delegate.m_positions.size(), shown, ());
+  TestAlmostEqualAbs(Distance(env.Last().m_position, left), 0, 0.5);
+}
+
+UNIT_TEST(NoGps_Engine_SameChoiceIsNotHeld)
+{
+  // GPS is chosen already, e.g. the box is forgotten and set up again: it is not a new choice of the user.
+  Env env(true /* inertial */);
+  double east = DriveEast(env, -10, 5, true /* gps */);
+  env.m_engine.SetGpsDisabled(false);
+  DriveEast(env, east, Engine::kGpsLostMs / 1000 + 2, false /* gps */);
+  TEST(env.m_engine.IsManualMode(), ());
+}
+
+UNIT_TEST(NoGps_Engine_UncheckedGpsIsNotSavedAsCar)
+{
+  Env env(true /* inertial */);
+  double east = DriveEast(env, -10, 5, true /* gps */);
+  east = DriveEast(env, east, Engine::kGpsLostMs / 1000 + 2, false /* gps */);
+  env.Drive(3000, 0, 0);
+  auto const left = env.Last().m_position;
+
+  // The user chooses GPS, which is 500 m off and not checked yet: it is shown, the car is not saved there.
+  env.m_engine.SetGpsDisabled(false);
+  for (int i = 0; i < 3; ++i)
+  {
+    env.Drive(1000, 0, 0);
+    env.m_engine.OnFix(GpsAt(env.m_clock, east + 500, 0, 90.0, 0.0));
+  }
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Checking, ());
+  TEST_EQUAL(env.Last().m_provider, Provider::Gps, ());
+  env.m_engine.Stop();
+
+  Env after(true /* inertial */, nullptr, SavedBy(env));
+  after.Drive(500, 0, 0);
+  TestAlmostEqualAbs(Distance(after.Last().m_position, left), 0, 1);
 }
 
 // The time of GPS is ahead of the clock of the phone, and a GPS position comes a bit after it is taken.

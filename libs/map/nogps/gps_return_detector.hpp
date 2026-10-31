@@ -7,11 +7,10 @@
 
 namespace nogps
 {
-/// Decides when GPS can be used again after the manual mode, which is turned on when GPS is jammed or
-/// spoofed. Not being spoofed is not enough: a spoofer can move the position a little only, and the spoofing
-/// detector compares it with the coarse cell tower positions. GPS is trusted when it has given accurate
-/// positions for a while without a break or a jump, and they agree with the position known without GPS: the
-/// mark set by the user or the inertial one.
+/// Decides when GPS is good again after it was lost, jammed or spoofed, and while the box drives the car. Not being
+/// spoofed is not enough: a spoofer can move the position a little only, and the spoofing detector compares it with
+/// the coarse cell tower positions. GPS is trusted when it has given accurate positions for a while without a break
+/// or a jump, and they agree with the position known without GPS: the mark set by the user or the inertial one.
 /// The own position can be wrong too, e.g. a mark set in a wrong place. GPS far from it is trusted when it
 /// follows the car for a long drive: it moves along the roads as fast as the car does. A spoofer can't move
 /// the position along with the car.
