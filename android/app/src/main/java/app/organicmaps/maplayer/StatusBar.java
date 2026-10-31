@@ -3,12 +3,10 @@ package app.organicmaps.maplayer;
 import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.content.res.ColorStateList;
-import android.view.Gravity;
 import android.view.View;
-import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
+import androidx.annotation.ColorInt;
 import androidx.annotation.ColorRes;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
@@ -16,223 +14,243 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
 import app.organicmaps.R;
+import app.organicmaps.nogps.SensorsBottomSheet;
 import app.organicmaps.sdk.location.LocationUtils;
 import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.util.ThemeUtils;
 
 /**
- * Chooses where the position of the car comes from: GPS while it is good with the sensor box taking over by itself,
- * or the box alone with GPS ignored. Each segment shows how its source works now, tapping the chosen one tells more.
+ * The middle of the bottom bar: the sensor box, where the position of the car comes from with its accuracy, and GPS.
+ * The box and GPS show their state by the shape and the color of the icon, and open their sheets.
  */
-class SourceSelector
+public class StatusBar
 {
   interface Listener
   {
-    /**
-     * Shows the sensors screen.
-     * @param backToGps GPS comes back if the box is still not connected when the user closes the screen.
-     */
-    void showSensors(boolean backToGps);
+    void showGpsSheet();
 
-    /**
-     * The user has chosen a source: what depends on it is updated at once.
-     */
-    void onSourceChosen();
+    void showBoxSheet();
   }
 
-  private static final long BLINK_DURATION_MS = 700;
+  private static final long PULSE_DURATION_MS = 700;
 
-  @NonNull
-  private final View mThumb;
-  @NonNull
-  private final Segment mGps;
-  @NonNull
-  private final Segment mBox;
-  @NonNull
-  private final Listener mListener;
-  @Nullable
-  private NoGps.Status mStatus;
-
-  SourceSelector(@NonNull View root, @NonNull Listener listener)
+  /**
+   * How a state is drawn: the icon, its color, a badge and if it pulses while something is in progress.
+   */
+  public static final class Look
   {
-    mListener = listener;
-    mThumb = root.findViewById(R.id.source_thumb);
-    mGps = new Segment(root.findViewById(R.id.source_gps), root.findViewById(R.id.source_gps_icon),
-                       root.findViewById(R.id.source_gps_badge), root.findViewById(R.id.source_gps_label));
-    mBox = new Segment(root.findViewById(R.id.source_box), root.findViewById(R.id.source_box_icon),
-                       root.findViewById(R.id.source_box_badge), root.findViewById(R.id.source_box_label));
-    mGps.mView.setOnClickListener(v -> onGpsTapped());
-    mBox.mView.setOnClickListener(v -> onBoxTapped());
-    // The thumb takes the place of the chosen segment once the segments are measured.
-    root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> placeThumb(false));
+    @DrawableRes
+    public final int icon;
+    // 0 for the color of the other icons.
+    @ColorRes
+    public final int color;
+    // 0 for none.
+    @DrawableRes
+    final int badge;
+    @ColorRes
+    final int badgeColor;
+    final boolean pulsing;
+
+    Look(@DrawableRes int icon, @ColorRes int color, @DrawableRes int badge, @ColorRes int badgeColor, boolean pulsing)
+    {
+      this.icon = icon;
+      this.color = color;
+      this.badge = badge;
+      this.badgeColor = badgeColor;
+      this.pulsing = pulsing;
+    }
+
+    public Look(@DrawableRes int icon, @ColorRes int color)
+    {
+      this(icon, color, 0, 0, false);
+    }
+
+    @ColorInt
+    public int getColor(@NonNull Context context)
+    {
+      return color == 0 ? ThemeUtils.getColor(context, R.attr.iconTint) : ContextCompat.getColor(context, color);
+    }
+  }
+
+  @NonNull
+  private final Button mBox;
+  @NonNull
+  private final Button mGps;
+  @NonNull
+  private final View mSource;
+  @NonNull
+  private final TextView mWord;
+  @NonNull
+  private final TextView mAccuracy;
+
+  StatusBar(@NonNull View root, @NonNull Listener listener)
+  {
+    mBox = new Button(root.findViewById(R.id.status_box), root.findViewById(R.id.status_box_icon),
+                      root.findViewById(R.id.status_box_badge));
+    mGps = new Button(root.findViewById(R.id.status_gps), root.findViewById(R.id.status_gps_icon),
+                      root.findViewById(R.id.status_gps_badge));
+    mSource = root.findViewById(R.id.status_source);
+    mWord = root.findViewById(R.id.status_word);
+    mAccuracy = root.findViewById(R.id.status_accuracy);
+    mBox.mView.setOnClickListener(v -> listener.showBoxSheet());
+    mGps.mView.setOnClickListener(v -> listener.showGpsSheet());
   }
 
   void update(@NonNull NoGps.Status status)
   {
-    final boolean moved = mStatus != null && mStatus.gpsDisabled != status.gpsDisabled;
-    mStatus = status;
-    mGps.setChosen(!status.gpsDisabled);
-    mBox.setChosen(status.gpsDisabled);
-    updateGps(status, mGps.mView.getContext());
-    updateBox(status);
-    placeThumb(moved);
+    final Context context = mSource.getContext();
+    final String word = getSourceWord(context, status);
+    mWord.setText(word);
+    final boolean known = status.getSource() != NoGps.PositionSource.NONE;
+    final String accuracy = known ? "±" + formatAccuracy(context, status.accuracyM) : "";
+    mAccuracy.setText(accuracy);
+    mAccuracy.setVisibility(known ? View.VISIBLE : View.GONE);
+    mSource.setContentDescription(word + " " + accuracy);
+
+    mBox.show(getBoxLook(status));
+    final String box = context.getString(R.string.nogps_box_title);
+    mBox.mView.setContentDescription(
+        status.inertialEnabled ? box + ", " + context.getString(SensorsBottomSheet.boxStateText(status)) : box);
+    mGps.show(getGpsLook(context, status));
+    mGps.mView.setContentDescription(context.getString(R.string.nogps_status_gps) + ", "
+                                     + getGpsStateText(context, status));
   }
 
-  private void placeThumb(boolean animated)
+  @NonNull
+  private static String getSourceWord(@NonNull Context context, @NonNull NoGps.Status status)
   {
-    final View chosen = mStatus != null && mStatus.gpsDisabled ? mBox.mView : mGps.mView;
-    if (chosen.getWidth() == 0)
-      return;
-    final FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) mThumb.getLayoutParams();
-    // From the physical left, as getLeft() is, also in a right-to-left layout.
-    if (params.width != chosen.getWidth() || params.gravity != Gravity.LEFT)
+    return switch (status.getSource())
     {
-      params.width = chosen.getWidth();
-      params.gravity = Gravity.LEFT;
-      mThumb.setLayoutParams(params);
-    }
-    if (animated)
-      mThumb.animate().translationX(chosen.getLeft()).start();
-    else
-      mThumb.setTranslationX(chosen.getLeft());
+      case GPS -> context.getString(R.string.nogps_status_gps);
+      case NETWORK -> context.getString(R.string.nogps_bar_network);
+      case MANUAL -> context.getString(R.string.nogps_bar_manual);
+      case INERTIAL -> context.getString(R.string.nogps_bar_inertial);
+      case NONE -> "—";
+    };
   }
 
-  private void updateGps(@NonNull NoGps.Status status, @NonNull Context context)
+  @NonNull
+  public static Look getGpsLook(@NonNull Context context, @NonNull NoGps.Status status)
   {
-    mGps.mView.setContentDescription(context.getString(R.string.nogps_status_gps) + ", " + getGpsText(status, context));
-    // Not blinking: GPS is not connected to, it is there or not. The color tells the GPS signal, whichever source is
-    // chosen.
     if (isGpsOffByOs(context))
-      mGps.show(R.drawable.ic_nogps_gps_off, R.color.source_sleeping, 0, 0, false);
-    else if (status.gpsSpoofed)
-      mGps.show(R.drawable.ic_nogps_gps, R.color.source_warning, R.drawable.ic_nogps_badge_alert,
-                R.color.source_warning, false);
-    // Also while it is ignored or not trusted yet.
-    else if (status.workingGpsAccuracyM >= 0)
-      mGps.show(R.drawable.ic_nogps_gps, R.color.source_good, 0, 0, false);
-    else
-      mGps.show(R.drawable.ic_nogps_gps_off, R.color.source_bad, 0, 0, false);
+      return new Look(R.drawable.ic_nogps_gps_off, R.color.source_sleeping);
+    final Look look = switch (status.getGpsState())
+    {
+      case GOOD -> new Look(R.drawable.ic_nogps_gps, R.color.source_good);
+      case CHECKING -> new Look(R.drawable.ic_nogps_gps, R.color.source_connecting, 0, 0, true);
+      case COARSE -> new Look(R.drawable.ic_nogps_gps, R.color.source_warning);
+      case SPOOFED ->
+        new Look(R.drawable.ic_nogps_gps, R.color.source_warning, R.drawable.ic_nogps_badge_alert,
+                 R.color.source_warning, false);
+      case NONE -> new Look(R.drawable.ic_nogps_gps_off, R.color.source_bad);
+    };
+    // The car doesn't follow GPS: its signal is told by the shape only.
+    if (status.gpsDisabled)
+      return new Look(look.icon, R.color.source_sleeping, look.badge, look.badgeColor, false);
+    return look;
   }
 
-  private void updateBox(@NonNull NoGps.Status status)
+  @NonNull
+  public static Look getBoxLook(@NonNull NoGps.Status status)
   {
-    final Context context = mBox.mView.getContext();
-    mBox.mView.setContentDescription(context.getString(R.string.nogps_source_box));
     if (!status.inertialEnabled)
+      return new Look(R.drawable.ic_nogps_box, 0);
+    return switch (status.getSourceState())
     {
-      mBox.show(R.drawable.ic_nogps_box, 0, 0, 0, false);
-      return;
-    }
-    switch (status.getSourceState())
-    {
-    case CONNECTED -> mBox.show(R.drawable.ic_nogps_box, R.color.source_good, 0, 0, false);
-    case UPDATING ->
-      mBox.show(R.drawable.ic_nogps_box, 0, R.drawable.ic_nogps_badge_update, R.color.source_connecting, false);
-    case BOX_SLEEPING, OBD_SLEEPING ->
-      mBox.show(R.drawable.ic_nogps_box, R.color.source_sleeping, R.drawable.ic_nogps_badge_sleep,
-                R.color.source_sleeping, false);
-    case NO_CAR_DATA, OBD_DISABLED, OBD_CONNECTING, OBD_ERROR, NO_ADAPTER ->
-      mBox.show(R.drawable.ic_nogps_box, 0, R.drawable.ic_nogps_badge_alert, R.color.source_warning, false);
-    default -> showBoxSearch(status);
-    }
+      case CONNECTED -> new Look(R.drawable.ic_nogps_box, R.color.source_good);
+      case UPDATING ->
+        new Look(R.drawable.ic_nogps_box, R.color.source_connecting, R.drawable.ic_nogps_badge_update,
+                 R.color.source_connecting, true);
+      case BOX_SLEEPING, OBD_SLEEPING ->
+        new Look(R.drawable.ic_nogps_box, R.color.source_sleeping, R.drawable.ic_nogps_badge_sleep,
+                 R.color.source_sleeping, false);
+      case NO_CAR_DATA, OBD_DISABLED, OBD_CONNECTING, OBD_ERROR, NO_ADAPTER ->
+        new Look(R.drawable.ic_nogps_box, 0, R.drawable.ic_nogps_badge_alert, R.color.source_warning, false);
+      case DISCONNECTED, CONNECTING -> getBoxSearchLook(status);
+    };
   }
 
   /**
-   * The box is not heard yet: first the phone looks for it by Bluetooth (red), then waits for its data (blue).
+   * The box is not heard yet: the phone looks for it by Bluetooth, then waits for its data.
    */
-  private void showBoxSearch(@NonNull NoGps.Status status)
+  @NonNull
+  private static Look getBoxSearchLook(@NonNull NoGps.Status status)
   {
     // The ELM327 adapter of the phone is reached without Bluetooth LE.
     if (!status.esp32Source)
+      return new Look(R.drawable.ic_nogps_bluetooth, R.color.source_connecting, 0, 0, true);
+    return switch (status.getBleState())
     {
-      mBox.show(R.drawable.ic_nogps_bluetooth, R.color.source_bad, 0, 0, true);
-      return;
-    }
-    switch (status.getBleState())
-    {
-    case CONNECTED -> mBox.show(R.drawable.ic_nogps_box, R.color.source_connecting, 0, 0, true);
-    case OFF, NO_PERMISSION, DISABLED ->
-      mBox.show(R.drawable.ic_nogps_bluetooth_off, R.color.source_sleeping, 0, 0, false);
-    default -> mBox.show(R.drawable.ic_nogps_bluetooth, R.color.source_bad, 0, 0, true);
-    }
+      case CONNECTED -> new Look(R.drawable.ic_nogps_box, R.color.source_connecting, 0, 0, true);
+      case OFF, NO_PERMISSION, DISABLED -> new Look(R.drawable.ic_nogps_bluetooth_off, R.color.source_sleeping);
+      default -> new Look(R.drawable.ic_nogps_bluetooth, R.color.source_connecting, 0, 0, true);
+    };
   }
 
   @NonNull
-  private static String getGpsText(@NonNull NoGps.Status status, @NonNull Context context)
+  public static String getGpsStateText(@NonNull Context context, @NonNull NoGps.Status status)
   {
     if (isGpsOffByOs(context))
       return context.getString(R.string.nogps_status_gps_off);
-    if (status.gpsSpoofed)
-      return context.getString(R.string.nogps_status_gps_spoofed);
-    if (status.workingGpsAccuracyM < 0)
-      return context.getString(R.string.nogps_status_no_gps);
-    return context.getString(R.string.nogps_status_gps) + " · ±" + formatAccuracy(context, status.workingGpsAccuracyM);
+    return context.getString(switch (status.getGpsState())
+    {
+      case GOOD -> R.string.nogps_gps_state_good;
+      case CHECKING -> R.string.nogps_gps_state_checking;
+      case COARSE -> R.string.nogps_gps_state_coarse;
+      case SPOOFED -> R.string.nogps_gps_state_spoofed;
+      case NONE -> R.string.nogps_gps_state_none;
+    });
+  }
+
+  /**
+   * Why GPS is in its state, and if the car follows it.
+   */
+  @Nullable
+  public static String getGpsWhyText(@NonNull Context context, @NonNull NoGps.Status status)
+  {
+    if (isGpsOffByOs(context))
+      return null;
+    if (status.gpsDisabled)
+      return context.getString(R.string.nogps_gps_why_ignored);
+    return context.getString(switch (status.getGpsState())
+    {
+      case GOOD -> R.string.nogps_gps_why_used;
+      // Good positions are checked in the manual mode, the satellites are searched after the start.
+      case CHECKING -> status.manualMode ? R.string.nogps_gps_why_checking : R.string.nogps_gps_why_searching;
+      case COARSE ->
+        status.workingNetworkAccuracyM >= 0 && status.workingGpsAccuracyM < 0 ? R.string.nogps_gps_why_network
+                                                                              : R.string.nogps_gps_why_coarse;
+      case SPOOFED -> R.string.nogps_gps_why_spoofed;
+      case NONE -> R.string.nogps_gps_why_none;
+    });
   }
 
   @NonNull
-  static String formatAccuracy(@NonNull Context context, float meters)
+  public static String formatAccuracy(@NonNull Context context, float meters)
   {
     if (meters < 1000)
       return context.getString(R.string.nogps_meters, Math.round(meters));
     return context.getString(R.string.nogps_kilometers, meters / 1000);
   }
 
-  private static boolean isGpsOffByOs(@NonNull Context context)
+  public static boolean isGpsOffByOs(@NonNull Context context)
   {
     return !LocationUtils.checkFineLocationPermission(context) || !LocationUtils.areLocationServicesTurnedOn(context);
   }
 
-  private void onGpsTapped()
-  {
-    if (mStatus == null)
-      return;
-    if (!mStatus.gpsDisabled)
-      Toast.makeText(mGps.mView.getContext(), getGpsText(mStatus, mGps.mView.getContext()), Toast.LENGTH_SHORT).show();
-    else
-      choose(false /* gpsDisabled */);
-  }
-
-  private void onBoxTapped()
-  {
-    // No box is set up: the sensors screen offers to connect one, GPS stays the source.
-    if (!NoGps.getStatus().inertialEnabled)
-    {
-      mListener.showSensors(false /* backToGps */);
-      return;
-    }
-    if (mStatus == null)
-      return;
-    if (!mStatus.gpsDisabled)
-    {
-      choose(true /* gpsDisabled */);
-      // The box drives the car, nothing to tell.
-      if (mStatus.getSourceState() == NoGps.SourceState.CONNECTED)
-        return;
-    }
-    // The sensors screen tells why the box doesn't drive the car.
-    mListener.showSensors(true /* backToGps */);
-  }
-
-  private void choose(boolean gpsDisabled)
-  {
-    NoGps.nativeSetGpsDisabled(gpsDisabled);
-    update(NoGps.getStatus());
-    mListener.onSourceChosen();
-  }
-
   /**
-   * Stops the blinking in the background, the next update starts it again.
+   * Stops the pulsing in the background, the next update starts it again.
    */
   void stop()
   {
-    mGps.blink(false);
-    mBox.blink(false);
+    mGps.pulse(false);
+    mBox.pulse(false);
   }
 
   /**
-   * A source: its state icon with a badge and its name.
+   * A button of the bar showing a state: its icon with a badge.
    */
-  private static class Segment
+  private static class Button
   {
     @NonNull
     final View mView;
@@ -240,63 +258,47 @@ class SourceSelector
     private final ImageView mIcon;
     @NonNull
     private final ImageView mBadge;
-    @NonNull
-    private final TextView mLabel;
     @Nullable
-    private ObjectAnimator mBlinking;
+    private ObjectAnimator mPulsing;
 
-    Segment(@NonNull View view, @NonNull ImageView icon, @NonNull ImageView badge, @NonNull TextView label)
+    Button(@NonNull View view, @NonNull ImageView icon, @NonNull ImageView badge)
     {
       mView = view;
       mIcon = icon;
       mBadge = badge;
-      mLabel = label;
     }
 
-    void setChosen(boolean chosen)
-    {
-      mView.setSelected(chosen);
-      mLabel.setAlpha(chosen ? 1f : 0.6f);
-    }
-
-    /**
-     * @param color 0 for the color of the other icons.
-     * @param badge 0 for none.
-     */
-    void show(@DrawableRes int icon, @ColorRes int color, @DrawableRes int badge, @ColorRes int badgeColor,
-              boolean blinking)
+    void show(@NonNull Look look)
     {
       final Context context = mView.getContext();
-      mIcon.setImageResource(icon);
-      final int tint =
-          color == 0 ? ThemeUtils.getColor(context, R.attr.iconTint) : ContextCompat.getColor(context, color);
-      ImageViewCompat.setImageTintList(mIcon, ColorStateList.valueOf(tint));
-      mBadge.setVisibility(badge == 0 ? View.GONE : View.VISIBLE);
-      if (badge != 0)
+      mIcon.setImageResource(look.icon);
+      ImageViewCompat.setImageTintList(mIcon, ColorStateList.valueOf(look.getColor(context)));
+      mBadge.setVisibility(look.badge == 0 ? View.GONE : View.VISIBLE);
+      if (look.badge != 0)
       {
-        mBadge.setImageResource(badge);
-        mBadge.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(context, badgeColor)));
+        mBadge.setImageResource(look.badge);
+        mBadge.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(context, look.badgeColor)));
         ImageViewCompat.setImageTintList(mBadge, ColorStateList.valueOf(0xFFFFFFFF));
       }
-      blink(blinking);
+      pulse(look.pulsing);
     }
 
-    void blink(boolean on)
+    void pulse(boolean on)
     {
-      if (on == (mBlinking != null))
+      if (on == (mPulsing != null))
         return;
-      if (mBlinking != null)
+      if (mPulsing != null)
       {
-        mBlinking.cancel();
-        mBlinking = null;
+        mPulsing.cancel();
+        mPulsing = null;
         mIcon.setAlpha(1f);
         return;
       }
-      mBlinking = ObjectAnimator.ofFloat(mIcon, View.ALPHA, 1f, 0.3f);
-      mBlinking.setDuration(BLINK_DURATION_MS);
-      mBlinking.setRepeatCount(ObjectAnimator.INFINITE);
-      mBlinking.setRepeatMode(ObjectAnimator.REVERSE);
-      mBlinking.start();
+      mPulsing = ObjectAnimator.ofFloat(mIcon, View.ALPHA, 1f, 0.3f);
+      mPulsing.setDuration(PULSE_DURATION_MS);
+      mPulsing.setRepeatCount(ObjectAnimator.INFINITE);
+      mPulsing.setRepeatMode(ObjectAnimator.REVERSE);
+      mPulsing.start();
     }
   }
 }

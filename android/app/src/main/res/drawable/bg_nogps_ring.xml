@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A wave going out from the phone while it looks for the box. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+  <stroke
+    android:width="2dp"
+    android:color="@color/source_connecting" />
+</shape>

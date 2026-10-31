@@ -63,8 +63,7 @@
   <color name="map_panel">#F2333539</color>
   <color name="map_panel_edge">#2EFFFFFF</color>
   <color name="map_panel_divider">#38FFFFFF</color>
-  <color name="source_selector_track">#3D767680</color>
-  <color name="source_selector_thumb">#FF636366</color>
+  <color name="status_button">#3D767680</color>
   <color name="source_good">#FF32D74B</color>
   <color name="source_bad">#FFFF453A</color>
   <color name="source_connecting">#FF4AA3FF</color>
