@@ -340,7 +340,8 @@ public class MapButtonsController extends Fragment
   }
 
   /**
-   * Shows the accuracy of the position while the box drives the car, and the lost road in the same place.
+   * Shows the accuracy of the inertial position, from the box or the ELM327 adapter, and the lost road in the same
+   * place.
    */
   private void updatePositionStatus()
   {
