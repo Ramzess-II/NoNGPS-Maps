@@ -45725,9 +45725,9 @@ uk = Торкніться дороги, де зараз машина
 
 [nogps_gps_spoofed]
 tags = android-app,apple-maps
-en = GPS is spoofed! Using cell towers and Wi-Fi. You can also set your position manually.
-ru = GPS подменён! Используем вышки и Wi-Fi. Можно также указать позицию вручную.
-uk = GPS підмінено! Використовуємо вежі та Wi-Fi. Також можна вказати позицію вручну.
+en = GPS is spoofed! Using cell towers and Wi-Fi.
+ru = GPS подменён! Используем вышки и Wi-Fi.
+uk = GPS підмінено! Використовуємо вежі та Wi-Fi.
 
 [nogps_gps_restored]
 tags = android-app,apple-maps
@@ -46046,6 +46046,20 @@ en = No GPS
 ru = Нет GPS
 uk = Немає GPS
 
+[nogps_status_gps_coarse]
+comment = Status of GPS in the GPS | Box selector: only Wi-Fi and cell towers, or positions less accurate than 30 m
+tags = android-app,apple-maps
+en = Low GPS accuracy
+ru = Низкая точность GPS
+uk = Низька точність GPS
+
+[nogps_status_gps_checking]
+comment = Status of GPS in the GPS | Box selector, followed by the accuracy: GPS works again, it is not trusted until it has agreed with the sensor box for a while
+tags = android-app,apple-maps
+en = Checking GPS
+ru = Проверяем GPS
+uk = Перевіряємо GPS
+
 [nogps_status_gps_off]
 tags = android-app,apple-maps
 en = GPS is off in the system settings
@@ -46053,10 +46067,11 @@ ru = GPS выключен в настройках системы
 uk = GPS вимкнено в налаштуваннях системи
 
 [nogps_gps_back_auto]
+comment = GPS is chosen by itself in the GPS | Box selector after Box was chosen by itself
 tags = android-app,apple-maps
-en = GPS is trusted again, the manual mode is off
-ru = GPS снова надёжный, ручной режим выключен
-uk = GPS знову надійний, ручний режим вимкнено
+en = GPS is good again and drives the car
+ru = GPS снова надёжный и ведёт машину
+uk = GPS знову надійний і веде машину
 
 [nogps_reverse_direction]
 tags = android-app,apple-maps
@@ -46078,10 +46093,18 @@ ru = Здесь нет дороги, поставьте метку на доро
 uk = Тут немає дороги, поставте мітку на дорогу
 
 [nogps_gps_lost_auto]
+comment = Box is chosen by itself in the GPS | Box selector
 tags = android-app,apple-maps
-en = GPS is lost or wrong, the manual mode is on
-ru = GPS пропал или сбился, включён ручной режим
-uk = GPS зник або збився, увімкнено ручний режим
+en = GPS is lost or wrong, the box drives the car
+ru = GPS пропал или сбился, машину ведёт блок
+uk = GPS зник або збився, машину веде блок
+
+[nogps_box_lost_auto]
+comment = GPS is chosen by itself in the GPS | Box selector: the sensor box has sent no car data for 10 s
+tags = android-app,apple-maps
+en = The box is lost, GPS drives the car
+ru = Блок пропал, машину ведёт GPS
+uk = Блок зник, машину веде GPS
 
 [nogps_status_road_lost]
 comment = Status of the position: the mark of the car stands and waits for the user

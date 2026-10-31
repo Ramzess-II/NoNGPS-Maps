@@ -24,6 +24,8 @@ import collections
 import math
 import re
 
+# What the user's choice of GPS or Box is logged as, the older logs first.
+GPS_DISABLED = ('disabled = ', 'GPS ignored by the user = ')
 LINE = re.compile(r'^(\d\d-\d\d) (\d\d):(\d\d):(\d\d)\.(\d\d\d) \(([^)]*)\) \w/(\w+): (.*)$')
 FIELD = re.compile(r' (\w+)=(\S+)')
 SOURCE = re.compile(r'^\S+:\d+ (\w+)\(\): (.*)$')
@@ -126,7 +128,6 @@ def make_input(args):
     # What the application and the user did: (ms, order at the same time, the record, done by the user).
     actions = [(ms, 0, 'S %d 2' % ms, False) for ms in started]
     total_before = None
-    by_itself_ms = None
     # The routes: (ms, the points the user asked a route through or None, the route is followed or closed).
     routes = []
     asked_ms = None
@@ -161,14 +162,8 @@ def make_input(args):
             actions.append((ms, 1, 'S %d 0' % ms, False))
         elif function == 'OnBleState' and text.startswith('Bluetooth = '):
             actions.append((ms, 2, 'L %d %s' % (ms, text.split()[2]), False))
-        elif function == 'SetGpsDisabled' and text.startswith('disabled = '):
-            actions.append((ms, 3, 'X %d %s' % (ms, text.split()[2]), False))
-        elif text.startswith('Entering the manual mode') or text.startswith('GPS is trusted again'):
-            by_itself_ms = ms
-        elif function == 'SetManualMode' and text.startswith('enabled = '):
-            # The navigation turns the manual mode on and off by itself too, and does it again here.
-            if by_itself_ms is None or ms - by_itself_ms > 5:
-                actions.append((ms, 3, 'A %d %s' % (ms, text.split()[2]), False))
+        elif function == 'SetGpsDisabled' and text.startswith(GPS_DISABLED):
+            actions.append((ms, 3, 'X %d %s' % (ms, text.split()[-1]), False))
         elif text.startswith('tap = '):
             m = TAP.search(text)
             if m:
@@ -355,10 +350,10 @@ def make_input(args):
         state = trips[i] if trips else {}
         position = lat_lon(state.get('pos'))
         heading = number(state, 'hdg')
-        # A tap would put the car standing off the roads on a road, looking along it: on October 19 and 23 it stood
-        # across its road in the yard, and the trip driven again went the other way. It is started as the
-        # application keeps it then.
-        kept = state.get('src') in ('MANUAL', 'INERTIAL') and position and state.get('road') == '0'
+        # The car followed without GPS is started as the application keeps it then. A tap would put the car standing
+        # off the roads on a road, looking along it: on October 19 and 23 it stood across its road in the yard, and
+        # the trip driven again went the other way.
+        kept = state.get('src') in ('MANUAL', 'INERTIAL') and position
         records.append((first, -4, 'S %d 2' % first))
         if kept:
             records.append((first, -4, 'C %d %.6f %.6f %s 1 %d' % (
@@ -367,23 +362,22 @@ def make_input(args):
         records.append((first, -3, 'S %d 1' % first))
         if state.get('link', '').endswith('/CONNECTED'):
             records.append((first, -3, 'L %d CONNECTED' % first))
-        # GPS switched off stays so: since the choice is kept after a restart too. On October 19 it was switched off
-        # the day before, and the first GPS position came minutes after the file begins.
+        # Box chosen by the user stays so, the choice is kept after a restart too: on October 19 GPS was switched off
+        # the day before, and the first GPS position came minutes after the file begins. The application chooses Box
+        # again by itself. Older logs tell only that GPS is ignored.
         disabled = None
-        for ms, text, function in others:
-            if function == 'SetGpsDisabled' and ms <= first:
-                disabled = text.split()[2] == '1'
-            elif disabled is None and ms >= first and function == 'SetGpsDisabled':
-                break
-            elif disabled is None and ms >= first and text.startswith('GPS is disabled, ignoring'):
-                disabled = True
+        if 'choice' in state:
+            disabled = state['choice'] == 'BOX'
+        else:
+            for ms, text, function in others:
+                if function == 'SetGpsDisabled' and text.startswith(GPS_DISABLED) and ms <= first:
+                    disabled = text.split()[-1] == '1'
+                elif disabled is None and ms >= first and function == 'SetGpsDisabled':
+                    break
+                elif disabled is None and ms >= first and text.startswith('GPS is disabled, ignoring'):
+                    disabled = True
         if disabled:
             records.append((first, -2, 'X %d 1' % first))
-        if state.get('src') in ('MANUAL', 'INERTIAL') and position and not kept:
-            records.append((first, -1, 'A %d 1' % first))
-            records.append((first, -1, 'T %d %.6f %.6f' % (first, position[0], position[1])))
-            if heading is not None:
-                records.append((first, -1, 'H %d %.0f' % (first, heading)))
         # The route the car follows when the file begins is asked for from where the car is.
         asked = None
         followed = False
@@ -409,9 +403,9 @@ def make_input(args):
             f.write(text + '\n')
     kinds = collections.Counter(r[2][0] for r in records)
     print('written %s: %.1f h of the box in %d pieces, GPS %d, taps %d, reverse %d, pause %d, moved %d, '
-          'GPS switched %d, manual mode %d, starts %d, routes asked for %d' % (
+          'GPS switched %d, starts %d, routes asked for %d' % (
               args.output, kinds['B'] * SLICE_MS / 3.6e6, kinds['J'], kinds['G'], kinds['T'], kinds['R'], kinds['P'],
-              kinds['M'], kinds['X'], kinds['A'], kinds['S'], kinds['N']))
+              kinds['M'], kinds['X'], kinds['S'], kinds['N']))
 
 
 def meters(a, b):

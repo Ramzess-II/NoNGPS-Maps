@@ -69,9 +69,24 @@ typedef NS_ENUM(NSInteger, MWMNoGpsFirmwareUpdate) {
   MWMNoGpsFirmwareUpdateFailed,
 } NS_SWIFT_NAME(NoGpsFirmwareUpdate);
 
+/// What GPS is worth now: the icon of GPS, the choice of GPS or Box and the log take it.
+typedef NS_ENUM(NSInteger, MWMNoGpsGpsState) {
+  MWMNoGpsGpsStateNone,
+  // Only Wi-Fi and cell towers, or positions less accurate than 30 m.
+  MWMNoGpsGpsStateCoarse,
+  // Told by the spoofing detector, by the positions off the roads or away from the box.
+  MWMNoGpsGpsStateSpoofed,
+  // Good positions after GPS was bad, not agreeing with the box long enough yet.
+  MWMNoGpsGpsStateChecking,
+  MWMNoGpsGpsStateGood,
+} NS_SWIFT_NAME(NoGpsGpsState);
+
 typedef NS_ENUM(NSInteger, MWMNoGpsEvent) {
+  // GPS or Box is chosen, by the user or by itself.
   MWMNoGpsEventManualModeChanged,
+  // GPS is chosen by itself: it is good again after Box was chosen by itself.
   MWMNoGpsEventGpsBack,
+  // Box is chosen by itself: GPS is lost or wrong, the box drives the car.
   MWMNoGpsEventGpsLost,
   MWMNoGpsEventGpsSpoofed,
   MWMNoGpsEventGpsRestored,
@@ -84,6 +99,8 @@ typedef NS_ENUM(NSInteger, MWMNoGpsEvent) {
   MWMNoGpsEventFirmwareUpdateDone,
   MWMNoGpsEventFirmwareUpdateFailed,
   MWMNoGpsEventBoxCalibrationAdvised,
+  // GPS is chosen by itself: the box is lost and GPS is good.
+  MWMNoGpsEventBoxLost,
 } NS_SWIFT_NAME(NoGpsEvent);
 
 /// Posted on the main queue, the MWMNoGpsEvent is in the userInfo by MWMNoGpsEventKey.
@@ -97,12 +114,13 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly) MWMNoGpsPositionSource source;
 // Of the shown position.
 @property(nonatomic, readonly) double accuracyM;
+// Box is chosen: the box drives the car and the user corrects it, GPS is ignored.
 @property(nonatomic, readonly) BOOL manualMode;
 // The next tap on the map shows where the car is: the button for it is pressed.
 @property(nonatomic, readonly) BOOL markByTap;
 // Since the user has set the position in the manual mode.
 @property(nonatomic, readonly) NSTimeInterval manualAge;
-@property(nonatomic, readonly) BOOL gpsSpoofed;
+@property(nonatomic, readonly) MWMNoGpsGpsState gpsState;
 @property(nonatomic, readonly) BOOL gpsDisabled;
 // GPS works now, also in the manual mode where it is not used. Negative if it doesn't.
 @property(nonatomic, readonly) double workingGpsAccuracyM;

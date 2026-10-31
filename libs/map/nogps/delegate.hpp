@@ -41,10 +41,11 @@ struct Fix
 
 enum class Event
 {
+  // GPS or Box is chosen, by the user or by itself.
   ManualModeChanged,
-  // The manual mode has been left by itself: GPS is trusted again.
+  // GPS is chosen by itself: it is good again after Box was chosen by itself.
   GpsBack,
-  // The manual mode has been turned on by itself: GPS is lost or wrong while driving.
+  // Box is chosen by itself: GPS is lost or wrong, the box drives the car.
   GpsLost,
   GpsSpoofed,
   GpsRestored,
@@ -68,6 +69,8 @@ enum class Event
   // The sensor box has been powered on: it is new in the car, or it was taken out and may be put in another way.
   // The user should calibrate it on a level place. Told once for a power-on, while the car stands.
   BoxCalibrationAdvised,
+  // GPS is chosen by itself: the box is lost and GPS is good.
+  BoxLost,
 };
 
 /// What the platform does about the ESP32 sensor box over Bluetooth LE, told to Engine::OnEsp32BleState().
