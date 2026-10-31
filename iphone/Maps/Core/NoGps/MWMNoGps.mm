@@ -116,6 +116,8 @@ std::optional<double> NonNegative(double value)
     _manualAge = status.m_manualAgeMs / 1000.0;
     _gpsSpoofed = status.m_gpsSpoofed;
     _gpsDisabled = status.m_gpsDisabled;
+    _gpsState = static_cast<MWMNoGpsGpsState>(status.m_gpsState);
+    _lastGoodGpsAge = status.m_lastGoodGpsAgeMs < 0 ? -1 : status.m_lastGoodGpsAgeMs / 1000.0;
     _workingGpsAccuracyM = status.m_workingGpsAccuracyM.value_or(-1);
     _workingNetworkAccuracyM = status.m_workingNetworkAccuracyM.value_or(-1);
     _movedByHand = status.m_movedByHand;

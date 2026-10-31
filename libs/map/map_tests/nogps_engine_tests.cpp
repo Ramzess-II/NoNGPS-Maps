@@ -2357,6 +2357,124 @@ UNIT_TEST(NoGps_Engine_ForgettingTheBoxReturnsGps)
   TEST(!env.m_delegate.m_positions.empty(), ());
 }
 
+UNIT_TEST(NoGps_GpsStateGood)
+{
+  Env env(false /* inertial */);
+  env.DriveGps(3, 0, 10);
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Good, ());
+
+  // GPS ignored by the user tells how it works.
+  env.m_engine.SetGpsDisabled(true);
+  env.DriveGps(3, 30, 10);
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Good, ());
+}
+
+UNIT_TEST(NoGps_GpsStateCoarse)
+{
+  Env env(false /* inertial */);
+  env.m_clock.Advance(Engine::kGpsFirstFixMs + 1);
+  for (int i = 0; i < 3; ++i)
+  {
+    env.m_clock.Advance(1000);
+    env.m_engine.OnFix(GpsAt(env.m_clock, i * 10, 0, 90.0, 10.0, Engine::kGpsMaxAccuracyM + 5));
+  }
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Coarse, ());
+
+  // Only cell towers and Wi-Fi.
+  env.m_clock.Advance(Engine::kGpsLostMs + 1);
+  Fix network = GpsAt(env.m_clock, 20, 0, {}, {}, 100);
+  network.m_provider = Provider::Network;
+  env.m_engine.OnFix(network);
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Coarse, ());
+}
+
+UNIT_TEST(NoGps_GpsStateSpoofed)
+{
+  Env env(false /* inertial */);
+  Fix network = GpsAt(env.m_clock, 0, 0, {}, {}, 100);
+  network.m_provider = Provider::Network;
+  env.m_engine.OnFix(network);
+  env.DriveGps(3, 0, 10);
+
+  // GPS is on another continent.
+  env.m_clock.Advance(1000);
+  Fix spoofed = GpsAt(env.m_clock, 0, 0, 90.0, 10.0);
+  spoofed.m_position = {-12.0453, -77.0569};
+  env.m_engine.OnFix(spoofed);
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Spoofed, ());
+}
+
+UNIT_TEST(NoGps_GpsStateChecking)
+{
+  {
+    // The satellites are searched after the start.
+    Env env(false /* inertial */);
+    TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Checking, ());
+    // The first positions are not accurate yet.
+    env.m_clock.Advance(1000);
+    env.m_engine.OnFix(GpsAt(env.m_clock, 0, 0, {}, {}, Engine::kGpsMaxAccuracyM + 5));
+    TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Checking, ());
+    env.m_clock.Advance(Engine::kGpsFirstFixMs - 1000 + 1);
+    TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::None, ());
+  }
+
+  Env env(false /* inertial */);
+  env.m_map.m_navigating = true;
+  Fix network = GpsAt(env.m_clock, 0, 0, {}, {}, 100);
+  network.m_provider = Provider::Network;
+  env.m_engine.OnFix(network);
+  env.DriveGps(3, 0, 10);
+  env.m_clock.Advance(1000);
+  Fix spoofed = GpsAt(env.m_clock, 0, 0, 90.0, 10.0);
+  spoofed.m_position = {-12.0453, -77.0569};
+  env.m_engine.OnFix(spoofed);
+  TEST(env.m_engine.IsManualMode(), ());
+
+  // GPS is good again where the car stands, but is trusted only after GpsReturnDetector::kMinStreakMs.
+  for (int i = 0; i < GpsSpoofingDetector::kConsistentPositionsToRecover + 2; ++i)
+  {
+    env.m_clock.Advance(1000);
+    env.m_engine.OnFix(GpsAt(env.m_clock, 20, 0, {}, 0.0));
+  }
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Checking, ());
+
+  for (int i = 0; i < 16 && env.m_engine.IsManualMode(); ++i)
+  {
+    env.m_clock.Advance(1000);
+    env.m_engine.OnFix(GpsAt(env.m_clock, 20, 0, {}, 0.0));
+  }
+  TEST(!env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Good, ());
+}
+
+UNIT_TEST(NoGps_GpsStateNone)
+{
+  Env env(false /* inertial */);
+  env.DriveGps(3, 0, 10);
+  env.m_clock.Advance(Engine::kGpsLostMs - 500);
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::Good, ());
+  env.m_clock.Advance(Engine::kGpsFirstFixMs);
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::None, ());
+
+  env.m_engine.Stop();
+  TEST_EQUAL(env.m_engine.GetStatus().m_gpsState, GpsState::None, ());
+}
+
+UNIT_TEST(NoGps_LastGoodGpsAge)
+{
+  Env env(false /* inertial */);
+  TEST_EQUAL(env.m_engine.GetStatus().m_lastGoodGpsAgeMs, -1, ());
+  env.DriveGps(3, 0, 10);
+  TEST_EQUAL(env.m_engine.GetStatus().m_lastGoodGpsAgeMs, 0, ());
+
+  // A coarse position is not a good one.
+  env.m_clock.Advance(1000);
+  env.m_engine.OnFix(GpsAt(env.m_clock, 30, 0, 90.0, 10.0, Engine::kGpsMaxAccuracyM + 5));
+  env.m_clock.Advance(Engine::kGpsLostMs);
+  TEST_EQUAL(env.m_engine.GetStatus().m_lastGoodGpsAgeMs, Engine::kGpsLostMs + 1000, ());
+}
+
 UNIT_TEST(NoGps_Engine_InertialContinuesWhenGpsIsLost)
 {
   Env env(true /* inertial */);

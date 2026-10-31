@@ -15,6 +15,17 @@ typedef NS_ENUM(NSInteger, MWMNoGpsPositionSource) {
   MWMNoGpsPositionSourceInertial,
 } NS_SWIFT_NAME(NoGpsPositionSource);
 
+// What GPS is worth now, whether the car follows it or not.
+typedef NS_ENUM(NSInteger, MWMNoGpsGpsState) {
+  MWMNoGpsGpsStateNone,
+  // Only Wi-Fi and cell towers, or not accurate positions.
+  MWMNoGpsGpsStateCoarse,
+  MWMNoGpsGpsStateSpoofed,
+  // Good positions not trusted yet after GPS was bad, or the satellites are searched after the start.
+  MWMNoGpsGpsStateChecking,
+  MWMNoGpsGpsStateGood,
+} NS_SWIFT_NAME(NoGpsGpsState);
+
 typedef NS_ENUM(NSInteger, MWMNoGpsSourceState) {
   MWMNoGpsSourceStateDisconnected,
   MWMNoGpsSourceStateConnecting,
@@ -104,6 +115,9 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly) NSTimeInterval manualAge;
 @property(nonatomic, readonly) BOOL gpsSpoofed;
 @property(nonatomic, readonly) BOOL gpsDisabled;
+@property(nonatomic, readonly) MWMNoGpsGpsState gpsState;
+// The age of the last good GPS position, negative if there is none.
+@property(nonatomic, readonly) NSTimeInterval lastGoodGpsAge;
 // GPS works now, also in the manual mode where it is not used. Negative if it doesn't.
 @property(nonatomic, readonly) double workingGpsAccuracyM;
 @property(nonatomic, readonly) double workingNetworkAccuracyM;
