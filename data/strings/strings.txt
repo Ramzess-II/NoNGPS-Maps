@@ -1363,7 +1363,7 @@ zh-Hant = 由愛好者和志願者開發的開源應用程式。
 
 [location_settings]
 comment = The button that opens system location settings
-tags = android-app
+tags = android-app,apple-maps
 en = Location Settings
 af = Liggingsinstellings
 ar = إعدادات الموقع
@@ -45739,13 +45739,6 @@ uk = GPS знову в нормі
 tags = android-app,apple-maps
 en = GPS
 
-[nogps_source_box]
-comment = The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored
-tags = android-app,apple-maps
-en = Box
-ru = Блок
-uk = Блок
-
 [nogps_meters]
 tags = android-app,apple-maps
 en = %d m
@@ -45757,12 +45750,6 @@ tags = android-app,apple-maps
 en = %.1f km
 ru = %.1f км
 uk = %.1f км
-
-[nogps_status_inertial]
-tags = android-app,apple-maps
-en = Inertial · ±%@
-ru = Инерциально · ±%@
-uk = Інерціально · ±%@
 
 [nogps_sensors_title]
 tags = android-app,apple-maps
@@ -46033,18 +46020,6 @@ tags = android-app,apple-maps
 en = The position is at a crossing, it can not be moved further
 ru = Позиция у перекрёстка, дальше переносить нельзя
 uk = Позиція біля перехрестя, далі переносити не можна
-
-[nogps_status_gps_spoofed]
-tags = android-app,apple-maps
-en = GPS spoofed
-ru = GPS подменён
-uk = GPS підмінено
-
-[nogps_status_no_gps]
-tags = android-app,apple-maps
-en = No GPS
-ru = Нет GPS
-uk = Немає GPS
 
 [nogps_status_gps_off]
 tags = android-app,apple-maps
@@ -46611,3 +46586,339 @@ tags = android-app
 en = Following the car by the sensor box
 ru = Машина ведётся по блоку датчиков
 uk = Машина ведеться за блоком датчиків
+
+[nogps_bar_inertial]
+comment = Source word in the bottom bar: the car is placed by the sensor box
+tags = android-app,apple-maps
+en = Inertial
+ru = Инерциально
+uk = Інерціально
+
+[nogps_bar_network]
+comment = Source word in the bottom bar: the position is from cell towers and Wi-Fi
+tags = android-app,apple-maps
+en = Network
+ru = Сеть
+uk = Мережа
+
+[nogps_bar_manual]
+comment = Source word in the bottom bar: the user has put the car on the map
+tags = android-app,apple-maps
+en = Manual
+ru = Вручную
+uk = Вручну
+
+[nogps_gps_state_good]
+comment = State of GPS in the GPS sheet
+tags = android-app,apple-maps
+en = Good
+ru = Работает
+uk = Працює
+
+[nogps_gps_state_checking]
+comment = State of GPS in the GPS sheet: good positions are checked before the car follows them
+tags = android-app,apple-maps
+en = Checking
+ru = Проверяется
+uk = Перевіряється
+
+[nogps_gps_state_coarse]
+comment = State of GPS in the GPS sheet
+tags = android-app,apple-maps
+en = Not accurate
+ru = Неточный
+uk = Неточний
+
+[nogps_gps_state_spoofed]
+comment = State of GPS in the GPS sheet
+tags = android-app,apple-maps
+en = Spoofed
+ru = Подменён
+uk = Підмінений
+
+[nogps_gps_state_none]
+comment = State of GPS in the GPS sheet
+tags = android-app,apple-maps
+en = No signal
+ru = Нет сигнала
+uk = Немає сигналу
+
+[nogps_gps_why_used]
+comment = Why, under the state of GPS
+tags = android-app,apple-maps
+en = The car follows GPS.
+ru = Машина идёт по GPS.
+uk = Машина йде за GPS.
+
+[nogps_gps_why_ignored]
+comment = Why, under the state of GPS: the user has turned GPS off for the car
+tags = android-app,apple-maps
+en = Not used: the box and your marks place the car.
+ru = Не используется: машину ведут блок и ваши метки.
+uk = Не використовується: машину ведуть блок і ваші мітки.
+
+[nogps_gps_why_searching]
+comment = Why, under the state of GPS
+tags = android-app,apple-maps
+en = Looking for satellites after the start.
+ru = Ищу спутники после запуска.
+uk = Шукаю супутники після запуску.
+
+[nogps_gps_why_checking]
+comment = Why, under the state of GPS
+tags = android-app,apple-maps
+en = Good again. It is used when it has agreed with the car for 15 seconds.
+ru = Снова хороший. Будет использован, когда 15 секунд совпадёт с машиной.
+uk = Знову добрий. Буде використаний, коли 15 секунд збігатиметься з машиною.
+
+[nogps_gps_why_coarse]
+comment = Why, under the state of GPS
+tags = android-app,apple-maps
+en = Less accurate than 30 m: not used.
+ru = Точность хуже 30 м: не используется.
+uk = Точність гірша за 30 м: не використовується.
+
+[nogps_gps_why_network]
+comment = Why, under the state of GPS
+tags = android-app,apple-maps
+en = Only cell towers and Wi-Fi.
+ru = Только вышки и Wi-Fi.
+uk = Лише вежі та Wi-Fi.
+
+[nogps_gps_why_spoofed]
+comment = Why, under the state of GPS
+tags = android-app,apple-maps
+en = Far from cell towers and Wi-Fi, or jumps: not used.
+ru = Далеко от вышек и Wi-Fi или прыгает: не используется.
+uk = Далеко від веж і Wi-Fi або стрибає: не використовується.
+
+[nogps_gps_why_none]
+comment = Why, under the state of GPS
+tags = android-app,apple-maps
+en = No position from GPS for 5 seconds.
+ru = Нет позиций GPS 5 секунд.
+uk = Немає позицій GPS 5 секунд.
+
+[nogps_gps_use]
+comment = Switch in the GPS sheet
+tags = android-app,apple-maps
+en = Use GPS for the car
+ru = Вести машину по GPS
+uk = Вести машину за GPS
+
+[nogps_gps_use_hint]
+comment = Under the switch in the GPS sheet
+tags = android-app,apple-maps
+en = Off: GPS is ignored, the box and your marks place the car. For places where GPS is spoofed but the app doesn't see it.
+ru = Выключено: GPS не используется, машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.
+uk = Вимкнено: GPS не використовується, машину ведуть блок і ваші мітки. Для місць, де GPS підмінений, а застосунок цього не бачить.
+
+[nogps_gps_last_fix]
+comment = Row of the GPS sheet: when GPS gave the last good position
+tags = android-app,apple-maps
+en = Last good fix
+ru = Последняя хорошая точка
+uk = Остання добра точка
+
+[nogps_gps_ago_s]
+comment = How long ago, in seconds
+tags = android-app,apple-maps
+en = %d s ago
+ru = %d с назад
+uk = %d с тому
+
+[nogps_gps_ago_min]
+comment = How long ago, in minutes
+tags = android-app,apple-maps
+en = %d min ago
+ru = %d мин назад
+uk = %d хв тому
+
+[nogps_gps_ago_h]
+comment = How long ago, in hours
+tags = android-app,apple-maps
+en = %d h ago
+ru = %d ч назад
+uk = %d год тому
+
+[nogps_gps_accuracy]
+comment = Row of the GPS sheet
+tags = android-app,apple-maps
+en = Accuracy
+ru = Точность
+uk = Точність
+
+[nogps_gps_height]
+comment = Accuracy of the height, after the accuracy of the position: "±6 m · height ±9 m"
+tags = android-app,apple-maps
+en = height ±%@
+ru = высота ±%@
+uk = висота ±%@
+
+[nogps_gps_speed_course]
+comment = Row of the GPS sheet
+tags = android-app,apple-maps
+en = Speed, course
+ru = Скорость, курс
+uk = Швидкість, курс
+
+[nogps_gps_network]
+comment = Row of the GPS sheet: the accuracy of the position from cell towers and Wi-Fi
+tags = android-app,apple-maps
+en = Cell towers, Wi-Fi
+ru = Вышки, Wi-Fi
+uk = Вежі, Wi-Fi
+
+[nogps_gps_satellites]
+comment = Header of the satellites in the GPS sheet
+tags = android-app
+en = Satellites
+ru = Спутники
+uk = Супутники
+
+[nogps_gps_sat_used]
+comment = Row of the GPS sheet: satellites used in the position and seen
+tags = android-app
+en = In use / in view
+ru = Используются / видны
+uk = Використовуються / видно
+
+[nogps_gps_sat_systems]
+comment = Row of the GPS sheet: satellites in use by system, "GPS 5 · Galileo 2"
+tags = android-app
+en = Systems in use
+ru = Системы
+uk = Системи
+
+[nogps_gps_sat_signal]
+comment = Row of the GPS sheet: the mean signal of the satellites in use
+tags = android-app
+en = Signal
+ru = Сигнал
+uk = Сигнал
+
+[nogps_gps_db_hz]
+comment = The signal of the satellites
+tags = android-app
+en = %d dB-Hz
+ru = %d дБ-Гц
+uk = %d дБ-Гц
+
+[nogps_gps_fix_source]
+comment = Row of the GPS sheet: what has given the position
+tags = apple-maps
+en = Fix comes from
+ru = Откуда точка
+uk = Звідки точка
+
+[nogps_gps_fix_phone]
+comment = Value of the row Fix comes from
+tags = apple-maps
+en = the phone
+ru = телефон
+uk = телефон
+
+[nogps_gps_fix_accessory]
+comment = Value of the row Fix comes from
+tags = apple-maps
+en = an accessory
+ru = аксессуар
+uk = аксесуар
+
+[nogps_gps_fix_simulated]
+comment = Value of the row Fix comes from: the position is made by a program
+tags = apple-maps
+en = simulated
+ru = симуляция
+uk = симуляція
+
+[nogps_box_title]
+comment = Title of the Box sheet
+tags = android-app,apple-maps
+en = Sensor box
+ru = Блок датчиков
+uk = Блок датчиків
+
+[nogps_box_speed_table]
+comment = Row of the Box sheet: the ranges of the car speed measured by GPS, of all
+tags = android-app,apple-maps
+en = Speed table: %1$@
+ru = Таблица скорости: %1$@
+uk = Таблиця швидкості: %1$@
+
+[nogps_box_details]
+comment = Button of the Box sheet opening the sensors screen
+tags = android-app,apple-maps
+en = All sensor details
+ru = Все данные датчиков
+uk = Усі дані датчиків
+
+[nogps_box_searching]
+comment = State under the title of the Box sheet when no box is set up
+tags = android-app,apple-maps
+en = Looking for a box nearby
+ru = Ищу блок рядом
+uk = Шукаю блок поруч
+
+[nogps_box_step_bluetooth]
+comment = Step of connecting the box
+tags = android-app,apple-maps
+en = Bluetooth on
+ru = Bluetooth включён
+uk = Bluetooth увімкнено
+
+[nogps_box_step_bluetooth_off]
+comment = Step of connecting the box
+tags = android-app,apple-maps
+en = Bluetooth is off
+ru = Bluetooth выключен
+uk = Bluetooth вимкнено
+
+[nogps_box_step_bluetooth_denied]
+comment = Step of connecting the box
+tags = android-app,apple-maps
+en = Bluetooth is not allowed
+ru = Bluetooth не разрешён
+uk = Bluetooth не дозволено
+
+[nogps_box_step_search]
+comment = Step of connecting the box
+tags = android-app,apple-maps
+en = Searching
+ru = Поиск
+uk = Пошук
+
+[nogps_box_step_connect]
+comment = Step of connecting the box
+tags = android-app,apple-maps
+en = Connecting
+ru = Подключение
+uk = Підключення
+
+[nogps_box_step_data]
+comment = Step of connecting the box: the box tells the car speed
+tags = android-app,apple-maps
+en = Car data
+ru = Данные машины
+uk = Дані машини
+
+[nogps_box_turn_on]
+comment = Button: turn Bluetooth on
+tags = android-app,apple-maps
+en = Turn on
+ru = Включить
+uk = Увімкнути
+
+[nogps_box_allow]
+comment = Button: allow Bluetooth to the app
+tags = android-app,apple-maps
+en = Allow
+ru = Разрешить
+uk = Дозволити
+
+[nogps_box_power_hint]
+comment = Hint while the box is searched
+tags = android-app,apple-maps
+en = Have a box? Power it on near the phone: it accepts a new phone for 2 minutes. The phone may ask for the code from the box.
+ru = Есть блок? Включите его рядом с телефоном: 2 минуты он принимает новый телефон. Телефон может спросить код с блока.
+uk = Маєте блок? Увімкніть його поруч із телефоном: 2 хвилини він приймає новий телефон. Телефон може спитати код із блока.

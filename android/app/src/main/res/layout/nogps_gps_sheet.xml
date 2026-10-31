@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What GPS is worth and why, whether the car follows it, and its details, see GpsBottomSheet. Scrolls on small
+     screens. -->
+<androidx.core.widget.NestedScrollView
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:background="?cardBackground">
+<LinearLayout
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:orientation="vertical"
+  android:paddingHorizontal="20dp"
+  android:paddingTop="16dp"
+  android:paddingBottom="24dp">
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+    <FrameLayout
+      android:layout_width="@dimen/map_button_size"
+      android:layout_height="@dimen/map_button_size"
+      android:background="@drawable/bg_status_button">
+      <ImageView
+        android:id="@+id/gps_icon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="center"
+        android:importantForAccessibility="no" />
+    </FrameLayout>
+    <LinearLayout
+      android:layout_width="0dp"
+      android:layout_height="wrap_content"
+      android:layout_marginStart="12dp"
+      android:layout_weight="1"
+      android:orientation="vertical">
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/nogps_status_gps"
+        android:textAppearance="?android:textAppearanceLarge"
+        android:textStyle="bold" />
+      <TextView
+        android:id="@+id/gps_state"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+    </LinearLayout>
+  </LinearLayout>
+
+  <TextView
+    android:id="@+id/gps_why"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:textColor="?android:textColorSecondary"
+    android:textSize="14sp" />
+
+  <com.google.android.material.materialswitch.MaterialSwitch
+    android:id="@+id/gps_use"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="12dp"
+    android:minHeight="52dp"
+    android:text="@string/nogps_gps_use"
+    android:textSize="16sp" />
+  <TextView
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="@string/nogps_gps_use_hint"
+    android:textColor="?android:textColorSecondary"
+    android:textSize="13sp" />
+
+  <LinearLayout
+    android:id="@+id/gps_details"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="12dp"
+    android:orientation="vertical" />
+
+  <LinearLayout
+    android:id="@+id/gps_satellites"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="12dp"
+      android:text="@string/nogps_gps_satellites"
+      android:textSize="16sp"
+      android:textStyle="bold" />
+  </LinearLayout>
+
+  <Button
+    android:id="@+id/gps_settings"
+    style="?borderlessButtonStyle"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:text="@string/location_settings" />
+</LinearLayout>
+</androidx.core.widget.NestedScrollView>

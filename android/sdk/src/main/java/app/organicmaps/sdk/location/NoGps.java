@@ -28,6 +28,18 @@ public final class NoGps
     INERTIAL,
   }
 
+  // What GPS is worth now, whether the car follows it or not.
+  public enum GpsState
+  {
+    NONE,
+    // Only Wi-Fi and cell towers, or not accurate positions.
+    COARSE,
+    SPOOFED,
+    // Good positions not trusted yet after GPS was bad, or the satellites are searched after the start.
+    CHECKING,
+    GOOD,
+  }
+
   public enum SourceState
   {
     DISCONNECTED,
@@ -176,6 +188,11 @@ public final class NoGps
     public boolean gpsSpoofed;
     @Keep
     public boolean gpsDisabled;
+    @Keep
+    int gpsState;
+    // The age of the last good GPS position, -1 if there is none.
+    @Keep
+    public long lastGoodGpsAgeMs;
     // GPS works now, also in the manual mode where it is not used. The accuracy is negative if it doesn't.
     @Keep
     public float workingGpsAccuracyM;
@@ -291,6 +308,12 @@ public final class NoGps
     public PositionSource getSource()
     {
       return PositionSource.values()[source];
+    }
+
+    @NonNull
+    public GpsState getGpsState()
+    {
+      return GpsState.values()[gpsState];
     }
 
     @NonNull

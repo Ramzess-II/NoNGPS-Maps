@@ -27,6 +27,8 @@ import app.organicmaps.sdk.routing.RoutingController;
 import app.organicmaps.sdk.util.Config;
 import app.organicmaps.sdk.util.NetworkPolicy;
 import app.organicmaps.sdk.util.log.Logger;
+import java.util.Collections;
+import java.util.TreeMap;
 import org.chromium.base.ObserverList;
 
 public class LocationHelper implements BaseLocationProvider.Listener
@@ -66,6 +68,11 @@ public class LocationHelper implements BaseLocationProvider.Listener
 
   @Nullable
   private Location mSavedLocation;
+  // The last positions from the platform as they came, also not used, and the satellites: the GPS sheet tells them.
+  @Nullable
+  private Location mLastPlatformLocation;
+  @Nullable
+  private Satellites mSatellites;
   private MapObject mMyPosition;
   @NonNull
   private final LocationProviderFactory mLocationProviderFactory = new LocationProviderFactory();
@@ -180,6 +187,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     public void onStopped()
     {
       Logger.d(TAG);
+      mSatellites = null;
     }
 
     @Override
@@ -192,16 +200,19 @@ public class LocationHelper implements BaseLocationProvider.Listener
     public void onSatelliteStatusChanged(@NonNull GnssStatusCompat status)
     {
       int used = 0;
-      boolean fixed = false;
+      float cn0 = 0;
+      final java.util.Map<Integer, Integer> usedBySystem = new TreeMap<>();
       for (int i = 0; i < status.getSatelliteCount(); i++)
       {
-        if (status.usedInFix(i))
-        {
-          used++;
-          fixed = true;
-        }
+        if (!status.usedInFix(i))
+          continue;
+        used++;
+        cn0 += status.getCn0DbHz(i);
+        usedBySystem.merge(status.getConstellationType(i), 1, Integer::sum);
       }
-      Logger.d(TAG, "total = " + status.getSatelliteCount() + " used = " + used + " fixed = " + fixed);
+      Logger.d(TAG, "total = " + status.getSatelliteCount() + " used = " + used);
+      mSatellites = new Satellites(used, status.getSatelliteCount(), Collections.unmodifiableMap(usedBySystem),
+                                   used > 0 ? cn0 / used : 0);
     }
   };
 
@@ -254,6 +265,24 @@ public class LocationHelper implements BaseLocationProvider.Listener
   public Location getSavedLocation()
   {
     return mSavedLocation;
+  }
+
+  /**
+   * The last position from GPS or the fused provider, also not used by the navigation without GPS.
+   */
+  @Nullable
+  public Location getLastPlatformLocation()
+  {
+    return mLastPlatformLocation;
+  }
+
+  /**
+   * The satellites the last time GPS told them, null if it is stopped.
+   */
+  @Nullable
+  public Satellites getSatellites()
+  {
+    return mSatellites;
   }
 
   /**
@@ -323,6 +352,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
       return;
     }
 
+    if (!LocationManager.NETWORK_PROVIDER.equals(location.getProvider()))
+      mLastPlatformLocation = location;
     NoGps.onLocation(location, false /* lastKnownNetwork */);
   }
 
@@ -697,5 +728,27 @@ public class LocationHelper implements BaseLocationProvider.Listener
   public boolean isGmsLocationProviderAvailable()
   {
     return mLocationProviderFactory.isGmsLocationProviderAvailable(mContext);
+  }
+
+  /**
+   * The satellites of the last fix, see GnssStatusCompat.
+   */
+  public static final class Satellites
+  {
+    public final int used;
+    public final int inView;
+    // Of the satellites used, by GnssStatusCompat.CONSTELLATION_*.
+    @NonNull
+    public final java.util.Map<Integer, Integer> usedBySystem;
+    // The mean signal of the satellites used, dB-Hz.
+    public final float meanCn0DbHz;
+
+    Satellites(int used, int inView, @NonNull java.util.Map<Integer, Integer> usedBySystem, float meanCn0DbHz)
+    {
+      this.used = used;
+      this.inView = inView;
+      this.usedBySystem = usedBySystem;
+      this.meanCn0DbHz = meanCn0DbHz;
+    }
   }
 }

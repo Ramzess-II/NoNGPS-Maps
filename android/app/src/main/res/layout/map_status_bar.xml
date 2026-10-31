@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Box · where the position comes from and its accuracy · GPS, see StatusBar. -->
+<LinearLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  android:id="@+id/status_bar"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:gravity="center_vertical"
+  android:orientation="horizontal">
+  <FrameLayout
+    android:id="@+id/status_box"
+    android:layout_width="@dimen/map_button_size"
+    android:layout_height="@dimen/map_button_size"
+    android:background="@drawable/bg_status_button"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?selectableItemBackground">
+    <FrameLayout
+      android:layout_width="26dp"
+      android:layout_height="26dp"
+      android:layout_gravity="center">
+      <ImageView
+        android:id="@+id/status_box_icon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="center"
+        android:importantForAccessibility="no" />
+      <ImageView
+        android:id="@+id/status_box_badge"
+        android:layout_width="11dp"
+        android:layout_height="11dp"
+        android:layout_gravity="bottom|end"
+        android:background="@drawable/bg_source_badge"
+        android:importantForAccessibility="no"
+        android:padding="1dp"
+        android:visibility="gone" />
+    </FrameLayout>
+  </FrameLayout>
+  <!-- The word shrinks to fit, but stays readable. -->
+  <LinearLayout
+    android:id="@+id/status_source"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="4dp"
+    android:layout_weight="1"
+    android:focusable="true"
+    android:gravity="center"
+    android:orientation="vertical">
+    <TextView
+      android:id="@+id/status_word"
+      android:layout_width="match_parent"
+      android:layout_height="20dp"
+      android:gravity="center"
+      android:importantForAccessibility="no"
+      android:maxLines="1"
+      android:textColor="?android:textColorPrimary"
+      android:textSize="15sp"
+      android:textStyle="bold"
+      app:autoSizeMaxTextSize="15sp"
+      app:autoSizeMinTextSize="11sp"
+      app:autoSizeTextType="uniform" />
+    <TextView
+      android:id="@+id/status_accuracy"
+      android:layout_width="match_parent"
+      android:layout_height="17dp"
+      android:fontFeatureSettings="tnum"
+      android:gravity="center"
+      android:importantForAccessibility="no"
+      android:maxLines="1"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="13sp"
+      app:autoSizeMaxTextSize="13sp"
+      app:autoSizeMinTextSize="10sp"
+      app:autoSizeTextType="uniform" />
+  </LinearLayout>
+  <FrameLayout
+    android:id="@+id/status_gps"
+    android:layout_width="@dimen/map_button_size"
+    android:layout_height="@dimen/map_button_size"
+    android:background="@drawable/bg_status_button"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?selectableItemBackground">
+    <FrameLayout
+      android:layout_width="26dp"
+      android:layout_height="26dp"
+      android:layout_gravity="center">
+      <ImageView
+        android:id="@+id/status_gps_icon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="center"
+        android:importantForAccessibility="no" />
+      <ImageView
+        android:id="@+id/status_gps_badge"
+        android:layout_width="11dp"
+        android:layout_height="11dp"
+        android:layout_gravity="bottom|end"
+        android:background="@drawable/bg_source_badge"
+        android:importantForAccessibility="no"
+        android:padding="1dp"
+        android:visibility="gone" />
+    </FrameLayout>
+  </FrameLayout>
+</LinearLayout>

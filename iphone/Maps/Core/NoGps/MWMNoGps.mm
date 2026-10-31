@@ -116,6 +116,8 @@ std::optional<double> NonNegative(double value)
     _manualAge = status.m_manualAgeMs / 1000.0;
     _gpsSpoofed = status.m_gpsSpoofed;
     _gpsDisabled = status.m_gpsDisabled;
+    _gpsState = static_cast<MWMNoGpsGpsState>(status.m_gpsState);
+    _lastGoodGpsAge = status.m_lastGoodGpsAgeMs < 0 ? -1 : status.m_lastGoodGpsAgeMs / 1000.0;
     _workingGpsAccuracyM = status.m_workingGpsAccuracyM.value_or(-1);
     _workingNetworkAccuracyM = status.m_workingNetworkAccuracyM.value_or(-1);
     _movedByHand = status.m_movedByHand;
@@ -170,9 +172,12 @@ std::optional<double> NonNegative(double value)
 
 @implementation MWMNoGps
 
+static CLLocation * lastPlatformLocation;
+
 + (void)onLocation:(CLLocation *)location
 {
   static nogps::SystemClock const clock;
+  lastPlatformLocation = location;
   NSTimeInterval const age = -location.timestamp.timeIntervalSinceNow;
   nogps::Fix fix;
   // CoreLocation mixes GPS with Wi-Fi and cell towers, the core tells them apart by the accuracy.
@@ -190,6 +195,11 @@ std::optional<double> NonNegative(double value)
   fix.m_timeMs = clock.NowMs() - static_cast<int64_t>(age * 1000);
   fix.m_unixTimeMs = static_cast<int64_t>(location.timestamp.timeIntervalSince1970 * 1000);
   Engine().OnFix(fix);
+}
+
++ (CLLocation *)lastPlatformLocation
+{
+  return lastPlatformLocation;
 }
 
 + (void)onHeading:(CLHeading *)heading

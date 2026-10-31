@@ -38,7 +38,23 @@ enum class PositionSource
   Inertial,
 };
 
+/// What GPS is worth now, whether the car follows it or not.
+enum class GpsState
+{
+  // No position from the location services for Engine::kGpsLostMs.
+  None,
+  // Only Wi-Fi and cell towers, or positions less accurate than Engine::kGpsMaxAccuracyM.
+  Coarse,
+  // Told by the spoofing detector.
+  Spoofed,
+  // Good positions not trusted yet after GPS was bad, see GpsReturnDetector, or the satellites are searched after the
+  // start.
+  Checking,
+  Good,
+};
+
 std::string DebugPrint(PositionSource source);
+std::string DebugPrint(GpsState state);
 
 /// Everything the UI shows about the navigation without GPS, taken at once.
 struct Status
@@ -53,6 +69,9 @@ struct Status
   int64_t m_manualAgeMs = 0;
   bool m_gpsSpoofed = false;
   bool m_gpsDisabled = false;
+  GpsState m_gpsState = GpsState::None;
+  // The age of the last good GPS position, -1 if there is none.
+  int64_t m_lastGoodGpsAgeMs = -1;
   // GPS works now, also in the manual mode where it is not used.
   std::optional<double> m_workingGpsAccuracyM;
   std::optional<double> m_workingNetworkAccuracyM;
@@ -299,6 +318,7 @@ private:
   // Returns the time since the moment, the longest one if it hasn't happened.
   int64_t MsSince(std::optional<int64_t> timeMs) const;
   int64_t GetGpsSilenceMs() const;
+  GpsState GetGpsState() const;
   bool IsGpsBack(Fix const & gps);
   bool IsSpeedTableGps(Fix const & gps);
   bool ContradictsInertial(Fix const & gps) const;
