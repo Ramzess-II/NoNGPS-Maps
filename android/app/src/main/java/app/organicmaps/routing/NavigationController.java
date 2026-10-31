@@ -83,13 +83,16 @@ public class NavigationController implements TrafficManager.TrafficCallback, Nav
 
     mStreetFrame = mTopFrame.findViewById(R.id.street_frame);
     mNextStreet = mStreetFrame.findViewById(R.id.street);
-    // The street height is 0 until the street is laid out, and the next update comes with a position only.
-    mStreetFrame.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+    // The street and lanes heights are 0 until they are laid out, and the next update comes with a position only.
+    final View.OnLayoutChangeListener topLayoutListener = (v, l, t, r, b, ol, ot, or, ob) ->
+    {
       if (UiUtils.isVisible(mFrame))
         updateTopButtonsMargin();
-    });
+    };
+    mStreetFrame.addOnLayoutChangeListener(topLayoutListener);
 
     mLanesView = mTopFrame.findViewById(R.id.lanes);
+    mLanesView.addOnLayoutChangeListener(topLayoutListener);
 
     mSpeedLimit = mTopFrame.findViewById(R.id.nav_speed_limit);
 
@@ -201,6 +204,9 @@ public class NavigationController implements TrafficManager.TrafficCallback, Nav
     int margin = dimen(mFrame.getContext(), R.dimen.nav_frame_padding);
     if (UiUtils.isVisible(mStreetFrame))
       margin += mStreetFrame.getHeight();
+    // The lanes under the street are drawn over the map buttons.
+    if (UiUtils.isVisible(mLanesView))
+      margin += mLanesView.getHeight() + dimen(mFrame.getContext(), R.dimen.margin_half);
     mMapButtonsViewModel.setTopButtonsMarginTop(margin);
   }
 
