@@ -837,7 +837,7 @@ function renderReplay() {
     <h3>Events</h3><table><tr><th></th><th>the trip</th><th>again</th></tr>
     ${st.events.map(([name, a, b]) => `<tr${a || b ? '' : ' style="opacity:.45"'}><td>${esc(name)}</td><td>${a}</td><td class="${a !== b ? 'diff' : ''}">${b}</td></tr>`).join('')}</table>
     <h3>Stretches changed by more than 15 m</h3><div class="list">
-    ${st.stretches.map(x => `<div class="item" data-t="${x.start}"><span class="time">${fmtTime(x.start)}</span><span class="dot" style="background:${x.kind === 'better' ? '#2f9e44' : '#e03131'}"></span><b>${x.kind}</b> ${fmtDuration(x.to - x.start + 1000)}: the trip ${f0(x.was)} m, again ${f0(x.now)} m from GPS at the worst</div>`).join('') || '<div class="time">none</div>'}</div>`;
+    ${replay.stretches.map(x => `<div class="item" data-t="${x.start}"><span class="time">${fmtTime(x.start)}</span><span class="dot" style="background:${x.kind === 'better' ? '#2f9e44' : '#e03131'}"></span><b>${x.kind}</b> ${fmtDuration(x.to - x.start + 1000)}: the trip ${f0(x.was)} m, again ${f0(x.now)} m from GPS at the worst</div>`).join('') || '<div class="time">none</div>'}</div>`;
   out.innerHTML = html;
   out.querySelectorAll('[data-t]').forEach(el => el.addEventListener('click', () => setTime(Number(el.dataset.t))));
 }

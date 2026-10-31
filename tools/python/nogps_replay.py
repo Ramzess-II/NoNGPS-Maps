@@ -566,9 +566,12 @@ def compare(args):
     if not replayed:
         print('nothing is driven again in', args.replay)
         return
-    stats = compare_stats(trips, others, replayed, replayed_others, start, end, args.change)
+    print_compare(compare_stats(trips, others, replayed, replayed_others, start, end, args.change), args.day,
+                  args.change)
 
-    print('the day %s, driven again: %d s of TRIP lines, the trip had %d' % (args.day, stats['lines'],
+
+def print_compare(stats, day, change):
+    print('the day %s, driven again: %d s of TRIP lines, the trip had %d' % (day, stats['lines'],
                                                                           stats['trip_lines']))
     for name, errors in stats['errors']:
         summary(name, errors)
@@ -583,7 +586,7 @@ def compare(args):
 
     stretches = stats['stretches']
     print('stretches of 3 s or longer changed by more than %d m: better %d (%d s), worse %d (%d s)' % (
-        args.change, sum(x['kind'] == 'better' for x in stretches),
+        change, sum(x['kind'] == 'better' for x in stretches),
         sum(x['to'] - x['start'] + 1 for x in stretches if x['kind'] == 'better'),
         sum(x['kind'] == 'worse' for x in stretches),
         sum(x['to'] - x['start'] + 1 for x in stretches if x['kind'] == 'worse')))

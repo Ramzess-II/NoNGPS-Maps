@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
-"""Reads the logs of NonGPS Maps for nogps_log_viewer.py: splits them into trips and finds the events and the
-anomalies of each trip.
+"""Reads the logs of NonGPS Maps: splits them into trips and finds the events and the anomalies of each trip, for
+nogps_log_viewer.py and as a text report:
+
+  nogps_log.py trips logs.zip
+  nogps_log.py trip logs.zip --trip 3
+  nogps_log.py state logs.zip --trip 3 --at 18:02:35
+  nogps_log.py --help    for all the commands
 
 Logs:
   iOS: Documents/log.txt or the log.zip of "Report a bug". Times are UTC.
@@ -44,6 +49,8 @@ STAND_SPLIT_S = 300
 STAND_KEEP_S = 30
 # A pause of TRIP lines this long separates two stationary trips.
 TRIP_GAP_S = 60
+# Meters closer to GPS or farther from it a replay counts as a change, as nogps_replay.py compare does.
+REPLAY_CHANGE_M = 15
 # Seconds without a TRIP line shown as an anomaly.
 MISSING_TRIP_S = 2.5
 
@@ -679,17 +686,16 @@ class Trip:
             trips, others, _ = nogps_replay.read([original], day)
             replayed, replayed_others, _ = nogps_replay.read([replay], day)
         start, end = self.start - day_start, self.end - day_start
-        stats = nogps_replay.compare_stats(trips, others, replayed, replayed_others, start, end, 15)
-        for s in stats['stretches']:
-            s['start'] = day_start + s['start'] * 1000
-            s['to'] = day_start + s['to'] * 1000
+        stats = nogps_replay.compare_stats(trips, others, replayed, replayed_others, start, end, REPLAY_CHANGE_M)
+        stretches = [dict(s, start=day_start + s['start'] * 1000, to=day_start + s['to'] * 1000)
+                     for s in stats['stretches']]
         track = []
         for f in replayed:
             position = nogps_replay.lat_lon(f.get('pos'))
             if position and start <= f['ms'] <= end:
                 track.append([day_start + f['ms'], position[0], position[1], f.get('src')])
         events = [dict(t=day_start + ms, text=text) for ms, text, _ in replayed_others if start <= ms <= end]
-        return dict(stats=stats, track=track, events=events)
+        return dict(stats=stats, stretches=stretches, track=track, events=events, day=day)
 
 
 class Analysis:
@@ -716,5 +722,205 @@ class Analysis:
                        key=lambda s: s[0].rows[s[1]]['t'])
         self.trips = [Trip(i, *span) for i, span in enumerate(spans)]
 
-    def lines(self, trip, start, end):
-        return self.trips[trip].group.lines_between(start, end)
+
+# The report: what the viewer shows, as text.
+
+STATE_GROUPS = [
+    ('Position', ['src', 'lat', 'lon', 'acc', 'bear', 'age', 'markAge', 'fill']),
+    ('Error from GPS', ['ref', 'err_m', 'along_m', 'across_m']),
+    ('GPS', ['gpsst', 'gps_lat', 'gps_lon', 'gps_acc', 'gps_kmh', 'gps_bear', 'gps_age', 'gpsAge', 'spoofed', 'cmp']),
+    ('Fused and network', ['fused_lat', 'fused_lon', 'fused_acc', 'fused_kmh', 'fused_bear', 'fused_age', 'net_lat',
+                           'net_lon', 'net_acc', 'net_age']),
+    ('Choice and route', ['choice', 'nav', 'left', 'rte']),
+    ('Box', ['obd', 'link', 'box', 'bf', 'fw', 'ota', 'speed', 'sage']),
+    ('Inertial', ['gyro', 'hdg', 'scale', 'table', 'rough', 'lag', 'boxacc', 'phoneacc', 'turn', 'odo', 'offm', 'offv',
+                  'back', 'turning', 'ready', 'ring']),
+    ('Road matching', ['road', 'lost', 'snap', 'snapwhy', 'rdiff', 'cand', 'fix', 'self', 'car', 'marks', 'others']),
+]
+# Fields that change every second: not marked as changed.
+MOVING_FIELDS = {'lat', 'lon', 'gps_lat', 'gps_lon', 'fused_lat', 'fused_lon', 'age', 'gps_age', 'fused_age', 'odo',
+                 'err_m', 'along_m', 'across_m'}
+ROWS_FIELDS = 'src,err_m,along_m,speed,gps_kmh,hdg,gps_bear,road,lost,snapwhy'
+# The lines of every second, left out of the log lines around a moment.
+NOISY_LINE = re.compile(r' (LogTrip\(\): TRIP|\w+\(\): (ACCB|ACCB_BEFORE|ACC|GYRO) )')
+EVENTS_AROUND_S = 30
+LINES_AROUND_S = 5
+
+
+def clock(ms):
+    return from_ms(ms).strftime('%H:%M:%S')
+
+
+def duration(ms):
+    s = round(ms / 1000)
+    return '%d s' % s if s < 60 else '%d min %d s' % divmod(s, 60) if s < 3600 else '%d h %d min' % (
+        s // 3600, s % 3600 // 60)
+
+
+def moment(trip, text):
+    """The time of HH:MM[:SS] on the trip: after midnight on a trip that has crossed it."""
+    h, m, s = ([int(x) for x in text.split(':')] + [0])[:3]
+    t = trip.start - trip.start % 86_400_000 + ((h * 60 + m) * 60 + s) * 1000
+    return t + 86_400_000 if t < trip.start - 3_600_000 else t
+
+
+def short(text, full):
+    text = text if full else text.split('\n')[0]
+    return text if full or len(text) <= 200 else text[:200] + '…'
+
+
+def print_trips(analysis, stationary):
+    for zone in sorted({t.group.zone for t in analysis.trips}):
+        print('times of %s logs: %s' % ('iOS' if zone == 'UTC' else 'Android', zone))
+    print('%3s  %-16s  %-12s %7s %5s  %-26s %7s  %-12s %s' % ('id', 'start', 'duration', 'km', 'max', 'sources',
+                                                             'box err', 'anomalies', 'events'))
+    for trip in analysis.trips:
+        if not trip.driven and not stationary:
+            continue
+        s = trip.summary()
+        total = sum(s['sources'].values())
+        sources = ' '.join('%s %d%%' % (k, round(v * 100 / total)) for k, v in s['sources'].items())
+        anomalies = '/'.join(str(s['anomalies'].get(k, 0)) for k in ('high', 'medium', 'low'))
+        error = s['inertial_error_median']
+        print('%3d  %-16s  %-12s %7.2f %5s  %-26s %7s  %-12s %d%s' % (
+            trip.id, from_ms(trip.start).strftime('%Y-%m-%d %H:%M'), duration(trip.end - trip.start), s['km'],
+            s['max_kmh'] if s['max_kmh'] is not None else '-', sources[:26],
+            '%.0f m' % error if error is not None else '-', anomalies, s['events'], '' if trip.driven else ' stands'))
+    print('anomalies: high/medium/low')
+    for note in analysis.notes:
+        print('note:', note)
+
+
+def print_trip(trip):
+    d = trip.details()
+    print('trip %d, %s, times: %s' % (trip.id, trip.group.platform, trip.group.zone))
+    print('%s – %s, %s, %.2f km, max %s km/h, %d TRIP lines, choice switches %d' % (
+        from_ms(trip.start).strftime('%Y-%m-%d %H:%M:%S'), clock(trip.end), duration(trip.end - trip.start), d['km'],
+        d['max_kmh'], d['lines'], d['choice_switches']))
+    total = sum(d['sources'].values())
+    print('sources:', ', '.join('%s %d s %.0f%%' % (k, v, v * 100 / total) for k, v in d['sources'].items()))
+    for e in d['errors']:
+        if e['errors']:
+            print('error from GPS of %s: %d s with GPS, median %.1f m, 90%% %.1f m, max %.1f m%s' % (
+                e['src'], e['errors'], e['median'], e['p90'], e['max'],
+                ', along median %+.1f m' % e['along_median'] if 'along_median' in e else ''))
+    counts = [(name, count) for name, count in d['counts'] if count]
+    print('counts:', ', '.join('%s %d' % c for c in counts) or 'none')
+    by_name = {}
+    for e in trip.events:
+        by_name[e['cat'] + '/' + e['name']] = by_name.get(e['cat'] + '/' + e['name'], 0) + 1
+    print('events:', ', '.join('%s %d' % kv for kv in sorted(by_name.items())) or 'none')
+    print('anomalies:', len(trip.anomalies))
+    for a in trip.anomalies:
+        print('  %s %8s  %-6s  %s: %s' % (clock(a['start']), duration(a['end'] - a['start'] + 1000), a['severity'],
+                                          a['kind'], short(a['text'], False)))
+
+
+def print_events(trip, start, end, category, text, full):
+    rx = re.compile(text, re.I) if text else None
+    for e in trip.events:
+        if start <= e['t'] <= end and (not category or e['cat'] == category) and (
+                not rx or rx.search(e['name'] + ' ' + e['text'])):
+            print('%s %s %s/%s: %s' % (clock(e['t']), e['level'], e['cat'], e['name'], short(e['text'], full)))
+
+
+def format_field(row, key):
+    value = row[key]
+    if key == 'bf':
+        flags = box_flags(row) or set()
+        return '%s (%s)' % (value, ' '.join(f for f in BOX_FLAGS if f in flags) or 'none')
+    return '%.1f' % value if isinstance(value, float) else str(value)
+
+
+def print_state(trip, t, full):
+    times = [row['t'] for row in trip.rows]
+    i = max(bisect.bisect_right(times, t) - 1, 0)
+    row, previous = trip.rows[i], trip.rows[i - 1] if i else None
+    print('%s, TRIP line %d of %d of trip %d (in the viewer: #trip=%d&t=%d), * changed since the line before' % (
+        clock(row['t']), i + 1, len(trip.rows), trip.id, trip.id, row['t']))
+    grouped = {k for _, keys in STATE_GROUPS for k in keys} | {'t'}
+    for name, keys in STATE_GROUPS + [('Other', [k for k in row if k not in grouped])]:
+        fields = ['%s=%s%s' % (k, format_field(row, k), '*' if previous and k not in MOVING_FIELDS
+                                                        and previous.get(k) != row[k] else '')
+                  for k in keys if k in row]
+        if fields:
+            print('%s: %s' % (name, ' '.join(fields)))
+    now = [a for a in trip.anomalies if a['start'] <= t <= a['end'] + 1000]
+    print('anomalies now:', '; '.join('%s %s: %s' % (a['severity'], a['kind'], a['text']) for a in now) or 'none')
+    print('events within %d s:' % EVENTS_AROUND_S)
+    for e in trip.events:
+        if abs(e['t'] - t) <= EVENTS_AROUND_S * 1000:
+            print('  %+4d s %s %s/%s: %s' % (round((e['t'] - t) / 1000), e['level'], e['cat'], e['name'],
+                                             short(e['text'], full)))
+    print('log lines within %d s, without TRIP and sensor lines:' % LINES_AROUND_S)
+    for _, _, raw in trip.group.lines_between(t - LINES_AROUND_S * 1000, t + LINES_AROUND_S * 1000):
+        if not NOISY_LINE.search(raw):
+            print('  ' + short(raw, full))
+
+
+def print_rows(trip, start, end, fields, every):
+    print(('time      ' + ' '.join('%-9s' % f for f in fields)).rstrip())
+    last = None
+    for row in trip.rows:
+        if start <= row['t'] <= end and (last is None or row['t'] - last >= every * 1000):
+            last = row['t']
+            print(('%s  %s' % (clock(row['t']), ' '.join('%-9s' % (format_field(row, f) if f in row else '-')
+                                                        for f in fields))).rstrip())
+
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser(
+        description='What the trip log viewer shows, as text: for a terminal and for Claude Code.',
+        epilog='''commands:
+  trips   the trips of the logs, --all with the stationary ones
+  trip    a trip: stats, error from GPS, counts, events, anomalies
+  events  the events of a trip, --from/--to HH:MM[:SS], --cat road, --grep regex, --full
+  state   every TRIP field at --at HH:MM[:SS], anomalies, events and log lines around it
+  rows    TRIP fields second by second: --fields a,b,c, --every N s, --from/--to
+  replay  the trip against a nogps-replay-out.txt: --replay file''',
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('command', choices=['trips', 'trip', 'events', 'state', 'rows', 'replay'])
+    parser.add_argument('logs', nargs='+', help='app*.log, log.txt, logs.zip, log.zip or a folder of them')
+    parser.add_argument('--year', type=int, help='the year of an Android log without its header')
+    parser.add_argument('--trip', type=int, help='the id the trips command shows')
+    parser.add_argument('--all', action='store_true', help='with the stationary trips')
+    parser.add_argument('--at', help='HH:MM[:SS]')
+    parser.add_argument('--from', dest='start', help='HH:MM[:SS]')
+    parser.add_argument('--to', dest='end', help='HH:MM[:SS]')
+    parser.add_argument('--cat', help='app state user road turn box route gps other')
+    parser.add_argument('--grep', help='a regular expression the event matches')
+    parser.add_argument('--full', action='store_true', help='whole lines, with their stack traces')
+    parser.add_argument('--fields', default=ROWS_FIELDS)
+    parser.add_argument('--every', type=float, default=1)
+    parser.add_argument('--replay', help='nogps-replay-out.txt')
+    args = parser.parse_args()
+
+    analysis = Analysis(load_paths(args.logs), args.year)
+    if args.command == 'trips':
+        return print_trips(analysis, args.all)
+    if args.trip is None or not 0 <= args.trip < len(analysis.trips):
+        parser.error('--trip: one of the ids the trips command shows')
+    trip = analysis.trips[args.trip]
+    start = moment(trip, args.start) if args.start else trip.start - EVENTS_AROUND_S * 1000
+    end = moment(trip, args.end) if args.end else trip.end
+    if args.command == 'trip':
+        print_trip(trip)
+    elif args.command == 'events':
+        print_events(trip, start, end, args.cat, args.grep, args.full)
+    elif args.command == 'state':
+        if not args.at:
+            parser.error('state needs --at')
+        print_state(trip, moment(trip, args.at), args.full)
+    elif args.command == 'rows':
+        print_rows(trip, start, end, args.fields.split(','), args.every)
+    elif not args.replay:
+        parser.error('replay needs --replay')
+    else:
+        with open(args.replay, 'rb') as f:
+            result = trip.replay(f.read())
+        nogps_replay.print_compare(result['stats'], result['day'], REPLAY_CHANGE_M)
+
+
+if __name__ == '__main__':
+    main()

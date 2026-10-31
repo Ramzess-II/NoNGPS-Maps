@@ -9,6 +9,7 @@ import os
 import sys
 import unittest
 import zipfile
+from contextlib import redirect_stdout
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -269,11 +270,46 @@ class ExportTest(unittest.TestCase):
         self.assertEqual((stats['lines'], len(result['track'])), (60, 60))
         self.assertEqual(dict((name, e and round(e['median'])) for name, e in stats['errors']),
                          {'the trip, all': 3, 'the trip, same seconds': 3, 'driven again': 40})
-        self.assertEqual([(s['kind'], s['start']) for s in stats['stretches']], [('worse', trip.start + 1000)])
+        self.assertEqual([(s['kind'], s['start']) for s in result['stretches']], [('worse', trip.start + 1000)])
 
     def test_error_stats(self):
         self.assertEqual(nogps_replay.error_stats([]), None)
         self.assertEqual(nogps_replay.error_stats([10, 40, 60, 120])['over50'], 50)
+
+
+class ReportTest(unittest.TestCase):
+    def report(self, function, *args):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            function(*args)
+        return out.getvalue().splitlines()
+
+    def test_moment_after_midnight(self):
+        trip = analyse(('app.log', android_drive(start=23 * 3600 + 59 * 60, seconds=120, stand=0))).trips[0]
+        self.assertEqual(nogps_log.moment(trip, '23:59:30'), trip.start + 28_000)
+        self.assertEqual(nogps_log.moment(trip, '00:00:30'), trip.start + 88_000)
+
+    def test_state(self):
+        log = android_drive(seconds=30, stand=0, fields=lambda s: dict(snapwhy='ANGLE', bf='9B') if s >= 10 else {})
+        log.append(core('10-08', 18 * 3600 + 14, 'Check', 'Untrusted location = ms::LatLon(10.0, 20.0) 80',
+                        level='W'))
+        trip = analyse(('app.log', log)).trips[0]
+        lines = self.report(nogps_log.print_state, trip, nogps_log.moment(trip, '18:00:12'), False)
+        self.assertEqual(lines[0], '18:00:12, TRIP line 11 of 30 of trip 0 (in the viewer: #trip=0&t=%d), * changed '
+                                   'since the line before' % (trip.start + 10_000))
+        box = next(line for line in lines if line.startswith('Box: '))
+        self.assertIn('bf=9B (IMU_OK BIAS_OK FWD_OK OBD_OK MOUNT_MOVED)*', box)
+        self.assertIn('snapwhy=ANGLE*', next(line for line in lines if line.startswith('Road matching: ')))
+        self.assertFalse(any(line.startswith('Other: ') for line in lines))
+        self.assertIn('    +2 s W gps/untrusted location: Untrusted location = ms::LatLon(10.0, 20.0) 80', lines)
+        # The TRIP and sensor lines are left out of the log lines.
+        self.assertEqual(lines[-1][-len('80'):], '80')
+
+    def test_rows(self):
+        trip = analyse(('app.log', android_drive(seconds=30, stand=0))).trips[0]
+        lines = self.report(nogps_log.print_rows, trip, trip.start, trip.start + 10_000, ['src', 'err_m', 'x'], 5)
+        self.assertEqual(lines, ['time      src       err_m     x', '18:00:02  INERTIAL  3.0       -',
+                                 '18:00:07  INERTIAL  3.0       -', '18:00:12  INERTIAL  3.0       -'])
 
 
 if __name__ == '__main__':
