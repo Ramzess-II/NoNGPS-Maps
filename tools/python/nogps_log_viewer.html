@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoGPS log viewer</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" crossorigin="anonymous"
+      integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.min.css" crossorigin="anonymous"
+      integrity="sha384-IfV0B7MIOYuO95kO9G5ySKPz/85zqFNOAs8iy4tkK5zd9izhJAB8b7lHrwYqqmYE">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" crossorigin="anonymous"
+        integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO"></script>
+<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.iife.min.js" crossorigin="anonymous"
+        integrity="sha384-1NEYi76CBpge3gahk4+X4M4JzdOV3WYq84RnByqYdAd5SdvJBTNCPFh/nsoHfN6i"></script>
+<style>
+:root {
+  --bg: #f7f7f5; --panel: #ffffff; --text: #1f2328; --muted: #6a737d; --line: #dcdcd7; --hover: #eef2f7;
+  --accent: #1c7ed6; --changed: #fff3bf; --chip: #eceff3;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171a; --panel: #1d2024; --text: #e6e6e3; --muted: #9aa1a9; --line: #33373d; --hover: #262a30;
+    --accent: #4dabf7; --changed: #5c4a00; --chip: #2a2e34;
+  }
+  :root:not([data-theme="light"]) .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9); }
+}
+:root[data-theme="dark"] {
+  --bg: #15171a; --panel: #1d2024; --text: #e6e6e3; --muted: #9aa1a9; --line: #33373d; --hover: #262a30;
+  --accent: #4dabf7; --changed: #5c4a00; --chip: #2a2e34;
+}
+:root[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.85) contrast(.9); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; overflow: hidden; }
+button, select, input { font: inherit; color: inherit; }
+select { background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 2px 4px; }
+button, .button { background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 3px 9px; cursor: pointer; }
+button:hover, .button:hover { background: var(--hover); }
+header { display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--panel); flex: none; }
+header b { font-size: 14px; }
+#status { color: var(--muted); margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+main { flex: 1; display: grid; grid-template-columns: 270px minmax(0, 1fr) 420px; min-height: 0; }
+aside, #side { background: var(--panel); overflow: auto; min-height: 0; }
+aside { border-right: 1px solid var(--line); }
+#side { border-left: 1px solid var(--line); display: flex; flex-direction: column; }
+#center { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+#map { flex: 1; min-height: 250px; }
+#timebar { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--panel); flex: none; }
+#sliderBox { flex: 1; position: relative; min-width: 100px; }
+#slider { width: 100%; margin: 0; }
+#ticks { width: 100%; height: 16px; display: block; cursor: pointer; }
+#clock { font-variant-numeric: tabular-nums; min-width: 150px; text-align: right; }
+#charts { height: 38vh; overflow: auto; padding: 4px 6px; flex: none; position: relative; }
+.chart { position: relative; }
+.chart h4, .flags h4 { margin: 4px 0 0; font-size: 11px; font-weight: 600; color: var(--muted); }
+.nowline { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px solid #e03131; pointer-events: none; z-index: 5; }
+.uplot { font-family: inherit; }
+.u-legend { font-size: 11px; }
+.flags { position: relative; }
+.flags canvas { display: block; cursor: pointer; }
+.empty { color: var(--muted); padding: 16px; }
+.trip { padding: 8px 10px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.trip:hover { background: var(--hover); }
+.trip.on { background: var(--hover); box-shadow: inset 3px 0 var(--accent); }
+.trip.stationary { opacity: .6; }
+.trip .when { font-weight: 600; }
+.trip .facts { color: var(--muted); }
+.mix { display: flex; height: 5px; border-radius: 3px; overflow: hidden; margin: 4px 0; background: var(--chip); }
+.badge { display: inline-block; border-radius: 9px; padding: 0 6px; font-size: 11px; color: #fff; margin-right: 3px; }
+.notes { padding: 6px 10px; color: #c92a2a; font-size: 12px; border-bottom: 1px solid var(--line); }
+#tabs { display: flex; border-bottom: 1px solid var(--line); flex: none; }
+#tabs button { border: none; border-radius: 0; flex: 1; padding: 7px 4px; background: none; border-bottom: 2px solid transparent; }
+#tabs button.on { border-bottom-color: var(--accent); font-weight: 600; }
+.tab { display: none; overflow: auto; flex: 1; padding: 8px 10px; }
+.tab.on { display: block; }
+table { border-collapse: collapse; width: 100%; }
+td, th { padding: 2px 4px; vertical-align: top; text-align: left; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; }
+.state td:first-child { color: var(--muted); width: 38%; white-space: nowrap; }
+.state td:last-child { word-break: break-all; font-variant-numeric: tabular-nums; }
+.state tr.changed td:last-child { background: var(--changed); }
+h3 { font-size: 12px; margin: 12px 0 4px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+h3:first-child { margin-top: 0; }
+.chip { display: inline-block; padding: 0 5px; margin: 1px 2px 1px 0; border-radius: 4px; font-size: 11px; background: var(--chip); }
+.chip.good { background: #d3f9d8; color: #1b5e20; }
+.chip.bad { background: #ffe3e3; color: #a61e1e; }
+.chip.missing { background: transparent; border: 1px dashed #e03131; color: #e03131; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+.list .item { padding: 3px 2px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.list .item:hover { background: var(--hover); }
+.list .item.future { opacity: .55; }
+a { color: var(--accent); }
+.time { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: 6px; }
+.raw { font: 11px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-all; }
+.raw div { padding: 1px 2px; border-bottom: 1px solid var(--line); }
+.raw .W { color: #e67700; } .raw .E { color: #e03131; } .raw .D { color: var(--muted); }
+.raw .now { background: var(--changed); }
+.filters { display: flex; flex-wrap: wrap; gap: 4px 8px; margin-bottom: 6px; align-items: center; }
+.filters input[type=search] { flex: 1; min-width: 120px; padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+.diff { font-weight: 600; color: #e67700; }
+#drop { position: fixed; inset: 0; background: rgba(28, 126, 214, .25); border: 4px dashed var(--accent); display: none; align-items: center; justify-content: center; font-size: 22px; z-index: 2000; pointer-events: none; }
+body.dragging #drop { display: flex; }
+.leaflet-tooltip.err { background: rgba(0,0,0,.65); color: #fff; border: none; box-shadow: none; font-size: 11px; padding: 1px 4px; }
+.leaflet-tooltip.err::before { display: none; }
+@media (max-width: 1100px) { main { grid-template-columns: 220px minmax(0, 1fr) 340px; } }
+</style>
+</head>
+<body>
+<header>
+  <b>NoGPS log viewer</b>
+  <label class="button">Open logs…<input type="file" id="files" multiple hidden></label>
+  <button id="clear">Clear</button>
+  <label><input type="checkbox" id="showStationary"> stationary trips</label>
+  <span id="status">Drop app*.log, log.txt, logs.zip or log.zip anywhere</span>
+</header>
+<main>
+  <aside id="trips"><div class="empty">No logs yet.</div></aside>
+  <section id="center">
+    <div id="map"></div>
+    <div id="timebar">
+      <button id="play" title="Space">▶</button>
+      <select id="speed" title="Playback speed"><option value="1">1×</option><option value="5">5×</option><option value="20" selected>20×</option><option value="60">60×</option></select>
+      <button data-step="-10" title="Shift+←">−10</button><button data-step="-1" title="←">−1</button>
+      <div id="sliderBox"><input type="range" id="slider" min="0" max="0" step="1" value="0"><canvas id="ticks"></canvas></div>
+      <button data-step="1" title="→">+1</button><button data-step="10" title="Shift+→">+10</button>
+      <span id="clock"></span>
+      <label title="Keep the mark in the middle of the map"><input type="checkbox" id="follow" checked> follow</label>
+    </div>
+    <div id="charts"></div>
+  </section>
+  <section id="side">
+    <nav id="tabs">
+      <button data-tab="state" class="on">State</button><button data-tab="events">Events</button>
+      <button data-tab="anomalies">Anomalies</button><button data-tab="summary">Summary</button>
+      <button data-tab="replay">Replay</button>
+    </nav>
+    <div id="tab-state" class="tab on"><div class="empty">Choose a trip.</div></div>
+    <div id="tab-events" class="tab">
+      <div class="filters" id="eventFilters"></div>
+      <div class="filters">
+        <select id="eventLevel"><option value="">all levels</option><option value="WE">warnings and errors</option><option value="E">errors</option></select>
+        <input type="search" id="eventSearch" placeholder="Search the text">
+      </div>
+      <div id="eventCount" class="time"></div>
+      <div id="eventList" class="list"></div>
+    </div>
+    <div id="tab-anomalies" class="tab">
+      <div class="filters" id="anomalyFilters"></div>
+      <div id="anomalyList" class="list"></div>
+    </div>
+    <div id="tab-summary" class="tab"></div>
+    <div id="tab-replay" class="tab">
+      <p>Load the <code>nogps-replay-out.txt</code> an Android debug build has written when it drove this trip again
+        (<code>tools/python/nogps_replay.py input</code> makes its input).</p>
+      <input type="file" id="replayFile">
+      <div id="replayOut"></div>
+    </div>
+  </section>
+</main>
+<div id="drop">Drop the logs to add them</div>
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const SOURCE_COLORS = {GPS: '#2f9e44', INERTIAL: '#1c7ed6', MANUAL: '#f08c00', NETWORK: '#9c36b5', NONE: '#868e96'};
+const CATEGORY_COLORS = {app: '#868e96', state: '#1098ad', user: '#f08c00', road: '#e03131', turn: '#d6336c',
+                         box: '#7048e8', route: '#2f9e44', gps: '#0ca678', other: '#5c636a'};
+const SEVERITY_COLORS = {high: '#e03131', medium: '#f76707', low: '#f59f00'};
+// The flags of the box, bit by bit (libs/map/nogps/esp32_protocol.hpp): good ones, neutral ones, bad ones.
+const BOX_FLAGS = ['IMU_OK', 'BIAS_OK', 'UP_OK', 'FWD_OK', 'OBD_OK', 'STILL', 'CALIBRATING', 'MOUNT_MOVED', 'REVERSE',
+                   'OBD_ABSENT', 'ERROR'];
+const FLAG_KIND = {IMU_OK: 'good', BIAS_OK: 'good', UP_OK: 'good', FWD_OK: 'good', OBD_OK: 'good', STILL: '',
+                   CALIBRATING: '', MOUNT_MOVED: 'bad', REVERSE: '', OBD_ABSENT: 'bad', ERROR: 'bad'};
+const NEEDED_FLAGS = ['IMU_OK', 'BIAS_OK', 'UP_OK'];
+const GROUPS = [
+  ['Position', ['src', 'lat', 'lon', 'acc', 'bear', 'age', 'markAge', 'fill']],
+  ['Error from GPS', ['ref', 'err_m', 'along_m', 'across_m']],
+  ['GPS', ['gpsst', 'gps_lat', 'gps_lon', 'gps_acc', 'gps_kmh', 'gps_bear', 'gps_age', 'gpsAge', 'spoofed', 'cmp']],
+  ['Fused and network', ['fused_lat', 'fused_lon', 'fused_acc', 'fused_kmh', 'fused_bear', 'fused_age', 'net_lat',
+                         'net_lon', 'net_acc', 'net_age']],
+  ['Choice and route', ['choice', 'nav', 'left', 'rte']],
+  ['Box', ['obd', 'link', 'box', 'bf', 'fw', 'ota', 'speed', 'sage']],
+  ['Inertial', ['gyro', 'hdg', 'scale', 'table', 'rough', 'lag', 'boxacc', 'phoneacc', 'turn', 'odo', 'offm', 'offv',
+                'back', 'turning', 'ready', 'ring']],
+  ['Road matching', ['road', 'lost', 'snap', 'snapwhy', 'rdiff', 'cand', 'fix', 'self', 'car', 'marks', 'others']],
+];
+// What the fields of the TRIP line are, see Engine::GetTripLine() in libs/map/nogps/engine.cpp.
+const HINTS = {
+  src: 'Source of the shown position', lat: 'Shown position', acc: 'Accuracy of the shown position, m',
+  bear: 'Bearing of the shown position', age: 'Age of the shown position, s', markAge: 'Seconds since the user put the mark',
+  fill: 'Positions shown between GPS positions since the previous line', ref: 'What the error is measured against',
+  err_m: 'Distance of the shown position from GPS, the age difference taken into account',
+  along_m: '+ the mark is ahead of the car', across_m: '+ the mark is to the right of the car',
+  gpsst: 'What GPS is worth', gps_acc: 'Accuracy of GPS, m', gps_age: 'Age of the GPS fix, s',
+  gpsAge: 'Seconds since the last trusted GPS position', spoofed: 'GPS is spoofed', cmp: 'Compass: heading/accuracy/age s',
+  choice: 'GPS or BOX, /APP if the app chose by itself', nav: 'Navigating a route', left: 'Distance left on the route',
+  rte: 'Meters aside of the route', obd: 'State of the motion source', link: 'Bluetooth of the box',
+  box: 'Data lines of the box in the last second / longest pause, ms', bf: 'Flags of the last data line of the box',
+  fw: 'Firmware of the box', ota: 'Firmware update/percent', speed: 'Car speed by the box, km/h', sage: 'Age of the car speed, ms',
+  gyro: 'Calibration of the gyroscope', hdg: 'Heading/its source', scale: 'Speed scale', table: 'Speed table ranges',
+  rough: 'Rough speed table ranges', lag: 'Speed lag, s', boxacc: 'Box accelerometer: correlation/meters ahead',
+  phoneacc: 'Phone accelerometer: correlation/meters ahead', turn: 'Shift of the last turn, m', odo: 'Meters driven',
+  offm: 'Meters off the roads', offv: 'Max speed off the roads, km/h', back: 'Driving backward by the accelerometer',
+  turning: 'A turn is followed to its crossing', ready: 'Inertial navigation is ready', ring: 'At a roundabout',
+  road: 'On a road', lost: 'The road is lost', snap: 'Shift of the last snap, m', snapwhy: 'What the last look for a road gave',
+  rdiff: 'How much to the right of the road the car looks, °', cand: 'Along the road a maneuvering car is put, m',
+  fix: 'Meters since the last fix', self: 'The car is followed apart off the roads', car: 'Where the car followed apart is',
+  marks: 'Marks shown: the car may be on several roads', others: 'The other marks',
+};
+const ENUM_HINTS = {
+  snapwhy: {NONE: 'no look yet', ROAD: 'on a road', NOROAD: 'no road near', FAR: 'the road is too far',
+            ANGLE: 'the road is over 30° to the course', WAIT: 'waits: 15 m along without a turn'},
+  gpsst: {NONE: 'no GPS', COARSE: 'not accurate', SPOOFED: 'spoofed', CHECKING: 'checked against the box', GOOD: 'good'},
+  src: {NONE: 'nothing shown', GPS: 'GPS', NETWORK: 'network', MANUAL: 'the mark of the user', INERTIAL: 'the box'},
+};
+const FLAG_LINES = [
+  ...BOX_FLAGS.map((name, bit) => ({label: name, test: r => { const b = boxBits(r); return b !== null && (b >> bit & 1); },
+                                    color: {good: '#2f9e44', bad: '#e03131', '': '#1c7ed6'}[FLAG_KIND[name]]})),
+  {label: 'road', test: r => val(r, 'road') === '1', color: '#2f9e44'},
+  {label: 'lost', test: r => val(r, 'lost') === '1', color: '#e03131'},
+  {label: 'self (apart)', test: r => val(r, 'self') === '1', color: '#f76707'},
+  {label: 'back', test: r => val(r, 'back') === '1', color: '#f76707'},
+  {label: 'turning', test: r => val(r, 'turning') === '1', color: '#1c7ed6'},
+  {label: 'ring', test: r => val(r, 'ring') === '1', color: '#1c7ed6'},
+  {label: 'ready', test: r => val(r, 'ready') === '1', color: '#2f9e44'},
+  {label: 'spoofed', test: r => val(r, 'spoofed') === '1', color: '#e03131'},
+  {label: 'nav', test: r => val(r, 'nav') === '1', color: '#868e96'},
+  {label: 'GPS choice', test: r => (val(r, 'choice') || '').startsWith('GPS'), color: '#2f9e44'},
+  {label: 'chosen by app', test: r => (val(r, 'choice') || '').endsWith('/APP'), color: '#868e96'},
+];
+
+let tripsData = {trips: [], notes: [], files: []}, trips = [], trip = null, F = {}, rows = [], times = [], T = 0, index = -1;
+let playing = false, lastFrame = 0, charts = [], flagStrip = null, replay = null;
+const layers = {}, nowLayer = L.layerGroup();
+let layerControl = null;
+
+// Helpers.
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const val = (r, k) => (r && F[k] !== undefined) ? r[F[k]] : null;
+function num(r, k) {
+  const v = val(r, k);
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'number') return v;
+  const x = parseFloat(String(v).split('/')[0]);
+  return Number.isFinite(x) ? x : null;
+}
+function part(r, k, i) {
+  const v = val(r, k);
+  if (v === null) return null;
+  const x = parseFloat(String(v).split('/')[i]);
+  return Number.isFinite(x) ? x : null;
+}
+function boxBits(r) {
+  const v = val(r, 'bf');
+  return v === null ? null : parseInt(v, 16);
+}
+const fmtTime = t => new Date(t).toISOString().slice(11, 19);
+const fmtDate = t => new Date(t).toISOString().slice(0, 16).replace('T', ' ');
+function fmtDuration(ms) {
+  const s = Math.round(ms / 1000);
+  return s < 60 ? s + ' s' : s < 3600 ? Math.floor(s / 60) + ' min ' + (s % 60) + ' s' :
+    Math.floor(s / 3600) + ' h ' + Math.floor(s % 3600 / 60) + ' min';
+}
+function position(r) {
+  const lat = num(r, 'lat'), lon = num(r, 'lon');
+  return lat === null || lon === null ? null : [lat, lon];
+}
+function bisect(t) {
+  let lo = 0, hi = times.length - 1;
+  if (hi < 0 || t < times[0]) return -1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (times[mid] <= t) lo = mid; else hi = mid - 1;
+  }
+  return lo;
+}
+function positionAt(t) {
+  for (let i = Math.max(bisect(t), 0); i < rows.length; ++i) {
+    const p = position(rows[i]);
+    if (p) return p;
+  }
+  return null;
+}
+async function api(url, options) {
+  // The server takes a POST only with this header: another site can't send it without asking.
+  if (options && options.method === 'POST') options.headers = {'X-NoGPS-Viewer': '1'};
+  const response = await fetch(url, options);
+  if (!response.ok) throw new Error(await response.text());
+  return response.json();
+}
+
+// The map.
+const map = L.map('map', {preferCanvas: true, zoomControl: true}).setView([20, 0], 2);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+}).addTo(map);
+L.control.scale({imperial: false}).addTo(map);
+nowLayer.addTo(map);
+map.on('zoomend', () => drawNow());
+
+function polylines(points, options, maxGapMs) {
+  // points: [t, lat, lon]; a gap longer than maxGapMs breaks the line.
+  const group = L.layerGroup();
+  let segment = [];
+  let previous = null;
+  const flush = () => { if (segment.length > 1) L.polyline(segment, options).addTo(group); };
+  for (const [t, lat, lon] of points) {
+    if (previous !== null && t - previous > maxGapMs) { flush(); segment = []; }
+    segment.push([lat, lon]);
+    previous = t;
+  }
+  flush();
+  return group;
+}
+
+function buildMap() {
+  for (const name in layers) { map.removeLayer(layers[name]); delete layers[name]; }
+  if (layerControl) map.removeControl(layerControl);
+  // The shown track, colored by its source.
+  const shown = L.layerGroup();
+  let segment = [], source = null, previous = null;
+  const flush = () => {
+    if (segment.length > 1) L.polyline(segment, {color: SOURCE_COLORS[source] || '#868e96', weight: 4, opacity: .85}).addTo(shown);
+  };
+  for (const r of rows) {
+    const p = position(r);
+    if (!p) continue;
+    const t = val(r, 't'), s = val(r, 'src');
+    if (previous !== null && t - previous > 5000) { flush(); segment = []; }
+    else if (s !== source && segment.length) { flush(); segment = [segment[segment.length - 1]]; }
+    segment.push(p); source = s; previous = t;
+  }
+  flush();
+  layers['Shown position (by source)'] = shown;
+  const raw = name => rows.filter(r => num(r, name + '_lat') !== null).map(r => [val(r, 't'), num(r, name + '_lat'), num(r, name + '_lon')]);
+  layers['GPS of the platform'] = polylines(raw('gps'), {color: '#2b8a3e', weight: 2, dashArray: '4 4'}, 3000);
+  layers['Fused location'] = polylines(raw('fused'), {color: '#868e96', weight: 2, dashArray: '2 6'}, 3000);
+  const network = L.layerGroup();
+  let lastNet = '';
+  for (const r of rows) {
+    const lat = num(r, 'net_lat'), lon = num(r, 'net_lon');
+    if (lat === null || lat + ',' + lon === lastNet) continue;
+    lastNet = lat + ',' + lon;
+    L.circleMarker([lat, lon], {radius: 3, color: '#9c36b5', weight: 1}).bindTooltip('network ±' + val(r, 'net_acc') + ' m, ' + fmtTime(val(r, 't'))).addTo(network);
+  }
+  layers['Network locations'] = network;
+  const apart = rows.filter(r => val(r, 'car')).map(r => [val(r, 't'), ...val(r, 'car').split(',').map(Number)]);
+  layers['Car followed apart off the roads'] = polylines(apart, {color: '#e03131', weight: 3, dashArray: '6 4'}, 3000);
+  const anomalies = L.layerGroup();
+  for (const a of trip.anomalies) {
+    const points = [];
+    for (let i = Math.max(bisect(a.start), 0); i < rows.length && val(rows[i], 't') <= a.end; ++i) {
+      const p = position(rows[i]);
+      if (p) points.push(p);
+    }
+    const style = {color: SEVERITY_COLORS[a.severity], weight: 12, opacity: .35};
+    const shape = points.length > 1 ? L.polyline(points, style) : points.length ? L.circleMarker(points[0], {...style, radius: 9}) : null;
+    if (shape) shape.bindTooltip(esc(a.kind) + ': ' + esc(a.text)).on('click', () => setTime(a.start)).addTo(anomalies);
+  }
+  layers['Anomalies'] = anomalies;
+  const events = L.layerGroup();
+  for (const e of trip.events) {
+    const p = e.lat !== undefined ? [e.lat, e.lon] : positionAt(e.t);
+    if (!p) continue;
+    L.circleMarker(p, {radius: e.cat === 'user' ? 6 : 4, color: CATEGORY_COLORS[e.cat], weight: 2, fillOpacity: .8})
+      .bindTooltip(fmtTime(e.t) + ' ' + esc(e.name) + '<br>' + esc(e.text.slice(0, 160)))
+      .on('click', () => setTime(e.t)).addTo(events);
+  }
+  layers['Events'] = events;
+  layers['Replay'] = L.layerGroup();
+  const overlays = {};
+  // Drawn in this order: the anomalies under the tracks, the events over them.
+  for (const name of ['Anomalies', 'Fused location', 'GPS of the platform', 'Network locations', 'Shown position (by source)',
+                      'Car followed apart off the roads', 'Replay', 'Events']) {
+    overlays[name] = layers[name];
+    if (name !== 'Fused location') layers[name].addTo(map);
+  }
+  layerControl = L.control.layers(null, overlays, {collapsed: true}).addTo(map);
+  const bounds = rows.map(position).filter(Boolean);
+  if (bounds.length) map.fitBounds(bounds, {padding: [20, 20]});
+}
+
+function ahead(p, bearing, pixels) {
+  const a = map.latLngToContainerPoint(p);
+  const rad = bearing * Math.PI / 180;
+  return map.containerPointToLatLng([a.x + Math.sin(rad) * pixels, a.y - Math.cos(rad) * pixels]);
+}
+
+function drawNow() {
+  nowLayer.clearLayers();
+  const r = rows[index];
+  if (!r) return;
+  const p = position(r);
+  const gps = num(r, 'gps_lat') !== null ? [num(r, 'gps_lat'), num(r, 'gps_lon')] : null;
+  if (gps) {
+    const accuracy = num(r, 'gps_acc');
+    if (accuracy) L.circle(gps, {radius: accuracy, color: '#2b8a3e', weight: 1, fillOpacity: .06}).addTo(nowLayer);
+    L.circleMarker(gps, {radius: 5, color: '#fff', weight: 2, fillColor: '#2b8a3e', fillOpacity: 1}).bindTooltip('GPS').addTo(nowLayer);
+  }
+  for (const other of (val(r, 'others') || '').split(';').filter(Boolean)) {
+    L.circleMarker(other.split(',').map(Number), {radius: 6, color: '#f08c00', weight: 2, fillOpacity: 0}).bindTooltip('other mark').addTo(nowLayer);
+  }
+  if (val(r, 'car')) {
+    L.circleMarker(val(r, 'car').split(',').map(Number), {radius: 6, color: '#e03131', weight: 2, fillColor: '#e03131', fillOpacity: .4}).bindTooltip('car followed apart').addTo(nowLayer);
+  }
+  if (replay) {
+    const point = replayAt(T);
+    if (point) L.circleMarker([point[1], point[2]], {radius: 6, color: '#fff', weight: 2, fillColor: '#d6336c', fillOpacity: 1}).bindTooltip('replay').addTo(nowLayer);
+  }
+  if (!p) return;
+  const accuracy = num(r, 'acc');
+  if (accuracy) L.circle(p, {radius: accuracy, color: SOURCE_COLORS[val(r, 'src')], weight: 1, fillOpacity: .05}).addTo(nowLayer);
+  if (gps) {
+    const error = num(r, 'err_m');
+    L.polyline([p, gps], {color: '#e03131', weight: 1.5, dashArray: '3 3'}).bindTooltip(
+      error === null ? '' : error.toFixed(0) + ' m' + (num(r, 'along_m') !== null ? ` (${num(r, 'along_m') > 0 ? '+' : ''}${num(r, 'along_m').toFixed(0)} along)` : ''),
+      {permanent: error !== null, className: 'err', direction: 'right'}).addTo(nowLayer);
+  }
+  const bearing = num(r, 'bear') ?? num(r, 'hdg');
+  if (bearing !== null) L.polyline([p, ahead(p, bearing, 28)], {color: SOURCE_COLORS[val(r, 'src')] || '#333', weight: 3}).addTo(nowLayer);
+  L.circleMarker(p, {radius: 8, color: '#fff', weight: 2, fillColor: SOURCE_COLORS[val(r, 'src')] || '#333', fillOpacity: 1})
+    .bindTooltip('shown: ' + val(r, 'src')).addTo(nowLayer);
+  if ($('#follow').checked && !map.getBounds().pad(-.25).contains(p)) map.panTo(p, {animate: false});
+}
+
+// Charts.
+function chartWidth() { return $('#charts').clientWidth - 24; }
+
+function makeChart(title, xs, series, axes) {
+  const box = document.createElement('div');
+  box.className = 'chart';
+  box.innerHTML = '<h4>' + esc(title) + '</h4>';
+  $('#charts').appendChild(box);
+  const options = {
+    width: chartWidth(), height: 120,
+    tzDate: ts => uPlot.tzDate(new Date(ts * 1e3), 'Etc/UTC'),
+    cursor: {sync: {key: 'trip'}, drag: {x: false, y: false}},
+    legend: {live: true},
+    scales: {x: {time: true, min: trip.start / 1000, max: trip.end / 1000}},
+    series: [{}, ...series.map(s => ({label: s.label, stroke: s.color, width: 1.3, scale: s.scale || 'y', spanGaps: false,
+                                       ...(s.points ? {paths: () => null, points: {show: true, size: 3, fill: s.color}} : {points: {show: false}})}))],
+    axes: [{stroke: getComputedStyle(document.body).color, grid: {stroke: 'rgba(128,128,128,.15)'}, size: 24,
+            values: (u, splits) => splits.map(v => fmtTime(v * 1000))},
+           {stroke: getComputedStyle(document.body).color, grid: {stroke: 'rgba(128,128,128,.15)'}, size: 44},
+           // Every chart has a right axis of the same size, so the times of all of them line up.
+           ...(axes || [{side: 1, size: 50, values: () => [], grid: {show: false}, ticks: {show: false}}])],
+  };
+  const u = new uPlot(options, [xs, ...series.map(s => s.values)], box);
+  const line = document.createElement('div');
+  line.className = 'nowline';
+  u.over.appendChild(line);
+  u.over.addEventListener('click', e => setTime(u.posToVal(e.offsetX, 'x') * 1000));
+  u.nowline = line;
+  charts.push(u);
+}
+
+function buildCharts() {
+  for (const u of charts) u.destroy();
+  charts = [];
+  $('#charts').innerHTML = '';
+  const xs = times.map(t => t / 1000);
+  const column = (k, f) => rows.map(r => (f || num)(r, k));
+  const some = values => values.some(v => v !== null);
+  const add = (title, series, axes) => {
+    series = series.filter(s => some(s.values));
+    if (series.length) makeChart(title, xs, series, axes);
+  };
+  add('Speed, km/h', [{label: 'box', values: column('speed'), color: '#1c7ed6'},
+                      {label: 'GPS', values: column('gps_kmh'), color: '#2f9e44'},
+                      {label: 'fused', values: column('fused_kmh'), color: '#868e96'}]);
+  add('Error of the shown position from GPS, m', [{label: 'error', values: column('err_m'), color: '#e03131'},
+                                                 {label: 'along', values: column('along_m'), color: '#1c7ed6'},
+                                                 {label: 'across', values: column('across_m'), color: '#f08c00'}]);
+  add('Heading, °', [{label: 'hdg', values: column('hdg'), color: '#1c7ed6', points: true},
+                     {label: 'GPS', values: column('gps_bear'), color: '#2f9e44', points: true},
+                     {label: 'shown', values: column('bear'), color: '#868e96', points: true},
+                     {label: 'compass', values: column('cmp'), color: '#f08c00', points: true}]);
+  add('Box data', [{label: 'lines/s', values: column('box'), color: '#7048e8'},
+                   {label: 'longest gap, ms', values: rows.map(r => part(r, 'box', 1)), color: '#e03131', scale: 'ms'},
+                   {label: 'speed age, ms', values: column('sage'), color: '#f08c00', scale: 'ms'}],
+      [{scale: 'ms', side: 1, grid: {show: false}, stroke: getComputedStyle(document.body).color, size: 50}]);
+  add('Road matching', [{label: 'snap, m', values: column('snap'), color: '#1c7ed6', points: true},
+                        {label: 'rdiff, °', values: column('rdiff'), color: '#f08c00', points: true},
+                        {label: 'cand, m', values: column('cand'), color: '#2f9e44', points: true},
+                        {label: 'off roads, m', values: column('offm'), color: '#e03131'}]);
+  const sensor = (title, data, labels, colors) => {
+    if (!data.length) return;
+    const series = labels.map((label, i) => ({label, values: data.map(d => d[i + 1]), color: colors[i]}));
+    makeChart(title, data.map(d => d[0] / 1000), series);
+  };
+  sensor('Box accelerometer, m/s²', trip.series.accb, ['h1', 'h2', 'up', 'jolt'], ['#1c7ed6', '#f08c00', '#2f9e44', '#adb5bd']);
+  sensor('Phone accelerometer, m/s²', trip.series.acc, ['x', 'y', 'z', 'jolt'], ['#1c7ed6', '#f08c00', '#2f9e44', '#adb5bd']);
+  sensor('Gyroscope, °/s', trip.series.gyro, ['yaw'], ['#d6336c']);
+  buildFlags();
+  requestAnimationFrame(() => { drawFlags(); drawNowLines(); });
+}
+
+function buildFlags() {
+  const lines = FLAG_LINES.filter(f => rows.some(f.test));
+  if (!lines.length) { flagStrip = null; return; }
+  const box = document.createElement('div');
+  box.className = 'flags';
+  box.innerHTML = '<h4>Flags</h4>';
+  const canvas = document.createElement('canvas');
+  box.appendChild(canvas);
+  const line = document.createElement('div');
+  line.className = 'nowline';
+  box.appendChild(line);
+  $('#charts').appendChild(box);
+  flagStrip = {canvas, lines, line};
+  drawFlags();
+  canvas.addEventListener('click', e => {
+    const {left, width} = flagGeometry();
+    setTime(trip.start + (e.offsetX - left) / width * (trip.end - trip.start));
+  });
+}
+
+function flagGeometry() {
+  // Under the plots of the charts above, so the times line up.
+  const u = charts[0];
+  const ratio = devicePixelRatio || 1;
+  return u ? {left: u.bbox.left / ratio, width: u.bbox.width / ratio} : {left: 90, width: chartWidth() - 100};
+}
+
+function drawFlags() {
+  if (!flagStrip) return;
+  const {canvas, lines} = flagStrip;
+  const {left, width} = flagGeometry();
+  const height = 13, ratio = devicePixelRatio || 1;
+  canvas.style.width = chartWidth() + 'px';
+  canvas.style.height = lines.length * height + 'px';
+  canvas.width = chartWidth() * ratio;
+  canvas.height = lines.length * height * ratio;
+  const g = canvas.getContext('2d');
+  g.scale(ratio, ratio);
+  g.font = '10px sans-serif';
+  g.textBaseline = 'middle';
+  const span = trip.end - trip.start || 1;
+  lines.forEach((f, i) => {
+    g.fillStyle = getComputedStyle(document.body).color;
+    g.fillText(f.label, 2, i * height + height / 2);
+    g.fillStyle = 'rgba(128,128,128,.12)';
+    g.fillRect(left, i * height + 2, width, height - 4);
+    g.fillStyle = f.color;
+    for (let j = 0; j < rows.length; ++j) {
+      if (!f.test(rows[j])) continue;
+      const t0 = times[j], t1 = j + 1 < rows.length ? Math.min(times[j + 1], t0 + 1500) : t0 + 1000;
+      const x0 = left + (t0 - trip.start) / span * width, x1 = left + (t1 - trip.start) / span * width;
+      g.fillRect(x0, i * height + 2, Math.max(x1 - x0, 1), height - 4);
+    }
+  });
+}
+
+function drawNowLines() {
+  for (const u of charts) {
+    const x = u.valToPos(T / 1000, 'x');
+    u.nowline.style.left = x + 'px';
+  }
+  if (flagStrip) {
+    const {left, width} = flagGeometry();
+    flagStrip.line.style.left = left + (T - trip.start) / ((trip.end - trip.start) || 1) * width + 'px';
+    flagStrip.line.style.top = '18px';
+  }
+}
+
+// The slider and its ticks.
+function drawTicks() {
+  const canvas = $('#ticks');
+  const ratio = devicePixelRatio || 1, w = canvas.clientWidth, h = 16;
+  canvas.width = w * ratio; canvas.height = h * ratio;
+  const g = canvas.getContext('2d');
+  g.scale(ratio, ratio);
+  g.clearRect(0, 0, w, h);
+  if (!trip) return;
+  const span = trip.end - trip.start || 1;
+  for (const a of trip.anomalies) {
+    g.fillStyle = SEVERITY_COLORS[a.severity];
+    g.fillRect((a.start - trip.start) / span * w, 9, Math.max((a.end - a.start) / span * w, 2), 6);
+  }
+  for (const e of trip.events) {
+    if (e.cat === 'app' && e.level === 'I') continue;
+    g.fillStyle = CATEGORY_COLORS[e.cat];
+    g.fillRect(Math.max((e.t - trip.start) / span * w, 0), 1, 1.5, 7);
+  }
+}
+
+$('#ticks').addEventListener('click', e => {
+  if (!trip) return;
+  const w = e.target.clientWidth, span = trip.end - trip.start;
+  const t = trip.start + e.offsetX / w * span, tolerance = 4 / w * span;
+  const candidates = e.offsetY >= 8 ? trip.anomalies.map(a => [a.start, a.start - tolerance <= t && t <= a.end + tolerance ? 0 : Infinity])
+                                     : trip.events.map(x => [x.t, Math.abs(x.t - t)]);
+  const best = candidates.filter(c => c[1] <= tolerance).sort((a, b) => a[1] - b[1])[0];
+  setTime(best ? best[0] : t);
+});
+
+function setTime(t, fromSlider) {
+  if (!trip) return;
+  T = Math.min(Math.max(t, trip.start), trip.end);
+  if (!fromSlider) $('#slider').value = Math.round((T - trip.start) / 1000);
+  $('#clock').textContent = fmtTime(T) + ' · ' + fmtDuration(T - trip.start) + (trip.platform === 'ios' ? ' UTC' : '');
+  drawNowLines();
+  const i = bisect(T);
+  if (i !== index) {
+    index = i;
+    drawNow();
+    renderState();
+    markLists();
+  }
+  scheduleRawLines();
+  scheduleHash();
+}
+
+// The address keeps the trip, the moment and the tab: #trip=3&t=1791482402000&tab=events.
+let hashTimer = null;
+function scheduleHash() {
+  clearTimeout(hashTimer);
+  hashTimer = setTimeout(() => {
+    const tab = document.querySelector('#tabs button.on').dataset.tab;
+    history.replaceState(null, '', `#trip=${trip.id}&t=${Math.round(T)}&tab=${tab}`);
+  }, 300);
+}
+function readHash() {
+  return Object.fromEntries(location.hash.slice(1).split('&').filter(Boolean).map(kv => kv.split('=')));
+}
+
+$('#slider').addEventListener('input', e => setTime(trip.start + e.target.value * 1000, true));
+document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => setTime(T + b.dataset.step * 1000)));
+$('#play').addEventListener('click', () => togglePlay());
+function togglePlay() {
+  if (!trip) return;
+  playing = !playing;
+  $('#play').textContent = playing ? '❚❚' : '▶';
+  if (playing) {
+    if (T >= trip.end) setTime(trip.start);
+    lastFrame = performance.now();
+    requestAnimationFrame(frame);
+  }
+}
+function frame(now) {
+  if (!playing) return;
+  setTime(T + (now - lastFrame) * Number($('#speed').value));
+  lastFrame = now;
+  if (T >= trip.end) togglePlay(); else requestAnimationFrame(frame);
+}
+document.addEventListener('keydown', e => {
+  if (e.target instanceof Element && e.target.matches('input[type=search], input[type=text], select')) return;
+  if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+  else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+    e.preventDefault();
+    setTime(T + (e.key === 'ArrowRight' ? 1 : -1) * (e.shiftKey ? 10000 : 1000));
+  }
+});
+
+// The state at T.
+function formatValue(r, k) {
+  const v = val(r, k);
+  if (v === null || v === undefined) return '';
+  if (k === 'bf') {
+    const bits = parseInt(v, 16);
+    return esc(v) + ' ' + BOX_FLAGS.map((name, bit) => {
+      const on = bits >> bit & 1;
+      if (!on && NEEDED_FLAGS.includes(name)) return `<span class="chip missing">no ${name}</span>`;
+      return on ? `<span class="chip ${FLAG_KIND[name]}">${name}</span>` : '';
+    }).join('');
+  }
+  if (k === 'others') return String(v).split(';').map(esc).join('<br>');
+  const hint = ENUM_HINTS[k] && ENUM_HINTS[k][v];
+  return esc(typeof v === 'number' ? Math.round(v * 10) / 10 : v) + (hint ? ` <span class="time">${esc(hint)}</span>` : '');
+}
+
+function renderState() {
+  const box = $('#tab-state');
+  const r = rows[index];
+  if (!r) { box.innerHTML = '<div class="empty">Before the first TRIP line.</div>'; return; }
+  const previous = rows[index - 1];
+  const used = new Set(['t']);
+  let html = `<h3>${fmtTime(val(r, 't'))} · line ${index + 1} of ${rows.length}</h3>`;
+  const table = keys => {
+    let out = '';
+    for (const k of keys) {
+      used.add(k);
+      if (F[k] === undefined || val(r, k) === null) continue;
+      const changed = previous && val(previous, k) !== val(r, k) && !['lat', 'lon', 'gps_lat', 'gps_lon', 'fused_lat', 'fused_lon', 'age', 'gps_age', 'fused_age', 'odo', 'err_m', 'along_m', 'across_m'].includes(k);
+      out += `<tr class="${changed ? 'changed' : ''}" title="${esc(HINTS[k] || '')}"><td>${esc(k)}</td><td>${formatValue(r, k)}</td></tr>`;
+    }
+    return out;
+  };
+  for (const [name, keys] of GROUPS) {
+    const rowsHtml = table(keys);
+    if (rowsHtml) html += `<h3>${name}</h3><table class="state">${rowsHtml}</table>`;
+  }
+  const rest = table(Object.keys(F).filter(k => !used.has(k)));
+  if (rest) html += `<h3>Other</h3><table class="state">${rest}</table>`;
+  const recent = trip.events.filter(e => e.t <= T).slice(-10).reverse();
+  html += '<h3>Last events</h3><div class="list">' + (recent.map(eventHtml).join('') || '<div class="time">none yet</div>') + '</div>';
+  html += '<h3>Log lines ±5 s <label style="text-transform:none;letter-spacing:0;font-weight:400"><input type="checkbox" id="rawAll"' +
+    (rawAll ? ' checked' : '') + '> with TRIP and sensor lines</label></h3><div class="raw" id="raw"></div>';
+  box.innerHTML = html;
+  box.querySelectorAll('[data-t]').forEach(el => el.addEventListener('click', () => setTime(Number(el.dataset.t))));
+  $('#rawAll').addEventListener('change', e => { rawAll = e.target.checked; rawKey = null; loadRawLines(); });
+  rawKey = null;
+  scheduleRawLines();
+}
+
+let rawTimer = null, rawKey = null, rawAll = false;
+const NOISY_LINE = / (LogTrip\(\): TRIP|\w+\(\): (ACCB|ACCB_BEFORE|ACC|GYRO) )/;
+function scheduleRawLines() {
+  clearTimeout(rawTimer);
+  rawTimer = setTimeout(loadRawLines, playing ? 600 : 150);
+}
+async function loadRawLines() {
+  const box = $('#raw');
+  if (!box || !trip) return;
+  const second = Math.floor(T / 1000), key = trip.id + ':' + second;
+  if (key === rawKey) return;
+  rawKey = key;
+  let lines = await api(`/api/lines?trip=${trip.id}&from=${second * 1000 - 5000}&to=${second * 1000 + 5999}`);
+  if (rawKey !== key) return;
+  if (!rawAll) lines = lines.filter(l => !NOISY_LINE.test(l[2]));
+  let nearest = -1;
+  lines.forEach((l, i) => { if (l[0] <= T) nearest = i; });
+  box.innerHTML = lines.map((l, i) => `<div class="${l[1]}${i === nearest ? ' now' : ''}">${esc(l[2])}</div>`).join('');
+}
+
+// Events and anomalies.
+function eventHtml(e) {
+  return `<div class="item" data-t="${e.t}" title="${esc(e.src)}"><span class="time">${fmtTime(e.t)}</span>` +
+    `<span class="dot" style="background:${CATEGORY_COLORS[e.cat]}"></span><b>${esc(e.name)}</b> ` +
+    `<span class="${e.level === 'E' ? 'diff' : ''}">${esc(e.text.length > 220 ? e.text.slice(0, 220) + '…' : e.text)}</span></div>`;
+}
+
+const hiddenCategories = new Set(), hiddenSeverities = new Set();
+function buildFilters() {
+  const categories = [...new Set(trip.events.map(e => e.cat))];
+  $('#eventFilters').innerHTML = categories.map(c => {
+    const count = trip.events.filter(e => e.cat === c).length;
+    return `<label><input type="checkbox" data-cat="${c}" ${hiddenCategories.has(c) ? '' : 'checked'}><span class="dot" style="background:${CATEGORY_COLORS[c]}"></span>${c} ${count}</label>`;
+  }).join('');
+  $('#eventFilters').querySelectorAll('input').forEach(i => i.addEventListener('change', () => {
+    i.checked ? hiddenCategories.delete(i.dataset.cat) : hiddenCategories.add(i.dataset.cat);
+    renderEvents();
+  }));
+  const severities = ['high', 'medium', 'low'];
+  $('#anomalyFilters').innerHTML = severities.map(s => {
+    const count = trip.anomalies.filter(a => a.severity === s).length;
+    return `<label><input type="checkbox" data-sev="${s}" ${hiddenSeverities.has(s) ? '' : 'checked'}><span class="dot" style="background:${SEVERITY_COLORS[s]}"></span>${s} ${count}</label>`;
+  }).join('');
+  $('#anomalyFilters').querySelectorAll('input').forEach(i => i.addEventListener('change', () => {
+    i.checked ? hiddenSeverities.delete(i.dataset.sev) : hiddenSeverities.add(i.dataset.sev);
+    renderAnomalies();
+  }));
+}
+
+function renderEvents() {
+  if (!trip) return;
+  const level = $('#eventLevel').value, search = $('#eventSearch').value.toLowerCase();
+  const shown = trip.events.filter(e => !hiddenCategories.has(e.cat) && (!level || level.includes(e.level)) &&
+    (!search || (e.name + ' ' + e.text).toLowerCase().includes(search)));
+  $('#eventCount').textContent = shown.length + ' of ' + trip.events.length + ' events' + (shown.length > 3000 ? ', the first 3000 shown' : '');
+  $('#eventList').innerHTML = shown.slice(0, 3000).map(eventHtml).join('');
+  $('#eventList').querySelectorAll('[data-t]').forEach(el => el.addEventListener('click', () => setTime(Number(el.dataset.t))));
+  markLists();
+}
+$('#eventLevel').addEventListener('change', renderEvents);
+$('#eventSearch').addEventListener('input', renderEvents);
+
+function renderAnomalies() {
+  if (!trip) return;
+  const shown = trip.anomalies.filter(a => !hiddenSeverities.has(a.severity));
+  $('#anomalyList').innerHTML = shown.map(a =>
+    `<div class="item" data-t="${a.start}" data-end="${a.end}"><span class="time">${fmtTime(a.start)}</span>` +
+    `<span class="dot" style="background:${SEVERITY_COLORS[a.severity]}"></span><b>${esc(a.kind)}</b> ` +
+    `<span class="time">${fmtDuration(a.end - a.start + 1000)}</span><br>${esc(a.text)}</div>`).join('') ||
+    '<div class="empty">No anomalies.</div>';
+  $('#anomalyList').querySelectorAll('[data-t]').forEach(el => el.addEventListener('click', () => {
+    const start = Number(el.dataset.t), end = Number(el.dataset.end);
+    setTime(start);
+    const points = rows.filter(r => val(r, 't') >= start - 5000 && val(r, 't') <= end + 5000).map(position).filter(Boolean);
+    if (points.length) map.fitBounds(points, {padding: [60, 60], maxZoom: 17});
+  }));
+  markLists();
+}
+
+function markLists() {
+  document.querySelectorAll('#eventList .item, #anomalyList .item').forEach(el => el.classList.toggle('future', Number(el.dataset.t) > T));
+}
+
+// Summary.
+function renderSummary() {
+  const s = trip;
+  const total = Object.values(s.sources).reduce((a, b) => a + b, 0) || 1;
+  const f1 = x => x === undefined || x === null ? '' : (Math.round(x * 10) / 10);
+  let html = `<h3>Trip ${s.id}</h3><table class="state">
+    <tr><td>platform</td><td>${s.platform}, times ${esc(s.zone)}</td></tr>
+    <tr><td>start</td><td>${fmtDate(s.start)}:${new Date(s.start).toISOString().slice(17, 19)}</td></tr>
+    <tr><td>duration</td><td>${fmtDuration(s.end - s.start)}</td></tr>
+    <tr><td>distance</td><td>${s.km} km</td></tr><tr><td>max speed</td><td>${s.max_kmh ?? ''} km/h</td></tr>
+    <tr><td>TRIP lines</td><td>${s.lines}</td></tr><tr><td>choice switches</td><td>${s.choice_switches}</td></tr></table>
+    <p><a href="/api/trip/${s.id}.csv">CSV</a> · <a href="/api/trip/${s.id}.gpx">GPX</a> (as nogps_trip_log.py writes them)</p>
+    <h3>Sources</h3><table>${Object.entries(s.sources).map(([k, v]) =>
+      `<tr><td><span class="dot" style="background:${SOURCE_COLORS[k] || '#868e96'}"></span>${esc(k)}</td><td>${v} s</td><td>${(v / total * 100).toFixed(1)}%</td></tr>`).join('')}</table>
+    <h3>Error from GPS by source</h3><table><tr><th>src</th><th>s</th><th>with GPS</th><th>median</th><th>90%</th><th>max</th><th>along</th></tr>
+    ${s.errors.map(e => `<tr><td>${esc(e.src)}</td><td>${e.seconds}</td><td>${e.errors}</td><td>${f1(e.median)}</td><td>${f1(e.p90)}</td><td>${f1(e.max)}</td><td>${f1(e.along_median)}</td></tr>`).join('')}</table>
+    <h3>Counts as nogps_replay.py compare tells them</h3><table>${s.counts.map(([name, count]) =>
+      `<tr${count ? '' : ' style="opacity:.45"'}><td>${esc(name)}</td><td>${count}</td></tr>`).join('')}</table>`;
+  const byKind = {};
+  for (const a of s.anomalies) byKind[a.kind] = (byKind[a.kind] || 0) + 1;
+  html += '<h3>Anomalies</h3><table>' + Object.entries(byKind).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join('') + '</table>';
+  const byName = {};
+  for (const e of s.events) byName[e.cat + ': ' + e.name] = (byName[e.cat + ': ' + e.name] || 0) + 1;
+  html += '<h3>Events</h3><table>' + Object.entries(byName).sort().map(([k, v]) => `<tr><td>${esc(k)}</td><td>${v}</td></tr>`).join('') + '</table>';
+  $('#tab-summary').innerHTML = html;
+}
+
+// Replay.
+function replayAt(t) {
+  const track = replay.track;
+  let lo = 0, hi = track.length - 1;
+  if (hi < 0 || t < track[0][0] - 1500) return null;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (track[mid][0] <= t) lo = mid; else hi = mid - 1;
+  }
+  return t - track[lo][0] <= 1500 ? track[lo] : null;
+}
+
+function renderReplay() {
+  const out = $('#replayOut');
+  layers['Replay'] && layers['Replay'].clearLayers();
+  if (!replay) { out.innerHTML = trip && trip.platform !== 'android' ? '<p class="time">Only an Android trip is driven again.</p>' : ''; return; }
+  layers['Replay'].addLayer(polylines(replay.track.map(p => [p[0], p[1], p[2]]), {color: '#d6336c', weight: 3, opacity: .8}, 5000));
+  const st = replay.stats;
+  const f0 = x => Math.round(x);
+  let html = `<h3>Driven again</h3><p>${st.lines} TRIP lines driven again, the trip had ${st.trip_lines} that day.</p>
+    <table><tr><th></th><th>s</th><th>median</th><th>90%</th><th>&gt;30 m</th><th>&gt;50 m</th><th>&gt;100 m</th></tr>
+    ${st.errors.concat([['the two marks apart', st.apart]]).map(([name, e]) => e ? `<tr><td>${esc(name)}</td><td>${e.n}</td><td>${f0(e.median)} m</td><td>${f0(e.p90)} m</td><td>${e.over30.toFixed(1)}%</td><td>${e.over50.toFixed(1)}%</td><td>${e.over100.toFixed(1)}%</td></tr>` : `<tr><td>${esc(name)}</td><td colspan="6">no seconds with GPS</td></tr>`).join('')}</table>
+    <h3>Events</h3><table><tr><th></th><th>the trip</th><th>again</th></tr>
+    ${st.events.map(([name, a, b]) => `<tr${a || b ? '' : ' style="opacity:.45"'}><td>${esc(name)}</td><td>${a}</td><td class="${a !== b ? 'diff' : ''}">${b}</td></tr>`).join('')}</table>
+    <h3>Stretches changed by more than 15 m</h3><div class="list">
+    ${st.stretches.map(x => `<div class="item" data-t="${x.start}"><span class="time">${fmtTime(x.start)}</span><span class="dot" style="background:${x.kind === 'better' ? '#2f9e44' : '#e03131'}"></span><b>${x.kind}</b> ${fmtDuration(x.to - x.start + 1000)}: the trip ${f0(x.was)} m, again ${f0(x.now)} m from GPS at the worst</div>`).join('') || '<div class="time">none</div>'}</div>`;
+  out.innerHTML = html;
+  out.querySelectorAll('[data-t]').forEach(el => el.addEventListener('click', () => setTime(Number(el.dataset.t))));
+}
+
+$('#replayFile').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file || !trip) return;
+  $('#replayOut').innerHTML = '<p class="time">Reading…</p>';
+  try {
+    replay = await api('/api/replay/' + trip.id, {method: 'POST', body: file});
+    renderReplay();
+    drawNow();
+  } catch (error) {
+    $('#replayOut').innerHTML = '<pre class="raw">' + esc(error.message) + '</pre>';
+  }
+  e.target.value = '';
+});
+
+// Trips.
+function renderTrips(data) {
+  tripsData = data;
+  trips = data.trips;
+  const showStationary = $('#showStationary').checked;
+  const list = trips.filter(t => t.driven || showStationary);
+  const notes = data.notes.length ? `<div class="notes">${data.notes.map(esc).join('<br>')}</div>` : '';
+  $('#status').textContent = `${data.files.length} files, ${trips.filter(t => t.driven).length} trips, ${trips.filter(t => !t.driven).length} stationary`;
+  $('#status').title = data.files.map(f => `${f.name}: ${f.platform}, ${f.lines} lines`).join('\n');
+  $('#trips').innerHTML = notes + (list.map(t => {
+    const total = Object.values(t.sources).reduce((a, b) => a + b, 0) || 1;
+    const mix = Object.entries(t.sources).map(([k, v]) => `<span style="width:${v / total * 100}%;background:${SOURCE_COLORS[k] || '#868e96'}" title="${esc(k)} ${v} s"></span>`).join('');
+    const badges = ['high', 'medium', 'low'].filter(s => t.anomalies[s]).map(s => `<span class="badge" style="background:${SEVERITY_COLORS[s]}" title="${s} anomalies">${t.anomalies[s]}</span>`).join('');
+    return `<div class="trip${t.driven ? '' : ' stationary'}${trip && trip.id === t.id ? ' on' : ''}" data-id="${t.id}">
+      <div class="when">${fmtDate(t.start)} <span class="time">${t.platform === 'ios' ? 'UTC' : ''}</span></div>
+      <div class="facts">${fmtDuration(t.end - t.start)} · ${t.km} km${t.max_kmh !== null ? ' · ≤' + t.max_kmh + ' km/h' : ''}${t.driven ? '' : ' · stands'}</div>
+      <div class="mix">${mix}</div>
+      <div class="facts">${badges}${t.events} events${t.inertial_error_median !== null ? ' · box error ' + Math.round(t.inertial_error_median) + ' m' : ''}</div></div>`;
+  }).join('') || '<div class="empty">No trips. Open the logs of the app.</div>');
+  $('#trips').querySelectorAll('.trip').forEach(el => el.addEventListener('click', () => loadTrip(Number(el.dataset.id))));
+  if (trip && !trips.some(t => t.id === trip.id && t.start === trip.start)) trip = null;
+}
+$('#showStationary').addEventListener('change', () => renderTrips(tripsData));
+
+async function loadTrip(id, t) {
+  if (playing) togglePlay();
+  $('#status').textContent = 'Loading trip ' + id + '…';
+  trip = await api('/api/trip/' + id);
+  F = Object.fromEntries(trip.fields.map((f, i) => [f, i]));
+  rows = trip.rows;
+  times = rows.map(r => r[F.t]);
+  index = -1;
+  replay = null;
+  document.querySelectorAll('.trip').forEach(el => el.classList.toggle('on', Number(el.dataset.id) === id));
+  $('#slider').max = Math.round((trip.end - trip.start) / 1000);
+  buildMap();
+  buildCharts();
+  buildFilters();
+  renderEvents();
+  renderAnomalies();
+  renderSummary();
+  renderReplay();
+  drawTicks();
+  setTime(t || trip.start);
+  $('#status').textContent = `Trip ${id}: ${fmtDate(trip.start)}, ${fmtDuration(trip.end - trip.start)}, ${trip.platform}`;
+}
+
+// Tabs, files, layout.
+function showTab(name) {
+  document.querySelectorAll('#tabs button, .tab').forEach(el => el.classList.remove('on'));
+  document.querySelector(`#tabs button[data-tab="${name}"]`).classList.add('on');
+  $('#tab-' + name).classList.add('on');
+  if (trip) scheduleHash();
+}
+document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+
+async function upload(files) {
+  files = [...files];
+  if (!files.length) return;
+  let data = null;
+  for (let i = 0; i < files.length; ++i) {
+    $('#status').textContent = `Reading ${files[i].name} (${i + 1} of ${files.length})…`;
+    data = await api(`/api/add?name=${encodeURIComponent(files[i].name)}&last=${i === files.length - 1 ? 1 : 0}`, {method: 'POST', body: files[i]});
+  }
+  trip = null;
+  renderTrips(data);
+  const first = data.trips.find(t => t.driven);
+  if (first) loadTrip(first.id);
+}
+$('#files').addEventListener('change', e => { upload(e.target.files).catch(error => alert(error.message)); e.target.value = ''; });
+$('#clear').addEventListener('click', async () => { trip = null; renderTrips(await api('/api/clear', {method: 'POST'})); });
+let dragDepth = 0;
+window.addEventListener('dragenter', e => { e.preventDefault(); if (++dragDepth) document.body.classList.add('dragging'); });
+window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => {
+  e.preventDefault();
+  dragDepth = 0;
+  document.body.classList.remove('dragging');
+  upload(e.dataTransfer.files).catch(error => alert(error.message));
+});
+let resizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    for (const u of charts) u.setSize({width: chartWidth(), height: 120});
+    drawFlags();
+    drawTicks();
+    drawNowLines();
+    map.invalidateSize();
+  }, 150);
+});
+
+api('/api/trips').then(data => {
+  renderTrips(data);
+  const hash = readHash();
+  if (hash.tab && $('#tab-' + hash.tab)) showTab(hash.tab);
+  const chosen = data.trips.find(t => String(t.id) === hash.trip) || data.trips.find(t => t.driven);
+  if (chosen) loadTrip(chosen.id, Number(hash.t) || 0);
+}).catch(error => { $('#status').textContent = error.message; });
+</script>
+</body>
+</html>
