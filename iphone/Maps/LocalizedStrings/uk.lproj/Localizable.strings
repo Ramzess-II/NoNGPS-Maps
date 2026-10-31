@@ -1236,11 +1236,6 @@
 
 /* The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored */
 "nogps_source_box" = "Блок";
-"nogps_status_network_spoofed" = "GPS підмінено · вежі ±%@";
-"nogps_status_network_no_gps" = "Немає GPS · вежі ±%@";
-"nogps_status_manual_just_now" = "Ручний режим · щойно";
-"nogps_status_manual_minutes" = "Ручний режим · %d хв тому";
-"nogps_status_none" = "Немає позиції";
 "nogps_meters" = "%d м";
 "nogps_kilometers" = "%.1f км";
 "nogps_status_inertial" = "Інерціально · ±%@";
@@ -1273,11 +1268,9 @@
 "nogps_speed_table_row" = "%1$d–%2$d км/год  %3$@";
 "nogps_speed_table_left" = "ще %d м";
 "nogps_shift_at_turn" = "Позиція біля перехрестя, далі переносити не можна";
-"nogps_status_gps_back" = "GPS знову є ±%@";
 "nogps_status_gps_spoofed" = "GPS підмінено";
 "nogps_status_no_gps" = "Немає GPS";
 "nogps_status_gps_off" = "GPS вимкнено в налаштуваннях системи";
-"nogps_status_towers" = "вежі ±%@";
 "nogps_gps_back_auto" = "GPS знову надійний, ручний режим вимкнено";
 "nogps_reverse_direction" = "Розвернути машину на дорозі";
 
@@ -1291,15 +1284,6 @@
 
 /* Second line of the status "Road lost" */
 "nogps_status_road_lost_hint" = "натисніть кнопку з пальцем і торкніться дороги, де ви";
-
-/* Line of the status of the position: the sensor box gives the car speed */
-"nogps_status_box_ok" = "блок підключено";
-
-/* Line of the status of the position: the sensor box is not heard */
-"nogps_status_box_none" = "блок не підключено";
-
-/* Line of the status of the position: the sensor box is heard, the car speed does not come */
-"nogps_status_box_no_car" = "блок підключено, машина мовчить";
 "nogps_sensors_box" = "Блок: %1$@";
 
 /* State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth" */
