@@ -38,22 +38,7 @@ enum class PositionSource
   Inertial,
 };
 
-/// What GPS is worth now: the icon of GPS, the switch between GPS and the box and the log all take it.
-enum class GpsState
-{
-  // No position from the location services.
-  None,
-  // Only Wi-Fi and cell towers, or positions less accurate than Engine::kGpsMaxAccuracyM.
-  Coarse,
-  // Told by the spoofing detector, by the positions off the roads or away from the box.
-  Spoofed,
-  // Good positions after GPS was bad, not agreeing with the box long enough yet, see GpsReturnDetector.
-  Checking,
-  Good,
-};
-
 std::string DebugPrint(PositionSource source);
-std::string DebugPrint(GpsState state);
 
 /// Everything the UI shows about the navigation without GPS, taken at once.
 struct Status
@@ -61,13 +46,12 @@ struct Status
   // Where the shown position comes from and its accuracy.
   PositionSource m_source = PositionSource::None;
   double m_accuracyM = 0;
-  // Box is chosen: the box drives the car and the user corrects it, GPS is ignored.
   bool m_manualMode = false;
   // The next tap on the map shows where the car is: the button for it is pressed.
   bool m_markByTap = false;
   // Since the user has set the position in the manual mode.
   int64_t m_manualAgeMs = 0;
-  GpsState m_gpsState = GpsState::None;
+  bool m_gpsSpoofed = false;
   bool m_gpsDisabled = false;
   // GPS works now, also in the manual mode where it is not used.
   std::optional<double> m_workingGpsAccuracyM;
@@ -123,9 +107,8 @@ struct Status
 };
 
 /// Navigation without GPS: it chooses the position to show from GPS, cell towers, the marks of the user and the
-/// inertial navigation. The car follows the choice of GPS or Box, see SetGpsDisabled(). GPS jammed or spoofed is
-/// detected and Box is chosen by itself when the box can drive the car, GPS again when it is good. Runs on the GUI
-/// thread.
+/// inertial navigation. GPS jammed or spoofed is detected and the manual mode is turned on by itself, and left when
+/// GPS is trusted again. Runs on the GUI thread.
 class Engine : private InertialNavigator::Listener
 {
 public:
@@ -166,22 +149,11 @@ public:
   // Trusted GPS positions are preferred over the inertial ones while they are this fresh. GPS gives a
   // position every second, so it is lost after a missed one.
   static int64_t constexpr kGpsFreshMs = 2000;
-  // A longer pause of GPS is not a missed position: GPS is lost.
+  // Without the inertial navigation a longer pause of GPS is waited for while navigating: the manual mode
+  // needs a mark from the user.
   static int64_t constexpr kGpsLostMs = 5000;
   // The first GPS position after the start takes longer: the satellites are searched.
   static int64_t constexpr kGpsFirstFixMs = 15'000;
-  // The box that has sent no data or no car speed for this long is lost. Asleep with the engine off it is not: the
-  // car stands.
-  static int64_t constexpr kBoxLostMs = 10'000;
-  // The box drives the car when it has told the car speed for this long: it may have just woken up.
-  static int64_t constexpr kBoxReadyMs = 5000;
-  // Box is not chosen by itself sooner after the user has chosen GPS, the user knows better, unless GPS has been good
-  // since. After GPS chosen by itself it is sooner: GPS was good before, and Box is left only when GPS is good again,
-  // so they don't flap. Spoofed GPS is not waited for then.
-  static int64_t constexpr kUserChoiceHoldMs = 3 * 60'000;
-  static int64_t constexpr kAppChoiceHoldMs = 30'000;
-  // The box connects a while after the app starts: GPS is not chosen for its absence sooner.
-  static int64_t constexpr kBoxStartWaitMs = 60'000;
   // GPS farther than this from the inertial position following it is spoofed or broken: the inertial
   // position is calculated for a second only since the previous GPS position.
   static double constexpr kMaxGpsInertialDiffM = 30;
@@ -200,7 +172,7 @@ public:
   static int64_t constexpr kGpsMaxAgeMs = 5000;
   // The state is written to the log every second, so a drive can be analysed afterwards.
   static int64_t constexpr kTripLogIntervalMs = 1000;
-  // The positions of the platform and the compass are written to the trip log while they are this fresh.
+  // GPS gives a position every second, a longer pause means it is lost.
   static int64_t constexpr kGpsStatusMaxAgeMs = 10'000;
   // GPS works when it gives a position every second, every 3 while the map does not follow it. The fused provider
   // of Android repeats the cell tower and Wi-Fi positions as accurate ones every 6: without GPS in the phone on
@@ -255,13 +227,16 @@ public:
   void OnEsp32BleBytes(std::string_view bytes);
   void OnEsp32BleState(BleState state);
 
-  /// Box is chosen: the box drives the car, the user corrects it by the marks and the buttons.
-  bool IsManualMode() const { return m_gpsDisabled; }
+  bool IsManualMode() const { return m_manualMode; }
+  void SetManualMode(bool enabled);
+  /// Puts the car on the road at the position, e.g. tapped on the map. Works only in the manual mode.
+  /// \returns false if there is no road at the position: the car is always on a road.
+  bool SetManualLocation(ms::LatLon const & position);
   /// The next tap on the map shows where the car is, see PlaceMarkByTap(): the user has pressed the button for it.
   void SetMarkByTap(bool armed);
   bool IsMarkByTap() const { return m_markByTap; }
-  /// The user has tapped the map to show where the car is. The car is followed from there by the box: Box is chosen
-  /// if it was not. Ends SetMarkByTap().
+  /// The user has tapped the map to show where the car is. The car is followed from there without GPS, in the
+  /// manual mode, which is left by itself when GPS is trusted again. Ends SetMarkByTap().
   /// \returns false if there is no road at the position.
   bool PlaceMarkByTap(ms::LatLon const & position);
   /// Moves the position along the route, or along the road if there is no route, e.g. when the calculated
@@ -279,9 +254,8 @@ public:
   /// Shows the car on the next of the other roads it may be on, see Status::m_otherMarks, and rebuilds the route
   /// from there. The road it was shown on stays one of them.
   void SwitchMark();
-  /// The user chooses Box: GPS is ignored as if it were jammed, the box drives the car. Or GPS: the car follows the
-  /// location services. The choice is kept after a restart, the map shows it. The engine changes it by itself too,
-  /// see CheckChoice().
+  /// Ignores GPS as if it were jammed: the user drives by the sensor box where GPS works. It is kept after a
+  /// restart, the map shows the choice.
   void SetGpsDisabled(bool disabled);
 
   void SetInertialNavigationEnabled(bool enabled);
@@ -324,9 +298,7 @@ private:
   int64_t AgeMs(Fix const & fix) const;
   // Returns the time since the moment, the longest one if it hasn't happened.
   int64_t MsSince(std::optional<int64_t> timeMs) const;
-  GpsState GetGpsState() const;
-  /// \returns true if GPS is not good, except a short pause and the search of the satellites after the start.
-  bool IsGpsLost() const;
+  int64_t GetGpsSilenceMs() const;
   bool IsGpsBack(Fix const & gps);
   bool IsSpeedTableGps(Fix const & gps);
   bool ContradictsInertial(Fix const & gps) const;
@@ -338,11 +310,8 @@ private:
   /// The road the car is put on by a mark at the position, nothing if there is none.
   std::optional<RoadPoint> FindMarkRoad(ms::LatLon const & position);
   void PutMark(ms::LatLon const & position, RoadPoint const & road);
-  /// Changes the choice of GPS or Box, by the user or by itself.
-  void Choose(bool gpsDisabled, bool byApp);
-  /// Chooses GPS or Box by itself: Box when GPS is lost and the box can drive the car, GPS when it is good and Box was
-  /// chosen by itself or the box is lost.
-  void CheckChoice();
+  void EnterManualModeByItself(std::string const & reason);
+  void CheckGpsLost();
   void CheckMotionSourceStopped();
   void CheckNotCalibrated();
   void CheckFirmwareUpdate();
@@ -392,12 +361,9 @@ private:
   bool m_active = false;
   // The position passed to the platform the last time.
   std::optional<Fix> m_savedLocation;
-  // Box is chosen, the manual mode: GPS is ignored, the box drives the car and the user corrects it.
+  // In the manual mode GPS is ignored (it is jammed or spoofed) and the position is set by the user.
+  bool m_manualMode = false;
   bool m_gpsDisabled = false;
-  // The choice was made by the engine, not by the user, and when. Before it was made in this run it is old.
-  bool m_choiceByApp = false;
-  std::optional<int64_t> m_choiceMs;
-  // The mark of the user, or the car where it was left until a position comes.
   std::optional<Fix> m_manualLocation;
   // The next tap on the map shows where the car is.
   bool m_markByTap = false;
@@ -408,13 +374,6 @@ private:
   std::optional<Fix> m_lastGoodGps;
   // Since the good GPS position before it.
   int64_t m_lastGoodGpsGapMs = std::numeric_limits<int64_t>::max();
-  // The last position of the location services that is not a good GPS one, but not spoofed either.
-  std::optional<Fix> m_lastCoarse;
-  // The car tells GPS is wrong: it has left the roads or the box, see GpsState::Spoofed.
-  bool m_gpsWrong = false;
-  // GPS has been bad, or the box has driven the car from where it was left, since GPS agreed with the box the last
-  // time, see GpsState::Checking.
-  bool m_gpsUnchecked = false;
   // The last positions as the platform gave them, also not trusted or ignored: the log of a drive has them to
   // compare the shown position with. The satellites alone, and mixed with Wi-Fi and cell towers: iOS has only
   // the mix, Android may have both.
@@ -427,8 +386,7 @@ private:
     int64_t m_timeMs = 0;
   };
   std::optional<Compass> m_compass;
-  // After Box or the car where it was left, the next real position must replace the shown one, even if it is less
-  // accurate.
+  // After the manual mode the next real position must replace the manual one, even if it is less accurate.
   bool m_acceptNextLocation = false;
   // The source of the last position passed to the core, used to check the route when the source changes.
   PositionSource m_lastPositionSource = PositionSource::None;
@@ -441,13 +399,16 @@ private:
   // The last trusted GPS position by its own time, see Fix::m_timeMs: the inertial navigation continues from it.
   std::optional<int64_t> m_lastTrustedGpsTimeMs;
   int64_t m_savedTrustedTimeMs = 0;
+  // The manual mode is on because there was no position at all, the user hasn't placed the car yet.
+  bool m_manualForNoPosition = false;
+  // The manual mode shows the car where it was left while GPS was trusted, until the first good GPS position.
+  bool m_manualUntilGps = false;
   // The place of the car last saved, without the time, and when; where the car was a second ago.
   std::string m_savedCar;
   std::optional<int64_t> m_carSavedMs;
   std::optional<ms::LatLon> m_carSecondAgo;
-  // Since when the box tells the car speed, and since when it has been lost.
-  std::optional<int64_t> m_boxConnectedSinceMs;
-  std::optional<int64_t> m_boxLostSinceMs;
+  // When the manual mode was left: GPS was ignored in it, so it is waited for anew.
+  std::optional<int64_t> m_manualLeftMs;
   // GPS positions off the roads in a row.
   int m_offRoadGpsCount = 0;
   // The start of the location updates.

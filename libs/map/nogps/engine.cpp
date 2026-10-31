@@ -115,13 +115,12 @@ void Engine::Start()
   if (m_spoofingDetector.GetPhantomsCount() == 0)
     m_spoofingDetector.DeserializePhantoms(m_storage.Get<std::string>(Storage::kWrongNetworkPoints, ""));
   RestoreTrustedPosition();
-  m_gpsDisabled = m_storage.Get<bool>(Storage::kGpsDisabled, false);
-  m_choiceByApp = m_storage.Get<bool>(Storage::kGpsChosenByApp, false);
-  // GPS ignored before is not trusted by its first position: it may have been the reason.
-  if (m_gpsDisabled)
-    m_gpsUnchecked = true;
   StartInertialNavigation();
   RestoreCarPosition();
+  // After the car: GPS ignored before the restart is not trusted anew by its first position either. Once: the choice
+  // is kept by the engine after it is stopped in the background.
+  if (!m_gpsDisabled && m_storage.Get<bool>(Storage::kGpsDisabled, false))
+    SetGpsDisabled(true);
   m_tripLogTimer.Start(0, [this] { LogTrip(); });
   if (m_manualLocation)
     m_manualRepeatTimer.Start(0, [this] { ApplyManualLocation(); });
@@ -193,6 +192,15 @@ void Engine::OnFix(Fix const & location)
   if (trusted && !isNetwork && m_inertial && IsInertialNavigationEnabled() && IsSpeedTableGps(location))
     m_inertial->OnSpeedTableGps(location);
 
+  if (m_gpsDisabled && !isNetwork && SourceOf(location) == PositionSource::Gps)
+  {
+    LOG(LDEBUG, ("GPS is disabled, ignoring", location.m_position));
+    // The user sees how GPS works though the car does not follow it.
+    if (trusted)
+      TrackWorkingGps(location);
+    return;
+  }
+
   if (!trusted)
   {
     m_gpsReturnDetector.Reset();
@@ -212,58 +220,48 @@ void Engine::OnFix(Fix const & location)
   }
 
   bool const goodGps = TrackWorkingGps(location);
-  if (!goodGps)
-    m_lastCoarse = location;
-  // The car tells GPS is wrong while it follows GPS. While the box drives it, GPS is to agree with the box anyway.
-  auto const gpsWrong = [this](std::string const & reason)
+  if (m_manualMode && goodGps && (m_manualUntilGps || IsGpsBack(location)))
   {
-    LOG(LWARNING, (reason));
-    m_gpsWrong = true;
-    m_gpsReturnDetector.Reset();
-    CheckChoice();
-  };
-  if (!m_gpsDisabled && goodGps && IsOffRoadWhileDriving(location))
+    LOG(LINFO, ("GPS is trusted again, leaving the manual mode, location =", location.m_position));
+    // GPS was trusted before the restart of the app: it is found at the start as always, the user is not told.
+    bool const told = !m_manualUntilGps;
+    SetManualMode(false);
+    if (told)
+      Notify(Event::GpsBack);
+  }
+  if (!m_manualMode && goodGps && IsOffRoadWhileDriving(location))
   {
     // The last position on the road is kept, the inertial navigation continues from it.
     if (++m_offRoadGpsCount >= kOffRoadGpsCount)
-      gpsWrong("GPS has left the roads, location = " + DebugPrint(location.m_position));
+      EnterManualModeByItself("GPS has left the roads, location = " + DebugPrint(location.m_position));
     else
       LOG(LWARNING, ("GPS is off the roads, location =", location.m_position));
     return;
   }
   m_offRoadGpsCount = 0;
-  if (!m_gpsDisabled && goodGps && ContradictsInertial(location))
+  if (!m_manualMode && goodGps && ContradictsInertial(location))
   {
-    gpsWrong("GPS contradicts the inertial position, location = " + DebugPrint(location.m_position));
+    EnterManualModeByItself("GPS contradicts the inertial position, location = " + DebugPrint(location.m_position));
     return;
   }
-  if (goodGps)
-  {
-    m_gpsWrong = false;
-    // Checked on every position: GPS that has worked for long enough is good at once when Box is chosen.
-    bool const back = IsGpsBack(location);
-    // A rough position tells nothing, see GpsReturnDetector.
-    if ((m_gpsDisabled || m_gpsUnchecked) && location.m_accuracyM <= GpsReturnDetector::kMaxAccuracyM &&
-        m_gpsUnchecked == back)
-    {
-      LOG(LINFO, ("GPS agrees with the box =", back, "location =", location.m_position));
-      m_gpsUnchecked = !back;
-    }
-  }
-  CheckChoice();
-  if (m_gpsDisabled)
-  {
-    LOG(LDEBUG, ("Box is chosen, ignoring", location.m_position));
-    return;
-  }
-
-  // The box follows only GPS that is not doubted: it is what GPS is checked by.
-  if (goodGps && !m_gpsUnchecked)
+  if (!m_manualMode && goodGps)
   {
     m_lastTrustedGpsMs = m_clock.NowMs();
     m_lastTrustedGpsTimeMs = location.m_timeMs;
     if (m_inertial)
       m_inertial->OnGpsPosition(location);
+  }
+
+  if (m_manualMode && m_manualForNoPosition && isNetwork && !m_manualLocation)
+  {
+    LOG(LINFO, ("The network position is back, leaving the manual mode, location =", location.m_position));
+    SetManualMode(false);
+  }
+
+  if (m_manualMode)
+  {
+    LOG(LDEBUG, ("Manual mode is on, ignoring", location.m_position));
+    return;
   }
 
   // Cell tower positions jump by hundreds of meters. It is tolerable while the user looks at the map, but
@@ -297,12 +295,10 @@ void Engine::OnFix(Fix const & location)
   m_acceptNextLocation = false;
   m_savedLocation = location;
   m_fixShownMs = m_clock.NowMs();
-  // The car where it was left is shown until a position comes.
-  if (m_manualLocation)
-  {
-    m_manualLocation.reset();
-    m_manualRepeatTimer.Stop();
-  }
+
+  // While the inertial navigation doesn't work, it starts from the shown position.
+  if (m_inertial && !IsInertialActive())
+    m_inertial->SetPosition(location.m_position);
 
   // The core detects that the user left the route only after several moving GPS positions. Check the route at once
   // when the position source changes (e.g. from the manual position, which can be wrong, to GPS or cell towers),
@@ -392,54 +388,33 @@ int64_t Engine::MsSince(std::optional<int64_t> timeMs) const
   return timeMs ? m_clock.NowMs() - *timeMs : std::numeric_limits<int64_t>::max();
 }
 
-GpsState Engine::GetGpsState() const
+int64_t Engine::GetGpsSilenceMs() const
 {
-  if (m_spoofingDetector.IsSpoofed() || m_gpsWrong)
-    return GpsState::Spoofed;
-  if (GetWorkingGps())
-    return m_gpsUnchecked ? GpsState::Checking : GpsState::Good;
-  // Cell tower positions come once in several seconds. Accurate ones as seldom are from Wi-Fi, see
-  // kGpsStatusMaxGapMs.
-  auto const fresh = [this](std::optional<Fix> const & fix) { return fix && AgeMs(*fix) <= kNetworkStatusMaxAgeMs; };
-  if (fresh(m_lastCoarse) || (fresh(m_lastGoodGps) && m_lastGoodGpsGapMs > kGpsStatusMaxGapMs))
-    return GpsState::Coarse;
-  return GpsState::None;
-}
-
-bool Engine::IsGpsLost() const
-{
-  auto const state = GetGpsState();
-  if (state == GpsState::Good)
-    return false;
-  if (state == GpsState::Spoofed || state == GpsState::Checking)
-    return true;
-  if (m_lastGoodGps && m_lastGoodGps->m_timeMs >= m_startTimeMs)
-    return AgeMs(*m_lastGoodGps) > kGpsLostMs;
-  return m_clock.NowMs() - m_startTimeMs > kGpsFirstFixMs;
+  // Counted from leaving the manual mode at most: GPS was ignored in it.
+  return std::min(MsSince(m_lastTrustedGpsMs), MsSince(m_manualLeftMs));
 }
 
 bool Engine::IsGpsBack(Fix const & gps)
 {
-  // GPS has worked long enough and agrees with the position known without it.
+  // GPS has worked long enough in the manual mode and agrees with the position known without it.
   std::optional<GpsReturnDetector::Own> own;
   if (m_inertial && m_inertial->IsRoadLost())
   {
     // The inertial navigation has lost the road and stands where it was: the car is not there, and GPS is
     // not to be compared with that place.
   }
-  else if (auto const inertial = m_inertial && m_inertial->IsReady() ? m_inertial->GetLocation() : std::nullopt)
+  else if (IsInertialActive() && m_savedLocation)
   {
     // The car maneuvering off the roads is not where its mark waits.
     auto const & car = m_inertial->GetOffRoadCar();
-    own = GpsReturnDetector::Own{car ? *car : inertial->m_position, inertial->m_accuracyM};
+    own = GpsReturnDetector::Own{car ? *car : m_savedLocation->m_position, m_savedLocation->m_accuracyM};
   }
   else if (m_manualLocation)
   {
-    // The car may have driven on since the box or the user has put the mark there the last time.
-    int64_t const placedMs = std::max(m_manualSetTimeMs, m_lastInertialUsedMs.value_or(m_manualSetTimeMs));
+    // The car has driven on since the mark.
     own = GpsReturnDetector::Own{
         m_manualLocation->m_position,
-        m_manualLocation->m_accuracyM + GpsReturnDetector::kMaxSpeedMps * (m_clock.NowMs() - placedMs) / 1000.0};
+        m_manualLocation->m_accuracyM + GpsReturnDetector::kMaxSpeedMps * MsSince(m_manualSetTimeMs) / 1000.0};
   }
   std::optional<double> carSpeedMps;
   if (m_inertial && IsInertialNavigationEnabled() && m_inertial->GetSpeedKmh() >= 0)
@@ -491,60 +466,52 @@ bool Engine::IsNearRoad(Fix const & gps)
   return road && Distance(gps.m_position, road->m_point) <= radius;
 }
 
-void Engine::CheckChoice()
+void Engine::EnterManualModeByItself(std::string const & reason)
 {
-  // The box tells the car speed, or sleeps with the engine off: the car stands then. It is lost otherwise.
-  auto const box =
-      m_inertial && IsInertialNavigationEnabled() ? m_inertial->GetSourceState() : SourceState::Disconnected;
-  int64_t const now = m_clock.NowMs();
-  if (box != SourceState::Connected)
-    m_boxConnectedSinceMs.reset();
-  else if (!m_boxConnectedSinceMs)
-    m_boxConnectedSinceMs = now;
-  // Updating, the box takes a firmware the user has asked for while the car stands.
-  if (box == SourceState::Connected || box == SourceState::BoxSleeping || box == SourceState::ObdSleeping ||
-      box == SourceState::Updating)
-  {
-    m_boxLostSinceMs.reset();
-  }
-  else if (!m_boxLostSinceMs)
-  {
-    m_boxLostSinceMs = now;
-  }
-
-  bool const gpsLost = IsGpsLost();
-  // Without the box there is nothing to check GPS by.
-  if (gpsLost && IsInertialNavigationEnabled())
-    m_gpsUnchecked = true;
-  auto const gps = GetGpsState();
-  auto const chooseByItself = [&](bool gpsDisabled, Event event, char const * reason)
-  {
-    LOG(LWARNING, (gpsDisabled ? "Box" : "GPS", "is chosen by itself:", reason, "GPS =", gps, "box =", box));
-    Choose(gpsDisabled, true /* byApp */);
-    Notify(event);
-  };
-
-  if (!m_gpsDisabled)
-  {
-    // The box counts from the last trusted GPS position, it drives the car when it has worked for a while.
-    bool const boxReady = m_boxConnectedSinceMs && now - *m_boxConnectedSinceMs >= kBoxReadyMs && m_inertial->IsReady();
-    // The user may want GPS while it is bad, until it has been good since: the box follows it again then. The app keeps
-    // its own choice a while not to switch back and forth while GPS comes and goes, but not when GPS is wrong.
-    bool const held = m_choiceByApp
-                        ? gps != GpsState::Spoofed && MsSince(m_choiceMs) < kAppChoiceHoldMs
-                        : MsSince(m_choiceMs) < kUserChoiceHoldMs && MsSince(m_lastTrustedGpsMs) >= MsSince(m_choiceMs);
-    if (gpsLost && boxReady && !held)
-      chooseByItself(true /* gpsDisabled */, Event::GpsLost, "GPS is lost");
+  // GPS is lost or wrong while driving: the car is followed by the inertial navigation and the marks of the user. The
+  // manual mode is left by itself when GPS is trusted again.
+  if (m_manualMode)
     return;
+  LOG(LWARNING, ("Entering the manual mode:", reason));
+  auto const last = m_savedLocation;
+  SetManualMode(true);
+  // The car is where it was shown until the user moves it: on the road there, or where GPS has left it if
+  // there is no road. The inertial navigation has moved the car on since, it continues from there.
+  bool const inertialReady = m_inertial && m_inertial->IsReady();
+  if (last && !inertialReady && !SetManualLocation(last->m_position) && SourceOf(*last) == PositionSource::Gps)
+  {
+    Fix location = *last;
+    location.m_provider = Provider::Manual;
+    location.m_accuracyM = kManualAccuracyM;
+    m_manualLocation = location;
+    m_manualSetTimeMs = m_clock.NowMs();
+    ApplyManualLocation();
   }
+  Notify(Event::GpsLost);
+}
 
-  // Without the box the mark stands until GPS is good, see CheckMotionSourceStopped().
-  if (gps != GpsState::Good)
+void Engine::CheckGpsLost()
+{
+  // There is no GPS while navigating without the inertial navigation, which turns the manual mode on by itself. GPS
+  // may have been lost or never found since the start. Without navigation the network position is enough, the
+  // manual mode is turned on only when there is none either.
+  if (m_manualMode)
     return;
-  if (m_boxLostSinceMs && now - *m_boxLostSinceMs >= kBoxLostMs && now - m_startTimeMs >= kBoxStartWaitMs)
-    chooseByItself(false /* gpsDisabled */, Event::BoxLost, "the box is lost");
-  else if (m_choiceByApp)
-    chooseByItself(false /* gpsDisabled */, Event::GpsBack, "GPS is good");
+  int64_t const sinceStartMs = m_clock.NowMs() - m_startTimeMs;
+  bool const lost =
+      m_spoofingDetector.IsSpoofed() ||
+      (!m_lastTrustedGpsMs && !m_manualLeftMs ? sinceStartMs > kGpsFirstFixMs : GetGpsSilenceMs() > kGpsLostMs);
+  if (!lost)
+    return;
+  if (m_map.IsNavigating())
+  {
+    EnterManualModeByItself("No GPS while navigating");
+  }
+  else if (!GetWorkingNetwork() && sinceStartMs > kGpsFirstFixMs)
+  {
+    EnterManualModeByItself("No GPS and no network position");
+    m_manualForNoPosition = true;
+  }
 }
 
 void Engine::CheckMotionSourceStopped()
@@ -566,7 +533,7 @@ void Engine::CheckMotionSourceStopped()
   // The box sleeps with the engine stopped: the car stands, nothing is lost.
   if (state == SourceState::BoxSleeping || state == SourceState::ObdSleeping)
     return;
-  if (!m_motionSourceWorked || !m_gpsDisabled || MsSince(m_motionSourceWarnedMs) < kMotionSourceWarningIntervalMs)
+  if (!m_motionSourceWorked || !m_manualMode || MsSince(m_motionSourceWarnedMs) < kMotionSourceWarningIntervalMs)
     return;
   m_motionSourceWarnedMs = m_clock.NowMs();
   Notify(Event::MotionSourceStopped);
@@ -577,7 +544,7 @@ void Engine::CheckNotCalibrated()
   // The car speed comes, but the gyroscope is not calibrated or the sensor box tells it has been moved: the
   // position set by the user stands still while the car drives, and the user would not know why.
   bool driving = false;
-  if (m_inertial && IsInertialNavigationEnabled() && m_gpsDisabled &&
+  if (m_inertial && IsInertialNavigationEnabled() && m_manualMode &&
       m_inertial->GetSourceState() == SourceState::Connected && m_inertial->GetSpeedKmh() >= kNotCalibratedSpeedKmh)
   {
     auto const calibration = m_inertial->GetCalibrationState();
@@ -701,12 +668,17 @@ void Engine::OnGpsSpoofingChanged(bool spoofed)
 {
   LOG(LWARNING, ("GPS spoofed =", spoofed));
   Notify(spoofed ? Event::GpsSpoofed : Event::GpsRestored);
-  if (!spoofed)
+  if (spoofed)
+    m_manualUntilGps = false;
+
+  if (spoofed && (m_map.IsNavigating() || (m_inertial && m_inertial->IsReady())))
+  {
+    EnterManualModeByItself("GPS is spoofed");
     return;
-  CheckChoice();
+  }
 
   // Replace the spoofed position with the network one right away instead of waiting for the next update.
-  if (!m_gpsDisabled && m_networkLocation)
+  if (spoofed && !m_manualMode && m_networkLocation)
   {
     m_savedLocation = m_networkLocation;
     NotifyLocationUpdated();
@@ -760,14 +732,9 @@ void Engine::RestoreTrustedPosition()
 
 void Engine::SaveCarPosition(bool now)
 {
-  // Cell tower positions are hundreds of meters off, the place known before them is kept. So is GPS not checked yet:
-  // the box would count from it after a restart.
-  auto const source = m_savedLocation ? SourceOf(*m_savedLocation) : PositionSource::None;
-  if (source == PositionSource::None || source == PositionSource::Network ||
-      (source == PositionSource::Gps && m_gpsUnchecked))
-  {
+  // Cell tower positions are hundreds of meters off, the place known before them is kept.
+  if (!m_savedLocation || SourceOf(*m_savedLocation) == PositionSource::Network)
     return;
-  }
   // The car maneuvering off the roads is not where its mark waits.
   auto position = m_savedLocation->m_position;
   if (m_inertial && IsInertialNavigationEnabled())
@@ -776,9 +743,11 @@ void Engine::SaveCarPosition(bool now)
   bool const stands = m_carSecondAgo && Distance(position, *m_carSecondAgo) < kCarStandsM;
   m_carSecondAgo = position;
 
+  // GPS absent since the restart is not untrusted.
+  bool const gpsUntrusted = m_manualMode && !m_manualUntilGps;
   char buf[96];
   std::snprintf(buf, sizeof(buf), "%.7f,%.7f,%s,%d", position.m_lat, position.m_lon,
-                FormatOptional(GetCarBearing()).c_str(), m_gpsDisabled ? 1 : 0);
+                FormatOptional(GetCarBearing()).c_str(), gpsUntrusted ? 1 : 0);
   if (buf == m_savedCar || (!now && !stands && MsSince(m_carSavedMs) < kSaveCarIntervalMs))
     return;
   m_savedCar = buf;
@@ -789,7 +758,7 @@ void Engine::SaveCarPosition(bool now)
 void Engine::RestoreCarPosition()
 {
   // The engine that has worked keeps the car itself, e.g. after the app was in the background.
-  if (m_savedLocation || m_manualLocation)
+  if (m_savedLocation || m_manualMode)
     return;
   auto const saved = m_storage.Get<std::string>(Storage::kCarPosition, "");
   auto const parts = strings::Tokenize(saved, ",");
@@ -806,9 +775,9 @@ void Engine::RestoreCarPosition()
   }
   LOG(LINFO, ("The car is where it was left =", saved));
 
-  // The car is shown where it was, as if the user has marked it there: the box continues from it. With GPS chosen
-  // only until a position comes, however coarse.
-  m_acceptNextLocation = !m_gpsDisabled;
+  // GPS may be gone since: the car is shown where it was, as if the user has marked it there.
+  SetManualMode(true);
+  m_manualUntilGps = manual == 0;
   Fix location;
   location.m_provider = Provider::Manual;
   location.m_position = {lat, lon};
@@ -992,7 +961,7 @@ bool Engine::IsCarHeadingShown() const
 {
   if (!GetCarBearing())
     return false;
-  if (m_gpsDisabled)
+  if (m_manualMode)
     return true;
   return m_inertial && IsInertialNavigationEnabled() && MsSince(m_lastTrustedGpsMs) >= kGpsFreshMs;
 }
@@ -1061,23 +1030,20 @@ void Engine::OnInertialLocation(Fix const & inertial)
 {
   if (!m_active)
     return;
-  // With GPS chosen the inertial navigation shows the car between its positions only. Box is chosen by itself at once
-  // when GPS is lost, the mark doesn't stand meanwhile.
-  if (!m_gpsDisabled && MsSince(m_lastTrustedGpsMs) < kGpsLostMs)
+  // Trusted GPS is better, the inertial navigation shows the car between its positions only. In the manual mode GPS
+  // is ignored, so the inertial navigation is used. The manual mode just left by the user waits for GPS a while,
+  // otherwise it would come back before the first GPS position.
+  if (!m_manualMode && (MsSince(m_lastTrustedGpsMs) < kGpsFreshMs || GetGpsSilenceMs() < kGpsLostMs))
   {
     ShowBetweenGpsPositions(inertial);
     return;
   }
-  if (!m_gpsDisabled)
-  {
-    // The car has driven away from where it was left: GPS is to agree with it first, as after any mark.
-    if (m_manualLocation && inertial.m_speedMps.value_or(0) > 0)
-      m_gpsUnchecked = true;
-    CheckChoice();
-    if (!m_gpsDisabled)
-      return;
-  }
 
+  // The car is not followed by GPS any more, the user sees it by the manual mode and can mark the car.
+  EnterManualModeByItself("GPS is lost, the inertial navigation continues");
+  // The car has driven away from where GPS was trusted: GPS is to agree with it now, as after any mark.
+  if (inertial.m_speedMps.value_or(0) > 0)
+    m_manualUntilGps = false;
   m_lastInertialUsedMs = m_clock.NowMs();
   // The mark follows the car maneuvering off the roads, also on a route: a mark waiting on the road of the route
   // hides that the car has left it. The core rebuilds the route once the car goes away from it farther than
@@ -1164,38 +1130,42 @@ void Engine::SetGpsDisabled(bool disabled)
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());
   LOG(LINFO, ("GPS ignored by the user =", disabled));
-  Choose(disabled, false /* byApp */);
+  m_gpsDisabled = disabled;
+  m_storage.Set(Storage::kGpsDisabled, disabled);
+  // GPS ignored by the user is not trusted anew by its first position when it is used again.
+  if (disabled)
+    m_manualUntilGps = false;
 }
 
-void Engine::Choose(bool gpsDisabled, bool byApp)
+void Engine::SetManualMode(bool enabled)
 {
-  // The same choice again, e.g. GPS when the box is forgotten, keeps who has made it and when.
-  if (m_gpsDisabled == gpsDisabled)
+  CHECK_THREAD_CHECKER(m_threadChecker, ());
+  if (m_manualMode == enabled)
     return;
-  m_choiceMs = m_clock.NowMs();
-  m_choiceByApp = byApp;
-  m_storage.Set(Storage::kGpsChosenByApp, byApp);
-  m_gpsDisabled = gpsDisabled;
-  m_storage.Set(Storage::kGpsDisabled, gpsDisabled);
+
+  LOG(LINFO, ("Manual mode =", enabled));
+  m_manualMode = enabled;
+  m_manualForNoPosition = false;
+  m_manualUntilGps = false;
+  if (!enabled)
+    m_manualLeftMs = m_clock.NowMs();
+  m_manualLocation.reset();
+  m_acceptNextLocation = !enabled;
+  m_gpsReturnDetector.Reset();
   m_offRoadGpsCount = 0;
-  if (gpsDisabled && !m_manualLocation && m_savedLocation && SourceOf(*m_savedLocation) != PositionSource::Network)
-  {
-    // The mark stands where the car is shown when the box stops, until the box or the user moves it. The box may
-    // have driven the car on since the last GPS position: it moves the mark before it is shown.
-    m_manualLocation = *m_savedLocation;
-    m_manualLocation->m_provider = Provider::Manual;
-    m_manualLocation->m_accuracyM = kManualAccuracyM;
-    m_manualSetTimeMs = m_savedLocation->m_timeMs;
-    m_manualRepeatTimer.Start(kManualRepeatIntervalMs, [this] { ApplyManualLocation(); });
-  }
-  else if (!gpsDisabled)
-  {
-    // The mark of the box or of the user is replaced by the next position, even if it is less accurate.
-    m_manualLocation.reset();
-    m_manualRepeatTimer.Stop();
-    m_acceptNextLocation = true;
-  }
+  m_manualRepeatTimer.Stop();
   Notify(Event::ManualModeChanged);
+}
+
+bool Engine::SetManualLocation(ms::LatLon const & position)
+{
+  CHECK_THREAD_CHECKER(m_threadChecker, ());
+  CHECK(m_manualMode, ("Manual mode is off"));
+  auto const road = FindMarkRoad(position);
+  if (!road)
+    return false;
+  PutMark(position, *road);
+  return true;
 }
 
 void Engine::SetMarkByTap(bool armed)
@@ -1215,10 +1185,9 @@ bool Engine::PlaceMarkByTap(ms::LatLon const & position)
     Notify(Event::MarkNoRoad);
     return false;
   }
-  // GPS may work: the mark tells that it is wrong, the box follows the car from the mark.
+  // GPS may work: the mark tells that it is wrong, as the manual mode turned on by the user did.
+  SetManualMode(true);
   PutMark(position, *road);
-  if (!m_gpsDisabled)
-    SetGpsDisabled(true);
   m_markByTap = false;
   return true;
 }
@@ -1260,6 +1229,8 @@ void Engine::PutMark(ms::LatLon const & position, RoadPoint const & road)
 
   m_manualLocation = location;
   m_manualSetTimeMs = m_clock.NowMs();
+  // The user shows that GPS is wrong, even if it was trusted before the restart.
+  m_manualUntilGps = false;
   m_lastPositionSource = PositionSource::Manual;
   RebuildRouteIfOffRoute(location);
   // The mark looks along the road whatever the gyroscope has counted. A heading kept 18 degrees aside of the road
@@ -1405,7 +1376,7 @@ void Engine::ApplyManualLocation()
 
 std::optional<Fix> Engine::GetWorkingGps() const
 {
-  if (!m_lastGoodGps || m_spoofingDetector.IsSpoofed() || AgeMs(*m_lastGoodGps) > kGpsLostMs ||
+  if (!m_lastGoodGps || m_spoofingDetector.IsSpoofed() || AgeMs(*m_lastGoodGps) > kGpsStatusMaxAgeMs ||
       m_lastGoodGpsGapMs > kGpsStatusMaxGapMs)
   {
     return {};
@@ -1424,7 +1395,7 @@ PositionSource Engine::GetPositionSource() const
 {
   if (IsInertialActive())
     return PositionSource::Inertial;
-  if (m_gpsDisabled)
+  if (m_manualMode)
     return m_manualLocation ? PositionSource::Manual : PositionSource::None;
   if (!m_savedLocation || !m_active || AgeMs(*m_savedLocation) > kPositionStaleMs)
     return PositionSource::None;
@@ -1437,10 +1408,10 @@ Status Engine::GetStatus()
   Status status;
   status.m_source = GetPositionSource();
   status.m_accuracyM = m_savedLocation ? m_savedLocation->m_accuracyM : 0;
-  status.m_manualMode = m_gpsDisabled;
+  status.m_manualMode = m_manualMode;
   status.m_markByTap = m_markByTap;
   status.m_manualAgeMs = MsSince(m_manualSetTimeMs);
-  status.m_gpsState = GetGpsState();
+  status.m_gpsSpoofed = m_spoofingDetector.IsSpoofed();
   status.m_gpsDisabled = m_gpsDisabled;
   if (auto const gps = GetWorkingGps())
     status.m_workingGpsAccuracyM = gps->m_accuracyM;
@@ -1448,7 +1419,7 @@ Status Engine::GetStatus()
     status.m_workingNetworkAccuracyM = network->m_accuracyM;
   // The position is moved by hand only when it does not come from GPS: a GPS one is moved by the car.
   status.m_movedByHand =
-      m_gpsDisabled || status.m_source == PositionSource::Inertial || status.m_source == PositionSource::Manual;
+      m_manualMode || status.m_source == PositionSource::Inertial || status.m_source == PositionSource::Manual;
   status.m_shiftForwardBlocked = IsShiftBlocked(true);
   status.m_shiftBackBlocked = IsShiftBlocked(false);
   status.m_shiftStepM = m_storage.Get<int32_t>(Storage::kShiftStepM, 50);
@@ -1494,6 +1465,11 @@ Status Engine::GetStatus()
 void Engine::LogStateChanges()
 {
   auto const status = GetStatus();
+  std::string gps = "NONE";
+  if (status.m_gpsSpoofed)
+    gps = "SPOOFED";
+  else if (status.m_workingGpsAccuracyM)
+    gps = "OK";
   std::string box = "NOT_SET_UP";
   if (status.m_inertialEnabled)
     box = status.m_inertialStarted ? DebugPrint(status.m_sourceState) : "STOPPED";
@@ -1505,7 +1481,7 @@ void Engine::LogStateChanges()
     last = std::move(now);
   };
   log("Position source", m_loggedState.m_source, DebugPrint(status.m_source));
-  log("GPS signal", m_loggedState.m_gps, DebugPrint(status.m_gpsState));
+  log("GPS signal", m_loggedState.m_gps, gps);
   log("Box state", m_loggedState.m_box, box);
   log("Box Bluetooth", m_loggedState.m_ble, DebugPrint(status.m_bleState));
 }
@@ -1516,7 +1492,7 @@ void Engine::LogTrip()
   if (!m_active)
     return;
 
-  CheckChoice();
+  CheckGpsLost();
   CheckMotionSourceStopped();
   CheckNotCalibrated();
   CheckFirmwareUpdate();
@@ -1571,9 +1547,6 @@ std::string Engine::GetTripLine()
   // The positions shown between GPS positions since the previous line: the mark drives smoothly with 4-5 a second.
   line += " fill=" + std::to_string(m_positionsBetweenGps);
   line += std::string(" spoofed=") + (m_spoofingDetector.IsSpoofed() ? "1" : "0");
-  // What GPS is worth, and the source chosen and by whom: GPS or BOX, /APP if by itself.
-  line += " gpsst=" + DebugPrint(GetGpsState());
-  line += std::string(" choice=") + (m_gpsDisabled ? "BOX" : "GPS") + (m_choiceByApp ? "/APP" : "");
   bool const navigating = m_map.IsNavigating();
   line += std::string(" nav=") + (navigating ? "1" : "0");
   // The route left tells if the route follows the car: the passed part is cut off by it.
@@ -1700,19 +1673,6 @@ std::string DebugPrint(PositionSource source)
   case PositionSource::Network: return "NETWORK";
   case PositionSource::Manual: return "MANUAL";
   case PositionSource::Inertial: return "INERTIAL";
-  }
-  UNREACHABLE();
-}
-
-std::string DebugPrint(GpsState state)
-{
-  switch (state)
-  {
-  case GpsState::None: return "NONE";
-  case GpsState::Coarse: return "COARSE";
-  case GpsState::Spoofed: return "SPOOFED";
-  case GpsState::Checking: return "CHECKING";
-  case GpsState::Good: return "GOOD";
   }
   UNREACHABLE();
 }

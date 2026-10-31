@@ -922,7 +922,7 @@
     <string name="nogps_manual_position">Указать своё местоположение вручную</string>
     <!-- The user has pressed the button to show on the map where the car is -->
     <string name="nogps_mark_by_tap">Коснитесь дороги, где сейчас машина</string>
-    <string name="nogps_gps_spoofed">GPS подменён! Используем вышки и Wi-Fi.</string>
+    <string name="nogps_gps_spoofed">GPS подменён! Используем вышки и Wi-Fi. Можно также указать позицию вручную.</string>
     <string name="nogps_gps_restored">GPS снова в норме</string>
     <!-- The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored -->
     <string name="nogps_source_box">Блок</string>
@@ -976,21 +976,13 @@
     <string name="nogps_shift_at_turn">Позиция у перекрёстка, дальше переносить нельзя</string>
     <string name="nogps_status_gps_spoofed">GPS подменён</string>
     <string name="nogps_status_no_gps">Нет GPS</string>
-    <!-- Status of GPS in the GPS | Box selector: only Wi-Fi and cell towers, or positions less accurate than 30 m -->
-    <string name="nogps_status_gps_coarse">Низкая точность GPS</string>
-    <!-- Status of GPS in the GPS | Box selector, followed by the accuracy: GPS works again, it is not trusted until it has agreed with the sensor box for a while -->
-    <string name="nogps_status_gps_checking">Проверяем GPS</string>
     <string name="nogps_status_gps_off">GPS выключен в настройках системы</string>
-    <!-- GPS is chosen by itself in the GPS | Box selector after Box was chosen by itself -->
-    <string name="nogps_gps_back_auto">GPS снова надёжный и ведёт машину</string>
+    <string name="nogps_gps_back_auto">GPS снова надёжный, ручной режим выключен</string>
     <string name="nogps_reverse_direction">Развернуть машину на дороге</string>
     <!-- The button shown after a turn that fits several roads: it moves the mark of the car to the next of them. -->
     <string name="nogps_switch_mark">Показать машину на другой возможной дороге</string>
     <string name="nogps_mark_no_road">Здесь нет дороги, поставьте метку на дорогу</string>
-    <!-- Box is chosen by itself in the GPS | Box selector -->
-    <string name="nogps_gps_lost_auto">GPS пропал или сбился, машину ведёт блок</string>
-    <!-- GPS is chosen by itself in the GPS | Box selector: the sensor box has sent no car data for 10 s -->
-    <string name="nogps_box_lost_auto">Блок пропал, машину ведёт GPS</string>
+    <string name="nogps_gps_lost_auto">GPS пропал или сбился, включён ручной режим</string>
     <!-- Status of the position: the mark of the car stands and waits for the user -->
     <string name="nogps_status_road_lost">Дорога потеряна</string>
     <!-- Second line of the status "Road lost" -->

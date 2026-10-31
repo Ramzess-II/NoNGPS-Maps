@@ -1230,7 +1230,7 @@
 
 /* The user has pressed the button to show on the map where the car is */
 "nogps_mark_by_tap" = "Коснитесь дороги, где сейчас машина";
-"nogps_gps_spoofed" = "GPS подменён! Используем вышки и Wi-Fi.";
+"nogps_gps_spoofed" = "GPS подменён! Используем вышки и Wi-Fi. Можно также указать позицию вручную.";
 "nogps_gps_restored" = "GPS снова в норме";
 "nogps_status_gps" = "GPS";
 
@@ -1270,27 +1270,14 @@
 "nogps_shift_at_turn" = "Позиция у перекрёстка, дальше переносить нельзя";
 "nogps_status_gps_spoofed" = "GPS подменён";
 "nogps_status_no_gps" = "Нет GPS";
-
-/* Status of GPS in the GPS | Box selector: only Wi-Fi and cell towers, or positions less accurate than 30 m */
-"nogps_status_gps_coarse" = "Низкая точность GPS";
-
-/* Status of GPS in the GPS | Box selector, followed by the accuracy: GPS works again, it is not trusted until it has agreed with the sensor box for a while */
-"nogps_status_gps_checking" = "Проверяем GPS";
 "nogps_status_gps_off" = "GPS выключен в настройках системы";
-
-/* GPS is chosen by itself in the GPS | Box selector after Box was chosen by itself */
-"nogps_gps_back_auto" = "GPS снова надёжный и ведёт машину";
+"nogps_gps_back_auto" = "GPS снова надёжный, ручной режим выключен";
 "nogps_reverse_direction" = "Развернуть машину на дороге";
 
 /* The button shown after a turn that fits several roads: it moves the mark of the car to the next of them. */
 "nogps_switch_mark" = "Показать машину на другой возможной дороге";
 "nogps_mark_no_road" = "Здесь нет дороги, поставьте метку на дорогу";
-
-/* Box is chosen by itself in the GPS | Box selector */
-"nogps_gps_lost_auto" = "GPS пропал или сбился, машину ведёт блок";
-
-/* GPS is chosen by itself in the GPS | Box selector: the sensor box has sent no car data for 10 s */
-"nogps_box_lost_auto" = "Блок пропал, машину ведёт GPS";
+"nogps_gps_lost_auto" = "GPS пропал или сбился, включён ручной режим";
 
 /* Status of the position: the mark of the car stands and waits for the user */
 "nogps_status_road_lost" = "Дорога потеряна";

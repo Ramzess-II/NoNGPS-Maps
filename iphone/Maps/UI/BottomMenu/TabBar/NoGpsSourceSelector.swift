@@ -1,6 +1,5 @@
-/// Chooses where the position of the car comes from: GPS, or the sensor box with GPS ignored. The core moves the choice
-/// by itself when the chosen source fails. Each segment shows how its source works now, tapping the chosen one tells
-/// more.
+/// Chooses where the position of the car comes from: GPS while it is good with the sensor box taking over by itself,
+/// or the box alone with GPS ignored. Each segment shows how its source works now, tapping the chosen one tells more.
 final class NoGpsSourceSelector: UIView {
   private enum Constants {
     static let height = CGFloat(40)
@@ -102,19 +101,16 @@ final class NoGpsSourceSelector: UIView {
     gps.accessibilityValue = Self.gpsText(status)
     let antenna = UIImage(systemName: Constants.gpsSymbol)
     let slashed = UIImage(systemName: Constants.gpsSymbol + ".slash") ?? antenna
-    // The color tells what GPS is worth, whichever source is chosen.
-    guard !LocationManager.isLocationProhibited() else {
+    // The color tells the GPS signal, whichever source is chosen.
+    if LocationManager.isLocationProhibited() {
       gps.show(slashed, color: .secondaryLabel)
-      return
-    }
-    switch status.gpsState {
-    case .good: gps.show(antenna, color: Constants.goodColor)
-    // GPS works, it is not trusted until it has agreed with the box for a while.
-    case .checking: gps.show(antenna, color: .systemBlue)
-    case .spoofed: gps.show(antenna, color: .systemOrange, badge: ("exclamationmark", .systemOrange))
-    case .coarse: gps.show(antenna, color: .systemOrange)
-    case .none: gps.show(slashed, color: .systemRed)
-    @unknown default: gps.show(slashed, color: .systemRed)
+    } else if status.gpsSpoofed {
+      gps.show(antenna, color: .systemOrange, badge: ("exclamationmark", .systemOrange))
+    } else if status.workingGpsAccuracyM >= 0 {
+      // Also while it is ignored or not trusted yet.
+      gps.show(antenna, color: Constants.goodColor)
+    } else {
+      gps.show(slashed, color: .systemRed)
     }
   }
 
@@ -151,15 +147,11 @@ final class NoGpsSourceSelector: UIView {
     if LocationManager.isLocationProhibited() {
       return L("nogps_status_gps_off")
     }
-    let accuracy = " · ±" + NoGpsControls.formatAccuracy(status.workingGpsAccuracyM)
-    switch status.gpsState {
-    case .good: return L("nogps_status_gps") + accuracy
-    case .checking: return L("nogps_status_gps_checking") + accuracy
-    case .spoofed: return L("nogps_status_gps_spoofed")
-    case .coarse: return L("nogps_status_gps_coarse")
-    case .none: return L("nogps_status_no_gps")
-    @unknown default: return L("nogps_status_no_gps")
+    if status.gpsSpoofed {
+      return L("nogps_status_gps_spoofed")
     }
+    guard status.workingGpsAccuracyM >= 0 else { return L("nogps_status_no_gps") }
+    return L("nogps_status_gps") + " · ±" + NoGpsControls.formatAccuracy(status.workingGpsAccuracyM)
   }
 
   // MARK: - Actions

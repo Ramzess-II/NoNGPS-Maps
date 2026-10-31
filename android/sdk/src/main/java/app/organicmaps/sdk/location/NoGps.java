@@ -98,28 +98,12 @@ public final class NoGps
     MOUNT_MOVED,
   }
 
-  /**
-   * What GPS is worth now: the icon of GPS, the choice of GPS or Box and the log take it.
-   */
-  public enum GpsState
-  {
-    NONE,
-    // Only Wi-Fi and cell towers, or positions less accurate than 30 m.
-    COARSE,
-    // Told by the spoofing detector, by the positions off the roads or away from the box.
-    SPOOFED,
-    // Good positions after GPS was bad, not agreeing with the box long enough yet.
-    CHECKING,
-    GOOD,
-  }
-
   public enum Event
   {
-    // GPS or Box is chosen, by the user or by itself.
     MANUAL_MODE_CHANGED,
-    // GPS is chosen by itself: it is good again after Box was chosen by itself.
+    // The manual mode has been left by itself: GPS is trusted again.
     GPS_BACK,
-    // Box is chosen by itself: GPS is lost or wrong, the box drives the car.
+    // The manual mode has been turned on by itself: GPS is lost or wrong while driving.
     GPS_LOST,
     GPS_SPOOFED,
     GPS_RESTORED,
@@ -142,8 +126,6 @@ public final class NoGps
     // The sensor box has been powered on: it is new in the car, or it was taken out and may be put in another
     // way. The user should calibrate it on a level place.
     BOX_CALIBRATION_ADVISED,
-    // GPS is chosen by itself: the box is lost and GPS is good.
-    BOX_LOST,
   }
 
   // nogps::Provider.
@@ -182,7 +164,6 @@ public final class NoGps
     // Of the shown position.
     @Keep
     public float accuracyM;
-    // Box is chosen: the box drives the car and the user corrects it, GPS is ignored.
     @Keep
     public boolean manualMode;
     // The next tap on the map shows where the car is.
@@ -192,7 +173,7 @@ public final class NoGps
     @Keep
     public long manualAgeMs;
     @Keep
-    int gpsState;
+    public boolean gpsSpoofed;
     @Keep
     public boolean gpsDisabled;
     // GPS works now, also in the manual mode where it is not used. The accuracy is negative if it doesn't.
@@ -310,12 +291,6 @@ public final class NoGps
     public PositionSource getSource()
     {
       return PositionSource.values()[source];
-    }
-
-    @NonNull
-    public GpsState getGpsState()
-    {
-      return GpsState.values()[gpsState];
     }
 
     @NonNull

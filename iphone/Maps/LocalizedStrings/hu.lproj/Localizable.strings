@@ -1230,7 +1230,7 @@
 
 /* The user has pressed the button to show on the map where the car is */
 "nogps_mark_by_tap" = "Tap the road where the car is";
-"nogps_gps_spoofed" = "GPS is spoofed! Using cell towers and Wi-Fi.";
+"nogps_gps_spoofed" = "GPS is spoofed! Using cell towers and Wi-Fi. You can also set your position manually.";
 "nogps_gps_restored" = "GPS is fine again";
 "nogps_status_gps" = "GPS";
 
@@ -1270,27 +1270,14 @@
 "nogps_shift_at_turn" = "The position is at a crossing, it can not be moved further";
 "nogps_status_gps_spoofed" = "GPS spoofed";
 "nogps_status_no_gps" = "No GPS";
-
-/* Status of GPS in the GPS | Box selector: only Wi-Fi and cell towers, or positions less accurate than 30 m */
-"nogps_status_gps_coarse" = "Low GPS accuracy";
-
-/* Status of GPS in the GPS | Box selector, followed by the accuracy: GPS works again, it is not trusted until it has agreed with the sensor box for a while */
-"nogps_status_gps_checking" = "Checking GPS";
 "nogps_status_gps_off" = "GPS is off in the system settings";
-
-/* GPS is chosen by itself in the GPS | Box selector after Box was chosen by itself */
-"nogps_gps_back_auto" = "GPS is good again and drives the car";
+"nogps_gps_back_auto" = "GPS is trusted again, the manual mode is off";
 "nogps_reverse_direction" = "Turn the car around on the road";
 
 /* The button shown after a turn that fits several roads: it moves the mark of the car to the next of them. */
 "nogps_switch_mark" = "Show the car on another road it may be on";
 "nogps_mark_no_road" = "There is no road here, set the mark on a road";
-
-/* Box is chosen by itself in the GPS | Box selector */
-"nogps_gps_lost_auto" = "GPS is lost or wrong, the box drives the car";
-
-/* GPS is chosen by itself in the GPS | Box selector: the sensor box has sent no car data for 10 s */
-"nogps_box_lost_auto" = "The box is lost, GPS drives the car";
+"nogps_gps_lost_auto" = "GPS is lost or wrong, the manual mode is on";
 
 /* Status of the position: the mark of the car stands and waits for the user */
 "nogps_status_road_lost" = "Road lost";
