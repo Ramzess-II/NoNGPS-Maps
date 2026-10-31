@@ -5,6 +5,7 @@
 #include "map/nogps/delegate.hpp"
 #include "map/nogps/engine.hpp"
 
+#include <array>
 #include <memory>
 #include <string>
 
@@ -136,6 +137,14 @@ void SetNoGpsDouble(JNIEnv * env, jobject obj, char const * name, double value)
 void SetNoGpsLong(JNIEnv * env, jobject obj, char const * name, int64_t value)
 {
   env->SetLongField(obj, env->GetFieldID(env->GetObjectClass(obj), name, "J"), static_cast<jlong>(value));
+}
+
+template <size_t N>
+void SetNoGpsFloats(JNIEnv * env, jobject obj, char const * name, std::array<jfloat, N> const & values)
+{
+  jni::ScopedLocalRef<jfloatArray> array(env, env->NewFloatArray(N));
+  env->SetFloatArrayRegion(array.get(), 0, N, values.data());
+  env->SetObjectField(obj, env->GetFieldID(env->GetObjectClass(obj), name, "[F"), array.get());
 }
 
 void SetNoGpsString(JNIEnv * env, jobject obj, char const * name, std::string const & value)
@@ -337,6 +346,14 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsDouble(env, out, "speedScale", status.m_speedScale);
   SetNoGpsField(env, out, "speedTableRanges", status.m_speedTableRanges);
   SetNoGpsField(env, out, "roughSpeedTableRanges", status.m_roughSpeedTableRanges);
+  std::array<jfloat, nogps::SpeedTable::kRanges> carM, scale;
+  for (size_t i = 0; i < carM.size(); ++i)
+  {
+    carM[i] = static_cast<jfloat>(status.m_speedTable[i].m_carM);
+    scale[i] = static_cast<jfloat>(status.m_speedTable[i].m_scale);
+  }
+  SetNoGpsFloats(env, out, "speedTableCarM", carM);
+  SetNoGpsFloats(env, out, "speedTableScale", scale);
   SetNoGpsDouble(env, out, "speedLagSec", status.m_speedLagSec);
   SetNoGpsField(env, out, "speedLagMeasured", status.m_speedLagMeasured);
   SetNoGpsField(env, out, "calibration", static_cast<int>(status.m_calibration));

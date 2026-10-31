@@ -353,6 +353,11 @@ public:
   /// \returns how many speed ranges of the table are measured by GPS.
   int GetSpeedTableRanges() const { return m_speedTable.GetKnownRanges(); }
   int GetRoughSpeedTableRanges() const { return m_roughSpeedTable.GetKnownRanges(); }
+  /// \returns the ranges of the table in use: by GPS once it has measured a range, the rough one until then.
+  SpeedTable::Ranges GetSpeedTable() const
+  {
+    return (m_speedTable.GetKnownRanges() > 0 ? m_speedTable : m_roughSpeedTable).GetRanges();
+  }
   std::string GetSpeedTableDescription() const { return m_speedTable.ToString(); }
   std::optional<CarInfo> GetCarInfo() const;
   SourceState GetSourceState() const;

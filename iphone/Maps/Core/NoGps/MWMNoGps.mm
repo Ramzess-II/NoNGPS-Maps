@@ -140,6 +140,15 @@ std::optional<double> NonNegative(double value)
     _speedScale = status.m_speedScale;
     _speedTableRanges = status.m_speedTableRanges;
     _roughSpeedTableRanges = status.m_roughSpeedTableRanges;
+    NSMutableArray<NSNumber *> * carM = [NSMutableArray arrayWithCapacity:status.m_speedTable.size()];
+    NSMutableArray<NSNumber *> * scale = [NSMutableArray arrayWithCapacity:status.m_speedTable.size()];
+    for (auto const & range : status.m_speedTable)
+    {
+      [carM addObject:@(range.m_carM)];
+      [scale addObject:@(range.m_scale)];
+    }
+    _speedTableCarM = carM;
+    _speedTableScale = scale;
     _speedLagSec = status.m_speedLagSec;
     _speedLagMeasured = status.m_speedLagMeasured;
     _calibration = static_cast<MWMNoGpsCalibrationState>(status.m_calibration);

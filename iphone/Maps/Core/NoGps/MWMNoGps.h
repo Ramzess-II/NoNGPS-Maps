@@ -135,6 +135,10 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly) double speedScale;
 @property(nonatomic, readonly) NSInteger speedTableRanges;
 @property(nonatomic, readonly) NSInteger roughSpeedTableRanges;
+/// The ranges of the table in use, the rough one while speedTableRanges is 0: the distance driven by the car speed
+/// and the ratio, 0 until the range is measured.
+@property(nonatomic, readonly) NSArray<NSNumber *> * speedTableCarM;
+@property(nonatomic, readonly) NSArray<NSNumber *> * speedTableScale;
 @property(nonatomic, readonly) double speedLagSec;
 @property(nonatomic, readonly) BOOL speedLagMeasured;
 @property(nonatomic, readonly) MWMNoGpsCalibrationState calibration;

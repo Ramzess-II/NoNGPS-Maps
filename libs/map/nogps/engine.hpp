@@ -80,6 +80,8 @@ struct Status
   int m_speedTableRanges = 0;
   // The rough table learned from the roads is used while GPS has measured no range.
   int m_roughSpeedTableRanges = 0;
+  // The ranges of the table in use, the rough one while m_speedTableRanges is 0.
+  SpeedTable::Ranges m_speedTable{};
   double m_speedLagSec = 0;
   bool m_speedLagMeasured = false;
   CalibrationState m_calibration = CalibrationState::None;
