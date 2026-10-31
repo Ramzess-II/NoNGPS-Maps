@@ -454,15 +454,23 @@ class GpsTrack:
         return a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k
 
 
-def summary(name, errors):
+def error_stats(errors):
+    """The median, 90% and shares over 30, 50 and 100 m of the distances from GPS, None without any."""
     if not errors:
-        print('%-22s no seconds with GPS' % name)
-        return
+        return None
     errors = sorted(errors)
     n = len(errors)
+    return dict(n=n, median=errors[n // 2], p90=errors[n * 9 // 10],
+                over30=100 * sum(e > 30 for e in errors) / n, over50=100 * sum(e > 50 for e in errors) / n,
+                over100=100 * sum(e > 100 for e in errors) / n)
+
+
+def summary(name, stats):
+    if not stats:
+        print('%-22s no seconds with GPS' % name)
+        return
     print('%-22s %5d s  median %4.0f m  90%% %4.0f m  over 30 m %4.1f%%  over 50 m %4.1f%%  over 100 m %4.1f%%' % (
-        name, n, errors[n // 2], errors[n * 9 // 10], 100 * sum(e > 30 for e in errors) / n,
-        100 * sum(e > 50 for e in errors) / n, 100 * sum(e > 100 for e in errors) / n))
+        name, stats['n'], stats['median'], stats['p90'], stats['over30'], stats['over50'], stats['over100']))
 
 
 EVENTS = [
@@ -486,15 +494,9 @@ EVENTS = [
 ]
 
 
-def compare(args):
-    trips, others, _ = read(args.logs, args.day)
-    replayed, replayed_others, _ = read([args.replay], args.day)
-    start = parse_clock(args.start) if args.start else 0
-    end = parse_clock(args.end) if args.end else 86_400_000
+def compare_stats(trips, others, replayed, replayed_others, start, end, change):
+    """The trip against the trip driven again from |start| to |end|, ms of the day, as read() gives them."""
     gps = GpsTrack(trips)
-    if not replayed:
-        print('nothing is driven again in', args.replay)
-        return
 
     def errors_of(rows):
         result = {}
@@ -510,10 +512,10 @@ def compare(args):
     was = errors_of(trips)
     now = errors_of(replayed)
     both = sorted(set(was) & set(now))
-    print('the day %s, driven again: %d s of TRIP lines, the trip had %d' % (args.day, len(replayed), len(trips)))
-    summary('the trip, all', list(was.values()))
-    summary('the trip, same seconds', [was[s] for s in both])
-    summary('driven again', [now[s] for s in both])
+    stats = dict(lines=len(replayed), trip_lines=len(trips), errors=[
+        ('the trip, all', error_stats(list(was.values()))),
+        ('the trip, same seconds', error_stats([was[s] for s in both])),
+        ('driven again', error_stats([now[s] for s in both]))])
 
     # The mark of the trip against the mark driven again, GPS or not.
     original = {f['ms'] // 1000: lat_lon(f.get('pos')) for f in trips if f.get('src') == 'INERTIAL'}
@@ -522,30 +524,26 @@ def compare(args):
         a, b = original.get(f['ms'] // 1000), lat_lon(f.get('pos'))
         if a and b and number(f, 'speed', 0) > 0 and start <= f['ms'] <= end:
             apart.append(meters(a, b))
-    if apart:
-        apart.sort()
-        print('the two marks apart:   median %.0f m, 90%% %.0f m, over 30 m %.1f%% of %d s' % (
-            apart[len(apart) // 2], apart[len(apart) * 9 // 10], 100 * sum(d > 30 for d in apart) / len(apart),
-            len(apart)))
+    stats['apart'] = error_stats(apart)
 
-    print('%-34s %8s %8s' % ('', 'the trip', 'again'))
+    stats['events'] = []
     for name, pattern in EVENTS:
         rx = re.compile(pattern)
         a = sum(1 for ms, text, _ in others if start <= ms <= end and rx.search(text))
         b = sum(1 for ms, text, _ in replayed_others if start <= ms <= end and rx.search(text))
-        print('%-34s %8d %8d' % (name, a, b))
+        stats['events'].append((name, a, b))
     for name, key in (('seconds stopped as lost', 'lost'), ('seconds followed apart', 'self'),
                       ('seconds paused', 'paused')):
         a = sum(1 for f in trips if start <= f['ms'] <= end and f.get(key) == '1' and number(f, 'speed', 0) > 0)
         b = sum(1 for f in replayed if start <= f['ms'] <= end and f.get(key) == '1' and number(f, 'speed', 0) > 0)
-        print('%-34s %8d %8d' % (name, a, b))
+        stats['events'].append((name, a, b))
 
     # Where it has changed: the stretches the mark driven again is much closer to GPS or much farther from it.
     stretches = []
     current = None
     for s in both:
-        change = now[s] - was[s]
-        kind = 'better' if change < -args.change else 'worse' if change > args.change else None
+        difference = now[s] - was[s]
+        kind = 'better' if difference < -change else 'worse' if difference > change else None
         if kind and current and current['kind'] == kind and s - current['to'] <= 3:
             current['to'] = s
             current['was'].append(was[s])
@@ -555,15 +553,46 @@ def compare(args):
             stretches.append(current)
         else:
             current = None
-    stretches = [x for x in stretches if x['to'] - x['start'] >= 2]
+    stats['stretches'] = [dict(kind=x['kind'], start=x['start'], to=x['to'], was=max(x['was']), now=max(x['now']))
+                          for x in stretches if x['to'] - x['start'] >= 2]
+    return stats
+
+
+def compare(args):
+    trips, others, _ = read(args.logs, args.day)
+    replayed, replayed_others, _ = read([args.replay], args.day)
+    start = parse_clock(args.start) if args.start else 0
+    end = parse_clock(args.end) if args.end else 86_400_000
+    if not replayed:
+        print('nothing is driven again in', args.replay)
+        return
+    print_compare(compare_stats(trips, others, replayed, replayed_others, start, end, args.change), args.day,
+                  args.change)
+
+
+def print_compare(stats, day, change):
+    print('the day %s, driven again: %d s of TRIP lines, the trip had %d' % (day, stats['lines'],
+                                                                          stats['trip_lines']))
+    for name, errors in stats['errors']:
+        summary(name, errors)
+    apart = stats['apart']
+    if apart:
+        print('the two marks apart:   median %.0f m, 90%% %.0f m, over 30 m %.1f%% of %d s' % (
+            apart['median'], apart['p90'], apart['over30'], apart['n']))
+
+    print('%-34s %8s %8s' % ('', 'the trip', 'again'))
+    for name, a, b in stats['events']:
+        print('%-34s %8d %8d' % (name, a, b))
+
+    stretches = stats['stretches']
     print('stretches of 3 s or longer changed by more than %d m: better %d (%d s), worse %d (%d s)' % (
-        args.change, sum(x['kind'] == 'better' for x in stretches),
+        change, sum(x['kind'] == 'better' for x in stretches),
         sum(x['to'] - x['start'] + 1 for x in stretches if x['kind'] == 'better'),
         sum(x['kind'] == 'worse' for x in stretches),
         sum(x['to'] - x['start'] + 1 for x in stretches if x['kind'] == 'worse')))
     for x in stretches:
         print('  %s %3d s %-6s  the trip %4.0f m, again %4.0f m from GPS at the worst' % (
-            clock(x['start'] * 1000), x['to'] - x['start'] + 1, x['kind'], max(x['was']), max(x['now'])))
+            clock(x['start'] * 1000), x['to'] - x['start'] + 1, x['kind'], x['was'], x['now']))
 
 
 def main():
