@@ -1236,11 +1236,6 @@
 
 /* The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored */
 "nogps_source_box" = "Box";
-"nogps_status_network_spoofed" = "GPS spoofed · towers ±%@";
-"nogps_status_network_no_gps" = "No GPS · towers ±%@";
-"nogps_status_manual_just_now" = "Manual · just now";
-"nogps_status_manual_minutes" = "Manual · %d min ago";
-"nogps_status_none" = "No position";
 "nogps_meters" = "%d m";
 "nogps_kilometers" = "%.1f km";
 "nogps_status_inertial" = "Inertial · ±%@";
@@ -1273,11 +1268,9 @@
 "nogps_speed_table_row" = "%1$d–%2$d km/h  %3$@";
 "nogps_speed_table_left" = "%d m to go";
 "nogps_shift_at_turn" = "The position is at a crossing, it can not be moved further";
-"nogps_status_gps_back" = "GPS is back ±%@";
 "nogps_status_gps_spoofed" = "GPS spoofed";
 "nogps_status_no_gps" = "No GPS";
 "nogps_status_gps_off" = "GPS is off in the system settings";
-"nogps_status_towers" = "towers ±%@";
 "nogps_gps_back_auto" = "GPS is trusted again, the manual mode is off";
 "nogps_reverse_direction" = "Turn the car around on the road";
 
@@ -1291,15 +1284,6 @@
 
 /* Second line of the status "Road lost" */
 "nogps_status_road_lost_hint" = "press the finger button and tap the road where you are";
-
-/* Line of the status of the position: the sensor box gives the car speed */
-"nogps_status_box_ok" = "box connected";
-
-/* Line of the status of the position: the sensor box is not heard */
-"nogps_status_box_none" = "no box";
-
-/* Line of the status of the position: the sensor box is heard, the car speed does not come */
-"nogps_status_box_no_car" = "box connected, no car data";
 "nogps_sensors_box" = "Box: %1$@";
 
 /* State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth" */

@@ -14,9 +14,6 @@ final class NoGpsControls: NSObject {
     static let blinkKey = "blink"
     static let blinkDuration: CFTimeInterval = 0.4
     static let blinkOpacity = Float(0.2)
-    static let gpsColor = UIColor(red: 0x2E / 255, green: 0x9E / 255, blue: 0x48 / 255, alpha: 1)
-    static let networkColor = UIColor(red: 0xEF / 255, green: 0x7D / 255, blue: 0x00 / 255, alpha: 1)
-    static let manualColor = UIColor(red: 0x24 / 255, green: 0x9C / 255, blue: 0xF2 / 255, alpha: 1)
     static let noneColor = UIColor(red: 0xD3 / 255, green: 0x2F / 255, blue: 0x2F / 255, alpha: 1)
     static let inertialColor = UIColor(red: 0x7B / 255, green: 0x1F / 255, blue: 0xA2 / 255, alpha: 1)
   }
@@ -94,8 +91,6 @@ final class NoGpsControls: NSObject {
     statusButton.titleLabel?.textAlignment = .center
     statusButton.titleLabel?.lineBreakMode = .byTruncatingTail
     statusButton.addTarget(self, action: #selector(statusTapped), for: .touchUpInside)
-    // Hidden while the map controls are redesigned: the source and the box are shown in the bottom bar.
-    statusButton.isHidden = true
     superview.addSubview(statusButton)
 
     shiftStepButton.translatesAutoresizingMaskIntoConstraints = false
@@ -204,26 +199,21 @@ final class NoGpsControls: NSObject {
 
   private func refresh() {
     let status = NoGps.status()
-    var (text, color) = sourceText(status)
-    var details = [String]()
+    // Only the accuracy of the inertial position, and the lost road in the same place.
+    statusButton.isHidden = status.source != .inertial && !status.roadLost
+    var text = String(format: L("nogps_status_inertial"), Self.formatAccuracy(status.accuracyM))
+    var color = Constants.inertialColor
+    var hint: String?
     if status.roadLost {
       // The mark stands and waits for the user: a toast about it is easy to miss while driving.
       text = L("nogps_status_road_lost")
       color = Constants.noneColor
-      details.append(L("nogps_status_road_lost_hint"))
-    } else if status.manualMode || status.source == .inertial {
-      // The position is not taken from GPS or towers now, but the user has to see whether they work: in the manual
-      // mode GPS is not used even when it is back.
-      details.append(otherSourcesText(status))
-    }
-    // The panel of a followed route tells whether the car speed comes, nothing does without a route.
-    if !MWMRouter.isOnRoute(), let link = linkText(status) {
-      details.append(link)
+      hint = L("nogps_status_road_lost_hint")
     }
     let title = NSMutableAttributedString(string: text, attributes: [.font: UIFont.boldSystemFont(ofSize: 15),
                                                                      .foregroundColor: UIColor.white])
-    for line in details {
-      title.append(NSAttributedString(string: "\n" + line, attributes: [.font: UIFont.boldSystemFont(ofSize: 12),
+    if let hint {
+      title.append(NSAttributedString(string: "\n" + hint, attributes: [.font: UIFont.boldSystemFont(ofSize: 12),
                                                                         .foregroundColor: UIColor.white]))
     }
     statusButton.setAttributedTitle(title, for: .normal)
@@ -258,46 +248,6 @@ final class NoGpsControls: NSObject {
     }
     updateLayout()
     NoGpsSourceSelector.update(status)
-  }
-
-  private func sourceText(_ status: NoGpsStatus) -> (String, UIColor) {
-    switch status.source {
-    case .gps:
-      return (L("nogps_status_gps"), Constants.gpsColor)
-    case .network:
-      let format = L(status.gpsSpoofed ? "nogps_status_network_spoofed" : "nogps_status_network_no_gps")
-      return (String(format: format, Self.formatAccuracy(status.accuracyM)), Constants.networkColor)
-    case .inertial:
-      return (String(format: L("nogps_status_inertial"), Self.formatAccuracy(status.accuracyM)), Constants.inertialColor)
-    case .manual:
-      let minutes = Int(status.manualAge / 60)
-      let text = minutes == 0 ? L("nogps_status_manual_just_now") : String(format: L("nogps_status_manual_minutes"), minutes)
-      return (text, Constants.manualColor)
-    case .none:
-      return (L("nogps_status_none"), Constants.noneColor)
-    @unknown default:
-      return (L("nogps_status_none"), Constants.noneColor)
-    }
-  }
-
-  private func otherSourcesText(_ status: NoGpsStatus) -> String {
-    if status.workingGpsAccuracyM >= 0 {
-      return String(format: L("nogps_status_gps_back"), Self.formatAccuracy(status.workingGpsAccuracyM))
-    }
-    let gps = L(status.gpsSpoofed ? "nogps_status_gps_spoofed" : "nogps_status_no_gps")
-    guard status.workingNetworkAccuracyM >= 0 else { return gps }
-    return gps + " · " + String(format: L("nogps_status_towers"), Self.formatAccuracy(status.workingNetworkAccuracyM))
-  }
-
-  /// Whether the car speed comes from the sensor box, the only source of it on iOS.
-  private func linkText(_ status: NoGpsStatus) -> String? {
-    guard status.inertialEnabled, status.inertialStarted else { return nil }
-    switch status.sourceState {
-    case .connected: return L("nogps_status_box_ok")
-    case .disconnected, .connecting, .boxSleeping: return L("nogps_status_box_none")
-    case .updating: return L("nogps_box_updating")
-    default: return L("nogps_status_box_no_car")
-    }
   }
 
   private func blinkStatus(_ blink: Bool) {

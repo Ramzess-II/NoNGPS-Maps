@@ -45746,36 +45746,6 @@ en = Box
 ru = Блок
 uk = Блок
 
-[nogps_status_network_spoofed]
-tags = android-app,apple-maps
-en = GPS spoofed · towers ±%@
-ru = GPS подменён · вышки ±%@
-uk = GPS підмінено · вежі ±%@
-
-[nogps_status_network_no_gps]
-tags = android-app,apple-maps
-en = No GPS · towers ±%@
-ru = Нет GPS · вышки ±%@
-uk = Немає GPS · вежі ±%@
-
-[nogps_status_manual_just_now]
-tags = android-app,apple-maps
-en = Manual · just now
-ru = Ручной режим · только что
-uk = Ручний режим · щойно
-
-[nogps_status_manual_minutes]
-tags = android-app,apple-maps
-en = Manual · %d min ago
-ru = Ручной режим · %d мин назад
-uk = Ручний режим · %d хв тому
-
-[nogps_status_none]
-tags = android-app,apple-maps
-en = No position
-ru = Нет позиции
-uk = Немає позиції
-
 [nogps_meters]
 tags = android-app,apple-maps
 en = %d m
@@ -46064,12 +46034,6 @@ en = The position is at a crossing, it can not be moved further
 ru = Позиция у перекрёстка, дальше переносить нельзя
 uk = Позиція біля перехрестя, далі переносити не можна
 
-[nogps_status_gps_back]
-tags = android-app,apple-maps
-en = GPS is back ±%@
-ru = GPS снова есть ±%@
-uk = GPS знову є ±%@
-
 [nogps_status_gps_spoofed]
 tags = android-app,apple-maps
 en = GPS spoofed
@@ -46087,12 +46051,6 @@ tags = android-app,apple-maps
 en = GPS is off in the system settings
 ru = GPS выключен в настройках системы
 uk = GPS вимкнено в налаштуваннях системи
-
-[nogps_status_towers]
-tags = android-app,apple-maps
-en = towers ±%@
-ru = вышки ±%@
-uk = вежі ±%@
 
 [nogps_gps_back_auto]
 tags = android-app,apple-maps
@@ -46138,48 +46096,6 @@ tags = android-app,apple-maps
 en = press the finger button and tap the road where you are
 ru = нажмите кнопку с пальцем и коснитесь дороги, где вы
 uk = натисніть кнопку з пальцем і торкніться дороги, де ви
-
-[nogps_status_box_ok]
-comment = Line of the status of the position: the sensor box gives the car speed
-tags = android-app,apple-maps
-en = box connected
-ru = блок на связи
-uk = блок підключено
-
-[nogps_status_box_none]
-comment = Line of the status of the position: the sensor box is not heard
-tags = android-app,apple-maps
-en = no box
-ru = нет связи с блоком
-uk = блок не підключено
-
-[nogps_status_box_no_car]
-comment = Line of the status of the position: the sensor box is heard, the car speed does not come
-tags = android-app,apple-maps
-en = box connected, no car data
-ru = блок на связи, машина молчит
-uk = блок підключено, машина мовчить
-
-[nogps_status_elm_ok]
-comment = Line of the status of the position: the ELM327 adapter gives the car speed
-tags = android-app
-en = ELM327 connected
-ru = ELM327 на связи
-uk = ELM327 підключено
-
-[nogps_status_elm_none]
-comment = Line of the status of the position: the ELM327 adapter is not heard
-tags = android-app
-en = no ELM327
-ru = нет связи с ELM327
-uk = ELM327 не підключено
-
-[nogps_status_elm_no_car]
-comment = Line of the status of the position: the ELM327 adapter is heard, the car speed does not come
-tags = android-app
-en = ELM327 connected, no car data
-ru = ELM327 на связи, машина молчит
-uk = ELM327 підключено, машина мовчить
 
 [nogps_source_phone]
 tags = android-app

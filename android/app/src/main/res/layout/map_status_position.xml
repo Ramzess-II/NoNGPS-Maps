@@ -16,4 +16,5 @@
   android:paddingVertical="3dp"
   android:textColor="@color/white_primary"
   android:textSize="15sp"
-  android:textStyle="bold" />
+  android:textStyle="bold"
+  android:visibility="gone" />

@@ -926,11 +926,6 @@
     <string name="nogps_gps_restored">GPS знову в нормі</string>
     <!-- The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored -->
     <string name="nogps_source_box">Блок</string>
-    <string name="nogps_status_network_spoofed">GPS підмінено · вежі ±%s</string>
-    <string name="nogps_status_network_no_gps">Немає GPS · вежі ±%s</string>
-    <string name="nogps_status_manual_just_now">Ручний режим · щойно</string>
-    <string name="nogps_status_manual_minutes">Ручний режим · %d хв тому</string>
-    <string name="nogps_status_none">Немає позиції</string>
     <string name="nogps_meters">%d м</string>
     <string name="nogps_kilometers">%.1f км</string>
     <string name="nogps_status_inertial">Інерціально · ±%s</string>
@@ -979,11 +974,9 @@
     <string name="nogps_speed_table_row">%1$d–%2$d км/год  %3$s</string>
     <string name="nogps_speed_table_left">ще %d м</string>
     <string name="nogps_shift_at_turn">Позиція біля перехрестя, далі переносити не можна</string>
-    <string name="nogps_status_gps_back">GPS знову є ±%s</string>
     <string name="nogps_status_gps_spoofed">GPS підмінено</string>
     <string name="nogps_status_no_gps">Немає GPS</string>
     <string name="nogps_status_gps_off">GPS вимкнено в налаштуваннях системи</string>
-    <string name="nogps_status_towers">вежі ±%s</string>
     <string name="nogps_gps_back_auto">GPS знову надійний, ручний режим вимкнено</string>
     <string name="nogps_reverse_direction">Розвернути машину на дорозі</string>
     <!-- The button shown after a turn that fits several roads: it moves the mark of the car to the next of them. -->
@@ -994,18 +987,6 @@
     <string name="nogps_status_road_lost">Дорогу втрачено</string>
     <!-- Second line of the status "Road lost" -->
     <string name="nogps_status_road_lost_hint">натисніть кнопку з пальцем і торкніться дороги, де ви</string>
-    <!-- Line of the status of the position: the sensor box gives the car speed -->
-    <string name="nogps_status_box_ok">блок підключено</string>
-    <!-- Line of the status of the position: the sensor box is not heard -->
-    <string name="nogps_status_box_none">блок не підключено</string>
-    <!-- Line of the status of the position: the sensor box is heard, the car speed does not come -->
-    <string name="nogps_status_box_no_car">блок підключено, машина мовчить</string>
-    <!-- Line of the status of the position: the ELM327 adapter gives the car speed -->
-    <string name="nogps_status_elm_ok">ELM327 підключено</string>
-    <!-- Line of the status of the position: the ELM327 adapter is not heard -->
-    <string name="nogps_status_elm_none">ELM327 не підключено</string>
-    <!-- Line of the status of the position: the ELM327 adapter is heard, the car speed does not come -->
-    <string name="nogps_status_elm_no_car">ELM327 підключено, машина мовчить</string>
     <string name="nogps_source_phone">Телефон + ELM327 (Bluetooth)</string>
     <!-- Choice of where the car speed and turns come from, next to "Phone + ELM327 (Bluetooth)" -->
     <string name="nogps_source_esp32_bt">Блок ESP32 (Bluetooth)</string>

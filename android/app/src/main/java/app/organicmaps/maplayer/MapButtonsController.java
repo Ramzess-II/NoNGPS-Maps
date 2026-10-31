@@ -194,8 +194,6 @@ public class MapButtonsController extends Fragment
     mManualPositionButton = mFrame.findViewById(R.id.manual_position);
     mPositionStatus = mFrame.findViewById(R.id.position_status);
     mPositionStatus.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.positionStatus));
-    // Hidden while the map controls are redesigned: the source and the box are shown in the bottom bar.
-    UiUtils.hide(mPositionStatus);
     final View sourceSelector = mFrame.findViewById(R.id.source_selector);
     if (sourceSelector != null)
       mSourceSelector = new SourceSelector(sourceSelector, new SourceSelector.Listener() {
@@ -342,7 +340,8 @@ public class MapButtonsController extends Fragment
   }
 
   /**
-   * Shows where the current position comes from: GPS, cell towers, the user (manual mode) or nowhere.
+   * Shows the accuracy of the inertial position, from the box or the ELM327 adapter, and the lost road in the same
+   * place.
    */
   private void updatePositionStatus()
   {
@@ -350,70 +349,28 @@ public class MapButtonsController extends Fragment
     final NoGps.Status status = NoGps.getStatus();
     final NoGps.PositionSource source = status.getSource();
 
-    // Hidden while the map controls are redesigned.
-    if (mPositionStatus != null && UiUtils.isVisible(mPositionStatus))
+    if (mPositionStatus != null)
     {
-      String text;
-      int color;
-      switch (source)
-      {
-      case GPS ->
-      {
-        text = getString(R.string.nogps_status_gps);
-        color = R.color.nogps_status_gps;
-      }
-      case NETWORK ->
-      {
-        final String accuracy = formatAccuracy(status.accuracyM);
-        text = getString(
-            status.gpsSpoofed ? R.string.nogps_status_network_spoofed : R.string.nogps_status_network_no_gps, accuracy);
-        color = R.color.nogps_status_network;
-      }
-      case INERTIAL ->
-      {
-        text = getString(R.string.nogps_status_inertial, formatAccuracy(status.accuracyM));
-        color = R.color.nogps_status_inertial;
-      }
-      case MANUAL ->
-      {
-        final long minutes = status.manualAgeMs / 60_000;
-        text = minutes == 0 ? getString(R.string.nogps_status_manual_just_now)
-                            : getString(R.string.nogps_status_manual_minutes, minutes);
-        color = R.color.nogps_status_manual;
-      }
-      default ->
-      {
-        text = getString(R.string.nogps_status_none);
-        color = R.color.nogps_status_none;
-      }
-      }
-      final StringBuilder details = new StringBuilder();
+      final boolean inertial = source == NoGps.PositionSource.INERTIAL;
+      UiUtils.showIf(inertial || status.roadLost, mPositionStatus);
       if (status.roadLost)
       {
         // The mark stands and waits for the user: a toast about it is easy to miss while driving.
-        text = getString(R.string.nogps_status_road_lost);
-        color = R.color.nogps_status_none;
-        details.append('\n').append(getString(R.string.nogps_status_road_lost_hint));
+        final String text = getString(R.string.nogps_status_road_lost);
+        final SpannableString withHint =
+            new SpannableString(text + '\n' + getString(R.string.nogps_status_road_lost_hint));
+        withHint.setSpan(new RelativeSizeSpan(0.8f), text.length() + 1, withHint.length(),
+                         Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        mPositionStatus.setText(withHint);
+        mPositionStatus.setBackgroundTintList(
+            ColorStateList.valueOf(ContextCompat.getColor(context, R.color.nogps_status_none)));
       }
-      // The position is not taken from GPS or towers now, but the user has to see whether they work: in the
-      // manual mode GPS is not used even when it is back.
-      else if (status.manualMode || source == NoGps.PositionSource.INERTIAL)
-        details.append('\n').append(getOtherSourcesStatus(status));
-      // The panel of a route tells whether the car speed comes, nothing does without a route.
-      final String link = isInNavigationMode() ? "" : getLinkStatus(status);
-      if (!link.isEmpty())
-        details.append('\n').append(link);
-
-      if (details.length() > 0)
+      else if (inertial)
       {
-        final SpannableString withDetails = new SpannableString(text + details);
-        withDetails.setSpan(new RelativeSizeSpan(0.8f), text.length() + 1, withDetails.length(),
-                            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        mPositionStatus.setText(withDetails);
+        mPositionStatus.setText(getString(R.string.nogps_status_inertial, formatAccuracy(status.accuracyM)));
+        mPositionStatus.setBackgroundTintList(
+            ColorStateList.valueOf(ContextCompat.getColor(context, R.color.nogps_status_inertial)));
       }
-      else
-        mPositionStatus.setText(text);
-      mPositionStatus.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(context, color)));
       blinkPositionStatus(status.roadLost);
     }
 
@@ -574,40 +531,6 @@ public class MapButtonsController extends Fragment
       return;
     button.setEnabled(enabled);
     button.setAlpha(enabled ? 1f : 0.4f);
-  }
-
-  @NonNull
-  private String getOtherSourcesStatus(@NonNull NoGps.Status status)
-  {
-    if (status.workingGpsAccuracyM >= 0)
-      return getString(R.string.nogps_status_gps_back, formatAccuracy(status.workingGpsAccuracyM));
-
-    final String gpsStatus =
-        getString(status.gpsSpoofed ? R.string.nogps_status_gps_spoofed : R.string.nogps_status_no_gps);
-    if (status.workingNetworkAccuracyM < 0)
-      return gpsStatus;
-    return gpsStatus + " · " + getString(R.string.nogps_status_towers, formatAccuracy(status.workingNetworkAccuracyM));
-  }
-
-  /**
-   * Whether the speed of the car comes: from the sensor box or from the ELM327 adapter of the phone.
-   */
-  @NonNull
-  private String getLinkStatus(@NonNull NoGps.Status status)
-  {
-    if (!status.inertialEnabled || !status.inertialStarted)
-      return "";
-    final boolean box = status.esp32Source;
-    final int text = switch (status.getSourceState())
-    {
-      case CONNECTED -> box ? R.string.nogps_status_box_ok : R.string.nogps_status_elm_ok;
-      case DISCONNECTED, CONNECTING, BOX_SLEEPING ->
-        box ? R.string.nogps_status_box_none : R.string.nogps_status_elm_none;
-      // The adapter of the phone does not answer, or the one of the box that is heard itself.
-      case NO_ADAPTER -> box ? R.string.nogps_status_box_no_car : R.string.nogps_status_elm_none;
-      default -> box ? R.string.nogps_status_box_no_car : R.string.nogps_status_elm_no_car;
-    };
-    return getString(text);
   }
 
   private void blinkPositionStatus(boolean blink)
