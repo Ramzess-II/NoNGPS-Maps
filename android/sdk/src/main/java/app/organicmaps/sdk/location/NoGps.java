@@ -137,6 +137,21 @@ public final class NoGps
 
   public static final String MANUAL_PROVIDER = "manual";
   public static final String INERTIAL_PROVIDER = "inertial";
+  // The speed table ranges, as in SpeedTable of the core.
+  public static final int SPEED_TABLE_RANGE_KMH = 10;
+  public static final int SPEED_TABLE_MIN_KMH = 5;
+  // A range is measured after this distance.
+  public static final int SPEED_TABLE_MIN_DISTANCE_M = 300;
+
+  public static int speedTableFromKmh(int range)
+  {
+    return Math.max(SPEED_TABLE_MIN_KMH, range * SPEED_TABLE_RANGE_KMH);
+  }
+
+  public static int speedTableToKmh(int range)
+  {
+    return (range + 1) * SPEED_TABLE_RANGE_KMH;
+  }
 
   /**
    * Everything the UI shows, taken at once. Filled by the core.
@@ -221,6 +236,12 @@ public final class NoGps
     // The ranges of the rough table learned from the roads, it is used while GPS has measured none.
     @Keep
     public int roughSpeedTableRanges;
+    // The ranges of the table in use, the rough one while speedTableRanges is 0: the distance driven by the car
+    // speed and the ratio, 0 until the range is measured.
+    @Keep
+    public float[] speedTableCarM = new float[0];
+    @Keep
+    public float[] speedTableScale = new float[0];
     @Keep
     public double speedLagSec;
     @Keep

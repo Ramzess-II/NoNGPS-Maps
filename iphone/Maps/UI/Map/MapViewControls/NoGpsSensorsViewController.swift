@@ -5,6 +5,11 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     static let refreshInterval: TimeInterval = 0.5
     static let cellId = "NoGpsSensorsCell"
     static let shopURL = URL(string: "https://non-gps.com")!
+    // The speed table ranges, as in SpeedTable of the core.
+    static let speedTableRangeKmh = 10
+    static let speedTableMinKmh = 5
+    // A range is measured after this distance.
+    static let speedTableMinDistanceM = 300
   }
 
   private enum Row {
@@ -21,6 +26,8 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     case readiness
     case scale
     case clearSpeed
+    case speedTableToggle
+    case speedTableRange(Int)
     case forget
   }
 
@@ -33,6 +40,8 @@ final class NoGpsSensorsViewController: MWMTableViewController {
   private var sections: [Section] = []
   private var status = NoGps.status()
   private var timer: Timer?
+  // Not saved: the screen opens with the table folded.
+  private var speedTableShown = false
   /// Called once the screen is closed.
   var onClose: (() -> Void)?
 
@@ -110,7 +119,7 @@ final class NoGpsSensorsViewController: MWMTableViewController {
       // The user calibrates the box when it is put into the car.
       Section(header: L("nogps_box_calibration"), rows: [.boxSensors, .calibrate],
               footer: L("nogps_box_calibration_hint")),
-      Section(rows: [.scale, .clearSpeed], footer: nil),
+      Section(rows: speedRows(), footer: nil),
       Section(rows: [.forget], footer: nil),
     ]
     tableView.reloadData()
@@ -202,6 +211,12 @@ final class NoGpsSensorsViewController: MWMTableViewController {
       content.text = L("nogps_clear_speed")
       content.textProperties.color = .linkBlue
       cell.selectionStyle = .default
+    case .speedTableToggle:
+      content.text = L(speedTableShown ? "nogps_speed_table_hide" : "nogps_speed_table_show")
+      content.textProperties.color = .linkBlue
+      cell.selectionStyle = .default
+    case let .speedTableRange(i):
+      content.text = speedTableRowText(i)
     }
     cell.contentConfiguration = content
     return cell
@@ -237,12 +252,43 @@ final class NoGpsSensorsViewController: MWMTableViewController {
       refresh()
     case .clearSpeed:
       confirmClearSpeed()
+    case .speedTableToggle:
+      speedTableShown.toggle()
+      refresh()
     default:
       break
     }
   }
 
   // MARK: - Texts
+
+  private func speedRows() -> [Row] {
+    var rows: [Row] = [.scale, .clearSpeed]
+    guard status.inertialStarted else { return rows }
+    rows.append(.speedTableToggle)
+    if speedTableShown {
+      rows += status.speedTableCarM.indices.map { .speedTableRange($0) }
+    }
+    return rows
+  }
+
+  private func speedTableRowText(_ i: Int) -> String {
+    let carM = status.speedTableCarM[i].doubleValue
+    let scale = status.speedTableScale[i].doubleValue
+    let value: String
+    if scale > 0 {
+      // The rough table from the roads is used while GPS has measured no range.
+      value = (status.speedTableRanges == 0 ? "≈" : "") + String(format: "×%.2f", scale)
+    } else if carM >= 1 {
+      let left = max(1, Int((Double(Constants.speedTableMinDistanceM) - carM).rounded(.up)))
+      value = String(format: L("nogps_speed_table_left"), left)
+    } else {
+      value = "—"
+    }
+    let from = max(Constants.speedTableMinKmh, i * Constants.speedTableRangeKmh)
+    let to = (i + 1) * Constants.speedTableRangeKmh
+    return String(format: L("nogps_speed_table_row"), from, to, value)
+  }
 
   /// Also read out by the box segment of the bottom bar.
   static func boxStateText(_ status: NoGpsStatus) -> String {

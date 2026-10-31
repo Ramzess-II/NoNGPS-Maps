@@ -1132,6 +1132,34 @@ UNIT_TEST(NoGps_Engine_GpsOffInSheetMeasuresSpeedOverRoughTable)
   TestAlmostEqualAbs(std::stod(TripField(env, "scale")), 1.03, 0.005);
 }
 
+UNIT_TEST(NoGps_Engine_StatusShowsSpeedTableInUse)
+{
+  // The roads have told the speedometer is 5% low at 30-40 km/h.
+  SpeedTable rough;
+  rough.OnDistance(36, 1000, 1050);
+  Env roughOnly(true /* inertial */, nullptr,
+                [&rough](TestStorage & storage) { storage.Set(Storage::kRoughSpeedTable, rough.Serialize()); });
+  MarkCar(roughOnly, 0);
+  auto status = roughOnly.m_engine.GetStatus();
+  TEST_EQUAL(status.m_speedTable[3].m_carM, 1000, ());
+  TestAlmostEqualAbs(status.m_speedTable[3].m_scale, 1.05, 1e-9);
+
+  // GPS has measured 50-60 km/h: its table is shown, the rough one is not.
+  SpeedTable gps;
+  gps.OnDistance(55, 400, 408);
+  Env withGps(true /* inertial */, nullptr, [&rough, &gps](TestStorage & storage)
+  {
+    storage.Set(Storage::kRoughSpeedTable, rough.Serialize());
+    storage.Set(Storage::kSpeedTable, gps.Serialize());
+  });
+  MarkCar(withGps, 0);
+  status = withGps.m_engine.GetStatus();
+  TEST_EQUAL(status.m_speedTable[3].m_carM, 0, ());
+  TEST_EQUAL(status.m_speedTable[3].m_scale, 0, ());
+  TEST_EQUAL(status.m_speedTable[5].m_carM, 400, ());
+  TestAlmostEqualAbs(status.m_speedTable[5].m_scale, 1.02, 1e-9);
+}
+
 UNIT_TEST(NoGps_Engine_BendsToldRepeatedlyMoveSlowCar)
 {
   // The street going east bends evenly by 30 degrees to the left at 200 m: by 5 degrees in a second at 20 km/h.

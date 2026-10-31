@@ -129,6 +129,22 @@ UNIT_TEST(NoGps_SpeedTable_NeedsDistance)
   TEST(!table.GetScale(36), ());
 }
 
+UNIT_TEST(NoGps_SpeedTable_Ranges)
+{
+  SpeedTable table;
+  // 400 m at 50-60 km/h measure it, 100 m at 60-70 km/h don't.
+  table.OnDistance(55, 400, 412);
+  table.OnDistance(65, 100, 100);
+  auto const ranges = table.GetRanges();
+  TEST_EQUAL(ranges[5].m_carM, 400, ());
+  TEST_ALMOST_EQUAL_ABS(ranges[5].m_scale, 1.03, 1e-9, ());
+  TEST_EQUAL(ranges[6].m_carM, 100, ());
+  // Not interpolated from the measured range.
+  TEST_EQUAL(ranges[6].m_scale, 0, ());
+  TEST_EQUAL(ranges[4].m_carM, 0, ());
+  TEST_EQUAL(ranges[4].m_scale, 0, ());
+}
+
 UNIT_TEST(NoGps_SpeedTable_IgnoresBadSamples)
 {
   SpeedTable table;

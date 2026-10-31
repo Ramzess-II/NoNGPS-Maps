@@ -10,9 +10,11 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -76,6 +78,10 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   private TextView mVoltageMismatch;
   private TextView mScale;
   private TextView mRoughSpeed;
+  private TextView mSpeedTableToggle;
+  private LinearLayout mSpeedTable;
+  // Not saved: the sheet opens with the table folded.
+  private boolean mSpeedTableShown;
   private TextView mLag;
   private TextView mGyro;
   private TextView mReadiness;
@@ -107,6 +113,12 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mVoltageMismatch = view.findViewById(R.id.nogps_voltage_mismatch);
     mScale = view.findViewById(R.id.nogps_scale);
     mRoughSpeed = view.findViewById(R.id.nogps_rough_speed);
+    mSpeedTableToggle = view.findViewById(R.id.nogps_speed_table_toggle);
+    mSpeedTable = view.findViewById(R.id.nogps_speed_table);
+    mSpeedTableToggle.setOnClickListener(v -> {
+      mSpeedTableShown = !mSpeedTableShown;
+      update();
+    });
     mLag = view.findViewById(R.id.nogps_lag);
     view.findViewById(R.id.nogps_clear_speed).setOnClickListener(v -> confirmClearSpeed());
     mGyro = view.findViewById(R.id.nogps_gyro);
@@ -311,6 +323,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       mRoughSpeed.setText(status.roughSpeedTableRanges > 0
                               ? getString(R.string.nogps_sensors_rough_speed, status.roughSpeedTableRanges)
                               : getString(R.string.nogps_sensors_rough_speed_learning));
+    updateSpeedTable(enabled ? status : null, rough);
     // On its own line: next to the button it took four lines of the two the row has room for.
     mLag.setVisibility(enabled ? View.VISIBLE : View.GONE);
     if (enabled)
@@ -380,6 +393,39 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       case FAILED_MOVING -> getString(R.string.nogps_box_calibration_failed);
       case MOUNT_MOVED -> getString(R.string.nogps_gyro_mount_moved);
     };
+  }
+
+  private void updateSpeedTable(@Nullable NoGps.Status status, boolean rough)
+  {
+    mSpeedTableToggle.setVisibility(status != null ? View.VISIBLE : View.GONE);
+    final boolean shown = status != null && mSpeedTableShown;
+    mSpeedTableToggle.setText(shown ? R.string.nogps_speed_table_hide : R.string.nogps_speed_table_show);
+    mSpeedTable.setVisibility(shown ? View.VISIBLE : View.GONE);
+    if (!shown)
+      return;
+    final int ranges = status.speedTableCarM.length;
+    while (mSpeedTable.getChildCount() < ranges)
+    {
+      final TextView row = new TextView(requireContext());
+      row.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+      mSpeedTable.addView(row);
+    }
+    for (int i = 0; i < ranges; ++i)
+    {
+      final float carM = status.speedTableCarM[i];
+      final float scale = status.speedTableScale[i];
+      final String value;
+      if (scale > 0)
+        value = String.format(Locale.US, "%s×%.2f", rough ? "≈" : "", scale);
+      else if (carM >= 1)
+        value = getString(R.string.nogps_speed_table_left,
+                          Math.max(1, (int) Math.ceil(NoGps.SPEED_TABLE_MIN_DISTANCE_M - carM)));
+      else
+        value = "—";
+      ((TextView) mSpeedTable.getChildAt(i))
+          .setText(
+              getString(R.string.nogps_speed_table_row, NoGps.speedTableFromKmh(i), NoGps.speedTableToKmh(i), value));
+    }
   }
 
   /**

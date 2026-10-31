@@ -29,6 +29,16 @@ public:
   static double constexpr kMinScale = 0.8;
   static double constexpr kMaxScale = 1.25;
 
+  /// One range as the user sees it.
+  struct RangeState
+  {
+    // The distance driven by the car speed.
+    double m_carM = 0;
+    // The ratio, 0 until the range is measured.
+    double m_scale = 0;
+  };
+  using Ranges = std::array<RangeState, kRanges>;
+
   /// Takes into account the car speed and the real one measured at the same time.
   /// \param dtSec how long the speeds lasted.
   /// \param accelerationMps2 how fast the real speed changes.
@@ -47,6 +57,8 @@ public:
 
   /// \returns how many speed ranges are measured.
   int GetKnownRanges() const;
+  /// \returns every range with its distance and its ratio, not interpolated.
+  Ranges GetRanges() const;
 
   void Clear();
 

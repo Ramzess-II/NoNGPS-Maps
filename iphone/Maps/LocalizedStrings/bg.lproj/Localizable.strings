@@ -1268,6 +1268,10 @@
 "nogps_sensors_lag_usual" = "Speed delay: %@ s (usual, not measured by GPS yet)";
 "nogps_sensors_rough_speed" = "≈ Rough correction from the roads · ranges: %d · GPS will refine it";
 "nogps_sensors_rough_speed_learning" = "≈ The correction is learned from the roads until GPS measures the speed";
+"nogps_speed_table_show" = "Show table";
+"nogps_speed_table_hide" = "Hide table";
+"nogps_speed_table_row" = "%1$d–%2$d km/h  %3$@";
+"nogps_speed_table_left" = "%d m to go";
 "nogps_shift_at_turn" = "The position is at a crossing, it can not be moved further";
 "nogps_status_gps_back" = "GPS is back ±%@";
 "nogps_status_gps_spoofed" = "GPS spoofed";

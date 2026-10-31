@@ -184,6 +184,22 @@
     android:textSize="16sp"
     android:visibility="gone" />
 
+  <Button
+    android:id="@+id/nogps_speed_table_toggle"
+    style="?borderlessButtonStyle"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="@string/nogps_speed_table_show"
+    android:visibility="gone" />
+
+  <LinearLayout
+    android:id="@+id/nogps_speed_table"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingBottom="8dp"
+    android:visibility="gone" />
+
   <TextView
     android:id="@+id/nogps_lag"
     android:layout_width="match_parent"

@@ -72,6 +72,14 @@ int SpeedTable::GetKnownRanges() const
   return count;
 }
 
+SpeedTable::Ranges SpeedTable::GetRanges() const
+{
+  Ranges ranges;
+  for (int i = 0; i < kRanges; ++i)
+    ranges[i] = {m_carM[i], IsKnown(i) ? ScaleOf(i) : 0};
+  return ranges;
+}
+
 void SpeedTable::Clear()
 {
   m_carM.fill(0);
