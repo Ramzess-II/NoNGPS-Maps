@@ -59,6 +59,12 @@ Update these in the same PR, in a separate `[docs]` commit:
 Docs say what is true now. Why it got that way stays in commits and PRs: `git log -- <file>`, `gh pr view <n>`.
 Work left to do lives in issues, not in markdown lists.
 
+## Language
+
+Don't write in Russian: not in issues, PRs, comments, commits, docs, or the firmware repo `Ramzess-II/ELMandIMU`.
+Write in English. Where a text needs a local language, e.g. a new section of a doc written in Russian, use
+Ukrainian. The app's Russian translations in `data/strings/` stay as they are.
+
 ## Verification
 
 - Core: unit tests `NoGps_*` in `map_tests`. macOS: `cmake --build build-<name> --target map_tests` then
