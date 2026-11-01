@@ -1236,6 +1236,9 @@
 
 /* The user has pressed the button to show on the map where the car is */
 "nogps_mark_by_tap" = "Коснитесь дороги, где сейчас машина";
+
+/* The button of the place page: the car is here, put the mark on the nearest road */
+"nogps_mark_here" = "Я здесь";
 "nogps_gps_spoofed" = "GPS подменён! Используем вышки и Wi-Fi. Можно также указать позицию вручную.";
 "nogps_gps_restored" = "GPS снова в норме";
 "nogps_status_gps" = "GPS";
