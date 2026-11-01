@@ -125,11 +125,19 @@ struct NewUser
   Engine m_engine{m_delegate, m_map, m_storage, m_clock, m_clock};
 };
 
-UNIT_TEST(NoGps_Engine_LooksForBoxOverBluetoothOutOfTheBox)
+UNIT_TEST(NoGps_Engine_LooksForBoxOverBluetoothOnceSetUp)
 {
   {
-    // Nothing is chosen: the box is found without touching the settings.
+    // A new install has no box: the app offers to connect one.
     NewUser user;
+    TEST(!user.Start().m_inertialEnabled, ());
+    TEST(!user.m_delegate.m_esp32BleOpen, ());
+    TEST(!user.m_delegate.m_sensorsStarted, ());
+  }
+  {
+    // The box connected once is looked for over Bluetooth.
+    NewUser user;
+    user.m_storage.Set(Storage::kInertialEnabled, true);
     auto const status = user.Start();
     TEST(status.m_inertialEnabled, ());
     TEST(status.m_esp32Source, ());
@@ -137,7 +145,7 @@ UNIT_TEST(NoGps_Engine_LooksForBoxOverBluetoothOutOfTheBox)
     TEST(user.m_delegate.m_elm327Connects.empty(), ());
   }
   {
-    // The user has switched the navigation off.
+    // The user has forgotten the box.
     NewUser user;
     user.m_storage.Set(Storage::kInertialEnabled, false);
     TEST(!user.Start().m_inertialEnabled, ());
@@ -145,9 +153,15 @@ UNIT_TEST(NoGps_Engine_LooksForBoxOverBluetoothOutOfTheBox)
     TEST(!user.m_delegate.m_sensorsStarted, ());
   }
   {
-    // The adapter was chosen when the phone was the default source: it stays.
+    // The box was heard when the navigation was on by default and the choice wasn't saved: it stays.
     NewUser user;
-    user.m_storage.Set(Storage::kInertialEnabled, true);
+    user.m_storage.Set(Storage::kBoxPowerOns, std::string("C47D:3"));
+    TEST(user.Start().m_inertialEnabled, ());
+    TEST(user.m_delegate.m_esp32BleOpen, ());
+  }
+  {
+    // The adapter was chosen when the phone was the default source and the choice wasn't saved: it stays.
+    NewUser user;
     user.m_storage.Set(Storage::kElm327Address, std::string("00:11:22:33:44:55"));
     TEST(!user.Start().m_esp32Source, ());
     TEST(!user.m_delegate.m_esp32BleOpen, ());
