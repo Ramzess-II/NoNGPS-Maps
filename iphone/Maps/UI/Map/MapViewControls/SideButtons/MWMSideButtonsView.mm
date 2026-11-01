@@ -18,6 +18,8 @@ NSString * const kPanelPlaceKey = @"NoGpsRightPanelY";
 @property(nonatomic) CGRect availableArea;
 @property(nonatomic) MapControlsPanel * panel;
 @property(nonatomic) UIView * locationDivider;
+@property(nonatomic) UIView * searchDivider;
+@property(nonatomic, readwrite) NavigationSearchWheel * searchWheel;
 @property(nonatomic) MapPanelDragger * dragger;
 
 @end
@@ -31,11 +33,16 @@ NSString * const kPanelPlaceKey = @"NoGpsRightPanelY";
   self.panel =
       [[MapControlsPanel alloc] initWithEdge:self.isRTL ? MapControlsPanelEdgeLeft : MapControlsPanelEdgeRight];
   [self insertSubview:self.panel atIndex:0];
-  self.locationDivider = [[UIView alloc] init];
-  self.locationDivider.userInteractionEnabled = NO;
-  [self.locationDivider setStyleNameAndApply:@"SolidDivider"];
-  [self addSubview:self.locationDivider];
+  self.locationDivider = [self addDivider];
+  self.searchDivider = [self addDivider];
+  self.searchWheel = [[NavigationSearchWheel alloc] init];
+  [self addSubview:self.searchWheel.button];
+  [self addSubview:self.searchWheel];
   __weak auto weakSelf = self;
+  self.searchWheel.onChange = ^{
+    // A touch on the open wheel is not a long press on the panel.
+    weakSelf.dragger.isEnabled = !weakSelf.searchWheel.isOpen;
+  };
   self.dragger = [[MapPanelDragger alloc] initWithView:self
       key:kPanelPlaceKey
       travel:^CGFloat { return weakSelf.travel; }
@@ -43,14 +50,31 @@ NSString * const kPanelPlaceKey = @"NoGpsRightPanelY";
       onMove:^{ [weakSelf layoutYPosition]; }];
 }
 
+- (UIView *)addDivider
+{
+  UIView * divider = [[UIView alloc] init];
+  divider.userInteractionEnabled = NO;
+  [divider setStyleNameAndApply:@"SolidDivider"];
+  [self addSubview:divider];
+  return divider;
+}
+
 - (void)layoutSubviews
 {
+  UIButton * search = self.searchWheel.button;
+  search.hidden = !self.searchShown;
+  search.frame = {{}, self.zoomIn.size};
+  self.zoomIn.minY = self.searchShown ? search.maxY + MapControlsPanel.groupGap : 0;
   self.zoomOut.minY = self.zoomIn.maxY;
   self.location.minY = self.zoomOut.maxY + MapControlsPanel.groupGap;
   self.bounds = {{}, {self.zoomOut.width, self.location.maxY}};
   if (self.zoomHidden)
     self.height = self.location.height;
   self.location.maxY = self.height;
+  // Beside the panel, toward the middle of the map, its flat side at the panel.
+  self.searchWheel.frame = {
+      {self.isRTL ? self.width : -self.searchWheel.width, search.midY - self.searchWheel.height / 2},
+      self.searchWheel.size};
 
   [self animate];
   [self layoutPanel];
@@ -76,6 +100,7 @@ NSString * const kPanelPlaceKey = @"NoGpsRightPanelY";
       self.isRTL ? self.availableArea.origin.x : self.superview.width - CGRectGetMaxX(self.availableArea);
   CGRect const frame = {{self.isRTL ? -edgeGap : 0, top}, {self.width + edgeGap, self.height - top}};
   self.locationDivider.hidden = !zoomShown;
+  self.searchDivider.hidden = !zoomShown || !self.searchShown;
   // No empty panel when even the location button has no place.
   self.panel.hidden = self.location.height > self.availableHeight;
   // The line between the zoom buttons and the location button, with margins on every side.
@@ -83,6 +108,8 @@ NSString * const kPanelPlaceKey = @"NoGpsRightPanelY";
   CGFloat const height = MapControlsPanel.groupDividerHeight;
   self.locationDivider.frame = {{margin, self.zoomOut.maxY + (MapControlsPanel.groupGap - height) / 2},
                                 {self.width - 2 * margin, height}};
+  self.searchDivider.frame = {{margin, self.zoomIn.minY - (MapControlsPanel.groupGap + height) / 2},
+                              {self.width - 2 * margin, height}};
   if (CGRectEqualToRect(self.panel.frame, frame))
     return;
   BOOL const animated = !CGRectIsEmpty(self.panel.frame) && self.panel.frame.origin.y != frame.origin.y;
@@ -129,6 +156,7 @@ NSString * const kPanelPlaceKey = @"NoGpsRightPanelY";
                    animations:^{
                      self.zoomIn.alpha = alpha;
                      self.zoomOut.alpha = alpha;
+                     self.searchWheel.button.alpha = alpha;
                    }];
 }
 
@@ -154,7 +182,25 @@ NSString * const kPanelPlaceKey = @"NoGpsRightPanelY";
     [self fadeLocationButtonShow:!willLocationHide];
 }
 
+// The open wheel lies out of the panel.
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event
+{
+  if (self.searchWheel.isOpen && CGRectContainsPoint(self.searchWheel.frame, point))
+    return YES;
+  return [super pointInside:point withEvent:event];
+}
+
 #pragma mark - Properties
+
+- (void)setSearchShown:(BOOL)searchShown
+{
+  if (_searchShown == searchShown)
+    return;
+  _searchShown = searchShown;
+  if (!searchShown)
+    [self.searchWheel clear];
+  [self setNeedsLayout];
+}
 
 - (void)setZoomHidden:(BOOL)zoomHidden
 {

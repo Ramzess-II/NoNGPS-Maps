@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Zoom and the position, docked to the end edge of the screen. -->
+<!-- Zoom and the position, the search in the navigation, docked to the end edge of the screen. -->
 <app.organicmaps.maplayer.MapPanelLayout
   xmlns:android="http://schemas.android.com/apk/res/android"
   xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -11,6 +11,20 @@
   android:orientation="vertical"
   android:paddingTop="4dp"
   android:paddingBottom="4dp">
+  <!-- Opens the search wheel, in the navigation only. -->
+  <LinearLayout
+    android:id="@+id/nav_search_container"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone">
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+      android:id="@+id/nav_search"
+      style="@style/MwmWidget.MapButton.InPanel"
+      app:srcCompat="@drawable/ic_search"
+      android:contentDescription="@string/search" />
+    <View style="@style/MwmWidget.MapPanelDivider" />
+  </LinearLayout>
   <LinearLayout
     android:id="@+id/zoom_buttons_container"
     android:layout_width="wrap_content"
