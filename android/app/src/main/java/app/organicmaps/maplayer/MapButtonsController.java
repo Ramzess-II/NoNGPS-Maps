@@ -400,7 +400,7 @@ public class MapButtonsController extends Fragment
     // tap on the map shows where the car is, the tap is taken back when GPS is used again.
     if (mManualPositionButton != null)
     {
-      final boolean shown = source != NoGps.PositionSource.GPS && status.gpsDisabled;
+      final boolean shown = source != NoGps.PositionSource.GPS;
       if (!shown && status.markByTap)
         NoGps.nativeSetMarkByTap(false);
       mCarButtonsShown.put(mManualPositionButton, shown);
