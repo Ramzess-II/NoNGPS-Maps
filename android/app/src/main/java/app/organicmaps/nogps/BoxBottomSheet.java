@@ -89,6 +89,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private final ImageView[] mStepDots = new ImageView[4];
   private final TextView[] mSteps = new TextView[4];
   private TextView mStepAction;
+  private TextView mBluetooth;
   private final View[] mRings = new View[3];
   @Nullable
   private AnimatorSet mRingsAnimator;
@@ -144,6 +145,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     }
     mStepAction = view.findViewById(R.id.box_step_action);
     mStepAction.setOnClickListener(v -> onStepAction());
+    mBluetooth = view.findViewById(R.id.box_bluetooth);
+    mBluetooth.setOnClickListener(v -> onStepAction());
     final int[] rings = {R.id.box_ring0, R.id.box_ring1, R.id.box_ring2};
     for (int i = 0; i < mRings.length; i++)
       mRings[i] = view.findViewById(rings[i]);
@@ -211,6 +214,20 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     return status.inertialStarted && state != NoGps.SourceState.DISCONNECTED && state != NoGps.SourceState.CONNECTING;
   }
 
+  /**
+   * The phone can't look for the box until the user turns Bluetooth on or allows it in the settings.
+   */
+  private static boolean isBluetoothFailed(@NonNull NoGps.Status status)
+  {
+    final NoGps.BleState ble = status.getBleState();
+    return ble == NoGps.BleState.OFF || ble == NoGps.BleState.DISABLED || ble == NoGps.BleState.NO_PERMISSION;
+  }
+
+  private static int bluetoothActionText(@NonNull NoGps.Status status)
+  {
+    return status.getBleState() == NoGps.BleState.NO_PERMISSION ? R.string.nogps_box_allow : R.string.nogps_box_turn_on;
+  }
+
   private void updateBox(@NonNull NoGps.Status status)
   {
     final Context context = requireContext();
@@ -219,6 +236,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     showState(look, status.inertialEnabled ? getString(SensorsBottomSheet.boxStateText(status)) : "");
     if (!status.inertialEnabled)
       return;
+    final boolean bluetoothFailed = isBluetoothFailed(status);
+    mBluetooth.setVisibility(bluetoothFailed ? View.VISIBLE : View.GONE);
+    if (bluetoothFailed)
+      mBluetooth.setText(bluetoothActionText(status));
     final String name = status.inertialStarted && !status.deviceName.isEmpty() ? status.deviceName : "ESP32";
     mName.setText(getString(R.string.nogps_sensors_box, name));
     mSpeed.setText(getString(R.string.nogps_sensors_speed, status.inertialStarted && status.speedKmh >= 0
@@ -252,8 +273,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private void updateSearch(@NonNull NoGps.Status status)
   {
     final NoGps.BleState ble = status.getBleState();
-    final boolean bluetoothFailed =
-        ble == NoGps.BleState.OFF || ble == NoGps.BleState.DISABLED || ble == NoGps.BleState.NO_PERMISSION;
+    final boolean bluetoothFailed = isBluetoothFailed(status);
     showState(new StatusBar.Look(R.drawable.ic_nogps_box, 0), getString(R.string.nogps_box_searching));
     final boolean searched = ble == NoGps.BleState.SEARCHING || ble == NoGps.BleState.PAIRING_CLOSED;
     final boolean connecting = ble == NoGps.BleState.CONNECTING || ble == NoGps.BleState.PAIRING;
@@ -266,7 +286,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
                       : bluetoothFailed                   ? R.string.nogps_box_step_bluetooth_off
                                                           : R.string.nogps_box_step_bluetooth);
     mStepAction.setVisibility(bluetoothFailed ? View.VISIBLE : View.GONE);
-    mStepAction.setText(ble == NoGps.BleState.NO_PERMISSION ? R.string.nogps_box_allow : R.string.nogps_box_turn_on);
+    mStepAction.setText(bluetoothActionText(status));
     animateRings(!bluetoothFailed);
   }
 

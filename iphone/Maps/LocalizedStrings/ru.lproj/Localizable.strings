@@ -1554,9 +1554,6 @@
 /* Step of connecting the box: the box tells the car speed */
 "nogps_box_step_data" = "Данные машины";
 
-/* Button: turn Bluetooth on */
-"nogps_box_turn_on" = "Включить";
-
 /* Button: allow Bluetooth to the app */
 "nogps_box_allow" = "Разрешить";
 

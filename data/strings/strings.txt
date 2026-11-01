@@ -46904,7 +46904,7 @@ uk = Дані машини
 
 [nogps_box_turn_on]
 comment = Button: turn Bluetooth on
-tags = android-app,apple-maps
+tags = android-app
 en = Turn on
 ru = Включить
 uk = Увімкнути
