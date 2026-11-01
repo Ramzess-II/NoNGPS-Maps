@@ -101,11 +101,10 @@ public class StatusBar
     final Context context = mSource.getContext();
     final String word = getSourceWord(context, status);
     mWord.setText(word);
-    final boolean known = status.getSource() != NoGps.PositionSource.NONE;
-    final String accuracy = known ? "±" + formatAccuracy(context, status.accuracyM) : "";
+    final String accuracy = getAccuracyText(context, status);
     mAccuracy.setText(accuracy);
-    mAccuracy.setVisibility(known ? View.VISIBLE : View.GONE);
-    mSource.setContentDescription(word + " " + accuracy);
+    mAccuracy.setVisibility(accuracy != null ? View.VISIBLE : View.GONE);
+    mSource.setContentDescription(accuracy != null ? word + " " + accuracy : word);
 
     mBox.show(getBoxLook(status));
     final String box = context.getString(R.string.nogps_box_title);
@@ -117,7 +116,7 @@ public class StatusBar
   }
 
   @NonNull
-  private static String getSourceWord(@NonNull Context context, @NonNull NoGps.Status status)
+  public static String getSourceWord(@NonNull Context context, @NonNull NoGps.Status status)
   {
     return switch (status.getSource())
     {
@@ -127,6 +126,37 @@ public class StatusBar
       case INERTIAL -> context.getString(R.string.nogps_bar_inertial);
       case NONE -> "—";
     };
+  }
+
+  /**
+   * The accuracy of the position, null without a position.
+   */
+  @Nullable
+  public static String getAccuracyText(@NonNull Context context, @NonNull NoGps.Status status)
+  {
+    if (status.getSource() == NoGps.PositionSource.NONE)
+      return null;
+    return "±" + formatAccuracy(context, status.accuracyM);
+  }
+
+  /**
+   * One button for where the position comes from: the box when the car follows it, or when the mark is set by hand
+   * with a box set up, else GPS.
+   */
+  public static boolean navShowsBox(@NonNull NoGps.PositionSource source, boolean inertialEnabled)
+  {
+    return switch (source)
+    {
+      case INERTIAL -> true;
+      case MANUAL -> inertialEnabled;
+      case GPS, NETWORK, NONE -> false;
+    };
+  }
+
+  @NonNull
+  public static Look getNavLook(@NonNull Context context, @NonNull NoGps.Status status)
+  {
+    return navShowsBox(status.getSource(), status.inertialEnabled) ? getBoxLook(status) : getGpsLook(context, status);
   }
 
   @NonNull
@@ -249,9 +279,9 @@ public class StatusBar
   }
 
   /**
-   * A button of the bar showing a state: its icon with a badge.
+   * A button showing a state: its icon with a badge.
    */
-  private static class Button
+  public static class Button
   {
     @NonNull
     final View mView;
@@ -262,14 +292,14 @@ public class StatusBar
     @Nullable
     private ObjectAnimator mPulsing;
 
-    Button(@NonNull View view, @NonNull ImageView icon, @NonNull ImageView badge)
+    public Button(@NonNull View view, @NonNull ImageView icon, @NonNull ImageView badge)
     {
       mView = view;
       mIcon = icon;
       mBadge = badge;
     }
 
-    void show(@NonNull Look look)
+    public void show(@NonNull Look look)
     {
       final Context context = mView.getContext();
       mIcon.setImageResource(look.icon);
@@ -284,7 +314,7 @@ public class StatusBar
       pulse(look.pulsing);
     }
 
-    void pulse(boolean on)
+    public void pulse(boolean on)
     {
       if (on == (mPulsing != null))
         return;

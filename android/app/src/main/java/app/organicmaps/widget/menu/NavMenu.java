@@ -12,8 +12,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.ViewModelProvider;
 import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
+import app.organicmaps.maplayer.MapButtonsViewModel;
+import app.organicmaps.maplayer.StatusBar;
 import app.organicmaps.sdk.location.LocationHelper;
 import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.sdk.routing.RoutingInfo;
@@ -45,6 +48,9 @@ public class NavMenu implements DefaultLifecycleObserver
   private final TextView mDistanceValue;
   private final TextView mDistanceUnits;
   private final LinearProgressIndicator mRouteProgress;
+  private final View mSource;
+  private final StatusBar.Button mSourceButton;
+  private final TextView mSourceAccuracy;
 
   private final AppCompatActivity mActivity;
   private final NavMenuListener mNavMenuListener;
@@ -108,10 +114,19 @@ public class NavMenu implements DefaultLifecycleObserver
     mDistanceValue = bottomFrame.findViewById(R.id.distance_value);
     mDistanceUnits = bottomFrame.findViewById(R.id.distance_dimen);
     mRouteProgress = bottomFrame.findViewById(R.id.navigation_progress);
+    mSource = bottomFrame.findViewById(R.id.nav_source);
+    mSourceButton = new StatusBar.Button(mSource, bottomFrame.findViewById(R.id.nav_source_icon),
+                                         bottomFrame.findViewById(R.id.nav_source_badge));
+    mSourceAccuracy = bottomFrame.findViewById(R.id.nav_source_accuracy);
+    mSource.setOnClickListener(v -> {
+      final NoGps.Status status = NoGps.getStatus();
+      mNavMenuListener.onSourceClicked(StatusBar.navShowsBox(status.getSource(), status.inertialEnabled));
+    });
 
     // Bottom frame buttons
     ImageView mSettings = bottomFrame.findViewById(R.id.settings);
     mSettings.setOnClickListener(v -> onSettingsClicked());
+    bottomFrame.findViewById(R.id.search).setOnClickListener(v -> mNavMenuListener.onSearchClicked());
     mTts = bottomFrame.findViewById(R.id.tts_volume);
     mTts.setOnClickListener(v -> onTtsClicked());
     Button stop = bottomFrame.findViewById(R.id.stop);
@@ -120,6 +135,17 @@ public class NavMenu implements DefaultLifecycleObserver
 
     TtsPlayer.addStateChangedListener(mTtsStateListener);
     mActivity.getLifecycle().addObserver(this);
+    new ViewModelProvider(mActivity)
+        .get(MapButtonsViewModel.class)
+        .getNoGpsStatus()
+        .observe(mActivity, this::updateSource);
+  }
+
+  @Override
+  public void onStop(@NonNull LifecycleOwner owner)
+  {
+    // The next status starts it again.
+    mSourceButton.pulse(false);
   }
 
   @Override
@@ -284,6 +310,18 @@ public class NavMenu implements DefaultLifecycleObserver
     return true;
   }
 
+  void updateSource(@NonNull NoGps.Status status)
+  {
+    final boolean box = StatusBar.navShowsBox(status.getSource(), status.inertialEnabled);
+    mSourceButton.show(StatusBar.getNavLook(mActivity, status));
+    final String accuracy = StatusBar.getAccuracyText(mActivity, status);
+    mSourceAccuracy.setText(accuracy);
+    mSourceAccuracy.setVisibility(accuracy != null ? View.VISIBLE : View.GONE);
+    final String source = StatusBar.getSourceWord(mActivity, status);
+    mSource.setContentDescription(mActivity.getString(box ? R.string.nogps_box_title : R.string.nogps_status_gps) + ", "
+                                  + (accuracy != null ? source + " " + accuracy : source));
+  }
+
   public void update(@NonNull RoutingInfo info)
   {
     updateSpeedView(info);
@@ -300,5 +338,10 @@ public class NavMenu implements DefaultLifecycleObserver
     void onSettingsClicked();
 
     void onTtsVoiceSettingsClicked();
+
+    void onSearchClicked();
+
+    // Opens the box sheet when the button shows the box, the GPS sheet otherwise.
+    void onSourceClicked(boolean box);
   }
 }

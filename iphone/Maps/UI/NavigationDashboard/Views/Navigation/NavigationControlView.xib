@@ -23,8 +23,15 @@
                 <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="u7O-n6-ZXy">
                     <rect key="frame" x="0.0" y="0.0" width="387" height="52"/>
                     <subviews>
+                        <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="Nsb-Kq-7Vw" userLabel="Source">
+                            <rect key="frame" x="0.0" y="0.0" width="64" height="48"/>
+                            <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.0" colorSpace="custom" customColorSpace="sRGB"/>
+                            <constraints>
+                                <constraint firstAttribute="width" constant="64" id="Nsb-Wd-t64"/>
+                            </constraints>
+                        </view>
                         <stackView opaque="NO" contentMode="scaleToFill" distribution="fillEqually" translatesAutoresizingMaskIntoConstraints="NO" id="KuG-Vu-VAL">
-                            <rect key="frame" x="12" y="0.0" width="315" height="48"/>
+                            <rect key="frame" x="64" y="0.0" width="263" height="48"/>
                             <subviews>
                                 <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="QLk-JN-wfO">
                                     <rect key="frame" x="0.0" y="0.0" width="105" height="48"/>
@@ -160,7 +167,7 @@
                             </constraints>
                         </view>
                         <button contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="UPO-sh-VhS" userLabel="ToggleInfo">
-                            <rect key="frame" x="0.0" y="0.0" width="327" height="48"/>
+                            <rect key="frame" x="64" y="0.0" width="263" height="48"/>
                             <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.0" colorSpace="custom" customColorSpace="sRGB"/>
                             <connections>
                                 <action selector="toggleInfoAction" destination="9fq-65-qd9" eventType="touchUpInside" id="h7P-d8-FJM"/>
@@ -184,10 +191,10 @@
                     </subviews>
                     <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                     <constraints>
-                        <constraint firstItem="KuG-Vu-VAL" firstAttribute="leading" secondItem="u7O-n6-ZXy" secondAttribute="leading" constant="12" id="0hr-A3-h7F">
-                            <variation key="heightClass=compact" constant="16"/>
-                            <variation key="heightClass=regular-widthClass=regular" constant="16"/>
-                        </constraint>
+                        <constraint firstItem="KuG-Vu-VAL" firstAttribute="leading" secondItem="Nsb-Kq-7Vw" secondAttribute="trailing" id="0hr-A3-h7F"/>
+                        <constraint firstItem="Nsb-Kq-7Vw" firstAttribute="leading" secondItem="u7O-n6-ZXy" secondAttribute="leading" id="Nsb-Ld-u7O"/>
+                        <constraint firstItem="Nsb-Kq-7Vw" firstAttribute="top" secondItem="u7O-n6-ZXy" secondAttribute="top" id="Nsb-Tp-u7O"/>
+                        <constraint firstAttribute="bottom" secondItem="Nsb-Kq-7Vw" secondAttribute="bottom" constant="4" id="Nsb-Bt-u7O"/>
                         <constraint firstItem="UPO-sh-VhS" firstAttribute="top" secondItem="u7O-n6-ZXy" secondAttribute="top" id="2Y4-nO-oxo"/>
                         <constraint firstItem="KuG-Vu-VAL" firstAttribute="top" secondItem="u7O-n6-ZXy" secondAttribute="top" id="3Gb-OB-jN9"/>
                         <constraint firstItem="XwA-oz-M3Q" firstAttribute="top" secondItem="u7O-n6-ZXy" secondAttribute="top" id="5lH-DU-U8t"/>
@@ -205,15 +212,15 @@
                         <constraint firstAttribute="bottom" secondItem="UPO-sh-VhS" secondAttribute="bottom" constant="4" id="gcG-aR-OyZ"/>
                         <constraint firstItem="Q0w-Me-x4p" firstAttribute="leading" secondItem="u7O-n6-ZXy" secondAttribute="leading" id="m3u-NJ-pQ3"/>
                         <constraint firstAttribute="bottom" secondItem="Q0w-Me-x4p" secondAttribute="bottom" id="sl4-ja-PfO"/>
-                        <constraint firstItem="UPO-sh-VhS" firstAttribute="leading" secondItem="u7O-n6-ZXy" secondAttribute="leading" id="tlC-se-vPa"/>
+                        <constraint firstItem="UPO-sh-VhS" firstAttribute="leading" secondItem="Nsb-Kq-7Vw" secondAttribute="trailing" id="tlC-se-vPa"/>
                         <constraint firstItem="XwA-oz-M3Q" firstAttribute="leading" secondItem="UPO-sh-VhS" secondAttribute="trailing" id="viH-dq-rwd"/>
                     </constraints>
                 </view>
                 <view hidden="YES" clipsSubviews="YES" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="CMT-MI-d8X">
                     <rect key="frame" x="0.0" y="52" width="387" height="64"/>
                     <subviews>
-                        <stackView opaque="NO" contentMode="right" distribution="equalSpacing" translatesAutoresizingMaskIntoConstraints="NO" id="udk-ZC-Gz0">
-                            <rect key="frame" x="0.0" y="0.0" width="192" height="64"/>
+                        <stackView opaque="NO" contentMode="right" distribution="fillEqually" translatesAutoresizingMaskIntoConstraints="NO" id="udk-ZC-Gz0">
+                            <rect key="frame" x="0.0" y="0.0" width="256" height="64"/>
                             <subviews>
                                 <button opaque="NO" contentMode="center" horizontalHuggingPriority="249" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="skM-Xx-3En" userLabel="Settings" customClass="MWMButton">
                                     <rect key="frame" x="0.0" y="0.0" width="64" height="64"/>
@@ -255,6 +262,20 @@
                                         <action selector="trackRecordingButtonAction:" destination="9fq-65-qd9" eventType="touchUpInside" id="DKF-qL-sRq"/>
                                     </connections>
                                 </button>
+                                <button opaque="NO" contentMode="center" horizontalHuggingPriority="249" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Srh-Bt-n4v" userLabel="Search" customClass="MWMButton">
+                                    <rect key="frame" x="192" y="0.0" width="64" height="64"/>
+                                    <accessibility key="accessibilityConfiguration" identifier="navigationSearchButton"/>
+                                    <constraints>
+                                        <constraint firstAttribute="width" secondItem="Srh-Bt-n4v" secondAttribute="height" multiplier="1:1" priority="999" id="Srh-Wh-r11"/>
+                                    </constraints>
+                                    <state key="normal" image="ic_menu_search"/>
+                                    <userDefinedRuntimeAttributes>
+                                        <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="MWMBlack"/>
+                                    </userDefinedRuntimeAttributes>
+                                    <connections>
+                                        <action selector="searchButtonAction:" destination="9fq-65-qd9" eventType="touchUpInside" id="Srh-Ac-t01"/>
+                                    </connections>
+                                </button>
                             </subviews>
                         </stackView>
                         <button opaque="NO" clipsSubviews="YES" contentMode="scaleToFill" horizontalHuggingPriority="1000" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="mtt-q0-SUx" customClass="MWMStopButton">
@@ -282,7 +303,7 @@
                         <constraint firstItem="mtt-q0-SUx" firstAttribute="top" secondItem="CMT-MI-d8X" secondAttribute="top" priority="750" constant="10" id="L5z-8y-Duk"/>
                         <constraint firstAttribute="height" relation="greaterThanOrEqual" constant="64" id="LaX-SD-Kzr"/>
                         <constraint firstItem="udk-ZC-Gz0" firstAttribute="leading" secondItem="CMT-MI-d8X" secondAttribute="leading" id="QXO-Hi-2pN"/>
-                        <constraint firstItem="mtt-q0-SUx" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="udk-ZC-Gz0" secondAttribute="trailing" priority="250" constant="20" id="R5p-Eg-3S4"/>
+                        <constraint firstItem="mtt-q0-SUx" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="udk-ZC-Gz0" secondAttribute="trailing" constant="20" id="R5p-Eg-3S4"/>
                         <constraint firstItem="udk-ZC-Gz0" firstAttribute="top" secondItem="CMT-MI-d8X" secondAttribute="top" id="W8O-lT-eqz"/>
                         <constraint firstAttribute="bottom" secondItem="udk-ZC-Gz0" secondAttribute="bottom" id="bMN-ct-cOQ"/>
                         <constraint firstAttribute="trailing" secondItem="mtt-q0-SUx" secondAttribute="trailing" constant="12" id="huM-XX-MM9"/>
@@ -317,7 +338,9 @@
                 <outlet property="extendedView" destination="CMT-MI-d8X" id="1OK-Ps-fL4"/>
                 <outlet property="progressView" destination="Q0w-Me-x4p" id="efq-ve-QAZ"/>
                 <outlet property="routingProgress" destination="vxl-iA-p8N" id="gw7-Pn-5m7"/>
+                <outlet property="searchButton" destination="Srh-Bt-n4v" id="Srh-Ou-tlt"/>
                 <outlet property="settingsButton" destination="skM-Xx-3En" id="ZkN-Yp-ydR"/>
+                <outlet property="sourceView" destination="Nsb-Kq-7Vw" id="Nsb-Ou-tlt"/>
                 <outlet property="speedBackground" destination="QLk-JN-wfO" id="aYN-db-Xaa"/>
                 <outlet property="speedLabel" destination="b3M-75-5HW" id="bLg-uX-05a"/>
                 <outlet property="speedLegendLabel" destination="wgS-eK-vfD" id="ZOP-Ro-KbD"/>
@@ -333,6 +356,7 @@
     </objects>
     <resources>
         <image name="ic_menu" width="24" height="24"/>
+        <image name="ic_menu_search" width="24" height="24"/>
         <image name="ic_menu_settings" width="24" height="24"/>
         <image name="ic_menu_track_recording" width="24" height="24"/>
         <image name="ic_voice_off" width="28" height="28"/>

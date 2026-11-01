@@ -21,7 +21,6 @@ enum NavigationDashboard {
 
     var latestVisiblePresentationStep: NavigationDashboardModalPresentationStep
     var progress: CGFloat
-    var navigationSearchState: NavigationSearchState?
     var canSaveRouteAsTrack: Bool
     var errorMessage: String?
     /// Taken from the core at every response: e.g. the core rebuilds the route without a state change.
@@ -51,7 +50,6 @@ extension NavigationDashboard.ViewModel {
       presentationStep: .hidden,
       latestVisiblePresentationStep: isiPad ? .regular : .compact,
       progress: 0,
-      navigationSearchState: nil,
       canSaveRouteAsTrack: false,
       errorMessage: nil,
       isRouteValid: MWMRouter.isRouteValid()

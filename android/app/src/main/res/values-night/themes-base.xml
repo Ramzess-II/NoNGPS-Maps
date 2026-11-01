@@ -80,8 +80,6 @@
     <item name="myPositionButtonAnimation">@drawable/ic_menu_location_pending</item>
     <item name="wheelPendingAnimation">@drawable/anim_spinner_pending</item>
 
-    <item name="navButtonsThemeRect">@style/MwmTheme.NavButtonsRect</item>
-    <item name="navButtonsThemeRound">@style/MwmTheme.NavButtonsRound</item>
     <item name="downloaderTheme">@style/MwmTheme.Downloader</item>
     <item name="navigationTheme">@style/MwmTheme.Navigation</item>
 

@@ -78,7 +78,6 @@ public class MapButtonsController extends Fragment
 
   Map<MapButtons, View> mButtonsMap;
   private View mFrame;
-  private View mInnerLeftButtonsFrame;
   private View mInnerRightButtonsFrame;
   @Nullable
   private View mBottomButtonsFrame;
@@ -132,7 +131,6 @@ public class MapButtonsController extends Fragment
       mHandler.postDelayed(this, POSITION_STATUS_UPDATE_INTERVAL_MS);
     }
   };
-  private SearchWheel mSearchWheel;
   private BadgeDrawable mBadgeDrawable;
   @Nullable
   private ObjectAnimator mBlinkingAnimator;
@@ -154,7 +152,6 @@ public class MapButtonsController extends Fragment
   private final Observer<Integer> mSearchPageDistanceToTopObserver = this::moveForSearch;
   private final Observer<Boolean> mButtonHiddenObserver = this::setButtonsHidden;
   private final Observer<Integer> mMyPositionModeObserver = this::updateNavMyPositionButton;
-  private final Observer<SearchWheel.SearchOption> mSearchOptionObserver = this::onSearchOptionChange;
   private final Observer<Boolean> mTrackRecorderObserver = (enable) ->
   {
     updateMenuBadge(enable);
@@ -178,7 +175,6 @@ public class MapButtonsController extends Fragment
     else
       mFrame = inflater.inflate(R.layout.map_buttons_layout_regular, container, false);
 
-    mInnerLeftButtonsFrame = mFrame.findViewById(R.id.map_buttons_inner_left);
     mInnerRightButtonsFrame = mFrame.findViewById(R.id.map_buttons_inner_right);
     mCarButtonsFrame = mFrame.findViewById(R.id.map_buttons_inner_car);
     mBottomButtonsFrame = mFrame.findViewById(R.id.map_buttons_bottom);
@@ -189,10 +185,6 @@ public class MapButtonsController extends Fragment
         .setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.zoomIn));
     mFrame.findViewById(R.id.nav_zoom_out)
         .setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.zoomOut));
-    // Only in the navigation, the bookmarks are in the menu otherwise.
-    final View bookmarksButton = mFrame.findViewById(R.id.btn_bookmarks);
-    if (bookmarksButton != null)
-      bookmarksButton.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.bookmarks));
     final View myPosition = mFrame.findViewById(R.id.my_position);
     mNavMyPosition =
         new MyPositionButton(myPosition, (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.myPosition));
@@ -284,12 +276,15 @@ public class MapButtonsController extends Fragment
     if (helpButton != null)
       helpButton.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.help));
 
-    mSearchWheel =
-        new SearchWheel(mFrame,
-                        (v)
-                            -> mMapButtonClickListener.onMapButtonClick(MapButtons.search),
-                        (v) -> mMapButtonClickListener.onSearchCanceled(), mMapButtonsViewModel, mSearchPageViewModel);
+    // Only in the bottom bar: the navigation opens the search from its menu.
     final View searchButton = mFrame.findViewById(R.id.btn_search);
+    if (searchButton != null)
+      searchButton.setOnClickListener((v) -> {
+        if (Boolean.TRUE.equals(mSearchPageViewModel.getSearchEnabled().getValue()))
+          mMapButtonClickListener.onSearchCanceled();
+        else
+          mMapButtonClickListener.onMapButtonClick(MapButtons.search);
+      });
 
     // Used to get the maximum height the buttons will evolve in
     mFrame.addOnLayoutChangeListener(new MapButtonsController.ContentViewLayoutChangeListener(mFrame));
@@ -297,9 +292,8 @@ public class MapButtonsController extends Fragment
     mButtonsMap = new HashMap<>();
     mButtonsMap.put(MapButtons.zoom, zoomFrame);
     mButtonsMap.put(MapButtons.myPosition, myPosition);
-    if (bookmarksButton != null)
-      mButtonsMap.put(MapButtons.bookmarks, bookmarksButton);
-    mButtonsMap.put(MapButtons.search, searchButton);
+    if (searchButton != null)
+      mButtonsMap.put(MapButtons.search, searchButton);
 
     if (mToggleMapLayerButton != null)
       mButtonsMap.put(MapButtons.toggleMapLayer, mToggleMapLayerButton);
@@ -338,7 +332,7 @@ public class MapButtonsController extends Fragment
       if (mCarControls != null)
         UiUtils.showIf(show, mCarControls);
       break;
-    case search: mSearchWheel.show(show);
+    case search:
     case bookmarks:
     case menu: UiUtils.showIf(show, buttonView); break;
     case trackRecordingStatus:
@@ -376,6 +370,7 @@ public class MapButtonsController extends Fragment
 
     if (mStatusBar != null)
       mStatusBar.update(status);
+    mMapButtonsViewModel.setNoGpsStatus(status);
 
     mCarButtonsShown.clear();
     // The buttons moving the position along the road calibrate the speed, they are shown while the user calibrates
@@ -705,9 +700,6 @@ public class MapButtonsController extends Fragment
     if (mInnerRightButtonsFrame != null
         && (isBehindSearchSheet(mInnerRightButtonsFrame) || isMoving(mInnerRightButtonsFrame)))
       applyMove(mInnerRightButtonsFrame, translationY);
-    if (mInnerLeftButtonsFrame != null
-        && (isBehindSearchSheet(mInnerLeftButtonsFrame) || isMoving(mInnerLeftButtonsFrame)))
-      applyMove(mInnerLeftButtonsFrame, translationY);
   }
 
   private void applyMove(View frame, float translationY)
@@ -720,8 +712,6 @@ public class MapButtonsController extends Fragment
 
   public void updateButtonsVisibility()
   {
-    if (mInnerLeftButtonsFrame != null)
-      updateButtonsVisibility(mInnerLeftButtonsFrame.getTranslationY(), mInnerLeftButtonsFrame);
     if (mInnerRightButtonsFrame != null)
       updateButtonsVisibility(mInnerRightButtonsFrame.getTranslationY(), mInnerRightButtonsFrame);
   }
@@ -812,7 +802,6 @@ public class MapButtonsController extends Fragment
     mMapButtonsViewModel.getButtonsHidden().observe(viewLifecycleOwner, mButtonHiddenObserver);
     mSearchPageViewModel.getSearchPageDistanceToTop().observe(viewLifecycleOwner, mSearchPageDistanceToTopObserver);
     mMapButtonsViewModel.getMyPositionMode().observe(viewLifecycleOwner, mMyPositionModeObserver);
-    mMapButtonsViewModel.getSearchOption().observe(viewLifecycleOwner, mSearchOptionObserver);
     mMapButtonsViewModel.getTrackRecorderState().observe(viewLifecycleOwner, mTrackRecorderObserver);
     mMapButtonsViewModel.getTopButtonsMarginTop().observe(viewLifecycleOwner, mTopButtonMarginObserver);
     mHandler.post(mPositionStatusUpdater);
@@ -822,8 +811,6 @@ public class MapButtonsController extends Fragment
   public void onResume()
   {
     super.onResume();
-    if (mMapButtonsViewModel.getLayoutMode().getValue() == LayoutMode.navigation)
-      mSearchWheel.onResume();
     updateMenuBadge();
     updateLayerButton();
     updateHelpButtonIcon();
@@ -842,12 +829,6 @@ public class MapButtonsController extends Fragment
       mBlinkingAnimator.cancel();
       mBlinkingAnimator = null;
     }
-  }
-
-  public void onSearchOptionChange(@Nullable SearchWheel.SearchOption searchOption)
-  {
-    if (searchOption == null && mMapButtonsViewModel.getLayoutMode().getValue() == LayoutMode.navigation)
-      mSearchWheel.reset();
   }
 
   public enum LayoutMode

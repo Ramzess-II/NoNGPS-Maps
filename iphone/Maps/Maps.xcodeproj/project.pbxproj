@@ -12,6 +12,7 @@
 		5EA9BD022F9F000000FA103D /* SearchBookmarksViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EA9BD012F9F000000FA103D /* SearchBookmarksViewController.swift */; };
 		5EA9BE022F9F000000FA103D /* SearchBookmarksStripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EA9BE012F9F000000FA103D /* SearchBookmarksStripView.swift */; };
 		00A2630ADA97EB2C42945272 /* NavigationDashboardViewControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE938673CC3D8E7866C20B8 /* NavigationDashboardViewControllerTests.swift */; };
+		6ABF7A5F73FB1F15A8F9C37A /* NavigationSourceButtonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53CD1FA9DD1A1E3B5ECE5670 /* NavigationSourceButtonTests.swift */; };
 		0F13484A0000000000000002 /* UITableViewCell+SeparatorInset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F13484A0000000000000001 /* UITableViewCell+SeparatorInset.swift */; };
 		11E2F6F34E5F12298C3E2AC0 /* NoGpsSensorsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB3EB65C13D5083F5AFA02C8 /* NoGpsSensorsViewController.swift */; };
 		3ADD6F28B1682842E86CAD7C /* NoGpsGpsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0A2E482F0BC3FF3F47D237 /* NoGpsGpsSheet.swift */; };
@@ -1902,6 +1903,7 @@
 		3A0A2E482F0BC3FF3F47D237 /* NoGpsGpsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsGpsSheet.swift; sourceTree = "<group>"; };
 		EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsBoxSheet.swift; sourceTree = "<group>"; };
 		FEE938673CC3D8E7866C20B8 /* NavigationDashboardViewControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationDashboardViewControllerTests.swift; sourceTree = "<group>"; };
+		53CD1FA9DD1A1E3B5ECE5670 /* NavigationSourceButtonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationSourceButtonTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -2121,6 +2123,7 @@
 			isa = PBXGroup;
 			children = (
 				FEE938673CC3D8E7866C20B8 /* NavigationDashboardViewControllerTests.swift */,
+				53CD1FA9DD1A1E3B5ECE5670 /* NavigationSourceButtonTests.swift */,
 			);
 			name = NavigationDashboardTests;
 			path = NavigationDashboardTests;
@@ -5195,6 +5198,7 @@
 				EDBAB6F52E980421007962B5 /* GeoNavigationToOMURLConverterTests.swift in Sources */,
 				ED914332300168CF0081DF0B /* CarPlaySceneDelegateTests.swift in Sources */,
 				00A2630ADA97EB2C42945272 /* NavigationDashboardViewControllerTests.swift in Sources */,
+				6ABF7A5F73FB1F15A8F9C37A /* NavigationSourceButtonTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
