@@ -60,9 +60,14 @@ public:
     SetString(key, settings::ToString(value));
   }
 
-  // Out of the box the navigation is on and looks for the sensor box. Who has chosen the ELM327 adapter, when
-  // the phone was the default source, keeps the phone.
-  bool IsInertialEnabled() const { return Get<bool>(kInertialEnabled, true); }
+  // A new user has no box until they connect one. The choice was not saved while the navigation was on by
+  // default: who has heard a box or chosen the ELM327 adapter then keeps it.
+  bool IsInertialEnabled() const
+  {
+    return Get<bool>(kInertialEnabled, GetString(kElm327Address) || GetString(kBoxAccel) || GetString(kBoxPowerOns) ||
+                                           GetString(kBoxPowerOnTime));
+  }
+  // Who has chosen the ELM327 adapter, when the phone was the default source, keeps the phone.
   bool IsEsp32Source() const { return Get<bool>(kEsp32Source, Get<std::string>(kElm327Address, "").empty()); }
 };
 
