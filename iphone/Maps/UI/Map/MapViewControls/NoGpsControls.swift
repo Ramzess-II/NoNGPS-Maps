@@ -4,7 +4,8 @@
 @objc
 final class NoGpsControls: NSObject {
   private enum Constants {
-    static let buttonWidth = CGFloat(52)
+    // As the side buttons on the right in MWMSideButtonsView.xib: both panels are equally wide.
+    static let buttonWidth = CGFloat(56)
     static let buttonHeight = CGFloat(48)
     static let statusTopOffset = CGFloat(8)
     static let statusMinHeight = CGFloat(36)
