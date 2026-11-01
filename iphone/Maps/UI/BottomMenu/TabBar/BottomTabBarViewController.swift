@@ -1,8 +1,8 @@
 class BottomTabBarViewController: UIViewController {
   private enum Constants {
     static let panelTopInset = CGFloat(6)
-    static let sourceSelectorWidth = CGFloat(220)
-    static let sourceSelectorSpacing = CGFloat(12)
+    static let statusBarWidth = CGFloat(260)
+    static let statusBarSpacing = CGFloat(4)
   }
 
   var presenter: BottomTabBarPresenterProtocol!
@@ -12,7 +12,7 @@ class BottomTabBarViewController: UIViewController {
   @IBOutlet var downloadBadge: UIView!
 
   private let panel = MapControlsPanel(edge: .bottom)
-  private let sourceSelector = NoGpsSourceSelector()
+  private let statusBar = NoGpsStatusBar()
   private var avaliableArea = CGRect.zero
   @objc var isHidden: Bool = false {
     didSet {
@@ -32,7 +32,7 @@ class BottomTabBarViewController: UIViewController {
     super.viewDidLoad()
     view.alpha = 0 // Hide the view until it receives a first available area update.
     view.insertSubview(panel, at: 0)
-    setupSourceSelector()
+    setupStatusBar()
   }
 
   override func viewDidLayoutSubviews() {
@@ -43,19 +43,21 @@ class BottomTabBarViewController: UIViewController {
     panel.frame = CGRect(x: -view.frame.minX, y: top, width: screenWidth, height: view.bounds.height - top)
   }
 
-  private func setupSourceSelector() {
+  private func setupStatusBar() {
     guard let container = searchButton.superview else { return }
-    sourceSelector.translatesAutoresizingMaskIntoConstraints = false
-    container.addSubview(sourceSelector)
-    // Search and the menu are placed symmetrically, so the selector keeps away from both.
-    let width = sourceSelector.widthAnchor.constraint(equalToConstant: Constants.sourceSelectorWidth)
+    NoGpsStatusBar.styleButton(searchButton)
+    NoGpsStatusBar.styleButton(moreButton)
+    statusBar.translatesAutoresizingMaskIntoConstraints = false
+    container.addSubview(statusBar)
+    // Search and the menu are placed symmetrically, so the bar keeps away from both.
+    let width = statusBar.widthAnchor.constraint(equalToConstant: Constants.statusBarWidth)
     width.priority = .defaultHigh
     NSLayoutConstraint.activate([
       width,
-      sourceSelector.centerXAnchor.constraint(equalTo: container.centerXAnchor),
-      sourceSelector.centerYAnchor.constraint(equalTo: container.centerYAnchor),
-      sourceSelector.leadingAnchor.constraint(greaterThanOrEqualTo: searchButton.trailingAnchor,
-                                              constant: Constants.sourceSelectorSpacing),
+      statusBar.centerXAnchor.constraint(equalTo: container.centerXAnchor),
+      statusBar.centerYAnchor.constraint(equalTo: container.centerYAnchor),
+      statusBar.leadingAnchor.constraint(greaterThanOrEqualTo: searchButton.trailingAnchor,
+                                         constant: Constants.statusBarSpacing),
     ])
   }
 

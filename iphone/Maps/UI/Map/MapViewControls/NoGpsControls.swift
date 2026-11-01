@@ -15,7 +15,6 @@ final class NoGpsControls: NSObject {
     static let blinkDuration: CFTimeInterval = 0.4
     static let blinkOpacity = Float(0.2)
     static let noneColor = UIColor(red: 0xD3 / 255, green: 0x2F / 255, blue: 0x2F / 255, alpha: 1)
-    static let inertialColor = UIColor(red: 0x7B / 255, green: 0x1F / 255, blue: 0xA2 / 255, alpha: 1)
   }
 
   private weak static var shared: NoGpsControls?
@@ -199,25 +198,17 @@ final class NoGpsControls: NSObject {
 
   private func refresh() {
     let status = NoGps.status()
-    // Only the accuracy of the inertial position, and the lost road in the same place.
-    statusButton.isHidden = status.source != .inertial && !status.roadLost
-    var text = String(format: L("nogps_status_inertial"), Self.formatAccuracy(status.accuracyM))
-    var color = Constants.inertialColor
-    var hint: String?
-    if status.roadLost {
-      // The mark stands and waits for the user: a toast about it is easy to miss while driving.
-      text = L("nogps_status_road_lost")
-      color = Constants.noneColor
-      hint = L("nogps_status_road_lost_hint")
-    }
-    let title = NSMutableAttributedString(string: text, attributes: [.font: UIFont.boldSystemFont(ofSize: 15),
-                                                                     .foregroundColor: UIColor.white])
-    if let hint {
-      title.append(NSAttributedString(string: "\n" + hint, attributes: [.font: UIFont.boldSystemFont(ofSize: 12),
-                                                                        .foregroundColor: UIColor.white]))
-    }
+    // The mark stands and waits for the user: a toast about it is easy to miss while driving. The bottom bar tells the
+    // source and the accuracy.
+    statusButton.isHidden = !status.roadLost
+    let title = NSMutableAttributedString(string: L("nogps_status_road_lost"),
+                                          attributes: [.font: UIFont.boldSystemFont(ofSize: 15),
+                                                       .foregroundColor: UIColor.white])
+    title.append(NSAttributedString(string: "\n" + L("nogps_status_road_lost_hint"),
+                                    attributes: [.font: UIFont.boldSystemFont(ofSize: 12),
+                                                 .foregroundColor: UIColor.white]))
     statusButton.setAttributedTitle(title, for: .normal)
-    statusButton.backgroundColor = color
+    statusButton.backgroundColor = Constants.noneColor
     blinkStatus(status.roadLost)
 
     // The buttons moving the position along the road calibrate the speed, they are shown while the user calibrates it.
@@ -237,7 +228,7 @@ final class NoGpsControls: NSObject {
                      reverseButton: !status.movedByHand,
                      switchMarkButton: !(status.movedByHand && status.otherMarks > 0),
                      manualButton: !canMark]
-    // The car is corrected by hand only while the box drives it: GPS is chosen in the bottom bar otherwise.
+    // The car is corrected by hand only while the box drives it: GPS does otherwise, see the GPS sheet.
     if !status.gpsDisabled {
       buttonsHidden = buttonsHidden.mapValues { _ in true }
     }
@@ -247,7 +238,7 @@ final class NoGpsControls: NSObject {
       applyButtonsHidden()
     }
     updateLayout()
-    NoGpsSourceSelector.update(status)
+    NoGpsStatusBar.update(status)
   }
 
   private func blinkStatus(_ blink: Bool) {
@@ -299,6 +290,17 @@ final class NoGpsControls: NSObject {
     let sensors = NoGpsSensorsViewController()
     sensors.onClose = onClose
     top.present(UINavigationController(rootViewController: sensors), animated: true)
+  }
+
+  /// Shows a sheet of the bottom bar: half of the screen over the map, pulled up for the rest. The sheets are refreshed
+  /// every second, see UITableView.reloadData(keepingRows:_:).
+  static func showSheet(_ root: UIViewController) {
+    let navigation = UINavigationController(rootViewController: root)
+    if let sheet = navigation.sheetPresentationController {
+      sheet.detents = [.medium(), .large()]
+      sheet.prefersGrabberVisible = true
+    }
+    UIViewController.topViewController().present(navigation, animated: true)
   }
 
   /// The sensor box has been plugged in: asks the user to calibrate it, the car should stand on a level place.
@@ -449,5 +451,18 @@ final class NoGpsControls: NSObject {
       Toast.show(withText: text)
     }
     refresh()
+  }
+}
+
+extension UITableView {
+  /// Reloads the table when its rows change, otherwise updates the rows in place: a full reload would take a tap or a
+  /// switch from under the finger of the user.
+  func reloadData<Row: Equatable>(keepingRows rows: [[Row]], _ shown: inout [[Row]]) {
+    if rows == shown, let visible = indexPathsForVisibleRows {
+      reconfigureRows(at: visible)
+    } else {
+      shown = rows
+      reloadData()
+    }
   }
 }

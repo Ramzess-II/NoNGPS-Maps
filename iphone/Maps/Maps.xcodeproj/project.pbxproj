@@ -14,6 +14,8 @@
 		00A2630ADA97EB2C42945272 /* NavigationDashboardViewControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE938673CC3D8E7866C20B8 /* NavigationDashboardViewControllerTests.swift */; };
 		0F13484A0000000000000002 /* UITableViewCell+SeparatorInset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F13484A0000000000000001 /* UITableViewCell+SeparatorInset.swift */; };
 		11E2F6F34E5F12298C3E2AC0 /* NoGpsSensorsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB3EB65C13D5083F5AFA02C8 /* NoGpsSensorsViewController.swift */; };
+		3ADD6F28B1682842E86CAD7C /* NoGpsGpsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0A2E482F0BC3FF3F47D237 /* NoGpsGpsSheet.swift */; };
+		333A4718BABBBFC6A412D69B /* NoGpsBoxSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */; };
 		165953742CB1D85500CFED7C /* fonts in Resources */ = {isa = PBXBuildFile; fileRef = 165953732CB1D83700CFED7C /* fonts */; };
 		165953942CB44B5600CFED7C /* symbols in Resources */ = {isa = PBXBuildFile; fileRef = 165953932CB44B3B00CFED7C /* symbols */; };
 		16CDB3FB2F15B0C30040FC4F /* libtimezone.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 16CDB3FA2F15B0C30040FC4F /* libtimezone.a */; };
@@ -185,7 +187,7 @@
 		ED82C5212F90180300FA103D /* BottomTabBarInteractor.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED82C2E62F90180300FA103D /* BottomTabBarInteractor.swift */; };
 		ED82C5222F90180300FA103D /* BottomTabBarPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED82C2E72F90180300FA103D /* BottomTabBarPresenter.swift */; };
 		ED82C5232F90180300FA103D /* BottomTabBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED82C2E82F90180300FA103D /* BottomTabBarView.swift */; };
-		9FF04187239555C373D2C160 /* NoGpsSourceSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2473250498ADDAB6FDA1A6 /* NoGpsSourceSelector.swift */; };
+		9FF04187239555C373D2C160 /* NoGpsStatusBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2473250498ADDAB6FDA1A6 /* NoGpsStatusBar.swift */; };
 		ED82C5242F90180300FA103D /* BottomTabBarViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED82C2E92F90180300FA103D /* BottomTabBarViewController.swift */; };
 		ED82C5252F90180300FA103D /* CarPlayMapViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED82C2EF2F90180300FA103D /* CarPlayMapViewController.swift */; };
 		ED82C5262F90180300FA103D /* ColorPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED82C2F12F90180300FA103D /* ColorPicker.swift */; };
@@ -1081,7 +1083,7 @@
 		ED82C2E62F90180300FA103D /* BottomTabBarInteractor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomTabBarInteractor.swift; sourceTree = "<group>"; };
 		ED82C2E72F90180300FA103D /* BottomTabBarPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomTabBarPresenter.swift; sourceTree = "<group>"; };
 		ED82C2E82F90180300FA103D /* BottomTabBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomTabBarView.swift; sourceTree = "<group>"; };
-		1A2473250498ADDAB6FDA1A6 /* NoGpsSourceSelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsSourceSelector.swift; sourceTree = "<group>"; };
+		1A2473250498ADDAB6FDA1A6 /* NoGpsStatusBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsStatusBar.swift; sourceTree = "<group>"; };
 		ED82C2E92F90180300FA103D /* BottomTabBarViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomTabBarViewController.swift; sourceTree = "<group>"; };
 		ED82C2EA2F90180300FA103D /* BottomTabBarViewController.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = BottomTabBarViewController.xib; sourceTree = "<group>"; };
 		ED82C2EC2F90180300FA103D /* MWMBottomMenuState.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MWMBottomMenuState.h; sourceTree = "<group>"; };
@@ -1893,6 +1895,8 @@
 		FAF9DDA22A86DC54000D7037 /* libharfbuzz.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libharfbuzz.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		FAFF42291347F101009BBB14 /* World.mwm */ = {isa = PBXFileReference; lastKnownFileType = file; name = World.mwm; path = ../../data/World.mwm; sourceTree = "<group>"; };
 		FB3EB65C13D5083F5AFA02C8 /* NoGpsSensorsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsSensorsViewController.swift; sourceTree = "<group>"; };
+		3A0A2E482F0BC3FF3F47D237 /* NoGpsGpsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsGpsSheet.swift; sourceTree = "<group>"; };
+		EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsBoxSheet.swift; sourceTree = "<group>"; };
 		FEE938673CC3D8E7866C20B8 /* NavigationDashboardViewControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationDashboardViewControllerTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -2524,7 +2528,7 @@
 				ED82C2E62F90180300FA103D /* BottomTabBarInteractor.swift */,
 				ED82C2E72F90180300FA103D /* BottomTabBarPresenter.swift */,
 				ED82C2E82F90180300FA103D /* BottomTabBarView.swift */,
-				1A2473250498ADDAB6FDA1A6 /* NoGpsSourceSelector.swift */,
+				1A2473250498ADDAB6FDA1A6 /* NoGpsStatusBar.swift */,
 				ED82C2E92F90180300FA103D /* BottomTabBarViewController.swift */,
 				ED82C2EA2F90180300FA103D /* BottomTabBarViewController.xib */,
 			);
@@ -2859,6 +2863,8 @@
 				EC2AC3F235F3BA4C5537EEDC /* NoGpsControls.swift */,
 				ED1D4A8C14925D512AD764B8 /* MapControlsPanel.swift */,
 				FB3EB65C13D5083F5AFA02C8 /* NoGpsSensorsViewController.swift */,
+				3A0A2E482F0BC3FF3F47D237 /* NoGpsGpsSheet.swift */,
+				EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */,
 				ED82C3912F90180300FA103D /* SideButtons */,
 				ED82C3952F90180300FA103D /* TrafficButton */,
 				ED82C3962F90180300FA103D /* MWMMapViewControlsCommon.h */,
@@ -4636,6 +4642,8 @@
 				CF816FBCBE80AAE1FFDC7E66 /* NoGpsControls.swift in Sources */,
 				606D0D5C89006E2B70BC9470 /* MapControlsPanel.swift in Sources */,
 				11E2F6F34E5F12298C3E2AC0 /* NoGpsSensorsViewController.swift in Sources */,
+				3ADD6F28B1682842E86CAD7C /* NoGpsGpsSheet.swift in Sources */,
+				333A4718BABBBFC6A412D69B /* NoGpsBoxSheet.swift in Sources */,
 				3AB2A51C1DF5ED4103358BAF /* MWMNoGps.mm in Sources */,
 				9B5728946390BF79AAED06E1 /* Esp32BleTransport.swift in Sources */,
 				ED82BCB22F900F8200FA103D /* main.mm in Sources */,
@@ -4688,7 +4696,7 @@
 				ED82C5212F90180300FA103D /* BottomTabBarInteractor.swift in Sources */,
 				ED82C5222F90180300FA103D /* BottomTabBarPresenter.swift in Sources */,
 				ED82C5232F90180300FA103D /* BottomTabBarView.swift in Sources */,
-				9FF04187239555C373D2C160 /* NoGpsSourceSelector.swift in Sources */,
+				9FF04187239555C373D2C160 /* NoGpsStatusBar.swift in Sources */,
 				ED82C5242F90180300FA103D /* BottomTabBarViewController.swift in Sources */,
 				ED82C5252F90180300FA103D /* CarPlayMapViewController.swift in Sources */,
 				ED82C5262F90180300FA103D /* ColorPicker.swift in Sources */,

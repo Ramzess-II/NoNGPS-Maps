@@ -37,6 +37,8 @@ import androidx.lifecycle.ViewModelProvider;
 import app.organicmaps.BuildConfig;
 import app.organicmaps.MwmActivity;
 import app.organicmaps.R;
+import app.organicmaps.nogps.BoxBottomSheet;
+import app.organicmaps.nogps.GpsBottomSheet;
 import app.organicmaps.nogps.SensorsBottomSheet;
 import app.organicmaps.routing.RoutingPlanViewModel;
 import app.organicmaps.sdk.Framework;
@@ -59,6 +61,7 @@ import app.organicmaps.widget.placepage.PlacePageViewModel;
 import com.google.android.material.badge.BadgeDrawable;
 import com.google.android.material.badge.BadgeUtils;
 import com.google.android.material.badge.ExperimentalBadgeUtils;
+import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -97,9 +100,7 @@ public class MapButtonsController extends Fragment
   @Nullable
   private View mTrackRecordingPanel;
   @Nullable
-  private SourceSelector mSourceSelector;
-  // The sensors screen was opened from the selector: GPS comes back if the box is still not connected.
-  private boolean mBackToGpsOnSensorsClosed;
+  private StatusBar mStatusBar;
   @Nullable
   private FloatingActionButton mManualPositionButton;
   @Nullable
@@ -194,19 +195,19 @@ public class MapButtonsController extends Fragment
     mManualPositionButton = mFrame.findViewById(R.id.manual_position);
     mPositionStatus = mFrame.findViewById(R.id.position_status);
     mPositionStatus.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.positionStatus));
-    final View sourceSelector = mFrame.findViewById(R.id.source_selector);
-    if (sourceSelector != null)
-      mSourceSelector = new SourceSelector(sourceSelector, new SourceSelector.Listener() {
+    final View statusBar = mFrame.findViewById(R.id.status_bar);
+    if (statusBar != null)
+      mStatusBar = new StatusBar(statusBar, new StatusBar.Listener() {
         @Override
-        public void showSensors(boolean backToGps)
+        public void showGpsSheet()
         {
-          MapButtonsController.this.showSensors(backToGps);
+          showSheet(new GpsBottomSheet(), GpsBottomSheet.TAG);
         }
 
         @Override
-        public void onSourceChosen()
+        public void showBoxSheet()
         {
-          updatePositionStatus();
+          showSheet(new BoxBottomSheet(), BoxBottomSheet.TAG);
         }
       });
     mManualPositionButton.setOnClickListener((v) -> {
@@ -340,8 +341,8 @@ public class MapButtonsController extends Fragment
   }
 
   /**
-   * Shows the accuracy of the inertial position, from the box or the ELM327 adapter, and the lost road in the same
-   * place.
+   * Shows the lost road: the mark stands and waits for the user, a toast about it is easy to miss while driving. The
+   * bottom bar tells the source of the position and its accuracy.
    */
   private void updatePositionStatus()
   {
@@ -351,31 +352,21 @@ public class MapButtonsController extends Fragment
 
     if (mPositionStatus != null)
     {
-      final boolean inertial = source == NoGps.PositionSource.INERTIAL;
-      UiUtils.showIf(inertial || status.roadLost, mPositionStatus);
+      UiUtils.showIf(status.roadLost, mPositionStatus);
       if (status.roadLost)
       {
-        // The mark stands and waits for the user: a toast about it is easy to miss while driving.
         final String text = getString(R.string.nogps_status_road_lost);
         final SpannableString withHint =
             new SpannableString(text + '\n' + getString(R.string.nogps_status_road_lost_hint));
         withHint.setSpan(new RelativeSizeSpan(0.8f), text.length() + 1, withHint.length(),
                          Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         mPositionStatus.setText(withHint);
-        mPositionStatus.setBackgroundTintList(
-            ColorStateList.valueOf(ContextCompat.getColor(context, R.color.nogps_status_none)));
-      }
-      else if (inertial)
-      {
-        mPositionStatus.setText(getString(R.string.nogps_status_inertial, formatAccuracy(status.accuracyM)));
-        mPositionStatus.setBackgroundTintList(
-            ColorStateList.valueOf(ContextCompat.getColor(context, R.color.nogps_status_inertial)));
       }
       blinkPositionStatus(status.roadLost);
     }
 
-    if (mSourceSelector != null)
-      mSourceSelector.update(status);
+    if (mStatusBar != null)
+      mStatusBar.update(status);
 
     mCarButtonsShown.clear();
     // The buttons moving the position along the road calibrate the speed, they are shown while the user calibrates
@@ -409,7 +400,7 @@ public class MapButtonsController extends Fragment
       ImageViewCompat.setImageTintList(mManualPositionButton, ColorStateList.valueOf(color));
     }
 
-    // The car is corrected by hand only while the box drives it: GPS is chosen in the bottom bar otherwise.
+    // The car is corrected by hand only while the box drives it: GPS does otherwise, see the GPS sheet.
     if (!status.gpsDisabled)
       mCarButtonsShown.replaceAll((button, shown) -> false);
     final boolean hasCarButtons = mCarButtonsShown.containsValue(true);
@@ -476,25 +467,11 @@ public class MapButtonsController extends Fragment
     });
   }
 
-  /**
-   * @param backToGps GPS comes back if the box is still not connected when the user closes the screen.
-   */
-  private void showSensors(boolean backToGps)
+  private void showSheet(@NonNull BottomSheetDialogFragment sheet, @NonNull String tag)
   {
-    mBackToGpsOnSensorsClosed = backToGps;
-    mMapButtonClickListener.onMapButtonClick(MapButtons.positionStatus);
-  }
-
-  private void onSensorsClosed()
-  {
-    if (!mBackToGpsOnSensorsClosed)
-      return;
-    mBackToGpsOnSensorsClosed = false;
-    if (NoGps.getStatus().getSourceState() != NoGps.SourceState.CONNECTED)
-    {
-      NoGps.nativeSetGpsDisabled(false);
-      updatePositionStatus();
-    }
+    final var manager = requireActivity().getSupportFragmentManager();
+    if (manager.findFragmentByTag(tag) == null)
+      sheet.show(manager, tag);
   }
 
   /**
@@ -549,12 +526,6 @@ public class MapButtonsController extends Fragment
     mStatusBlinkingAnimator.setRepeatCount(ObjectAnimator.INFINITE);
     mStatusBlinkingAnimator.setRepeatMode(ObjectAnimator.REVERSE);
     mStatusBlinkingAnimator.start();
-  }
-
-  @NonNull
-  private String formatAccuracy(float meters)
-  {
-    return SourceSelector.formatAccuracy(requireContext(), meters);
   }
 
   void animateIconBlinking(boolean show, @NonNull FloatingActionButton button)
@@ -816,8 +787,9 @@ public class MapButtonsController extends Fragment
       dockPanels(insets);
       return windowInsets;
     });
+    // The sheets change what the bar shows: GPS used or not, the box forgotten.
     requireActivity().getSupportFragmentManager().setFragmentResultListener(
-        SensorsBottomSheet.RESULT_CLOSED, getViewLifecycleOwner(), (key, result) -> onSensorsClosed());
+        SensorsBottomSheet.RESULT_CLOSED, getViewLifecycleOwner(), (key, result) -> updatePositionStatus());
   }
 
   @Override
@@ -855,8 +827,8 @@ public class MapButtonsController extends Fragment
     super.onStop();
     mHandler.removeCallbacks(mPositionStatusUpdater);
     blinkPositionStatus(false);
-    if (mSourceSelector != null)
-      mSourceSelector.stop();
+    if (mStatusBar != null)
+      mStatusBar.stop();
     if (mBlinkingAnimator != null)
     {
       mBlinkingAnimator.cancel();

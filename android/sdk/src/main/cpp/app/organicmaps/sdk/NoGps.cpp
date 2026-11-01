@@ -321,6 +321,8 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsLong(env, out, "manualAgeMs", status.m_manualAgeMs);
   SetNoGpsField(env, out, "gpsSpoofed", status.m_gpsSpoofed);
   SetNoGpsField(env, out, "gpsDisabled", status.m_gpsDisabled);
+  SetNoGpsField(env, out, "gpsState", static_cast<int>(status.m_gpsState));
+  SetNoGpsLong(env, out, "lastGoodGpsAgeMs", status.m_lastGoodGpsAgeMs);
   SetNoGpsFloat(env, out, "workingGpsAccuracyM", status.m_workingGpsAccuracyM.value_or(-1));
   SetNoGpsFloat(env, out, "workingNetworkAccuracyM", status.m_workingNetworkAccuracyM.value_or(-1));
   SetNoGpsField(env, out, "movedByHand", status.m_movedByHand);

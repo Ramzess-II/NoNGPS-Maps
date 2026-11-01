@@ -28,6 +28,20 @@
     <item name="maxImageSize">28dp</item>
   </style>
 
+  <!-- A button of the bottom bar: the same rounded background as its Box and GPS buttons. -->
+  <style name="MwmWidget.MapButton.InBar">
+    <item name="android:backgroundTint">@color/status_button</item>
+    <item name="shapeAppearanceOverlay">@style/ShapeAppearance.NoGps.BarButton</item>
+    <item name="android:layout_marginStart">0dp</item>
+    <item name="android:layout_marginEnd">0dp</item>
+    <item name="maxImageSize">26dp</item>
+  </style>
+
+  <style name="ShapeAppearance.NoGps.BarButton" parent="">
+    <item name="cornerFamily">rounded</item>
+    <item name="cornerSize">12dp</item>
+  </style>
+
   <style name="MwmWidget.MapPanelDivider">
     <item name="android:layout_width">match_parent</item>
     <item name="android:layout_height">2dp</item>

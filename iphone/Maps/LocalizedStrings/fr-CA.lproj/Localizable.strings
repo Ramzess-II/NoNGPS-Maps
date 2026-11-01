@@ -42,6 +42,9 @@
 
 /* Text in About screen */
 "about_proposition_3" = "• Rapide, minimaliste, développé par la communauté";
+
+/* The button that opens system location settings */
+"location_settings" = "Paramètres de localisation";
 "close" = "Fermer";
 "download" = "Télécharger";
 
@@ -1233,12 +1236,8 @@
 "nogps_gps_spoofed" = "GPS is spoofed! Using cell towers and Wi-Fi. You can also set your position manually.";
 "nogps_gps_restored" = "GPS is fine again";
 "nogps_status_gps" = "GPS";
-
-/* The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored */
-"nogps_source_box" = "Box";
 "nogps_meters" = "%d m";
 "nogps_kilometers" = "%.1f km";
-"nogps_status_inertial" = "Inertial · ±%@";
 "nogps_sensors_title" = "Inertial navigation";
 "nogps_elm_disconnected" = "no connection";
 "nogps_elm_no_adapter" = "ELM327 doesn't answer";
@@ -1268,8 +1267,6 @@
 "nogps_speed_table_row" = "%1$d–%2$d km/h  %3$@";
 "nogps_speed_table_left" = "%d m to go";
 "nogps_shift_at_turn" = "The position is at a crossing, it can not be moved further";
-"nogps_status_gps_spoofed" = "GPS spoofed";
-"nogps_status_no_gps" = "No GPS";
 "nogps_status_gps_off" = "GPS is off in the system settings";
 "nogps_gps_back_auto" = "GPS is trusted again, the manual mode is off";
 "nogps_reverse_direction" = "Turn the car around on the road";
@@ -1436,3 +1433,132 @@
 "nogps_volts" = "%@ V";
 "nogps_not_while_driving" = "not asked while driving";
 "nogps_voltage_mismatch" = "The voltage measured by the box differs from the car by more than 10%: check the voltage divider of the box";
+
+/* Source word in the bottom bar: the car is placed by the sensor box */
+"nogps_bar_inertial" = "Inertial";
+
+/* Source word in the bottom bar: the position is from cell towers and Wi-Fi */
+"nogps_bar_network" = "Network";
+
+/* Source word in the bottom bar: the user has put the car on the map */
+"nogps_bar_manual" = "Manual";
+
+/* State of GPS in the GPS sheet */
+"nogps_gps_state_good" = "Good";
+
+/* State of GPS in the GPS sheet: good positions are checked before the car follows them */
+"nogps_gps_state_checking" = "Checking";
+
+/* State of GPS in the GPS sheet */
+"nogps_gps_state_coarse" = "Not accurate";
+
+/* State of GPS in the GPS sheet */
+"nogps_gps_state_spoofed" = "Spoofed";
+
+/* State of GPS in the GPS sheet */
+"nogps_gps_state_none" = "No signal";
+
+/* Why, under the state of GPS */
+"nogps_gps_why_used" = "The car follows GPS.";
+
+/* Why, under the state of GPS: the user has turned GPS off for the car */
+"nogps_gps_why_ignored" = "Not used: the box and your marks place the car.";
+
+/* Why, under the state of GPS */
+"nogps_gps_why_searching" = "Looking for satellites after the start.";
+
+/* Why, under the state of GPS */
+"nogps_gps_why_checking" = "Good again. It is used when it has agreed with the car for 15 seconds.";
+
+/* Why, under the state of GPS */
+"nogps_gps_why_coarse" = "Less accurate than 30 m: not used.";
+
+/* Why, under the state of GPS */
+"nogps_gps_why_network" = "Only cell towers and Wi-Fi.";
+
+/* Why, under the state of GPS */
+"nogps_gps_why_spoofed" = "Far from cell towers and Wi-Fi, or jumps: not used.";
+
+/* Why, under the state of GPS */
+"nogps_gps_why_none" = "No position from GPS for 5 seconds.";
+
+/* Switch in the GPS sheet */
+"nogps_gps_use" = "Use GPS for the car";
+
+/* Under the switch in the GPS sheet */
+"nogps_gps_use_hint" = "Off: GPS is ignored, the box and your marks place the car. For places where GPS is spoofed but the app doesn't see it.";
+
+/* Row of the GPS sheet: when GPS gave the last good position */
+"nogps_gps_last_fix" = "Last good fix";
+
+/* How long ago, in seconds */
+"nogps_gps_ago_s" = "%d s ago";
+
+/* How long ago, in minutes */
+"nogps_gps_ago_min" = "%d min ago";
+
+/* How long ago, in hours */
+"nogps_gps_ago_h" = "%d h ago";
+
+/* Row of the GPS sheet */
+"nogps_gps_accuracy" = "Accuracy";
+
+/* Accuracy of the height, after the accuracy of the position: "±6 m · height ±9 m" */
+"nogps_gps_height" = "height ±%@";
+
+/* Row of the GPS sheet */
+"nogps_gps_speed_course" = "Speed, course";
+
+/* Row of the GPS sheet: the accuracy of the position from cell towers and Wi-Fi */
+"nogps_gps_network" = "Cell towers, Wi-Fi";
+
+/* Row of the GPS sheet: what has given the position */
+"nogps_gps_fix_source" = "Fix comes from";
+
+/* Value of the row Fix comes from */
+"nogps_gps_fix_phone" = "the phone";
+
+/* Value of the row Fix comes from */
+"nogps_gps_fix_accessory" = "an accessory";
+
+/* Value of the row Fix comes from: the position is made by a program */
+"nogps_gps_fix_simulated" = "simulated";
+
+/* Title of the Box sheet */
+"nogps_box_title" = "Sensor box";
+
+/* Row of the Box sheet: the ranges of the car speed measured by GPS, of all */
+"nogps_box_speed_table" = "Speed table: %1$@";
+
+/* Button of the Box sheet opening the sensors screen */
+"nogps_box_details" = "All sensor details";
+
+/* State under the title of the Box sheet when no box is set up */
+"nogps_box_searching" = "Looking for a box nearby";
+
+/* Step of connecting the box */
+"nogps_box_step_bluetooth" = "Bluetooth on";
+
+/* Step of connecting the box */
+"nogps_box_step_bluetooth_off" = "Bluetooth is off";
+
+/* Step of connecting the box */
+"nogps_box_step_bluetooth_denied" = "Bluetooth is not allowed";
+
+/* Step of connecting the box */
+"nogps_box_step_search" = "Searching";
+
+/* Step of connecting the box */
+"nogps_box_step_connect" = "Connecting";
+
+/* Step of connecting the box: the box tells the car speed */
+"nogps_box_step_data" = "Car data";
+
+/* Button: turn Bluetooth on */
+"nogps_box_turn_on" = "Turn on";
+
+/* Button: allow Bluetooth to the app */
+"nogps_box_allow" = "Allow";
+
+/* Hint while the box is searched */
+"nogps_box_power_hint" = "Have a box? Power it on near the phone: it accepts a new phone for 2 minutes. The phone may ask for the code from the box.";

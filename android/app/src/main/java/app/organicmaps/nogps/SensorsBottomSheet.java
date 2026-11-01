@@ -4,6 +4,7 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.os.Build;
@@ -40,7 +41,7 @@ import java.util.Locale;
 public class SensorsBottomSheet extends BottomSheetDialogFragment
 {
   public static final String TAG = SensorsBottomSheet.class.getSimpleName();
-  // The fragment result told when the user closes the sheet.
+  // The fragment result told when the user closes the sheet, or the GPS or the Box sheet.
   public static final String RESULT_CLOSED = TAG + ".closed";
   private static final long UPDATE_INTERVAL_MS = 500;
   private static final String SHOP_URL = "https://non-gps.com";
@@ -442,20 +443,9 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       return;
     }
     mFirmwareRow.setVisibility(View.VISIBLE);
-    final String state = switch (update)
-    {
-      case STARTING -> getString(R.string.nogps_firmware_starting);
-      case SENDING -> getString(R.string.nogps_firmware_sending, status.firmwareUpdateProgress);
-      case VERIFYING -> getString(R.string.nogps_firmware_verifying);
-      case RESTARTING -> getString(R.string.nogps_firmware_restarting);
-      case NONE, DONE, FAILED -> status.boxFirmware;
-    };
-    mFirmware.setText(getString(R.string.nogps_sensors_firmware, state));
+    mFirmware.setText(getString(R.string.nogps_sensors_firmware, firmwareText(requireContext(), status)));
 
-    // The box works with the firmware the application is tested with: there is nothing to install. A debug
-    // build sends it again to try the update itself.
-    final boolean install =
-        !status.bundledFirmware.isEmpty() && (BuildConfig.DEBUG || !status.bundledFirmware.equals(status.boxFirmware));
+    final boolean install = canInstallFirmware(status);
     // A box that has taken the firmware restarts by itself.
     final boolean cancel = updating && update != NoGps.FirmwareUpdate.RESTARTING;
     mFirmwareButton.setVisibility(install || cancel ? View.VISIBLE : View.GONE);
@@ -463,6 +453,32 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       mFirmwareButton.setText(R.string.cancel);
     else if (install)
       mFirmwareButton.setText(getString(R.string.nogps_firmware_install, status.bundledFirmware));
+  }
+
+  /**
+   * The firmware of the box, or how its update goes. Also shown by the Box sheet.
+   */
+  @NonNull
+  static String firmwareText(@NonNull Context context, @NonNull NoGps.Status status)
+  {
+    return switch (status.getFirmwareUpdate())
+    {
+      case STARTING -> context.getString(R.string.nogps_firmware_starting);
+      case SENDING -> context.getString(R.string.nogps_firmware_sending, status.firmwareUpdateProgress);
+      case VERIFYING -> context.getString(R.string.nogps_firmware_verifying);
+      case RESTARTING -> context.getString(R.string.nogps_firmware_restarting);
+      case NONE, DONE, FAILED -> status.boxFirmware;
+    };
+  }
+
+  /**
+   * The box works with the firmware the application is tested with: there is nothing to install. A debug build sends
+   * it again to try the update itself.
+   */
+  static boolean canInstallFirmware(@NonNull NoGps.Status status)
+  {
+    return !isUpdating(status.getFirmwareUpdate()) && !status.bundledFirmware.isEmpty()
+ && (BuildConfig.DEBUG || !status.bundledFirmware.equals(status.boxFirmware));
   }
 
   private static boolean isUpdating(@NonNull NoGps.FirmwareUpdate update)
@@ -524,7 +540,10 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
         .show();
   }
 
-  private static int boxStateText(@NonNull NoGps.Status status)
+  /**
+   * Also told by the Box button of the bottom bar.
+   */
+  public static int boxStateText(@NonNull NoGps.Status status)
   {
     return switch (status.getSourceState())
     {

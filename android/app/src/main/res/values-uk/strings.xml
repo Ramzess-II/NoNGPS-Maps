@@ -924,11 +924,8 @@
     <string name="nogps_mark_by_tap">Торкніться дороги, де зараз машина</string>
     <string name="nogps_gps_spoofed">GPS підмінено! Використовуємо вежі та Wi-Fi. Також можна вказати позицію вручну.</string>
     <string name="nogps_gps_restored">GPS знову в нормі</string>
-    <!-- The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored -->
-    <string name="nogps_source_box">Блок</string>
     <string name="nogps_meters">%d м</string>
     <string name="nogps_kilometers">%.1f км</string>
-    <string name="nogps_status_inertial">Інерціально · ±%s</string>
     <string name="nogps_sensors_title">Інерціальна навігація</string>
     <string name="nogps_sensors_hint">Закріпіть телефон нерухомо. Обнуляйте гіроскоп, коли машина стоїть.</string>
     <string name="nogps_sensors_adapter">Адаптер: %1$s</string>
@@ -974,8 +971,6 @@
     <string name="nogps_speed_table_row">%1$d–%2$d км/год  %3$s</string>
     <string name="nogps_speed_table_left">ще %d м</string>
     <string name="nogps_shift_at_turn">Позиція біля перехрестя, далі переносити не можна</string>
-    <string name="nogps_status_gps_spoofed">GPS підмінено</string>
-    <string name="nogps_status_no_gps">Немає GPS</string>
     <string name="nogps_status_gps_off">GPS вимкнено в налаштуваннях системи</string>
     <string name="nogps_gps_back_auto">GPS знову надійний, ручний режим вимкнено</string>
     <string name="nogps_reverse_direction">Розвернути машину на дорозі</string>
@@ -1110,4 +1105,92 @@
     <string name="nogps_background_channel">Навігація без GPS</string>
     <!-- The notification shown while the app is hidden and the car is followed by the sensor box -->
     <string name="nogps_background_following">Машина ведеться за блоком датчиків</string>
+    <!-- Source word in the bottom bar: the car is placed by the sensor box -->
+    <string name="nogps_bar_inertial">Інерціально</string>
+    <!-- Source word in the bottom bar: the position is from cell towers and Wi-Fi -->
+    <string name="nogps_bar_network">Мережа</string>
+    <!-- Source word in the bottom bar: the user has put the car on the map -->
+    <string name="nogps_bar_manual">Вручну</string>
+    <!-- State of GPS in the GPS sheet -->
+    <string name="nogps_gps_state_good">Працює</string>
+    <!-- State of GPS in the GPS sheet: good positions are checked before the car follows them -->
+    <string name="nogps_gps_state_checking">Перевіряється</string>
+    <!-- State of GPS in the GPS sheet -->
+    <string name="nogps_gps_state_coarse">Неточний</string>
+    <!-- State of GPS in the GPS sheet -->
+    <string name="nogps_gps_state_spoofed">Підмінений</string>
+    <!-- State of GPS in the GPS sheet -->
+    <string name="nogps_gps_state_none">Немає сигналу</string>
+    <!-- Why, under the state of GPS -->
+    <string name="nogps_gps_why_used">Машина йде за GPS.</string>
+    <!-- Why, under the state of GPS: the user has turned GPS off for the car -->
+    <string name="nogps_gps_why_ignored">Не використовується: машину ведуть блок і ваші мітки.</string>
+    <!-- Why, under the state of GPS -->
+    <string name="nogps_gps_why_searching">Шукаю супутники після запуску.</string>
+    <!-- Why, under the state of GPS -->
+    <string name="nogps_gps_why_checking">Знову добрий. Буде використаний, коли 15 секунд збігатиметься з машиною.</string>
+    <!-- Why, under the state of GPS -->
+    <string name="nogps_gps_why_coarse">Точність гірша за 30 м: не використовується.</string>
+    <!-- Why, under the state of GPS -->
+    <string name="nogps_gps_why_network">Лише вежі та Wi-Fi.</string>
+    <!-- Why, under the state of GPS -->
+    <string name="nogps_gps_why_spoofed">Далеко від веж і Wi-Fi або стрибає: не використовується.</string>
+    <!-- Why, under the state of GPS -->
+    <string name="nogps_gps_why_none">Немає позицій GPS 5 секунд.</string>
+    <!-- Switch in the GPS sheet -->
+    <string name="nogps_gps_use">Вести машину за GPS</string>
+    <!-- Under the switch in the GPS sheet -->
+    <string name="nogps_gps_use_hint">Вимкнено: GPS не використовується, машину ведуть блок і ваші мітки. Для місць, де GPS підмінений, а застосунок цього не бачить.</string>
+    <!-- Row of the GPS sheet: when GPS gave the last good position -->
+    <string name="nogps_gps_last_fix">Остання добра точка</string>
+    <!-- How long ago, in seconds -->
+    <string name="nogps_gps_ago_s">%d с тому</string>
+    <!-- How long ago, in minutes -->
+    <string name="nogps_gps_ago_min">%d хв тому</string>
+    <!-- How long ago, in hours -->
+    <string name="nogps_gps_ago_h">%d год тому</string>
+    <!-- Row of the GPS sheet -->
+    <string name="nogps_gps_accuracy">Точність</string>
+    <!-- Accuracy of the height, after the accuracy of the position: "±6 m · height ±9 m" -->
+    <string name="nogps_gps_height">висота ±%s</string>
+    <!-- Row of the GPS sheet -->
+    <string name="nogps_gps_speed_course">Швидкість, курс</string>
+    <!-- Row of the GPS sheet: the accuracy of the position from cell towers and Wi-Fi -->
+    <string name="nogps_gps_network">Вежі, Wi-Fi</string>
+    <!-- Header of the satellites in the GPS sheet -->
+    <string name="nogps_gps_satellites">Супутники</string>
+    <!-- Row of the GPS sheet: satellites used in the position and seen -->
+    <string name="nogps_gps_sat_used">Використовуються / видно</string>
+    <!-- Row of the GPS sheet: satellites in use by system, "GPS 5 · Galileo 2" -->
+    <string name="nogps_gps_sat_systems">Системи</string>
+    <!-- Row of the GPS sheet: the mean signal of the satellites in use -->
+    <string name="nogps_gps_sat_signal">Сигнал</string>
+    <!-- The signal of the satellites -->
+    <string name="nogps_gps_db_hz">%d дБ-Гц</string>
+    <!-- Title of the Box sheet -->
+    <string name="nogps_box_title">Блок датчиків</string>
+    <!-- Row of the Box sheet: the ranges of the car speed measured by GPS, of all -->
+    <string name="nogps_box_speed_table">Таблиця швидкості: %1$s</string>
+    <!-- Button of the Box sheet opening the sensors screen -->
+    <string name="nogps_box_details">Усі дані датчиків</string>
+    <!-- State under the title of the Box sheet when no box is set up -->
+    <string name="nogps_box_searching">Шукаю блок поруч</string>
+    <!-- Step of connecting the box -->
+    <string name="nogps_box_step_bluetooth">Bluetooth увімкнено</string>
+    <!-- Step of connecting the box -->
+    <string name="nogps_box_step_bluetooth_off">Bluetooth вимкнено</string>
+    <!-- Step of connecting the box -->
+    <string name="nogps_box_step_bluetooth_denied">Bluetooth не дозволено</string>
+    <!-- Step of connecting the box -->
+    <string name="nogps_box_step_search">Пошук</string>
+    <!-- Step of connecting the box -->
+    <string name="nogps_box_step_connect">Підключення</string>
+    <!-- Step of connecting the box: the box tells the car speed -->
+    <string name="nogps_box_step_data">Дані машини</string>
+    <!-- Button: turn Bluetooth on -->
+    <string name="nogps_box_turn_on">Увімкнути</string>
+    <!-- Button: allow Bluetooth to the app -->
+    <string name="nogps_box_allow">Дозволити</string>
+    <!-- Hint while the box is searched -->
+    <string name="nogps_box_power_hint">Маєте блок? Увімкніть його поруч із телефоном: 2 хвилини він приймає новий телефон. Телефон може спитати код із блока.</string>
 </resources>

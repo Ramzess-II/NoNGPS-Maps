@@ -18,7 +18,6 @@
   <color name="nogps_spoofed">#FFFF9800</color>
   <color name="nogps_status_gps">#FF2E9E48</color>
   <color name="nogps_status_none">#FFD32F2F</color>
-  <color name="nogps_status_inertial">#FF7B1FA2</color>
   <color name="dark_red">#F51E30</color>
   <color name="base_yellow">#FFFFC30A</color>
   <color name="base_green">#FF558B2F</color>
@@ -144,8 +143,7 @@
   <color name="map_panel_edge">#0F000000</color>
   <color name="map_panel_divider">#24000000</color>
   <!-- The GPS | Box selector and the states of its sources. -->
-  <color name="source_selector_track">#1F767680</color>
-  <color name="source_selector_thumb">#FFFFFFFF</color>
+  <color name="status_button">#1F767680</color>
   <color name="source_good">#FF1E8E3E</color>
   <color name="source_bad">#FFD32F2F</color>
   <color name="source_connecting">#FF1A73E8</color>

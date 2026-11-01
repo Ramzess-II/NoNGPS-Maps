@@ -394,6 +394,25 @@ int64_t Engine::GetGpsSilenceMs() const
   return std::min(MsSince(m_lastTrustedGpsMs), MsSince(m_manualLeftMs));
 }
 
+GpsState Engine::GetGpsState() const
+{
+  if (!m_active)
+    return GpsState::None;
+  if (m_spoofingDetector.IsSpoofed())
+    return GpsState::Spoofed;
+  if (auto const gps = GetWorkingGps(); gps && AgeMs(*gps) <= kGpsLostMs)
+  {
+    // GPS ignored by the user is not checked by IsGpsBack(): it is told how GPS works.
+    return m_manualMode && !m_gpsDisabled ? GpsState::Checking : GpsState::Good;
+  }
+  if (MsSince(m_startTimeMs) <= kGpsFirstFixMs)
+    return GpsState::Checking;
+  auto const fresh = [this](std::optional<Fix> const & fix) { return fix && AgeMs(*fix) <= kGpsLostMs; };
+  if (fresh(m_rawGps) || fresh(m_rawFused) || GetWorkingNetwork())
+    return GpsState::Coarse;
+  return GpsState::None;
+}
+
 bool Engine::IsGpsBack(Fix const & gps)
 {
   // GPS has worked long enough in the manual mode and agrees with the position known without it.
@@ -1413,6 +1432,8 @@ Status Engine::GetStatus()
   status.m_manualAgeMs = MsSince(m_manualSetTimeMs);
   status.m_gpsSpoofed = m_spoofingDetector.IsSpoofed();
   status.m_gpsDisabled = m_gpsDisabled;
+  status.m_gpsState = GetGpsState();
+  status.m_lastGoodGpsAgeMs = m_lastGoodGps ? AgeMs(*m_lastGoodGps) : -1;
   if (auto const gps = GetWorkingGps())
     status.m_workingGpsAccuracyM = gps->m_accuracyM;
   if (auto const network = GetWorkingNetwork())
@@ -1465,11 +1486,6 @@ Status Engine::GetStatus()
 void Engine::LogStateChanges()
 {
   auto const status = GetStatus();
-  std::string gps = "NONE";
-  if (status.m_gpsSpoofed)
-    gps = "SPOOFED";
-  else if (status.m_workingGpsAccuracyM)
-    gps = "OK";
   std::string box = "NOT_SET_UP";
   if (status.m_inertialEnabled)
     box = status.m_inertialStarted ? DebugPrint(status.m_sourceState) : "STOPPED";
@@ -1481,7 +1497,7 @@ void Engine::LogStateChanges()
     last = std::move(now);
   };
   log("Position source", m_loggedState.m_source, DebugPrint(status.m_source));
-  log("GPS signal", m_loggedState.m_gps, gps);
+  log("GPS signal", m_loggedState.m_gps, DebugPrint(status.m_gpsState));
   log("Box state", m_loggedState.m_box, box);
   log("Box Bluetooth", m_loggedState.m_ble, DebugPrint(status.m_bleState));
 }
@@ -1547,6 +1563,7 @@ std::string Engine::GetTripLine()
   // The positions shown between GPS positions since the previous line: the mark drives smoothly with 4-5 a second.
   line += " fill=" + std::to_string(m_positionsBetweenGps);
   line += std::string(" spoofed=") + (m_spoofingDetector.IsSpoofed() ? "1" : "0");
+  line += " gpsst=" + DebugPrint(GetGpsState());
   bool const navigating = m_map.IsNavigating();
   line += std::string(" nav=") + (navigating ? "1" : "0");
   // The route left tells if the route follows the car: the passed part is cut off by it.
@@ -1673,6 +1690,19 @@ std::string DebugPrint(PositionSource source)
   case PositionSource::Network: return "NETWORK";
   case PositionSource::Manual: return "MANUAL";
   case PositionSource::Inertial: return "INERTIAL";
+  }
+  UNREACHABLE();
+}
+
+std::string DebugPrint(GpsState state)
+{
+  switch (state)
+  {
+  case GpsState::None: return "NONE";
+  case GpsState::Coarse: return "COARSE";
+  case GpsState::Spoofed: return "SPOOFED";
+  case GpsState::Checking: return "CHECKING";
+  case GpsState::Good: return "GOOD";
   }
   UNREACHABLE();
 }

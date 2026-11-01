@@ -335,8 +335,12 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     }
   }
 
-  /// The firmware of the box, or how its update goes.
   private func firmwareText() -> String {
+    Self.firmwareText(status)
+  }
+
+  /// The firmware of the box, or how its update goes. Also shown by the Box sheet.
+  static func firmwareText(_ status: NoGpsStatus) -> String {
     switch status.firmwareUpdate {
     case .starting: return L("nogps_firmware_starting")
     case .sending: return String(format: L("nogps_firmware_sending"), status.firmwareUpdateProgress)
@@ -352,13 +356,21 @@ final class NoGpsSensorsViewController: MWMTableViewController {
   }
 
   private func isFirmwareUpdating() -> Bool {
+    Self.isFirmwareUpdating(status)
+  }
+
+  private static func isFirmwareUpdating(_ status: NoGpsStatus) -> Bool {
     [.starting, .sending, .verifying, .restarting].contains(status.firmwareUpdate)
+  }
+
+  private func canInstallFirmware() -> Bool {
+    Self.canInstallFirmware(status)
   }
 
   /// The box works with the firmware the app is tested with: there is nothing to install. A debug build sends it again
   /// to try the update itself.
-  private func canInstallFirmware() -> Bool {
-    guard !isFirmwareUpdating(), !status.bundledFirmware.isEmpty else { return false }
+  static func canInstallFirmware(_ status: NoGpsStatus) -> Bool {
+    guard !isFirmwareUpdating(status), !status.bundledFirmware.isEmpty else { return false }
 #if DEBUG
     return true
 #else

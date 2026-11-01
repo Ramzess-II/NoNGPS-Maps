@@ -42,6 +42,9 @@
 
 /* Text in About screen */
 "about_proposition_3" = "• Быстрый, минималистичный, разработанный сообществом";
+
+/* The button that opens system location settings */
+"location_settings" = "Настройки местоположения";
 "close" = "Закрыть";
 "download" = "Загрузить";
 
@@ -1233,12 +1236,8 @@
 "nogps_gps_spoofed" = "GPS подменён! Используем вышки и Wi-Fi. Можно также указать позицию вручную.";
 "nogps_gps_restored" = "GPS снова в норме";
 "nogps_status_gps" = "GPS";
-
-/* The segment of the GPS | Box selector on the map: the position comes from the sensor box, GPS is ignored */
-"nogps_source_box" = "Блок";
 "nogps_meters" = "%d м";
 "nogps_kilometers" = "%.1f км";
-"nogps_status_inertial" = "Инерциально · ±%@";
 "nogps_sensors_title" = "Инерциальная навигация";
 "nogps_elm_disconnected" = "нет связи";
 "nogps_elm_no_adapter" = "ELM327 не отвечает";
@@ -1268,8 +1267,6 @@
 "nogps_speed_table_row" = "%1$d–%2$d км/ч  %3$@";
 "nogps_speed_table_left" = "ещё %d м";
 "nogps_shift_at_turn" = "Позиция у перекрёстка, дальше переносить нельзя";
-"nogps_status_gps_spoofed" = "GPS подменён";
-"nogps_status_no_gps" = "Нет GPS";
 "nogps_status_gps_off" = "GPS выключен в настройках системы";
 "nogps_gps_back_auto" = "GPS снова надёжный, ручной режим выключен";
 "nogps_reverse_direction" = "Развернуть машину на дороге";
@@ -1436,3 +1433,132 @@
 "nogps_volts" = "%@ В";
 "nogps_not_while_driving" = "на ходу не запрашивается";
 "nogps_voltage_mismatch" = "Напряжение с АЦП блока расходится с машиной больше чем на 10 %: проверьте делитель напряжения блока";
+
+/* Source word in the bottom bar: the car is placed by the sensor box */
+"nogps_bar_inertial" = "Инерциально";
+
+/* Source word in the bottom bar: the position is from cell towers and Wi-Fi */
+"nogps_bar_network" = "Сеть";
+
+/* Source word in the bottom bar: the user has put the car on the map */
+"nogps_bar_manual" = "Вручную";
+
+/* State of GPS in the GPS sheet */
+"nogps_gps_state_good" = "Работает";
+
+/* State of GPS in the GPS sheet: good positions are checked before the car follows them */
+"nogps_gps_state_checking" = "Проверяется";
+
+/* State of GPS in the GPS sheet */
+"nogps_gps_state_coarse" = "Неточный";
+
+/* State of GPS in the GPS sheet */
+"nogps_gps_state_spoofed" = "Подменён";
+
+/* State of GPS in the GPS sheet */
+"nogps_gps_state_none" = "Нет сигнала";
+
+/* Why, under the state of GPS */
+"nogps_gps_why_used" = "Машина идёт по GPS.";
+
+/* Why, under the state of GPS: the user has turned GPS off for the car */
+"nogps_gps_why_ignored" = "Не используется: машину ведут блок и ваши метки.";
+
+/* Why, under the state of GPS */
+"nogps_gps_why_searching" = "Ищу спутники после запуска.";
+
+/* Why, under the state of GPS */
+"nogps_gps_why_checking" = "Снова хороший. Будет использован, когда 15 секунд совпадёт с машиной.";
+
+/* Why, under the state of GPS */
+"nogps_gps_why_coarse" = "Точность хуже 30 м: не используется.";
+
+/* Why, under the state of GPS */
+"nogps_gps_why_network" = "Только вышки и Wi-Fi.";
+
+/* Why, under the state of GPS */
+"nogps_gps_why_spoofed" = "Далеко от вышек и Wi-Fi или прыгает: не используется.";
+
+/* Why, under the state of GPS */
+"nogps_gps_why_none" = "Нет позиций GPS 5 секунд.";
+
+/* Switch in the GPS sheet */
+"nogps_gps_use" = "Вести машину по GPS";
+
+/* Under the switch in the GPS sheet */
+"nogps_gps_use_hint" = "Выключено: GPS не используется, машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.";
+
+/* Row of the GPS sheet: when GPS gave the last good position */
+"nogps_gps_last_fix" = "Последняя хорошая точка";
+
+/* How long ago, in seconds */
+"nogps_gps_ago_s" = "%d с назад";
+
+/* How long ago, in minutes */
+"nogps_gps_ago_min" = "%d мин назад";
+
+/* How long ago, in hours */
+"nogps_gps_ago_h" = "%d ч назад";
+
+/* Row of the GPS sheet */
+"nogps_gps_accuracy" = "Точность";
+
+/* Accuracy of the height, after the accuracy of the position: "±6 m · height ±9 m" */
+"nogps_gps_height" = "высота ±%@";
+
+/* Row of the GPS sheet */
+"nogps_gps_speed_course" = "Скорость, курс";
+
+/* Row of the GPS sheet: the accuracy of the position from cell towers and Wi-Fi */
+"nogps_gps_network" = "Вышки, Wi-Fi";
+
+/* Row of the GPS sheet: what has given the position */
+"nogps_gps_fix_source" = "Откуда точка";
+
+/* Value of the row Fix comes from */
+"nogps_gps_fix_phone" = "телефон";
+
+/* Value of the row Fix comes from */
+"nogps_gps_fix_accessory" = "аксессуар";
+
+/* Value of the row Fix comes from: the position is made by a program */
+"nogps_gps_fix_simulated" = "симуляция";
+
+/* Title of the Box sheet */
+"nogps_box_title" = "Блок датчиков";
+
+/* Row of the Box sheet: the ranges of the car speed measured by GPS, of all */
+"nogps_box_speed_table" = "Таблица скорости: %1$@";
+
+/* Button of the Box sheet opening the sensors screen */
+"nogps_box_details" = "Все данные датчиков";
+
+/* State under the title of the Box sheet when no box is set up */
+"nogps_box_searching" = "Ищу блок рядом";
+
+/* Step of connecting the box */
+"nogps_box_step_bluetooth" = "Bluetooth включён";
+
+/* Step of connecting the box */
+"nogps_box_step_bluetooth_off" = "Bluetooth выключен";
+
+/* Step of connecting the box */
+"nogps_box_step_bluetooth_denied" = "Bluetooth не разрешён";
+
+/* Step of connecting the box */
+"nogps_box_step_search" = "Поиск";
+
+/* Step of connecting the box */
+"nogps_box_step_connect" = "Подключение";
+
+/* Step of connecting the box: the box tells the car speed */
+"nogps_box_step_data" = "Данные машины";
+
+/* Button: turn Bluetooth on */
+"nogps_box_turn_on" = "Включить";
+
+/* Button: allow Bluetooth to the app */
+"nogps_box_allow" = "Разрешить";
+
+/* Hint while the box is searched */
+"nogps_box_power_hint" = "Есть блок? Включите его рядом с телефоном: 2 минуты он принимает новый телефон. Телефон может спросить код с блока.";
