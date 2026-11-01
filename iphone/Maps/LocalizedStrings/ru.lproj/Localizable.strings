@@ -1422,7 +1422,6 @@
 "nogps_clear_speed_message" = "Поправки скорости, измеренные по GPS на разных скоростях и по вашим сдвигам, будут забыты. Делайте это после смены шин или машины. Пока работает GPS, они измеряются заново.";
 "nogps_about_title" = "О NonGPS Maps";
 "nogps_speed_no_data" = "NO";
-"nogps_speed_no_box" = "NonGPS-OBD";
 "nogps_speed_no_elm" = "OBD";
 "nogps_box_sleeping" = "спит: двигатель заглушен";
 "nogps_box_obd_sleeping" = "OBD спит: двигатель заглушен";
