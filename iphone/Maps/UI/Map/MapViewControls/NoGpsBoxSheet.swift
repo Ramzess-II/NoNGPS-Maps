@@ -374,7 +374,6 @@ private final class SpeedTableViewController: MWMTableViewController {
     title = L("nogps_speed_table_title")
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
     tableView.register(UITableViewHeaderFooterView.self, forHeaderFooterViewReuseIdentifier: Constants.headerId)
-    tableView.rowHeight = UIFontMetrics.default.scaledValue(for: Constants.rowHeight)
   }
 
   override func viewWillAppear(_ animated: Bool) {
@@ -393,6 +392,8 @@ private final class SpeedTableViewController: MWMTableViewController {
 
   private func refresh() {
     status = NoGps.status()
+    // Follows the text size, also changed while the screen is open.
+    tableView.rowHeight = UIFontMetrics.default.scaledValue(for: Constants.rowHeight)
     tableView.reloadData()
   }
 
