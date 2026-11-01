@@ -555,9 +555,6 @@ extension NavigationDashboardViewController {
 
     case .navigation:
       navigationInfoView.onNavigationInfoUpdated(viewModel.entity)
-      if let navigationSearchState = viewModel.navigationSearchState {
-        navigationInfoView.setSearchState(navigationSearchState, animated: true)
-      }
       navigationControlView.isVisible = true
       navigationControlView.onNavigationInfoUpdated(viewModel.entity)
       navigationControlView.setTrackRecordingState(viewModel.trackRecordingState)

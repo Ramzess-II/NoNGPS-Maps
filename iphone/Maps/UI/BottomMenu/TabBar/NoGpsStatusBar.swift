@@ -23,6 +23,8 @@ final class NoGpsStatusBar: UIView {
   }
 
   private weak static var shared: NoGpsStatusBar?
+  /// The source button of the navigation sheet, it is shown while the bar is hidden.
+  weak static var navButton: StateButton?
 
   private let box = StateButton()
   private let word = UILabel()
@@ -44,6 +46,38 @@ final class NoGpsStatusBar: UIView {
 
   static func update(_ status: NoGpsStatus) {
     shared?.apply(status)
+    if let navButton {
+      showNav(status, on: navButton)
+    }
+  }
+
+  /// One button for where the position comes from: the box when the car follows it, or when the mark is set by hand
+  /// with a box set up, else GPS.
+  static func navShowsBox(source: NoGpsPositionSource, inertialEnabled: Bool) -> Bool {
+    switch source {
+    case .inertial: return true
+    case .manual: return inertialEnabled
+    case .gps, .network, .none: return false
+    @unknown default: return false
+    }
+  }
+
+  static func showNav(_ status: NoGpsStatus, on button: StateButton) {
+    let isBox = navShowsBox(source: status.source, inertialEnabled: status.inertialEnabled)
+    let source = sourceText(status)
+    button.show(isBox ? boxLook(status) : gpsLook(status))
+    button.caption = source.accuracy
+    button.accessibilityLabel = L(isBox ? "nogps_box_title" : "nogps_status_gps")
+    button.accessibilityValue = [source.word, source.accuracy].compactMap { $0 }.joined(separator: " ")
+  }
+
+  static func showNavSheet() {
+    let status = NoGps.status()
+    if navShowsBox(source: status.source, inertialEnabled: status.inertialEnabled) {
+      NoGpsBoxSheet.show()
+    } else {
+      NoGpsGpsSheet.show()
+    }
   }
 
   /// The background of the buttons of the bar, Search and Menu too.
@@ -231,10 +265,22 @@ final class StateButton: UIControl {
     static let pulseDuration: CFTimeInterval = 0.7
     static let pulseOpacity = Float(0.3)
     static let badgeSymbol = UIImage.SymbolConfiguration(pointSize: 7, weight: .black)
+    static let captionSpacing = CGFloat(2)
+    static let captionMinScale = CGFloat(0.75)
   }
 
   private let icon = UIImageView()
   private let badge = UIImageView()
+  private let captionLabel = UILabel()
+
+  /// A short text under the icon, e.g. the accuracy.
+  var caption: String? {
+    get { captionLabel.text }
+    set {
+      captionLabel.text = newValue
+      captionLabel.isHidden = newValue == nil
+    }
+  }
 
   init() {
     super.init(frame: .zero)
@@ -251,13 +297,26 @@ final class StateButton: UIControl {
     badge.clipsToBounds = true
     badge.isHidden = true
     badge.translatesAutoresizingMaskIntoConstraints = false
-    addSubview(icon)
+    captionLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+    captionLabel.textColor = .secondaryLabel
+    captionLabel.adjustsFontSizeToFitWidth = true
+    captionLabel.minimumScaleFactor = Constants.captionMinScale
+    captionLabel.isHidden = true
+    let content = UIStackView(arrangedSubviews: [icon, captionLabel])
+    content.axis = .vertical
+    content.alignment = .center
+    content.spacing = Constants.captionSpacing
+    content.isUserInteractionEnabled = false
+    content.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(content)
     icon.addSubview(badge)
     NSLayoutConstraint.activate([
       icon.widthAnchor.constraint(equalToConstant: Constants.iconSize),
       icon.heightAnchor.constraint(equalToConstant: Constants.iconSize),
-      icon.centerXAnchor.constraint(equalTo: centerXAnchor),
-      icon.centerYAnchor.constraint(equalTo: centerYAnchor),
+      content.centerXAnchor.constraint(equalTo: centerXAnchor),
+      content.centerYAnchor.constraint(equalTo: centerYAnchor),
+      content.leadingAnchor.constraint(greaterThanOrEqualTo: leadingAnchor),
+      content.topAnchor.constraint(greaterThanOrEqualTo: topAnchor),
       badge.widthAnchor.constraint(equalToConstant: Constants.badgeSize),
       badge.heightAnchor.constraint(equalToConstant: Constants.badgeSize),
       badge.centerXAnchor.constraint(equalTo: icon.trailingAnchor, constant: -2),

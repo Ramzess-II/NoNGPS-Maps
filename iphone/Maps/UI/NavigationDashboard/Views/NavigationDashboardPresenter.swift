@@ -93,13 +93,10 @@ extension NavigationDashboard {
         switch state {
         case .closed:
           viewModel = resolve(action: .setHidden(false), with: viewModel)
-          viewModel.navigationSearchState = .minimizedNormal
         case .hidden:
           viewModel = resolve(action: .setHidden(PlacePageData.hasData), with: viewModel)
-          viewModel.navigationSearchState = .minimizedNormal
         case .mapPointPicker, .searching:
           viewModel = resolve(action: .setHidden(true), with: viewModel)
-          viewModel.navigationSearchState = .minimizedNormal
         @unknown default:
           fatalError("Unknown search state: \(state)")
         }

@@ -376,6 +376,11 @@
   }
 }
 
+- (void)searchButtonDidTap
+{
+  [self.searchManager startSearchingWithIsRouting:YES];
+}
+
 #pragma mark - SearchOnMapManagerObserver
 
 - (void)searchManagerWithDidChangeState:(SearchOnMapState)state
