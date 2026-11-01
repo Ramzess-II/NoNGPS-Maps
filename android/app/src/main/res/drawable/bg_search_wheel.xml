@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The navigation search wheel: a half circle, its flat side at the end. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+  android:width="@dimen/nav_search_wheel_radius"
+  android:height="@dimen/nav_search_wheel_diameter"
+  android:autoMirrored="true"
+  android:viewportWidth="96"
+  android:viewportHeight="192">
+  <path
+    android:fillColor="@color/map_panel"
+    android:pathData="M96,0.5 A95.5,95.5 0 0,0 96,191.5 Z"
+    android:strokeWidth="1"
+    android:strokeColor="@color/map_panel_edge" />
+</vector>

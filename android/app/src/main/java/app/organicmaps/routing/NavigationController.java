@@ -322,6 +322,8 @@ public class NavigationController implements TrafficManager.TrafficCallback, Nav
   public void onSearchClicked()
   {
     collapseNavMenu();
+    // The new search takes the place of a category of the search wheel.
+    mMapButtonsViewModel.setSearchOption(null);
     mSearchPageViewModel.setSearchEnabled(true, new SearchRequest("", null));
   }
 

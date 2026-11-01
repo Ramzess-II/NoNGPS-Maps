@@ -29,6 +29,9 @@ class MapButtonsViewModel : ViewModel() {
     private val _myPositionMode = MutableLiveData<Int>()
     val myPositionMode: LiveData<Int> = _myPositionMode
 
+    private val _searchOption = MutableLiveData<SearchWheel.SearchOption?>()
+    val searchOption: LiveData<SearchWheel.SearchOption?> = _searchOption
+
     // Taken by the map buttons every second, the navigation menu shows it too.
     private val _noGpsStatus = MutableLiveData<NoGps.Status>()
     val noGpsStatus: LiveData<NoGps.Status> = _noGpsStatus
@@ -66,6 +69,10 @@ class MapButtonsViewModel : ViewModel() {
 
     fun setMyPositionMode(mode: Int) {
         _myPositionMode.value = mode
+    }
+
+    fun setSearchOption(searchOption: SearchWheel.SearchOption?) {
+        _searchOption.value = searchOption
     }
 
     fun setNoGpsStatus(status: NoGps.Status) {

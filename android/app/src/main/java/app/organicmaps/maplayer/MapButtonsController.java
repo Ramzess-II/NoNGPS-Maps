@@ -139,6 +139,9 @@ public class MapButtonsController extends Fragment
   private ObjectAnimator mStatusBlinkingAnimator;
   private float mContentHeight;
   private float mContentWidth;
+  // In the navigation only.
+  @Nullable
+  private SearchWheel mSearchWheel;
 
   private MapButtonClickListener mMapButtonClickListener;
   private PlacePageViewModel mPlacePageViewModel;
@@ -158,6 +161,11 @@ public class MapButtonsController extends Fragment
     showButton(enable, MapButtons.trackRecordingStatus);
   };
   private final Observer<Integer> mTopButtonMarginObserver = this::updateTopButtonsMargin;
+  private final Observer<SearchWheel.SearchOption> mSearchOptionObserver = (option) ->
+  {
+    if (mSearchWheel != null)
+      mSearchWheel.onSearchOptionChanged();
+  };
 
   @Nullable
   @Override
@@ -275,6 +283,12 @@ public class MapButtonsController extends Fragment
     }
     if (helpButton != null)
       helpButton.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.help));
+
+    if (mMapButtonsViewModel.getLayoutMode().getValue() == LayoutMode.navigation)
+    {
+      UiUtils.show(mFrame.findViewById(R.id.nav_search_container));
+      mSearchWheel = new SearchWheel(mFrame, (v) -> mMapButtonClickListener.onSearchCanceled(), mMapButtonsViewModel);
+    }
 
     // Only in the bottom bar: the navigation opens the search from its menu.
     final View searchButton = mFrame.findViewById(R.id.btn_search);
@@ -804,6 +818,7 @@ public class MapButtonsController extends Fragment
     mMapButtonsViewModel.getMyPositionMode().observe(viewLifecycleOwner, mMyPositionModeObserver);
     mMapButtonsViewModel.getTrackRecorderState().observe(viewLifecycleOwner, mTrackRecorderObserver);
     mMapButtonsViewModel.getTopButtonsMarginTop().observe(viewLifecycleOwner, mTopButtonMarginObserver);
+    mMapButtonsViewModel.getSearchOption().observe(viewLifecycleOwner, mSearchOptionObserver);
     mHandler.post(mPositionStatusUpdater);
   }
 
@@ -824,6 +839,8 @@ public class MapButtonsController extends Fragment
     blinkPositionStatus(false);
     if (mStatusBar != null)
       mStatusBar.stop();
+    if (mSearchWheel != null)
+      mSearchWheel.stop();
     if (mBlinkingAnimator != null)
     {
       mBlinkingAnimator.cancel();
