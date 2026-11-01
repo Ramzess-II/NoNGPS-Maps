@@ -1,6 +1,6 @@
 /// The controls of the navigation without GPS on the map: where the position comes from, the manual mode and the
 /// buttons correcting the position of the car. They are laid out in the free area of the side buttons, the buttons on
-/// a panel at the left edge of the screen.
+/// a panel at the left edge of the screen. The user can move the panel up and down.
 @objc
 final class NoGpsControls: NSObject {
   private enum Constants {
@@ -15,6 +15,7 @@ final class NoGpsControls: NSObject {
     static let blinkDuration: CFTimeInterval = 0.4
     static let blinkOpacity = Float(0.2)
     static let noneColor = UIColor(red: 0xD3 / 255, green: 0x2F / 255, blue: 0x2F / 255, alpha: 1)
+    static let panelPlaceKey = "NoGpsLeftPanelY"
   }
 
   private weak static var shared: NoGpsControls?
@@ -24,6 +25,7 @@ final class NoGpsControls: NSObject {
   private let statusButton = UIButton(type: .custom)
   private let panel = MapControlsPanel(edge: .left)
   private let buttons = UIStackView()
+  private var dragger: MapPanelDragger?
   // Of every button but the first one.
   private var dividers = [UIView: UIView]()
   private var isPanelShown = true
@@ -147,6 +149,10 @@ final class NoGpsControls: NSObject {
       statusButton.heightAnchor.constraint(greaterThanOrEqualToConstant: Constants.statusMinHeight),
       statusButton.widthAnchor.constraint(lessThanOrEqualToConstant: Constants.statusMaxWidth),
     ])
+    dragger = MapPanelDragger(view: buttons, key: Constants.panelPlaceKey,
+                              travel: { [weak self] in self?.panelTravel ?? 0 },
+                              onLift: { [weak self] in self?.panel.isLifted = $0 },
+                              onMove: { [weak self] in self?.updateLayout() })
     updateLayout()
   }
 
@@ -154,12 +160,14 @@ final class NoGpsControls: NSObject {
   private func updateLayout(animated: Bool = false) {
     let area = Self.availableArea
     guard !area.isEmpty else { return }
+    let height = buttonsHeight
+    let fraction = dragger?.fraction ?? MapPanelDragger.Constants.defaultFraction
     let place = {
       self.statusTop.constant = area.minY + Constants.statusTopOffset
       self.statusCenterX.constant = area.midX
       self.buttonsLeading.constant = area.minX
-      // The side buttons on the right have the same center.
-      self.buttonsCenterY.constant = area.midY
+      // The side buttons on the right have the same center by default.
+      self.buttonsCenterY.constant = area.minY + height / 2 + fraction * max(0, area.height - height)
     }
     if animated, let superview = buttons.superview {
       superview.animateConstraints(animations: place)
@@ -167,8 +175,15 @@ final class NoGpsControls: NSObject {
       place()
     }
     // A panel can leave no place for the buttons.
-    let fits = buttons.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height <= area.height
-    showPanel(hasButtons && fits)
+    showPanel(hasButtons && height <= area.height)
+  }
+
+  private var buttonsHeight: CGFloat {
+    buttons.systemLayoutSizeFitting(UIView.layoutFittingCompressedSize).height
+  }
+
+  private var panelTravel: CGFloat {
+    max(0, Self.availableArea.height - buttonsHeight)
   }
 
   private func applyButtonsHidden() {
@@ -185,6 +200,7 @@ final class NoGpsControls: NSObject {
   private func showPanel(_ show: Bool) {
     guard show != isPanelShown else { return }
     isPanelShown = show
+    dragger?.isEnabled = show
     UIView.animate(withDuration: AppConstants.defaultAnimationDuration, delay: 0, options: [.beginFromCurrentState],
                    animations: {
                      let offset = show ? CGAffineTransform.identity

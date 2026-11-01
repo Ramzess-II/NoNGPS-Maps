@@ -1,5 +1,5 @@
 /// The frosted background of a group of map buttons. It is docked to an edge of the screen: the corners at the edge
-/// are square, the others are rounded. Touches go through it to the buttons and the map.
+/// are square, the others are rounded. Touches go through it to the buttons and the map. A panel being moved is lifted.
 @objc
 final class MapControlsPanel: UIView {
   @objc(MapControlsPanelEdge)
@@ -21,9 +21,14 @@ final class MapControlsPanel: UIView {
 
     /// A dark panel lighter than the dark map.
     static let tintColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 1, alpha: 0.06) : .clear }
+    // Not stored: the color follows the theme.
+    static var liftedTintColor: UIColor { UIColor.linkBlue.withAlphaComponent(0.2) }
+    static let liftedScale = CGFloat(1.08)
   }
 
   private let edge: Edge
+  // Scaled when lifted: the panel itself may be moved by its owner with a transform.
+  private let content = UIView()
   private let material = UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterial))
   private let border = CAShapeLayer()
 
@@ -32,7 +37,8 @@ final class MapControlsPanel: UIView {
     self.edge = edge
     super.init(frame: .zero)
     isUserInteractionEnabled = false
-    setStyleAndApply(.mapControlsPanel)
+    content.setStyleAndApply(.mapControlsPanel)
+    addSubview(content)
     material.frame = bounds
     material.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     material.clipsToBounds = true
@@ -40,10 +46,10 @@ final class MapControlsPanel: UIView {
     material.layer.cornerCurve = .continuous
     material.layer.maskedCorners = maskedCorners
     material.contentView.backgroundColor = Constants.tintColor
-    addSubview(material)
+    content.addSubview(material)
     border.fillColor = nil
     border.lineWidth = Constants.borderWidth
-    layer.addSublayer(border)
+    content.layer.addSublayer(border)
     updateBorderColor()
   }
 
@@ -63,11 +69,42 @@ final class MapControlsPanel: UIView {
     fatalError("init(coder:) has not been implemented")
   }
 
+  /// Bigger and tinted while the user moves it.
+  @objc var isLifted = false {
+    didSet {
+      guard isLifted != oldValue else { return }
+      UIView.animate(withDuration: AppConstants.defaultAnimationDuration, delay: 0, options: [.beginFromCurrentState],
+                     animations: {
+                       self.content.transform = self.liftTransform
+                       self.material.contentView.backgroundColor = self.isLifted ? Constants.liftedTintColor
+                         : Constants.tintColor
+                     })
+    }
+  }
+
+  /// Scales the panel about the middle of its edge at the screen, it stays docked there.
+  private var liftTransform: CGAffineTransform {
+    guard isLifted else { return .identity }
+    let scale = Constants.liftedScale
+    let edgeOffset: CGPoint
+    switch edge {
+    case .left: edgeOffset = CGPoint(x: -bounds.width / 2, y: 0)
+    case .right: edgeOffset = CGPoint(x: bounds.width / 2, y: 0)
+    case .bottom: edgeOffset = CGPoint(x: 0, y: bounds.height / 2)
+    }
+    return CGAffineTransform(translationX: edgeOffset.x * (1 - scale), y: edgeOffset.y * (1 - scale))
+      .scaledBy(x: scale, y: scale)
+  }
+
   override func layoutSubviews() {
     super.layoutSubviews()
-    layer.shadowPath = UIBezierPath(roundedRect: bounds,
-                                    byRoundingCorners: roundedCorners,
-                                    cornerRadii: CGSize(width: radius, height: radius)).cgPath
+    // Not the frame: it is undefined under a transform.
+    content.bounds = CGRect(origin: .zero, size: bounds.size)
+    content.center = CGPoint(x: bounds.midX, y: bounds.midY)
+    content.transform = liftTransform
+    content.layer.shadowPath = UIBezierPath(roundedRect: bounds,
+                                            byRoundingCorners: roundedCorners,
+                                            cornerRadii: CGSize(width: radius, height: radius)).cgPath
     border.path = borderPath().cgPath
   }
 

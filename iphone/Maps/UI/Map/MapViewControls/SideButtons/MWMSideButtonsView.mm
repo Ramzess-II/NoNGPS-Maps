@@ -6,6 +6,7 @@ namespace
 {
 CGFloat const kButtonsTopOffset = 6;
 CGFloat const kButtonsBottomOffset = 6;
+NSString * const kPanelPlaceKey = @"NoGpsRightPanelY";
 }  // namespace
 
 @interface MWMSideButtonsView ()
@@ -17,6 +18,7 @@ CGFloat const kButtonsBottomOffset = 6;
 @property(nonatomic) CGRect availableArea;
 @property(nonatomic) MapControlsPanel * panel;
 @property(nonatomic) UIView * locationDivider;
+@property(nonatomic) MapPanelDragger * dragger;
 
 @end
 
@@ -33,6 +35,12 @@ CGFloat const kButtonsBottomOffset = 6;
   self.locationDivider.userInteractionEnabled = NO;
   [self.locationDivider setStyleNameAndApply:@"SolidDivider"];
   [self addSubview:self.locationDivider];
+  __weak auto weakSelf = self;
+  self.dragger = [[MapPanelDragger alloc] initWithView:self
+      key:kPanelPlaceKey
+      travel:^CGFloat { return weakSelf.travel; }
+      onLift:^(BOOL lifted) { weakSelf.panel.isLifted = lifted; }
+      onMove:^{ [weakSelf layoutYPosition]; }];
 }
 
 - (void)layoutSubviews
@@ -101,12 +109,14 @@ CGFloat const kButtonsBottomOffset = 6;
   }
 }
 
-// The panel on the left side of the map has the same center.
+// The panel on the left side of the map has the same center by default.
 - (void)layoutYPosition
 {
-  [UIView animateWithDuration:AppConstants.defaultAnimationDuration
+  // The panel follows the finger.
+  NSTimeInterval const duration = self.dragger.isMoving ? 0 : AppConstants.defaultAnimationDuration;
+  [UIView animateWithDuration:duration
                    animations:^{
-                     self.midY = CGRectGetMidY(self.availableArea);
+                     self.minY = self.topBound + self.dragger.fraction * self.travel;
                      if (self.maxY > self.bottomBound)
                        self.maxY = self.bottomBound;
                    }];
@@ -202,6 +212,12 @@ CGFloat const kButtonsBottomOffset = 6;
 - (CGFloat)availableHeight
 {
   return self.availableArea.size.height - kButtonsTopOffset - kButtonsBottomOffset;
+}
+
+// The distance the buttons can be moved by the user.
+- (CGFloat)travel
+{
+  return MAX(0, self.bottomBound - self.topBound - self.height);
 }
 
 - (CGFloat)topBound
