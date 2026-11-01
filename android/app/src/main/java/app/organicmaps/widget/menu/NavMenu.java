@@ -51,8 +51,6 @@ public class NavMenu implements DefaultLifecycleObserver
   private final View mSource;
   private final StatusBar.Button mSourceButton;
   private final TextView mSourceAccuracy;
-  // The sheet opened by a tap is the one the button shows.
-  private boolean mSourceIsBox;
 
   private final AppCompatActivity mActivity;
   private final NavMenuListener mNavMenuListener;
@@ -120,7 +118,10 @@ public class NavMenu implements DefaultLifecycleObserver
     mSourceButton = new StatusBar.Button(mSource, bottomFrame.findViewById(R.id.nav_source_icon),
                                          bottomFrame.findViewById(R.id.nav_source_badge));
     mSourceAccuracy = bottomFrame.findViewById(R.id.nav_source_accuracy);
-    mSource.setOnClickListener(v -> mNavMenuListener.onSourceClicked(mSourceIsBox));
+    mSource.setOnClickListener(v -> {
+      final NoGps.Status status = NoGps.getStatus();
+      mNavMenuListener.onSourceClicked(StatusBar.navShowsBox(status.getSource(), status.inertialEnabled));
+    });
 
     // Bottom frame buttons
     ImageView mSettings = bottomFrame.findViewById(R.id.settings);
@@ -311,15 +312,14 @@ public class NavMenu implements DefaultLifecycleObserver
 
   void updateSource(@NonNull NoGps.Status status)
   {
-    mSourceIsBox = StatusBar.navShowsBox(status.getSource(), status.inertialEnabled);
+    final boolean box = StatusBar.navShowsBox(status.getSource(), status.inertialEnabled);
     mSourceButton.show(StatusBar.getNavLook(mActivity, status));
     final String accuracy = StatusBar.getAccuracyText(mActivity, status);
     mSourceAccuracy.setText(accuracy);
     mSourceAccuracy.setVisibility(accuracy != null ? View.VISIBLE : View.GONE);
     final String source = StatusBar.getSourceWord(mActivity, status);
-    mSource.setContentDescription(
-        mActivity.getString(mSourceIsBox ? R.string.nogps_box_title : R.string.nogps_status_gps) + ", "
-        + (accuracy != null ? source + " " + accuracy : source));
+    mSource.setContentDescription(mActivity.getString(box ? R.string.nogps_box_title : R.string.nogps_status_gps) + ", "
+                                  + (accuracy != null ? source + " " + accuracy : source));
   }
 
   public void update(@NonNull RoutingInfo info)

@@ -111,14 +111,6 @@
     <item name="status_folder_done">@drawable/ic_downloader_folder_done</item>
   </style>
 
-  <style name="MwmTheme.NavButtonsRound">
-    <item name="searchLayoutBackground">@drawable/bg_search_wheel_background_round</item>
-  </style>
-
-  <style name="MwmTheme.NavButtonsRect">
-    <item name="searchLayoutBackground">@drawable/bg_search_wheel_background_rect</item>
-  </style>
-
   <style name="MwmTheme.Navigation">
     <item name="iconTint">@color/white_primary</item>
   </style>

@@ -42,8 +42,6 @@
     <attr name="menuBackground" format="color" />
     <attr name="myPositionButtonAnimation" format="reference" />
     <attr name="wheelPendingAnimation" format="reference" />
-    <attr name="navButtonsThemeRect" format="reference" />
-    <attr name="navButtonsThemeRound" format="reference" />
     <attr name="downloaderTheme" format="reference" />
     <attr name="navigationTheme" format="reference" />
     <attr name="routingTabPillBg" format="color" />
@@ -63,9 +61,6 @@
     <attr name="status_updatable" format="reference" />
     <attr name="status_folder" format="reference" />
     <attr name="status_folder_done" format="reference" />
-  </declare-styleable>
-  <declare-styleable name="ThemeAttrs.Navigation">
-    <attr name="searchLayoutBackground" format="reference" />
   </declare-styleable>
   <declare-styleable name="ThemeAttrs.ElevationProfile">
     <attr name="elevationProfileColor" format="color" />
