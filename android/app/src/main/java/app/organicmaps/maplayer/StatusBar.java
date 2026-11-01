@@ -111,8 +111,12 @@ public class StatusBar
     mBox.mView.setContentDescription(
         status.inertialEnabled ? box + ", " + SensorsBottomSheet.boxStateText(context, status) : box);
     mGps.show(getGpsLook(context, status));
-    mGps.mView.setContentDescription(context.getString(R.string.nogps_status_gps) + ", "
-                                     + getGpsStateText(context, status));
+    String gps = context.getString(R.string.nogps_status_gps) + ", " + getGpsStateText(context, status);
+    // The pause badge is not read out: the reason tells that the car doesn't follow GPS.
+    final String why = status.gpsDisabled ? getGpsWhyText(context, status) : null;
+    if (why != null)
+      gps += ". " + why;
+    mGps.mView.setContentDescription(gps);
   }
 
   @NonNull

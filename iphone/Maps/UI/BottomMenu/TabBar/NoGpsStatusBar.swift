@@ -146,7 +146,9 @@ final class NoGpsStatusBar: UIView {
     box.show(Self.boxLook(status))
     box.accessibilityValue = status.inertialEnabled ? NoGpsSensorsViewController.boxStateText(status) : nil
     gps.show(Self.gpsLook(status))
-    gps.accessibilityValue = Self.gpsStateText(status)
+    // The pause badge is not read out: the reason tells that the car doesn't follow GPS.
+    gps.accessibilityValue = [Self.gpsStateText(status), status.gpsDisabled ? Self.gpsWhyText(status) : nil]
+      .compactMap { $0 }.joined(separator: " ")
   }
 
   private static func sourceText(_ status: NoGpsStatus) -> (word: String, accuracy: String?) {
