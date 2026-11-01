@@ -417,6 +417,9 @@ public:
   nogps::Engine & CreateNoGps(nogps::Delegate & delegate);
   /// \returns nullptr until it is created.
   nogps::Engine * GetNoGps();
+  /// The user shows where the car is: a tap after the button for it, or the button of the place page. The map
+  /// follows the car from there. \returns false if there is no road at the point.
+  bool PlaceNoGpsMark(m2::PointD const & mercator);
 
 private:
   void OnUserPositionChanged(m2::PointD const & position, bool hasPosition);

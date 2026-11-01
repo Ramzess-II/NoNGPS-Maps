@@ -45730,6 +45730,13 @@ en = Tap the road where the car is
 ru = Коснитесь дороги, где сейчас машина
 uk = Торкніться дороги, де зараз машина
 
+[nogps_mark_here]
+comment = The button of the place page: the car is here, put the mark on the nearest road
+tags = android-app,apple-maps
+en = I'm here
+ru = Я здесь
+uk = Я тут
+
 [nogps_gps_spoofed]
 tags = android-app,apple-maps
 en = GPS is spoofed! Using cell towers and Wi-Fi. You can also set your position manually.

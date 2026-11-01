@@ -89,6 +89,11 @@ public class PlacePageButtonFactory
         titleId = R.string.avoid_ferry;
         yield R.drawable.ic_avoid_ferry;
       }
+      case NOGPS_MARK_HERE ->
+      {
+        titleId = R.string.nogps_mark_here;
+        yield R.drawable.ic_manual_position;
+      }
       case MORE ->
       {
         titleId = R.string.placepage_more_button;

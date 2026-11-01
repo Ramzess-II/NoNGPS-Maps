@@ -172,6 +172,7 @@ public final class PlacePageButtons extends Fragment implements Observer<List<Pl
     ROUTE_AVOID_UNPAVED,
     TRACK_RECORDING_SAVE,
     TRACK_RECORDING_DELETE,
+    NOGPS_MARK_HERE,
     MORE
   }
 

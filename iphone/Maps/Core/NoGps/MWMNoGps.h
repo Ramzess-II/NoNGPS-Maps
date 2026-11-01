@@ -196,6 +196,9 @@ NS_SWIFT_NAME(NoGps)
 
 /// The next single tap on the map shows where the car is, the core handles it. Pass NO to take it back.
 + (void)setMarkByTap:(BOOL)armed;
+/// The car is at the point: the mark goes to the nearest road, the map follows the car.
+/// @return NO if there is no road near, MWMNoGpsEventMarkNoRoad is posted then.
++ (BOOL)placeMarkAt:(CLLocationCoordinate2D)coordinate;
 /// Moves the position along the route or the road.
 /// @return the distance it was moved by, 0 if it can not be moved.
 + (double)shiftPosition:(double)distanceM;

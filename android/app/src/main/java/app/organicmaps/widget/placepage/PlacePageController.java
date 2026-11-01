@@ -38,6 +38,7 @@ import app.organicmaps.sdk.bookmarks.data.BookmarkManager;
 import app.organicmaps.sdk.bookmarks.data.MapObject;
 import app.organicmaps.sdk.bookmarks.data.RoadWarningMarkType;
 import app.organicmaps.sdk.bookmarks.data.Track;
+import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.sdk.location.TrackRecorder;
 import app.organicmaps.sdk.routing.RouteMarkType;
 import app.organicmaps.sdk.routing.RoutingController;
@@ -519,7 +520,17 @@ public class PlacePageController
     case ROUTE_AVOID_TOLL -> onAvoidTollBtnClicked();
     case ROUTE_AVOID_UNPAVED -> onAvoidUnpavedBtnClicked();
     case ROUTE_AVOID_FERRY -> onAvoidFerryBtnClicked();
+    case NOGPS_MARK_HERE -> onMarkHereBtnClicked();
     }
+  }
+
+  private void onMarkHereBtnClicked()
+  {
+    if (mMapObject == null)
+      return;
+    // Without a road near the core tells it, the user may move the map to the road and use the button on it.
+    if (NoGps.nativePlaceMark(mMapObject.getLat(), mMapObject.getLon()))
+      close();
   }
 
   private void onBookmarkBtnClicked()
@@ -707,6 +718,12 @@ public class PlacePageController
     }
     else
     {
+      // The user sees the car is at the place: the mark is put there in one step, with GPS too. First, so that it
+      // doesn't go under "More". Not while another application asks for a point.
+      if (!showBackButton && !RoutingController.get().isWaitingStopPick() && !mapObject.isMyPosition()
+          && !mapObject.isTrack() && !mapObject.isTrackRecording())
+        buttons.add(PlacePageButtons.ButtonType.NOGPS_MARK_HERE);
+
       if (showBackButton)
         buttons.add(PlacePageButtons.ButtonType.BACK);
 

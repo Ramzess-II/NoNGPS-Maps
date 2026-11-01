@@ -268,6 +268,18 @@ nogps::Engine * Framework::GetNoGps()
   return m_noGps ? &m_noGps->GetEngine() : nullptr;
 }
 
+bool Framework::PlaceNoGpsMark(m2::PointD const & mercator)
+{
+  CHECK(m_noGps, ());
+  if (!m_noGps->GetEngine().PlaceMarkByTap(mercator::ToLatLon(mercator)))
+    return false;
+  // The map moved away by the user comes back to the car by itself in a while, and the car seems to drive along
+  // the road then. It comes back at once instead, the user has just shown where the car is.
+  if (GetMyPositionMode() == location::NotFollow)
+    SwitchMyPositionNextMode();
+  return true;
+}
+
 void Framework::SwitchMyPositionNextMode()
 {
   if (m_drapeEngine != nullptr)
@@ -2344,13 +2356,7 @@ void Framework::OnTapEvent(place_page::BuildInfo const & buildInfo)
   // tap did it in the manual mode before, and a hand touching the screen by chance threw the car away.
   if (buildInfo.m_source == place_page::BuildInfo::Source::User && m_noGps && m_noGps->GetEngine().IsMarkByTap())
   {
-    // The map moved away by the user comes back to the car by itself in a while, and the car seems to drive along
-    // the road then. It comes back at once instead, the user has just shown where the car is.
-    if (m_noGps->GetEngine().PlaceMarkByTap(mercator::ToLatLon(buildInfo.m_mercator)) &&
-        GetMyPositionMode() == location::NotFollow)
-    {
-      SwitchMyPositionNextMode();
-    }
+    PlaceNoGpsMark(buildInfo.m_mercator);
     return;
   }
 

@@ -69,6 +69,12 @@ final class ActionBarViewController: UIViewController {
       (shouldAppendNewPoints ? .routeAddDestination : .routeAddStop)
     switch placePageData.objectType {
     case .POI, .bookmark, .track, .relationTrack:
+      // The user sees the car is at the place: the mark is put there in one step, with GPS too. First, so that it
+      // doesn't go under "More".
+      let isPoint = placePageData.objectType == .POI || placePageData.objectType == .bookmark
+      if isPoint, canRouteToAndFrom, !placePageData.isMyPosition {
+        buttons.append(.noGpsMarkHere)
+      }
       if canRouteToAndFrom {
         buttons.append(.routeFrom)
       }

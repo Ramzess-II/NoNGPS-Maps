@@ -8,6 +8,8 @@
 #include "map/nogps/delegate.hpp"
 #include "map/nogps/engine.hpp"
 
+#include "geometry/mercator.hpp"
+
 #include "base/logging.hpp"
 
 #include <memory>
@@ -229,6 +231,13 @@ static CLLocation * lastPlatformLocation;
 + (void)setMarkByTap:(BOOL)armed
 {
   Engine().SetMarkByTap(armed);
+}
+
++ (BOOL)placeMarkAt:(CLLocationCoordinate2D)coordinate
+{
+  // The framework calls the engine, which is created by the first call to it.
+  Engine();
+  return GetFramework().PlaceNoGpsMark(mercator::FromLatLon(coordinate.latitude, coordinate.longitude));
 }
 
 + (double)shiftPosition:(double)distanceM
