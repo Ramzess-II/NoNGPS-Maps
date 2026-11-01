@@ -59,7 +59,7 @@
     android:textColor="?android:textColorSecondary"
     android:textSize="14sp" />
 
-  <com.google.android.material.materialswitch.MaterialSwitch
+  <androidx.appcompat.widget.SwitchCompat
     android:id="@+id/gps_use"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
