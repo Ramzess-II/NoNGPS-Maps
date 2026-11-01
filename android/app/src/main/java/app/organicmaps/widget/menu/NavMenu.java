@@ -298,14 +298,15 @@ public class NavMenu implements DefaultLifecycleObserver
     final NoGps.SourceState state = status.getSourceState();
     if (state == NoGps.SourceState.CONNECTED)
       return false;
+    // A box that is not heard is shown by the source button only.
+    if (status.esp32Source
+        && (state == NoGps.SourceState.DISCONNECTED || state == NoGps.SourceState.CONNECTING
+            || state == NoGps.SourceState.BOX_SLEEPING))
+      return false;
 
-    // The part to look at: the box itself or the adapter in the car.
-    final boolean noBox = status.esp32Source
-                       && (state == NoGps.SourceState.DISCONNECTED || state == NoGps.SourceState.CONNECTING
-                           || state == NoGps.SourceState.BOX_SLEEPING);
     mSpeedValue.setText(R.string.nogps_speed_no_data);
     mSpeedValue.setTextColor(ContextCompat.getColor(mActivity, R.color.base_red));
-    mSpeedUnits.setText(noBox ? R.string.nogps_speed_no_box : R.string.nogps_speed_no_elm);
+    mSpeedUnits.setText(R.string.nogps_speed_no_elm);
     mSpeedViewContainer.setActivated(false);
     return true;
   }

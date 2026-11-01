@@ -46519,10 +46519,6 @@ uk = Вихідний код на GitHub
 tags = android-app,apple-maps
 en = NO
 
-[nogps_speed_no_box]
-tags = android-app,apple-maps
-en = NonGPS-OBD
-
 [nogps_speed_no_elm]
 tags = android-app,apple-maps
 en = OBD
