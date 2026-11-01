@@ -52,7 +52,7 @@
     android:visibility="gone"
     app:srcCompat="@drawable/ic_switch_mark"
     android:contentDescription="@string/nogps_switch_mark" />
-  <!-- For the test drives, shown in debug builds only: marks in the log the moment the car was shown wrong at. -->
+  <!-- For the test drives, shown while logging to a file is on: marks in the log the moment the car was shown wrong at. -->
   <com.google.android.material.floatingactionbutton.FloatingActionButton
     android:id="@+id/flag_log"
     style="@style/MwmWidget.MapButton.InPanel"
