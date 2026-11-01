@@ -388,7 +388,12 @@ final class NoGpsControls: NSObject {
     Self.logFlags += 1
     LOG(.info, "FLAG \(Self.logFlags)")
     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-    Toast.show(withText: "\u{2691} \(Self.logFlags)")
+    // As the trip log tools take a time, not in a 12-hour format of the locale.
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "HH:mm:ss"
+    let time = formatter.string(from: Date())
+    Toast.show(withText: String(format: L("nogps_log_flag"), Self.logFlags, time))
   }
 
   @objc
