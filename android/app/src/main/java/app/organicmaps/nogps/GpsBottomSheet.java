@@ -19,6 +19,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.location.GnssStatusCompat;
 import androidx.core.location.LocationCompat;
 import androidx.core.widget.ImageViewCompat;
@@ -28,7 +29,6 @@ import app.organicmaps.maplayer.StatusBar;
 import app.organicmaps.sdk.location.LocationHelper;
 import app.organicmaps.sdk.location.NoGps;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
-import com.google.android.material.materialswitch.MaterialSwitch;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -58,7 +58,7 @@ public class GpsBottomSheet extends BottomSheetDialogFragment
   // A grey state is read as disabled: it is shown in the color of the text.
   private ColorStateList mStateColors;
   private TextView mWhy;
-  private MaterialSwitch mUse;
+  private SwitchCompat mUse;
   private TextView mLastFix;
   private TextView mAccuracy;
   private TextView mSpeedCourse;
