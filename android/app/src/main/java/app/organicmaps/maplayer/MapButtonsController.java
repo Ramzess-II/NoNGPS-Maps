@@ -34,7 +34,6 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
-import app.organicmaps.BuildConfig;
 import app.organicmaps.MwmActivity;
 import app.organicmaps.R;
 import app.organicmaps.nogps.BoxBottomSheet;
@@ -52,6 +51,7 @@ import app.organicmaps.sdk.maplayer.traffic.TrafficManager;
 import app.organicmaps.sdk.routing.RoutingController;
 import app.organicmaps.sdk.util.Config;
 import app.organicmaps.sdk.util.log.Logger;
+import app.organicmaps.sdk.util.log.LogsManager;
 import app.organicmaps.search.SearchPageViewModel;
 import app.organicmaps.util.ThemeUtils;
 import app.organicmaps.util.UiUtils;
@@ -381,7 +381,7 @@ public class MapButtonsController extends Fragment
     if (mSwitchMarkButton != null)
       mCarButtonsShown.put(mSwitchMarkButton, status.movedByHand && status.otherMarks > 0);
     if (mFlagLogButton != null)
-      mCarButtonsShown.put(mFlagLogButton, BuildConfig.DEBUG);
+      mCarButtonsShown.put(mFlagLogButton, LogsManager.INSTANCE.isFileLoggingEnabled());
 
     // The position waits at a turn until the car leaves it, otherwise it would go to another street.
     setShiftEnabled(mShiftPositionForward, !status.shiftForwardBlocked);
@@ -400,11 +400,8 @@ public class MapButtonsController extends Fragment
       ImageViewCompat.setImageTintList(mManualPositionButton, ColorStateList.valueOf(color));
     }
 
-    // The car is corrected by hand only while the box drives it: GPS does otherwise, see the GPS sheet.
-    if (!status.gpsDisabled)
-      mCarButtonsShown.replaceAll((button, shown) -> false);
     final boolean hasCarButtons = mCarButtonsShown.containsValue(true);
-    // Nothing to correct, e.g. with GPS: the panel slides out as it is, its buttons are hidden after that.
+    // Nothing to correct: the panel slides out as it is, its buttons are hidden after that.
     if (hasCarButtons || !mCarPanelShown)
       applyCarButtons();
     showCarPanel(hasCarButtons);
