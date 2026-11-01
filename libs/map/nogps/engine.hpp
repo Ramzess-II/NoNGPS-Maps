@@ -277,6 +277,7 @@ public:
   /// restart, the map shows the choice.
   void SetGpsDisabled(bool disabled);
 
+  /// A box not set up before is searched and saved once it is heard: the app closed in the search has no box.
   void SetInertialNavigationEnabled(bool enabled);
   bool IsInertialNavigationEnabled() const;
   void SetElm327Address(std::string const & address);
@@ -349,6 +350,8 @@ private:
   /// tells it.
   void RestoreCarPosition();
   void StartInertialNavigation();
+  /// The box searched for has sent its data: it is set up.
+  void SaveHeardBox();
   bool IsInertialActive() const;
   std::optional<double> GetCarBearing() const;
   void ShowCarHeading();
@@ -384,6 +387,8 @@ private:
   // In the manual mode GPS is ignored (it is jammed or spoofed) and the position is set by the user.
   bool m_manualMode = false;
   bool m_gpsDisabled = false;
+  // A box is searched for and not saved until it is heard.
+  bool m_boxSearched = false;
   std::optional<Fix> m_manualLocation;
   // The next tap on the map shows where the car is.
   bool m_markByTap = false;

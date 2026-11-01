@@ -341,8 +341,10 @@ void Engine::OnElm327Connected()
 
 void Engine::OnElm327Bytes(std::string_view data)
 {
-  if (m_inertial)
-    m_inertial->OnElm327Bytes(data);
+  if (!m_inertial)
+    return;
+  m_inertial->OnElm327Bytes(data);
+  SaveHeardBox();
 }
 
 void Engine::OnElm327Closed(std::string const & reason)
@@ -353,8 +355,10 @@ void Engine::OnElm327Closed(std::string const & reason)
 
 void Engine::OnEsp32BleBytes(std::string_view bytes)
 {
-  if (m_inertial)
-    m_inertial->OnEsp32BleBytes(bytes);
+  if (!m_inertial)
+    return;
+  m_inertial->OnEsp32BleBytes(bytes);
+  SaveHeardBox();
 }
 
 void Engine::OnEsp32BleState(BleState state)
@@ -821,13 +825,15 @@ void Engine::RestoreCarPosition()
 
 bool Engine::IsInertialNavigationEnabled() const
 {
-  return m_storage.IsInertialEnabled();
+  return m_boxSearched || m_storage.IsInertialEnabled();
 }
 
 void Engine::SetInertialNavigationEnabled(bool enabled)
 {
-  LOG(LINFO, ("Box set up by the user =", enabled));
-  m_storage.Set(Storage::kInertialEnabled, enabled);
+  m_boxSearched = enabled && !m_storage.IsInertialEnabled();
+  LOG(LINFO, ("Box set up by the user =", enabled, "searched =", m_boxSearched));
+  if (!m_boxSearched)
+    m_storage.Set(Storage::kInertialEnabled, enabled);
   if (enabled)
   {
     StartInertialNavigation();
@@ -1038,6 +1044,18 @@ void Engine::StartInertialNavigation()
                                                      m_map.GetRoads(true /* matchRoute */), listener);
   }
   m_inertial->Start();
+}
+
+void Engine::SaveHeardBox()
+{
+  if (!m_boxSearched)
+    return;
+  auto const state = m_inertial->GetSourceState();
+  if (state == SourceState::Disconnected || state == SourceState::Connecting)
+    return;
+  LOG(LINFO, ("Box heard, saved as set up"));
+  m_boxSearched = false;
+  m_storage.Set(Storage::kInertialEnabled, true);
 }
 
 bool Engine::IsInertialActive() const

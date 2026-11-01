@@ -2357,6 +2357,30 @@ UNIT_TEST(NoGps_Engine_ForgettingTheBoxReturnsGps)
   TEST(!env.m_delegate.m_positions.empty(), ());
 }
 
+UNIT_TEST(NoGps_Engine_SavesSearchedBoxOnceHeard)
+{
+  Env env(false /* inertial */);
+  env.m_engine.SetInertialNavigationEnabled(true);
+  TEST(env.m_engine.GetStatus().m_inertialEnabled, ());
+  // The app closed now starts without a box.
+  TEST(!env.m_storage.IsInertialEnabled(), ());
+
+  env.ConnectBox();
+  TEST(!env.m_storage.IsInertialEnabled(), ());
+  env.Drive(100, 0, 0);
+  TEST(env.m_storage.IsInertialEnabled(), ());
+}
+
+UNIT_TEST(NoGps_Engine_SearchedBoxIsForgotten)
+{
+  Env env(false /* inertial */);
+  env.m_engine.SetInertialNavigationEnabled(true);
+  env.m_engine.SetInertialNavigationEnabled(false);
+  TEST(!env.m_engine.GetStatus().m_inertialEnabled, ());
+  env.Drive(100, 0, 0);
+  TEST(!env.m_storage.IsInertialEnabled(), ());
+}
+
 UNIT_TEST(NoGps_GpsStateGood)
 {
   Env env(false /* inertial */);
