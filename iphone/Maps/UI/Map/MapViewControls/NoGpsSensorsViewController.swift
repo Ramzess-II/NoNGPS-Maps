@@ -301,7 +301,7 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     case .obdConnecting: return L("nogps_box_obd_connecting")
     case .obdError: return L("nogps_elm_error")
     case .noCarData: return L("nogps_elm_no_car")
-    case .boxSleeping: return L("nogps_box_sleeping")
+    case .boxSleeping: return L("nogps_box_sleeping") + " · " + boxSearchText(status)
     case .obdSleeping: return L("nogps_box_obd_sleeping")
     case .connected: return L("nogps_elm_connected")
     case .updating: return L("nogps_box_updating")

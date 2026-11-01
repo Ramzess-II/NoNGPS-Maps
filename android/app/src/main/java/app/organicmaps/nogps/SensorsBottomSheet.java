@@ -294,7 +294,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     {
       String box = BoxBottomSheet.boxName(status);
       if (enabled)
-        box += " · " + getString(boxStateText(status));
+        box += " · " + boxStateText(requireContext(), status);
       mAdapter.setText(getString(R.string.nogps_sensors_box, box));
     }
     else
@@ -559,9 +559,13 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   /**
    * Also told by the Box button of the bottom bar.
    */
-  public static int boxStateText(@NonNull NoGps.Status status)
+  @NonNull
+  public static String boxStateText(@NonNull Context context, @NonNull NoGps.Status status)
   {
-    return switch (status.getSourceState())
+    // The phone keeps looking for a sleeping box.
+    if (status.getSourceState() == NoGps.SourceState.BOX_SLEEPING)
+      return context.getString(R.string.nogps_box_sleeping) + " · " + context.getString(boxSearchText(status));
+    return context.getString(switch (status.getSourceState())
     {
       case DISCONNECTED -> R.string.nogps_elm_disconnected;
       case CONNECTING -> boxSearchText(status);
@@ -574,7 +578,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       case OBD_SLEEPING -> R.string.nogps_box_obd_sleeping;
       case CONNECTED -> R.string.nogps_elm_connected;
       case UPDATING -> R.string.nogps_box_updating;
-    };
+    });
   }
 
   /**

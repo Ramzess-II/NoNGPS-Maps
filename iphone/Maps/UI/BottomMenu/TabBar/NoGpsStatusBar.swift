@@ -168,7 +168,7 @@ final class NoGpsStatusBar: UIView {
     if LocationManager.isLocationProhibited() {
       return Look(image: slashed, color: .secondaryLabel)
     }
-    let look: Look
+    var look: Look
     switch status.gpsState {
     case .good: look = Look(image: antenna, color: Constants.goodColor)
     case .checking: look = Look(image: antenna, color: .systemBlue, pulsing: true)
@@ -177,8 +177,11 @@ final class NoGpsStatusBar: UIView {
     case .none: look = Look(image: slashed, color: .systemRed)
     @unknown default: look = Look(image: slashed, color: .systemRed)
     }
-    // The car doesn't follow GPS: its signal is told by the shape only.
-    return status.gpsDisabled ? Look(image: look.image, color: .secondaryLabel, badge: look.badge) : look
+    // The car doesn't follow GPS: the badge tells it, the color still tells the signal.
+    if status.gpsDisabled, look.badge == nil {
+      look.badge = ("pause.fill", .systemGray)
+    }
+    return look
   }
 
   static func boxLook(_ status: NoGpsStatus) -> Look {
@@ -188,7 +191,14 @@ final class NoGpsStatusBar: UIView {
     switch status.sourceState {
     case .connected: return Look(image: chip, color: Constants.goodColor)
     case .updating: return Look(image: chip, color: .systemBlue, badge: ("arrow.down", .systemBlue), pulsing: true)
-    case .boxSleeping, .obdSleeping: return Look(image: chip, color: .secondaryLabel, badge: ("moon.fill", .systemGray))
+    case .boxSleeping:
+      // The box is away or its radio is off: the phone keeps looking for it.
+      var look = boxSearchLook(status)
+      if look.pulsing {
+        look.badge = ("moon.fill", .systemGray)
+      }
+      return look
+    case .obdSleeping: return Look(image: chip, color: .secondaryLabel, badge: ("moon.fill", .systemGray))
     case .noCarData, .obdDisabled, .obdConnecting, .obdError, .noAdapter:
       return Look(image: chip, color: .label, badge: ("exclamationmark", .systemOrange))
     case .disconnected, .connecting: return boxSearchLook(status)

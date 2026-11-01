@@ -315,7 +315,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final Context context = requireContext();
     animateRings(false);
     final StatusBar.Look look = StatusBar.getBoxLook(status);
-    showState(look, status.inertialEnabled ? getString(SensorsBottomSheet.boxStateText(status)) : "");
+    showState(look, status.inertialEnabled ? SensorsBottomSheet.boxStateText(context, status) : "");
     if (!status.inertialEnabled)
       return;
     final boolean bluetoothFailed = isBluetoothFailed(status);
