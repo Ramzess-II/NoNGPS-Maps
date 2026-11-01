@@ -1240,10 +1240,10 @@
 "nogps_kilometers" = "%.1f km";
 "nogps_sensors_title" = "Inertial navigation";
 "nogps_elm_disconnected" = "no connection";
-"nogps_elm_no_adapter" = "ELM327 doesn't answer";
-"nogps_box_obd_disabled" = "ELM327 is off in the box";
-"nogps_box_obd_connecting" = "ELM327 connects…";
-"nogps_elm_error" = "ELM327 error";
+"nogps_elm_no_adapter" = "OBD doesn't answer";
+"nogps_box_obd_disabled" = "OBD is off in the box";
+"nogps_box_obd_connecting" = "OBD connects…";
+"nogps_elm_error" = "OBD error";
 "nogps_elm_no_car" = "the car doesn't answer";
 "nogps_elm_connected" = "connected";
 "nogps_sensors_speed" = "Speed: %@";
@@ -1422,11 +1422,11 @@
 "nogps_clear_speed_message" = "The speed corrections learned from GPS at different speeds and from your corrections will be forgotten. Do it after new tyres or another car. They are learned anew while GPS works.";
 "nogps_about_title" = "About NonGPS Maps";
 "nogps_speed_no_data" = "NO";
-"nogps_speed_no_box" = "ESP32";
-"nogps_speed_no_elm" = "ELM";
+"nogps_speed_no_box" = "NonGPS-OBD";
+"nogps_speed_no_elm" = "OBD";
 "nogps_box_sleeping" = "sleeps: the engine is stopped";
-"nogps_box_obd_sleeping" = "ELM327 sleeps: the engine is stopped";
-"nogps_sensors_car" = "Engine: %1$@\nEngine speed: %2$@\nVoltage, box ADC: %3$@\nVoltage, ELM327: %4$@\nVoltage, car control unit: %5$@";
+"nogps_box_obd_sleeping" = "OBD sleeps: the engine is stopped";
+"nogps_sensors_car" = "Engine: %1$@\nEngine speed: %2$@\nVoltage, box ADC: %3$@\nVoltage, OBD: %4$@\nVoltage, car control unit: %5$@";
 "nogps_engine_running" = "running";
 "nogps_engine_stopped" = "stopped";
 "nogps_rpm" = "%d rpm";
@@ -1527,11 +1527,50 @@
 /* Title of the Box sheet */
 "nogps_box_title" = "Sensor box";
 
-/* Row of the Box sheet: the ranges of the car speed measured by GPS, of all */
-"nogps_box_speed_table" = "Speed table: %1$@";
+/* Title of the screen with the speed table of the sensor box */
+"nogps_speed_table_title" = "Speed table";
 
-/* Button of the Box sheet opening the sensors screen */
-"nogps_box_details" = "All sensor details";
+/* State of the speed table on the Box sheet: GPS has measured all its ranges */
+"nogps_speed_table_calibrated" = "Calibrated";
+
+/* State of the speed table on the Box sheet: GPS has measured no range */
+"nogps_speed_table_not_calibrated" = "Not calibrated";
+
+/* State of the speed table on the Box sheet: the ranges measured by GPS, of all, e.g. "4 of 14" */
+"nogps_speed_table_calibrating" = "Calibrating %1$d of %2$d";
+
+/* Explanation on the speed table screen: why it is needed */
+"nogps_speed_table_hint" = "The car reports its speed slightly wrong because of the tyres. The app corrects it to count the distance without GPS.";
+
+/* What the user does to calibrate the speed table, shown below nogps_speed_table_hint */
+"nogps_speed_table_action" = "To calibrate, drive with good GPS about 300 m in each range.";
+
+/* Row of the Box sheet: how late the car tells its speed, the value is on the right */
+"nogps_speed_lag" = "Speed delay";
+
+/* Value of the speed delay row of the Box sheet, in seconds, e.g. "1.2 s" */
+"nogps_speed_lag_value" = "%@ s";
+
+/* Button of the Box sheet: forget the speed table and the speed delay learned from GPS, asks first */
+"nogps_box_clear_speed" = "Reset speed calibration";
+
+/* Second line of the speed delay row of the Box sheet */
+"nogps_speed_lag_measured" = "Measured by GPS";
+
+/* Second line of the speed delay row of the Box sheet */
+"nogps_speed_lag_usual" = "Usual, not measured by GPS yet";
+
+/* Row of the Box sheet below the speed: the engine revs, e.g. "850 rpm" */
+"nogps_box_rpm" = "Revs: %@";
+
+/* Row of the Box sheet, next to the "Calibrate" action */
+"nogps_box_sensors_not_calibrated" = "Sensors not calibrated";
+
+/* Row of the Box sheet, next to the "Recalibrate" action */
+"nogps_box_sensors_calibrated" = "Sensors calibrated";
+
+/* Action of the Box sheet: calibrate the sensors of the box again */
+"nogps_box_recalibrate" = "Recalibrate";
 
 /* State under the title of the Box sheet when no box is set up */
 "nogps_box_searching" = "Looking for a box nearby";
@@ -1555,7 +1594,7 @@
 "nogps_box_step_data" = "Car data";
 
 /* Button: allow Bluetooth to the app */
-"nogps_box_allow" = "Allow";
+"nogps_box_allow" = "Allow Bluetooth";
 
 /* Hint while the box is searched */
 "nogps_box_power_hint" = "Have a box? Power it on near the phone: it accepts a new phone for 2 minutes. The phone may ask for the code from the box.";

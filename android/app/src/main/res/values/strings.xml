@@ -923,10 +923,10 @@
     <string name="nogps_sensors_choose">Choose</string>
     <string name="nogps_elm_disconnected">no connection</string>
     <string name="nogps_elm_connecting">connecting…</string>
-    <string name="nogps_elm_no_adapter">ELM327 doesn\'t answer</string>
-    <string name="nogps_box_obd_disabled">ELM327 is off in the box</string>
-    <string name="nogps_box_obd_connecting">ELM327 connects…</string>
-    <string name="nogps_elm_error">ELM327 error</string>
+    <string name="nogps_elm_no_adapter">OBD doesn\'t answer</string>
+    <string name="nogps_box_obd_disabled">OBD is off in the box</string>
+    <string name="nogps_box_obd_connecting">OBD connects…</string>
+    <string name="nogps_elm_error">OBD error</string>
     <string name="nogps_elm_no_car">the car doesn\'t answer</string>
     <string name="nogps_elm_connected">connected</string>
     <string name="nogps_sensors_speed">Speed: %s</string>
@@ -974,12 +974,14 @@
     <string name="nogps_status_road_lost_hint">press the finger button and tap the road where you are</string>
     <string name="nogps_source_phone">Phone + ELM327 (Bluetooth)</string>
     <!-- Choice of where the car speed and turns come from, next to "Phone + ELM327 (Bluetooth)" -->
-    <string name="nogps_source_esp32_bt">ESP32 sensor box (Bluetooth)</string>
+    <string name="nogps_source_esp32_bt">NonGPS-OBD (Bluetooth)</string>
     <string name="nogps_sensors_box">Box: %1$s</string>
     <!-- State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth" -->
     <string name="nogps_box_bt_searching">searching by Bluetooth</string>
-    <!-- State of the sensor box, shown after its name -->
-    <string name="nogps_box_bt_no_permission">the app is not allowed to use Bluetooth</string>
+    <!-- State of the sensor box, shown after its name: the "Nearby devices" permission of Android 12+ is not given -->
+    <string name="nogps_box_bt_no_nearby">the app is not allowed to find nearby devices</string>
+    <!-- State of the sensor box, shown after its name: the location, which Android before 12 needs to search Bluetooth devices, is not allowed -->
+    <string name="nogps_box_bt_no_location">the app is not allowed to use the location</string>
     <!-- State of the sensor box, shown after its name -->
     <string name="nogps_box_bt_disabled">Bluetooth is off on the phone</string>
     <!-- State of the sensor box, shown after its name. The box accepts a new phone only for two minutes after it gets power -->
@@ -1082,12 +1084,12 @@
     <string name="nogps_map_data">Map data © OpenStreetMap and Organic Maps</string>
     <string name="nogps_source_code">Source code on GitHub</string>
     <string name="nogps_speed_no_data">NO</string>
-    <string name="nogps_speed_no_box">ESP32</string>
-    <string name="nogps_speed_no_elm">ELM</string>
+    <string name="nogps_speed_no_box">NonGPS-OBD</string>
+    <string name="nogps_speed_no_elm">OBD</string>
     <string name="nogps_delete_recent_query">Delete from the history?</string>
     <string name="nogps_box_sleeping">sleeps: the engine is stopped</string>
-    <string name="nogps_box_obd_sleeping">ELM327 sleeps: the engine is stopped</string>
-    <string name="nogps_sensors_car">Engine: %1$s\nEngine speed: %2$s\nVoltage, box ADC: %3$s\nVoltage, ELM327: %4$s\nVoltage, car control unit: %5$s</string>
+    <string name="nogps_box_obd_sleeping">OBD sleeps: the engine is stopped</string>
+    <string name="nogps_sensors_car">Engine: %1$s\nEngine speed: %2$s\nVoltage, box ADC: %3$s\nVoltage, OBD: %4$s\nVoltage, car control unit: %5$s</string>
     <string name="nogps_engine_running">running</string>
     <string name="nogps_engine_stopped">stopped</string>
     <string name="nogps_rpm">%d rpm</string>
@@ -1162,18 +1164,46 @@
     <string name="nogps_gps_db_hz">%d dB-Hz</string>
     <!-- Title of the Box sheet -->
     <string name="nogps_box_title">Sensor box</string>
-    <!-- Row of the Box sheet: the ranges of the car speed measured by GPS, of all -->
-    <string name="nogps_box_speed_table">Speed table: %1$s</string>
-    <!-- Button of the Box sheet opening the sensors screen -->
-    <string name="nogps_box_details">All sensor details</string>
+    <!-- Title of the screen with the speed table of the sensor box -->
+    <string name="nogps_speed_table_title">Speed table</string>
+    <!-- State of the speed table on the Box sheet: GPS has measured all its ranges -->
+    <string name="nogps_speed_table_calibrated">Calibrated</string>
+    <!-- State of the speed table on the Box sheet: GPS has measured no range -->
+    <string name="nogps_speed_table_not_calibrated">Not calibrated</string>
+    <!-- State of the speed table on the Box sheet: the ranges measured by GPS, of all, e.g. "4 of 14" -->
+    <string name="nogps_speed_table_calibrating">Calibrating %1$d of %2$d</string>
+    <!-- Explanation on the speed table screen: why it is needed -->
+    <string name="nogps_speed_table_hint">The car reports its speed slightly wrong because of the tyres. The app corrects it to count the distance without GPS.</string>
+    <!-- What the user does to calibrate the speed table, shown below nogps_speed_table_hint -->
+    <string name="nogps_speed_table_action">To calibrate, drive with good GPS about 300 m in each range.</string>
+    <!-- Row of the Box sheet: how late the car tells its speed, the value is on the right -->
+    <string name="nogps_speed_lag">Speed delay</string>
+    <!-- Value of the speed delay row of the Box sheet, in seconds, e.g. "1.2 s" -->
+    <string name="nogps_speed_lag_value">%s s</string>
+    <!-- Button of the Box sheet: forget the speed table and the speed delay learned from GPS, asks first -->
+    <string name="nogps_box_clear_speed">Reset speed calibration</string>
+    <!-- Second line of the speed delay row of the Box sheet -->
+    <string name="nogps_speed_lag_measured">Measured by GPS</string>
+    <!-- Second line of the speed delay row of the Box sheet -->
+    <string name="nogps_speed_lag_usual">Usual, not measured by GPS yet</string>
+    <!-- Row of the Box sheet below the speed: the engine revs, e.g. "850 rpm" -->
+    <string name="nogps_box_rpm">Revs: %s</string>
+    <!-- Row of the Box sheet, next to the "Calibrate" action -->
+    <string name="nogps_box_sensors_not_calibrated">Sensors not calibrated</string>
+    <!-- Row of the Box sheet, next to the "Recalibrate" action -->
+    <string name="nogps_box_sensors_calibrated">Sensors calibrated</string>
+    <!-- Action of the Box sheet: calibrate the sensors of the box again -->
+    <string name="nogps_box_recalibrate">Recalibrate</string>
     <!-- State under the title of the Box sheet when no box is set up -->
     <string name="nogps_box_searching">Looking for a box nearby</string>
     <!-- Step of connecting the box -->
     <string name="nogps_box_step_bluetooth">Bluetooth on</string>
     <!-- Step of connecting the box -->
     <string name="nogps_box_step_bluetooth_off">Bluetooth is off</string>
-    <!-- Step of connecting the box -->
-    <string name="nogps_box_step_bluetooth_denied">Bluetooth is not allowed</string>
+    <!-- Step of connecting the box: the "Nearby devices" permission of Android 12+ is not given, use its name in the system settings -->
+    <string name="nogps_box_step_nearby_denied">Nearby devices are not allowed</string>
+    <!-- Step of connecting the box: the location, which Android before 12 needs to search Bluetooth devices, is not allowed -->
+    <string name="nogps_box_step_location_denied">Location is not allowed</string>
     <!-- Step of connecting the box -->
     <string name="nogps_box_step_search">Searching</string>
     <!-- Step of connecting the box -->
@@ -1181,9 +1211,11 @@
     <!-- Step of connecting the box: the box tells the car speed -->
     <string name="nogps_box_step_data">Car data</string>
     <!-- Button: turn Bluetooth on -->
-    <string name="nogps_box_turn_on">Turn on</string>
-    <!-- Button: allow Bluetooth to the app -->
-    <string name="nogps_box_allow">Allow</string>
+    <string name="nogps_box_turn_on">Turn on Bluetooth</string>
+    <!-- Button: allow the "Nearby devices" permission of Android 12+ to the app, use its name in the system settings -->
+    <string name="nogps_box_allow_nearby">Allow nearby devices</string>
+    <!-- Button: allow the location to the app, which Android before 12 needs to search Bluetooth devices -->
+    <string name="nogps_box_allow_location">Allow location</string>
     <!-- Hint while the box is searched -->
     <string name="nogps_box_power_hint">Have a box? Power it on near the phone: it accepts a new phone for 2 minutes. The phone may ask for the code from the box.</string>
 </resources>

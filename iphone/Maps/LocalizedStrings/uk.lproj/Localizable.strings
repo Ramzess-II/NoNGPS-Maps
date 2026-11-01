@@ -1240,10 +1240,10 @@
 "nogps_kilometers" = "%.1f км";
 "nogps_sensors_title" = "Інерціальна навігація";
 "nogps_elm_disconnected" = "немає зв'язку";
-"nogps_elm_no_adapter" = "ELM327 не відповідає";
-"nogps_box_obd_disabled" = "ELM327 вимкнено в блоці";
-"nogps_box_obd_connecting" = "ELM327 підключається…";
-"nogps_elm_error" = "помилка ELM327";
+"nogps_elm_no_adapter" = "OBD не відповідає";
+"nogps_box_obd_disabled" = "OBD вимкнено в блоці";
+"nogps_box_obd_connecting" = "OBD підключається…";
+"nogps_elm_error" = "помилка OBD";
 "nogps_elm_no_car" = "машина не відповідає";
 "nogps_elm_connected" = "підключено";
 "nogps_sensors_speed" = "Швидкість: %@";
@@ -1422,11 +1422,11 @@
 "nogps_clear_speed_message" = "Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або машини. Поки працює GPS, вони вимірюються наново.";
 "nogps_about_title" = "Про NonGPS Maps";
 "nogps_speed_no_data" = "NO";
-"nogps_speed_no_box" = "ESP32";
-"nogps_speed_no_elm" = "ELM";
+"nogps_speed_no_box" = "NonGPS-OBD";
+"nogps_speed_no_elm" = "OBD";
 "nogps_box_sleeping" = "спить: двигун заглушено";
-"nogps_box_obd_sleeping" = "ELM327 спить: двигун заглушено";
-"nogps_sensors_car" = "Двигун: %1$@\nОберти: %2$@\nНапруга, АЦП блоку: %3$@\nНапруга, ELM327: %4$@\nНапруга, блок керування машини: %5$@";
+"nogps_box_obd_sleeping" = "OBD спить: двигун заглушено";
+"nogps_sensors_car" = "Двигун: %1$@\nОберти: %2$@\nНапруга, АЦП блоку: %3$@\nНапруга, OBD: %4$@\nНапруга, блок керування машини: %5$@";
 "nogps_engine_running" = "працює";
 "nogps_engine_stopped" = "заглушено";
 "nogps_rpm" = "%d об/хв";
@@ -1527,11 +1527,50 @@
 /* Title of the Box sheet */
 "nogps_box_title" = "Блок датчиків";
 
-/* Row of the Box sheet: the ranges of the car speed measured by GPS, of all */
-"nogps_box_speed_table" = "Таблиця швидкості: %1$@";
+/* Title of the screen with the speed table of the sensor box */
+"nogps_speed_table_title" = "Таблиця швидкості";
 
-/* Button of the Box sheet opening the sensors screen */
-"nogps_box_details" = "Усі дані датчиків";
+/* State of the speed table on the Box sheet: GPS has measured all its ranges */
+"nogps_speed_table_calibrated" = "Відкалібровано";
+
+/* State of the speed table on the Box sheet: GPS has measured no range */
+"nogps_speed_table_not_calibrated" = "Не відкалібровано";
+
+/* State of the speed table on the Box sheet: the ranges measured by GPS, of all, e.g. "4 of 14" */
+"nogps_speed_table_calibrating" = "Калібрується: %1$d з %2$d";
+
+/* Explanation on the speed table screen: why it is needed */
+"nogps_speed_table_hint" = "Машина повідомляє швидкість трохи неточно через шини. Застосунок виправляє її, щоб рахувати шлях без GPS.";
+
+/* What the user does to calibrate the speed table, shown below nogps_speed_table_hint */
+"nogps_speed_table_action" = "Для калібрування проїдьте з добрим GPS близько 300 м у кожному діапазоні.";
+
+/* Row of the Box sheet: how late the car tells its speed, the value is on the right */
+"nogps_speed_lag" = "Запізнення швидкості";
+
+/* Value of the speed delay row of the Box sheet, in seconds, e.g. "1.2 s" */
+"nogps_speed_lag_value" = "%@ с";
+
+/* Button of the Box sheet: forget the speed table and the speed delay learned from GPS, asks first */
+"nogps_box_clear_speed" = "Скинути калібрування швидкості";
+
+/* Second line of the speed delay row of the Box sheet */
+"nogps_speed_lag_measured" = "Виміряно за GPS";
+
+/* Second line of the speed delay row of the Box sheet */
+"nogps_speed_lag_usual" = "Звичайне, GPS ще не виміряв";
+
+/* Row of the Box sheet below the speed: the engine revs, e.g. "850 rpm" */
+"nogps_box_rpm" = "Оберти: %@";
+
+/* Row of the Box sheet, next to the "Calibrate" action */
+"nogps_box_sensors_not_calibrated" = "Датчики не відкалібровано";
+
+/* Row of the Box sheet, next to the "Recalibrate" action */
+"nogps_box_sensors_calibrated" = "Датчики відкалібровано";
+
+/* Action of the Box sheet: calibrate the sensors of the box again */
+"nogps_box_recalibrate" = "Відкалібрувати знову";
 
 /* State under the title of the Box sheet when no box is set up */
 "nogps_box_searching" = "Шукаю блок поруч";
@@ -1555,7 +1594,7 @@
 "nogps_box_step_data" = "Дані машини";
 
 /* Button: allow Bluetooth to the app */
-"nogps_box_allow" = "Дозволити";
+"nogps_box_allow" = "Дозволити Bluetooth";
 
 /* Hint while the box is searched */
 "nogps_box_power_hint" = "Маєте блок? Увімкніть його поруч із телефоном: 2 хвилини він приймає новий телефон. Телефон може спитати код із блока.";

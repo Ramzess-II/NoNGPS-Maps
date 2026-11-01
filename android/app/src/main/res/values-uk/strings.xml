@@ -933,10 +933,10 @@
     <string name="nogps_sensors_choose">Вибрати</string>
     <string name="nogps_elm_disconnected">немає зв\'язку</string>
     <string name="nogps_elm_connecting">підключення…</string>
-    <string name="nogps_elm_no_adapter">ELM327 не відповідає</string>
-    <string name="nogps_box_obd_disabled">ELM327 вимкнено в блоці</string>
-    <string name="nogps_box_obd_connecting">ELM327 підключається…</string>
-    <string name="nogps_elm_error">помилка ELM327</string>
+    <string name="nogps_elm_no_adapter">OBD не відповідає</string>
+    <string name="nogps_box_obd_disabled">OBD вимкнено в блоці</string>
+    <string name="nogps_box_obd_connecting">OBD підключається…</string>
+    <string name="nogps_elm_error">помилка OBD</string>
     <string name="nogps_elm_no_car">машина не відповідає</string>
     <string name="nogps_elm_connected">підключено</string>
     <string name="nogps_sensors_speed">Швидкість: %s</string>
@@ -984,12 +984,14 @@
     <string name="nogps_status_road_lost_hint">натисніть кнопку з пальцем і торкніться дороги, де ви</string>
     <string name="nogps_source_phone">Телефон + ELM327 (Bluetooth)</string>
     <!-- Choice of where the car speed and turns come from, next to "Phone + ELM327 (Bluetooth)" -->
-    <string name="nogps_source_esp32_bt">Блок ESP32 (Bluetooth)</string>
+    <string name="nogps_source_esp32_bt">NonGPS-OBD (Bluetooth)</string>
     <string name="nogps_sensors_box">Блок: %1$s</string>
     <!-- State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth" -->
     <string name="nogps_box_bt_searching">шукаю блок через Bluetooth</string>
-    <!-- State of the sensor box, shown after its name -->
-    <string name="nogps_box_bt_no_permission">застосунку не дозволено Bluetooth</string>
+    <!-- State of the sensor box, shown after its name: the "Nearby devices" permission of Android 12+ is not given -->
+    <string name="nogps_box_bt_no_nearby">застосунку не дозволено шукати пристрої поблизу</string>
+    <!-- State of the sensor box, shown after its name: the location, which Android before 12 needs to search Bluetooth devices, is not allowed -->
+    <string name="nogps_box_bt_no_location">застосунку не дозволено геолокацію</string>
     <!-- State of the sensor box, shown after its name -->
     <string name="nogps_box_bt_disabled">Bluetooth на телефоні вимкнено</string>
     <!-- State of the sensor box, shown after its name. The box accepts a new phone only for two minutes after it gets power -->
@@ -1093,8 +1095,8 @@
     <string name="nogps_source_code">Вихідний код на GitHub</string>
     <string name="nogps_delete_recent_query">Видалити з історії?</string>
     <string name="nogps_box_sleeping">спить: двигун заглушено</string>
-    <string name="nogps_box_obd_sleeping">ELM327 спить: двигун заглушено</string>
-    <string name="nogps_sensors_car">Двигун: %1$s\nОберти: %2$s\nНапруга, АЦП блоку: %3$s\nНапруга, ELM327: %4$s\nНапруга, блок керування машини: %5$s</string>
+    <string name="nogps_box_obd_sleeping">OBD спить: двигун заглушено</string>
+    <string name="nogps_sensors_car">Двигун: %1$s\nОберти: %2$s\nНапруга, АЦП блоку: %3$s\nНапруга, OBD: %4$s\nНапруга, блок керування машини: %5$s</string>
     <string name="nogps_engine_running">працює</string>
     <string name="nogps_engine_stopped">заглушено</string>
     <string name="nogps_rpm">%d об/хв</string>
@@ -1169,18 +1171,46 @@
     <string name="nogps_gps_db_hz">%d дБ-Гц</string>
     <!-- Title of the Box sheet -->
     <string name="nogps_box_title">Блок датчиків</string>
-    <!-- Row of the Box sheet: the ranges of the car speed measured by GPS, of all -->
-    <string name="nogps_box_speed_table">Таблиця швидкості: %1$s</string>
-    <!-- Button of the Box sheet opening the sensors screen -->
-    <string name="nogps_box_details">Усі дані датчиків</string>
+    <!-- Title of the screen with the speed table of the sensor box -->
+    <string name="nogps_speed_table_title">Таблиця швидкості</string>
+    <!-- State of the speed table on the Box sheet: GPS has measured all its ranges -->
+    <string name="nogps_speed_table_calibrated">Відкалібровано</string>
+    <!-- State of the speed table on the Box sheet: GPS has measured no range -->
+    <string name="nogps_speed_table_not_calibrated">Не відкалібровано</string>
+    <!-- State of the speed table on the Box sheet: the ranges measured by GPS, of all, e.g. "4 of 14" -->
+    <string name="nogps_speed_table_calibrating">Калібрується: %1$d з %2$d</string>
+    <!-- Explanation on the speed table screen: why it is needed -->
+    <string name="nogps_speed_table_hint">Машина повідомляє швидкість трохи неточно через шини. Застосунок виправляє її, щоб рахувати шлях без GPS.</string>
+    <!-- What the user does to calibrate the speed table, shown below nogps_speed_table_hint -->
+    <string name="nogps_speed_table_action">Для калібрування проїдьте з добрим GPS близько 300 м у кожному діапазоні.</string>
+    <!-- Row of the Box sheet: how late the car tells its speed, the value is on the right -->
+    <string name="nogps_speed_lag">Запізнення швидкості</string>
+    <!-- Value of the speed delay row of the Box sheet, in seconds, e.g. "1.2 s" -->
+    <string name="nogps_speed_lag_value">%s с</string>
+    <!-- Button of the Box sheet: forget the speed table and the speed delay learned from GPS, asks first -->
+    <string name="nogps_box_clear_speed">Скинути калібрування швидкості</string>
+    <!-- Second line of the speed delay row of the Box sheet -->
+    <string name="nogps_speed_lag_measured">Виміряно за GPS</string>
+    <!-- Second line of the speed delay row of the Box sheet -->
+    <string name="nogps_speed_lag_usual">Звичайне, GPS ще не виміряв</string>
+    <!-- Row of the Box sheet below the speed: the engine revs, e.g. "850 rpm" -->
+    <string name="nogps_box_rpm">Оберти: %s</string>
+    <!-- Row of the Box sheet, next to the "Calibrate" action -->
+    <string name="nogps_box_sensors_not_calibrated">Датчики не відкалібровано</string>
+    <!-- Row of the Box sheet, next to the "Recalibrate" action -->
+    <string name="nogps_box_sensors_calibrated">Датчики відкалібровано</string>
+    <!-- Action of the Box sheet: calibrate the sensors of the box again -->
+    <string name="nogps_box_recalibrate">Відкалібрувати знову</string>
     <!-- State under the title of the Box sheet when no box is set up -->
     <string name="nogps_box_searching">Шукаю блок поруч</string>
     <!-- Step of connecting the box -->
     <string name="nogps_box_step_bluetooth">Bluetooth увімкнено</string>
     <!-- Step of connecting the box -->
     <string name="nogps_box_step_bluetooth_off">Bluetooth вимкнено</string>
-    <!-- Step of connecting the box -->
-    <string name="nogps_box_step_bluetooth_denied">Bluetooth не дозволено</string>
+    <!-- Step of connecting the box: the "Nearby devices" permission of Android 12+ is not given, use its name in the system settings -->
+    <string name="nogps_box_step_nearby_denied">Пристрої поблизу не дозволено</string>
+    <!-- Step of connecting the box: the location, which Android before 12 needs to search Bluetooth devices, is not allowed -->
+    <string name="nogps_box_step_location_denied">Геолокацію не дозволено</string>
     <!-- Step of connecting the box -->
     <string name="nogps_box_step_search">Пошук</string>
     <!-- Step of connecting the box -->
@@ -1188,9 +1218,11 @@
     <!-- Step of connecting the box: the box tells the car speed -->
     <string name="nogps_box_step_data">Дані машини</string>
     <!-- Button: turn Bluetooth on -->
-    <string name="nogps_box_turn_on">Увімкнути</string>
-    <!-- Button: allow Bluetooth to the app -->
-    <string name="nogps_box_allow">Дозволити</string>
+    <string name="nogps_box_turn_on">Увімкнути Bluetooth</string>
+    <!-- Button: allow the "Nearby devices" permission of Android 12+ to the app, use its name in the system settings -->
+    <string name="nogps_box_allow_nearby">Дозволити пристрої поблизу</string>
+    <!-- Button: allow the location to the app, which Android before 12 needs to search Bluetooth devices -->
+    <string name="nogps_box_allow_location">Дозволити геолокацію</string>
     <!-- Hint while the box is searched -->
     <string name="nogps_box_power_hint">Маєте блок? Увімкніть його поруч із телефоном: 2 хвилини він приймає новий телефон. Телефон може спитати код із блока.</string>
 </resources>
