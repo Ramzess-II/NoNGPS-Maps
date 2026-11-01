@@ -45795,27 +45795,27 @@ uk = підключення…
 
 [nogps_elm_no_adapter]
 tags = android-app,apple-maps
-en = ELM327 doesn't answer
-ru = ELM327 не отвечает
-uk = ELM327 не відповідає
+en = OBD doesn't answer
+ru = OBD не отвечает
+uk = OBD не відповідає
 
 [nogps_box_obd_disabled]
 tags = android-app,apple-maps
-en = ELM327 is off in the box
-ru = ELM327 выключен в блоке
-uk = ELM327 вимкнено в блоці
+en = OBD is off in the box
+ru = OBD выключен в блоке
+uk = OBD вимкнено в блоці
 
 [nogps_box_obd_connecting]
 tags = android-app,apple-maps
-en = ELM327 connects…
-ru = ELM327 подключается…
-uk = ELM327 підключається…
+en = OBD connects…
+ru = OBD подключается…
+uk = OBD підключається…
 
 [nogps_elm_error]
 tags = android-app,apple-maps
-en = ELM327 error
-ru = ошибка ELM327
-uk = помилка ELM327
+en = OBD error
+ru = ошибка OBD
+uk = помилка OBD
 
 [nogps_elm_no_car]
 tags = android-app,apple-maps
@@ -46081,9 +46081,9 @@ uk = Телефон + ELM327 (Bluetooth)
 [nogps_source_esp32_bt]
 comment = Choice of where the car speed and turns come from, next to "Phone + ELM327 (Bluetooth)"
 tags = android-app
-en = ESP32 sensor box (Bluetooth)
-ru = Блок ESP32 (Bluetooth)
-uk = Блок ESP32 (Bluetooth)
+en = NonGPS-OBD (Bluetooth)
+ru = NonGPS-OBD (Bluetooth)
+uk = NonGPS-OBD (Bluetooth)
 
 [nogps_sensors_box]
 tags = android-app,apple-maps
@@ -46100,10 +46100,24 @@ uk = шукаю блок через Bluetooth
 
 [nogps_box_bt_no_permission]
 comment = State of the sensor box, shown after its name
-tags = android-app,apple-maps
+tags = apple-maps
 en = the app is not allowed to use Bluetooth
 ru = приложению не разрешён Bluetooth
 uk = застосунку не дозволено Bluetooth
+
+[nogps_box_bt_no_nearby]
+comment = State of the sensor box, shown after its name: the "Nearby devices" permission of Android 12+ is not given
+tags = android-app
+en = the app is not allowed to find nearby devices
+ru = приложению не разрешено искать устройства поблизости
+uk = застосунку не дозволено шукати пристрої поблизу
+
+[nogps_box_bt_no_location]
+comment = State of the sensor box, shown after its name: the location, which Android before 12 needs to search Bluetooth devices, is not allowed
+tags = android-app
+en = the app is not allowed to use the location
+ru = приложению не разрешена геолокация
+uk = застосунку не дозволено геолокацію
 
 [nogps_box_bt_disabled]
 comment = State of the sensor box, shown after its name
@@ -46507,11 +46521,11 @@ en = NO
 
 [nogps_speed_no_box]
 tags = android-app,apple-maps
-en = ESP32
+en = NonGPS-OBD
 
 [nogps_speed_no_elm]
 tags = android-app,apple-maps
-en = ELM
+en = OBD
 
 [nogps_delete_recent_query]
 tags = android-app
@@ -46527,15 +46541,15 @@ uk = спить: двигун заглушено
 
 [nogps_box_obd_sleeping]
 tags = android-app,apple-maps
-en = ELM327 sleeps: the engine is stopped
-ru = ELM327 спит: двигатель заглушен
-uk = ELM327 спить: двигун заглушено
+en = OBD sleeps: the engine is stopped
+ru = OBD спит: двигатель заглушен
+uk = OBD спить: двигун заглушено
 
 [nogps_sensors_car]
 tags = android-app,apple-maps
-en = Engine: %1$@\nEngine speed: %2$@\nVoltage, box ADC: %3$@\nVoltage, ELM327: %4$@\nVoltage, car control unit: %5$@
-ru = Двигатель: %1$@\nОбороты: %2$@\nНапряжение, АЦП блока: %3$@\nНапряжение, ELM327: %4$@\nНапряжение, блок управления машины: %5$@
-uk = Двигун: %1$@\nОберти: %2$@\nНапруга, АЦП блоку: %3$@\nНапруга, ELM327: %4$@\nНапруга, блок керування машини: %5$@
+en = Engine: %1$@\nEngine speed: %2$@\nVoltage, box ADC: %3$@\nVoltage, OBD: %4$@\nVoltage, car control unit: %5$@
+ru = Двигатель: %1$@\nОбороты: %2$@\nНапряжение, АЦП блока: %3$@\nНапряжение, OBD: %4$@\nНапряжение, блок управления машины: %5$@
+uk = Двигун: %1$@\nОберти: %2$@\nНапруга, АЦП блоку: %3$@\nНапруга, OBD: %4$@\nНапруга, блок керування машини: %5$@
 
 [nogps_engine_running]
 tags = android-app,apple-maps
@@ -46839,19 +46853,110 @@ en = Sensor box
 ru = Блок датчиков
 uk = Блок датчиків
 
-[nogps_box_speed_table]
-comment = Row of the Box sheet: the ranges of the car speed measured by GPS, of all
+[nogps_speed_table_title]
+comment = Title of the screen with the speed table of the sensor box
 tags = android-app,apple-maps
-en = Speed table: %1$@
-ru = Таблица скорости: %1$@
-uk = Таблиця швидкості: %1$@
+en = Speed table
+ru = Таблица скорости
+uk = Таблиця швидкості
 
-[nogps_box_details]
-comment = Button of the Box sheet opening the sensors screen
+[nogps_speed_table_calibrated]
+comment = State of the speed table on the Box sheet: GPS has measured all its ranges
 tags = android-app,apple-maps
-en = All sensor details
-ru = Все данные датчиков
-uk = Усі дані датчиків
+en = Calibrated
+ru = Откалибрована
+uk = Відкалібровано
+
+[nogps_speed_table_not_calibrated]
+comment = State of the speed table on the Box sheet: GPS has measured no range
+tags = android-app,apple-maps
+en = Not calibrated
+ru = Не откалибрована
+uk = Не відкалібровано
+
+[nogps_speed_table_calibrating]
+comment = State of the speed table on the Box sheet: the ranges measured by GPS, of all, e.g. "4 of 14"
+tags = android-app,apple-maps
+en = Calibrating %1$d of %2$d
+ru = Калибруется: %1$d из %2$d
+uk = Калібрується: %1$d з %2$d
+
+[nogps_speed_table_hint]
+comment = Explanation on the speed table screen: why it is needed
+tags = android-app,apple-maps
+en = The car reports its speed slightly wrong because of the tyres. The app corrects it to count the distance without GPS.
+ru = Машина сообщает скорость немного неточно из-за шин. Приложение поправляет её, чтобы считать путь без GPS.
+uk = Машина повідомляє швидкість трохи неточно через шини. Застосунок виправляє її, щоб рахувати шлях без GPS.
+
+[nogps_speed_table_action]
+comment = What the user does to calibrate the speed table, shown below nogps_speed_table_hint
+tags = android-app,apple-maps
+en = To calibrate, drive with good GPS about 300 m in each range.
+ru = Для калибровки проедьте с хорошим GPS около 300 м в каждом диапазоне.
+uk = Для калібрування проїдьте з добрим GPS близько 300 м у кожному діапазоні.
+
+[nogps_speed_lag]
+comment = Row of the Box sheet: how late the car tells its speed, the value is on the right
+tags = android-app,apple-maps
+en = Speed delay
+ru = Опоздание скорости
+uk = Запізнення швидкості
+
+[nogps_speed_lag_value]
+comment = Value of the speed delay row of the Box sheet, in seconds, e.g. "1.2 s"
+tags = android-app,apple-maps
+en = %@ s
+ru = %@ с
+uk = %@ с
+
+[nogps_box_clear_speed]
+comment = Button of the Box sheet: forget the speed table and the speed delay learned from GPS, asks first
+tags = android-app,apple-maps
+en = Reset speed calibration
+ru = Сбросить калибровку скорости
+uk = Скинути калібрування швидкості
+
+[nogps_speed_lag_measured]
+comment = Second line of the speed delay row of the Box sheet
+tags = android-app,apple-maps
+en = Measured by GPS
+ru = Измерено по GPS
+uk = Виміряно за GPS
+
+[nogps_speed_lag_usual]
+comment = Second line of the speed delay row of the Box sheet
+tags = android-app,apple-maps
+en = Usual, not measured by GPS yet
+ru = Обычное, GPS ещё не измерил
+uk = Звичайне, GPS ще не виміряв
+
+[nogps_box_rpm]
+comment = Row of the Box sheet below the speed: the engine revs, e.g. "850 rpm"
+tags = android-app,apple-maps
+en = Revs: %@
+ru = Обороты: %@
+uk = Оберти: %@
+
+[nogps_box_sensors_not_calibrated]
+comment = Row of the Box sheet, next to the "Calibrate" action
+tags = android-app,apple-maps
+en = Sensors not calibrated
+ru = Датчики не откалиброваны
+uk = Датчики не відкалібровано
+
+[nogps_box_sensors_calibrated]
+comment = Row of the Box sheet, next to the "Recalibrate" action
+tags = android-app,apple-maps
+en = Sensors calibrated
+ru = Датчики откалиброваны
+uk = Датчики відкалібровано
+
+[nogps_box_recalibrate]
+comment = Action of the Box sheet: calibrate the sensors of the box again
+tags = android-app,apple-maps
+en = Recalibrate
+ru = Откалибровать заново
+uk = Відкалібрувати знову
 
 [nogps_box_searching]
 comment = State under the title of the Box sheet when no box is set up
@@ -46876,10 +46981,24 @@ uk = Bluetooth вимкнено
 
 [nogps_box_step_bluetooth_denied]
 comment = Step of connecting the box
-tags = android-app,apple-maps
+tags = apple-maps
 en = Bluetooth is not allowed
 ru = Bluetooth не разрешён
 uk = Bluetooth не дозволено
+
+[nogps_box_step_nearby_denied]
+comment = Step of connecting the box: the "Nearby devices" permission of Android 12+ is not given, use its name in the system settings
+tags = android-app
+en = Nearby devices are not allowed
+ru = Устройства поблизости не разрешены
+uk = Пристрої поблизу не дозволено
+
+[nogps_box_step_location_denied]
+comment = Step of connecting the box: the location, which Android before 12 needs to search Bluetooth devices, is not allowed
+tags = android-app
+en = Location is not allowed
+ru = Геолокация не разрешена
+uk = Геолокацію не дозволено
 
 [nogps_box_step_search]
 comment = Step of connecting the box
@@ -46905,16 +47024,30 @@ uk = Дані машини
 [nogps_box_turn_on]
 comment = Button: turn Bluetooth on
 tags = android-app
-en = Turn on
-ru = Включить
-uk = Увімкнути
+en = Turn on Bluetooth
+ru = Включить Bluetooth
+uk = Увімкнути Bluetooth
 
 [nogps_box_allow]
 comment = Button: allow Bluetooth to the app
-tags = android-app,apple-maps
-en = Allow
-ru = Разрешить
-uk = Дозволити
+tags = apple-maps
+en = Allow Bluetooth
+ru = Разрешить Bluetooth
+uk = Дозволити Bluetooth
+
+[nogps_box_allow_nearby]
+comment = Button: allow the "Nearby devices" permission of Android 12+ to the app, use its name in the system settings
+tags = android-app
+en = Allow nearby devices
+ru = Разрешить устройства поблизости
+uk = Дозволити пристрої поблизу
+
+[nogps_box_allow_location]
+comment = Button: allow the location to the app, which Android before 12 needs to search Bluetooth devices
+tags = android-app
+en = Allow location
+ru = Разрешить геолокацию
+uk = Дозволити геолокацію
 
 [nogps_box_power_hint]
 comment = Hint while the box is searched

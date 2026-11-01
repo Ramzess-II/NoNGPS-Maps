@@ -1,4 +1,4 @@
-/// The state of the inertial navigation by the ESP32 sensor box: the box, the speed and its calibration. Without
+/// The state of the inertial navigation by the NonGPS-OBD sensor box: the box, the speed and its calibration. Without
 /// the box it offers to buy or to connect one.
 final class NoGpsSensorsViewController: MWMTableViewController {
   private enum Constants {
@@ -164,7 +164,7 @@ final class NoGpsSensorsViewController: MWMTableViewController {
       content.textProperties.color = .buttonRed
       cell.selectionStyle = .default
     case .box:
-      let name = status.inertialStarted && !status.deviceName.isEmpty ? status.deviceName : "ESP32"
+      let name = NoGpsBoxSheet.boxName(status)
       let box = status.inertialStarted ? name + " · " + Self.boxStateText(status) : name
       content.text = String(format: L("nogps_sensors_box"), box)
     case .firmware:
@@ -178,7 +178,7 @@ final class NoGpsSensorsViewController: MWMTableViewController {
       content.textProperties.color = boxReachable() ? .linkBlue : .blackHintText
       cell.selectionStyle = boxReachable() ? .default : .none
     case .boxSensors:
-      content.text = String(format: L("nogps_sensors_box_sensors"), boxCalibrationText())
+      content.text = String(format: L("nogps_sensors_box_sensors"), Self.boxCalibrationText(status))
     case .speed:
       let speed = status.inertialStarted ? status.speedKmh : -1
       content.text = String(format: L("nogps_sensors_speed"),
@@ -216,7 +216,7 @@ final class NoGpsSensorsViewController: MWMTableViewController {
       content.textProperties.color = .linkBlue
       cell.selectionStyle = .default
     case .speedTableRange(let i):
-      content.text = speedTableRowText(i)
+      content.text = Self.speedTableRowText(status, i)
     }
     cell.contentConfiguration = content
     return cell
@@ -251,7 +251,7 @@ final class NoGpsSensorsViewController: MWMTableViewController {
       NoGps.calibrate()
       refresh()
     case .clearSpeed:
-      confirmClearSpeed()
+      Self.confirmClearSpeed(from: self) { [weak self] in self?.refresh() }
     case .speedTableToggle:
       speedTableShown.toggle()
       refresh()
@@ -272,7 +272,8 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     return rows
   }
 
-  private func speedTableRowText(_ i: Int) -> String {
+  /// Also shown by the speed table of the Box sheet.
+  static func speedTableRowText(_ status: NoGpsStatus, _ i: Int) -> String {
     let carM = status.speedTableCarM[i].doubleValue
     let scale = status.speedTableScale[i].doubleValue
     let value: String
@@ -323,7 +324,8 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     }
   }
 
-  private func boxCalibrationText() -> String {
+  /// Also shown by the Box sheet.
+  static func boxCalibrationText(_ status: NoGpsStatus) -> String {
     switch status.inertialStarted ? status.calibration : .none {
     case .none: return L("nogps_box_not_calibrated")
     case .calibrating: return String(format: L("nogps_box_calibrating"), status.calibrationProgress)
@@ -383,7 +385,7 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     isFirmwareUpdating() && status.firmwareUpdate != .restarting
   }
 
-  /// What the box tells about the car: the engine and the voltage measured by the box and by ELM327.
+  /// What the box tells about the car: the engine and the voltage measured by the box and by its OBD chip.
   private func carText() -> String {
     // The box measures its own voltage all the time and asks the car for the rest only while it stands, not to delay
     // the speed.
@@ -417,16 +419,17 @@ final class NoGpsSensorsViewController: MWMTableViewController {
 
   // MARK: - Actions
 
-  private func confirmClearSpeed() {
+  /// Also asked by the Box sheet.
+  static func confirmClearSpeed(from controller: UIViewController, onCleared: @escaping () -> Void) {
     let alert = UIAlertController(title: L("nogps_clear_speed_title"),
                                   message: L("nogps_clear_speed_message"),
                                   preferredStyle: .alert)
     alert.addAction(UIAlertAction(title: L("cancel"), style: .cancel))
-    alert.addAction(UIAlertAction(title: L("nogps_clear_speed"), style: .destructive) { [weak self] _ in
+    alert.addAction(UIAlertAction(title: L("nogps_clear_speed"), style: .destructive) { _ in
       NoGps.clearSpeedCalibration()
-      self?.refresh()
+      onCleared()
     })
-    present(alert, animated: true)
+    controller.present(alert, animated: true)
   }
 
   @objc

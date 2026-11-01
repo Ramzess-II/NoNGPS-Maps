@@ -121,7 +121,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       update();
     });
     mLag = view.findViewById(R.id.nogps_lag);
-    view.findViewById(R.id.nogps_clear_speed).setOnClickListener(v -> confirmClearSpeed());
+    view.findViewById(R.id.nogps_clear_speed)
+        .setOnClickListener(v -> confirmClearSpeed(requireContext(), this::update));
     mGyro = view.findViewById(R.id.nogps_gyro);
     mBoxCalibrationTitle = view.findViewById(R.id.nogps_box_calibration_title);
     mBoxCalibrationHint = view.findViewById(R.id.nogps_box_calibration_hint);
@@ -291,7 +292,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mCalibrate.setEnabled(!esp32 || status.getBleState() == NoGps.BleState.CONNECTED);
     if (esp32)
     {
-      String box = enabled && !status.deviceName.isEmpty() ? status.deviceName : "ESP32";
+      String box = BoxBottomSheet.boxName(status);
       if (enabled)
         box += " · " + getString(boxStateText(status));
       mAdapter.setText(getString(R.string.nogps_sensors_box, box));
@@ -324,7 +325,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       mRoughSpeed.setText(status.roughSpeedTableRanges > 0
                               ? getString(R.string.nogps_sensors_rough_speed, status.roughSpeedTableRanges)
                               : getString(R.string.nogps_sensors_rough_speed_learning));
-    updateSpeedTable(enabled ? status : null, rough);
+    updateSpeedTable(enabled ? status : null);
     // On its own line: next to the button it took four lines of the two the row has room for.
     mLag.setVisibility(enabled ? View.VISIBLE : View.GONE);
     if (enabled)
@@ -341,7 +342,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     mBoxCalibrationHint.setVisibility(esp32 ? View.VISIBLE : View.GONE);
     if (esp32)
     {
-      mGyro.setText(getString(R.string.nogps_sensors_box_sensors, boxCalibrationText(status, calibration)));
+      mGyro.setText(
+          getString(R.string.nogps_sensors_box_sensors, boxCalibrationText(requireContext(), status, calibration)));
     }
     else
     {
@@ -380,23 +382,27 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     }
   }
 
+  /**
+   * Also shown by the Box sheet.
+   */
   @NonNull
-  private String boxCalibrationText(@NonNull NoGps.Status status, @NonNull NoGps.CalibrationState calibration)
+  static String boxCalibrationText(@NonNull Context context, @NonNull NoGps.Status status,
+                                   @NonNull NoGps.CalibrationState calibration)
   {
     return switch (calibration)
     {
-      case NONE -> getString(R.string.nogps_box_not_calibrated);
-      case CALIBRATING -> getString(R.string.nogps_box_calibrating, status.calibrationProgress);
+      case NONE -> context.getString(R.string.nogps_box_not_calibrated);
+      case CALIBRATING -> context.getString(R.string.nogps_box_calibrating, status.calibrationProgress);
       // The box keeps its calibration, but it may stand in another way since it was plugged in.
       case DONE ->
-        getString(status.boxCalibrationAdvised ? R.string.nogps_box_calibration_advised
-                                               : R.string.nogps_box_calibrated);
-      case FAILED_MOVING -> getString(R.string.nogps_box_calibration_failed);
-      case MOUNT_MOVED -> getString(R.string.nogps_gyro_mount_moved);
+        context.getString(status.boxCalibrationAdvised ? R.string.nogps_box_calibration_advised
+                                                       : R.string.nogps_box_calibrated);
+      case FAILED_MOVING -> context.getString(R.string.nogps_box_calibration_failed);
+      case MOUNT_MOVED -> context.getString(R.string.nogps_gyro_mount_moved);
     };
   }
 
-  private void updateSpeedTable(@Nullable NoGps.Status status, boolean rough)
+  private void updateSpeedTable(@Nullable NoGps.Status status)
   {
     mSpeedTableToggle.setVisibility(status != null ? View.VISIBLE : View.GONE);
     final boolean shown = status != null && mSpeedTableShown;
@@ -412,21 +418,28 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       mSpeedTable.addView(row);
     }
     for (int i = 0; i < ranges; ++i)
-    {
-      final float carM = status.speedTableCarM[i];
-      final float scale = status.speedTableScale[i];
-      final String value;
-      if (scale > 0)
-        value = String.format(Locale.US, "%s×%.2f", rough ? "≈" : "", scale);
-      else if (carM >= 1)
-        value = getString(R.string.nogps_speed_table_left,
-                          Math.max(1, (int) Math.ceil(NoGps.SPEED_TABLE_MIN_DISTANCE_M - carM)));
-      else
-        value = "—";
-      ((TextView) mSpeedTable.getChildAt(i))
-          .setText(
-              getString(R.string.nogps_speed_table_row, NoGps.speedTableFromKmh(i), NoGps.speedTableToKmh(i), value));
-    }
+      ((TextView) mSpeedTable.getChildAt(i)).setText(speedTableRowText(requireContext(), status, i));
+  }
+
+  /**
+   * Also shown by the speed table of the Box sheet.
+   */
+  @NonNull
+  static String speedTableRowText(@NonNull Context context, @NonNull NoGps.Status status, int i)
+  {
+    final float carM = status.speedTableCarM[i];
+    final float scale = status.speedTableScale[i];
+    final String value;
+    // The rough table from the roads is used while GPS has measured no range.
+    if (scale > 0)
+      value = String.format(Locale.US, "%s×%.2f", status.speedTableRanges == 0 ? "≈" : "", scale);
+    else if (carM >= 1)
+      value = context.getString(R.string.nogps_speed_table_left,
+                                Math.max(1, (int) Math.ceil(NoGps.SPEED_TABLE_MIN_DISTANCE_M - carM)));
+    else
+      value = "—";
+    return context.getString(R.string.nogps_speed_table_row, NoGps.speedTableFromKmh(i), NoGps.speedTableToKmh(i),
+                             value);
   }
 
   /**
@@ -497,7 +510,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   }
 
   /**
-   * Shows what the sensor box tells about the car: the engine and the voltage measured by the box and by ELM327.
+   * Shows what the sensor box tells about the car: the engine and the voltage measured by the box and by its OBD chip.
    * @param car the status with the car data, null if the box tells nothing.
    */
   private void updateCar(@Nullable NoGps.Status car, int speedKmh)
@@ -526,15 +539,18 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
     return getString(R.string.nogps_volts, String.format(Locale.US, "%.1f", millivolts / 1000.0));
   }
 
-  private void confirmClearSpeed()
+  /**
+   * Also asked by the Box sheet.
+   */
+  static void confirmClearSpeed(@NonNull Context context, @NonNull Runnable onCleared)
   {
-    new MaterialAlertDialogBuilder(requireContext())
+    new MaterialAlertDialogBuilder(context)
         .setTitle(R.string.nogps_clear_speed_title)
         .setMessage(R.string.nogps_clear_speed_message)
         .setPositiveButton(R.string.nogps_clear_speed,
                            (dialog, which) -> {
                              NoGps.nativeClearSpeedCalibration();
-                             update();
+                             onCleared.run();
                            })
         .setNegativeButton(R.string.cancel, null)
         .show();
@@ -568,7 +584,10 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   {
     return switch (status.getBleState())
     {
-      case NO_PERMISSION -> R.string.nogps_box_bt_no_permission;
+      // Named as in the settings: Android before 12 finds Bluetooth devices with the location permission.
+      case NO_PERMISSION ->
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? R.string.nogps_box_bt_no_nearby
+                                                       : R.string.nogps_box_bt_no_location;
       // OFF: the phone has no Bluetooth LE.
       case OFF, DISABLED -> R.string.nogps_box_bt_disabled;
       case SEARCHING -> R.string.nogps_box_bt_searching;
