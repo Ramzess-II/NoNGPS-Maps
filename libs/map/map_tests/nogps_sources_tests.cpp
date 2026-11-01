@@ -762,6 +762,19 @@ UNIT_TEST(NoGps_Esp32Source_AsksBoxAboutItself)
   TEST_EQUAL(infoRequests(), 1 + Esp32Source::kMaxInfoRequests, ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_TellsItsName)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  TEST_EQUAL(source.GetDeviceName(), "NonGPS-OBD", ());
+  source.OnBleBytes(BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,12"));
+  TEST_EQUAL(source.GetDeviceName(), "NonGPS-OBD · ICM20602", ());
+}
+
 UNIT_TEST(NoGps_PhoneMotion_CalibratesAndTurns)
 {
   TestClock clock;

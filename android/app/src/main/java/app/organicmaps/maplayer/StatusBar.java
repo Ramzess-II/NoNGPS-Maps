@@ -49,7 +49,7 @@ public class StatusBar
     final int badge;
     @ColorRes
     final int badgeColor;
-    final boolean pulsing;
+    public final boolean pulsing;
 
     Look(@DrawableRes int icon, @ColorRes int color, @DrawableRes int badge, @ColorRes int badgeColor, boolean pulsing)
     {
@@ -153,8 +153,9 @@ public class StatusBar
   @NonNull
   public static Look getBoxLook(@NonNull NoGps.Status status)
   {
+    // No box: the button calls to set one up or to buy it.
     if (!status.inertialEnabled)
-      return new Look(R.drawable.ic_nogps_box, 0);
+      return new Look(R.drawable.ic_nogps_box, 0, R.drawable.ic_nogps_badge_add, R.color.source_connecting, false);
     return switch (status.getSourceState())
     {
       case CONNECTED -> new Look(R.drawable.ic_nogps_box, R.color.source_good);

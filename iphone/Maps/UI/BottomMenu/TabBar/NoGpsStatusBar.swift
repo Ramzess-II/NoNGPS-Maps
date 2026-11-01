@@ -149,7 +149,8 @@ final class NoGpsStatusBar: UIView {
 
   static func boxLook(_ status: NoGpsStatus) -> Look {
     let chip = UIImage(systemName: Constants.boxSymbol)
-    guard status.inertialEnabled else { return Look(image: chip, color: .secondaryLabel) }
+    // No box: the button calls to set one up or to buy it.
+    guard status.inertialEnabled else { return Look(image: chip, color: .label, badge: ("plus", .systemBlue)) }
     switch status.sourceState {
     case .connected: return Look(image: chip, color: Constants.goodColor)
     case .updating: return Look(image: chip, color: .systemBlue, badge: ("arrow.down", .systemBlue), pulsing: true)

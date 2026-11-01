@@ -447,6 +447,6 @@ void Esp32Source::Calibrate()
 
 std::string Esp32Source::GetDeviceName() const
 {
-  return m_imuName.empty() ? "ESP32" : "ESP32 · " + m_imuName;
+  return m_imuName.empty() ? "NonGPS-OBD" : "NonGPS-OBD · " + m_imuName;
 }
 }  // namespace nogps
