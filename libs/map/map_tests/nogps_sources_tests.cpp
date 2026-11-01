@@ -471,6 +471,47 @@ UNIT_TEST(NoGps_Esp32Source_TellsSleepingBox)
   TEST_EQUAL(source.GetState(), SourceState::Disconnected, ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_WakingBoxIsConnecting)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,14,OFF,,12480"));
+  source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, esp32::kFlagImuOk));
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+  TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
+
+  // The connection may be pending while the box sleeps.
+  source.OnBleState(BleState::Connecting);
+  TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
+  // The engine is started: the box is connected again, but stays silent. It is connected again and again.
+  source.OnBleState(BleState::Connected);
+  TEST_EQUAL(source.GetState(), SourceState::Connecting, ());
+  clock.Advance(Esp32Source::kWakingLinkGapMs);
+  TEST_EQUAL(source.GetState(), SourceState::Connecting, ());
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kWakingLinkGapMs);
+  TEST_EQUAL(source.GetState(), SourceState::Connecting, ());
+  // The engine is stopped again before the box has talked: it has switched its radio off.
+  clock.Advance(1);
+  TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
+
+  // The phone may have forgotten the box: it asks for its code.
+  source.OnBleState(BleState::Pairing);
+  TEST_EQUAL(source.GetState(), SourceState::Connecting, ());
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxDataLine(2, 60000, 0, 0, esp32::kFlagImuOk));
+  TEST_EQUAL(source.GetState(), SourceState::NoCarData, ());
+  // The box goes again after its data have told about the stopped engine.
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+  TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
+}
+
 // The box connected over Bluetooth that has told about itself and takes firmwares.
 class UpdatedBox
 {

@@ -25,9 +25,13 @@ final class Esp32BleTransport: NSObject {
     static let pairingOpenFlag: UInt8 = 1
     static let knownBoxesKey = "NoGpsKnownBoxes"
     static let retryDelay: TimeInterval = 2
-    // A box that is found but drops the connection again and again is tried less and less often.
+    // A box that is found but can't be connected and subscribed to is tried less and less often, e.g. the user has
+    // refused to pair with it. One that was is tried again soon: after a parking, the first connections may stay
+    // silent (October 31, three times in a row).
     static let maxRetryDelay: TimeInterval = 60
-    // iOS tries to connect forever, and the box may have gone since it was found.
+    // iOS tries to connect forever, and the box may have gone since it was found. Not in the background: the timer
+    // doesn't run while the app is suspended and fires late, when the app is woken up, maybe by this connection made.
+    // On October 31 it cancelled the connection 3 s after the box was back from a parking.
     static let connectTimeout: TimeInterval = 15
     // A new box waits this long for a paired one to be found: both may be near.
     static let newBoxDelay: TimeInterval = 3
@@ -181,9 +185,18 @@ final class Esp32BleTransport: NSObject {
     peripheral.delegate = self
     setState(.connecting)
     central?.connect(peripheral)
+    scheduleConnectTimeout()
+  }
+
+  private func scheduleConnectTimeout() {
     schedule(after: Constants.connectTimeout) { [weak self] in
+      guard let self else { return }
+      if UIApplication.shared.applicationState == .background {
+        scheduleConnectTimeout()
+        return
+      }
       LOG(.warning, "Connection timeout")
-      self?.restartLater()
+      restartLater()
     }
   }
 
@@ -207,7 +220,7 @@ final class Esp32BleTransport: NSObject {
   }
 
   private func restartLater() {
-    let worked = isHeard
+    let worked = isReady
     closeConnection()
     guard isOpen else { return }
     setState(.searching)
