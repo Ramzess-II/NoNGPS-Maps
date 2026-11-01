@@ -22,3 +22,8 @@ test filter="NoGps_.*" dir="build/debug":
     [ -f {{dir}}/CMakeCache.txt ] || cmake --preset debug -B {{dir}}
     cmake --build {{dir}} --target map_tests
     {{ if os() == "macos" { "QT_PLUGIN_PATH=${QT_PLUGIN_PATH:-$(brew --prefix qt@6)/share/qt/plugins}" } else { "" } }} {{dir}}/map_tests --filter="{{filter}}"
+
+# Open the trip log viewer in the browser; logs, zips or folders are optional, more can be added in the page
+[no-cd]
+logs *args:
+    {{ if os_family() == "windows" { "python" } else { "python3" } }} {{ quote(justfile_directory() / "tools/python/nogps_log_viewer.py") }} {{args}}
