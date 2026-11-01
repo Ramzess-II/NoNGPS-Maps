@@ -415,14 +415,14 @@ extension NavigationControlView: MWMTextToSpeechObserver {
 private extension NavigationControlView {
   /// Shows that the car speed doesn't come instead of the speed: 0 km/h of a standing car looks the same with and
   /// without the car connected, and without it the position is not calculated when GPS is lost.
+  /// A box that is not heard is shown by the box button only.
   func showNoCarData(numberAttributes: [NSAttributedString.Key: Any],
                      legendAttributes: [NSAttributedString.Key: Any]) {
     let status = NoGps.status()
-    guard status.inertialStarted, status.sourceState != .connected else { return }
-    // The part to look at: the box itself or the adapter in the car.
-    let noBox = [.disconnected, .connecting, .boxSleeping].contains(status.sourceState)
+    guard status.inertialStarted,
+          ![.connected, .disconnected, .connecting, .boxSleeping].contains(status.sourceState) else { return }
     let value = L("nogps_speed_no_data")
-    let units = L(noBox ? "nogps_speed_no_box" : "nogps_speed_no_elm")
+    let units = L("nogps_speed_no_elm")
     speedLabel.text = value
     speedLegendLabel.text = units
     let valueWithUnits = NSMutableAttributedString(string: value, attributes: numberAttributes)
