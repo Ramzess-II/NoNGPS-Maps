@@ -1231,6 +1231,9 @@
 
 "nogps_manual_position" = "Вказати своє місцезнаходження вручну";
 
+/* Toast after the tester pressed the flag button in a test drive: the flag number and the time are written to the trip log to find the moment later */
+"nogps_log_flag" = "Прапорець %1$d записано в журнал о %2$@";
+
 /* The user has pressed the button to show on the map where the car is */
 "nogps_mark_by_tap" = "Торкніться дороги, де зараз машина";
 "nogps_gps_spoofed" = "GPS підмінено! Використовуємо вежі та Wi-Fi. Також можна вказати позицію вручну.";

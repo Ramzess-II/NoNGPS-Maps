@@ -45716,6 +45716,13 @@ en = Set my position manually
 ru = Указать своё местоположение вручную
 uk = Вказати своє місцезнаходження вручну
 
+[nogps_log_flag]
+comment = Toast after the tester pressed the flag button in a test drive: the flag number and the time are written to the trip log to find the moment later
+tags = android-app,apple-maps
+en = Flag %1$d is in the log at %2$@
+ru = Флаг %1$d записан в журнал в %2$@
+uk = Прапорець %1$d записано в журнал о %2$@
+
 [nogps_mark_by_tap]
 comment = The user has pressed the button to show on the map where the car is
 tags = android-app,apple-maps

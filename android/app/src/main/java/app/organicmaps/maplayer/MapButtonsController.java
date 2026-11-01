@@ -63,8 +63,11 @@ import com.google.android.material.badge.BadgeUtils;
 import com.google.android.material.badge.ExperimentalBadgeUtils;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 
 public class MapButtonsController extends Fragment
@@ -241,7 +244,12 @@ public class MapButtonsController extends Fragment
     flagLog.setOnClickListener((v) -> {
       Logger.i(TAG, "FLAG " + ++sLogFlags);
       v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-      Toast.makeText(v.getContext(), "\u2691 " + sLogFlags, Toast.LENGTH_SHORT).show();
+      // As the log and its tools write a time, not in a 12-hour format of the locale.
+      final String time = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
+      Toast
+          .makeText(v.getContext(), v.getContext().getString(R.string.nogps_log_flag, sLogFlags, time),
+                    Toast.LENGTH_SHORT)
+          .show();
     });
     mShiftPositionStep.setOnClickListener((v) -> {
       NoGps.nativeCycleShiftStep();
