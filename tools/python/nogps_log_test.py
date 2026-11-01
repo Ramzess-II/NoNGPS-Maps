@@ -117,6 +117,13 @@ class IosTest(unittest.TestCase):
         _, unknown = nogps_log.parse_ios(self.LOG[:3] + ['I(1) 0.50000 nogps/engine.cpp:111 Start(): Start'])
         self.assertEqual(unknown, 1)
 
+    def test_file_of_a_new_day(self):
+        # The file opened mid-run starts with the time of the launch.
+        lines, unknown = nogps_log.parse_ios(['I(1) 3600.00000 Local time: 2026-10-09 00:00:00 +0000',
+                                              'I(2) 3610.50000 nogps/engine.cpp:1526 LogTrip(): ' + trip_line()])
+        self.assertEqual(unknown, 0)
+        self.assertEqual(lines[1][0], DAY_MS + 86400_000 + 10_500)
+
     def test_objc_function(self):
         group = analyse(('log.txt', self.LOG)).groups[0]
         self.assertEqual(group.zone, 'UTC')
@@ -246,6 +253,21 @@ class InputTest(unittest.TestCase):
         analysis = nogps_log.Analysis([('logs.zip', data.getvalue())])
         self.assertEqual([f['name'] for f in analysis.files], ['logs.zip/logs/app.1.log', 'logs.zip/logs/app.log'])
         self.assertEqual(len(analysis.trips[0].rows), 60)
+
+    def test_groups_by_phone(self):
+        log = android_drive(seconds=30, stand=0)
+        analysis = analyse(('log-08-10-26-Pixel_7-a3f9.log', log[:20]), ('log-08-10-26-Pixel_7-a3f9.1.log', log[20:]),
+                           ('log-08-10-26-SM_S918B-0b1c.log', log), ('app.log', log))
+        self.assertEqual([(g.platform, g.phone) for g in analysis.groups],
+                         [('android', ''), ('android', 'Pixel_7-a3f9'), ('android', 'SM_S918B-0b1c')])
+        self.assertEqual([len(g.rows) for g in analysis.groups], [30, 30, 30])
+        self.assertEqual(sorted(t.summary()['phone'] for t in analysis.trips), ['', 'Pixel_7-a3f9', 'SM_S918B-0b1c'])
+
+    def test_phone_of_name(self):
+        self.assertEqual(nogps_log.phone_of('logs.zip/logs/log-01-11-26-iPhone15_2-a3f9.12.log'), 'iPhone15_2-a3f9')
+        self.assertEqual(nogps_log.phone_of('log-01-11-26-Pixel_7-a3f9.log'), 'Pixel_7-a3f9')
+        self.assertEqual(nogps_log.phone_of('logs/app.1.log'), '')
+        self.assertEqual(nogps_log.phone_of('log.txt'), '')
 
     def test_not_a_log(self):
         analysis = nogps_log.Analysis([('notes.txt', b'hello')])

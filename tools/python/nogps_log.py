@@ -8,9 +8,11 @@ nogps_log_viewer.py and as a text report:
   nogps_log.py --help    for all the commands
 
 Logs:
-  iOS: Documents/log.txt or the log.zip of "Report a bug". Times are UTC.
-  Android: app*.log of Android/data/<app id>/files/logs/ or the logs.zip of "Report a bug". Times are the local time
-  of the phone; the year is taken from the header of a file.
+  Both platforms write one file a day per phone, log-dd-MM-yy-<phone>[.N].log, to a logs/ folder: iOS
+  Documents/logs/, Android Android/data/<app id>/files/logs/. "Report a bug" sends logs.zip of that folder. The logs
+  of each platform and <phone> form a group of their own. The names of the earlier versions are read too: iOS
+  log.txt or log.zip, Android app*.log.
+  iOS times are UTC. Android times are the local time of the phone; the year is taken from the header of a file.
 
 A trip is the car driving with stops shorter than STAND_SPLIT_S. The lines of a phone that stands are kept as
 stationary trips.
@@ -42,6 +44,8 @@ LEVELS = {'V': 'D', 'D': 'D', 'I': 'I', 'W': 'W', 'E': 'E', 'C': 'E'}
 EPOCH = datetime(1970, 1, 1)
 LOG_NAME = re.compile(r'\.(log|txt|zip)$', re.I)
 NOT_LOG_NAME = re.compile(r'^(logcat|nogps-replay)', re.I)
+# "log-01-11-26-Pixel_7-a3f9.2.log": the day, the phone and the part.
+PHONE_NAME = re.compile(r'^log-\d\d-\d\d-\d\d-(.+?)(?:\.\d+)?\.log$')
 
 # A pause of the car or of the log this long ends a trip.
 STAND_SPLIT_S = 300
@@ -272,6 +276,12 @@ def parse_ios(lines):
     return result, unknown + len(pending)
 
 
+def phone_of(name):
+    """The <phone> of a log file name, '' for the names of the earlier versions."""
+    m = PHONE_NAME.match(os.path.basename(name))
+    return m.group(1) if m else ''
+
+
 def parse_file(name, data, year):
     """The platform of a log and its lines, as parse_android() and parse_ios() give them."""
     lines = data.decode('utf-8', errors='replace').splitlines()
@@ -310,10 +320,11 @@ def sensor_slices(t, words, count):
 
 
 class Group:
-    """The lines of the logs of one platform in time order, and what they tell."""
+    """The lines of the logs of one platform and phone in time order, and what they tell."""
 
-    def __init__(self, platform, entries):
+    def __init__(self, platform, phone, entries):
         self.platform = platform
+        self.phone = phone
         self.zone = 'UTC' if platform == 'ios' else 'local time of the phone'
         seen = set()
         unique = []
@@ -622,8 +633,8 @@ class Trip:
         for a in self.anomalies:
             severities[a['severity']] = severities.get(a['severity'], 0) + 1
         errors = sorted(row['err_m'] for row in self.rows if 'err_m' in row and row.get('src') == 'INERTIAL')
-        return dict(id=self.id, platform=self.group.platform, zone=self.group.zone, start=self.start, end=self.end,
-                    driven=self.driven, km=round(distance_m(self.rows) / 1000, 2),
+        return dict(id=self.id, platform=self.group.platform, phone=self.group.phone, zone=self.group.zone,
+                    start=self.start, end=self.end, driven=self.driven, km=round(distance_m(self.rows) / 1000, 2),
                     max_kmh=round(max(speeds)) if speeds else None, sources=sources, lines=len(self.rows),
                     events=len(self.events), anomalies=severities,
                     inertial_error_median=errors[len(errors) // 2] if errors else None)
@@ -712,12 +723,13 @@ class Analysis:
                 if not platform:
                     self.notes.append('%s: not a log of the app' % log_name)
                     continue
-                self.files.append(dict(name=log_name, platform=platform, lines=len(lines)))
+                phone = phone_of(log_name)
+                self.files.append(dict(name=log_name, platform=platform, phone=phone, lines=len(lines)))
                 if unknown:
                     self.notes.append('%s: %d lines of a run without "Local time:", their time is unknown'
                                       % (log_name, unknown))
-                entries.setdefault(platform, []).extend(lines)
-        self.groups = [Group(platform, lines) for platform, lines in sorted(entries.items())]
+                entries.setdefault((platform, phone), []).extend(lines)
+        self.groups = [Group(platform, phone, lines) for (platform, phone), lines in sorted(entries.items())]
         spans = sorted(((g, first, after, driven) for g in self.groups for first, after, driven in split(g)),
                        key=lambda s: s[0].rows[s[1]]['t'])
         self.trips = [Trip(i, *span) for i, span in enumerate(spans)]
@@ -793,7 +805,8 @@ def print_trips(analysis, stationary):
 
 def print_trip(trip):
     d = trip.details()
-    print('trip %d, %s, times: %s' % (trip.id, trip.group.platform, trip.group.zone))
+    print('trip %d, %s, times: %s' % (trip.id, ' '.join(filter(None, (trip.group.platform, trip.group.phone))),
+                                      trip.group.zone))
     print('%s – %s, %s, %.2f km, max %s km/h, %d TRIP lines, choice switches %d' % (
         from_ms(trip.start).strftime('%Y-%m-%d %H:%M:%S'), clock(trip.end), duration(trip.end - trip.start), d['km'],
         d['max_kmh'], d['lines'], d['choice_switches']))
@@ -881,7 +894,8 @@ def main():
   replay  the trip against a nogps-replay-out.txt: --replay file''',
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('command', choices=['trips', 'trip', 'events', 'state', 'rows', 'replay'])
-    parser.add_argument('logs', nargs='+', help='app*.log, log.txt, logs.zip, log.zip or a folder of them')
+    parser.add_argument('logs', nargs='+', help='log-*.log, logs.zip or a folder of them; app*.log, log.txt and '
+                        'log.zip of the earlier versions')
     parser.add_argument('--year', type=int, help='the year of an Android log without its header')
     parser.add_argument('--trip', type=int, help='the id the trips command shows')
     parser.add_argument('--all', action='store_true', help='with the stationary trips')

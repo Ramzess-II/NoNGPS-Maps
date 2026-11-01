@@ -151,7 +151,8 @@ def handler(viewer):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('logs', nargs='*', help='app*.log, log.txt, logs.zip, log.zip or a folder of them')
+    parser.add_argument('logs', nargs='*', help='log-*.log, logs.zip or a folder of them; app*.log, log.txt and '
+                        'log.zip of the earlier versions')
     parser.add_argument('--year', type=int, help='the year of an Android log without its header')
     parser.add_argument('--port', type=int, default=0, help='0 takes a free one')
     parser.add_argument('--no-browser', action='store_true')
