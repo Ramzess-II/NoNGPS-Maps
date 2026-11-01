@@ -23,6 +23,8 @@ NSString * const kUserDefaultsTTSLanguageBcp47 = @"UserDefaultsTTSLanguageBcp47"
 NSString * const kUserDefaultsTTSVoiceIdentifier = @"UserDefaultsTTSVoiceIdentifier";
 NSString * const kIsTTSEnabled = @"UserDefaultsNeedToEnableTTS";
 NSString * const kIsStreetNamesTTSEnabled = @"UserDefaultsNeedToEnableStreetNamesTTS";
+// The mute button in navigation, kept apart from kIsTTSEnabled so that muting keeps the button shown.
+NSString * const kIsTTSActive = @"UserDefaultsTTSActive";
 NSString * const kDefaultLanguage = @"en-US";
 
 // Internal code the notification texts are keyed by, e.g. "en" for en-GB and "zh-Hant" for zh-TW.
@@ -420,11 +422,10 @@ using Observers = NSHashTable<Observer>;
       LOG(LWARNING, ("Couldn't configure audio session: ", [err localizedDescription]));
     }
 
-    // Set initial StreetNamesTTS setting
-    NSDictionary * dictionary = @{kIsStreetNamesTTSEnabled: @NO};
+    NSDictionary * dictionary = @{kIsStreetNamesTTSEnabled: @NO, kIsTTSActive: @YES};
     [NSUserDefaults.standardUserDefaults registerDefaults:dictionary];
 
-    self.active = YES;
+    self.active = [NSUserDefaults.standardUserDefaults boolForKey:kIsTTSActive];
   }
   return self;
 }
@@ -490,6 +491,7 @@ using Observers = NSHashTable<Observer>;
     return;
   if (active)
     [self speechVoiceInUse];
+  [NSUserDefaults.standardUserDefaults setBool:active forKey:kIsTTSActive];
   [MWMRouter enableTurnNotifications:active];
   dispatch_async(dispatch_get_main_queue(), ^{ [self onTTSStatusUpdated]; });
 }
