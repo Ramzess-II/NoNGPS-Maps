@@ -924,6 +924,8 @@
     <string name="nogps_log_flag">Флаг %1$d записан в журнал в %2$s</string>
     <!-- The user has pressed the button to show on the map where the car is -->
     <string name="nogps_mark_by_tap">Коснитесь дороги, где сейчас машина</string>
+    <!-- The button of the place page: the car is here, put the mark on the nearest road -->
+    <string name="nogps_mark_here">Я здесь</string>
     <string name="nogps_gps_spoofed">GPS подменён! Используем вышки и Wi-Fi. Можно также указать позицию вручную.</string>
     <string name="nogps_gps_restored">GPS снова в норме</string>
     <string name="nogps_meters">%d м</string>

@@ -249,6 +249,29 @@ UNIT_TEST(NoGps_Engine_ButtonLetsNextTapMarkCar)
   TEST(!env.m_engine.GetStatus().m_markByTap, ());
 }
 
+// The button of the place page shows where the car is without the button on the map.
+UNIT_TEST(NoGps_Engine_PlaceMarkByTapWithoutArming)
+{
+  Env env(false /* inertial */);
+  env.DriveGps(5, 0 /* eastM */, 10 /* speedMps */);
+  TEST(!env.m_engine.IsMarkByTap(), ());
+  size_t const positions = env.m_delegate.m_positions.size();
+
+  // No road there: GPS still shows the car.
+  TEST(!env.m_engine.PlaceMarkByTap(At(50, 50)), ());
+  TEST(env.m_delegate.HasEvent(Event::MarkNoRoad), ());
+  TEST(!env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.m_delegate.m_positions.size(), positions, ());
+  TEST_EQUAL(env.Last().m_provider, Provider::Gps, ());
+
+  TEST(env.m_engine.PlaceMarkByTap(At(60, 4)), ());
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST_EQUAL(env.Last().m_provider, Provider::Manual, ());
+  TestAlmostEqualAbs(East(env.Last().m_position), 60, 0.5);
+  TestAlmostEqualAbs(North(env.Last().m_position), 0, 0.5);
+  TEST(!env.m_engine.IsMarkByTap(), ());
+}
+
 UNIT_TEST(NoGps_Engine_ShiftStopsAtCrossing)
 {
   Env env(false /* inertial */);

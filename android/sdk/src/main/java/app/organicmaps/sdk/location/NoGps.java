@@ -504,6 +504,10 @@ public final class NoGps
   /// The next tap on the map shows where the car is, it ends this: the user has pressed the button for it.
   public static native void nativeSetMarkByTap(boolean armed);
 
+  /// The car is at the point: the mark goes to the nearest road, the map follows the car.
+  /// @return false if there is no road near, the core sends MARK_NO_ROAD then.
+  public static native boolean nativePlaceMark(double lat, double lon);
+
   public static native double nativeShiftPosition(double distanceM);
 
   public static native void nativeReverseDirection();

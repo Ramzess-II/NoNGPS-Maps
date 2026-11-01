@@ -23,6 +23,7 @@ NSString * titleForButton(MWMActionBarButtonType type, BOOL isSelected)
   case MWMActionBarButtonTypeAvoidToll: return L(@"avoid_tolls");
   case MWMActionBarButtonTypeAvoidDirty: return L(@"avoid_unpaved");
   case MWMActionBarButtonTypeAvoidFerry: return L(@"avoid_ferry");
+  case MWMActionBarButtonTypeNoGpsMarkHere: return L(@"nogps_mark_here");
   }
 }
 
@@ -121,6 +122,10 @@ typedef NS_ENUM(NSInteger, MWMBookmarksButtonState) {
     break;
   case MWMActionBarButtonTypeAvoidFerry:
     [self.button setImage:[UIImage imageNamed:@"ic_avoid_ferry"] forState:UIControlStateNormal];
+    break;
+  case MWMActionBarButtonTypeNoGpsMarkHere:
+    // The icon of the button on the map that puts the mark by a tap.
+    [self.button setImage:[UIImage systemImageNamed:@"hand.point.up.left"] forState:UIControlStateNormal];
     break;
   }
 

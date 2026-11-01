@@ -5,6 +5,8 @@
 #include "map/nogps/delegate.hpp"
 #include "map/nogps/engine.hpp"
 
+#include "geometry/mercator.hpp"
+
 #include <array>
 #include <memory>
 #include <string>
@@ -243,6 +245,11 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeOnEsp32BleState(JNI
 JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeSetMarkByTap(JNIEnv *, jclass, jboolean armed)
 {
   NoGpsEngine().SetMarkByTap(armed);
+}
+
+JNIEXPORT jboolean Java_app_organicmaps_sdk_location_NoGps_nativePlaceMark(JNIEnv *, jclass, jdouble lat, jdouble lon)
+{
+  return g_framework->NativeFramework()->PlaceNoGpsMark(mercator::FromLatLon(lat, lon));
 }
 
 JNIEXPORT jdouble Java_app_organicmaps_sdk_location_NoGps_nativeShiftPosition(JNIEnv *, jclass, jdouble distanceM)

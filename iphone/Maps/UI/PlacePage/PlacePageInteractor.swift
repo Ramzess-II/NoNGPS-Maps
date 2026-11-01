@@ -271,6 +271,11 @@ extension PlacePageInteractor: ActionBarViewControllerDelegate {
       MWMPlacePageManagerHelper.avoidDirty()
     case .avoidFerry:
       MWMPlacePageManagerHelper.avoidFerry()
+    case .noGpsMarkHere:
+      // Without a road near the core tells it, the user may move the map to the road and use the button on it.
+      if NoGps.placeMark(at: placePageData.locationCoordinate) {
+        presenter?.close()
+      }
     case .more:
       fatalError("More button should've been handled in ActionBarViewContoller")
     case .track:
