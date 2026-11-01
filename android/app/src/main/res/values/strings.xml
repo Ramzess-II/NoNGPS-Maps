@@ -909,6 +909,8 @@
 
     <!-- SECTION: NonGPS Maps -->
     <string name="nogps_manual_position">Set my position manually</string>
+    <!-- Toast after the tester pressed the flag button in a test drive: the flag number and the time are written to the trip log to find the moment later -->
+    <string name="nogps_log_flag">Flag %1$d is in the log at %2$s</string>
     <!-- The user has pressed the button to show on the map where the car is -->
     <string name="nogps_mark_by_tap">Tap the road where the car is</string>
     <string name="nogps_gps_spoofed">GPS is spoofed! Using cell towers and Wi-Fi. You can also set your position manually.</string>

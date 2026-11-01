@@ -1231,6 +1231,9 @@
 
 "nogps_manual_position" = "Set my position manually";
 
+/* Toast after the tester pressed the flag button in a test drive: the flag number and the time are written to the trip log to find the moment later */
+"nogps_log_flag" = "Flag %1$d is in the log at %2$@";
+
 /* The user has pressed the button to show on the map where the car is */
 "nogps_mark_by_tap" = "Tap the road where the car is";
 "nogps_gps_spoofed" = "GPS is spoofed! Using cell towers and Wi-Fi. You can also set your position manually.";

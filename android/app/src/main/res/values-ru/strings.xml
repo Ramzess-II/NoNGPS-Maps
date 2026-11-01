@@ -920,6 +920,8 @@
 
     <!-- SECTION: NonGPS Maps -->
     <string name="nogps_manual_position">Указать своё местоположение вручную</string>
+    <!-- Toast after the tester pressed the flag button in a test drive: the flag number and the time are written to the trip log to find the moment later -->
+    <string name="nogps_log_flag">Флаг %1$d записан в журнал в %2$s</string>
     <!-- The user has pressed the button to show on the map where the car is -->
     <string name="nogps_mark_by_tap">Коснитесь дороги, где сейчас машина</string>
     <string name="nogps_gps_spoofed">GPS подменён! Используем вышки и Wi-Fi. Можно также указать позицию вручную.</string>
