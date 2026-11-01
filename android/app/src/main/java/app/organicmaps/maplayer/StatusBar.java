@@ -109,10 +109,14 @@ public class StatusBar
     mBox.show(getBoxLook(status));
     final String box = context.getString(R.string.nogps_box_title);
     mBox.mView.setContentDescription(
-        status.inertialEnabled ? box + ", " + context.getString(SensorsBottomSheet.boxStateText(status)) : box);
+        status.inertialEnabled ? box + ", " + SensorsBottomSheet.boxStateText(context, status) : box);
     mGps.show(getGpsLook(context, status));
-    mGps.mView.setContentDescription(context.getString(R.string.nogps_status_gps) + ", "
-                                     + getGpsStateText(context, status));
+    String gps = context.getString(R.string.nogps_status_gps) + ", " + getGpsStateText(context, status);
+    // The pause badge is not read out: the reason tells that the car doesn't follow GPS.
+    final String why = status.gpsDisabled ? getGpsWhyText(context, status) : null;
+    if (why != null)
+      gps += ". " + why;
+    mGps.mView.setContentDescription(gps);
   }
 
   @NonNull
@@ -164,6 +168,15 @@ public class StatusBar
   {
     if (isGpsOffByOs(context))
       return new Look(R.drawable.ic_nogps_gps_off, R.color.source_sleeping);
+    return getGpsLook(status);
+  }
+
+  /**
+   * GPS allowed by the system: its state from the core.
+   */
+  @NonNull
+  static Look getGpsLook(@NonNull NoGps.Status status)
+  {
     final Look look = switch (status.getGpsState())
     {
       case GOOD -> new Look(R.drawable.ic_nogps_gps, R.color.source_good);
@@ -174,9 +187,9 @@ public class StatusBar
                  R.color.source_warning, false);
       case NONE -> new Look(R.drawable.ic_nogps_gps_off, R.color.source_bad);
     };
-    // The car doesn't follow GPS: its signal is told by the shape only.
-    if (status.gpsDisabled)
-      return new Look(look.icon, R.color.source_sleeping, look.badge, look.badgeColor, false);
+    // The car doesn't follow GPS: the badge tells it, the color still tells the signal.
+    if (status.gpsDisabled && look.badge == 0)
+      return new Look(look.icon, look.color, R.drawable.ic_nogps_badge_pause, R.color.source_sleeping, look.pulsing);
     return look;
   }
 
@@ -192,13 +205,26 @@ public class StatusBar
       case UPDATING ->
         new Look(R.drawable.ic_nogps_box, R.color.source_connecting, R.drawable.ic_nogps_badge_update,
                  R.color.source_connecting, true);
-      case BOX_SLEEPING, OBD_SLEEPING ->
+      case BOX_SLEEPING -> getBoxSleepingLook(status);
+      case OBD_SLEEPING ->
         new Look(R.drawable.ic_nogps_box, R.color.source_sleeping, R.drawable.ic_nogps_badge_sleep,
                  R.color.source_sleeping, false);
       case NO_CAR_DATA, OBD_DISABLED, OBD_CONNECTING, OBD_ERROR, NO_ADAPTER ->
         new Look(R.drawable.ic_nogps_box, 0, R.drawable.ic_nogps_badge_alert, R.color.source_warning, false);
       case DISCONNECTED, CONNECTING -> getBoxSearchLook(status);
     };
+  }
+
+  /**
+   * The box is away or its radio is off: the phone keeps looking for it.
+   */
+  @NonNull
+  private static Look getBoxSleepingLook(@NonNull NoGps.Status status)
+  {
+    final Look look = getBoxSearchLook(status);
+    if (!look.pulsing)
+      return look;
+    return new Look(look.icon, look.color, R.drawable.ic_nogps_badge_sleep, R.color.source_sleeping, true);
   }
 
   /**
