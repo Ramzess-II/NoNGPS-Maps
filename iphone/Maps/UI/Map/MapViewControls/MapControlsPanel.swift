@@ -9,7 +9,7 @@ final class MapControlsPanel: UIView {
     case bottom
   }
 
-  private enum Constants {
+  enum Constants {
     static let cornerRadius = CGFloat(14)
     static let bottomCornerRadius = CGFloat(16)
     // The edge keeps the panel apart from a dark map, where the shadow is not seen.

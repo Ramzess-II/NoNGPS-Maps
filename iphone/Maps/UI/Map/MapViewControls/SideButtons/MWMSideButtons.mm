@@ -84,9 +84,13 @@ NSString * const kUDDidShowLongTapToShowSideButtonsToast = @"kUDDidShowLongTapTo
   self.locationMode = mode;
 }
 
+- (void)resetSearch
+{
+  [self.sideView.searchWheel reset];
+}
+
 #pragma mark - Location button
 
-// The buttons lie on a panel, the images have no background of their own.
 + (UIImage *)symbol:(NSString *)name
 {
   auto const config = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightMedium];
@@ -159,6 +163,15 @@ NSString * const kUDDidShowLongTapToShowSideButtonsToast = @"kUDDidShowLongTapTo
     self.sideView.zoomHidden = NO;
   else
     self.sideView.zoomHidden = [MWMSettings zoomButtonsEnabled] ? zoomHidden : YES;
+}
+
+- (BOOL)searchShown
+{
+  return self.sideView.searchShown;
+}
+- (void)setSearchShown:(BOOL)searchShown
+{
+  self.sideView.searchShown = searchShown;
 }
 
 - (BOOL)hidden

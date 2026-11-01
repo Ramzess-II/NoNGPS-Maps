@@ -3,6 +3,7 @@
 #import "MWMNavigationDashboardView.h"
 #import "MWMRouter.h"
 #import "MWMSearch.h"
+#import "MWMSideButtons.h"
 #import "MapViewController.h"
 #import "SwiftBridge.h"
 
@@ -170,6 +171,7 @@
   case MWMNavigationDashboardStateReady: [self stateReady]; break;
   case MWMNavigationDashboardStateNavigation: [self stateNavigation]; break;
   }
+  [MWMSideButtons buttons].searchShown = state == MWMNavigationDashboardStateNavigation;
   [[MapViewController sharedController] updateStatusBarStyle];
   // Restore bottom buttons only if they were not already hidden by tapping anywhere on an empty map.
   if (!MWMMapViewControlsManager.manager.hidden)
@@ -385,6 +387,7 @@
 
 - (void)searchManagerWithDidChangeState:(SearchOnMapState)state
 {
+  [[MWMSideButtons buttons] resetSearch];
   [self.navigationDashboardView searchManagerWithDidChangeState:state];
 }
 
