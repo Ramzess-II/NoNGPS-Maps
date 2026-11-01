@@ -26,6 +26,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -47,6 +48,7 @@ public final class LogsManager
   }
 
   private final static String TAG = LogsManager.class.getSimpleName();
+  private final static String PREF_PHONE_ID = "LogsPhoneId";
 
   public final static LogsManager INSTANCE = new LogsManager();
   private final static ExecutorService TASK_EXECUTOR = Executors.newSingleThreadExecutor();
@@ -58,6 +60,9 @@ public final class LogsManager
   private boolean mIsFileLoggingEnabled = false;
   @Nullable
   private String mLogsFolder;
+  // Not guarded by this: the file writer reads it under its own lock.
+  @NonNull
+  private volatile String mPhoneId = "";
 
   private LogsManager()
   {
@@ -69,6 +74,14 @@ public final class LogsManager
     Log.i(TAG, "Init file logging");
     mApplicationContext = context.getApplicationContext();
     mPrefs = prefs;
+
+    String phoneId = mPrefs.getString(PREF_PHONE_ID, null);
+    if (phoneId == null)
+    {
+      phoneId = LogFiles.makePhoneId(Build.MODEL, new Random());
+      mPrefs.edit().putString(PREF_PHONE_ID, phoneId).apply();
+    }
+    mPhoneId = phoneId;
 
     mIsFileLoggingEnabled = mPrefs.getBoolean(mApplicationContext.getString(R.string.pref_enable_logging), false);
     Log.i(TAG, "isFileLoggingEnabled preference: " + mIsFileLoggingEnabled);
@@ -183,6 +196,13 @@ public final class LogsManager
     if (savePreference)
       mPrefs.edit().putBoolean(mApplicationContext.getString(R.string.pref_enable_logging), enabled).apply();
     Log.i(TAG, "Logging to " + (enabled ? "logs folder " + mLogsFolder : "system log"));
+  }
+
+  /// The model and a random id made once per install, in the names of the log files.
+  @NonNull
+  String getPhoneId()
+  {
+    return mPhoneId;
   }
 
   public synchronized boolean isFileLoggingEnabled()

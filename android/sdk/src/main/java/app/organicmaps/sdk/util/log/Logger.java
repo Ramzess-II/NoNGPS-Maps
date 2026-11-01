@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -23,7 +24,6 @@ public final class Logger
 {
   private static final String TAG = Logger.class.getSimpleName();
   private static final String CORE_TAG = "OMcore";
-  private static final String FILENAME = "app.log";
   private static final LogFileWriter FILE_WRITER = new LogFileWriter();
 
   public static void v(String tag)
@@ -184,7 +184,7 @@ public final class Logger
   }
 
   /// Runs the action while holding the file writer lock and with the buffer flushed to disk,
-  /// so no log line is appended and no log file rotation happens concurrently.
+  /// so no log line is appended and no log file is switched or deleted concurrently.
   /// Used to safely read/zip the log files.
   static void runExclusively(@NonNull Runnable action)
   {
@@ -223,8 +223,6 @@ public final class Logger
   private static class LogFileWriter
   {
     private static final int MAX_SIZE = 3000000;
-    // A long day of driving, 20 hours and more at about 6.5 MB an hour: the log of a drive is analysed afterwards.
-    private static final int MAX_LOG_FILES = 50;
     private static final int QUEUE_CAPACITY = 4096;
     private static final int MAX_BATCH_SIZE = 256;
     private static final int FLUSH_TIMEOUT_SECONDS = 2;
@@ -242,6 +240,11 @@ public final class Logger
     @Nullable
     private String mFilePath;
     private long mCurrentSize;
+    @NonNull
+    private Date mDay = new Date(0);
+    // The first moment of the next day: a line written at it or later goes to a new file.
+    private long mDayEndMs;
+    private int mPart;
 
     LogFileWriter()
     {
@@ -401,34 +404,40 @@ public final class Logger
       }
       catch (IOException e)
       {
-        Log.e(TAG, "Failed to write to " + getLogFile(logsFolder, 0).getPath() + ": " + data, e);
+        Log.e(TAG, "Failed to write to " + mFilePath + ": " + data, e);
         closeWriterLocked();
       }
     }
 
     private void ensureWriterLocked(@NonNull String logsFolder, int nextLineSize) throws IOException
     {
-      final File file = getLogFile(logsFolder, 0);
-      final String filePath = file.getPath();
-      if (!filePath.equals(mFilePath))
-      {
-        closeWriterLocked();
-        mFilePath = filePath;
-      }
+      final long now = System.currentTimeMillis();
+      if (now >= mDayEndMs)
+        startDayLocked(logsFolder, now);
 
-      if (mWriter != null && mCurrentSize + nextLineSize <= MAX_SIZE)
-        return;
+      File file = getLogFile(logsFolder, mPart);
+      if (!file.getPath().equals(mFilePath))
+        closeWriterLocked();
 
       if (mWriter != null)
-        rotateLocked(logsFolder);
-      else if (file.exists() && file.length() > MAX_SIZE)
-        rotateLocked(logsFolder);
+      {
+        if (mCurrentSize + nextLineSize <= MAX_SIZE)
+          return;
+        closeWriterLocked();
+      }
 
-      final boolean writeSystemInfo = !file.exists() || file.length() == 0;
+      while (file.length() > 0 && file.length() + nextLineSize > MAX_SIZE)
+        file = getLogFile(logsFolder, ++mPart);
+
+      final boolean isNewFile = !file.exists() || file.length() == 0;
+      if (isNewFile)
+        LogFiles.deleteOldest(new File(logsFolder), LogFiles.MAX_TOTAL_SIZE);
+
       mWriter = new BufferedWriter(new FileWriter(file, true));
+      mFilePath = file.getPath();
       mCurrentSize = file.length();
 
-      if (writeSystemInfo)
+      if (isNewFile)
       {
         final String systemInformation = LogsManager.INSTANCE.getSystemInformation();
         mWriter.write(systemInformation);
@@ -436,27 +445,24 @@ public final class Logger
       }
     }
 
-    private void rotateLocked(@NonNull String logsFolder)
+    /// Goes on in the last file of today, if there is one.
+    private void startDayLocked(@NonNull String logsFolder, long now)
     {
       closeWriterLocked();
 
-      final File oldestFile = getLogFile(logsFolder, MAX_LOG_FILES - 1);
-      if (oldestFile.exists() && !oldestFile.delete())
-        Log.e(TAG, "Failed to delete old log file " + oldestFile.getPath());
+      final Calendar calendar = Calendar.getInstance();
+      calendar.setTimeInMillis(now);
+      mDay = calendar.getTime();
+      calendar.set(Calendar.HOUR_OF_DAY, 0);
+      calendar.set(Calendar.MINUTE, 0);
+      calendar.set(Calendar.SECOND, 0);
+      calendar.set(Calendar.MILLISECOND, 0);
+      calendar.add(Calendar.DAY_OF_MONTH, 1);
+      mDayEndMs = calendar.getTimeInMillis();
 
-      for (int i = MAX_LOG_FILES - 2; i >= 0; --i)
-      {
-        final File from = getLogFile(logsFolder, i);
-        if (!from.exists())
-          continue;
-
-        final File to = getLogFile(logsFolder, i + 1);
-        if (!from.renameTo(to))
-          Log.e(TAG, "Failed to rotate log file " + from.getPath() + " to " + to.getPath());
-      }
-
-      mFilePath = getLogFile(logsFolder, 0).getPath();
-      mCurrentSize = 0;
+      mPart = 0;
+      while (getLogFile(logsFolder, mPart + 1).exists())
+        ++mPart;
     }
 
     private void flushLocked()
@@ -497,13 +503,9 @@ public final class Logger
     }
 
     @NonNull
-    private File getLogFile(@NonNull String logsFolder, int index)
+    private File getLogFile(@NonNull String logsFolder, int part)
     {
-      if (index == 0)
-        return new File(logsFolder, FILENAME);
-      // "app.log" -> "app.<index>.log"
-      final int dot = FILENAME.lastIndexOf('.');
-      return new File(logsFolder, FILENAME.substring(0, dot) + "." + index + FILENAME.substring(dot));
+      return new File(logsFolder, LogFiles.fileName(mDay, LogsManager.INSTANCE.getPhoneId(), part));
     }
   }
 }
