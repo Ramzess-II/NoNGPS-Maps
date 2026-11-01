@@ -9,6 +9,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
 
   private enum Row {
     case state
+    case bluetooth
     case search
     case name
     case speed
@@ -102,7 +103,8 @@ final class NoGpsBoxSheet: MWMTableViewController {
         actions.append(.installFirmware)
       }
       actions.append(.details)
-      sections = [Section(rows: [.state]), Section(rows: info), Section(rows: actions), Section(rows: [.forget])]
+      let state: [Row] = status.bleState == .noPermission ? [.state, .bluetooth] : [.state]
+      sections = [Section(rows: state), Section(rows: info), Section(rows: actions), Section(rows: [.forget])]
     } else {
       // Forgotten in the sensors screen.
       sections = [Section(rows: [.buy], footer: L("nogps_box_buy_text"))]
@@ -162,6 +164,10 @@ final class NoGpsBoxSheet: MWMTableViewController {
       content.text = NoGpsSensorsViewController.boxStateText(status)
       content.textProperties.font = .preferredFont(forTextStyle: .headline)
       content.textProperties.color = look.color == .secondaryLabel ? .label : look.color
+    case .bluetooth:
+      content.text = L("nogps_box_allow")
+      content.textProperties.color = .linkBlue
+      cell.selectionStyle = .default
     case .name:
       let name = status.inertialStarted && !status.deviceName.isEmpty ? status.deviceName : "ESP32"
       content.text = String(format: L("nogps_sensors_box"), name)
@@ -208,6 +214,8 @@ final class NoGpsBoxSheet: MWMTableViewController {
   override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
     tableView.deselectRow(at: indexPath, animated: true)
     switch sections[indexPath.section].rows[indexPath.row] {
+    case .bluetooth:
+      openSettings()
     case .buy:
       UIApplication.shared.open(Constants.shopURL)
     case .calibrate:
@@ -245,7 +253,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
 
   // MARK: - Actions
 
-  /// Bluetooth is turned on and allowed in the settings: iOS doesn't let an app do it.
+  /// Bluetooth is allowed in the settings: once refused, iOS doesn't ask again.
   private func openSettings() {
     if let url = URL(string: UIApplication.openSettingsURLString) {
       UIApplication.shared.open(url)
@@ -340,6 +348,7 @@ private final class BoxSearchView: UIView {
       steps.addArrangedSubview(row)
       stepViews.append((dot, label))
     }
+    actionButton.setTitle(L("nogps_box_allow"), for: .normal)
     actionButton.titleLabel?.font = .preferredFont(forTextStyle: .subheadline)
     actionButton.contentHorizontalAlignment = .leading
     actionButton.addTarget(self, action: #selector(actionTapped), for: .touchUpInside)
@@ -380,8 +389,8 @@ private final class BoxSearchView: UIView {
     }
     stepViews[0].label.text = L(ble == .noPermission ? "nogps_box_step_bluetooth_denied"
       : bluetoothFailed ? "nogps_box_step_bluetooth_off" : "nogps_box_step_bluetooth")
-    actionButton.isHidden = !bluetoothFailed
-    actionButton.setTitle(L(ble == .noPermission ? "nogps_box_allow" : "nogps_box_turn_on"), for: .normal)
+    // Bluetooth is turned on by the user: iOS asks for it itself and doesn't let an app open its settings.
+    actionButton.isHidden = ble != .noPermission
     animateRings(!bluetoothFailed)
   }
 
