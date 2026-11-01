@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
   xmlns:tools="http://schemas.android.com/tools"
   android:layout_width="match_parent"
   android:layout_height="65sp"
@@ -7,6 +8,55 @@
   android:orientation="horizontal"
   tools:background="#3000FF00"
   tools:ignore="RtlSymmetry">
+
+  <!-- Where the position comes from, with its accuracy. -->
+  <LinearLayout
+    android:id="@+id/nav_source"
+    android:layout_width="@dimen/nav_source_width"
+    android:layout_height="match_parent"
+    android:background="?selectableItemBackgroundBorderless"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center"
+    android:orientation="vertical">
+
+    <FrameLayout
+      android:layout_width="26dp"
+      android:layout_height="26dp">
+
+      <ImageView
+        android:id="@+id/nav_source_icon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="center"
+        android:importantForAccessibility="no" />
+
+      <ImageView
+        android:id="@+id/nav_source_badge"
+        android:layout_width="11dp"
+        android:layout_height="11dp"
+        android:layout_gravity="bottom|end"
+        android:background="@drawable/bg_source_badge"
+        android:importantForAccessibility="no"
+        android:padding="1dp"
+        android:visibility="gone" />
+    </FrameLayout>
+
+    <TextView
+      android:id="@+id/nav_source_accuracy"
+      android:layout_width="match_parent"
+      android:layout_height="17dp"
+      android:fontFeatureSettings="tnum"
+      android:gravity="center"
+      android:importantForAccessibility="no"
+      android:maxLines="1"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="13sp"
+      app:autoSizeMaxTextSize="13sp"
+      app:autoSizeMinTextSize="10sp"
+      app:autoSizeTextType="uniform"
+      tools:text="±999 m" />
+  </LinearLayout>
 
   <Space
     android:layout_width="0dp"

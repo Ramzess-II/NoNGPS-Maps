@@ -14,10 +14,13 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.fragment.app.FragmentManager;
 import androidx.lifecycle.ViewModelProvider;
 import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
 import app.organicmaps.maplayer.MapButtonsViewModel;
+import app.organicmaps.nogps.BoxBottomSheet;
+import app.organicmaps.nogps.GpsBottomSheet;
 import app.organicmaps.sdk.Router;
 import app.organicmaps.sdk.maplayer.traffic.TrafficManager;
 import app.organicmaps.sdk.routing.RoutingController;
@@ -26,6 +29,8 @@ import app.organicmaps.sdk.util.StringUtils;
 import app.organicmaps.sdk.widget.roadshield.RoadShieldUtils;
 import app.organicmaps.sdk.widgets.lanes.LanesView;
 import app.organicmaps.sdk.widgets.speedlimit.SpeedLimitView;
+import app.organicmaps.search.SearchPageViewModel;
+import app.organicmaps.search.SearchRequest;
 import app.organicmaps.util.UiUtils;
 import app.organicmaps.util.Utils;
 import app.organicmaps.util.WindowInsetUtils;
@@ -58,12 +63,16 @@ public class NavigationController implements TrafficManager.TrafficCallback, Nav
   private final NavMenu mNavMenu;
   View.OnClickListener mOnSettingsClickListener;
   View.OnClickListener mOnVoiceSettingsClickListener;
+  private final SearchPageViewModel mSearchPageViewModel;
+  private final FragmentManager mFragmentManager;
 
   public NavigationController(AppCompatActivity activity, View.OnClickListener onSettingsClickListener,
                               View.OnClickListener onVoiceSettingsClickListener,
                               NavMenu.OnMenuSizeChangedListener onMenuSizeChangedListener)
   {
     mMapButtonsViewModel = new ViewModelProvider(activity).get(MapButtonsViewModel.class);
+    mSearchPageViewModel = new ViewModelProvider(activity).get(SearchPageViewModel.class);
+    mFragmentManager = activity.getSupportFragmentManager();
 
     mFrame = activity.findViewById(R.id.navigation_frame);
     mNavMenu = new NavMenu(activity, this, onMenuSizeChangedListener);
@@ -307,6 +316,21 @@ public class NavigationController implements TrafficManager.TrafficCallback, Nav
   public void onStopClicked()
   {
     RoutingController.get().cancel();
+  }
+
+  @Override
+  public void onSearchClicked()
+  {
+    collapseNavMenu();
+    mSearchPageViewModel.setSearchEnabled(true, new SearchRequest("", null));
+  }
+
+  @Override
+  public void onSourceClicked(boolean box)
+  {
+    final String tag = box ? BoxBottomSheet.TAG : GpsBottomSheet.TAG;
+    if (mFragmentManager.findFragmentByTag(tag) == null)
+      (box ? new BoxBottomSheet() : new GpsBottomSheet()).show(mFragmentManager, tag);
   }
 
   private void updateSpeedLimit(@NonNull final RoutingInfo info)
