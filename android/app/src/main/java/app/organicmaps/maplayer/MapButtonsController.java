@@ -72,6 +72,9 @@ public class MapButtonsController extends Fragment
   private static final String TAG = MapButtonsController.class.getSimpleName();
   // The moments of a test drive marked in the log, see the button flag_log.
   private static int sLogFlags;
+  // The places the user has moved the side panels to, see MapPanelDragger.
+  private static final String PREF_CAR_PANEL_Y = "NoGpsLeftPanelY";
+  private static final String PREF_RIGHT_PANEL_Y = "NoGpsRightPanelY";
 
   Map<MapButtons, View> mButtonsMap;
   private View mFrame;
@@ -97,6 +100,8 @@ public class MapButtonsController extends Fragment
   // Of every car button but the first one.
   private final Map<View, View> mCarDividers = new HashMap<>();
   private boolean mCarPanelShown = true;
+  @Nullable
+  private MapPanelDragger mCarPanelDragger;
   @Nullable
   private View mTrackRecordingPanel;
   @Nullable
@@ -192,6 +197,10 @@ public class MapButtonsController extends Fragment
     mNavMyPosition =
         new MyPositionButton(myPosition, (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.myPosition));
     mCarControls = mFrame.findViewById(R.id.car_controls);
+    if (mCarControls instanceof MapPanelLayout panel)
+      mCarPanelDragger = MapPanelDragger.attach(panel, PREF_CAR_PANEL_Y, true);
+    if (mFrame.findViewById(R.id.right_panel) instanceof MapPanelLayout panel)
+      MapPanelDragger.attach(panel, PREF_RIGHT_PANEL_Y, false);
     mManualPositionButton = mFrame.findViewById(R.id.manual_position);
     mPositionStatus = mFrame.findViewById(R.id.position_status);
     mPositionStatus.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.positionStatus));
@@ -456,6 +465,8 @@ public class MapButtonsController extends Fragment
     if (mCarControls == null || show == mCarPanelShown)
       return;
     mCarPanelShown = show;
+    if (mCarPanelDragger != null)
+      mCarPanelDragger.setEnabled(show);
     final boolean rtl = mCarControls.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
     final float out = rtl ? mCarControls.getRight() : -mCarControls.getRight();
     mCarControls.animate().translationX(show ? 0 : out).alpha(show ? 1f : 0f).withEndAction(() -> {
