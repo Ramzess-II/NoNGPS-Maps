@@ -91,6 +91,16 @@ cmake --build build --target map_tests
 QT_QPA_PLATFORM=offscreen ./build/map_tests --filter=NoGps_
 ```
 
+Часті команди зібрані в [`justfile`](justfile) для [just](https://github.com/casey/just); `just` показує їх
+усі:
+
+```bash
+just android        # зібрати, встановити й запустити налагоджувальну збірку на підключеному телефоні
+just apk            # лише зібрати APK
+just test           # зібрати й запустити тести NoGps_ на комп'ютері (macOS, Linux)
+just logs logs.zip  # переглянути поїздки з логів застосунку в браузері
+```
+
 iOS збирається з `xcode/omim.xcworkspace`, схема `OMaps` (див. [iphone/CLAUDE.md](iphone/CLAUDE.md)). На iOS
 рух машини береться тільки з блоку ESP32: iOS не дає застосункам Bluetooth SPP для адаптерів ELM327.
 
