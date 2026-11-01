@@ -111,7 +111,7 @@ body.dragging #drop { display: flex; }
   <label class="button">Open logs…<input type="file" id="files" multiple hidden></label>
   <button id="clear">Clear</button>
   <label><input type="checkbox" id="showStationary"> stationary trips</label>
-  <span id="status">Drop app*.log, log.txt, logs.zip or log.zip anywhere</span>
+  <span id="status">Drop log-*.log or logs.zip anywhere</span>
 </header>
 <main>
   <aside id="trips"><div class="empty">No logs yet.</div></aside>
@@ -791,7 +791,7 @@ function renderSummary() {
   const total = Object.values(s.sources).reduce((a, b) => a + b, 0) || 1;
   const f1 = x => x === undefined || x === null ? '' : (Math.round(x * 10) / 10);
   let html = `<h3>Trip ${s.id}</h3><table class="state">
-    <tr><td>platform</td><td>${s.platform}, times ${esc(s.zone)}</td></tr>
+    <tr><td>platform</td><td>${s.platform}${s.phone ? ' ' + esc(s.phone) : ''}, times ${esc(s.zone)}</td></tr>
     <tr><td>start</td><td>${fmtDate(s.start)}:${new Date(s.start).toISOString().slice(17, 19)}</td></tr>
     <tr><td>duration</td><td>${fmtDuration(s.end - s.start)}</td></tr>
     <tr><td>distance</td><td>${s.km} km</td></tr><tr><td>max speed</td><td>${s.max_kmh ?? ''} km/h</td></tr>
@@ -864,13 +864,13 @@ function renderTrips(data) {
   const list = trips.filter(t => t.driven || showStationary);
   const notes = data.notes.length ? `<div class="notes">${data.notes.map(esc).join('<br>')}</div>` : '';
   $('#status').textContent = `${data.files.length} files, ${trips.filter(t => t.driven).length} trips, ${trips.filter(t => !t.driven).length} stationary`;
-  $('#status').title = data.files.map(f => `${f.name}: ${f.platform}, ${f.lines} lines`).join('\n');
+  $('#status').title = data.files.map(f => `${f.name}: ${f.platform}${f.phone ? ' ' + f.phone : ''}, ${f.lines} lines`).join('\n');
   $('#trips').innerHTML = notes + (list.map(t => {
     const total = Object.values(t.sources).reduce((a, b) => a + b, 0) || 1;
     const mix = Object.entries(t.sources).map(([k, v]) => `<span style="width:${v / total * 100}%;background:${SOURCE_COLORS[k] || '#868e96'}" title="${esc(k)} ${v} s"></span>`).join('');
     const badges = ['high', 'medium', 'low'].filter(s => t.anomalies[s]).map(s => `<span class="badge" style="background:${SEVERITY_COLORS[s]}" title="${s} anomalies">${t.anomalies[s]}</span>`).join('');
     return `<div class="trip${t.driven ? '' : ' stationary'}${trip && trip.id === t.id ? ' on' : ''}" data-id="${t.id}">
-      <div class="when">${fmtDate(t.start)} <span class="time">${t.platform === 'ios' ? 'UTC' : ''}</span></div>
+      <div class="when">${fmtDate(t.start)} <span class="time">${t.platform === 'ios' ? 'UTC' : ''} ${esc(t.phone)}</span></div>
       <div class="facts">${fmtDuration(t.end - t.start)} · ${t.km} km${t.max_kmh !== null ? ' · ≤' + t.max_kmh + ' km/h' : ''}${t.driven ? '' : ' · stands'}</div>
       <div class="mix">${mix}</div>
       <div class="facts">${badges}${t.events} events${t.inertial_error_median !== null ? ' · box error ' + Math.round(t.inertial_error_median) + ' m' : ''}</div></div>`;
@@ -900,7 +900,7 @@ async function loadTrip(id, t) {
   renderReplay();
   drawTicks();
   setTime(t || trip.start);
-  $('#status').textContent = `Trip ${id}: ${fmtDate(trip.start)}, ${fmtDuration(trip.end - trip.start)}, ${trip.platform}`;
+  $('#status').textContent = `Trip ${id}: ${fmtDate(trip.start)}, ${fmtDuration(trip.end - trip.start)}, ${trip.platform}${trip.phone ? ' ' + trip.phone : ''}`;
 }
 
 // Tabs, files, layout.

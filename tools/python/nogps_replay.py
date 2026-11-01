@@ -5,7 +5,7 @@ A debug build of the Android application drives the file nogps-replay-in.txt put
 (/sdcard/Android/data/<package>/files/) through a navigation of its own when it starts, and writes the trip log of
 that drive to nogps-replay-out.txt, and nogps-replay-out.txt.done when it is over. See NoGpsReplay.cpp.
 
-  nogps_replay.py input app*.log --day 10-11 -o nogps-replay-in.txt [--no-taps] [--no-route] [--from HH:MM]
+  nogps_replay.py input log-*.log --day 10-11 -o nogps-replay-in.txt [--no-taps] [--no-route] [--from HH:MM]
       [--to HH:MM]
       makes the file to drive from the trip logs of a day: the rotation, the speed and the acceleration of the
       sensor box, the marks and the buttons of the user, the routes the user asked for. --no-taps leaves only the
@@ -13,7 +13,7 @@ that drive to nogps-replay-out.txt, and nogps-replay-out.txt.done when it is ove
       shown the car it kept, or the file begins with the car off the roads, the file gives that kept car instead of
       a tap: a tap would put it on a road.
 
-  nogps_replay.py compare app*.log --day 10-11 --replay nogps-replay-out.txt
+  nogps_replay.py compare log-*.log --day 10-11 --replay nogps-replay-out.txt
       how far the mark was from GPS on the trip and how far it is driven again, where GPS was seen.
 
 The files made here keep the places of the trip: they are not for git. Nothing printed has coordinates.
@@ -600,7 +600,7 @@ def main():
     commands = parser.add_subparsers(dest='command', required=True)
     for name in ('input', 'compare'):
         sub = commands.add_parser(name)
-        sub.add_argument('logs', nargs='+', help='the trip logs of the application, app*.log')
+        sub.add_argument('logs', nargs='+', help='the trip logs of the application, log-*.log (app*.log before)')
         sub.add_argument('--day', required=True, help='MM-DD, as the lines of the log begin')
         sub.add_argument('--from', dest='start', help='HH:MM[:SS]')
         sub.add_argument('--to', dest='end', help='HH:MM[:SS]')

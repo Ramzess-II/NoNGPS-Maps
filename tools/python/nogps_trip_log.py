@@ -7,14 +7,14 @@ of the inertial navigation. The error of the shown position is measured against 
 there is one, at the same moment (the two have different ages): along the course of the car (+ the mark is ahead)
 and across it (+ the mark is to the right). With "Disable GPS" on, the platform position is the car itself.
 
-Logs:
-  iOS: Documents/log.txt, written with "Enable logging" on in the settings. Times are UTC.
-  Android: Android/data/<app id>/files/logs/, or the zip of "Report a bug". Times are the local time of the phone,
-  the log has no year: --year.
+Logs: log-dd-MM-yy-<phone>[.N].log, written with "Enable logging" on in the settings.
+  iOS: Documents/logs/ (log.txt before). Times are UTC.
+  Android: Android/data/<app id>/files/logs/ (app*.log before), or the zip of "Report a bug". Times are the local
+  time of the phone, the log has no year: --year.
 
 Usage:
-  nogps_trip_log.py log.txt [more logs] > trip.csv
-  nogps_trip_log.py log.txt --gpx trip.gpx > trip.csv    # the shown and the platform tracks to see on a map
+  nogps_trip_log.py log-01-11-26-iPhone15_2-a3f9.log [more logs] > trip.csv
+  nogps_trip_log.py log-*.log --gpx trip.gpx > trip.csv    # the shown and the platform tracks to see on a map
 """
 
 import argparse

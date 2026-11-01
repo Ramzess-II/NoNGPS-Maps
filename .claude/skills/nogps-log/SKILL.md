@@ -1,6 +1,6 @@
 ---
 name: nogps-log
-description: Analyse NonGPS Maps trip logs (iOS log.txt/log.zip, Android app*.log/logs.zip) to explain what the navigation did on a drive. Use when the user gives logs or asks why the mark went wrong, what happened at a time, or how a trip or a replay went.
+description: Analyse NonGPS Maps trip logs (log-dd-MM-yy-<phone>.log files or logs.zip of iOS and Android; older iOS log.txt/log.zip, Android app*.log) to explain what the navigation did on a drive. Use when the user gives logs or asks why the mark went wrong, what happened at a time, or how a trip or a replay went.
 argument-hint: "<log files or folder> [question, trip or time]"
 ---
 
