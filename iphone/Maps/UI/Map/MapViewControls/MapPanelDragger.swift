@@ -88,6 +88,7 @@ final class MapPanelDragger: NSObject {
     super.init()
     // The touch is taken from the button under the finger, it does not fire.
     gesture.addTarget(self, action: #selector(onPress))
+    gesture.delegate = self
     view.addGestureRecognizer(gesture)
   }
 
@@ -179,5 +180,15 @@ final class MapPanelDragger: NSObject {
   private func lift(_ lifted: Bool) {
     isMoving = lifted
     onLift(lifted)
+  }
+}
+
+extension MapPanelDragger: UIGestureRecognizerDelegate {
+  /// A touch stops a fling, the panel is lifted again by a long press.
+  func gestureRecognizer(_: UIGestureRecognizer, shouldReceive _: UITouch) -> Bool {
+    if displayLink != nil {
+      drop()
+    }
+    return true
   }
 }
