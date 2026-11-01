@@ -9,6 +9,14 @@
 
 namespace nogps
 {
+namespace
+{
+bool IsLinked(BleState state)
+{
+  return state == BleState::Pairing || state == BleState::Connected;
+}
+}  // namespace
+
 Esp32Source::Esp32Source(Delegate & delegate, Scheduler & scheduler, Clock const & clock,
                          MotionSource::Listener & listener)
   : m_delegate(delegate)
@@ -46,6 +54,7 @@ void Esp32Source::Stop()
   m_dataTimesMs.clear();
   m_hasLast = false;
   m_lastDataMs.reset();
+  m_wakingLinkMs.reset();
   m_info.reset();
   m_hellosWithoutInfo = 0;
   m_update.Reset();
@@ -109,6 +118,9 @@ void Esp32Source::OnBleState(BleState state)
   if (!m_running || state == m_bleState)
     return;
   LOG(LINFO, ("Bluetooth =", state));
+  // A connection may be pending all the time the box sleeps: only a made one tells that the box is awake.
+  if (IsLinked(state) || (IsLinked(m_bleState) && m_wakingLinkMs))
+    m_wakingLinkMs = m_clock.NowMs();
   m_bleState = state;
   m_bleLine.clear();
   if (state != BleState::Connected)
@@ -225,6 +237,7 @@ void Esp32Source::OnData(esp32::Data const & data)
   int64_t const now = m_clock.NowMs();
   bool const fresh = m_lastDataMs && now - *m_lastDataMs <= kDataTimeoutMs;
   m_lastDataMs = now;
+  m_wakingLinkMs.reset();
   m_dataTimesMs.push_back(now);
   while (now - m_dataTimesMs.front() >= kDataTimeoutMs)
     m_dataTimesMs.pop_front();
@@ -393,8 +406,11 @@ SourceState Esp32Source::GetState() const
 bool Esp32Source::IsSleeping() const
 {
   // The box switches its radio off a minute after the engine is stopped, so a box that has gone after it has told
-  // about the stopped engine is not lost.
+  // about the stopped engine is not lost. Connected again, it is awake even before it talks: the first connections
+  // after a parking may stay silent, and the phone connects again and again.
   if (!m_lastDataMs)
+    return false;
+  if (m_wakingLinkMs && (IsLinked(m_bleState) || m_clock.NowMs() - *m_wakingLinkMs <= kWakingLinkGapMs))
     return false;
   return m_obdState == "SLEEP" || (m_carInfo && m_carInfo->m_engineRunning == false);
 }

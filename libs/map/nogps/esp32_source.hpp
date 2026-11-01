@@ -29,6 +29,9 @@ public:
   static int64_t constexpr kHelloIntervalMs = 1000;
   // The box sends 50 lines a second, a longer silence means it is lost.
   static int64_t constexpr kDataTimeoutMs = 1000;
+  // A box connected again after a parking is awake this long after a silent connection ends: the phone connects
+  // again in a few seconds.
+  static int64_t constexpr kWakingLinkGapMs = 30'000;
   // The seconds of the accelerometer written to the trip log from before the car has reported that it moves.
   static size_t constexpr kAccelLinesBeforeStart = 3;
   // A calibration takes ~3 s on the box.
@@ -132,6 +135,8 @@ private:
 
   // Nothing until the first data line.
   std::optional<int64_t> m_lastDataMs;
+  // When the box was last connected over Bluetooth after its last data line: its radio is on, it is not sleeping.
+  std::optional<int64_t> m_wakingLinkMs;
   int m_flags = 0;
   AccelLog m_accelLog;
   // The lines of the accelerometer while the car reports that it stands.
