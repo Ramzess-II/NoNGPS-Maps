@@ -476,6 +476,7 @@ def summary(name, stats):
 EVENTS = [
     # Before October 16 the car followed apart was "paused by itself".
     ('road lost', r'road is lost after'), ('followed apart off the roads', r'paused by itself|it is followed apart'),
+    ('mark waited ahead at a bend', r'the mark is ahead, it waits'),
     ('turn moved to a crossing', r'is moved to the crossing'), ('turn not at a crossing', r'is not at a crossing'),
     ('roundabout or winding road', r'roundabout or a winding'), ('off the roads at a roundabout', r'at a roundabout'),
     ('started backward', r'has started backward'), ('way of a start changed', r'by the accelerometer, it has felt'),

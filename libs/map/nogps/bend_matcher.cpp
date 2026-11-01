@@ -2,6 +2,8 @@
 
 #include "map/nogps/geo.hpp"
 
+#include "base/assert.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -131,6 +133,14 @@ std::optional<double> BendMatcher::Match(Roads & roads, ms::LatLon const & posit
     if (std::abs(i - bestIndex) >= aside && diffs[i] < kClearRatio * std::max(best, kMinAsideDiffDeg))
       return {};
   return bestShift;
+}
+
+std::optional<double> BendMatcher::GetRotationDeg(double distanceM) const
+{
+  ASSERT_LESS_OR_EQUAL(distanceM, kWindowM, ());
+  if (m_history.empty() || m_history.front().m_odometerM > m_odometerM - distanceM)
+    return {};
+  return m_yawDeg - YawAt(m_odometerM - distanceM);
 }
 
 double BendMatcher::YawAt(double odometerM) const

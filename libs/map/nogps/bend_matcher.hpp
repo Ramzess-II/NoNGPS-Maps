@@ -42,6 +42,10 @@ public:
   /// Nothing if it is not known: the road is straight, or its shape doesn't tell the place clearly.
   std::optional<double> Match(Roads & roads, ms::LatLon const & position, double bearingDeg, double maxShiftM) const;
 
+  /// \returns how much the car has rotated clockwise while driving the last |distanceM|, nothing if it has driven
+  /// less since the way was forgotten. |distanceM| is not longer than kWindowM.
+  std::optional<double> GetRotationDeg(double distanceM) const;
+
 private:
   struct Sample
   {

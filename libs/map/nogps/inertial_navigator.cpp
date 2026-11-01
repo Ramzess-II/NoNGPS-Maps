@@ -456,6 +456,7 @@ void InertialNavigator::SetRoadPoint(ms::LatLon const & position)
   m_offRoadM = 0;
   m_offRoadMaxSpeedMps = 0;
   m_roadLost = false;
+  m_waitAhead.reset();
 }
 
 void InertialNavigator::TrackOffRoad(double distanceM)
@@ -475,21 +476,68 @@ void InertialNavigator::TrackOffRoad(double distanceM)
   }
   if (m_offRoadM < kLostRoadM)
     return;
+  LoseRoad(std::to_string(std::lround(m_offRoadM)) + " m");
+}
+
+void InertialNavigator::LoseRoad(std::string const & after)
+{
   // The car is on another road the turn has fitted.
   for (size_t i = 0; i < m_otherMarks.size(); ++i)
   {
     if (m_otherMarks[i].m_onRoad)
     {
-      TakeOtherMark(i, false /* keepShown */,
-                    "the road of the shown one is lost after " + std::to_string(std::lround(m_offRoadM)) + " m");
+      TakeOtherMark(i, false /* keepShown */, "the road of the shown one is lost after " + after);
       return;
     }
   }
-  LOG(LINFO, ("The road is lost after", std::round(m_offRoadM), "m, stopping at", *m_roadPoint));
+  LOG(LINFO, ("The road is lost after", after + ",", "stopping at", *m_roadPoint));
   m_roadLost = true;
   m_roughStretch.reset();
   m_deadReckoning.MoveTo(*m_roadPoint);
   NotifyRoadLost();
+}
+
+void InertialNavigator::StartWaitAhead()
+{
+  double const limitM = std::min(kMaxWaitAheadM, m_deadReckoning.GetAlongErrorM());
+  LOG(LINFO, ("The road goes away from the car driving straight after", std::round(GetDistanceSinceFix()),
+              "m without a known place: the mark is ahead, it waits up to", std::round(limitM), "m at", *m_roadPoint));
+  m_waitAhead = WaitAheadState{limitM};
+  // The mark stands on its road: the car is not off the roads, and a turn starts from that road.
+  m_deadReckoning.MoveTo(*m_roadPoint);
+  m_onRoad = true;
+  m_roughStretch.reset();
+}
+
+bool InertialNavigator::WaitAhead(double rotatedDeg, double distanceM)
+{
+  if (!m_waitAhead)
+    return false;
+  m_waitAhead->m_rotatedDeg += rotatedDeg;
+  // The car has come to the bend, or to a crossing it turns at: the mark goes on from where it waited, and the turn
+  // is moved to its crossing from there.
+  if (m_turning || std::fabs(m_waitAhead->m_rotatedDeg) >= kWaitStraightDeg)
+  {
+    LOG(LINFO, ("The car turns after the mark has waited", std::round(m_waitAhead->m_waitedM), "m for it"));
+    m_waitAhead.reset();
+    return false;
+  }
+  m_waitAhead->m_waitedM += distanceM;
+  if (m_waitAhead->m_waitedM >= m_waitAhead->m_limitM)
+  {
+    double const waitedM = m_waitAhead->m_waitedM;
+    m_waitAhead.reset();
+    m_onRoad = false;
+    LoseRoad("waiting " + std::to_string(std::lround(waitedM)) + " m for the car going straight");
+  }
+  return true;
+}
+
+std::optional<double> InertialNavigator::GetWaitedAheadM() const
+{
+  if (!m_waitAhead)
+    return {};
+  return m_waitAhead->m_waitedM;
 }
 
 void InertialNavigator::CheckRoundabout()
@@ -742,7 +790,9 @@ void InertialNavigator::SetDirection(int direction)
   if (direction > 0)
     return;
   // A turn of a car driving backwards is not a turn at a crossing, and the road doesn't bend as the car rotates.
+  // Nor does it drive to the mark waiting ahead: the mark drives back from there.
   m_turning = false;
+  m_waitAhead.reset();
   m_bendMatcher.Reset();
   m_pathMatcher.Reset();
 }
@@ -1064,18 +1114,23 @@ void InertialNavigator::OnMotion(double yawDeltaDeg, double dtSec, int64_t times
     double const distance = DistanceWithLag(dtSec);
     othersDistanceM = distance;
     othersStepM = step;
-    m_startMarkM += distance;
     if (back)
     {
+      m_startMarkM += distance;
       m_deadReckoning.ReverseBy(distance);
       m_pathMatcher.Reset();
       m_roughStretch.reset();
     }
     else
     {
-      m_deadReckoning.AdvanceBy(distance);
-      if (m_turning)
-        m_turnEnd = Move(m_turnEnd, m_deadReckoning.GetHeading(), distance);
+      if (!WaitAhead(rotatedDeg, distance))
+      {
+        m_startMarkM += distance;
+        m_deadReckoning.AdvanceBy(distance);
+        if (m_turning)
+          m_turnEnd = Move(m_turnEnd, m_deadReckoning.GetHeading(), distance);
+      }
+      // The way of the car waited for is the way to the mark: the bends and the way behind it.
       m_bendMatcher.OnMotion(rotatedDeg, distance);
       m_pathMatcher.OnMotion(rotatedDeg, distance, m_deadReckoning.GetHeading());
       TrackRoughStretch(step);
@@ -1102,7 +1157,9 @@ void InertialNavigator::OnMotion(double yawDeltaDeg, double dtSec, int64_t times
     m_lastSnapMs = now;
     CheckBackOnRoad();
   }
-  if (IsReady() && !stopped && m_deadReckoning.GetSpeed() > kMovingSpeedMps && now - m_lastSnapMs >= kSnapIntervalMs)
+  // The mark waiting ahead stands on its road, or has lost it just now.
+  if (IsReady() && !stopped && !m_waitAhead && !m_roadLost && m_deadReckoning.GetSpeed() > kMovingSpeedMps &&
+      now - m_lastSnapMs >= kSnapIntervalMs)
   {
     m_lastSnapMs = now;
     SnapToRoad();
@@ -1275,8 +1332,20 @@ void InertialNavigator::SnapToRoad()
     return;
   }
   m_roadCandidate.reset();
+  bool const wasOnRoad = m_onRoad;
   m_onRoad = shift <= kSnapRadiusM && m_deadReckoning.SnapToRoad(snapped->m_point, snapped->m_bearingDeg, !atFork);
   m_lastSnapResult = m_onRoad ? SnapResult::OnRoad : shift > kSnapRadiusM ? SnapResult::Far : SnapResult::Angle;
+  // See kMaxWaitAheadM. A maneuvering car leaving its road is followed apart.
+  if (m_lastSnapResult == SnapResult::Angle && wasOnRoad && !m_turning && m_roadPoint &&
+      m_deadReckoning.GetSpeed() > kMaxManeuverSpeedMps && m_deadReckoning.GetAlongErrorM() >= kLostRoadM)
+  {
+    auto const rotated = m_bendMatcher.GetRotationDeg(kWaitStraightM);
+    if (rotated && std::fabs(*rotated) < kWaitStraightDeg)
+    {
+      StartWaitAhead();
+      return;
+    }
+  }
   if (m_onRoad)
   {
     m_roadPoint = snapped->m_point;

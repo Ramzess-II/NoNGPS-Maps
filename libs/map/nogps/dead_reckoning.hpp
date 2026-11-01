@@ -12,6 +12,8 @@ class DeadReckoning
 public:
   static double constexpr kBaseAccuracyM = 15;
   static double constexpr kAccuracyPerMeter = 0.02;
+  // The error along the road alone grows slower: 0.7 % of the way at most on the trips of October 13-24 with GPS.
+  static double constexpr kAlongErrorPerMeter = 0.007;
   // A road going in a different direction is not the road the car is on (or the car is turning).
   static double constexpr kMaxSnapHeadingDiffDeg = 30;
   // The heading is pulled to the road slowly and only when they nearly agree: it removes the slow gyroscope
@@ -62,6 +64,8 @@ public:
   /// How many times the position has been set: what was told about it before is not about the new one.
   int GetFixCount() const { return m_fixCount; }
   double GetAccuracy() const { return kBaseAccuracyM + kAccuracyPerMeter * m_distanceSinceFixM; }
+  /// \returns how far ahead of the car or behind it along the road the position may be.
+  double GetAlongErrorM() const { return kBaseAccuracyM + kAlongErrorPerMeter * m_distanceSinceFixM; }
 
 private:
   bool m_hasPosition = false;

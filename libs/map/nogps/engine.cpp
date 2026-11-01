@@ -1686,6 +1686,9 @@ std::string Engine::GetTripLine()
     auto const roadDiff = m_inertial->GetLastSnapBearingDiffDeg();
     line += " rdiff=" + (roadDiff ? std::to_string(std::lround(*roadDiff)) : std::string("-"));
     line += " snapwhy=" + DebugPrint(m_inertial->GetLastSnapResult());
+    // How far the car has driven while the mark waits for it where its road has gone away, the mark is ahead.
+    auto const waited = m_inertial->GetWaitedAheadM();
+    line += " wait=" + (waited ? std::to_string(std::lround(*waited)) : std::string("-"));
     // The car is off the roads next to a roundabout, where it is not lost.
     std::snprintf(buf, sizeof(buf), " fix=%.0f ready=%d ring=%d", m_inertial->GetDistanceSinceFix(),
                   m_inertial->IsReady() ? 1 : 0, m_inertial->IsAtRoundabout() ? 1 : 0);

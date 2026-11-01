@@ -39,7 +39,7 @@ def trip_line(error_m=3.0, lat=START_LAT, kmh=36.0, **extra):
                   link='BLE/CONNECTED', box='5/220', bf='1F', scale='1.000', table='3', rough='0', lag='0.30',
                   boxacc='0.90/+1.0', phoneacc='0.50/-', gyro='DONE', turn='NaN', hdg='0/GPS', road='1', lost='0',
                   back='0', turning='0', odo='0', offm='0', offv='0', cand='-', snap='1.0', rdiff='0',
-                  snapwhy='ROAD', fix='0', ready='1', ring='0')
+                  snapwhy='ROAD', wait='-', fix='0', ready='1', ring='0')
     fields.update(extra)
     return 'TRIP ' + ' '.join('%s=%s' % kv for kv in fields.items())
 
@@ -312,7 +312,8 @@ class ReportTest(unittest.TestCase):
         self.assertEqual(nogps_log.moment(trip, '00:00:30'), trip.start + 88_000)
 
     def test_state(self):
-        log = android_drive(seconds=30, stand=0, fields=lambda s: dict(snapwhy='ANGLE', bf='9B') if s >= 10 else {})
+        log = android_drive(seconds=30, stand=0,
+                            fields=lambda s: dict(snapwhy='ANGLE', wait='12', bf='9B') if s >= 10 else {})
         log.append(core('10-08', 18 * 3600 + 14, 'Check', 'Untrusted location = ms::LatLon(10.0, 20.0) 80',
                         level='W'))
         trip = analyse(('app.log', log)).trips[0]
@@ -321,7 +322,9 @@ class ReportTest(unittest.TestCase):
                                    'since the line before' % (trip.start + 10_000))
         box = next(line for line in lines if line.startswith('Box: '))
         self.assertIn('bf=9B (IMU_OK BIAS_OK FWD_OK OBD_OK MOUNT_MOVED)*', box)
-        self.assertIn('snapwhy=ANGLE*', next(line for line in lines if line.startswith('Road matching: ')))
+        road = next(line for line in lines if line.startswith('Road matching: '))
+        self.assertIn('snapwhy=ANGLE*', road)
+        self.assertIn('wait=12*', road)
         self.assertFalse(any(line.startswith('Other: ') for line in lines))
         self.assertIn('    +2 s W gps/untrusted location: Untrusted location = ms::LatLon(10.0, 20.0) 80', lines)
         # The TRIP and sensor lines are left out of the log lines.
