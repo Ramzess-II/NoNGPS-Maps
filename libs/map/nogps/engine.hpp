@@ -349,6 +349,7 @@ private:
   /// Shows the car where it was left before the app was closed: it is not known otherwise until GPS or the user
   /// tells it.
   void RestoreCarPosition();
+  void StartInertialAtMark();
   void StartInertialNavigation();
   /// The box searched for has sent its data: it is set up.
   void SaveHeardBox();

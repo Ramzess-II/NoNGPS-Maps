@@ -2467,6 +2467,22 @@ UNIT_TEST(NoGps_Engine_SavesSearchedBoxOnceHeard)
   TEST(env.m_storage.IsInertialEnabled(), ());
 }
 
+UNIT_TEST(NoGps_Engine_BoxSetUpAtMarkDrivesFromIt)
+{
+  // The car is marked before the box is set up, no GPS comes.
+  Env env(false /* inertial */);
+  env.m_engine.SetManualMode(true);
+  TEST(env.m_engine.PlaceMarkByTap(At(60, 3)), ());
+
+  env.m_engine.SetInertialNavigationEnabled(true);
+  env.ConnectBox();
+  env.Drive(500, 0, 0);
+  env.Drive(3000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_source, PositionSource::Inertial, ());
+  TestAlmostEqualAbs(North(env.Last().m_position), 0, 1);
+  TEST_GREATER(East(env.Last().m_position), 85, ());
+}
+
 UNIT_TEST(NoGps_Engine_SearchedBoxIsForgotten)
 {
   Env env(false /* inertial */);

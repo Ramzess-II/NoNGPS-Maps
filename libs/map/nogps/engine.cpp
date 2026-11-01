@@ -815,12 +815,15 @@ void Engine::RestoreCarPosition()
   m_lastPositionSource = PositionSource::Manual;
   m_savedCar = saved.substr(0, saved.rfind(','));
   if (m_inertial)
-  {
-    // The car is not put on a road again: it may stand in a yard. Without the heading it looks along its road.
-    if (location.m_bearingDeg)
-      m_inertial->SetHeading(*location.m_bearingDeg, InertialNavigator::HeadingSource::Road);
-    m_inertial->SetPosition(location.m_position);
-  }
+    StartInertialAtMark();
+}
+
+void Engine::StartInertialAtMark()
+{
+  // The car is not put on a road again: it may stand in a yard. Without the heading it looks along its road.
+  if (m_manualLocation->m_bearingDeg)
+    m_inertial->SetHeading(*m_manualLocation->m_bearingDeg, InertialNavigator::HeadingSource::Road);
+  m_inertial->SetPosition(m_manualLocation->m_position);
 }
 
 bool Engine::IsInertialNavigationEnabled() const
@@ -1042,6 +1045,10 @@ void Engine::StartInertialNavigation()
     InertialNavigator::Listener & listener = *this;
     m_inertial = std::make_unique<InertialNavigator>(m_delegate, m_scheduler, m_clock, m_storage,
                                                      m_map.GetRoads(true /* matchRoute */), listener);
+    // The box set up while the car stands at a mark drives it from there: the manual mode gives it no GPS position
+    // to start from, and the mark would stand still while the car drives.
+    if (m_manualMode && m_manualLocation)
+      StartInertialAtMark();
   }
   m_inertial->Start();
 }
