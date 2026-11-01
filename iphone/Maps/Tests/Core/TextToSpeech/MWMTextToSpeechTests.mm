@@ -252,6 +252,28 @@
   XCTAssertEqual(bcp47ToTwineLanguage(@"yue-Hant-HK"), "yue-HK");
 }
 
+// The mute button in navigation is read back at the next launch, so muting must outlive the app.
+- (void)testMuteIsSaved
+{
+  BOOL const wasEnabled = [MWMTextToSpeech isTTSEnabled];
+  MWMTextToSpeech * tts = [MWMTextToSpeech tts];
+  BOOL const wasActive = tts.active;
+  NSUserDefaults * ud = NSUserDefaults.standardUserDefaults;
+  id const savedActive = [ud objectForKey:@"UserDefaultsTTSActive"];
+  [self addTeardownBlock:^{
+    [MWMTextToSpeech setTTSEnabled:YES];
+    tts.active = wasActive;
+    [MWMTextToSpeech setTTSEnabled:wasEnabled];
+    [ud setObject:savedActive forKey:@"UserDefaultsTTSActive"];
+  }];
+
+  [MWMTextToSpeech setTTSEnabled:YES];
+  tts.active = NO;
+  XCTAssertFalse([ud boolForKey:@"UserDefaultsTTSActive"]);
+  tts.active = YES;
+  XCTAssertTrue([ud boolForKey:@"UserDefaultsTTSActive"]);
+}
+
 - (void)testCurrentVoicePreservesTheAccentInUse
 {
   MWMTextToSpeech * tts = [MWMTextToSpeech tts];
