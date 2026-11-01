@@ -154,6 +154,9 @@ public class MapPanelDragger
   {
     if (!mEnabled)
       return false;
+    // A touch stops a fling, the panel is lifted again by a long press.
+    if (event.getActionMasked() == MotionEvent.ACTION_DOWN)
+      drop();
     final boolean lifted = mLifted;
     mTouchY = event.getRawY();
     switch (event.getActionMasked())
