@@ -18,6 +18,7 @@ final class NoGpsControls: NSObject {
   }
 
   private weak static var shared: NoGpsControls?
+  private static var logFlags = 0
   private static var availableArea = CGRect.zero
 
   private let statusButton = UIButton(type: .custom)
@@ -33,6 +34,7 @@ final class NoGpsControls: NSObject {
   private let shiftBackButton = NoGpsControls.makeButton("chevron.down")
   private let reverseButton = NoGpsControls.makeButton("arrow.triangle.2.circlepath")
   private let switchMarkButton = NoGpsControls.makeButton("arrow.left.arrow.right")
+  private let flagButton = NoGpsControls.makeButton("flag.fill")
   private let manualButton = NoGpsControls.makeButton("hand.point.up.left")
   private var statusTop = NSLayoutConstraint()
   private var statusCenterX = NSLayoutConstraint()
@@ -105,18 +107,22 @@ final class NoGpsControls: NSObject {
     shiftBackButton.addTarget(self, action: #selector(shiftBack), for: .touchUpInside)
     reverseButton.addTarget(self, action: #selector(reverseDirection), for: .touchUpInside)
     switchMarkButton.addTarget(self, action: #selector(switchMark), for: .touchUpInside)
+    flagButton.addTarget(self, action: #selector(flagLog), for: .touchUpInside)
     manualButton.addTarget(self, action: #selector(toggleMarkByTap), for: .touchUpInside)
     shiftForwardButton.accessibilityLabel = L("nogps_shift_forward")
     shiftBackButton.accessibilityLabel = L("nogps_shift_back")
     reverseButton.accessibilityLabel = L("nogps_reverse_direction")
     switchMarkButton.accessibilityLabel = L("nogps_switch_mark")
     manualButton.accessibilityLabel = L("nogps_manual_position")
+    // For the testers only, no string for it.
+    flagButton.isAccessibilityElement = false
 
     buttons.axis = .vertical
     buttons.alignment = .center
     buttons.spacing = MapControlsPanel.groupGap
     buttons.translatesAutoresizingMaskIntoConstraints = false
-    let items = [shiftForwardButton, shiftStepButton, shiftBackButton, reverseButton, switchMarkButton, manualButton]
+    let items = [shiftForwardButton, shiftStepButton, shiftBackButton, reverseButton, switchMarkButton, flagButton,
+                 manualButton]
     for item in items {
       buttons.addArrangedSubview(item)
     }
@@ -227,13 +233,10 @@ final class NoGpsControls: NSObject {
     buttonsHidden = [shiftForwardButton: !shifts, shiftStepButton: !shifts, shiftBackButton: !shifts,
                      reverseButton: !status.movedByHand,
                      switchMarkButton: !(status.movedByHand && status.otherMarks > 0),
+                     flagButton: !Settings.isFileLoggingEnabled(),
                      manualButton: !canMark]
-    // The car is corrected by hand only while the box drives it: GPS does otherwise, see the GPS sheet.
-    if !status.gpsDisabled {
-      buttonsHidden = buttonsHidden.mapValues { _ in true }
-    }
     hasButtons = buttonsHidden.values.contains(false)
-    // Nothing to correct, e.g. with GPS: the panel slides out as it is, its buttons are hidden after that.
+    // Nothing to correct: the panel slides out as it is, its buttons are hidden after that.
     if hasButtons || !isPanelShown {
       applyButtonsHidden()
     }
@@ -361,6 +364,15 @@ final class NoGpsControls: NSObject {
     case "PENDING": return L("nogps_firmware_error_pending")
     default: return String(format: L("nogps_firmware_error_code"), code)
     }
+  }
+
+  /// The log of a test drive is analysed afterwards: the tester marks the moments the car was shown wrong at.
+  @objc
+  private func flagLog() {
+    Self.logFlags += 1
+    LOG(.info, "FLAG \(Self.logFlags)")
+    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    Toast.show(withText: "\u{2691} \(Self.logFlags)")
   }
 
   @objc
