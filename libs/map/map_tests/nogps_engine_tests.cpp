@@ -810,6 +810,88 @@ UNIT_TEST(NoGps_Engine_StopsCarThatLeftRoads)
   TEST_GREATER(East(env.Last().m_position), 300, ());
 }
 
+// A road going east bends to the north at 0: its piece up to 17 m east goes 35 degrees off the east, a car going
+// straight leaves it there. From 30 m north on it goes north at 20 m east.
+PieceRoads RoadBendingNorth()
+{
+  return PieceRoads({{-35'000, 0, 0, 0}, {0, 0, 14.3, 10}, {14.3, 10, 20, 30}, {20, 30, 20, 1000}}, {});
+}
+
+// The car marked |wayM| before the bend drives east without a known place until its mark comes to the bend, ahead of
+// the car: it leaves the road there, and waits or is lost.
+void DriveMarkToBend(Env & env, double wayM)
+{
+  MarkCar(env, -wayM);
+  env.Drive(std::llround((wayM - 300) / 30 * 1000), 108, 0);
+  for (int i = 0; i < 60 && TripField(env, "wait") == "-" && !env.m_delegate.HasEvent(Event::RoadLost); ++i)
+    env.Drive(1000, 36, 0);
+}
+
+UNIT_TEST(NoGps_Engine_MarkAheadWaitsAtBendForCar)
+{
+  auto roads = RoadBendingNorth();
+  Env env(true /* inertial */, &roads);
+  // After 30 km the mark may be 225 m ahead: it waits on its road before the bend.
+  DriveMarkToBend(env, 30'000);
+  TEST_NOT_EQUAL(TripField(env, "wait"), "-", ());
+  TEST_EQUAL(TripField(env, "road"), "1", ());
+  auto const waiting = env.Last().m_position;
+  TEST_LESS(East(waiting), 0.5, ());
+  TEST_GREATER(East(waiting), -15, ());
+  TestAlmostEqualAbs(North(waiting), 0, 0.5);
+  // The car is 150 m behind the mark: it drives straight to the bend, the mark waits.
+  env.Drive(14'000, 36, 0);
+  TestAlmostEqualAbs(Distance(env.Last().m_position, waiting), 0, 0.01);
+  TEST_GREATER(std::stoi(TripField(env, "wait")), 140, ());
+  // The car turns along the bend: the mark goes on from where it waited and is on the road going north.
+  env.Drive(3000, 36, -30);
+  env.Drive(5000, 36, 0);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), ());
+  TEST_EQUAL(TripField(env, "wait"), "-", ());
+  TEST_EQUAL(TripField(env, "road"), "1", ());
+  TestAlmostEqualAbs(East(env.Last().m_position), 20, 1);
+  // The car has driven 80 m from the bend along the road.
+  TestAlmostEqualAbs(North(env.Last().m_position), 30 + 80 - 38, 20);
+  TestAlmostEqualAbs(AngleDiff(*env.Last().m_bearingDeg, 0), 0, 5);
+}
+
+UNIT_TEST(NoGps_Engine_MarkAheadWaitsNotFartherThanItMayBeAhead)
+{
+  auto roads = RoadBendingNorth();
+  Env env(true /* inertial */, &roads);
+  DriveMarkToBend(env, 30'000);
+  auto const waiting = env.Last().m_position;
+  // The car drives straight on past the bend: it is lost where it left the road when it has driven the 225 m the mark
+  // may be ahead.
+  env.Drive(20'000, 36, 0);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), ());
+  TEST_GREATER(std::stoi(TripField(env, "wait")), 200, ());
+  env.Drive(20'000, 36, 0);
+  TEST(env.m_delegate.HasEvent(Event::RoadLost), ());
+  TEST_EQUAL(TripField(env, "lost"), "1", ());
+  TEST_EQUAL(TripField(env, "wait"), "-", ());
+  TestAlmostEqualAbs(Distance(env.Last().m_position, waiting), 0, 0.01);
+}
+
+UNIT_TEST(NoGps_Engine_MarkAfterShortWayDoesNotWaitLong)
+{
+  for (double const wayM : {4000.0, 1000.0})
+  {
+    auto roads = RoadBendingNorth();
+    Env env(true /* inertial */, &roads);
+    // After 4 km the mark may be 43 m ahead: it waits that long. After 1 km 22 m, less than a car off the roads drives
+    // before it is lost: it does not wait.
+    DriveMarkToBend(env, wayM);
+    TEST_EQUAL(TripField(env, "wait") != "-", wayM > 2000, (wayM));
+    env.Drive(15'000, 36, 0);
+    TEST(env.m_delegate.HasEvent(Event::RoadLost), (wayM));
+    // Stopped where it was on the road the last time.
+    TEST_LESS(East(env.Last().m_position), 0.5, (wayM));
+    TEST_GREATER(East(env.Last().m_position), -15, (wayM));
+    TestAlmostEqualAbs(North(env.Last().m_position), 0, 0.5);
+  }
+}
+
 UNIT_TEST(NoGps_Engine_MarkLooksAlongRoadWhateverGyroscopeCounted)
 {
   // The street going east, a street going north crosses it at -100 m.

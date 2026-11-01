@@ -181,7 +181,8 @@ const GROUPS = [
   ['Box', ['obd', 'link', 'box', 'bf', 'fw', 'ota', 'speed', 'sage']],
   ['Inertial', ['gyro', 'hdg', 'scale', 'table', 'rough', 'lag', 'boxacc', 'phoneacc', 'turn', 'odo', 'offm', 'offv',
                 'back', 'turning', 'ready', 'ring']],
-  ['Road matching', ['road', 'lost', 'snap', 'snapwhy', 'rdiff', 'cand', 'fix', 'self', 'car', 'marks', 'others']],
+  ['Road matching', ['road', 'lost', 'snap', 'snapwhy', 'wait', 'rdiff', 'cand', 'fix', 'self', 'car', 'marks',
+                     'others']],
 ];
 // What the fields of the TRIP line are, see Engine::GetTripLine() in libs/map/nogps/engine.cpp.
 const HINTS = {
@@ -202,6 +203,7 @@ const HINTS = {
   offm: 'Meters off the roads', offv: 'Max speed off the roads, km/h', back: 'Driving backward by the accelerometer',
   turning: 'A turn is followed to its crossing', ready: 'Inertial navigation is ready', ring: 'At a roundabout',
   road: 'On a road', lost: 'The road is lost', snap: 'Shift of the last snap, m', snapwhy: 'What the last look for a road gave',
+  wait: 'Driven while the mark waits ahead at a bend, m',
   rdiff: 'How much to the right of the road the car looks, °', cand: 'Along the road a maneuvering car is put, m',
   fix: 'Meters since the last fix', self: 'The car is followed apart off the roads', car: 'Where the car followed apart is',
   marks: 'Marks shown: the car may be on several roads', others: 'The other marks',

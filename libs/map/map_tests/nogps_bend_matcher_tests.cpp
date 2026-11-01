@@ -182,4 +182,21 @@ UNIT_TEST(NoGps_BendMatcher_TellsNothingWhenErrorIsLarger)
   auto const matcher = Drive(road, 440, {});
   TEST(!Match(matcher, road, 540), ());
 }
+
+UNIT_TEST(NoGps_BendMatcher_RotationOfLastMeters)
+{
+  BendMatcher matcher;
+  for (int i = 0; i < 40; ++i)
+    matcher.OnMotion(0, 1);
+  // Not known until the car has driven that far.
+  TEST(!matcher.GetRotationDeg(50), ());
+  for (int i = 0; i < 20; ++i)
+    matcher.OnMotion(-1, 1);
+  TEST_ALMOST_EQUAL_ABS(*matcher.GetRotationDeg(50), -20.0, 1e-6, ());
+  for (int i = 0; i < 40; ++i)
+    matcher.OnMotion(0, 1);
+  TEST_ALMOST_EQUAL_ABS(*matcher.GetRotationDeg(50), -10.0, 1e-6, ());
+  matcher.Reset();
+  TEST(!matcher.GetRotationDeg(50), ());
+}
 }  // namespace nogps_bend_matcher_tests

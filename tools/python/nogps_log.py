@@ -747,7 +747,8 @@ STATE_GROUPS = [
     ('Box', ['obd', 'link', 'box', 'bf', 'fw', 'ota', 'speed', 'sage']),
     ('Inertial', ['gyro', 'hdg', 'scale', 'table', 'rough', 'lag', 'boxacc', 'phoneacc', 'turn', 'odo', 'offm', 'offv',
                   'back', 'turning', 'ready', 'ring']),
-    ('Road matching', ['road', 'lost', 'snap', 'snapwhy', 'rdiff', 'cand', 'fix', 'self', 'car', 'marks', 'others']),
+    ('Road matching', ['road', 'lost', 'snap', 'snapwhy', 'wait', 'rdiff', 'cand', 'fix', 'self', 'car', 'marks',
+                       'others']),
 ]
 # Fields that change every second: not marked as changed.
 MOVING_FIELDS = {'lat', 'lon', 'gps_lat', 'gps_lon', 'fused_lat', 'fused_lon', 'age', 'gps_age', 'fused_age', 'odo',
