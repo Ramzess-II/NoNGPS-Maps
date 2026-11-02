@@ -7,6 +7,7 @@ enum SettingsScreen {
   case appearance
   case voiceInstructions
   case mapTiles
+  case noGpsFlags
 }
 
 @objcMembers
@@ -55,6 +56,8 @@ final class SettingsBuilder: NSObject {
       return buildTTSSettings()
     case .mapTiles:
       return buildMapTiles()
+    case .noGpsFlags:
+      return NoGpsFlagsViewController()
     }
   }
 

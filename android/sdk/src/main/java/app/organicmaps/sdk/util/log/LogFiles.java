@@ -4,9 +4,12 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import java.io.File;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 
@@ -38,6 +41,27 @@ final class LogFiles
   {
     final String name = "log-" + new SimpleDateFormat("dd-MM-yy", Locale.US).format(day) + "-" + phoneId;
     return part == 0 ? name + ".log" : name + "." + part + ".log";
+  }
+
+  /// The files of the days, "dd-MM-yy": all their parts, of another phone id too.
+  @NonNull
+  static List<String> ofDays(@NonNull String[] names, @NonNull Collection<String> days)
+  {
+    final List<String> files = new ArrayList<>();
+    for (String name : names)
+    {
+      if (!name.endsWith(".log"))
+        continue;
+      for (String day : days)
+      {
+        if (name.startsWith("log-" + day + "-"))
+        {
+          files.add(name);
+          break;
+        }
+      }
+    }
+    return files;
   }
 
   /// Deletes the oldest files of the folder until all of them together take at most maxTotalSize.

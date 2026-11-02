@@ -74,6 +74,13 @@
       app:singleLineTitle="false"
       android:summary="@string/enable_logging_warning_message"
       android:defaultValue="false"
+      android:order="11" />
+    <!-- Shown while logging to a file is on, as the flag button on the map. -->
+    <Preference
+      android:key="@string/pref_nogps_flags"
+      android:title="@string/nogps_flags_send_title"
+      app:singleLineTitle="false"
+      app:isPreferenceVisible="false"
       android:order="12" />
     <SwitchPreferenceCompat
       android:key="@string/pref_emulate_bad_external_storage"

@@ -44151,6 +44151,13 @@ en = The sensor box in the car gives the turns and the speed of the car over Blu
 ru = Блок датчиков в машине передаёт повороты и скорость машины по Bluetooth.
 uk = Блок датчиків у машині передає повороти та швидкість машини через Bluetooth.
 
+[NSMicrophoneUsageDescription]
+comment = Needed to explain why we require access to the microphone: a tester records a voice note to a flag of a test drive.
+tags = apple-infoplist
+en = A tester holds the flag on the map to record a voice note about the test drive.
+ru = Тестировщик удерживает флаг на карте, чтобы записать голосовую заметку о тестовой поездке.
+uk = Тестувальник утримує прапорець на мапі, щоб записати голосову нотатку про тестову поїздку.
+
 [login_osm_credentials]
 comment = Login to OSM button text
 tags = apple-maps
@@ -45722,6 +45729,62 @@ tags = android-app,apple-maps
 en = Flag %1$d is in the log at %2$@
 ru = Флаг %1$d записан в журнал в %2$@
 uk = Прапорець %1$d записано в журнал о %2$@
+
+[nogps_flag_recording]
+comment = Toast while the tester holds the flag button: a voice note to the flag is recorded until the finger is lifted
+tags = android-app,apple-maps
+en = Recording a voice note. Release the flag to stop.
+ru = Идёт запись голосовой заметки. Отпустите флаг, чтобы остановить.
+uk = Триває запис голосової нотатки. Відпустіть прапорець, щоб зупинити.
+
+[nogps_flag_mic_denied]
+comment = Toast: the tester held the flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice.
+tags = android-app,apple-maps
+en = The flag is saved without a voice note: allow the microphone in the system settings.
+ru = Флаг сохранён без голосовой заметки: разрешите микрофон в настройках системы.
+uk = Прапорець збережено без голосової нотатки: дозвольте мікрофон у налаштуваннях системи.
+
+[nogps_flags_send_title]
+comment = Settings row and screen title: the list of the flags saved in test drives, to send them to the developers by email
+tags = android-app,apple-maps
+en = Send flags
+ru = Отправить флаги
+uk = Надіслати прапорці
+
+[nogps_flags_send]
+comment = Button: send the ticked flags of test drives by email
+tags = android-app,apple-maps
+en = Send
+ru = Отправить
+uk = Надіслати
+
+[nogps_flags_empty]
+comment = The list of the flags of test drives is empty
+tags = android-app,apple-maps
+en = No flags yet. In a test drive, tap the flag on the map where the car is shown wrong.
+ru = Флагов пока нет. В тестовой поездке нажмите флаг на карте, когда машина показана не там.
+uk = Прапорців ще немає. У тестовій поїздці натисніть прапорець на мапі, коли машину показано не там.
+
+[nogps_flag_voice]
+comment = In the list of the flags of test drives: the length of the voice note of a flag, in seconds
+tags = android-app,apple-maps
+en = Voice note %d s
+ru = Голосовая заметка %d с
+uk = Голосова нотатка %d с
+
+[nogps_flag_sent]
+comment = In the list of the flags of test drives: the flag has been sent by email already
+tags = android-app,apple-maps
+en = Sent
+ru = Отправлен
+uk = Надіслано
+
+[nogps_flags_too_big]
+comment = Alert before the flags are sent: the attachments take more than the limit, a mail server may refuse the mail. The first value is the size, e.g. 25 MB, the second one the limit in MB.
+tags = android-app,apple-maps
+en = The files take %1$@, a mail over %2$d MB may not go through. Send anyway?
+ru = Файлы занимают %1$@, письмо больше %2$d МБ может не дойти. Всё равно отправить?
+uk = Файли займають %1$@, лист понад %2$d МБ може не дійти. Усе одно надіслати?
 
 [nogps_mark_by_tap]
 comment = The user has pressed the button to show on the map where the car is

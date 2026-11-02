@@ -10,6 +10,8 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Collection;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -23,12 +25,16 @@ class ZipLogsTask implements Runnable
   private final String mZipPath;
   @Nullable
   private final LogsManager.OnZipCompletedListener mOnCompletedListener;
+  // Only the daily files of these days, "dd-MM-yy", without the logcat. All files when null.
+  @Nullable
+  private final Collection<String> mDays;
 
-  ZipLogsTask(@NonNull String logsPath, @NonNull String zipPath,
+  ZipLogsTask(@NonNull String logsPath, @NonNull String zipPath, @Nullable Collection<String> days,
               @NonNull LogsManager.OnZipCompletedListener onCompletedListener)
   {
     mLogsPath = logsPath;
     mZipPath = zipPath;
+    mDays = days;
     mOnCompletedListener = onCompletedListener;
   }
 
@@ -38,7 +44,8 @@ class ZipLogsTask implements Runnable
     // Drain the queue so pending lines are on disk, capture the system logcat (a separate file),
     // then zip while the file writer is locked so no append or rotation races with reading.
     Logger.flushFileLogs();
-    saveSystemLogcat(mLogsPath);
+    if (mDays == null)
+      saveSystemLogcat(mLogsPath);
     final boolean[] success = new boolean[1];
     Logger.runExclusively(() -> success[0] = zipFileAtPath(mLogsPath, mZipPath));
     if (mOnCompletedListener != null)
@@ -68,6 +75,16 @@ class ZipLogsTask implements Runnable
     File[] fileList = folder.listFiles();
     if (fileList == null)
       throw new IOException("Can't get files list of " + folder.getPath());
+    if (mDays != null)
+    {
+      final String[] names = new String[fileList.length];
+      for (int i = 0; i < fileList.length; ++i)
+        names[i] = fileList[i].getName();
+      final List<String> picked = LogFiles.ofDays(names, mDays);
+      fileList = new File[picked.size()];
+      for (int i = 0; i < fileList.length; ++i)
+        fileList[i] = new File(folder, picked.get(i));
+    }
 
     for (File file : fileList)
     {

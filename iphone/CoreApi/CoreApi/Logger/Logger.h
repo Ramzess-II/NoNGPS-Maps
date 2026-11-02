@@ -17,6 +17,8 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 + (void)setFileLoggingEnabled:(BOOL)fileLoggingEnabled;
 + (nullable NSURL *)getLogFileURL;
 + (uint64_t)getLogFileSize;
+/// Zips the log files whose names pass the test, nil when none does.
++ (nullable NSURL *)zipLogFilesPassingTest:(BOOL (^)(NSString * name))test NS_SWIFT_NAME(zipLogFiles(passingTest:));
 
 @end
 

@@ -114,7 +114,7 @@ final class RootSettingsPresenter {
   }
 
   private func generalItems(_ state: RootSettingsState) -> [RootSettingsItemViewModel] {
-    [
+    var items: [RootSettingsItemViewModel] = [
       SettingsItemViewModel(setting: .appearance,
                             detail: state.theme.title,
                             kind: .link),
@@ -128,6 +128,11 @@ final class RootSettingsPresenter {
                             detail: logFileDetail(state.logFileSize),
                             kind: .switcher(isOn: state.fileLoggingEnabled, isEnabled: true)),
     ]
+    // As the flag button on the map: the flags of test drives are kept while logging to a file is on.
+    if state.fileLoggingEnabled {
+      items.append(SettingsItemViewModel(setting: .noGpsFlags, kind: .link))
+    }
+    return items
   }
 
   private func mapItems(_ state: RootSettingsState) -> [RootSettingsItemViewModel] {

@@ -296,6 +296,8 @@ def allowedPermissions = [
     "name='android.permission.POST_NOTIFICATIONS'",
     // wake lock
     "name='android.permission.WAKE_LOCK'",
+    // the voice notes of the flags of test drives
+    "name='android.permission.RECORD_AUDIO'",
     // ELM327 OBD-II adapter and the ESP32 sensor box
     "name='android.permission.BLUETOOTH' maxSdkVersion='30'",
     "name='android.permission.BLUETOOTH_CONNECT'",

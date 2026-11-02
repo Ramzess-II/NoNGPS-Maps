@@ -25,6 +25,8 @@ import app.organicmaps.sdk.util.StorageUtils;
 import app.organicmaps.sdk.util.log.Logger;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SharingUtils
 {
@@ -232,6 +234,36 @@ public class SharingUtils
     }
 
     launcher.launch(sharingIntent);
+  }
+
+  /**
+   * Opens a mail app, or another one the user picks, with the files attached.
+   */
+  public static void sendFiles(@NonNull Context context, @NonNull String mail, @NonNull String subject,
+                               @NonNull String text, @NonNull List<File> files)
+  {
+    final Intent intent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+    intent.setType("*/*");
+    intent.putExtra(Intent.EXTRA_EMAIL, new String[] {mail});
+    intent.putExtra(Intent.EXTRA_SUBJECT, subject);
+    intent.putExtra(Intent.EXTRA_TEXT, text);
+    final ArrayList<Uri> uris = new ArrayList<>();
+    ClipData clip = null;
+    for (File file : files)
+    {
+      final Uri uri =
+          FileProvider.getUriForFile(context.getApplicationContext(), BuildConfig.FILE_PROVIDER_AUTHORITY, file);
+      uris.add(uri);
+      if (clip == null)
+        clip = ClipData.newRawUri(file.getName(), uri);
+      else
+        clip.addItem(new ClipData.Item(uri));
+    }
+    intent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+    // As in shareFile(): the chooser grants the read permission of the ClipData only.
+    intent.setClipData(clip);
+    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+    context.startActivity(Intent.createChooser(intent, context.getString(R.string.share)));
   }
 
   public static void shareBookmarkFile(Context context, ActivityResultLauncher<SharingIntent> launcher, String fileName,

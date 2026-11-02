@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.GregorianCalendar;
 import java.util.Random;
 import org.junit.Rule;
@@ -40,6 +41,23 @@ public class LogFileNameTest
   {
     final String id = LogFiles.makePhoneId("SM-S918B", new Random(1));
     assertTrue(id, id.matches("SM_S918B-[0-9a-f]{4}"));
+  }
+
+  @Test
+  public void ofDays_takesEveryPartAndPhoneOfTheDays()
+  {
+    final String[] names = {"log-02-11-26-Pixel_7-a3f9.log",
+                            "log-02-11-26-Pixel_7-a3f9.1.log",
+                            "log-02-11-26-SM_S918B-0b12.log",
+                            "log-01-11-26-Pixel_7-a3f9.log",
+                            "log-03-11-26-Pixel_7-a3f9.log",
+                            "logcat.log",
+                            "app.log"};
+    assertEquals(Arrays.asList("log-02-11-26-Pixel_7-a3f9.log", "log-02-11-26-Pixel_7-a3f9.1.log",
+                               "log-02-11-26-SM_S918B-0b12.log"),
+                 LogFiles.ofDays(names, Collections.singleton("02-11-26")));
+    assertEquals(Arrays.asList("log-01-11-26-Pixel_7-a3f9.log", "log-03-11-26-Pixel_7-a3f9.log"),
+                 LogFiles.ofDays(names, Arrays.asList("03-11-26", "01-11-26")));
   }
 
   @Test

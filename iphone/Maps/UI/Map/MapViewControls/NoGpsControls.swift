@@ -17,10 +17,13 @@ final class NoGpsControls: NSObject {
     static let blinkOpacity = Float(0.2)
     static let noneColor = UIColor(red: 0xD3 / 255, green: 0x2F / 255, blue: 0x2F / 255, alpha: 1)
     static let panelPlaceKey = "NoGpsLeftPanelY"
+    /// Of a flag screenshot: the street names stay readable, the png stays small for the mail.
+    static let screenshotScale = CGFloat(2)
   }
 
   private weak static var shared: NoGpsControls?
   private static var logFlags = 0
+  private static var lastFlag = ""
   private static var availableArea = CGRect.zero
 
   private let statusButton = UIButton(type: .custom)
@@ -46,6 +49,7 @@ final class NoGpsControls: NSObject {
   private var timer: Timer?
   private weak var calibrationAlert: UIAlertController?
   private weak var firmwareAlert: UIAlertController?
+  private let flagRecorder = NoGpsFlagRecorder()
 
   @objc
   init(owner: MapViewController) {
@@ -57,6 +61,7 @@ final class NoGpsControls: NSObject {
     RunLoop.main.add(timer, forMode: .common)
     self.timer = timer
     NotificationCenter.default.addObserver(self, selector: #selector(onEvent), name: NoGps.eventNotification, object: nil)
+    NoGpsFlags.deleteExpired()
   }
 
   deinit {
@@ -111,6 +116,7 @@ final class NoGpsControls: NSObject {
     reverseButton.addTarget(self, action: #selector(reverseDirection), for: .touchUpInside)
     switchMarkButton.addTarget(self, action: #selector(switchMark), for: .touchUpInside)
     flagButton.addTarget(self, action: #selector(flagLog), for: .touchUpInside)
+    flagButton.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(flagHeld)))
     manualButton.addTarget(self, action: #selector(toggleMarkByTap), for: .touchUpInside)
     shiftForwardButton.accessibilityLabel = L("nogps_shift_forward")
     shiftBackButton.accessibilityLabel = L("nogps_shift_back")
@@ -154,6 +160,7 @@ final class NoGpsControls: NSObject {
                               travel: { [weak self] in self?.panelTravel ?? 0 },
                               onLift: { [weak self] in self?.panel.isLifted = $0 },
                               onMove: { [weak self] in self?.updateLayout() })
+    dragger?.excludedViews = [flagButton]
     updateLayout()
   }
 
@@ -383,18 +390,66 @@ final class NoGpsControls: NSObject {
     }
   }
 
-  /// The log of a test drive is analysed afterwards: the tester marks the moments the car was shown wrong at.
+  /// The log of a test drive is analysed afterwards: the tester marks the moments the car was shown wrong at. The flag
+  /// is kept with a screenshot to be sent from the settings, see NoGpsFlags.
   @objc
   private func flagLog() {
+    saveFlag(toast: true)
+  }
+
+  /// Holding the flag records a voice note to it while the finger is down.
+  @objc
+  private func flagHeld(_ gesture: UILongPressGestureRecognizer) {
+    switch gesture.state {
+    case .began:
+      switch NoGpsFlagRecorder.checkPermission() {
+      case .granted:
+        let name = saveFlag(toast: false)
+        if flagRecorder.start(name) {
+          Toast.show(withText: L("nogps_flag_recording"))
+        }
+      case .denied:
+        saveFlag(toast: false)
+        Toast.show(withText: L("nogps_flag_mic_denied"))
+      case .asked:
+        saveFlag(toast: true)
+      }
+    case .ended, .cancelled, .failed:
+      flagRecorder.stop()
+    default:
+      break
+    }
+  }
+
+  @discardableResult
+  private func saveFlag(toast: Bool) -> String {
+    // The files of a flag are named by the second: a second flag in it, or a hold after a tap, is the same moment.
+    let name = NoGpsFlags.name(of: Date())
+    guard name != Self.lastFlag else { return name }
+    Self.lastFlag = name
+    // Before the toast covers the map.
+    let screenshot = takeScreenshot()
     Self.logFlags += 1
     LOG(.info, "FLAG \(Self.logFlags)")
     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-    // As the trip log tools take a time, not in a 12-hour format of the locale.
-    let formatter = DateFormatter()
-    formatter.locale = Locale(identifier: "en_US_POSIX")
-    formatter.dateFormat = "HH:mm:ss"
-    let time = formatter.string(from: Date())
-    Toast.show(withText: String(format: L("nogps_log_flag"), Self.logFlags, time))
+    let location = LocationManager.lastLocation()
+    let flag = NoGpsFlag(name: name, number: Self.logFlags,
+                         lat: location?.coordinate.latitude, lon: location?.coordinate.longitude)
+    NoGpsFlags.add(flag, screenshot: screenshot)
+    if toast {
+      Toast.show(withText: String(format: L("nogps_log_flag"), Self.logFlags, NoGpsFlags.time(of: flag.name)))
+    }
+    return flag.name
+  }
+
+  /// The app as the tester sees it. The map is a Metal layer: drawHierarchy takes it, a layer render would not.
+  private func takeScreenshot() -> UIImage? {
+    guard let window = buttons.window else { return nil }
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = min(window.screen.scale, Constants.screenshotScale)
+    return UIGraphicsImageRenderer(bounds: window.bounds, format: format).image { _ in
+      window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)
+    }
   }
 
   @objc

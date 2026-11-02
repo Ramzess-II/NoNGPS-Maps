@@ -23,6 +23,7 @@ import app.organicmaps.background.OsmUploadWork;
 import app.organicmaps.downloader.DownloaderNotifier;
 import app.organicmaps.location.NoGpsBoxService;
 import app.organicmaps.location.TrackRecordingService;
+import app.organicmaps.nogps.NoGpsFlags;
 import app.organicmaps.routing.NavigationService;
 import app.organicmaps.sdk.Map;
 import app.organicmaps.sdk.OrganicMaps;
@@ -146,6 +147,7 @@ public class MwmApplication extends Application implements Application.ActivityL
     });
     TrackRecordingService.createNotificationChannel(this);
     NoGpsBoxService.createNotificationChannel(this);
+    NoGpsFlags.deleteExpired(this);
     // Reset the widget in case the process was killed while recording.
     TrackRecordingWidget.update(this);
 

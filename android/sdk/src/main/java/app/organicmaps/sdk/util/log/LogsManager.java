@@ -24,6 +24,7 @@ import app.organicmaps.sdk.util.StringUtils;
 import java.io.File;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Locale;
 import java.util.Random;
@@ -239,6 +240,15 @@ public final class LogsManager
    */
   public synchronized void zipLogs(@NonNull OnZipCompletedListener listener)
   {
+    zipLogs(null, listener);
+  }
+
+  /**
+   * @param days only the daily files of these days, "dd-MM-yy", all files when null.
+   * NOTE: initFileLogging() must be called before.
+   */
+  public synchronized void zipLogs(@Nullable Collection<String> days, @NonNull OnZipCompletedListener listener)
+  {
     assertFileLoggingInit();
 
     if (ensureLogsFolder() == null)
@@ -249,7 +259,7 @@ public final class LogsManager
     }
 
     Log.i(TAG, "Zipping log files in " + mLogsFolder);
-    final Runnable task = new ZipLogsTask(mLogsFolder, mLogsFolder + ".zip", listener);
+    final Runnable task = new ZipLogsTask(mLogsFolder, mLogsFolder + ".zip", days, listener);
     TASK_EXECUTOR.execute(task);
   }
 

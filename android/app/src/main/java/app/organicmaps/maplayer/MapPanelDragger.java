@@ -103,6 +103,10 @@ public class MapPanelDragger
   private float mFraction;
   private boolean mEnabled = true;
   private boolean mLifted;
+  // A button with its own long press: a touch on it does not lift the panel.
+  @Nullable
+  private View mExcluded;
+  private boolean mTouchExcluded;
   // In dp from the top of the travel.
   private float mY;
   // dp/s.
@@ -136,6 +140,11 @@ public class MapPanelDragger
       stop();
   }
 
+  void exclude(@Nullable View button)
+  {
+    mExcluded = button;
+  }
+
   /**
    * Puts the panel down where it is.
    */
@@ -156,7 +165,12 @@ public class MapPanelDragger
       return false;
     // A touch stops a fling, the panel is lifted again by a long press.
     if (event.getActionMasked() == MotionEvent.ACTION_DOWN)
+    {
       drop();
+      mTouchExcluded = isOver(mExcluded, event);
+    }
+    if (mTouchExcluded)
+      return false;
     final boolean lifted = mLifted;
     mTouchY = event.getRawY();
     switch (event.getActionMasked())
@@ -188,6 +202,17 @@ public class MapPanelDragger
       break;
     }
     return lifted;
+  }
+
+  private static boolean isOver(@Nullable View view, @NonNull MotionEvent event)
+  {
+    if (view == null || view.getVisibility() != View.VISIBLE)
+      return false;
+    final int[] place = new int[2];
+    view.getLocationOnScreen(place);
+    final float x = event.getRawX() - place[0];
+    final float y = event.getRawY() - place[1];
+    return x >= 0 && y >= 0 && x < view.getWidth() && y < view.getHeight();
   }
 
   // The panel moves under the finger: the speed is taken on the screen.
