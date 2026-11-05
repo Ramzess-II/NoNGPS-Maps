@@ -235,6 +235,8 @@ def make_input(args):
     fix_ms = None
     # The last GPS position given and the number of the TRIP line it is from.
     last_fix = None
+    # GPS changed or the application started anew while the car stood: GPS did not go on as it was.
+    breaks = sorted([ms for ms, text, _ in others if text.startswith('GPS signal ')] + started)
     for k, f in enumerate(trips):
         value = f.get('gps')
         if not value or f.get('spoofed') == '1':
@@ -267,7 +269,8 @@ def make_input(args):
         # A standing car is written once in STAND_TRIP_MS: GPS has given the same position every second meanwhile,
         # a pause would be GPS lost.
         if (last_fix and last_fix[1] == k - 1 and 1500 < f['ms'] - trips[k - 1]['ms'] <= STAND_TRIP_MS and
-                not moves_by(trips[k - 1])):
+                not moves_by(trips[k - 1]) and
+                bisect.bisect_right(breaks, trips[k - 1]['ms']) == bisect.bisect_left(breaks, f['ms'])):
             fill = last_fix[0] + 1000
             while fill < at - 500:
                 actions.append((fill, 4, 'G %d %s' % (round(fill), last_fix[2]), False))

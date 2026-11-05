@@ -636,8 +636,12 @@ class Trip:
 
     def summary(self):
         sources = {}
-        for row in self.rows:
-            sources[row.get('src', '-')] = sources.get(row.get('src', '-'), 0) + 1
+        # A line stands for the seconds until the next one: a standing car is written once in STAND_TRIP_S.
+        for row, after in zip(self.rows, self.rows[1:] + [None]):
+            seconds = 1
+            if after and not logs_every_second(row):
+                seconds = max(1, min(STAND_TRIP_S, round((after['t'] - row['t']) / 1000)))
+            sources[row.get('src', '-')] = sources.get(row.get('src', '-'), 0) + seconds
         speeds = [x for row in self.rows for x in (num(row, 'speed'), num(row, 'gps_kmh')) if x is not None]
         severities = {}
         for a in self.anomalies:

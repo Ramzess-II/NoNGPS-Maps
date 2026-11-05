@@ -373,25 +373,31 @@ UNIT_TEST(NoGps_Engine_DrivingCarIsSavedSeldom)
   TestAlmostEqualAbs(Distance(after.Last().m_position, env.Last().m_position), 0, 0.1);
 }
 
-/// Counts the TRIP lines of the trip log while it lives.
+/// Counts the TRIP lines of the trip log while it lives, the other messages are logged as before.
 class TripLines
 {
 public:
-  TripLines() : m_saved(base::SetLogMessageFn(&Count)) { s_count = 0; }
-  ~TripLines() { base::SetLogMessageFn(m_saved); }
+  TripLines()
+  {
+    s_count = 0;
+    s_saved = base::SetLogMessageFn(&Count);
+  }
+  ~TripLines() { base::SetLogMessageFn(s_saved); }
 
   /// \returns the lines written since the last call.
   int Take() { return std::exchange(s_count, 0); }
 
 private:
-  static void Count(base::LogLevel, base::SrcPoint const &, std::string const & message)
+  static void Count(base::LogLevel level, base::SrcPoint const & src, std::string const & message)
   {
     if (message.starts_with("TRIP "))
       ++s_count;
+    else
+      s_saved(level, src, message);
   }
 
   static inline int s_count = 0;
-  base::LogMessageFn m_saved;
+  static inline base::LogMessageFn s_saved = nullptr;
 };
 
 // The seconds after a stop are written, but the first one may go by while the speed is old.

@@ -1556,8 +1556,8 @@ void Engine::LogTrip()
   {
     LOG(LINFO, (GetTripLine()));
     m_tripLoggedMs = now;
-    m_positionsBetweenGps = 0;
   }
+  m_positionsBetweenGps = 0;
 
   m_tripLogTimer.Start(kTripLogIntervalMs, [this] { LogTrip(); });
 }

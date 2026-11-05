@@ -460,7 +460,7 @@ private:
   bool m_wasOnRouteRoad = true;
   // When the last position of the platform was shown: the positions between GPS ones go on from it since then.
   int64_t m_fixShownMs = 0;
-  // Positions shown between GPS positions since the last line of the trip log.
+  // Positions shown between GPS positions in the last second, for the trip log.
   int m_positionsBetweenGps = 0;
   // When the last TRIP line was written, and when the car last drove or a state changed, see kTripLogStandTailMs.
   std::optional<int64_t> m_tripLoggedMs;
