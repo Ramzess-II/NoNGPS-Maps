@@ -210,7 +210,6 @@ public class LocationHelper implements BaseLocationProvider.Listener
         cn0 += status.getCn0DbHz(i);
         usedBySystem.merge(status.getConstellationType(i), 1, Integer::sum);
       }
-      Logger.d(TAG, "total = " + status.getSatelliteCount() + " used = " + used);
       mSatellites = new Satellites(used, status.getSatelliteCount(), Collections.unmodifiableMap(usedBySystem),
                                    used > 0 ? cn0 / used : 0);
     }
@@ -344,8 +343,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
   @Override
   public void onLocationChanged(@NonNull Location location)
   {
-    Logger.d(TAG, "provider = " + mLocationProvider.getClass().getSimpleName() + " location = " + location);
-
+    // Not logged: every second, the trip log of the core has the positions while the car moves.
     if (!isActive())
     {
       Logger.w(TAG, "Provider is not active");
