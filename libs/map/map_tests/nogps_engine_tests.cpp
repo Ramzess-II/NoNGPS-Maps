@@ -8,6 +8,7 @@
 #include "map/nogps/speed_table.hpp"
 #include "map/nogps/storage.hpp"
 
+#include "base/logging.hpp"
 #include "base/math.hpp"
 
 #include <algorithm>
@@ -18,6 +19,7 @@
 #include <functional>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace nogps_engine_tests
@@ -369,6 +371,80 @@ UNIT_TEST(NoGps_Engine_DrivingCarIsSavedSeldom)
   Env after(true /* inertial */, nullptr, SavedBy(env));
   after.Drive(500, 0, 0);
   TestAlmostEqualAbs(Distance(after.Last().m_position, env.Last().m_position), 0, 0.1);
+}
+
+/// Counts the TRIP lines of the trip log while it lives, the other messages are logged as before.
+class TripLines
+{
+public:
+  TripLines()
+  {
+    s_count = 0;
+    s_saved = base::SetLogMessageFn(&Count);
+  }
+  ~TripLines() { base::SetLogMessageFn(s_saved); }
+
+  /// \returns the lines written since the last call.
+  int Take() { return std::exchange(s_count, 0); }
+
+private:
+  static void Count(base::LogLevel level, base::SrcPoint const & src, std::string const & message)
+  {
+    if (message.starts_with("TRIP "))
+      ++s_count;
+    else
+      s_saved(level, src, message);
+  }
+
+  static inline int s_count = 0;
+  static inline base::LogMessageFn s_saved = nullptr;
+};
+
+// The seconds after a stop are written, but the first one may go by while the speed is old.
+int constexpr kTailLines = Engine::kTripLogStandTailMs / 1000 - 1;
+
+// Ten intervals of a stand have about ten lines.
+void TestStandLines(int count)
+{
+  TEST_GREATER_OR_EQUAL(count, 9, ());
+  TEST_LESS_OR_EQUAL(count, 11, ());
+}
+
+UNIT_TEST(NoGps_Engine_TripLogIsWrittenWhileCarMoves)
+{
+  {
+    Env env(true /* inertial */);
+    MarkCar(env, 50);
+    TripLines lines;
+    env.Drive(20'000, 36, 0);
+    TEST_GREATER_OR_EQUAL(lines.Take(), 19, ());
+    // After a stop every second still: the car reports its speed late.
+    env.Drive(Engine::kTripLogStandTailMs, 0, 0);
+    TEST_GREATER_OR_EQUAL(lines.Take(), kTailLines, ());
+    // Then seldom: the application runs.
+    env.Drive(10 * Engine::kTripLogStandIntervalMs, 0, 0);
+    TestStandLines(lines.Take());
+    // The box is lost: the state is written every second again.
+    env.m_engine.OnEsp32BleState(BleState::Searching);
+    env.m_clock.Advance(Engine::kTripLogStandTailMs);
+    TEST_GREATER_OR_EQUAL(lines.Take(), kTailLines, ());
+    env.m_clock.Advance(10 * Engine::kTripLogStandIntervalMs);
+    TestStandLines(lines.Take());
+    env.ConnectBox();
+    env.Drive(3000, 10, 0);
+    TEST_GREATER_OR_EQUAL(lines.Take(), 2, ());
+  }
+  {
+    // GPS alone: no box, the car drives and stands.
+    Env env(false /* inertial */);
+    TripLines lines;
+    env.DriveGps(20, 0 /* eastM */, 10 /* speedMps */);
+    TEST_GREATER_OR_EQUAL(lines.Take(), 19, ());
+    env.DriveGps(Engine::kTripLogStandTailMs / 1000, 200 /* eastM */, 0 /* speedMps */);
+    TEST_GREATER_OR_EQUAL(lines.Take(), kTailLines, ());
+    env.DriveGps(10 * Engine::kTripLogStandIntervalMs / 1000, 200 /* eastM */, 0 /* speedMps */);
+    TestStandLines(lines.Take());
+  }
 }
 
 UNIT_TEST(NoGps_Engine_CarLeftWithGpsWaitsForGps)
