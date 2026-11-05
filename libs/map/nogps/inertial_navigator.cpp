@@ -163,7 +163,7 @@ void InertialNavigator::SetRoadPosition(ms::LatLon const & position, double bear
   LeaveRoundabout();
   if (!keepHeading)
     SetHeading(bearingDeg, HeadingSource::Road);
-  m_steadyRoad = SteadyRoad{bearingDeg, m_pathM};
+  m_steadyRoad = SteadyRoad{bearingDeg, position, m_pathM, m_clock.NowMs(), m_rotationDeg};
   StartRoughStretch(0);
 }
 
@@ -459,7 +459,7 @@ void InertialNavigator::SetRoadPoint(ms::LatLon const & position)
   m_waitAhead.reset();
 }
 
-void InertialNavigator::TrackOffRoad(double distanceM)
+void InertialNavigator::TrackOffRoad(double distanceM, int64_t timestampNs)
 {
   // A turn is not counted: the car is aside from both roads for a while, and the turn is matched to its crossing
   // afterwards. Nor is a roundabout.
@@ -474,9 +474,44 @@ void InertialNavigator::TrackOffRoad(double distanceM)
     StartFollowingApart();
     return;
   }
-  if (m_offRoadM < kLostRoadM)
+  if (m_offRoadM < kLostRoadM || MatchLateTurn(timestampNs))
     return;
   LoseRoad(std::to_string(std::lround(m_offRoadM)) + " m");
+}
+
+bool InertialNavigator::MatchLateTurn(int64_t timestampNs)
+{
+  if (!m_steadyRoad || m_pathM - m_steadyRoad->m_pathM > kLateTurnFromRoadM)
+    return false;
+  // Once per departure from the road.
+  auto const steady = *m_steadyRoad;
+  m_steadyRoad.reset();
+  double const turnDeg = std::fabs(AngleDiff(m_deadReckoning.GetHeading(), steady.m_bearingDeg));
+  if (turnDeg < TurnMatcher::kMinTurnDeg || turnDeg > TurnMatcher::kMaxTurnDeg)
+    return false;
+  LOG(LINFO, ("The car has turned by", std::lround(turnDeg),
+              "degrees from its road without a turn matched, it is matched now"));
+  m_turnFromBearing = steady.m_bearingDeg;
+  m_turnStart = steady.m_point;
+  m_turnEnd = m_deadReckoning.GetPosition();
+  m_turnFromRoad = true;
+  m_turnLeftRoad = true;
+  m_turnSteadyFromBearing.reset();
+  // A roundabout or a winding road is told by the rotation, see kMaxExtraTurnRotationDeg.
+  m_turnRotationDeg = m_rotationDeg - steady.m_rotationDeg;
+  m_turnStartNs = timestampNs - (m_clock.NowMs() - steady.m_timeMs) * 1'000'000;
+  m_turnStartPathM = steady.m_pathM;
+  m_turnMinKmh = m_turnMaxKmh = m_speedKmh;
+  // The other marks have rotated with the car: they turn from where they are.
+  for (auto & mark : m_otherMarks)
+  {
+    mark.m_turnStart = mark.m_turnEnd = mark.m_deadReckoning.GetPosition();
+    mark.m_turnFromBearing = mark.m_deadReckoning.GetHeading();
+    mark.m_turnFromRoad = mark.m_onRoad;
+  }
+  MatchTurn(timestampNs);
+  // Moved to a crossing, or to another mark: the road point is set anew.
+  return m_offRoadM < kLostRoadM;
 }
 
 void InertialNavigator::LoseRoad(std::string const & after)
@@ -897,7 +932,7 @@ void InertialNavigator::PutOnRoad(ms::LatLon const & point, double bearingDeg)
   m_lastSnapResult = SnapResult::OnRoad;
   // The car drives along the road: what the gyroscope has counted through the maneuver is less sure.
   SetHeading(bearingDeg, HeadingSource::Road);
-  m_steadyRoad = SteadyRoad{bearingDeg, m_pathM};
+  m_steadyRoad = SteadyRoad{bearingDeg, point, m_pathM, m_clock.NowMs(), m_rotationDeg};
 }
 
 void InertialNavigator::CheckBackOnRoad()
@@ -1149,7 +1184,7 @@ void InertialNavigator::OnMotion(double yawDeltaDeg, double dtSec, int64_t times
     }
     m_speedScale.OnDistance(step);
     if (IsReady())
-      TrackOffRoad(step);
+      TrackOffRoad(step, timestampNs);
   }
   else
   {
@@ -1362,7 +1397,8 @@ void InertialNavigator::SnapToRoad()
     m_offRoadM = 0;
     m_offRoadMaxSpeedMps = 0;
     if (std::fabs(*m_lastSnapBearingDiffDeg) <= DeadReckoning::kMaxHeadingPullDiffDeg)
-      m_steadyRoad = SteadyRoad{Orient(snapped->m_bearingDeg, heading), m_pathM};
+      m_steadyRoad =
+          SteadyRoad{Orient(snapped->m_bearingDeg, heading), snapped->m_point, m_pathM, m_clock.NowMs(), m_rotationDeg};
   }
 }
 
@@ -1428,6 +1464,7 @@ void InertialNavigator::TrackTurn(double yawDeltaDeg, double dtSec, int64_t time
     return;
   double const yawRateDeg = yawDeltaDeg / dtSec;
   m_turnRotationDeg += std::fabs(yawDeltaDeg);
+  m_rotationDeg += std::fabs(yawDeltaDeg);
   if (!m_turning)
   {
     if (std::fabs(yawRateDeg) < kTurnStartRateDeg)
