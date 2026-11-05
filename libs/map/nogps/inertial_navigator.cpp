@@ -497,10 +497,15 @@ void InertialNavigator::LoseRoad(std::string const & after)
   NotifyRoadLost();
 }
 
-void InertialNavigator::StartWaitAhead()
+bool InertialNavigator::IsDrivingStraight() const
 {
-  double const limitM = std::min(kMaxWaitAheadM, m_deadReckoning.GetAlongErrorM());
-  LOG(LINFO, ("The road goes away from the car driving straight after", std::round(GetDistanceSinceFix()),
+  auto const rotated = m_bendMatcher.GetRotationDeg(kWaitStraightM);
+  return rotated && std::fabs(*rotated) < kWaitStraightDeg;
+}
+
+void InertialNavigator::StartWaitAhead(double limitM, std::string const & why)
+{
+  LOG(LINFO, (why, "after", std::round(GetDistanceSinceFix()),
               "m without a known place: the mark is ahead, it waits up to", std::round(limitM), "m at", *m_roadPoint));
   m_waitAhead = WaitAheadState{limitM};
   // The mark stands on its road: the car is not off the roads, and a turn starts from that road.
@@ -558,6 +563,13 @@ void InertialNavigator::CheckRoundabout()
   }
   if (!m_atRoundabout)
   {
+    // See kRoundaboutExitM.
+    if (!m_turning && m_roadPoint && m_deadReckoning.GetSpeed() > kMaxManeuverSpeedMps && IsDrivingStraight())
+    {
+      LeaveRoundabout();
+      StartWaitAhead(kMaxWaitAheadM, "The mark has come to a roundabout before the car driving straight");
+      return;
+    }
     LOG(LINFO, ("The car is off the roads at a roundabout after", std::round(m_offRoadM),
                 "m off them, it is not lost until it has left it"));
   }
@@ -1337,14 +1349,12 @@ void InertialNavigator::SnapToRoad()
   m_lastSnapResult = m_onRoad ? SnapResult::OnRoad : shift > kSnapRadiusM ? SnapResult::Far : SnapResult::Angle;
   // See kMaxWaitAheadM. A maneuvering car leaving its road is followed apart.
   if (m_lastSnapResult == SnapResult::Angle && wasOnRoad && !m_turning && m_roadPoint &&
-      m_deadReckoning.GetSpeed() > kMaxManeuverSpeedMps && m_deadReckoning.GetAlongErrorM() >= kLostRoadM)
+      m_deadReckoning.GetSpeed() > kMaxManeuverSpeedMps && m_deadReckoning.GetAlongErrorM() >= kLostRoadM &&
+      IsDrivingStraight())
   {
-    auto const rotated = m_bendMatcher.GetRotationDeg(kWaitStraightM);
-    if (rotated && std::fabs(*rotated) < kWaitStraightDeg)
-    {
-      StartWaitAhead();
-      return;
-    }
+    StartWaitAhead(std::min(kMaxWaitAheadM, m_deadReckoning.GetAlongErrorM()),
+                   "The road goes away from the car driving straight");
+    return;
   }
   if (m_onRoad)
   {

@@ -904,6 +904,41 @@ UNIT_TEST(NoGps_Engine_CarAtRoundaboutIsNotLost)
   }
 }
 
+UNIT_TEST(NoGps_Engine_MarkAheadWaitsAtRoundaboutForCar)
+{
+  // As on November 5: 2 km after the tap the mark is 29.5 m ahead by the along error, less than the waiting at a bend
+  // needs. The car is 90 m behind it: it drives straight on after its mark has come to the roundabout, stops before
+  // it, and drives around it as in NoGps_Engine_CarAtRoundaboutIsNotLost.
+  PieceRoads roads({{-3000, 0, -30, 0}, {75, 7.5, 400, 7.5}}, {});
+  roads.AddRoundabout(15, 0, 25);
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -2100);
+  env.Drive(150'000, 48, 0);
+  TEST_EQUAL(TripField(env, "road"), "1", ());
+  env.Drive(10'000, 48, 0);
+  // The mark waits on its road before the roundabout.
+  TEST_NOT_EQUAL(TripField(env, "wait"), "-", ());
+  auto const waiting = env.Last().m_position;
+  TEST_LESS(East(waiting), -29, ());
+  TEST_GREATER(East(waiting), -45, ());
+  env.Drive(2000, 48, 0);
+  env.Drive(5000, 0, 0);
+  TestAlmostEqualAbs(Distance(env.Last().m_position, waiting), 0, 0.01);
+  env.Drive(1000, 27, 45);
+  env.Drive(2000, 27, -35);
+  env.Drive(1500, 27, 0);
+  env.Drive(5000, 27, 5);
+  env.Drive(4000, 27, 0);
+  // The mark has gone around the roundabout from where it waited and is on the street the car has left it by.
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), ());
+  TEST_EQUAL(TripField(env, "wait"), "-", ());
+  TEST_EQUAL(TripField(env, "road"), "1", ());
+  TEST_EQUAL(TripField(env, "ring"), "0", ());
+  TestAlmostEqualAbs(North(env.Last().m_position), 7.5, 1);
+  TEST_GREATER(East(env.Last().m_position), 75, ());
+  TestAlmostEqualAbs(AngleDiff(*env.Last().m_bearingDeg, 90), 0, 3);
+}
+
 UNIT_TEST(NoGps_Engine_StopsCarThatLeftRoads)
 {
   Env env(true /* inertial */);

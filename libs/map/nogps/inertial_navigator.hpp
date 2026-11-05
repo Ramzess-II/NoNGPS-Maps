@@ -200,6 +200,10 @@ public:
   // by 20-30 m leaves it that far from its road. That trip driven again, the roundabout was 30 m behind and the
   // car was lost 5 s before it went straight. It leaves a roundabout for this distance, and is put on the road
   // going its way as far aside as a mark of the user is, after it has driven along it without turning.
+  // A car can't drive past a roundabout without turning: the mark that comes to one while the car drives straight is
+  // ahead of it however small the along error is, and waits for it as at a bend, see kMaxWaitAheadM. On November 5
+  // the along error was 29 m, the mark 90 m ahead: it left the roundabout along a road while the car drove straight
+  // to it, and the road was lost after the car had driven around the roundabout from the wrong place.
   static double constexpr kRoundaboutExitM = 100;
   // Nobody maneuvers or drives backwards this fast: a car followed apart that drives so for a while is on a road.
   static int constexpr kNotManeuveringSpeedKmh = 15;
@@ -450,8 +454,11 @@ private:
   // The car is on another road a turn has fitted, or it is stopped at the last road point. |after| tells why, for the
   // log.
   void LoseRoad(std::string const & after);
-  // The road has gone away from a car driving straight: the mark waits for it, see kMaxWaitAheadM.
-  void StartWaitAhead();
+  // The car has turned less than kWaitStraightDeg in the last kWaitStraightM.
+  bool IsDrivingStraight() const;
+  // The road has gone away from a car driving straight: the mark waits for it up to |limitM|, see kMaxWaitAheadM.
+  // |why| is for the log.
+  void StartWaitAhead(double limitM, std::string const & why);
   // \returns true if the mark waits for the car that has driven |distanceM| rotating by |rotatedDeg|.
   bool WaitAhead(double rotatedDeg, double distanceM);
   void NotifyRoadLost();
