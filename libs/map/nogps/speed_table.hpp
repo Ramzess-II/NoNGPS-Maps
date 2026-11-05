@@ -26,6 +26,10 @@ public:
   static double constexpr kMaxAccelerationMps2 = 1;
   // A longer pause between samples is a break.
   static double constexpr kMaxSampleDtSec = 2;
+  // A GPS speed this far from the car speed is wrong: 200 km/h of spoofed GPS at 7 km/h raised the 0-10 km/h range
+  // from 1.02 to 1.08 in a few samples. Of 17 thousand real samples of 10-26..11-04, under 1% are farther.
+  static double constexpr kMaxSpeedDiffKmh = 3;
+  static double constexpr kMaxSpeedDiffRatio = 0.15;
   static double constexpr kMinScale = 0.8;
   static double constexpr kMaxScale = 1.25;
 

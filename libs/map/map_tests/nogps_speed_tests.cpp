@@ -125,7 +125,7 @@ UNIT_TEST(NoGps_SpeedTable_NeedsDistance)
 {
   SpeedTable table;
   // 100 m only.
-  DriveSteady(table, 36, 30, 10);
+  DriveSteady(table, 36, 34, 10);
   TEST(!table.GetScale(36), ());
 }
 
@@ -156,6 +156,25 @@ UNIT_TEST(NoGps_SpeedTable_IgnoresBadSamples)
     table.OnSample(50, 20, 5, 0);
   }
   TEST_EQUAL(table.GetKnownRanges(), 0, ());
+}
+
+UNIT_TEST(NoGps_SpeedTable_IgnoresGpsFarFromCarSpeed)
+{
+  SpeedTable table;
+  // 600 m at 7 km/h with the real speed, then spoofed GPS at 200 km/h, as on 2026-11-02.
+  DriveSteady(table, 7, 7.1, 300);
+  DriveSteady(table, 7, 200, 3);
+  TEST_ALMOST_EQUAL_ABS(*table.GetScale(7), 7.1 / 7, 1e-9, ());
+  // Over 3 km/h and over 15% of the car speed: dropped at either speed.
+  DriveSteady(table, 7, 10.5, 600);
+  DriveSteady(table, 60, 70, 600);
+  TEST_ALMOST_EQUAL_ABS(*table.GetScale(7), 7.1 / 7, 1e-9, ());
+  TEST(!table.GetRanges()[6].m_carM, ());
+  // Closer than 3 km/h at a low speed and than 15% at a higher one: taken.
+  DriveSteady(table, 15, 17.5, 100);
+  DriveSteady(table, 60, 68, 100);
+  TEST_GREATER(table.GetRanges()[1].m_carM, 0, ());
+  TEST_GREATER(table.GetRanges()[6].m_carM, 0, ());
 }
 
 UNIT_TEST(NoGps_SpeedTable_ForgetsOldSamples)

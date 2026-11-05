@@ -15,8 +15,10 @@ int SpeedTable::Range(double carSpeedKmh)
 
 void SpeedTable::OnSample(double carSpeedKmh, double gpsSpeedMps, double dtSec, double accelerationMps2)
 {
+  double const diffKmh = std::fabs(gpsSpeedMps * 3.6 - carSpeedKmh);
   if (carSpeedKmh < kMinSpeedKmh || dtSec <= 0 || dtSec > kMaxSampleDtSec ||
-      std::fabs(accelerationMps2) > kMaxAccelerationMps2)
+      std::fabs(accelerationMps2) > kMaxAccelerationMps2 ||
+      diffKmh > std::max(kMaxSpeedDiffKmh, kMaxSpeedDiffRatio * carSpeedKmh))
   {
     return;
   }
