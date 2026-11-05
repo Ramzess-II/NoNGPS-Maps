@@ -922,6 +922,22 @@
     <string name="nogps_manual_position">Указать своё местоположение вручную</string>
     <!-- Toast after the tester pressed the flag button in a test drive: the flag number and the time are written to the trip log to find the moment later -->
     <string name="nogps_log_flag">Флаг %1$d записан в журнал в %2$s</string>
+    <!-- Toast while the tester holds the flag button: a voice note to the flag is recorded until the finger is lifted -->
+    <string name="nogps_flag_recording">Идёт запись голосовой заметки. Отпустите флаг, чтобы остановить.</string>
+    <!-- Toast: the tester held the flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. -->
+    <string name="nogps_flag_mic_denied">Флаг сохранён без голосовой заметки: разрешите микрофон в настройках системы.</string>
+    <!-- Settings row and screen title: the list of the flags saved in test drives, to send them to the developers by email -->
+    <string name="nogps_flags_send_title">Отправить флаги</string>
+    <!-- Button: send the ticked flags of test drives by email -->
+    <string name="nogps_flags_send">Отправить</string>
+    <!-- The list of the flags of test drives is empty -->
+    <string name="nogps_flags_empty">Флагов пока нет. В тестовой поездке нажмите флаг на карте, когда машина показана не там.</string>
+    <!-- In the list of the flags of test drives: the length of the voice note of a flag, in seconds -->
+    <string name="nogps_flag_voice">Голосовая заметка %d с</string>
+    <!-- In the list of the flags of test drives: the flag has been sent by email already -->
+    <string name="nogps_flag_sent">Отправлен</string>
+    <!-- Alert before the flags are sent: the attachments take more than the limit, a mail server may refuse the mail. The first value is the size, e.g. 25 MB, the second one the limit in MB. -->
+    <string name="nogps_flags_too_big">Файлы занимают %1$s, письмо больше %2$d МБ может не дойти. Всё равно отправить?</string>
     <!-- The user has pressed the button to show on the map where the car is -->
     <string name="nogps_mark_by_tap">Коснитесь дороги, где сейчас машина</string>
     <!-- The button of the place page: the car is here, put the mark on the nearest road -->

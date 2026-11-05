@@ -1234,6 +1234,30 @@
 /* Toast after the tester pressed the flag button in a test drive: the flag number and the time are written to the trip log to find the moment later */
 "nogps_log_flag" = "Прапорець %1$d записано в журнал о %2$@";
 
+/* Toast while the tester holds the flag button: a voice note to the flag is recorded until the finger is lifted */
+"nogps_flag_recording" = "Триває запис голосової нотатки. Відпустіть прапорець, щоб зупинити.";
+
+/* Toast: the tester held the flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. */
+"nogps_flag_mic_denied" = "Прапорець збережено без голосової нотатки: дозвольте мікрофон у налаштуваннях системи.";
+
+/* Settings row and screen title: the list of the flags saved in test drives, to send them to the developers by email */
+"nogps_flags_send_title" = "Надіслати прапорці";
+
+/* Button: send the ticked flags of test drives by email */
+"nogps_flags_send" = "Надіслати";
+
+/* The list of the flags of test drives is empty */
+"nogps_flags_empty" = "Прапорців ще немає. У тестовій поїздці натисніть прапорець на мапі, коли машину показано не там.";
+
+/* In the list of the flags of test drives: the length of the voice note of a flag, in seconds */
+"nogps_flag_voice" = "Голосова нотатка %d с";
+
+/* In the list of the flags of test drives: the flag has been sent by email already */
+"nogps_flag_sent" = "Надіслано";
+
+/* Alert before the flags are sent: the attachments take more than the limit, a mail server may refuse the mail. The first value is the size, e.g. 25 MB, the second one the limit in MB. */
+"nogps_flags_too_big" = "Файли займають %1$@, лист понад %2$d МБ може не дійти. Усе одно надіслати?";
+
 /* The user has pressed the button to show on the map where the car is */
 "nogps_mark_by_tap" = "Торкніться дороги, де зараз машина";
 

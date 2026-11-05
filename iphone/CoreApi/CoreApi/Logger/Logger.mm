@@ -211,6 +211,21 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
   }
 }
 
++ (nullable NSURL *)zipLogFilesPassingTest:(BOOL (^)(NSString * name))test
+{
+  // On the queue: no file is switched or deleted while it is zipped.
+  __block NSURL * zipURL;
+  [self runSyncOnFileLoggingQueue:^{
+    NSMutableArray<NSURL *> * files = [NSMutableArray array];
+    for (NSURL * file in [self logFiles])
+      if (test(file.lastPathComponent))
+        [files addObject:file];
+    if (files.count > 0)
+      zipURL = [self zipLogFiles:files];
+  }];
+  return zipURL;
+}
+
 + (uint64_t)getLogFileSize
 {
   __block uint64_t size = 0;

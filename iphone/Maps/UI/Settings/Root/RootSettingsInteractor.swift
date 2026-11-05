@@ -174,6 +174,7 @@ final class RootSettingsInteractor {
          .bookmarksTextPlacement,
          .appearance,
          .mapTiles,
+         .noGpsFlags,
          .voiceInstructions,
          .routingOptions:
       break

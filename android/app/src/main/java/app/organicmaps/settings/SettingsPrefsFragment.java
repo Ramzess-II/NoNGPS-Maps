@@ -20,6 +20,7 @@ import app.organicmaps.downloader.OnmapDownloader;
 import app.organicmaps.editor.LanguagesFragment;
 import app.organicmaps.editor.ProfileActivity;
 import app.organicmaps.help.HelpActivity;
+import app.organicmaps.nogps.NoGpsFlagsFragment;
 import app.organicmaps.sdk.Framework;
 import app.organicmaps.sdk.Router;
 import app.organicmaps.sdk.downloader.MapManager;
@@ -257,6 +258,13 @@ public class SettingsPrefsFragment extends BaseXmlSettingsFragment implements La
   {
     final Preference pref = getPreference(getString(R.string.pref_enable_logging));
 
+    final Preference flags = getPreference(getString(R.string.pref_nogps_flags));
+    flags.setVisible(LogsManager.INSTANCE.isFileLoggingEnabled());
+    flags.setOnPreferenceClickListener(preference -> {
+      getSettingsActivity().stackFragment(NoGpsFlagsFragment.class, getString(R.string.nogps_flags_send_title), null);
+      return true;
+    });
+
     ((TwoStatePreference) pref).setChecked(LogsManager.INSTANCE.isFileLoggingEnabled());
     pref.setOnPreferenceChangeListener((preference, newValue) -> {
       if (!LogsManager.INSTANCE.setFileLoggingEnabled((Boolean) newValue))
@@ -265,6 +273,7 @@ public class SettingsPrefsFragment extends BaseXmlSettingsFragment implements La
         Utils.showSnackbar(requireView(), "ERROR: Can't create a logs folder!");
         return false;
       }
+      flags.setVisible((Boolean) newValue);
       return true;
     });
   }

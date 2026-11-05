@@ -1,7 +1,10 @@
+import UniformTypeIdentifiers
+
 @objcMembers
 final class MailComposer: NSObject {
   private static let mailComposer = MailComposer()
   private static var topViewController: UIViewController { .topViewController() }
+  private static var onSent: (() -> Void)?
 
   override private init() {}
 
@@ -11,6 +14,39 @@ final class MailComposer: NSObject {
                   body: body ?? "",
                   toRecipients: recipients,
                   attachmentFileURL: attachmentFileURL)
+  }
+
+  /// Composes an email with the files attached. Without Apple Mail set up, the share sheet gives the files to another
+  /// app and the address is in the text: mailto can't carry attachments.
+  /// - Parameter onSent: called after the mail is sent or the files are shared.
+  @nonobjc static func sendEmail(subject: String, body: String, toRecipients recipients: [String], attachments: [URL],
+                                 onSent: @escaping () -> Void) {
+    guard MWMMailViewController.canSendMail() else {
+      let text = "\(recipients.joined(separator: ", "))\n\(subject)\n\n\(body)"
+      let share = UIActivityViewController(activityItems: [text] + attachments, applicationActivities: nil)
+      share.completionWithItemsHandler = { _, completed, _, _ in
+        if completed {
+          onSent()
+        }
+      }
+      let top = topViewController
+      share.popoverPresentationController?.sourceView = top.view
+      share.popoverPresentationController?.sourceRect = CGRect(origin: top.view.center, size: .zero)
+      top.present(share, animated: true)
+      return
+    }
+    let mailViewController = MWMMailViewController()
+    mailViewController.mailComposeDelegate = mailComposer
+    mailViewController.setSubject(subject)
+    mailViewController.setMessageBody(body, isHTML: false)
+    mailViewController.setToRecipients(recipients)
+    for url in attachments {
+      guard let data = try? Data(contentsOf: url) else { continue }
+      let mimeType = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+      mailViewController.addAttachmentData(data, mimeType: mimeType, fileName: url.lastPathComponent)
+    }
+    self.onSent = onSent
+    topViewController.present(mailViewController, animated: true, completion: nil)
   }
 
   /// Composes an email with the additional app information and the log file attachment for the developers.
@@ -89,7 +125,12 @@ final class MailComposer: NSObject {
 // MARK: - MFMailComposeViewControllerDelegate
 
 extension MailComposer: MFMailComposeViewControllerDelegate {
-  func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith _: MFMailComposeResult, error _: Error?) {
+  func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult,
+                             error _: Error?) {
     controller.dismiss(animated: true, completion: nil)
+    if result == .sent {
+      Self.onSent?()
+    }
+    Self.onSent = nil
   }
 }

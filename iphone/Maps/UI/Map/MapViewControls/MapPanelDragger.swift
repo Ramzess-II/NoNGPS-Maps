@@ -58,6 +58,9 @@ final class MapPanelDragger: NSObject {
   /// The panel follows the finger or flies: its place is not animated.
   @objc private(set) var isMoving = false
 
+  /// Buttons with their own long press: a press on them does not lift the panel.
+  var excludedViews = [UIView]()
+
   private let key: String
   private let travel: () -> CGFloat
   private let onLift: (Bool) -> Void
@@ -185,10 +188,10 @@ final class MapPanelDragger: NSObject {
 
 extension MapPanelDragger: UIGestureRecognizerDelegate {
   /// A touch stops a fling, the panel is lifted again by a long press.
-  func gestureRecognizer(_: UIGestureRecognizer, shouldReceive _: UITouch) -> Bool {
+  func gestureRecognizer(_: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
     if displayLink != nil {
       drop()
     }
-    return true
+    return !excludedViews.contains { touch.view?.isDescendant(of: $0) == true }
   }
 }

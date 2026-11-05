@@ -248,6 +248,8 @@
 	</array>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>The sensor box in the car gives the turns and the speed of the car over Bluetooth.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>A tester holds the flag on the map to record a voice note about the test drive.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Determining your location is necessary for navigation and for saving your recently travelled track.</string>
 	<key>UIBackgroundModes</key>

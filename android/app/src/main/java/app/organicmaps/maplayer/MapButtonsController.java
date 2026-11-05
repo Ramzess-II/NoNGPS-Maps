@@ -1,11 +1,15 @@
 package app.organicmaps.maplayer;
 
+import android.Manifest;
 import android.animation.ArgbEvaluator;
 import android.animation.ObjectAnimator;
+import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
+import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -16,12 +20,15 @@ import android.text.style.RelativeSizeSpan;
 import android.util.TypedValue;
 import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.OptIn;
@@ -35,9 +42,12 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProvider;
 import app.organicmaps.MwmActivity;
+import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
 import app.organicmaps.nogps.BoxBottomSheet;
 import app.organicmaps.nogps.GpsBottomSheet;
+import app.organicmaps.nogps.NoGpsFlagRecorder;
+import app.organicmaps.nogps.NoGpsFlags;
 import app.organicmaps.nogps.SensorsBottomSheet;
 import app.organicmaps.routing.RoutingPlanViewModel;
 import app.organicmaps.sdk.Framework;
@@ -63,11 +73,9 @@ import com.google.android.material.badge.BadgeUtils;
 import com.google.android.material.badge.ExperimentalBadgeUtils;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
 
 public class MapButtonsController extends Fragment
@@ -75,6 +83,7 @@ public class MapButtonsController extends Fragment
   private static final String TAG = MapButtonsController.class.getSimpleName();
   // The moments of a test drive marked in the log, see the button flag_log.
   private static int sLogFlags;
+  private static String sLastFlag = "";
   // The places the user has moved the side panels to, see MapPanelDragger.
   private static final String PREF_CAR_PANEL_Y = "NoGpsLeftPanelY";
   private static final String PREF_RIGHT_PANEL_Y = "NoGpsRightPanelY";
@@ -102,6 +111,12 @@ public class MapButtonsController extends Fragment
   // Of every car button but the first one.
   private final Map<View, View> mCarDividers = new HashMap<>();
   private boolean mCarPanelShown = true;
+  private final NoGpsFlagRecorder mFlagRecorder = new NoGpsFlagRecorder();
+  private final ActivityResultLauncher<String> mMicPermission =
+      registerForActivityResult(new ActivityResultContracts.RequestPermission(), (granted) -> {
+        if (!granted)
+          Toast.makeText(requireContext(), R.string.nogps_flag_mic_denied, Toast.LENGTH_LONG).show();
+      });
   @Nullable
   private MapPanelDragger mCarPanelDragger;
   @Nullable
@@ -238,19 +253,7 @@ public class MapButtonsController extends Fragment
     mReverseButton.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.reverseDirection));
     mSwitchMarkButton = mFrame.findViewById(R.id.switch_mark);
     mSwitchMarkButton.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.switchMark));
-    // The log of a test drive is analysed afterwards: the tester marks the moments the car was shown wrong at.
-    final View flagLog = mFrame.findViewById(R.id.flag_log);
-    mFlagLogButton = flagLog;
-    flagLog.setOnClickListener((v) -> {
-      Logger.i(TAG, "FLAG " + ++sLogFlags);
-      v.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
-      // As the log and its tools write a time, not in a 12-hour format of the locale.
-      final String time = new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
-      Toast
-          .makeText(v.getContext(), v.getContext().getString(R.string.nogps_log_flag, sLogFlags, time),
-                    Toast.LENGTH_SHORT)
-          .show();
-    });
+    initFlagButton(mFrame.findViewById(R.id.flag_log));
     mShiftPositionStep.setOnClickListener((v) -> {
       NoGps.nativeCycleShiftStep();
       updatePositionStatus();
@@ -431,6 +434,66 @@ public class MapButtonsController extends Fragment
     if (hasCarButtons || !mCarPanelShown)
       applyCarButtons();
     showCarPanel(hasCarButtons);
+  }
+
+  /**
+   * The log of a test drive is analysed afterwards: the tester marks the moments the car was shown wrong at. The flag
+   * is kept with a screenshot to be sent from the settings, holding it records a voice note to it, see NoGpsFlags.
+   */
+  @SuppressLint("ClickableViewAccessibility")
+  private void initFlagButton(@NonNull View flagLog)
+  {
+    mFlagLogButton = flagLog;
+    if (mCarPanelDragger != null)
+      mCarPanelDragger.exclude(flagLog);
+    flagLog.setOnClickListener((v) -> saveFlag(v, true));
+    flagLog.setOnLongClickListener((v) -> {
+      if (ContextCompat.checkSelfPermission(v.getContext(), Manifest.permission.RECORD_AUDIO)
+          != PackageManager.PERMISSION_GRANTED)
+      {
+        saveFlag(v, true);
+        mMicPermission.launch(Manifest.permission.RECORD_AUDIO);
+        return true;
+      }
+      final String name = saveFlag(v, false);
+      if (mFlagRecorder.start(v.getContext(), name))
+        Toast.makeText(v.getContext(), R.string.nogps_flag_recording, Toast.LENGTH_SHORT).show();
+      return true;
+    });
+    // The voice is recorded while the finger is down.
+    flagLog.setOnTouchListener((v, event) -> {
+      final int action = event.getActionMasked();
+      if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL)
+        mFlagRecorder.stop();
+      return false;
+    });
+  }
+
+  @NonNull
+  private String saveFlag(@NonNull View button, boolean toast)
+  {
+    // The files of a flag are named by the second: a second flag in it, or a hold after a tap, is the same moment.
+    final String name = NoGpsFlags.name(new Date());
+    if (name.equals(sLastFlag))
+      return name;
+    sLastFlag = name;
+    Logger.i(TAG, "FLAG " + ++sLogFlags);
+    button.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS);
+    final FragmentActivity activity = requireActivity();
+    final Location location = MwmApplication.from(activity).getLocationHelper().getSavedLocation();
+    final NoGpsFlags.Flag flag =
+        new NoGpsFlags.Flag(name, sLogFlags, location != null ? location.getLatitude() : Double.NaN,
+                            location != null ? location.getLongitude() : Double.NaN);
+    final Context context = activity.getApplicationContext();
+    // Saved before the screenshot comes: the voice length goes into it.
+    NoGpsFlags.add(context, flag);
+    NoGpsFlags.takeScreenshot(activity, activity.findViewById(R.id.map),
+                              (screenshot) -> NoGpsFlags.saveScreenshot(context, name, screenshot));
+    // A toast is a window of its own: it is not in the screenshot.
+    if (toast)
+      Toast.makeText(activity, getString(R.string.nogps_log_flag, sLogFlags, NoGpsFlags.time(name)), Toast.LENGTH_SHORT)
+          .show();
+    return name;
   }
 
   private void addCarDividers()
@@ -854,6 +917,8 @@ public class MapButtonsController extends Fragment
       mBlinkingAnimator.cancel();
       mBlinkingAnimator = null;
     }
+    // The finger may still be on the flag.
+    mFlagRecorder.stop();
   }
 
   public enum LayoutMode
