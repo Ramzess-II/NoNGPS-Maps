@@ -563,6 +563,8 @@ bool InertialNavigator::WaitAhead(double rotatedDeg, double distanceM)
     return false;
   }
   m_waitAhead->m_waitedM += distanceM;
+  if (m_waitAhead->m_probe)
+    m_waitAhead->m_probe = Move(*m_waitAhead->m_probe, m_deadReckoning.GetHeading(), distanceM);
   if (m_waitAhead->m_waitedM >= m_waitAhead->m_limitM)
   {
     double const waitedM = m_waitAhead->m_waitedM;
@@ -571,6 +573,35 @@ bool InertialNavigator::WaitAhead(double rotatedDeg, double distanceM)
     LoseRoad("waiting " + std::to_string(std::lround(waitedM)) + " m for the car going straight");
   }
   return true;
+}
+
+void InertialNavigator::CheckRoadPastRoundabout()
+{
+  auto & wait = *m_waitAhead;
+  if (wait.m_throughRoundabout)
+    return;
+  ms::LatLon const probe = *wait.m_probe;
+  if (m_roads.IsRoundaboutNear(probe, kPastRoundaboutM))
+  {
+    wait.m_throughRoundabout = true;
+    m_exitCandidate.reset();
+    return;
+  }
+  if (m_roads.IsRoundaboutNear(probe, kRoundaboutRadiusM))
+    return;
+  double const heading = m_deadReckoning.GetHeading();
+  auto const road = m_roads.Snap(probe, heading, kSnapRadiusM);
+  if (!road || Distance(probe, road->m_point) > kSnapRadiusM)
+  {
+    m_exitCandidate.reset();
+    return;
+  }
+  if (!IsRoadConfirmed(*road, heading, m_exitCandidate))
+    return;
+  LOG(LINFO, ("The car drives along a road past the roundabout after the mark has waited", std::round(wait.m_waitedM),
+              "m for it, it is put there"));
+  m_exitCandidate.reset();
+  PutOnRoad(road->m_point, Orient(road->m_bearingDeg, heading));
 }
 
 std::optional<double> InertialNavigator::GetWaitedAheadM() const
@@ -603,6 +634,7 @@ void InertialNavigator::CheckRoundabout()
     {
       LeaveRoundabout();
       StartWaitAhead(kMaxWaitAheadM, "The mark has come to a roundabout before the car driving straight");
+      m_waitAhead->m_probe = *m_roadPoint;
       return;
     }
     LOG(LINFO, ("The car is off the roads at a roundabout after", std::round(m_offRoadM),
@@ -1203,6 +1235,12 @@ void InertialNavigator::OnMotion(double yawDeltaDeg, double dtSec, int64_t times
   {
     m_lastSnapMs = now;
     CheckBackOnRoad();
+  }
+  if (IsReady() && !stopped && m_waitAhead && m_waitAhead->m_probe && m_deadReckoning.GetSpeed() > kMovingSpeedMps &&
+      now - m_lastSnapMs >= kSnapIntervalMs)
+  {
+    m_lastSnapMs = now;
+    CheckRoadPastRoundabout();
   }
   // The mark waiting ahead stands on its road, or has lost it just now.
   if (IsReady() && !stopped && !m_waitAhead && !m_roadLost && m_deadReckoning.GetSpeed() > kMovingSpeedMps &&

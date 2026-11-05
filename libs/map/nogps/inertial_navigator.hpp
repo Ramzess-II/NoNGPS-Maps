@@ -205,6 +205,12 @@ public:
   // the along error was 29 m, the mark 90 m ahead: it left the roundabout along a road while the car drove straight
   // to it, and the road was lost after the car had driven around the roundabout from the wrong place.
   static double constexpr kRoundaboutExitM = 100;
+  // Or the road of the car passes the roundabout, and the mark has only lost it there for a moment. The mark waiting
+  // at a roundabout so is put on a road going the way of the car after it has driven along it, as at the exit, if
+  // its way straight on from where it waits has left the roundabout behind, kRoundaboutRadiusM, without coming
+  // closer to it than this. A way coming closer goes through the roundabout, and the road it finds beyond is an exit
+  // the car can't drive to without turning.
+  static double constexpr kPastRoundaboutM = 10;
   // Nobody maneuvers or drives backwards this fast: a car followed apart that drives so for a while is on a road.
   static int constexpr kNotManeuveringSpeedKmh = 15;
   static int64_t constexpr kNotManeuveringMs = 3000;
@@ -470,6 +476,8 @@ private:
   void StartWaitAhead(double limitM, std::string const & why);
   // \returns true if the mark waits for the car that has driven |distanceM| rotating by |rotatedDeg|.
   bool WaitAhead(double rotatedDeg, double distanceM);
+  // Looks if the car the mark waits for at a roundabout drives along a road past it, see kPastRoundaboutM.
+  void CheckRoadPastRoundabout();
   void NotifyRoadLost();
   void StartFollowingApart();
   void EndFollowingApart();
@@ -601,6 +609,10 @@ private:
     double m_limitM = 0;
     double m_waitedM = 0;
     double m_rotatedDeg = 0;
+    // At a roundabout: where the mark would be if it did not wait, and whether that way has come to the roundabout,
+    // see kPastRoundaboutM.
+    std::optional<ms::LatLon> m_probe;
+    bool m_throughRoundabout = false;
   };
   std::optional<WaitAheadState> m_waitAhead;
 
