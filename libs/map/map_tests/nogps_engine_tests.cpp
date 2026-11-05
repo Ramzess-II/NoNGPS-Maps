@@ -711,6 +711,76 @@ UNIT_TEST(NoGps_Engine_TurnEnteredSmoothlyStartsOnRoad)
   }
 }
 
+// A street going east with a crossing at 200 m: a road leaves it there |sideDeg| degrees to the left, if any.
+PieceRoads StreetWithSideRoad(std::optional<double> sideDeg)
+{
+  std::vector<PieceRoads::Piece> pieces = {{-3000, 0, 400, 0}};
+  if (sideDeg)
+  {
+    double const bearing = math::DegToRad(90 - *sideDeg);
+    pieces.push_back({200, 0, 200 + 300 * std::sin(bearing), 300 * std::cos(bearing)});
+  }
+  return PieceRoads(pieces, {{200, 0}});
+}
+
+// The car marked 2.2 km before drives east at 25 km/h, its place is known within 60 m. From 135 m east it turns
+// left by |turnDeg| slower than a turn starts, as on November 4, and drives on straight.
+void TurnLeftSlowly(Env & env, double turnDeg)
+{
+  MarkCar(env, -2200);
+  while (East(env.Last().m_position) < 135)
+    env.Drive(100, 25, 0);
+  // 5-9 degrees a second.
+  double const rates[] = {5, 9, 7};
+  double leftDeg = turnDeg;
+  for (size_t i = 0; leftDeg > 0; ++i)
+  {
+    double const rate = std::min(rates[i % 3], leftDeg);
+    env.Drive(1000, 25, -rate);
+    leftDeg -= rate;
+  }
+  TEST_EQUAL(TripField(env, "turning"), "0", ());
+  env.Drive(5000, 25, 0);
+}
+
+UNIT_TEST(NoGps_Engine_SlowTurnIsMatchedBeforeRoadIsLost)
+{
+  // The car turns 46 degrees into the road leaving the street 46 degrees to the left. It has turned 40 m before the
+  // crossing by the calculation, and leaves the street 29 m aside of that road: the turn is matched before the road
+  // is lost, and the car is moved onto that road.
+  auto roads = StreetWithSideRoad(46);
+  Env env(true /* inertial */, &roads);
+  TurnLeftSlowly(env, 46);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+  TEST_NOT_EQUAL(TripField(env, "turn"), "NaN", ());
+  TEST_EQUAL(TripField(env, "road"), "1", ());
+  auto const & position = env.Last().m_position;
+  double const sin44 = std::sin(math::DegToRad(44.0));
+  double const cos44 = std::cos(math::DegToRad(44.0));
+  TestAlmostEqualAbs((East(position) - 200) * cos44 - North(position) * sin44, 0, 1);
+  TEST_GREATER(North(position), 20, ());
+}
+
+UNIT_TEST(NoGps_Engine_SlowTurnWithoutRoadThatWayIsLost)
+{
+  // The road leaving the street goes 90 degrees to the left, not the way the car has turned: the road is lost.
+  auto roads = StreetWithSideRoad(90);
+  Env env(true /* inertial */, &roads);
+  TurnLeftSlowly(env, 46);
+  TEST(env.m_delegate.HasEvent(Event::RoadLost), ());
+  TEST_EQUAL(TripField(env, "turn"), "NaN", ());
+}
+
+UNIT_TEST(NoGps_Engine_SlowDriftOffRoadIsNotTurn)
+{
+  // The heading drifts by 34 degrees, less than a turn: the road is lost as before, no turn is matched.
+  auto roads = StreetWithSideRoad(90);
+  Env env(true /* inertial */, &roads);
+  TurnLeftSlowly(env, 34);
+  TEST(env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+  TEST_EQUAL(TripField(env, "turn"), "NaN", ());
+}
+
 UNIT_TEST(NoGps_Engine_TurnAlongBranchIsNotMovedToNextCrossing)
 {
   // A road branches off the street going east to the north-east at 100 m, and a street goes the same way from

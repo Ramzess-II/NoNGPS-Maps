@@ -207,6 +207,12 @@ public:
   // A car drives this far off the roads only in a yard or a parking lot missing on the map, or the calculation
   // has gone wrong, e.g. with a wrong heading. The car is stopped on the road then until the user marks it.
   static double constexpr kLostRoadM = 30;
+  // A car turning slower than a turn starts leaves its road without a turn, see kTurnStartRateDeg. On November 4 a
+  // car rotated by 46 degrees at 21-29 km/h, never faster than 9 degrees a second, and its road was lost 52 m after
+  // it was last on the road looking along it. Before the road is lost so, the turn is matched as if it had started
+  // where the car was last on its road looking along it, up to this far behind: kTurnFromRoadM and the way off the
+  // roads.
+  static double constexpr kLateTurnFromRoadM = kTurnFromRoadM + kLostRoadM;
   // After a long way without a known place the mark runs ahead of the car: it comes to a bend first, and its road goes
   // away while the car still drives straight. On November 1 after 62 km the mark was 270 m ahead, left its road at a
   // bend before a roundabout and was lost; the car turned there 270 m later. A mark leaving its road so waits where it
@@ -446,7 +452,9 @@ private:
   bool LearnRoughSpeed(double aheadM, char const * where);
   bool IsSpeedFresh() const;
   void SetRoadPoint(ms::LatLon const & position);
-  void TrackOffRoad(double distanceM);
+  void TrackOffRoad(double distanceM, int64_t timestampNs);
+  // \returns true if the car leaving its road has turned at a crossing, see kLateTurnFromRoadM.
+  bool MatchLateTurn(int64_t timestampNs);
   // The car is on another road a turn has fitted, or it is stopped at the last road point. |after| tells why, for the
   // log.
   void LoseRoad(std::string const & after);
@@ -680,11 +688,13 @@ private:
   int m_turnMaxKmh = 0;
   // How far the last turn has moved the car to its crossing, for the log of a drive.
   std::optional<double> m_lastTurnShiftM;
-  // The road the car was on looking along it the last time, and all the car had driven by then.
+  // The road the car was on looking along it the last time: where and when, and all the car had driven by then.
   struct SteadyRoad
   {
     double m_bearingDeg;
+    ms::LatLon m_point;
     double m_pathM;
+    int64_t m_timeMs;
   };
   std::optional<SteadyRoad> m_steadyRoad;
   // The car has been off the roads during the turn it makes now.
