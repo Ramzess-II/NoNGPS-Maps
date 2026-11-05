@@ -489,8 +489,8 @@ bool InertialNavigator::MatchLateTurn(int64_t timestampNs)
   double const turnDeg = std::fabs(AngleDiff(m_deadReckoning.GetHeading(), steady.m_bearingDeg));
   if (turnDeg < TurnMatcher::kMinTurnDeg || turnDeg > TurnMatcher::kMaxTurnDeg)
     return false;
-  LOG(LINFO,
-      ("The car has turned by", std::lround(turnDeg), "degrees too slowly for a turn to start, it is matched now"));
+  LOG(LINFO, ("The car has turned by", std::lround(turnDeg),
+              "degrees from its road without a turn matched, it is matched now"));
   m_turnFromBearing = steady.m_bearingDeg;
   m_turnStart = steady.m_point;
   m_turnEnd = m_deadReckoning.GetPosition();
