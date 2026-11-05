@@ -163,7 +163,7 @@ void InertialNavigator::SetRoadPosition(ms::LatLon const & position, double bear
   LeaveRoundabout();
   if (!keepHeading)
     SetHeading(bearingDeg, HeadingSource::Road);
-  m_steadyRoad = SteadyRoad{bearingDeg, position, m_pathM, m_clock.NowMs()};
+  m_steadyRoad = SteadyRoad{bearingDeg, position, m_pathM, m_clock.NowMs(), m_rotationDeg};
   StartRoughStretch(0);
 }
 
@@ -497,7 +497,8 @@ bool InertialNavigator::MatchLateTurn(int64_t timestampNs)
   m_turnFromRoad = true;
   m_turnLeftRoad = true;
   m_turnSteadyFromBearing.reset();
-  m_turnRotationDeg = turnDeg;
+  // A roundabout or a winding road is told by the rotation, see kMaxExtraTurnRotationDeg.
+  m_turnRotationDeg = m_rotationDeg - steady.m_rotationDeg;
   m_turnStartNs = timestampNs - (m_clock.NowMs() - steady.m_timeMs) * 1'000'000;
   m_turnStartPathM = steady.m_pathM;
   m_turnMinKmh = m_turnMaxKmh = m_speedKmh;
@@ -919,7 +920,7 @@ void InertialNavigator::PutOnRoad(ms::LatLon const & point, double bearingDeg)
   m_lastSnapResult = SnapResult::OnRoad;
   // The car drives along the road: what the gyroscope has counted through the maneuver is less sure.
   SetHeading(bearingDeg, HeadingSource::Road);
-  m_steadyRoad = SteadyRoad{bearingDeg, point, m_pathM, m_clock.NowMs()};
+  m_steadyRoad = SteadyRoad{bearingDeg, point, m_pathM, m_clock.NowMs(), m_rotationDeg};
 }
 
 void InertialNavigator::CheckBackOnRoad()
@@ -1386,7 +1387,8 @@ void InertialNavigator::SnapToRoad()
     m_offRoadM = 0;
     m_offRoadMaxSpeedMps = 0;
     if (std::fabs(*m_lastSnapBearingDiffDeg) <= DeadReckoning::kMaxHeadingPullDiffDeg)
-      m_steadyRoad = SteadyRoad{Orient(snapped->m_bearingDeg, heading), snapped->m_point, m_pathM, m_clock.NowMs()};
+      m_steadyRoad =
+          SteadyRoad{Orient(snapped->m_bearingDeg, heading), snapped->m_point, m_pathM, m_clock.NowMs(), m_rotationDeg};
   }
 }
 
@@ -1452,6 +1454,7 @@ void InertialNavigator::TrackTurn(double yawDeltaDeg, double dtSec, int64_t time
     return;
   double const yawRateDeg = yawDeltaDeg / dtSec;
   m_turnRotationDeg += std::fabs(yawDeltaDeg);
+  m_rotationDeg += std::fabs(yawDeltaDeg);
   if (!m_turning)
   {
     if (std::fabs(yawRateDeg) < kTurnStartRateDeg)
