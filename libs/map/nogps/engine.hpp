@@ -189,8 +189,18 @@ public:
   static int64_t constexpr kInertialActiveMs = 1000;
   // Old positions (e.g. the last known one after a provider restart) tell nothing about the car now.
   static int64_t constexpr kGpsMaxAgeMs = 5000;
-  // The state is written to the log every second, so a drive can be analysed afterwards.
+  // The state is written to the log every second while the car drives, so a drive can be analysed afterwards.
   static int64_t constexpr kTripLogIntervalMs = 1000;
+  // A standing car fills the log with the same lines: hours a day at home and at traffic lights. After a stop, and
+  // after the position source or the box changes, the state is still written every second for this long: the car
+  // reports its speed late, and the stop is seen.
+  static int64_t constexpr kTripLogStandTailMs = 5000;
+  // Then once in this time, to show that the application runs and what it has: nogps_replay.py tells by these lines
+  // how long the car with the box connected has stood, and nogps_log.py splits the phone standing at a pause of
+  // the TRIP lines of 60 s.
+  static int64_t constexpr kTripLogStandIntervalMs = 30'000;
+  // GPS of a standing car gives 0-1 km/h.
+  static double constexpr kTripLogMovingGpsKmh = 3;
   // GPS gives a position every second, a longer pause means it is lost.
   static int64_t constexpr kGpsStatusMaxAgeMs = 10'000;
   // GPS works when it gives a position every second, every 3 while the map does not follow it. The fused provider
@@ -372,8 +382,11 @@ private:
   std::optional<Fix> GetWorkingNetwork() const;
   PositionSource GetPositionSource() const;
   void LogTrip();
+  // The car drives by the box or by GPS.
+  bool IsCarMoving() const;
   // Logs the change of the position source, of the GPS signal, of the box and of its Bluetooth link.
-  void LogStateChanges();
+  /// \returns whether the position source or the box has changed.
+  bool LogStateChanges();
   void Notify(Event event);
 
   Delegate & m_delegate;
@@ -449,6 +462,9 @@ private:
   int64_t m_fixShownMs = 0;
   // Positions shown between GPS positions since the last line of the trip log.
   int m_positionsBetweenGps = 0;
+  // When the last TRIP line was written, and when the car last drove or a state changed, see kTripLogStandTailMs.
+  std::optional<int64_t> m_tripLoggedMs;
+  std::optional<int64_t> m_tripEverySecondMs;
   // What the log says about the states now, to log their changes.
   struct LoggedState
   {

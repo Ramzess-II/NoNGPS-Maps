@@ -111,6 +111,8 @@ void Engine::Start()
   LOG(LINFO, ("Start"));
   m_active = true;
   m_loggedState = {};
+  m_tripLoggedMs.reset();
+  m_tripEverySecondMs.reset();
   m_startTimeMs = m_clock.NowMs();
   if (m_spoofingDetector.GetPhantomsCount() == 0)
     m_spoofingDetector.DeserializePhantoms(m_storage.Get<std::string>(Storage::kWrongNetworkPoints, ""));
@@ -194,7 +196,9 @@ void Engine::OnFix(Fix const & location)
 
   if (m_gpsDisabled && !isNetwork && SourceOf(location) == PositionSource::Gps)
   {
-    LOG(LDEBUG, ("GPS is disabled, ignoring", location.m_position));
+    // Every second: the log of a standing car would fill with it.
+    if (IsCarMoving())
+      LOG(LDEBUG, ("GPS is disabled, ignoring", location.m_position));
     // The user sees how GPS works though the car does not follow it.
     if (trusted)
       TrackWorkingGps(location);
@@ -260,7 +264,8 @@ void Engine::OnFix(Fix const & location)
 
   if (m_manualMode)
   {
-    LOG(LDEBUG, ("Manual mode is on, ignoring", location.m_position));
+    if (IsCarMoving())
+      LOG(LDEBUG, ("Manual mode is on, ignoring", location.m_position));
     return;
   }
 
@@ -1508,7 +1513,7 @@ Status Engine::GetStatus()
   return status;
 }
 
-void Engine::LogStateChanges()
+bool Engine::LogStateChanges()
 {
   auto const status = GetStatus();
   std::string box = "NOT_SET_UP";
@@ -1517,14 +1522,17 @@ void Engine::LogStateChanges()
   auto const log = [](char const * what, std::string & last, std::string now)
   {
     if (last == now)
-      return;
+      return false;
     LOG(LINFO, (what, last.empty() ? "?" : last, "->", now));
     last = std::move(now);
+    return true;
   };
-  log("Position source", m_loggedState.m_source, DebugPrint(status.m_source));
+  bool changed = log("Position source", m_loggedState.m_source, DebugPrint(status.m_source));
+  // Not a change: GPS of a phone at home comes and goes with the network positions, 300 times a day.
   log("GPS signal", m_loggedState.m_gps, DebugPrint(status.m_gpsState));
-  log("Box state", m_loggedState.m_box, box);
-  log("Box Bluetooth", m_loggedState.m_ble, DebugPrint(status.m_bleState));
+  changed = log("Box state", m_loggedState.m_box, box) || changed;
+  changed = log("Box Bluetooth", m_loggedState.m_ble, DebugPrint(status.m_bleState)) || changed;
+  return changed;
 }
 
 void Engine::LogTrip()
@@ -1538,12 +1546,29 @@ void Engine::LogTrip()
   CheckNotCalibrated();
   CheckFirmwareUpdate();
   CheckBoxCalibration();
-  LogStateChanges();
+  bool const changed = LogStateChanges();
   SaveCarPosition(false /* now */);
-  LOG(LINFO, (GetTripLine()));
-  m_positionsBetweenGps = 0;
+  int64_t const now = m_clock.NowMs();
+  if (changed || IsCarMoving())
+    m_tripEverySecondMs = now;
+  if (!m_tripLoggedMs || (m_tripEverySecondMs && now - *m_tripEverySecondMs < kTripLogStandTailMs) ||
+      now - *m_tripLoggedMs >= kTripLogStandIntervalMs)
+  {
+    LOG(LINFO, (GetTripLine()));
+    m_tripLoggedMs = now;
+    m_positionsBetweenGps = 0;
+  }
 
   m_tripLogTimer.Start(kTripLogIntervalMs, [this] { LogTrip(); });
+}
+
+bool Engine::IsCarMoving() const
+{
+  if (m_inertial && IsInertialNavigationEnabled() && m_inertial->GetSpeedKmh() > 0)
+    return true;
+  auto const moves = [this](std::optional<Fix> const & fix)
+  { return fix && AgeMs(*fix) <= kGpsMaxAgeMs && fix->m_speedMps && *fix->m_speedMps * 3.6 >= kTripLogMovingGpsKmh; };
+  return moves(m_rawGps) || moves(m_rawFused);
 }
 
 std::string Engine::GetTripLine()

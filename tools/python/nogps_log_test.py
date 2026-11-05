@@ -169,6 +169,21 @@ class SplitTest(unittest.TestCase):
         self.assertEqual([(a['kind'], a['text']) for a in trips[0].anomalies], [('no TRIP lines',
                                                                                  '101 s without a TRIP line')])
 
+    def test_standing_car_written_seldom_is_no_gap(self):
+        stand = lambda s: 60 <= s < 180
+        log = android_drive(seconds=240, stand=0, fields=lambda s: dict(
+            speed='0', gps='%.6f,%.6f/5.0/0/0/0.00/3' % (START_LAT, START_LON)) if stand(s) else {})
+        # The core writes a standing car once in 30 s; a moving one every second, a pause of it is a gap.
+        def written(line):
+            if 'TRIP ' not in line:
+                return True
+            s = int(line[9:11]) * 60 + int(line[12:14]) - 2
+            return not ((stand(s) and s % 30) or 200 <= s < 210)
+        log = [line for line in log if written(line)]
+        trips = analyse(('app.log', log)).trips
+        self.assertEqual([(a['kind'], a['text']) for t in trips for a in t.anomalies],
+                         [('no TRIP lines', '11 s without a TRIP line')])
+
     def test_long_pause_of_the_log_splits(self):
         log = android_drive(seconds=100, stand=0) + android_drive(start=19 * 3600, seconds=100, stand=0, header=False)
         self.assertEqual(len(analyse(('app.log', log)).trips), 2)

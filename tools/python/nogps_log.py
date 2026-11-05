@@ -57,6 +57,8 @@ TRIP_GAP_S = 60
 REPLAY_CHANGE_M = 15
 # Seconds without a TRIP line shown as an anomaly.
 MISSING_TRIP_S = 2.5
+# A standing car is written once in this time, Engine::kTripLogStandIntervalMs, with a margin.
+STAND_TRIP_S = 35
 
 # The flags of a data line of the box, bit by bit, see libs/map/nogps/esp32_protocol.hpp.
 BOX_FLAGS = ['IMU_OK', 'BIAS_OK', 'UP_OK', 'FWD_OK', 'OBD_OK', 'STILL', 'CALIBRATING', 'MOUNT_MOVED', 'REVERSE',
@@ -388,6 +390,14 @@ def is_moving(row):
     return False
 
 
+def logs_every_second(row):
+    """The core writes a TRIP line every second while the car moves by the box or by GPS, see Engine::LogTrip."""
+    speed = num(row, 'speed')
+    if speed is not None and speed > 0:
+        return True
+    return any((num(row, source + '_kmh') or 0) >= 3 for source in ('gps', 'fused'))
+
+
 def split(group):
     """[first row, row after the last] of each trip of the group, and whether the car has driven on it."""
     rows = group.rows
@@ -584,7 +594,7 @@ def anomalies(rows, events):
             result.append(dict(start=start, end=end, kind=name, severity=severity(values), text=text(values)))
     for previous, row in zip(rows, rows[1:]):
         gap = row['t'] - previous['t']
-        if gap > MISSING_TRIP_S * 1000:
+        if gap > MISSING_TRIP_S * 1000 and not (gap <= STAND_TRIP_S * 1000 and not logs_every_second(previous)):
             result.append(dict(start=previous['t'], end=row['t'], kind='no TRIP lines', severity='low',
                                text='%.0f s without a TRIP line' % (gap / 1000)))
     warnings = {}

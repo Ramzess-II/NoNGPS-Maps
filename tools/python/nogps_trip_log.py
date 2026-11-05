@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Converts the TRIP lines of a NonGPS Maps log to CSV to analyse a drive.
 
-The navigation core writes a TRIP line every second while the location is on: the shown position, the positions
-of the platform (gps= satellites only, Android; fused= CoreLocation on iOS, Google fused on Android) and the state
-of the inertial navigation. The error of the shown position is measured against the platform position, gps= if
+The navigation core writes a TRIP line every second while the car moves, once in 30 s while it stands: the shown
+position, the positions of the platform (gps= satellites only, Android; fused= CoreLocation on iOS, Google fused on
+Android) and the state of the inertial navigation. The error of the shown position is measured against the platform position, gps= if
 there is one, at the same moment (the two have different ages): along the course of the car (+ the mark is ahead)
 and across it (+ the mark is to the right). With "Disable GPS" on, the platform position is the car itself.
 

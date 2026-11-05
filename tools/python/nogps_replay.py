@@ -33,6 +33,8 @@ CHECKPOINT = re.compile(r'ms::LatLon\((-?[\d.]+), (-?[\d.]+)\)')
 SLICE_MS = 200
 # A break of the box data longer than this is another trip.
 MAX_STAND_FILL_MS = 600_000
+# A standing car is written once in this time, Engine::kTripLogStandIntervalMs, with a margin.
+STAND_TRIP_MS = 35_000
 # The car standing before the first data of the box is driven again for this long at most.
 MAX_STAND_BEFORE_MS = 15_000
 
@@ -114,6 +116,19 @@ def slices_of(lines, parse):
             if parsed is not None:
                 result.append((end - (len(values) - 1 - i) * duration, duration, parsed))
     return result
+
+
+def moves_by(fields):
+    """The core writes a TRIP line every second while the car moves by the box or by GPS, see Engine::LogTrip."""
+    if number(fields, 'speed', 0) > 0:
+        return True
+    for source in ('gps', 'fused'):
+        try:
+            if float(fields.get(source, '').split('/')[2]) >= 3:
+                return True
+        except (ValueError, IndexError):
+            pass
+    return False
 
 
 def make_input(args):
@@ -218,7 +233,9 @@ def make_input(args):
             return '-'
 
     fix_ms = None
-    for f in trips:
+    # The last GPS position given and the number of the TRIP line it is from.
+    last_fix = None
+    for k, f in enumerate(trips):
         value = f.get('gps')
         if not value or f.get('spoofed') == '1':
             continue
@@ -245,9 +262,18 @@ def make_input(args):
                     bearing_accuracy = '5.00'
             except ValueError:
                 pass
-        actions.append((at, 4, 'G %d %.6f %.6f %.1f %s %s %s' % (
-            round(at), position[0], position[1], accuracy, optional(parts[2], 1 / 3.6), optional(parts[3], 1),
-            bearing_accuracy), False))
+        rest = '%.6f %.6f %.1f %s %s %s' % (position[0], position[1], accuracy, optional(parts[2], 1 / 3.6),
+                                           optional(parts[3], 1), bearing_accuracy)
+        # A standing car is written once in STAND_TRIP_MS: GPS has given the same position every second meanwhile,
+        # a pause would be GPS lost.
+        if (last_fix and last_fix[1] == k - 1 and 1500 < f['ms'] - trips[k - 1]['ms'] <= STAND_TRIP_MS and
+                not moves_by(trips[k - 1])):
+            fill = last_fix[0] + 1000
+            while fill < at - 500:
+                actions.append((fill, 4, 'G %d %s' % (round(fill), last_fix[2]), False))
+                fill += 1000
+        last_fix = (at, k, rest)
+        actions.append((at, 4, 'G %d %s' % (round(at), rest), False))
     accel_lines.sort(key=lambda x: x[0])
 
     def accel_value(text):
@@ -285,9 +311,10 @@ def make_input(args):
 
     def stands(from_ms, to_ms):
         """The application was running and the box was heard all the time: the car stood, a second it moves or
-        rotates in is written."""
+        rotates in is written. A standing car has a TRIP line once in STAND_TRIP_MS, every second in older logs."""
         rows = trips[bisect.bisect_left(trip_times, from_ms):bisect.bisect_right(trip_times, to_ms)]
-        return (len(rows) >= (to_ms - from_ms) / 1000 * 0.8 - 1 and
+        times = [from_ms] + [f['ms'] for f in rows] + [to_ms]
+        return ((rows or to_ms - from_ms <= 1250) and all(b - a <= STAND_TRIP_MS for a, b in zip(times, times[1:])) and
                 all(number(f, 'speed', -1) >= 0 and f.get('src') != 'GPS' for f in rows))
 
     def speed_at(ms):
@@ -314,6 +341,10 @@ def make_input(args):
                    (previous is None or trips[i]['ms'] > previous)):
                 i -= 1
             stood_from = trips[i + 1]['ms'] if i + 1 < len(trips) and trips[i + 1]['ms'] < begin else begin
+            # A standing car is written seldom: it has stood since a line of 0 km/h before.
+            if (i >= 0 and trips[i].get('speed') == '0' and 1500 < stood_from - trips[i]['ms'] <= STAND_TRIP_MS and
+                    (previous is None or trips[i]['ms'] > previous)):
+                stood_from = min(stood_from, max(trips[i]['ms'], begin - MAX_STAND_BEFORE_MS))
             records.append((stood_from, 5, 'J %d' % round(stood_from)))
             count = round((begin - stood_from) / SLICE_MS)
             for k in range(count):
