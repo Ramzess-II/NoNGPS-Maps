@@ -211,6 +211,9 @@ public:
   // closer to it than this. A way coming closer goes through the roundabout, and the road it finds beyond is an exit
   // the car can't drive to without turning.
   static double constexpr kPastRoundaboutM = 10;
+  // The car changes lanes and follows the bends of the road before a roundabout: the mark waiting there waits until
+  // the car has turned this much, as it does entering the roundabout, and not kWaitStraightDeg or a turn started.
+  static double constexpr kRoundaboutWaitTurnDeg = 30;
   // Nobody maneuvers or drives backwards this fast: a car followed apart that drives so for a while is on a road.
   static int constexpr kNotManeuveringSpeedKmh = 15;
   static int64_t constexpr kNotManeuveringMs = 3000;
@@ -471,9 +474,10 @@ private:
   void LoseRoad(std::string const & after);
   // The car has turned less than kWaitStraightDeg in the last kWaitStraightM.
   bool IsDrivingStraight() const;
-  // The road has gone away from a car driving straight: the mark waits for it up to |limitM|, see kMaxWaitAheadM.
+  // The road has gone away from a car driving straight: the mark waits for it at |at| up to |limitM|, see
+  // kMaxWaitAheadM.
   // |why| is for the log.
-  void StartWaitAhead(double limitM, std::string const & why);
+  void StartWaitAhead(double limitM, ms::LatLon const & at, std::string const & why);
   // \returns true if the mark waits for the car that has driven |distanceM| rotating by |rotatedDeg|.
   bool WaitAhead(double rotatedDeg, double distanceM);
   // Looks if the car the mark waits for at a roundabout drives along a road past it, see kPastRoundaboutM.

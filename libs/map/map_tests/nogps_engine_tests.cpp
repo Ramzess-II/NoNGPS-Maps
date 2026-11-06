@@ -989,7 +989,7 @@ UNIT_TEST(NoGps_Engine_MarkAheadWaitsAtRoundaboutForCar)
   // The mark waits on its road before the roundabout.
   TEST_NOT_EQUAL(TripField(env, "wait"), "-", ());
   auto const waiting = env.Last().m_position;
-  TEST_LESS(East(waiting), -29, ());
+  TEST_LESS(East(waiting), -25, ());
   TEST_GREATER(East(waiting), -45, ());
   env.Drive(2000, 48, 0);
   env.Drive(5000, 0, 0);
@@ -1043,6 +1043,111 @@ UNIT_TEST(NoGps_Engine_MarkWaitingAtRoundaboutGoesOnAlongRoadPastIt)
   TEST_EQUAL(TripField(env, "road"), "1", ());
   TestAlmostEqualAbs(North(env.Last().m_position), 0, 1);
   TestAlmostEqualAbs(East(env.Last().m_position), 287, 20);
+}
+
+// Drives the car around the roundabout of NoGps_Engine_MarkAheadWaitsAtRoundaboutForCar and checks that its mark is
+// on the street the car has left it by.
+void DriveAroundRoundaboutToExit(Env & env, double entryYawDegS = 45)
+{
+  env.Drive(1000, 27, entryYawDegS);
+  env.Drive(2000, 27, -35);
+  env.Drive(1500, 27, 0);
+  env.Drive(5000, 27, 5);
+  env.Drive(4000, 27, 0);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+  TEST_EQUAL(TripField(env, "road"), "1", ());
+  TestAlmostEqualAbs(North(env.Last().m_position), 7.5, 1);
+  TEST_GREATER(East(env.Last().m_position), 75, ());
+}
+
+UNIT_TEST(NoGps_Engine_MarkWaitingAtRoundaboutGoesOnWhenCarSwervesBeforeIt)
+{
+  // The car swerves 15 degrees to the right 40 m before the roundabout, as on a road curving into it, and drives so to
+  // the roundabout: the mark goes on from where it waited, and comes to the roundabout before the car again.
+  PieceRoads roads({{-3000, 0, -30, 0}, {75, 7.5, 400, 7.5}}, {});
+  roads.AddRoundabout(15, 0, 25);
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -2100);
+  env.Drive(160'000, 48, 0);
+  TEST_NOT_EQUAL(TripField(env, "wait"), "-", ());
+  env.Drive(1000, 48, 15);
+  env.Drive(2000, 48, 0);
+  env.Drive(5000, 0, 0);
+  DriveAroundRoundaboutToExit(env, 30);
+}
+
+UNIT_TEST(NoGps_Engine_MarkAheadAtRoundaboutWithCarSlowingDown)
+{
+  // As in NoGps_Engine_MarkAheadWaitsAtRoundaboutForCar, but the car brakes to 15 km/h before its mark comes to the
+  // roundabout, and drives around it slowly.
+  PieceRoads roads({{-3000, 0, -30, 0}, {75, 7.5, 400, 7.5}}, {});
+  roads.AddRoundabout(15, 0, 25);
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -2100);
+  env.Drive(150'000, 48, 0);
+  TEST_EQUAL(TripField(env, "road"), "1", ());
+  env.Drive(25'000, 15, 0);
+  env.Drive(1800, 15, 25);
+  env.Drive(3600, 15, -19.5);
+  env.Drive(2700, 15, 0);
+  env.Drive(9000, 15, 2.8);
+  env.Drive(4000, 27, 0);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+  TEST_EQUAL(TripField(env, "road"), "1", ());
+  TestAlmostEqualAbs(North(env.Last().m_position), 7.5, 1);
+  TEST_GREATER(East(env.Last().m_position), 75, ());
+}
+
+UNIT_TEST(NoGps_Engine_MarkWaitingAtRoundaboutAfterGapOnMap)
+{
+  // The street is missing on the map for the last 25 m before the roundabout: the mark has left it there before it
+  // comes to the roundabout, and waits at the end of the street.
+  PieceRoads roads({{-3000, 0, -65, 0}, {75, 7.5, 400, 7.5}}, {});
+  roads.AddRoundabout(15, 0, 25);
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -2100);
+  env.Drive(160'000, 48, 0);
+  TEST_NOT_EQUAL(TripField(env, "wait"), "-", ());
+  env.Drive(2000, 48, 0);
+  env.Drive(5000, 0, 0);
+  DriveAroundRoundaboutToExit(env);
+}
+
+UNIT_TEST(NoGps_Engine_MarkWaitingAtRoundaboutAfterLaneChange)
+{
+  // The car is 200 m behind its mark. It changes lanes before the roundabout, which ends the waiting, drives straight
+  // on 60 m and stops at the roundabout.
+  PieceRoads roads({{-3000, 0, -30, 0}, {75, 7.5, 400, 7.5}}, {});
+  roads.AddRoundabout(15, 0, 25);
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -2100);
+  env.Drive(160'000, 48, 0);
+  TEST_NOT_EQUAL(TripField(env, "wait"), "-", ());
+  env.Drive(1000, 48, 12);
+  env.Drive(4500, 48, 0);
+  env.Drive(1000, 48, -12);
+  env.Drive(5000, 0, 0);
+  // The car has not come to the roundabout yet: its mark is not on the street it leaves the roundabout by.
+  TEST(TripField(env, "road") == "0" || North(env.Last().m_position) < 3, (env.m_engine.GetTripLine()));
+  DriveAroundRoundaboutToExit(env);
+}
+
+UNIT_TEST(NoGps_Engine_MarkWaitingAtRoundaboutOnGentleBend)
+{
+  // The car is 250 m behind its mark, and the road bends 13 degrees to the right over 150 m before the roundabout:
+  // the mark waits on.
+  PieceRoads roads({{-3000, 0, -30, 0}, {75, 7.5, 400, 7.5}}, {});
+  roads.AddRoundabout(15, 0, 25);
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -2100);
+  env.Drive(160'000, 48, 0);
+  TEST_NOT_EQUAL(TripField(env, "wait"), "-", ());
+  env.Drive(11'000, 48, 1.2);
+  env.Drive(2000, 48, 0);
+  TEST_NOT_EQUAL(TripField(env, "wait"), "-", ());
+  TEST_LESS(East(env.Last().m_position), -25, ());
+  env.Drive(5000, 0, 0);
+  DriveAroundRoundaboutToExit(env, 32);
 }
 
 UNIT_TEST(NoGps_Engine_StopsCarThatLeftRoads)
