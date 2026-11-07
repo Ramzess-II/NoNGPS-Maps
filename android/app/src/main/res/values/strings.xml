@@ -1237,6 +1237,10 @@
     <string name="nogps_box_allow_nearby">Allow nearby devices</string>
     <!-- Button: allow the location to the app, which Android before 12 needs to search Bluetooth devices -->
     <string name="nogps_box_allow_location">Allow location</string>
+    <!-- Step of connecting the box: the system location is off, which Android before 12 needs to search Bluetooth devices -->
+    <string name="nogps_box_step_location_off">Location is off</string>
+    <!-- Button: open the system settings to turn the location on, which Android before 12 needs to search Bluetooth devices -->
+    <string name="nogps_box_turn_on_location">Turn on location</string>
     <!-- Hint while the box is searched -->
     <string name="nogps_box_power_hint">Have a box? Power it on near the phone: it accepts a new phone for 2 minutes. The phone may ask for the code from the box.</string>
 </resources>
