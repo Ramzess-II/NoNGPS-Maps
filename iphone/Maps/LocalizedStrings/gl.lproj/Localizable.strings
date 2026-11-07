@@ -1283,10 +1283,6 @@
 "nogps_sensors_not_ready" = "Not ready: %@";
 "nogps_missing_speed" = "no speed";
 "nogps_missing_position" = "no start position";
-"nogps_shift_forward" = "Move the position forward along the road";
-"nogps_shift_back" = "Move the position back along the road";
-"nogps_shift_limited" = "Moved by %1$d m, up to the crossing";
-"nogps_shift_failed" = "There is nowhere to move the position";
 "nogps_sensors_scale" = "Speed correction: %1$@ · measured ranges: %2$d";
 "nogps_sensors_lag_measured" = "Speed delay: %@ s (measured by GPS)";
 "nogps_sensors_lag_usual" = "Speed delay: %@ s (usual, not measured by GPS yet)";
@@ -1296,7 +1292,6 @@
 "nogps_speed_table_hide" = "Hide table";
 "nogps_speed_table_row" = "%1$d–%2$d km/h  %3$@";
 "nogps_speed_table_left" = "%d m to go";
-"nogps_shift_at_turn" = "The position is at a crossing, it can not be moved further";
 "nogps_status_gps_off" = "GPS is off in the system settings";
 "nogps_gps_back_auto" = "GPS is trusted again, the manual mode is off";
 "nogps_reverse_direction" = "Turn the car around on the road";
