@@ -204,15 +204,6 @@ public final class NoGps
     // The position is not from GPS: the user corrects it with the buttons.
     @Keep
     public boolean movedByHand;
-    // The position stands at a crossing and is moved that way after the car passes it.
-    @Keep
-    public boolean shiftForwardBlocked;
-    @Keep
-    public boolean shiftBackBlocked;
-    @Keep
-    public int shiftStepM;
-    @Keep
-    public boolean shiftButtonsShown;
 
     @Keep
     public boolean inertialEnabled;
@@ -522,8 +513,6 @@ public final class NoGps
   /// @return false if there is no road near, the core sends MARK_NO_ROAD then.
   public static native boolean nativePlaceMark(double lat, double lon);
 
-  public static native double nativeShiftPosition(double distanceM);
-
   public static native void nativeReverseDirection();
 
   /// Shows the car on the next of the other roads it may be on, see Status.otherMarks.
@@ -551,10 +540,6 @@ public final class NoGps
   public static native void nativeCancelFirmwareUpdate();
 
   public static native void nativeClearSpeedCalibration();
-
-  public static native void nativeCycleShiftStep();
-
-  public static native void nativeSetShiftButtonsShown(boolean shown);
 
   private static native void nativeGetStatus(@NonNull Status status);
 }

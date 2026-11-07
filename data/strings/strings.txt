@@ -46008,36 +46008,6 @@ en = The adapter can't be used without Bluetooth access
 ru = Без доступа к Bluetooth адаптер не подключить
 uk = Без доступу до Bluetooth адаптер не підключити
 
-[nogps_shift_forward]
-tags = android-app,apple-maps
-en = Move the position forward along the road
-ru = Перенести позицию вперёд по дороге
-uk = Перенести позицію вперед по дорозі
-
-[nogps_shift_back]
-tags = android-app,apple-maps
-en = Move the position back along the road
-ru = Перенести позицию назад по дороге
-uk = Перенести позицію назад по дорозі
-
-[nogps_shift_step]
-tags = android-app
-en = Distance to move the position by
-ru = На сколько переносить позицию
-uk = На скільки переносити позицію
-
-[nogps_shift_limited]
-tags = android-app,apple-maps
-en = Moved by %1$d m, up to the crossing
-ru = Перенос на %1$d м, до перекрёстка
-uk = Перенесення на %1$d м, до перехрестя
-
-[nogps_shift_failed]
-tags = android-app,apple-maps
-en = There is nowhere to move the position
-ru = Позицию некуда переносить
-uk = Позицію нікуди переносити
-
 [nogps_sensors_scale]
 tags = android-app,apple-maps
 en = Speed correction: %1$@ · measured ranges: %2$d
@@ -46091,12 +46061,6 @@ tags = android-app,apple-maps
 en = %d m to go
 ru = ещё %d м
 uk = ще %d м
-
-[nogps_shift_at_turn]
-tags = android-app,apple-maps
-en = The position is at a crossing, it can not be moved further
-ru = Позиция у перекрёстка, дальше переносить нельзя
-uk = Позиція біля перехрестя, далі переносити не можна
 
 [nogps_status_gps_off]
 tags = android-app,apple-maps
