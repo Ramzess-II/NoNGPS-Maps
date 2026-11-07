@@ -10,6 +10,7 @@
 
 #include <cmath>
 #include <string>
+#include <vector>
 
 namespace nogps_roads_tests
 {
@@ -140,6 +141,42 @@ UNIT_TEST(NoGps_TurnMatcher_NotFartherThanCalculationIsEverWrong)
   TEST(crossing, ());
   TestAt(100, 0, *crossing);
   TEST(!TurnMatcher::FindCrossing(roads, At(30, 0), 90, 0, 140), ());
+}
+
+UNIT_TEST(NoGps_TurnMatcher_FindsFarCrossings)
+{
+  // The street going east has a side street going north at 100 m. The mark is 46 m past it when the car turns north,
+  // as on November 5: out of the search, but the car may have passed it.
+  PieceRoads roads({{-300, 0, 400, 0}, {100, 0, 100, 300}}, {{100, 0}});
+  std::string whyNot;
+  std::vector<ms::LatLon> fitting;
+  std::vector<ms::LatLon> far;
+  TEST(!TurnMatcher::FindCrossing(roads, At(146, 0), 90, 0, 21, &whyNot, false, &fitting, 0, 150, &far), ());
+  TEST(fitting.empty(), ());
+  TEST_EQUAL(far.size(), 1, ());
+  TestAt(100, 0, far[0]);
+  TEST(whyNot.find("farther the car may be at 1") != std::string::npos, (whyNot));
+  // Not farther than the car may be.
+  TEST(!TurnMatcher::FindCrossing(roads, At(146, 0), 90, 0, 21, nullptr, false, nullptr, 150, 40, &far), ());
+  TEST(far.empty(), ());
+  TEST(!TurnMatcher::FindCrossing(roads, At(260, 0), 90, 0, 21, nullptr, false, nullptr, 150, 150, &far), ());
+  TEST(far.empty(), ());
+  // The mark 46 m behind the car: the crossing is ahead.
+  TEST(!TurnMatcher::FindCrossing(roads, At(54, 0), 90, 0, 21, nullptr, false, nullptr, 0, 150, &far), ());
+  TEST(far.empty(), ());
+  TEST(!TurnMatcher::FindCrossing(roads, At(54, 0), 90, 0, 21, nullptr, false, nullptr, 150, 0, &far), ());
+  TEST_EQUAL(far.size(), 1, ());
+  TestAt(100, 0, far[0]);
+
+  // A crossing within the search is the one the car has turned at, the far one is another place.
+  PieceRoads two({{-300, 0, 400, 0}, {100, 0, 100, 300}, {200, 0, 200, 300}}, {{100, 0}, {200, 0}});
+  auto const crossing =
+      TurnMatcher::FindCrossing(two, At(210, 0), 90, 0, 21, nullptr, false, &fitting, 150, 150, &far);
+  TEST(crossing, ());
+  TestAt(200, 0, *crossing);
+  TEST_EQUAL(fitting.size(), 1, ());
+  TEST_EQUAL(far.size(), 1, ());
+  TestAt(100, 0, far[0]);
 }
 
 UNIT_TEST(NoGps_TurnMatcher_DescribesCrossingsAround)
