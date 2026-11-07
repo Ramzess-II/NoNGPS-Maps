@@ -7,6 +7,7 @@
 #include "map/nogps/clock.hpp"
 #include "map/nogps/delegate.hpp"
 #include "map/nogps/engine.hpp"
+#include "map/nogps/version.hpp"
 
 #include "geometry/mercator.hpp"
 
@@ -217,6 +218,13 @@ static CLLocation * lastPlatformLocation;
 + (void)stop
 {
   Engine().Stop();
+}
+
++ (NSString *)addonVersion
+{
+  return [[NSString alloc] initWithBytes:nogps::kAddonVersion.data()
+                                  length:nogps::kAddonVersion.size()
+                                encoding:NSUTF8StringEncoding];
 }
 
 + (MWMNoGpsStatus *)status

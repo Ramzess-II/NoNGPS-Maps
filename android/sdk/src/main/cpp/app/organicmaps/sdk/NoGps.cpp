@@ -4,6 +4,7 @@
 
 #include "map/nogps/delegate.hpp"
 #include "map/nogps/engine.hpp"
+#include "map/nogps/version.hpp"
 
 #include "geometry/mercator.hpp"
 
@@ -379,5 +380,10 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsField(env, out, "firmwareUpdateProgress", status.m_firmwareUpdateProgress);
   SetNoGpsString(env, out, "firmwareUpdateError", status.m_firmwareUpdateError);
   SetNoGpsField(env, out, "boxCalibrationAdvised", status.m_boxCalibrationAdvised);
+}
+
+JNIEXPORT jstring Java_app_organicmaps_sdk_location_NoGps_nativeGetAddonVersion(JNIEnv * env, jclass)
+{
+  return jni::ToJavaString(env, std::string(nogps::kAddonVersion));
 }
 }  // extern "C"

@@ -7,6 +7,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.UiThread;
 import androidx.core.location.LocationCompat;
+import app.organicmaps.sdk.BuildConfig;
 
 /**
  * Navigation without GPS, done in the core (libs/map/nogps): it chooses the position to show from GPS, cell towers,
@@ -466,12 +467,23 @@ public final class NoGps
     return status;
   }
 
+  /// The version of the NonGPS add-on and the commit of the build, "1.0.0 (abcdef12)": tells which build it is.
+  @NonNull
+  public static String getAddonBuild()
+  {
+    return nativeGetAddonVersion() + " (" + BuildConfig.GIT_HASH + ")";
+  }
+
   @Nullable
   static Event toEvent(int event)
   {
     final Event[] events = Event.values();
     return event >= 0 && event < events.length ? events[event] : null;
   }
+
+  /// The version of the NonGPS add-on, MAJOR.MINOR.PATCH, see libs/map/nogps/version.hpp.
+  @NonNull
+  public static native String nativeGetAddonVersion();
 
   private static native void nativeCreate(@NonNull Delegate delegate);
 

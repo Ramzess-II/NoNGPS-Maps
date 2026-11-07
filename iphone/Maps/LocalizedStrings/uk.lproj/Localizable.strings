@@ -1451,6 +1451,9 @@
 "nogps_clear_speed_title" = "Скинути калібрування швидкості?";
 "nogps_clear_speed_message" = "Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або машини. Поки працює GPS, вони вимірюються наново.";
 "nogps_about_title" = "Про NonGPS Maps";
+
+/* In About under the app version: the version of the navigation without GPS */
+"nogps_addon_version" = "Доповнення NonGPS %@";
 "nogps_speed_no_data" = "NO";
 "nogps_speed_no_elm" = "OBD";
 "nogps_box_sleeping" = "спить: двигун заглушено";

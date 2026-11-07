@@ -1451,6 +1451,9 @@
 "nogps_clear_speed_title" = "Reset the speed calibration?";
 "nogps_clear_speed_message" = "The speed corrections learned from GPS at different speeds and from your corrections will be forgotten. Do it after new tyres or another car. They are learned anew while GPS works.";
 "nogps_about_title" = "About NonGPS Maps";
+
+/* In About under the app version: the version of the navigation without GPS */
+"nogps_addon_version" = "NonGPS add-on %@";
 "nogps_speed_no_data" = "NO";
 "nogps_speed_no_elm" = "OBD";
 "nogps_box_sleeping" = "sleeps: the engine is stopped";

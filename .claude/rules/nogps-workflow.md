@@ -24,6 +24,16 @@ merges stay clean. Fork rules go in `.claude/rules/nogps-*.md`, fork skills in `
    opens. Comment `@claude <request>` on a PR to ask for a re-review or a fix. If the PR changes the shared
    interface, the other person approves it. Otherwise the author merges after CI passes.
 
+## Raise the add-on version
+
+`kAddonVersion` in `libs/map/nogps/version.hpp` is the version of the NonGPS add-on, shown in About and in the first
+lines of the trip log on both apps. Every PR into `master` raises it in its own commit: PATCH for a fix, MINOR for new
+behavior, MAJOR when we decide. A PR of docs or CI only takes the label `no-version` instead. The CI check
+`NoGPS add-on version` fails a PR that does neither.
+
+Two open PRs raise the same line, so the second one gets a merge conflict: take the bigger number and raise it once
+more.
+
 ## Work you don't do now goes to an issue
 
 IMPORTANT: anything you notice that this session won't finish goes into a GitHub issue before the session ends or

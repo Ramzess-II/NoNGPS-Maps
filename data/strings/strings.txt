@@ -46592,6 +46592,13 @@ en = Source code on GitHub
 ru = Исходный код на GitHub
 uk = Вихідний код на GitHub
 
+[nogps_addon_version]
+comment = In About under the app version: the version of the navigation without GPS
+tags = android-app,apple-maps
+en = NonGPS add-on %@
+ru = Дополнение NonGPS %@
+uk = Доповнення NonGPS %@
+
 [nogps_speed_no_data]
 tags = android-app,apple-maps
 en = NO
