@@ -464,6 +464,8 @@
   `libs/map/nogps/version.hpp`) і коміт збірки (`git describe --always --dirty`; на Android `BuildConfig.GIT_HASH`,
   на iOS `nogps_git_hash.txt` у бандлі від Run Script фази OMaps). Файл дня продовжується і після нової збірки,
   тому кожен `Start` навігації пише перед собою `NonGPS add-on 1.0.1`.
+- `hdg=<градуси>/<джерело>` у рядку TRIP — звідки курс узято востаннє (`InertialNavigator::HeadingSource`): `GPS`,
+  `ROAD` (дорога після мітки, тапу чи розвороту) або `GYRO` — поворот перенесено на перехрестя, курс лишився гіроскопа.
 
 ## 12. Договорённости
 
