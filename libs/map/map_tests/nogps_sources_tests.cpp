@@ -338,12 +338,25 @@ UNIT_TEST(NoGps_Esp32Source_CalibrationEndsWhenLinkIsLost)
   TEST_EQUAL(source.GetCalibrationState(), CalibrationState::LinkLost, ());
   clock.Advance(Esp32Source::kCalibrationTimeoutMs + 1);
   TEST_EQUAL(source.GetCalibrationState(), CalibrationState::LinkLost, ());
-  // The answer to the lost command doesn't count any more.
+  // The answer to the lost command doesn't count any more, nor the flags from before the link was lost.
   source.OnBleState(BleState::Connected);
   source.OnBleBytes(BoxLine("NGA,1,ERR,MOVING"));
-  // Connected again: the flags of the box tell if it has finished the calibration.
+  TEST_EQUAL(source.GetCalibrationState(), CalibrationState::LinkLost, ());
+  // The first data after that: the flags of the box tell if it has finished the calibration.
+  clock.Advance(20);
   source.OnBleBytes(BoxDataLine(2, 20000, 0, 0, kCalibratedFlags));
   TEST_EQUAL(source.GetCalibrationState(), CalibrationState::Done, ());
+
+  // A short loss: the box was calibrated before, its old flags don't tell the result of the new calibration.
+  source.Calibrate();
+  source.OnBleBytes(BoxLine("NGA,2,PROGRESS,60"));
+  source.OnBleState(BleState::Searching);
+  TEST_EQUAL(source.GetCalibrationProgressPercent(), 0, ());
+  source.OnBleState(BleState::Connected);
+  TEST_EQUAL(source.GetCalibrationState(), CalibrationState::LinkLost, ());
+  clock.Advance(20);
+  source.OnBleBytes(BoxDataLine(3, 20020, 0, 0, 0));
+  TEST_EQUAL(source.GetCalibrationState(), CalibrationState::None, ());
 
   // A new calibration forgets the lost one.
   source.Calibrate();
