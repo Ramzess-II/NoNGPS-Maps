@@ -1,6 +1,7 @@
 /// The controls of the navigation without GPS on the map: where the position comes from, the manual mode and the
 /// buttons correcting the position of the car. They are laid out in the free area of the side buttons, the buttons on
-/// a panel at the left edge of the screen. The user can move the panel up and down.
+/// a panel at the left edge of the screen, opposite the side buttons: at the right one in right-to-left languages. The
+/// user can move the panel up and down.
 @objc
 final class NoGpsControls: NSObject {
   private enum Constants {
@@ -27,7 +28,9 @@ final class NoGpsControls: NSObject {
   private static var availableArea = CGRect.zero
 
   private let statusButton = UIButton(type: .custom)
-  private let panel = MapControlsPanel(edge: .left)
+  // The side buttons are on the left in right-to-left languages.
+  private static let isRTL = UIApplication.shared.userInterfaceLayoutDirection == .rightToLeft
+  private let panel = MapControlsPanel(edge: NoGpsControls.isRTL ? .right : .left)
   private let buttons = UIStackView()
   private var dragger: MapPanelDragger?
   // Of every button but the first one.
@@ -44,7 +47,7 @@ final class NoGpsControls: NSObject {
   private let manualButton = NoGpsControls.makeButton("hand.point.up.left")
   private var statusTop = NSLayoutConstraint()
   private var statusCenterX = NSLayoutConstraint()
-  private var buttonsLeading = NSLayoutConstraint()
+  private var buttonsEdge = NSLayoutConstraint()
   private var buttonsCenterY = NSLayoutConstraint()
   private var timer: Timer?
   private weak var calibrationAlert: UIAlertController?
@@ -144,13 +147,16 @@ final class NoGpsControls: NSObject {
 
     statusTop = statusButton.topAnchor.constraint(equalTo: superview.topAnchor)
     statusCenterX = statusButton.centerXAnchor.constraint(equalTo: superview.leftAnchor)
-    buttonsLeading = buttons.leftAnchor.constraint(equalTo: superview.leftAnchor)
+    buttonsEdge = Self.isRTL ? buttons.rightAnchor.constraint(equalTo: superview.leftAnchor)
+      : buttons.leftAnchor.constraint(equalTo: superview.leftAnchor)
     buttonsCenterY = buttons.centerYAnchor.constraint(equalTo: superview.topAnchor)
     NSLayoutConstraint.activate([
-      statusTop, statusCenterX, buttonsLeading, buttonsCenterY,
+      statusTop, statusCenterX, buttonsEdge, buttonsCenterY,
       // The panel goes on to the edge of the screen, under the safe area too.
-      panel.leftAnchor.constraint(equalTo: superview.leftAnchor),
-      panel.rightAnchor.constraint(equalTo: buttons.rightAnchor),
+      Self.isRTL ? panel.rightAnchor.constraint(equalTo: superview.rightAnchor)
+        : panel.leftAnchor.constraint(equalTo: superview.leftAnchor),
+      Self.isRTL ? panel.leftAnchor.constraint(equalTo: buttons.leftAnchor)
+        : panel.rightAnchor.constraint(equalTo: buttons.rightAnchor),
       panel.topAnchor.constraint(equalTo: buttons.topAnchor),
       panel.bottomAnchor.constraint(equalTo: buttons.bottomAnchor),
       statusButton.heightAnchor.constraint(greaterThanOrEqualToConstant: Constants.statusMinHeight),
@@ -173,7 +179,7 @@ final class NoGpsControls: NSObject {
     let place = {
       self.statusTop.constant = area.minY + Constants.statusTopOffset
       self.statusCenterX.constant = area.midX
-      self.buttonsLeading.constant = area.minX
+      self.buttonsEdge.constant = Self.isRTL ? area.maxX : area.minX
       // The side buttons on the right have the same center by default.
       self.buttonsCenterY.constant = area.minY + height / 2 + fraction * max(0, area.height - height)
     }
@@ -204,15 +210,16 @@ final class NoGpsControls: NSObject {
     }
   }
 
-  /// Slides the panel with its buttons in from the left edge of the screen, or out there.
+  /// Slides the panel with its buttons in from its edge of the screen, or out there.
   private func showPanel(_ show: Bool) {
     guard show != isPanelShown else { return }
     isPanelShown = show
     dragger?.isEnabled = show
     UIView.animate(withDuration: AppConstants.defaultAnimationDuration, delay: 0, options: [.beginFromCurrentState],
                    animations: {
-                     let offset = show ? CGAffineTransform.identity
-                       : CGAffineTransform(translationX: -self.panel.frame.maxX, y: 0)
+                     let away = Self.isRTL ? (self.panel.superview?.bounds.width ?? 0) - self.panel.frame.minX
+                       : -self.panel.frame.maxX
+                     let offset = show ? CGAffineTransform.identity : CGAffineTransform(translationX: away, y: 0)
                      for view in [self.panel, self.buttons] as [UIView] {
                        view.alpha = show ? 1 : 0
                        view.transform = offset
