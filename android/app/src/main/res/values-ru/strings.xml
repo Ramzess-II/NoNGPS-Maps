@@ -1113,6 +1113,8 @@
     <string name="nogps_based_on">На основе Organic Maps</string>
     <string name="nogps_map_data">Данные карт © OpenStreetMap и Organic Maps</string>
     <string name="nogps_source_code">Исходный код на GitHub</string>
+    <!-- In About under the app version: the version of the navigation without GPS -->
+    <string name="nogps_addon_version">Дополнение NonGPS %s</string>
     <string name="nogps_delete_recent_query">Удалить из истории?</string>
     <string name="nogps_box_sleeping">спит: двигатель заглушен</string>
     <string name="nogps_box_obd_sleeping">OBD спит: двигатель заглушен</string>
