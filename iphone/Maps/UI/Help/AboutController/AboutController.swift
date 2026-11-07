@@ -358,7 +358,7 @@ private extension AboutController {
     copyToClipboard(Self.formattedAppVersion())
   }
 
-  // With the build of the app: the line tells which build was tested.
+  /// With the build of the app: the line tells which build was tested.
   @objc func addonVersionButtonTapped() {
     let appInfo = AppInfo.shared()
     copyToClipboard("\(Self.formattedAddonVersion()) (\u{2066}\(appInfo.bundleVersion)-\(appInfo.buildNumber)\u{2069})")
