@@ -92,10 +92,11 @@ private:
 class SpeedFactor
 {
 public:
-  // Used after this distance only: a shorter one is dominated by the noise.
-  static double constexpr kMinDistanceM = 500;
-  // Older distances are forgotten gradually: the factor follows the last 1-2 km.
-  static double constexpr kMaxDistanceM = 2000;
+  // Used after this distance only, older distances are forgotten gradually: the factor follows the last 2.5-5 km.
+  // The trips of October 11 - November 7 driven again with 2 km: the factor went 0.99-1.013 on the October days,
+  // where the table was right, and put the mark 15 m ahead before a fork on October 22.
+  static double constexpr kMinDistanceM = 1500;
+  static double constexpr kMaxDistanceM = 5000;
   // The error of the table changes by 1-2%, a larger factor is a wrong measurement.
   static double constexpr kMinFactor = 0.95;
   static double constexpr kMaxFactor = 1.05;

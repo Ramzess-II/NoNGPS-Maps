@@ -1537,17 +1537,24 @@ UNIT_TEST(NoGps_Engine_RoadsTellSpeedErrorBeforeGps)
 
 UNIT_TEST(NoGps_Engine_RoadsTellFactorAfterGps)
 {
-  // GPS has measured the speedometer right at 30-40 km/h, the car is 3% faster now, e.g. on other tyres.
+  // GPS has measured the speedometer right at 30-40 km/h and the factor 1 over the last 1.6 km, the car is 3%
+  // faster now, e.g. on other tyres.
   SpeedTable table;
   table.OnDistance(36, 400, 400);
+  SpeedFactor factor;
+  factor.OnDistance(1600, 1600);
   auto roads = ZigzagStreet();
-  Env env(true /* inertial */, &roads,
-          [&table](TestStorage & storage) { storage.Set(Storage::kSpeedTable, table.Serialize()); });
+  Env env(true /* inertial */, &roads, [&table, &factor](TestStorage & storage)
+  {
+    storage.Set(Storage::kSpeedTable, table.Serialize());
+    storage.Set(Storage::kSpeedFactor, factor.Serialize());
+  });
   DriveZigzag(env);
-  // The rough table is not learned, the bends tell the factor over the GPS table.
+  // The rough table is not learned, the bends tell the factor over the GPS table: 3.2 km of them count as 800 m
+  // of GPS.
   TEST_EQUAL(TripField(env, "rough"), "0", ());
-  TestAlmostEqualAbs(std::stod(TripField(env, "factor")), 1.03, 0.01);
-  TestAlmostEqualAbs(std::stod(TripField(env, "scale")), 1.03, 0.01);
+  TestAlmostEqualAbs(std::stod(TripField(env, "factor")), 1 + 0.03 * 800 / 2400, 0.004);
+  TestAlmostEqualAbs(std::stod(TripField(env, "scale")), std::stod(TripField(env, "factor")), 0.002);
   TestAlmostEqualAbs(env.m_engine.GetStatus().m_speedTable[3].m_scale, std::stod(TripField(env, "factor")), 1e-3);
 
   // It is cleared with the calibration.
