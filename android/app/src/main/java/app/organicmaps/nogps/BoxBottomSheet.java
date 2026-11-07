@@ -301,8 +301,19 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     return ble == NoGps.BleState.OFF || ble == NoGps.BleState.DISABLED || ble == NoGps.BleState.NO_PERMISSION;
   }
 
-  private static int bluetoothActionText(@NonNull NoGps.Status status)
+  /**
+   * Before Android 12 the box is not searched while the location of the phone is off: the core sees it as Bluetooth
+   * switched off.
+   */
+  private boolean isLocationOff(@NonNull NoGps.Status status)
   {
+    return status.getBleState() == NoGps.BleState.DISABLED && NoGps.isLocationOffForBox(requireContext());
+  }
+
+  private int bluetoothActionText(@NonNull NoGps.Status status)
+  {
+    if (isLocationOff(status))
+      return R.string.nogps_box_turn_on_location;
     if (status.getBleState() != NoGps.BleState.NO_PERMISSION)
       return R.string.nogps_box_turn_on;
     // Named as in the settings: Android before 12 finds Bluetooth devices with the location permission.
@@ -451,8 +462,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mSteps[0].setText(ble == NoGps.BleState.NO_PERMISSION
                           ? (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? R.string.nogps_box_step_nearby_denied
                                                                             : R.string.nogps_box_step_location_denied)
-                      : bluetoothFailed ? R.string.nogps_box_step_bluetooth_off
-                                        : R.string.nogps_box_step_bluetooth);
+                      : isLocationOff(status) ? R.string.nogps_box_step_location_off
+                      : bluetoothFailed       ? R.string.nogps_box_step_bluetooth_off
+                                              : R.string.nogps_box_step_bluetooth);
     mStepAction.setVisibility(bluetoothFailed ? View.VISIBLE : View.GONE);
     mStepAction.setText(bluetoothActionText(status));
     animateRings(!bluetoothFailed);
@@ -545,11 +557,17 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   }
 
   /**
-   * Bluetooth is turned on in the settings, or allowed to the app.
+   * Bluetooth or the location is turned on in the settings, or allowed to the app.
    */
   private void onStepAction()
   {
-    if (NoGps.getStatus().getBleState() != NoGps.BleState.NO_PERMISSION)
+    final NoGps.Status status = NoGps.getStatus();
+    if (isLocationOff(status))
+    {
+      startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
+      return;
+    }
+    if (status.getBleState() != NoGps.BleState.NO_PERMISSION)
     {
       startActivity(new Intent(Settings.ACTION_BLUETOOTH_SETTINGS));
       return;

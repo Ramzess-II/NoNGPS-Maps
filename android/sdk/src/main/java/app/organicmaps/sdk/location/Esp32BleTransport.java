@@ -23,6 +23,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -120,6 +121,8 @@ class Esp32BleTransport
       else if (BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(intent.getAction()))
         onBondStateChanged(intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE),
                            intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR));
+      else if (LocationManager.MODE_CHANGED_ACTION.equals(intent.getAction()) && mGatt == null)
+        start();
     }
   };
 
@@ -136,6 +139,8 @@ class Esp32BleTransport
     mRetryDelayMs = RETRY_DELAY_MS;
     final IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
     filter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S)
+      filter.addAction(LocationManager.MODE_CHANGED_ACTION);
     ContextCompat.registerReceiver(mContext, mReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
     start();
   }
@@ -232,6 +237,12 @@ class Esp32BleTransport
     if (scanner == null)
     {
       // ACTION_STATE_CHANGED tells when it is switched on.
+      setState(STATE_DISABLED);
+      return;
+    }
+    if (NoGps.isLocationOffForBox(mContext))
+    {
+      // MODE_CHANGED_ACTION tells when it is switched on.
       setState(STATE_DISABLED);
       return;
     }
