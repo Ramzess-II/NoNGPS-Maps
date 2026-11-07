@@ -28,8 +28,8 @@ merges stay clean. Fork rules go in `.claude/rules/nogps-*.md`, fork skills in `
 
 `kAddonVersion` in `libs/map/nogps/version.hpp` is the version of the NonGPS add-on, shown in About and in the first
 lines of the trip log on both apps. Every PR into `master` raises it in its own commit: PATCH for a fix, MINOR for new
-behavior, MAJOR when we decide. A PR of docs or CI only takes the label `no-version` instead. The CI check
-`NoGPS add-on version` fails a PR that does neither.
+behavior, MAJOR when we decide. A PR of docs or CI only takes the label `no-version` instead. A merge of upstream
+changes the build, so it raises PATCH. The CI check `NoGPS add-on version` fails a PR that does neither.
 
 Two open PRs raise the same line, so the second one gets a merge conflict: take the bigger number and raise it once
 more.
