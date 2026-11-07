@@ -1888,10 +1888,8 @@ std::optional<size_t> InertialNavigator::FindOtherMarkOnRoad() const
 {
   std::optional<size_t> found;
   for (size_t i = 0; i < m_otherMarks.size(); ++i)
-  {
     if (m_otherMarks[i].m_onRoad && (!found || (m_otherMarks[*found].m_far && !m_otherMarks[i].m_far)))
       found = i;
-  }
   return found;
 }
 
@@ -1916,8 +1914,8 @@ std::optional<size_t> InertialNavigator::TurnOtherMarks(double toBearingDeg, boo
                                mark.m_turnEnd.m_lon + crossing.m_lon - corner.m_lon);
         return m_roads.Snap(moved, toBearingDeg, kTurnSnapRadiusM);
       };
-      auto const [farAheadM, farBehindM] = mark.m_turnFromRoad ? GetFarCrossingM(reckoning, mark.m_roadSincePathM)
-                                                               : std::pair<double, double>();
+      auto const [farAheadM, farBehindM] =
+          mark.m_turnFromRoad ? GetFarCrossingM(reckoning, mark.m_roadSincePathM) : std::pair<double, double>();
       std::vector<ms::LatLon> far;
       if (auto const crossing =
               TurnMatcher::FindCrossing(m_roads, corner, mark.m_turnFromBearing, toBearingDeg, reckoning.GetAccuracy(),

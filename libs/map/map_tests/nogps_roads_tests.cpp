@@ -170,8 +170,7 @@ UNIT_TEST(NoGps_TurnMatcher_FindsFarCrossings)
 
   // A crossing within the search is the one the car has turned at, the far one is another place.
   PieceRoads two({{-300, 0, 400, 0}, {100, 0, 100, 300}, {200, 0, 200, 300}}, {{100, 0}, {200, 0}});
-  auto const crossing =
-      TurnMatcher::FindCrossing(two, At(210, 0), 90, 0, 21, nullptr, false, &fitting, 150, 150, &far);
+  auto const crossing = TurnMatcher::FindCrossing(two, At(210, 0), 90, 0, 21, nullptr, false, &fitting, 150, 150, &far);
   TEST(crossing, ());
   TestAt(200, 0, *crossing);
   TEST_EQUAL(fitting.size(), 1, ());
