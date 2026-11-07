@@ -13,33 +13,6 @@
   android:orientation="vertical"
   android:paddingTop="4dp"
   android:paddingBottom="4dp">
-  <LinearLayout
-    android:id="@+id/shift_position_container"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:gravity="center_horizontal"
-    android:orientation="vertical">
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-      android:id="@+id/shift_position_forward"
-      style="@style/MwmWidget.MapButton.InPanel"
-      app:srcCompat="@drawable/ic_plus"
-      android:contentDescription="@string/nogps_shift_forward" />
-    <TextView
-      android:id="@+id/shift_position_step"
-      android:layout_width="wrap_content"
-      android:layout_height="40dp"
-      android:contentDescription="@string/nogps_shift_step"
-      android:gravity="center"
-      android:minWidth="@dimen/map_button_size"
-      android:textColor="?android:textColorPrimary"
-      android:textSize="13sp"
-      android:textStyle="bold" />
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-      android:id="@+id/shift_position_back"
-      style="@style/MwmWidget.MapButton.InPanel"
-      app:srcCompat="@drawable/ic_minus"
-      android:contentDescription="@string/nogps_shift_back" />
-  </LinearLayout>
   <com.google.android.material.floatingactionbutton.FloatingActionButton
     android:id="@+id/reverse_direction"
     style="@style/MwmWidget.MapButton.InPanel"

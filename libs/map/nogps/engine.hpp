@@ -77,11 +77,6 @@ struct Status
   std::optional<double> m_workingNetworkAccuracyM;
   // The position is not from GPS: the user corrects it with the buttons.
   bool m_movedByHand = false;
-  // The position stands at a crossing and is moved that way after the car passes it.
-  bool m_shiftForwardBlocked = false;
-  bool m_shiftBackBlocked = false;
-  int m_shiftStepM = 0;
-  bool m_shiftButtonsShown = false;
 
   bool m_inertialEnabled = false;
   bool m_esp32Source = false;
@@ -227,8 +222,6 @@ public:
   // time the box has worked since: it sleeps most of its time, and its clock is not exact then.
   static int64_t constexpr kSamePowerOnMs = 30'000;
   static double constexpr kBoxClockError = 0.1;
-  // Meters the position is moved by with the buttons, the user chooses one of them.
-  static int constexpr kShiftStepsM[] = {10, 20, 50, 100};
 
   Engine(Delegate & delegate, MapApi & map, Storage & storage, Clock const & clock, Scheduler & scheduler);
   ~Engine() override;
@@ -303,11 +296,6 @@ public:
   /// Sends the firmware of Status::m_bundledFirmware to the box.
   void StartFirmwareUpdate();
   void CancelFirmwareUpdate();
-
-  /// Switches to the next of kShiftStepsM.
-  void CycleShiftStep();
-  /// The buttons moving the position along the road are shown: they calibrate the speed of the car.
-  void SetShiftButtonsShown(bool shown);
 
   /// \returns true if the position arrow must show the car direction instead of the compass.
   bool IsCarHeadingShown() const;
