@@ -182,6 +182,9 @@ NS_SWIFT_NAME(NoGpsStatus)
 NS_SWIFT_NAME(NoGps)
 @interface MWMNoGps : NSObject
 
+/// The version of the NonGPS add-on, MAJOR.MINOR.PATCH, see libs/map/nogps/version.hpp.
+@property(class, nonatomic, readonly) NSString * addonVersion;
+
 /// A position from CoreLocation. The chosen position comes back to MWMLocationManager.
 + (void)onLocation:(CLLocation *)location;
 /// The last position from CoreLocation as it came: the GPS sheet shows its details.

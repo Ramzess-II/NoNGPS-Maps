@@ -95,6 +95,7 @@ set(SRC
   nogps/turn_matcher.hpp
   nogps/turn_sign_checker.cpp
   nogps/turn_sign_checker.hpp
+  nogps/version.hpp
   place_page_info.cpp
   place_page_info.hpp
   share.cpp

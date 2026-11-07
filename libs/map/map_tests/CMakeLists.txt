@@ -29,6 +29,7 @@ set(SRC
   nogps_test_env.hpp
   nogps_test_roads.hpp
   nogps_turn_sign_checker_tests.cpp
+  nogps_version_tests.cpp
   power_manager_tests.cpp
   raster_tile_provider_tests.cpp
   road_warning_tests.cpp

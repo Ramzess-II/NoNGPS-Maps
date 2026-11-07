@@ -22,6 +22,7 @@ final class AboutController: MWMViewController {
 
   private let scrollView = UIScrollView()
   private let stackView = UIStackView()
+  private let addonVersionLabel = UILabel()
   private let logoImageView = UIImageView()
   private let headerTitleLabel = UILabel()
   private let additionalInfoStackView = UIStackView()
@@ -87,6 +88,15 @@ private extension AboutController {
       let titleDidTapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(appVersionButtonTapped))
       titleView.addGestureRecognizer(titleDidTapGestureRecognizer)
       navigationItem.titleView = titleView
+    }
+
+    func setupAddonVersion() {
+      addonVersionLabel.setFontStyle(.regular14, color: .blackSecondary)
+      addonVersionLabel.text = Self.formattedAddonVersion()
+      addonVersionLabel.textAlignment = .center
+      addonVersionLabel.isUserInteractionEnabled = true
+      let addonVersionDidTapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(addonVersionButtonTapped))
+      addonVersionLabel.addGestureRecognizer(addonVersionDidTapGestureRecognizer)
     }
 
     func setupScrollAndStack() {
@@ -172,6 +182,7 @@ private extension AboutController {
     view.setStyle(.pressBackground)
 
     setupTitle()
+    setupAddonVersion()
     setupScrollAndStack()
     setupLogo()
     setupHeaderTitle()
@@ -189,6 +200,7 @@ private extension AboutController {
   func arrangeViews() {
     view.addSubview(scrollView)
     scrollView.addSubview(stackView)
+    stackView.addArrangedSubview(addonVersionLabel)
     stackView.addArrangedSubview(logoImageView)
     stackView.addArrangedSubview(headerTitleLabel)
     stackView.addArrangedSubviewWithSeparator(additionalInfoStackView)
@@ -319,6 +331,10 @@ private extension AboutController {
     return String(format: L("version"), "\u{2066}\(appInfo.bundleVersion)-\(appInfo.buildNumber)\u{2069}")
   }
 
+  static func formattedAddonVersion() -> String {
+    String(format: L("nogps_addon_version"), "\u{2066}\(NoGps.addonVersion)\u{2069}")
+  }
+
   func showCopyright() {
     let path = Bundle.main.path(forResource: "copyright", ofType: "html")!
     let html = try! String(contentsOfFile: path, encoding: String.Encoding.utf8)
@@ -340,6 +356,12 @@ private extension AboutController {
 private extension AboutController {
   @objc func appVersionButtonTapped() {
     copyToClipboard(Self.formattedAppVersion())
+  }
+
+  // With the build of the app: the line tells which build was tested.
+  @objc func addonVersionButtonTapped() {
+    let appInfo = AppInfo.shared()
+    copyToClipboard("\(Self.formattedAddonVersion()) (\u{2066}\(appInfo.bundleVersion)-\(appInfo.buildNumber)\u{2069})")
   }
 
   @objc func osmMapsDataButtonTapped() {
