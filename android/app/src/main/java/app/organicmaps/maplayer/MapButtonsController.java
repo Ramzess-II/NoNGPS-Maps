@@ -131,14 +131,6 @@ public class MapButtonsController extends Fragment
   private View mSwitchMarkButton;
   @Nullable
   private TextView mPositionStatus;
-  @Nullable
-  private View mShiftPositionContainer;
-  @Nullable
-  private TextView mShiftPositionStep;
-  @Nullable
-  private View mShiftPositionForward;
-  @Nullable
-  private View mShiftPositionBack;
   private static final long POSITION_STATUS_UPDATE_INTERVAL_MS = 1000;
   private final Handler mHandler = new Handler(Looper.getMainLooper());
   private final Runnable mPositionStatusUpdater = new Runnable() {
@@ -241,23 +233,11 @@ public class MapButtonsController extends Fragment
       mMapButtonClickListener.onMapButtonClick(MapButtons.manualPosition);
       updatePositionStatus();
     });
-    mShiftPositionContainer = mFrame.findViewById(R.id.shift_position_container);
-    mShiftPositionStep = mFrame.findViewById(R.id.shift_position_step);
-    mShiftPositionForward = mFrame.findViewById(R.id.shift_position_forward);
-    mShiftPositionForward.setOnClickListener(
-        (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.shiftPositionForward));
-    mShiftPositionBack = mFrame.findViewById(R.id.shift_position_back);
-    mShiftPositionBack.setOnClickListener(
-        (v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.shiftPositionBack));
     mReverseButton = mFrame.findViewById(R.id.reverse_direction);
     mReverseButton.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.reverseDirection));
     mSwitchMarkButton = mFrame.findViewById(R.id.switch_mark);
     mSwitchMarkButton.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.switchMark));
     initFlagButton(mFrame.findViewById(R.id.flag_log));
-    mShiftPositionStep.setOnClickListener((v) -> {
-      NoGps.nativeCycleShiftStep();
-      updatePositionStatus();
-    });
     addCarDividers();
 
     // Some buttons do not exist in navigation mode
@@ -398,12 +378,6 @@ public class MapButtonsController extends Fragment
     mMapButtonsViewModel.setNoGpsStatus(status);
 
     mCarButtonsShown.clear();
-    // The buttons moving the position along the road calibrate the speed, they are shown while the user calibrates
-    // it.
-    if (mShiftPositionContainer != null)
-      mCarButtonsShown.put(mShiftPositionContainer, status.movedByHand && status.shiftButtonsShown);
-    if (mShiftPositionStep != null)
-      mShiftPositionStep.setText(getString(R.string.nogps_meters, status.shiftStepM));
     if (mReverseButton != null)
       mCarButtonsShown.put(mReverseButton, status.movedByHand);
     // A turn has fitted several roads: the user may see the car is on another one.
@@ -411,10 +385,6 @@ public class MapButtonsController extends Fragment
       mCarButtonsShown.put(mSwitchMarkButton, status.movedByHand && status.otherMarks > 0);
     if (mFlagLogButton != null)
       mCarButtonsShown.put(mFlagLogButton, LogsManager.INSTANCE.isFileLoggingEnabled());
-
-    // The position waits at a turn until the car leaves it, otherwise it would go to another street.
-    setShiftEnabled(mShiftPositionForward, !status.shiftForwardBlocked);
-    setShiftEnabled(mShiftPositionBack, !status.shiftBackBlocked);
 
     // The car is marked by hand only while the position does not come from GPS. The button is blue while the next
     // tap on the map shows where the car is, the tap is taken back when GPS is used again.
@@ -588,14 +558,6 @@ public class MapButtonsController extends Fragment
     params.bottomMargin = -bottom;
     panel.setLayoutParams(params);
     panel.setPadding(left, verticalPadding, right, verticalPadding + bottom);
-  }
-
-  private static void setShiftEnabled(@Nullable View button, boolean enabled)
-  {
-    if (button == null)
-      return;
-    button.setEnabled(enabled);
-    button.setAlpha(enabled ? 1f : 0.4f);
   }
 
   private void blinkPositionStatus(boolean blink)
@@ -942,8 +904,6 @@ public class MapButtonsController extends Fragment
     trackRecordingStatus,
     manualPosition,
     positionStatus,
-    shiftPositionForward,
-    shiftPositionBack,
     reverseDirection,
     switchMark
   }

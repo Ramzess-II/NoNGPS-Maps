@@ -291,16 +291,6 @@ UNIT_TEST(NoGps_Engine_ShiftStopsAtCrossing)
   TEST(!env.m_engine.IsShiftBlocked(true /* forward */), ());
 }
 
-UNIT_TEST(NoGps_Engine_CyclesShiftSteps)
-{
-  Env env(false /* inertial */);
-  TEST_EQUAL(env.m_engine.GetStatus().m_shiftStepM, 50, ());
-  env.m_engine.CycleShiftStep();
-  TEST_EQUAL(env.m_engine.GetStatus().m_shiftStepM, 100, ());
-  env.m_engine.CycleShiftStep();
-  TEST_EQUAL(env.m_engine.GetStatus().m_shiftStepM, 10, ());
-}
-
 // The app starts again with what the app before has saved.
 std::function<void(TestStorage &)> SavedBy(Env const & before)
 {
