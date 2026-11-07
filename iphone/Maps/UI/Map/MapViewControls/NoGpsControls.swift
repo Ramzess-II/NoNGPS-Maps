@@ -12,7 +12,6 @@ final class NoGpsControls: NSObject {
     static let statusMinHeight = CGFloat(36)
     static let statusMaxWidth = CGFloat(260)
     static let refreshInterval: TimeInterval = 1
-    static let disabledAlpha = CGFloat(0.4)
     static let blinkKey = "blink"
     static let blinkDuration: CFTimeInterval = 0.4
     static let blinkOpacity = Float(0.2)
@@ -38,9 +37,6 @@ final class NoGpsControls: NSObject {
   private var isPanelShown = true
   private var hasButtons = true
   private var buttonsHidden = [UIView: Bool]()
-  private let shiftForwardButton = NoGpsControls.makeButton("chevron.up")
-  private let shiftStepButton = UIButton(type: .system)
-  private let shiftBackButton = NoGpsControls.makeButton("chevron.down")
   private let reverseButton = NoGpsControls.makeButton("arrow.triangle.2.circlepath")
   private let switchMarkButton = NoGpsControls.makeButton("arrow.left.arrow.right")
   private let flagButton = NoGpsControls.makeButton("flag.fill")
@@ -105,24 +101,11 @@ final class NoGpsControls: NSObject {
     statusButton.addTarget(self, action: #selector(statusTapped), for: .touchUpInside)
     superview.addSubview(statusButton)
 
-    shiftStepButton.translatesAutoresizingMaskIntoConstraints = false
-    shiftStepButton.titleLabel?.font = .boldSystemFont(ofSize: 14)
-    shiftStepButton.setTitleColor(.label, for: .normal)
-    NSLayoutConstraint.activate([
-      shiftStepButton.widthAnchor.constraint(equalToConstant: Constants.buttonWidth),
-      shiftStepButton.heightAnchor.constraint(equalToConstant: Constants.buttonHeight),
-    ])
-    shiftStepButton.addTarget(self, action: #selector(cycleShiftStep), for: .touchUpInside)
-
-    shiftForwardButton.addTarget(self, action: #selector(shiftForward), for: .touchUpInside)
-    shiftBackButton.addTarget(self, action: #selector(shiftBack), for: .touchUpInside)
     reverseButton.addTarget(self, action: #selector(reverseDirection), for: .touchUpInside)
     switchMarkButton.addTarget(self, action: #selector(switchMark), for: .touchUpInside)
     flagButton.addTarget(self, action: #selector(flagLog), for: .touchUpInside)
     flagButton.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(flagHeld)))
     manualButton.addTarget(self, action: #selector(toggleMarkByTap), for: .touchUpInside)
-    shiftForwardButton.accessibilityLabel = L("nogps_shift_forward")
-    shiftBackButton.accessibilityLabel = L("nogps_shift_back")
     reverseButton.accessibilityLabel = L("nogps_reverse_direction")
     switchMarkButton.accessibilityLabel = L("nogps_switch_mark")
     manualButton.accessibilityLabel = L("nogps_manual_position")
@@ -133,8 +116,7 @@ final class NoGpsControls: NSObject {
     buttons.alignment = .center
     buttons.spacing = MapControlsPanel.groupGap
     buttons.translatesAutoresizingMaskIntoConstraints = false
-    let items = [shiftForwardButton, shiftStepButton, shiftBackButton, reverseButton, switchMarkButton, flagButton,
-                 manualButton]
+    let items = [reverseButton, switchMarkButton, flagButton, manualButton]
     for item in items {
       buttons.addArrangedSubview(item)
     }
@@ -248,12 +230,6 @@ final class NoGpsControls: NSObject {
     statusButton.backgroundColor = Constants.noneColor
     blinkStatus(status.roadLost)
 
-    // The buttons moving the position along the road calibrate the speed, they are shown while the user calibrates it.
-    let shifts = status.movedByHand && status.shiftButtonsShown
-    shiftStepButton.setTitle(String(format: L("nogps_meters"), status.shiftStepM), for: .normal)
-    // The position waits at a turn until the car leaves it, otherwise it would go to another street.
-    shiftForwardButton.alpha = status.shiftForwardBlocked ? Constants.disabledAlpha : 1
-    shiftBackButton.alpha = status.shiftBackBlocked ? Constants.disabledAlpha : 1
     // The car is marked by hand only while the position is not from GPS. The button is blue while the next tap on the
     // map shows where the car is, the tap is taken back when GPS is used again.
     let canMark = status.source != .gps
@@ -261,8 +237,7 @@ final class NoGpsControls: NSObject {
       NoGps.setMarkByTap(false)
     }
     manualButton.tintColor = canMark && status.markByTap ? .linkBlue : .blackSecondaryText
-    buttonsHidden = [shiftForwardButton: !shifts, shiftStepButton: !shifts, shiftBackButton: !shifts,
-                     reverseButton: !status.movedByHand,
+    buttonsHidden = [reverseButton: !status.movedByHand,
                      switchMarkButton: !(status.movedByHand && status.otherMarks > 0),
                      flagButton: !Settings.isFileLoggingEnabled(),
                      manualButton: !canMark]
@@ -477,43 +452,6 @@ final class NoGpsControls: NSObject {
   @objc
   private func switchMark() {
     NoGps.switchMark()
-    refresh()
-  }
-
-  @objc
-  private func cycleShiftStep() {
-    NoGps.cycleShiftStep()
-    refresh()
-  }
-
-  @objc
-  private func shiftForward() {
-    shift(forward: true)
-  }
-
-  @objc
-  private func shiftBack() {
-    shift(forward: false)
-  }
-
-  /// Moves the position along the road when it lags behind the car or has run ahead of it.
-  private func shift(forward: Bool) {
-    let status = NoGps.status()
-    let distanceM = forward ? status.shiftStepM : -status.shiftStepM
-    // The position stands at a crossing, it is moved that way after the car passes it.
-    if forward ? status.shiftForwardBlocked : status.shiftBackBlocked {
-      Toast.show(withText: L("nogps_shift_at_turn"))
-      return
-    }
-    let applied = NoGps.shiftPosition(Double(distanceM))
-    let after = NoGps.status()
-    if applied == 0, forward ? after.shiftForwardBlocked : after.shiftBackBlocked {
-      Toast.show(withText: L("nogps_shift_at_turn"))
-    } else if Int(abs(applied).rounded()) < abs(distanceM) {
-      // The position stops at the closest turn, so the user has to know when it was moved by less.
-      let appliedM = Int(abs(applied).rounded())
-      Toast.show(withText: appliedM == 0 ? L("nogps_shift_failed") : String(format: L("nogps_shift_limited"), appliedM))
-    }
     refresh()
   }
 
