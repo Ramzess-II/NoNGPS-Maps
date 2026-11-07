@@ -64,6 +64,7 @@ typedef NS_ENUM(NSInteger, MWMNoGpsCalibrationState) {
   MWMNoGpsCalibrationStateDone,
   MWMNoGpsCalibrationStateFailedMoving,
   MWMNoGpsCalibrationStateMountMoved,
+  MWMNoGpsCalibrationStateLinkLost,
 } NS_SWIFT_NAME(NoGpsCalibrationState);
 
 /// The update of the firmware of the ESP32 sensor box, nogps::Esp32Update::State.

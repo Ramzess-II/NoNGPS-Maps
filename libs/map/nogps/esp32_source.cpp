@@ -130,6 +130,12 @@ void Esp32Source::OnBleState(BleState state)
     m_hellosWithoutInfo = 0;
     m_update.OnLinkLost();
     ForgetJournal();
+    if (m_calibrationId != 0)
+    {
+      LOG(LWARNING, ("The link is lost during the calibration"));
+      m_calibrationId = 0;
+      m_calibrationLinkLost = true;
+    }
   }
   // The box starts sending at once, not at the next HELLO.
   if (state == BleState::Connected)
@@ -440,6 +446,12 @@ CalibrationState Esp32Source::GetCalibrationState()
   }
   if (m_calibrationId != 0)
     return CalibrationState::Calibrating;
+  if (m_calibrationLinkLost)
+  {
+    if (m_bleState != BleState::Connected)
+      return CalibrationState::LinkLost;
+    m_calibrationLinkLost = false;
+  }
   if (m_calibrationFailed)
     return CalibrationState::FailedMoving;
   if (IsConnected() && (m_flags & esp32::kFlagMountMoved))
@@ -457,6 +469,7 @@ void Esp32Source::Calibrate()
   m_calibrationStartMs = m_clock.NowMs();
   m_calibrationProgress = 0;
   m_calibrationFailed = false;
+  m_calibrationLinkLost = false;
   LOG(LINFO, ("Calibration, id =", m_calibrationId));
   Send("CAL_UP", m_calibrationId);
 }

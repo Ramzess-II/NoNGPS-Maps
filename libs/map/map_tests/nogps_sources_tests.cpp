@@ -321,6 +321,40 @@ UNIT_TEST(NoGps_Esp32Source_CalibratesAndTimesOut)
   TEST_EQUAL(source.GetCalibrationState(), CalibrationState::FailedMoving, ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_CalibrationEndsWhenLinkIsLost)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, 0));
+
+  // The box is out of reach at once, not as a moved car after the timeout.
+  source.Calibrate();
+  TEST_EQUAL(source.GetCalibrationState(), CalibrationState::Calibrating, ());
+  source.OnBleState(BleState::Searching);
+  TEST_EQUAL(source.GetCalibrationState(), CalibrationState::LinkLost, ());
+  clock.Advance(Esp32Source::kCalibrationTimeoutMs + 1);
+  TEST_EQUAL(source.GetCalibrationState(), CalibrationState::LinkLost, ());
+  // The answer to the lost command doesn't count any more.
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxLine("NGA,1,ERR,MOVING"));
+  // Connected again: the flags of the box tell if it has finished the calibration.
+  source.OnBleBytes(BoxDataLine(2, 20000, 0, 0, kCalibratedFlags));
+  TEST_EQUAL(source.GetCalibrationState(), CalibrationState::Done, ());
+
+  // A new calibration forgets the lost one.
+  source.Calibrate();
+  source.OnBleState(BleState::Searching);
+  source.Calibrate();
+  TEST_EQUAL(source.GetCalibrationState(), CalibrationState::LinkLost, ());
+  source.OnBleState(BleState::Connected);
+  source.Calibrate();
+  TEST_EQUAL(source.GetCalibrationState(), CalibrationState::Calibrating, ());
+}
+
 UNIT_TEST(NoGps_Esp32Source_RequestsLostEvents)
 {
   TestClock clock;

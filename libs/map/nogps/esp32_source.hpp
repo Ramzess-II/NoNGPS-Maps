@@ -164,6 +164,9 @@ private:
   int64_t m_calibrationStartMs = 0;
   int m_calibrationProgress = 0;
   bool m_calibrationFailed = false;
+  // The link was lost during the calibration: no answer to it comes, the flags of the box tell its result once it is
+  // connected again.
+  bool m_calibrationLinkLost = false;
   std::optional<int64_t> m_calibratedMs;
 
   std::optional<esp32::Info> m_info;
