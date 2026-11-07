@@ -169,8 +169,23 @@ public:
   // dropped when its road ends or when the car turns where its road has no road that way; the shown one is replaced
   // by another one then. The shown one is replaced also when the way driven does not lie on the roads there while it
   // does at another mark, and by the user. A mark of the user or trusted GPS tells where the car is: the others are
-  // dropped.
-  static size_t constexpr kMaxMarks = 3;
+  // dropped. A crossing farther than the search is another place too, see kMaxFarCrossingM: there can be many.
+  static size_t constexpr kMaxMarks = 10;
+  // A turn started on a road fits the crossings farther than the search too, this far ahead and behind along the road
+  // it came by, no farther than it has driven since a known place, and behind no farther than it has come along that
+  // road since it came back onto it or since its last turn: each is another mark. On November 5 the car came out of a
+  // yard with the heading 15-20 degrees wrong, the mark joined the street 45 m ahead of the car, and its next turn was
+  // 46 m past the crossing, out of the search. Off the roads the error along the road grew by 4-34 % of the way there
+  // on the trips with GPS: too unsure to search the shown mark that far.
+  static double constexpr kMaxFarCrossingM = 150;
+  // The car is rarely at such a crossing: it is shown there only when the road of the shown mark has clearly ended,
+  // when it is lost or the way driven misses the roads at this many points there and at none at the far one. Taken by
+  // the way as the others are, at 3-7 points, the marks of all 14 days driven again went 50-120 m away from GPS 4 times
+  // of 4 and the road was lost once; at 9-13 points they came back. Not taken when the road of the shown mark has no
+  // road the way the car has turned: on October 22 at 21:07:33 the car turned into a yard missing on the map, a far
+  // mark 150 m away was taken, and the next trip started there.
+  // Not next to a roundabout: the way around it misses the road while the car is on it.
+  static int constexpr kFarMarkMisses = 10;
   // Places of roads farther apart across the car are other roads: two carriageways of a road are nearer.
   static double constexpr kOtherRoadAsideM = 20;
   // Marks this close to each other are one.
@@ -535,6 +550,10 @@ private:
     bool m_onRoad = true;
     // Driven off the roads since it was on one the last time.
     double m_offRoadM = 0;
+    // All the car had driven when the mark came onto its road, see kMaxFarCrossingM.
+    double m_roadSincePathM = 0;
+    // At a crossing farther than the search, see kFarMarkMisses.
+    bool m_far = false;
     // Where it was and where it looked when the turn the car makes now has started, and if it was on a road; where the
     // turn has taken it, without the snapping, see m_turnEnd.
     ms::LatLon m_turnStart;
@@ -547,6 +566,7 @@ private:
   {
     RoadPoint m_road;
     std::optional<double> m_shiftM;
+    bool m_far = false;
   };
   // Where the rules put the car after a turn, nothing if there is no road going the new way, and the other roads the
   // turn fits.
@@ -562,10 +582,18 @@ private:
   /// \returns true if the position is on the road of the shown mark, ahead of it or behind.
   bool IsOnShownRoad(ms::LatLon const & position);
   // Moves the other marks through the turn the car has made, dropping the ones without a road going the new way
-  // |atCrossing|. \returns the first one with a road going the new way.
+  // |atCrossing|. \returns the first one not far with a road going the new way.
   std::optional<size_t> TurnOtherMarks(double toBearingDeg, bool atCrossing);
+  // \returns how far ahead and behind the corner of the turn the car makes now the far crossings of a mark are, see
+  // kMaxFarCrossingM, by the mark's calculation and when it came onto its road.
+  std::pair<double, double> GetFarCrossingM(DeadReckoning const & reckoning, double roadSincePathM) const;
+  // \returns the first other mark on a road, one not far if there is one.
+  std::optional<size_t> FindOtherMarkOnRoad() const;
+  // \returns true if the way driven tells the car is rather at a place than where it is shown, see kWayMoreMisses
+  // and kFarMarkMisses.
+  bool IsWayBetterAt(int shownMisses, int misses, bool far) const;
   // Splits the mark: the car may be on the road too.
-  void AddOtherMark(RoadPoint const & road, double headingDeg, std::string const & why);
+  void AddOtherMark(RoadPoint const & road, double headingDeg, std::string const & why, bool far = false);
   // Shows the car on the other road |index|, keeping the road it was shown on as an other one if |keepShown|.
   void TakeOtherMark(size_t index, bool keepShown, std::string const & why);
   // \returns how far across |bearingDeg| the places are apart.
@@ -599,6 +627,8 @@ private:
   // since then.
   std::optional<ms::LatLon> m_roadPoint;
   double m_offRoadM = 0;
+  // All the car had driven when it came back onto a road after it was followed apart, see kMaxFarCrossingM.
+  double m_roadSincePathM = 0;
   // The car is off the roads next to a roundabout or leaving it, see kRoundaboutRadiusM. What it had driven
   // when the roundabout was next to it the last time, and the road it leaves the roundabout by, if it is found.
   bool m_atRoundabout = false;

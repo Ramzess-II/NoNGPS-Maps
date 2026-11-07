@@ -28,10 +28,16 @@ bool HasRoadFromCrossing(Roads & roads, ms::LatLon const & crossing, double bear
 
 std::optional<ms::LatLon> TurnMatcher::FindCrossing(Roads & roads, ms::LatLon const & corner, double fromBearingDeg,
                                                     double toBearingDeg, double searchM, std::string * whyNot,
-                                                    bool onlyOne, std::vector<ms::LatLon> * fittingOut)
+                                                    bool onlyOne, std::vector<ms::LatLon> * fittingOut,
+                                                    double farAheadM, double farBehindM,
+                                                    std::vector<ms::LatLon> * farOut)
 {
   if (fittingOut)
     fittingOut->clear();
+  if (farOut)
+    farOut->clear();
+  else
+    farAheadM = farBehindM = 0;
   auto const no = [whyNot](std::string const & why)
   {
     if (whyNot)
@@ -53,24 +59,28 @@ std::optional<ms::LatLon> TurnMatcher::FindCrossing(Roads & roads, ms::LatLon co
   double bestAlong = std::numeric_limits<double>::max();
   // The crossings that fit with how far along the road they are.
   std::vector<std::pair<double, ms::LatLon>> fitting;
+  std::vector<std::pair<double, ms::LatLon>> far;
   bool const all = onlyOne || fittingOut;
-  auto const crossings = roads.FindCrossings(corner, radius);
+  auto const crossings =
+      roads.FindCrossings(corner, std::max(radius, std::hypot(std::max(farAheadM, farBehindM), kMaxSideOffsetM)));
   size_t aside = 0;
   size_t noRoadBack = 0;
   size_t noRoadAhead = 0;
   for (auto const & crossing : crossings)
   {
-    // The offset of the crossing along the road the car came by and to the side of it.
+    // The offset of the crossing along the road the car came by, ahead of the corner, and to the side of it.
     double const distance = Distance(corner, crossing);
     double const angle = math::DegToRad(AngleDiff(Bearing(corner, crossing), fromBearingDeg));
-    double const along = std::fabs(distance * std::cos(angle));
+    double const ahead = distance * std::cos(angle);
+    double const along = std::fabs(ahead);
     double const side = std::fabs(distance * std::sin(angle));
-    if (along > radius || side > kMaxSideOffsetM)
+    bool const isFar = along > radius && along <= (ahead > 0 ? farAheadM : farBehindM);
+    if ((along > radius && !isFar) || side > kMaxSideOffsetM)
     {
       ++aside;
       continue;
     }
-    if (along >= bestAlong && !all)
+    if (along >= bestAlong && !all && !isFar)
       continue;
     if (!HasRoadFromCrossing(roads, crossing, fromBearingDeg + 180))
     {
@@ -82,18 +92,27 @@ std::optional<ms::LatLon> TurnMatcher::FindCrossing(Roads & roads, ms::LatLon co
       ++noRoadAhead;
       continue;
     }
+    if (isFar)
+    {
+      far.emplace_back(along, crossing);
+      continue;
+    }
     fitting.emplace_back(along, crossing);
     if (along >= bestAlong)
       continue;
     best = crossing;
     bestAlong = along;
   }
-  if (fittingOut)
+  auto const sorted = [](std::vector<std::pair<double, ms::LatLon>> & items, std::vector<ms::LatLon> * out)
   {
-    std::sort(fitting.begin(), fitting.end(), [](auto const & a, auto const & b) { return a.first < b.first; });
-    for (auto const & item : fitting)
-      fittingOut->push_back(item.second);
-  }
+    if (!out)
+      return;
+    std::sort(items.begin(), items.end(), [](auto const & a, auto const & b) { return a.first < b.first; });
+    for (auto const & item : items)
+      out->push_back(item.second);
+  };
+  sorted(fitting, fittingOut);
+  sorted(far, farOut);
   if (best && onlyOne)
   {
     for (auto const & item : fitting)
@@ -105,7 +124,8 @@ std::optional<ms::LatLon> TurnMatcher::FindCrossing(Roads & roads, ms::LatLon co
     return no("crossings around " + std::to_string(crossings.size()) + ", farther than " +
               std::to_string(std::lround(radius)) + " m along the road or aside of it " + std::to_string(aside) +
               ", without the road the car came by " + std::to_string(noRoadBack) +
-              ", without a road going the new way " + std::to_string(noRoadAhead));
+              ", without a road going the new way " + std::to_string(noRoadAhead) +
+              (far.empty() ? "" : ", farther the car may be at " + std::to_string(far.size())));
   }
   return best;
 }
