@@ -71,7 +71,7 @@ public:
   /// \param image the file of the firmware.
   /// \param version the version the box tells after it has restarted with the firmware.
   void Start(std::string image, std::string const & version);
-  /// Stops the update by the user: the box keeps its firmware.
+  /// Stops the update by the user: the box keeps its firmware. Does nothing while the box restarts with the new one.
   void Cancel();
   /// Forgets the update, e.g. the box is not used any more.
   void Reset();
