@@ -1387,8 +1387,8 @@ std::optional<RoadPoint> InertialNavigator::ChooseBranch(ms::LatLon const & posi
   {
     double const bearing = Orient(road.m_bearingDeg, headingDeg);
     double angle = std::fabs(AngleDiff(bearing, headingDeg));
-    if (auto const behind = m_roads.Snap(Move(road.m_point, bearing + 180, kForkBehindM), bearing, kSameForkBranchM))
-      angle = std::min(angle, std::fabs(AngleDiff(Orient(behind->m_bearingDeg, headingDeg), headingDeg)));
+    if (auto const behind = RoadWalker::Walk(m_roads, road.m_point, bearing, -kForkBehindM, false /* stopAtCrossing */))
+      angle = std::min(angle, std::fabs(AngleDiff(behind->m_bearingDeg, headingDeg)));
     double const cost = Distance(position, road.m_point) + kForkMetersPerDeg * angle;
     if (best == nullptr || cost < bestCost)
     {
