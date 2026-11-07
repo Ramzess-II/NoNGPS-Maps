@@ -566,12 +566,14 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
 
   /**
    * The sensor box is searched and connected over Bluetooth LE. Without the permission its state tells so.
+   * Before Android 12 a Bluetooth scan needs the location permission.
    */
   private void askBluetooth()
   {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S)
-      return;
-    final String[] permissions = {Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT};
+    final String[] permissions =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+            ? new String[] {Manifest.permission.BLUETOOTH_SCAN, Manifest.permission.BLUETOOTH_CONNECT}
+            : new String[] {Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION};
     for (String permission : permissions)
     {
       if (ContextCompat.checkSelfPermission(requireContext(), permission) == PackageManager.PERMISSION_GRANTED)
