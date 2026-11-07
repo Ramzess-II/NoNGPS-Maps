@@ -976,11 +976,6 @@
     <string name="nogps_choose_adapter">Виберіть OBD-адаптер</string>
     <string name="nogps_no_paired">Немає спарених Bluetooth-пристроїв. Спарте ELM327 у налаштуваннях Bluetooth (PIN зазвичай 1234).</string>
     <string name="nogps_bt_permission_denied">Без доступу до Bluetooth адаптер не підключити</string>
-    <string name="nogps_shift_forward">Перенести позицію вперед по дорозі</string>
-    <string name="nogps_shift_back">Перенести позицію назад по дорозі</string>
-    <string name="nogps_shift_step">На скільки переносити позицію</string>
-    <string name="nogps_shift_limited">Перенесення на %1$d м, до перехрестя</string>
-    <string name="nogps_shift_failed">Позицію нікуди переносити</string>
     <string name="nogps_sensors_scale">Поправка швидкості: %1$s · діапазонів виміряно: %2$d</string>
     <string name="nogps_sensors_lag_measured">Запізнення швидкості: %s с (виміряно за GPS)</string>
     <string name="nogps_sensors_lag_usual">Запізнення швидкості: %s с (звичайне, GPS ще не виміряв)</string>
@@ -990,7 +985,6 @@
     <string name="nogps_speed_table_hide">Сховати таблицю</string>
     <string name="nogps_speed_table_row">%1$d–%2$d км/год  %3$s</string>
     <string name="nogps_speed_table_left">ще %d м</string>
-    <string name="nogps_shift_at_turn">Позиція біля перехрестя, далі переносити не можна</string>
     <string name="nogps_status_gps_off">GPS вимкнено в налаштуваннях системи</string>
     <string name="nogps_gps_back_auto">GPS знову надійний, ручний режим вимкнено</string>
     <string name="nogps_reverse_direction">Розвернути машину на дорозі</string>

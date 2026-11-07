@@ -125,10 +125,6 @@ std::optional<double> NonNegative(double value)
     _workingGpsAccuracyM = status.m_workingGpsAccuracyM.value_or(-1);
     _workingNetworkAccuracyM = status.m_workingNetworkAccuracyM.value_or(-1);
     _movedByHand = status.m_movedByHand;
-    _shiftForwardBlocked = status.m_shiftForwardBlocked;
-    _shiftBackBlocked = status.m_shiftBackBlocked;
-    _shiftStepM = status.m_shiftStepM;
-    _shiftButtonsShown = status.m_shiftButtonsShown;
     _inertialEnabled = status.m_inertialEnabled;
     _inertialStarted = status.m_inertialStarted;
     _sourceState = static_cast<MWMNoGpsSourceState>(status.m_sourceState);
@@ -254,11 +250,6 @@ static CLLocation * lastPlatformLocation;
   return GetFramework().PlaceNoGpsMark(mercator::FromLatLon(coordinate.latitude, coordinate.longitude));
 }
 
-+ (double)shiftPosition:(double)distanceM
-{
-  return Engine().ShiftPosition(distanceM);
-}
-
 + (void)reverseDirection
 {
   Engine().ReverseDirection();
@@ -287,16 +278,6 @@ static CLLocation * lastPlatformLocation;
 + (void)clearSpeedCalibration
 {
   Engine().ClearSpeedCalibration();
-}
-
-+ (void)cycleShiftStep
-{
-  Engine().CycleShiftStep();
-}
-
-+ (void)setShiftButtonsShown:(BOOL)shown
-{
-  Engine().SetShiftButtonsShown(shown);
 }
 
 + (void)startFirmwareUpdate
