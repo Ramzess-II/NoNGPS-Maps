@@ -301,13 +301,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     return ble == NoGps.BleState.OFF || ble == NoGps.BleState.DISABLED || ble == NoGps.BleState.NO_PERMISSION;
   }
 
-  /**
-   * Before Android 12 the box is not searched while the location of the phone is off: the core sees it as Bluetooth
-   * switched off.
-   */
   private boolean isLocationOff(@NonNull NoGps.Status status)
   {
-    return status.getBleState() == NoGps.BleState.DISABLED && NoGps.isLocationOffForBox(requireContext());
+    return NoGps.isLocationOffForBox(requireContext(), status);
   }
 
   private int bluetoothActionText(@NonNull NoGps.Status status)

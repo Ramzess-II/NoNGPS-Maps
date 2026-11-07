@@ -121,8 +121,8 @@ class Esp32BleTransport
       else if (BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(intent.getAction()))
         onBondStateChanged(intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE),
                            intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR));
-      else if (LocationManager.MODE_CHANGED_ACTION.equals(intent.getAction()) && mGatt == null)
-        start();
+      else if (LocationManager.MODE_CHANGED_ACTION.equals(intent.getAction()))
+        onLocationModeChanged();
     }
   };
 
@@ -233,16 +233,16 @@ class Esp32BleTransport
       mMainHandler.postDelayed(mStarter, RETRY_DELAY_MS);
       return;
     }
+    // Before Bluetooth, as the Box sheet tells it. MODE_CHANGED_ACTION tells when it is switched on.
+    if (NoGps.isLocationOffForBox(mContext))
+    {
+      setState(STATE_DISABLED);
+      return;
+    }
     final BluetoothLeScanner scanner = adapter.isEnabled() ? adapter.getBluetoothLeScanner() : null;
     if (scanner == null)
     {
       // ACTION_STATE_CHANGED tells when it is switched on.
-      setState(STATE_DISABLED);
-      return;
-    }
-    if (NoGps.isLocationOffForBox(mContext))
-    {
-      // MODE_CHANGED_ACTION tells when it is switched on.
       setState(STATE_DISABLED);
       return;
     }
@@ -385,6 +385,16 @@ class Esp32BleTransport
     mRetryDelayMs = worked ? RETRY_DELAY_MS : Math.min(MAX_RETRY_DELAY_MS, mRetryDelayMs * 2);
     mMainHandler.removeCallbacks(mStarter);
     mMainHandler.postDelayed(mStarter, mRetryDelayMs);
+  }
+
+  /**
+   * The location is switched on or off: the search waits for it before Android 12. Other changes of the mode don't
+   * stop a search.
+   */
+  private void onLocationModeChanged()
+  {
+    if (mGatt == null && (mState == STATE_DISABLED || NoGps.isLocationOffForBox(mContext)))
+      start();
   }
 
   private void onAdapterStateChanged(int state)

@@ -478,8 +478,13 @@ public final class NoGps
   }
 
   /// Before Android 12 the box is not found while the location of the phone is switched off: a Bluetooth scan finds
-  /// nothing then.
-  public static boolean isLocationOffForBox(@NonNull Context context)
+  /// nothing then. The box state is BleState.DISABLED, as with Bluetooth off.
+  public static boolean isLocationOffForBox(@NonNull Context context, @NonNull Status status)
+  {
+    return status.getBleState() == BleState.DISABLED && isLocationOffForBox(context);
+  }
+
+  static boolean isLocationOffForBox(@NonNull Context context)
   {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
       return false;

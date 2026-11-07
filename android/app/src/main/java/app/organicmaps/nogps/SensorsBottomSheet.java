@@ -586,7 +586,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
    */
   private static int boxSearchText(@NonNull Context context, @NonNull NoGps.Status status)
   {
-    if (status.getBleState() == NoGps.BleState.DISABLED && NoGps.isLocationOffForBox(context))
+    if (NoGps.isLocationOffForBox(context, status))
       return R.string.nogps_box_step_location_off;
     return switch (status.getBleState())
     {
