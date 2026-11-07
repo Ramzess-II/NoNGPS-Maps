@@ -1361,6 +1361,9 @@
 /* State of the sensors of the box, shown after "Sensors:" */
 "nogps_box_calibration_failed" = "failed, the car moved";
 
+/* State of the sensors of the box, shown after "Sensors:": the Bluetooth link to the box was lost during the calibration */
+"nogps_box_calibration_link_lost" = "stopped, the box is out of reach";
+
 /* State of the sensors of the box, shown after "Sensors:": the box has been powered on since its calibration */
 "nogps_box_calibration_advised" = "the box has been plugged in, calibrate it";
 

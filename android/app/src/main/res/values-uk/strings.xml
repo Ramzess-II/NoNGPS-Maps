@@ -1041,6 +1041,8 @@
     <string name="nogps_box_calibrated">відкалібровано</string>
     <!-- State of the sensors of the box, shown after "Sensors:" -->
     <string name="nogps_box_calibration_failed">не вийшло, машина рухалася</string>
+    <!-- State of the sensors of the box, shown after "Sensors:": the Bluetooth link to the box was lost during the calibration -->
+    <string name="nogps_box_calibration_link_lost">перервано, блок поза зв\'язком</string>
     <!-- State of the sensors of the box, shown after "Sensors:": the box has been powered on since its calibration -->
     <string name="nogps_box_calibration_advised">блок підключали заново, відкалібруйте</string>
     <!-- What is missing for the navigation without GPS, shown after "Not ready:" -->
