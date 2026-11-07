@@ -43,6 +43,9 @@ public:
   };
   using Ranges = std::array<RangeState, kRanges>;
 
+  /// \returns true if the car speed and the real one measured at the same time tell the error of the car speed.
+  static bool IsGoodSample(double carSpeedKmh, double gpsSpeedMps, double dtSec, double accelerationMps2);
+
   /// Takes into account the car speed and the real one measured at the same time.
   /// \param dtSec how long the speeds lasted.
   /// \param accelerationMps2 how fast the real speed changes.
@@ -81,5 +84,35 @@ private:
   std::array<double, kRanges> m_carM{};
   // The real distance: by GPS, or by the roads for a rough table.
   std::array<double, kRanges> m_gpsM{};
+};
+
+/// A change of the speed error common to all speeds, e.g. other tyres or the cold: the table keeps the error of every
+/// speed over 5-10 km of it, which a rarely driven speed takes weeks to drive, and this follows the last kilometers
+/// at any speed. On November 6, 2026 the error changed by 1.2% overnight, and the table still ran 1% ahead a day later.
+class SpeedFactor
+{
+public:
+  // Used after this distance only: a shorter one is dominated by the noise.
+  static double constexpr kMinDistanceM = 500;
+  // Older distances are forgotten gradually: the factor follows the last 1-2 km.
+  static double constexpr kMaxDistanceM = 2000;
+  // The error of the table changes by 1-2%, a larger factor is a wrong measurement.
+  static double constexpr kMinFactor = 0.95;
+  static double constexpr kMaxFactor = 1.05;
+
+  /// Takes into account a distance driven: |expectedM| by the car speed and the table, |realM| the real one.
+  void OnDistance(double expectedM, double realM);
+
+  /// \returns the ratio the speed by the table is multiplied by.
+  double Get() const;
+
+  void Clear();
+  std::string Serialize() const;
+  /// Restores the factor kept before, a broken one is ignored.
+  void Deserialize(std::string_view factor);
+
+private:
+  double m_expectedM = 0;
+  double m_realM = 0;
 };
 }  // namespace nogps

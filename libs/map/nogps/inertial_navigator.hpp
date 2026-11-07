@@ -306,6 +306,12 @@ public:
   // tell, e.g. at a crossing of the next street.
   static double constexpr kMinRoughStretchM = 200;
   static double constexpr kMaxRoughStretchError = 0.1;
+  // Once GPS has measured the table, such a stretch tells the change of the error common to all speeds, see
+  // SpeedFactor: on November 6 the drives without GPS ran ahead by 1% after the error changed overnight. A crossing
+  // and a bend are known within ~10 m, so the stretch is longer, and it counts less than the distance GPS measures.
+  static double constexpr kMinRoadFactorStretchM = 500;
+  static double constexpr kMaxRoadFactorStretchError = 0.05;
+  static double constexpr kRoadFactorWeight = 0.25;
 
   /// \param roads the roads and the followed route, the car is kept on them.
   InertialNavigator(Delegate & delegate, Scheduler & scheduler, Clock const & clock, Storage & storage, Roads & roads,
@@ -381,11 +387,11 @@ public:
   /// \returns how many speed ranges of the table are measured by GPS.
   int GetSpeedTableRanges() const { return m_speedTable.GetKnownRanges(); }
   int GetRoughSpeedTableRanges() const { return m_roughSpeedTable.GetKnownRanges(); }
-  /// \returns the ranges of the table in use: by GPS once it has measured a range, the rough one until then.
-  SpeedTable::Ranges GetSpeedTable() const
-  {
-    return (m_speedTable.GetKnownRanges() > 0 ? m_speedTable : m_roughSpeedTable).GetRanges();
-  }
+  /// \returns the ranges of the table in use: by GPS once it has measured a range, times the common factor, the
+  /// rough one until then.
+  SpeedTable::Ranges GetSpeedTable() const;
+  /// \returns the factor of the GPS table, see SpeedFactor.
+  double GetSpeedFactor() const { return m_speedFactor.Get(); }
   std::string GetSpeedTableDescription() const { return m_speedTable.ToString(); }
   std::optional<CarInfo> GetCarInfo() const;
   SourceState GetSourceState() const;
@@ -461,8 +467,8 @@ private:
   void TrackRoughStretch(double stepM);
   // The position has moved along the road: driven, or put on a road by the snapping, e.g. onto the branch of a bend.
   void TrackRoughRoad();
-  // The calculated position is |aheadM| ahead of the road here: the rough speed table learns from the stretch.
-  // \returns false if the stretch is too short yet and goes on.
+  // The calculated position is |aheadM| ahead of the road here: the rough speed table learns from the stretch, or
+  // the factor of the GPS table once GPS has measured it. \returns false if the stretch is too short yet and goes on.
   bool LearnRoughSpeed(double aheadM, char const * where);
   bool IsSpeedFresh() const;
   void SetRoadPoint(ms::LatLon const & position);
@@ -547,6 +553,8 @@ private:
   {
     RoadPoint m_road;
     std::optional<double> m_shiftM;
+    // How far the turn was ahead of the crossing along the road it came by.
+    double m_aheadM = 0;
   };
   // Where the rules put the car after a turn, nothing if there is no road going the new way, and the other roads the
   // turn fits.
@@ -645,14 +653,17 @@ private:
   SpeedTable m_speedTable;
   // The speed errors told by the roads until GPS has measured them, see kMinRoughStretchM.
   SpeedTable m_roughSpeedTable;
+  // The change of the GPS table told by GPS and the roads, see kMinRoadFactorStretchM.
+  SpeedFactor m_speedFactor;
   // The distance driven since the place known along the road, in the ranges of the speed table: by the car speed
-  // and as calculated, and the error of the calculated distance at that place. The snapping moves the position
-  // along the road too, e.g. onto the next branch at a bend, which takes away a part of the error unnoticed: the way
-  // of the position along the roads is the real distance, not the calculated one.
+  // and as calculated, by the car speed and the GPS table, and the error of the calculated distance at that place. The
+  // snapping moves the position along the road too, e.g. onto the next branch at a bend, which takes away a part of the
+  // error unnoticed: the way of the position along the roads is the real distance, not the calculated one.
   struct RoughStretch
   {
     std::array<double, SpeedTable::kRanges> m_carM{};
     std::array<double, SpeedTable::kRanges> m_calculatedM{};
+    double m_tableM = 0;
     double m_calculatedTotalM = 0;
     double m_errorM = 0;
     double m_roadM = 0;

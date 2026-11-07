@@ -13,15 +13,18 @@ int SpeedTable::Range(double carSpeedKmh)
   return std::min(kRanges - 1, static_cast<int>(carSpeedKmh / kRangeKmh));
 }
 
-void SpeedTable::OnSample(double carSpeedKmh, double gpsSpeedMps, double dtSec, double accelerationMps2)
+bool SpeedTable::IsGoodSample(double carSpeedKmh, double gpsSpeedMps, double dtSec, double accelerationMps2)
 {
   double const diffKmh = std::fabs(gpsSpeedMps * 3.6 - carSpeedKmh);
-  if (carSpeedKmh < kMinSpeedKmh || dtSec <= 0 || dtSec > kMaxSampleDtSec ||
-      std::fabs(accelerationMps2) > kMaxAccelerationMps2 ||
-      diffKmh > std::max(kMaxSpeedDiffKmh, kMaxSpeedDiffRatio * carSpeedKmh))
-  {
+  return carSpeedKmh >= kMinSpeedKmh && dtSec > 0 && dtSec <= kMaxSampleDtSec &&
+         std::fabs(accelerationMps2) <= kMaxAccelerationMps2 &&
+         diffKmh <= std::max(kMaxSpeedDiffKmh, kMaxSpeedDiffRatio * carSpeedKmh);
+}
+
+void SpeedTable::OnSample(double carSpeedKmh, double gpsSpeedMps, double dtSec, double accelerationMps2)
+{
+  if (!IsGoodSample(carSpeedKmh, gpsSpeedMps, dtSec, accelerationMps2))
     return;
-  }
   OnDistance(carSpeedKmh, carSpeedKmh / 3.6 * dtSec, gpsSpeedMps * dtSec);
 }
 
@@ -130,5 +133,49 @@ std::string SpeedTable::ToString() const
     result += buf;
   }
   return result;
+}
+
+void SpeedFactor::OnDistance(double expectedM, double realM)
+{
+  if (expectedM <= 0 || realM < 0)
+    return;
+  m_expectedM += expectedM;
+  m_realM += realM;
+  while (m_expectedM > kMaxDistanceM)
+  {
+    m_expectedM /= 2;
+    m_realM /= 2;
+  }
+}
+
+double SpeedFactor::Get() const
+{
+  if (m_expectedM < kMinDistanceM)
+    return 1;
+  return std::clamp(m_realM / m_expectedM, kMinFactor, kMaxFactor);
+}
+
+void SpeedFactor::Clear()
+{
+  m_expectedM = 0;
+  m_realM = 0;
+}
+
+std::string SpeedFactor::Serialize() const
+{
+  char buf[64];
+  std::snprintf(buf, sizeof(buf), "%.1f:%.1f", m_expectedM, m_realM);
+  return buf;
+}
+
+void SpeedFactor::Deserialize(std::string_view factor)
+{
+  Clear();
+  auto const distances = strings::Tokenize(factor, ":");
+  if (distances.size() != 2 || !strings::to_double(distances[0], m_expectedM) ||
+      !strings::to_double(distances[1], m_realM))
+  {
+    Clear();
+  }
 }
 }  // namespace nogps

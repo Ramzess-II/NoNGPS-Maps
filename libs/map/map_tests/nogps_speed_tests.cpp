@@ -210,6 +210,35 @@ UNIT_TEST(NoGps_SpeedTable_KeepsBetweenTrips)
   restored.Deserialize("broken");
   TEST_EQUAL(restored.GetKnownRanges(), 0, ());
 }
+
+UNIT_TEST(NoGps_SpeedFactor_FollowsStepChange)
+{
+  SpeedFactor factor;
+  TEST_EQUAL(factor.Get(), 1, ());
+  // Too short yet.
+  factor.OnDistance(400, 404);
+  TEST_EQUAL(factor.Get(), 1, ());
+  factor.OnDistance(600, 606);
+  TEST_ALMOST_EQUAL_ABS(factor.Get(), 1.01, 1e-9, ());
+  // The error changes by 1.2% overnight: within 5 km the factor is that of the last ones.
+  for (int i = 0; i < 50; ++i)
+    factor.OnDistance(100, 98.8 * 1.01);
+  TEST_ALMOST_EQUAL_ABS(factor.Get(), 0.988 * 1.01, 0.002, ());
+}
+
+UNIT_TEST(NoGps_SpeedFactor_LimitsAndKeepsBetweenTrips)
+{
+  SpeedFactor factor;
+  factor.OnDistance(1000, 1200);
+  TEST_EQUAL(factor.Get(), SpeedFactor::kMaxFactor, ());
+  factor.Clear();
+  factor.OnDistance(1500, 1485);
+  SpeedFactor restored;
+  restored.Deserialize(factor.Serialize());
+  TEST_ALMOST_EQUAL_ABS(restored.Get(), 0.99, 1e-6, ());
+  restored.Deserialize("broken");
+  TEST_EQUAL(restored.Get(), 1, ());
+}
 // An accelerometer fixed in a car somehow: its axes are turned against the car, the gravity is in it.
 struct CarAccelerometer
 {
