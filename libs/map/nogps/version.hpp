@@ -6,5 +6,5 @@ namespace nogps
 {
 /// The version of the NonGPS add-on, MAJOR.MINOR.PATCH, shown in About and in the trip log of both apps.
 /// Every PR into master raises it: PATCH for a fix, MINOR for new behavior, MAJOR when we decide.
-constexpr std::string_view kAddonVersion = "1.0.1";
+constexpr std::string_view kAddonVersion = "1.1.0";
 }  // namespace nogps
