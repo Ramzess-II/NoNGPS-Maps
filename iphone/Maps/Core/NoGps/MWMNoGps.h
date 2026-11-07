@@ -184,6 +184,8 @@ NS_SWIFT_NAME(NoGps)
 
 /// The version of the NonGPS add-on, MAJOR.MINOR.PATCH, see libs/map/nogps/version.hpp.
 @property(class, nonatomic, readonly) NSString * addonVersion;
+/// The version of the NonGPS add-on and the commit of the build, "1.0.0 (abcdef12)": tells which build it is.
+@property(class, nonatomic, readonly) NSString * addonBuild;
 
 /// A position from CoreLocation. The chosen position comes back to MWMLocationManager.
 + (void)onLocation:(CLLocation *)location;

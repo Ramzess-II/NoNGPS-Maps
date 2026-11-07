@@ -2,6 +2,7 @@
 #import "MWMLocationManager.h"
 #import "SwiftBridge.h"
 
+#import <CoreApi/AppInfo.h>
 #include <CoreApi/Framework.h>
 
 #include "map/nogps/clock.hpp"
@@ -225,6 +226,11 @@ static CLLocation * lastPlatformLocation;
   return [[NSString alloc] initWithBytes:nogps::kAddonVersion.data()
                                   length:nogps::kAddonVersion.size()
                                 encoding:NSUTF8StringEncoding];
+}
+
++ (NSString *)addonBuild
+{
+  return [NSString stringWithFormat:@"%@ (%@)", self.addonVersion, AppInfo.sharedInfo.gitHash];
 }
 
 + (MWMNoGpsStatus *)status

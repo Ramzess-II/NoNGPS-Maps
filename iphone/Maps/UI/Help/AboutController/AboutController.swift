@@ -358,10 +358,9 @@ private extension AboutController {
     copyToClipboard(Self.formattedAppVersion())
   }
 
-  /// With the build of the app: the line tells which build was tested.
+  /// With the commit of the build: the line tells which build was tested.
   @objc func addonVersionButtonTapped() {
-    let appInfo = AppInfo.shared()
-    copyToClipboard("\(Self.formattedAddonVersion()) (\u{2066}\(appInfo.bundleVersion)-\(appInfo.buildNumber)\u{2069})")
+    copyToClipboard(String(format: L("nogps_addon_version"), "\u{2066}\(NoGps.addonBuild)\u{2069}"))
   }
 
   @objc func osmMapsDataButtonTapped() {
