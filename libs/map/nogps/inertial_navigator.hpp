@@ -106,6 +106,10 @@ public:
   // mark to its branch 50 m away from the car. A degree between a branch and the heading is worth this many
   // meters to the branch, 5 times more than elsewhere.
   static double constexpr kForkMetersPerDeg = 1;
+  // The mark may be ahead of the car by this much: a branch that bends where the mark is may still go straight
+  // where the car is, so it is told by the smaller angle of the two. On October 18, 19 and 22 the mark 7-15 m ahead
+  // took the straight branch beside its own bent one, and lost the road.
+  static double constexpr kForkBehindM = 15;
   // Places of roads closer than this are the same branch.
   static double constexpr kSameForkBranchM = 2;
   // The bends of the road are compared with the rotation of the car this often: it takes tens of road lookups.

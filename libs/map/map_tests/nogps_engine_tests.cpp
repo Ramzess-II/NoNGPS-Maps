@@ -1326,6 +1326,32 @@ UNIT_TEST(NoGps_Engine_BranchOfForkIsToldByHeading)
   }
 }
 
+UNIT_TEST(NoGps_Engine_MarkAheadKeepsItsBentBranchOfFork)
+{
+  // The street going east bends to the right after 100 m, to 30 degrees in 90 m; a branch leaves it there going
+  // straight on, 10 degrees to the left.
+  PieceRoads roads({{-300, 0, 100, 0},
+                    {100, 0, 130, -4},
+                    {130, -4, 160, -14},
+                    {160, -14, 190, -31},
+                    {190, -31, 450, -181},
+                    {100, 0, 400, 53}},
+                   {{100, 0}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  // The mark is 15 m ahead of the car: it is on the bend while the car still drives east, then the car follows the
+  // bend. The mark never takes the branch.
+  for (int i = 0; i < 16; ++i)
+  {
+    env.Drive(1000, 54, i >= 8 && i < 11 ? 10 : 0);
+    if (East(env.Last().m_position) > 115)
+      TEST_LESS(North(env.Last().m_position), -1, (i, East(env.Last().m_position)));
+  }
+  TEST_LESS(North(env.Last().m_position), -50, ());
+  TestAlmostEqualAbs(*env.Last().m_bearingDeg, 120, 3);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), ());
+}
+
 UNIT_TEST(NoGps_Engine_CarOnRoadBesideRouteHasLeftRoute)
 {
   Env env(true /* inertial */);
