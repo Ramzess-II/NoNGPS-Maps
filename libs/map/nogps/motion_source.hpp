@@ -58,6 +58,8 @@ enum class CalibrationState
   FailedMoving,
   // The sensor box has been moved in the car since its calibration.
   MountMoved,
+  // The link to the sensor box was lost during the calibration, it is not connected again yet.
+  LinkLost,
 };
 
 std::string DebugPrint(SourceState state);

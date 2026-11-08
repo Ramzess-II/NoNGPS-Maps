@@ -386,7 +386,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     {
       case CALIBRATING -> 0;
       case DONE -> status.boxCalibrationAdvised ? R.string.nogps_sensors_calibrate_box : R.string.nogps_box_recalibrate;
-      case NONE, FAILED_MOVING, MOUNT_MOVED -> R.string.nogps_sensors_calibrate_box;
+      case NONE, FAILED_MOVING, MOUNT_MOVED, LINK_LOST -> R.string.nogps_sensors_calibrate_box;
     };
   }
 

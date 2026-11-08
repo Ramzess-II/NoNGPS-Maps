@@ -354,6 +354,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
         case DONE -> getString(R.string.nogps_gyro_done);
         case FAILED_MOVING -> getString(R.string.nogps_gyro_failed);
         case MOUNT_MOVED -> getString(R.string.nogps_gyro_mount_moved);
+        case LINK_LOST -> getString(R.string.nogps_box_calibration_link_lost);
       };
       mGyro.setText(getString(R.string.nogps_sensors_gyro, gyro));
     }
@@ -399,6 +400,7 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
                                                        : R.string.nogps_box_calibrated);
       case FAILED_MOVING -> context.getString(R.string.nogps_box_calibration_failed);
       case MOUNT_MOVED -> context.getString(R.string.nogps_gyro_mount_moved);
+      case LINK_LOST -> context.getString(R.string.nogps_box_calibration_link_lost);
     };
   }
 

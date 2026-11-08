@@ -333,6 +333,7 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     case .done: return L(status.boxCalibrationAdvised ? "nogps_box_calibration_advised" : "nogps_box_calibrated")
     case .failedMoving: return L("nogps_box_calibration_failed")
     case .mountMoved: return L("nogps_gyro_mount_moved")
+    case .linkLost: return L("nogps_box_calibration_link_lost")
     @unknown default: return L("nogps_unknown")
     }
   }

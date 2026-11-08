@@ -112,6 +112,8 @@ public final class NoGps
     FAILED_MOVING,
     // The sensor box has been moved in the car since its calibration.
     MOUNT_MOVED,
+    // The link to the sensor box was lost during the calibration, it is not connected again yet.
+    LINK_LOST,
   }
 
   public enum Event
