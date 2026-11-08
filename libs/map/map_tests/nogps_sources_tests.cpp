@@ -653,6 +653,23 @@ UNIT_TEST(NoGps_Esp32Update_SendsFirmwareInPieces)
   TEST(box.TakePieces().empty(), ());
 }
 
+UNIT_TEST(NoGps_Esp32Update_CancelWhileRestartingDoesNothing)
+{
+  UpdatedBox box;
+  box.SendAllAndRestart();
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Restarting, ());
+  auto const commands = box.m_delegate.m_esp32BleSent.size();
+
+  // The box is installing the new firmware: it can't be stopped, and the update isn't reported as failed.
+  box.m_source.CancelUpdate();
+  TEST_EQUAL(box.m_delegate.m_esp32BleSent.size(), commands, ());
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Restarting, ());
+  TEST(box.Update().GetError().empty(), ());
+
+  box.Connect("0.3.3");
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
+}
+
 UNIT_TEST(NoGps_Esp32Update_TellsSizeAndHashOfFirmware)
 {
   UpdatedBox box;

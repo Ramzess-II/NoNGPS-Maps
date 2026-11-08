@@ -55,11 +55,11 @@ void Esp32Update::Start(std::string image, std::string const & version)
 
 void Esp32Update::Cancel()
 {
-  if (!IsActive())
+  // The box restarts by itself after it has checked the firmware, it can't be stopped then: the update ends when it
+  // comes back with the new firmware.
+  if (!IsActive() || m_state == State::Restarting)
     return;
-  // The box restarts by itself after it has checked the firmware, it can't be stopped then.
-  if (m_state != State::Restarting)
-    m_link.SendUpdateCommand("OTA_ABORT");
+  m_link.SendUpdateCommand("OTA_ABORT");
   Fail("CANCELED");
 }
 
