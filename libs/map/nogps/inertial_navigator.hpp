@@ -108,6 +108,13 @@ public:
   // mark to its branch 50 m away from the car. A degree between a branch and the heading is worth this many
   // meters to the branch, 5 times more than elsewhere.
   static double constexpr kForkMetersPerDeg = 1;
+  // The mark may be ahead of the car by this much: a branch that bends where the mark is may still go straight
+  // where the car is, so it is told by the smaller angle of the two. On October 18, 19 and 22 the mark 7-15 m ahead
+  // took the straight branch beside its own bent one, and lost the road.
+  static double constexpr kForkBehindM = 15;
+  // A branch bent more than this off the heading is not one the mark ahead is on: on October 15 the angle behind put
+  // the mark on a branch 44 degrees off, and the road was lost. On October 18 and 19 the bent branches were 24 and 17.
+  static double constexpr kMaxForkBentDeg = 30;
   // Places of roads closer than this are the same branch.
   static double constexpr kSameForkBranchM = 2;
   // The bends of the road are compared with the rotation of the car this often: it takes tens of road lookups.
@@ -323,6 +330,12 @@ public:
   // tell, e.g. at a crossing of the next street.
   static double constexpr kMinRoughStretchM = 200;
   static double constexpr kMaxRoughStretchError = 0.1;
+  // Once GPS has measured the table, such a stretch tells the change of the error common to all speeds, see
+  // SpeedFactor: on November 6 the drives without GPS ran ahead by 1% after the error changed overnight. A crossing
+  // and a bend are known within ~10 m, so the stretch is longer, and it counts less than the distance GPS measures.
+  static double constexpr kMinRoadFactorStretchM = 500;
+  static double constexpr kMaxRoadFactorStretchError = 0.05;
+  static double constexpr kRoadFactorWeight = 0.25;
 
   /// \param roads the roads and the followed route, the car is kept on them.
   InertialNavigator(Delegate & delegate, Scheduler & scheduler, Clock const & clock, Storage & storage, Roads & roads,
@@ -398,11 +411,11 @@ public:
   /// \returns how many speed ranges of the table are measured by GPS.
   int GetSpeedTableRanges() const { return m_speedTable.GetKnownRanges(); }
   int GetRoughSpeedTableRanges() const { return m_roughSpeedTable.GetKnownRanges(); }
-  /// \returns the ranges of the table in use: by GPS once it has measured a range, the rough one until then.
-  SpeedTable::Ranges GetSpeedTable() const
-  {
-    return (m_speedTable.GetKnownRanges() > 0 ? m_speedTable : m_roughSpeedTable).GetRanges();
-  }
+  /// \returns the ranges of the table in use: by GPS once it has measured a range, times the common factor, the
+  /// rough one until then.
+  SpeedTable::Ranges GetSpeedTable() const;
+  /// \returns the factor of the GPS table, see SpeedFactor.
+  double GetSpeedFactor() const { return m_speedFactor.Get(); }
   std::string GetSpeedTableDescription() const { return m_speedTable.ToString(); }
   std::optional<CarInfo> GetCarInfo() const;
   SourceState GetSourceState() const;
@@ -478,8 +491,8 @@ private:
   void TrackRoughStretch(double stepM);
   // The position has moved along the road: driven, or put on a road by the snapping, e.g. onto the branch of a bend.
   void TrackRoughRoad();
-  // The calculated position is |aheadM| ahead of the road here: the rough speed table learns from the stretch.
-  // \returns false if the stretch is too short yet and goes on.
+  // The calculated position is |aheadM| ahead of the road here: the rough speed table learns from the stretch, or
+  // the factor of the GPS table once GPS has measured it. \returns false if the stretch is too short yet and goes on.
   bool LearnRoughSpeed(double aheadM, char const * where);
   bool IsSpeedFresh() const;
   void SetRoadPoint(ms::LatLon const & position);
@@ -568,6 +581,8 @@ private:
   {
     RoadPoint m_road;
     std::optional<double> m_shiftM;
+    // How far the turn was ahead of the crossing along the road it came by.
+    double m_aheadM = 0;
     bool m_far = false;
   };
   // Where the rules put the car after a turn, nothing if there is no road going the new way, and the other roads the
@@ -677,14 +692,18 @@ private:
   SpeedTable m_speedTable;
   // The speed errors told by the roads until GPS has measured them, see kMinRoughStretchM.
   SpeedTable m_roughSpeedTable;
+  // The change of the GPS table told by GPS and the roads, see kMinRoadFactorStretchM.
+  SpeedFactor m_speedFactor;
   // The distance driven since the place known along the road, in the ranges of the speed table: by the car speed
-  // and as calculated, and the error of the calculated distance at that place. The snapping moves the position
-  // along the road too, e.g. onto the next branch at a bend, which takes away a part of the error unnoticed: the way
-  // of the position along the roads is the real distance, not the calculated one.
+  // and as calculated, by the car speed and the GPS table, and the error of the calculated distance at that place. The
+  // snapping moves the position along the road too, e.g. onto the next branch at a bend, which takes away a part of the
+  // error unnoticed: the way of the position along the roads is the real distance, not the calculated one.
   struct RoughStretch
   {
     std::array<double, SpeedTable::kRanges> m_carM{};
     std::array<double, SpeedTable::kRanges> m_calculatedM{};
+    double m_tableM = 0;
+    bool m_gpsSampled = false;
     double m_calculatedTotalM = 0;
     double m_errorM = 0;
     double m_roadM = 0;

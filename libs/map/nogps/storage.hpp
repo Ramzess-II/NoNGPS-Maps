@@ -21,6 +21,7 @@ public:
   static std::string_view constexpr kSpeedScale = "NoGpsSpeedScale";
   static std::string_view constexpr kSpeedTable = "NoGpsSpeedTable";
   static std::string_view constexpr kRoughSpeedTable = "NoGpsRoughSpeedTable";
+  static std::string_view constexpr kSpeedFactor = "NoGpsSpeedFactor";
   static std::string_view constexpr kSpeedLag = "NoGpsSpeedLag";
   // How the accelerometer of the sensor box is fixed in the car: the identifier of the box and what is learned.
   static std::string_view constexpr kBoxAccel = "NoGpsBoxAccel";

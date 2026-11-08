@@ -112,7 +112,7 @@ EVENT_KINDS = [
     ('road', 'car started', r'^The car has started', None),
     ('road', 'car drives fast', r'^The car drives fast', None),
     ('road', 'no road its way', r'no road goes its way', None),
-    ('road', 'speed table', r'^(Rough speed table|Speed table)', None),
+    ('road', 'speed table', r'^(Rough speed table|Speed table|Speed factor)', None),
     ('road', 'corrected', r'^Corrected by', None),
     ('turn', 'turn', r'^TURN |^Turn from|^The turn starts', None),
     ('turn', 'no road after the turn', r'^No road after the turn', None),
