@@ -1109,8 +1109,6 @@
     <string name="nogps_based_on">На основі Organic Maps</string>
     <string name="nogps_map_data">Дані карт © OpenStreetMap і Organic Maps</string>
     <string name="nogps_source_code">Вихідний код на GitHub</string>
-    <!-- In About under the app version: the version of the navigation without GPS -->
-    <string name="nogps_addon_version">Доповнення NonGPS %s</string>
     <string name="nogps_delete_recent_query">Видалити з історії?</string>
     <string name="nogps_box_sleeping">спить: двигун заглушено</string>
     <string name="nogps_box_obd_sleeping">OBD спить: двигун заглушено</string>

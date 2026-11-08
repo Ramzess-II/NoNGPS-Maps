@@ -65,8 +65,7 @@ public class HelpFragment extends BaseMwmFragment implements View.OnClickListene
     View root = inflater.inflate(R.layout.about, container, false);
 
     ((TextView) root.findViewById(R.id.version)).setText(BuildConfig.VERSION_NAME);
-    setupItem(R.id.nogps_addon_version, false, root)
-        .setText(getString(R.string.nogps_addon_version, NoGps.nativeGetAddonVersion()));
+    setupItem(R.id.nogps_upstream_version, false, root).setText("Organic Maps " + NoGps.getUpstreamVersion());
 
     final String dataVersion = DateUtils.getShortDateFormatter().format(Framework.getDataVersion());
     final TextView osmPresentationView = root.findViewById(R.id.osm_presentation);
@@ -148,14 +147,14 @@ public class HelpFragment extends BaseMwmFragment implements View.OnClickListene
       Utils.openAppInMarket(requireActivity(), BuildConfig.REVIEW_URL);
     else if (id == R.id.copyright)
       ((HelpActivity) requireActivity()).stackFragment(CopyrightFragment.class, getString(R.string.copyright), null);
-    else if (id == R.id.nogps_addon_version)
-      copyAddonVersion(v);
+    else if (id == R.id.nogps_upstream_version)
+      copyFullVersion(v);
   }
 
   /// With the commit of the build: the line tells which build was tested.
-  private void copyAddonVersion(@NonNull View view)
+  private void copyFullVersion(@NonNull View view)
   {
-    final String text = getString(R.string.nogps_addon_version, NoGps.getAddonBuild());
+    final String text = "NonGPS Maps " + NoGps.getFullVersion();
     Utils.copyTextToClipboard(requireContext(), text);
     // Starting from API 33, the system shows the copied text itself.
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)

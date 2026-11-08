@@ -45,6 +45,8 @@ rootProject.ext {
     versionCode = ver.V1
     versionName = ver.V2
     gitHash = getGitHash()
+    // The Organic Maps version of the last upstream merge, see tools/unix/nogps_version.sh.
+    upstreamVersion = file('../tools/unix/nogps_upstream_version.txt').text.trim()
     appId = 'ua.nogps.maps'
     CI = System.getenv("CI") != null
 }

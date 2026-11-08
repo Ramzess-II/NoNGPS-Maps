@@ -295,8 +295,8 @@ public final class LogsManager
         .append(Config.getApplicationId())
         .append(' ')
         .append(Config.getVersionName())
-        .append("\nNonGPS add-on: ")
-        .append(NoGps.getAddonBuild())
+        .append("\nNonGPS Maps: ")
+        .append(NoGps.getFullVersion())
         .append("\nLocale: ")
         .append(Locale.getDefault())
         .append("\nNetworks: ");

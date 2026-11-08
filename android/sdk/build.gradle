@@ -15,6 +15,7 @@ android {
 
   defaultConfig {
     buildConfigField 'String', 'GIT_HASH', "\"${rootProject.ext.gitHash}\""
+    buildConfigField 'String', 'UPSTREAM_VERSION', "\"${rootProject.ext.upstreamVersion}\""
 
     externalNativeBuild {
       def pchFlag = 'OFF'
