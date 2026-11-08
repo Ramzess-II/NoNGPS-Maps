@@ -7,6 +7,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.UiThread;
 import androidx.core.location.LocationCompat;
+import app.organicmaps.sdk.BuildConfig;
 
 /**
  * Navigation without GPS, done in the core (libs/map/nogps): it chooses the position to show from GPS, cell towers,
@@ -201,15 +202,6 @@ public final class NoGps
     // The position is not from GPS: the user corrects it with the buttons.
     @Keep
     public boolean movedByHand;
-    // The position stands at a crossing and is moved that way after the car passes it.
-    @Keep
-    public boolean shiftForwardBlocked;
-    @Keep
-    public boolean shiftBackBlocked;
-    @Keep
-    public int shiftStepM;
-    @Keep
-    public boolean shiftButtonsShown;
 
     @Keep
     public boolean inertialEnabled;
@@ -466,12 +458,23 @@ public final class NoGps
     return status;
   }
 
+  /// The version of the NonGPS add-on and the commit of the build, "1.0.0 (abcdef12)": tells which build it is.
+  @NonNull
+  public static String getAddonBuild()
+  {
+    return nativeGetAddonVersion() + " (" + BuildConfig.GIT_HASH + ")";
+  }
+
   @Nullable
   static Event toEvent(int event)
   {
     final Event[] events = Event.values();
     return event >= 0 && event < events.length ? events[event] : null;
   }
+
+  /// The version of the NonGPS add-on, MAJOR.MINOR.PATCH, see libs/map/nogps/version.hpp.
+  @NonNull
+  public static native String nativeGetAddonVersion();
 
   private static native void nativeCreate(@NonNull Delegate delegate);
 
@@ -508,8 +511,6 @@ public final class NoGps
   /// @return false if there is no road near, the core sends MARK_NO_ROAD then.
   public static native boolean nativePlaceMark(double lat, double lon);
 
-  public static native double nativeShiftPosition(double distanceM);
-
   public static native void nativeReverseDirection();
 
   /// Shows the car on the next of the other roads it may be on, see Status.otherMarks.
@@ -537,10 +538,6 @@ public final class NoGps
   public static native void nativeCancelFirmwareUpdate();
 
   public static native void nativeClearSpeedCalibration();
-
-  public static native void nativeCycleShiftStep();
-
-  public static native void nativeSetShiftButtonsShown(boolean shown);
 
   private static native void nativeGetStatus(@NonNull Status status);
 }

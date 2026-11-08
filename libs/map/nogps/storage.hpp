@@ -16,8 +16,6 @@ public:
   static std::string_view constexpr kInertialEnabled = "NoGpsInertialEnabled";
   static std::string_view constexpr kElm327Address = "NoGpsElm327Address";
   static std::string_view constexpr kEsp32Source = "NoGpsEsp32Source";
-  static std::string_view constexpr kShiftStepM = "NoGpsShiftStep";
-  static std::string_view constexpr kShiftButtonsShown = "NoGpsShiftButtons";
   // The user has chosen to ignore GPS, see Engine::SetGpsDisabled().
   static std::string_view constexpr kGpsDisabled = "NoGpsGpsDisabled";
   static std::string_view constexpr kSpeedScale = "NoGpsSpeedScale";

@@ -2,11 +2,13 @@
 #import "MWMLocationManager.h"
 #import "SwiftBridge.h"
 
+#import <CoreApi/AppInfo.h>
 #include <CoreApi/Framework.h>
 
 #include "map/nogps/clock.hpp"
 #include "map/nogps/delegate.hpp"
 #include "map/nogps/engine.hpp"
+#include "map/nogps/version.hpp"
 
 #include "geometry/mercator.hpp"
 
@@ -123,10 +125,6 @@ std::optional<double> NonNegative(double value)
     _workingGpsAccuracyM = status.m_workingGpsAccuracyM.value_or(-1);
     _workingNetworkAccuracyM = status.m_workingNetworkAccuracyM.value_or(-1);
     _movedByHand = status.m_movedByHand;
-    _shiftForwardBlocked = status.m_shiftForwardBlocked;
-    _shiftBackBlocked = status.m_shiftBackBlocked;
-    _shiftStepM = status.m_shiftStepM;
-    _shiftButtonsShown = status.m_shiftButtonsShown;
     _inertialEnabled = status.m_inertialEnabled;
     _inertialStarted = status.m_inertialStarted;
     _sourceState = static_cast<MWMNoGpsSourceState>(status.m_sourceState);
@@ -219,6 +217,18 @@ static CLLocation * lastPlatformLocation;
   Engine().Stop();
 }
 
++ (NSString *)addonVersion
+{
+  return [[NSString alloc] initWithBytes:nogps::kAddonVersion.data()
+                                  length:nogps::kAddonVersion.size()
+                                encoding:NSUTF8StringEncoding];
+}
+
++ (NSString *)addonBuild
+{
+  return [NSString stringWithFormat:@"%@ (%@)", self.addonVersion, AppInfo.sharedInfo.gitHash];
+}
+
 + (MWMNoGpsStatus *)status
 {
   auto status = Engine().GetStatus();
@@ -238,11 +248,6 @@ static CLLocation * lastPlatformLocation;
   // The framework calls the engine, which is created by the first call to it.
   Engine();
   return GetFramework().PlaceNoGpsMark(mercator::FromLatLon(coordinate.latitude, coordinate.longitude));
-}
-
-+ (double)shiftPosition:(double)distanceM
-{
-  return Engine().ShiftPosition(distanceM);
 }
 
 + (void)reverseDirection
@@ -273,16 +278,6 @@ static CLLocation * lastPlatformLocation;
 + (void)clearSpeedCalibration
 {
   Engine().ClearSpeedCalibration();
-}
-
-+ (void)cycleShiftStep
-{
-  Engine().CycleShiftStep();
-}
-
-+ (void)setShiftButtonsShown:(BOOL)shown
-{
-  Engine().SetShiftButtonsShown(shown);
 }
 
 + (void)startFirmwareUpdate

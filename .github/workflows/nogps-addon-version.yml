@@ -1,0 +1,47 @@
+name: NoGPS add-on version
+
+# Every PR into master raises kAddonVersion in libs/map/nogps/version.hpp, so About and the trip log tell which
+# changes a build has. A PR of docs or CI only takes the label "no-version" instead.
+# See "Raise the add-on version" in .claude/rules/nogps-workflow.md.
+on:
+  pull_request:
+    branches: [master]
+    types: [opened, reopened, synchronize, labeled, unlabeled]
+
+jobs:
+  addon-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    steps:
+      - name: Check that kAddonVersion is raised
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        shell: python3 {0}
+        run: |
+          import json, os, re, subprocess, sys
+
+          if "no-version" in json.loads(os.environ["LABELS"]):
+              print('The PR has the label "no-version".')
+              sys.exit(0)
+
+          FILE = "libs/map/nogps/version.hpp"
+          VERSION = r'kAddonVersion = "(\d+)\.(\d+)\.(\d+)"'
+          files = json.loads(subprocess.run(
+              ["gh", "api", "--paginate", "--slurp", f"repos/{os.environ['REPO']}/pulls/{os.environ['PR']}/files"],
+              capture_output=True, text=True, check=True).stdout)
+          patch = next((f.get("patch", "") for page in files for f in page if f["filename"] == FILE), "")
+          old = re.search(r"^-.*" + VERSION, patch, re.M)
+          new = re.search(r"^\+.*" + VERSION, patch, re.M)
+          if not new:
+              print(f'::error::Raise kAddonVersion in {FILE}: PATCH for a fix, MINOR for new behavior. '
+                    'A PR of docs or CI only takes the label "no-version".')
+              sys.exit(1)
+          if old and tuple(map(int, new.groups())) <= tuple(map(int, old.groups())):
+              print(f"::error::kAddonVersion goes down or stays: {'.'.join(old.groups())} -> {'.'.join(new.groups())}")
+              sys.exit(1)
+          print("kAddonVersion:", ".".join(old.groups()) if old else "new", "->", ".".join(new.groups()))

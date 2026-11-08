@@ -1,9 +1,12 @@
 #import "Logger.h"
 #import <OSLog/OSLog.h>
 #import <sys/utsname.h>
+#import "AppInfo.h"
 
 #include "base/logging.hpp"
 #include "coding/zip_creator.hpp"
+
+#include "map/nogps/version.hpp"
 
 @interface Logger ()
 
@@ -371,6 +374,9 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
     std::ostringstream anchor;
     base::LogHelper::Instance().WriteProlog(anchor, LINFO);
     anchor << "Local time: " << now.description.UTF8String << std::endl;
+    base::LogHelper::Instance().WriteProlog(anchor, LINFO);
+    anchor << "NonGPS add-on: " << nogps::kAddonVersion << " (" << AppInfo.sharedInfo.gitHash.UTF8String << ")"
+           << std::endl;
     auto const anchorString = anchor.str();
     [fileHandle writeData:[NSData dataWithBytes:anchorString.c_str() length:anchorString.length()]];
   }

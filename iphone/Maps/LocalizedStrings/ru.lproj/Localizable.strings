@@ -1283,10 +1283,6 @@
 "nogps_sensors_not_ready" = "Не готово: %@";
 "nogps_missing_speed" = "нет скорости";
 "nogps_missing_position" = "нет стартовой точки";
-"nogps_shift_forward" = "Перенести позицию вперёд по дороге";
-"nogps_shift_back" = "Перенести позицию назад по дороге";
-"nogps_shift_limited" = "Перенос на %1$d м, до перекрёстка";
-"nogps_shift_failed" = "Позицию некуда переносить";
 "nogps_sensors_scale" = "Поправка скорости: %1$@ · диапазонов измерено: %2$d";
 "nogps_sensors_lag_measured" = "Опоздание скорости: %@ с (измерено по GPS)";
 "nogps_sensors_lag_usual" = "Опоздание скорости: %@ с (обычное, GPS ещё не измерил)";
@@ -1296,7 +1292,6 @@
 "nogps_speed_table_hide" = "Скрыть таблицу";
 "nogps_speed_table_row" = "%1$d–%2$d км/ч  %3$@";
 "nogps_speed_table_left" = "ещё %d м";
-"nogps_shift_at_turn" = "Позиция у перекрёстка, дальше переносить нельзя";
 "nogps_status_gps_off" = "GPS выключен в настройках системы";
 "nogps_gps_back_auto" = "GPS снова надёжный, ручной режим выключен";
 "nogps_reverse_direction" = "Развернуть машину на дороге";
@@ -1451,6 +1446,9 @@
 "nogps_clear_speed_title" = "Сбросить калибровку скорости?";
 "nogps_clear_speed_message" = "Поправки скорости, измеренные по GPS на разных скоростях и по вашим сдвигам, будут забыты. Делайте это после смены шин или машины. Пока работает GPS, они измеряются заново.";
 "nogps_about_title" = "О NonGPS Maps";
+
+/* In About under the app version: the version of the navigation without GPS */
+"nogps_addon_version" = "Дополнение NonGPS %@";
 "nogps_speed_no_data" = "NO";
 "nogps_speed_no_elm" = "OBD";
 "nogps_box_sleeping" = "спит: двигатель заглушен";

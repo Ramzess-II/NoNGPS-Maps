@@ -54,10 +54,15 @@ public:
   /// streets going its way on both sides: of 3 such turns moved to the closest crossing on October 11 two were
   /// moved away from the car, with crossings 1 m closer than the others, and the one with a single crossing to it.
   /// \param fitting all the crossings that fit the turn, the closest one along the road first, if it is not nullptr.
+  /// \param farAheadM, farBehindM the crossings farther than |searchM| are searched this far ahead and behind the
+  /// corner along the road the car came by too, if |far| is not nullptr. They are never the crossing returned, which
+  /// is where the car is by the calculation. They go to |far|, the closest one first.
   /// \returns the crossing, or nothing if the turn is not at a crossing.
   static std::optional<ms::LatLon> FindCrossing(Roads & roads, ms::LatLon const & corner, double fromBearingDeg,
                                                 double toBearingDeg, double searchM, std::string * whyNot = nullptr,
-                                                bool onlyOne = false, std::vector<ms::LatLon> * fitting = nullptr);
+                                                bool onlyOne = false, std::vector<ms::LatLon> * fitting = nullptr,
+                                                double farAheadM = 0, double farBehindM = 0,
+                                                std::vector<ms::LatLon> * far = nullptr);
 
   /// \returns the crossings around the corner for the trip log, the closest first, as "+40/-3/BA,-60/+0/B-": how
   /// far the crossing is ahead of the corner the way the car came, how far to the right, meters, whether it has the

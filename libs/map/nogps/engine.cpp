@@ -5,6 +5,7 @@
 #include "map/nogps/map_api.hpp"
 #include "map/nogps/road_walker.hpp"
 #include "map/nogps/storage.hpp"
+#include "map/nogps/version.hpp"
 
 #include "base/assert.hpp"
 #include "base/logging.hpp"
@@ -108,6 +109,8 @@ void Engine::Start()
   CHECK_THREAD_CHECKER(m_threadChecker, ());
   if (m_active)
     return;
+  // A file of the day goes on over runs, maybe of another build: each run tells its version.
+  LOG(LINFO, ("NonGPS add-on", kAddonVersion));
   LOG(LINFO, ("Start"));
   m_active = true;
   m_loggedState = {};
@@ -909,20 +912,6 @@ void Engine::CancelFirmwareUpdate()
     m_inertial->GetEsp32()->CancelUpdate();
 }
 
-void Engine::CycleShiftStep()
-{
-  int const current = m_storage.Get<int32_t>(Storage::kShiftStepM, 50);
-  auto const it = std::find(std::begin(kShiftStepsM), std::end(kShiftStepsM), current);
-  int const next =
-      it == std::end(kShiftStepsM) || std::next(it) == std::end(kShiftStepsM) ? kShiftStepsM[0] : *std::next(it);
-  m_storage.Set(Storage::kShiftStepM, static_cast<int32_t>(next));
-}
-
-void Engine::SetShiftButtonsShown(bool shown)
-{
-  m_storage.Set(Storage::kShiftButtonsShown, shown);
-}
-
 void Engine::ReverseDirection()
 {
   auto const from = m_savedLocation;
@@ -1471,10 +1460,6 @@ Status Engine::GetStatus()
   // The position is moved by hand only when it does not come from GPS: a GPS one is moved by the car.
   status.m_movedByHand =
       m_manualMode || status.m_source == PositionSource::Inertial || status.m_source == PositionSource::Manual;
-  status.m_shiftForwardBlocked = IsShiftBlocked(true);
-  status.m_shiftBackBlocked = IsShiftBlocked(false);
-  status.m_shiftStepM = m_storage.Get<int32_t>(Storage::kShiftStepM, 50);
-  status.m_shiftButtonsShown = m_storage.Get<bool>(Storage::kShiftButtonsShown, false);
 
   status.m_inertialEnabled = IsInertialNavigationEnabled();
   status.m_esp32Source = m_storage.IsEsp32Source();

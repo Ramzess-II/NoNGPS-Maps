@@ -1,5 +1,6 @@
 package app.organicmaps.help;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.text.SpannableString;
 import android.text.Spanned;
@@ -18,6 +19,7 @@ import app.organicmaps.BuildConfig;
 import app.organicmaps.R;
 import app.organicmaps.base.BaseMwmFragment;
 import app.organicmaps.sdk.Framework;
+import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.sdk.util.DateUtils;
 import app.organicmaps.util.Graphics;
 import app.organicmaps.util.Utils;
@@ -63,6 +65,8 @@ public class HelpFragment extends BaseMwmFragment implements View.OnClickListene
     View root = inflater.inflate(R.layout.about, container, false);
 
     ((TextView) root.findViewById(R.id.version)).setText(BuildConfig.VERSION_NAME);
+    setupItem(R.id.nogps_addon_version, false, root)
+        .setText(getString(R.string.nogps_addon_version, NoGps.nativeGetAddonVersion()));
 
     final String dataVersion = DateUtils.getShortDateFormatter().format(Framework.getDataVersion());
     final TextView osmPresentationView = root.findViewById(R.id.osm_presentation);
@@ -144,5 +148,17 @@ public class HelpFragment extends BaseMwmFragment implements View.OnClickListene
       Utils.openAppInMarket(requireActivity(), BuildConfig.REVIEW_URL);
     else if (id == R.id.copyright)
       ((HelpActivity) requireActivity()).stackFragment(CopyrightFragment.class, getString(R.string.copyright), null);
+    else if (id == R.id.nogps_addon_version)
+      copyAddonVersion(v);
+  }
+
+  /// With the commit of the build: the line tells which build was tested.
+  private void copyAddonVersion(@NonNull View view)
+  {
+    final String text = getString(R.string.nogps_addon_version, NoGps.getAddonBuild());
+    Utils.copyTextToClipboard(requireContext(), text);
+    // Starting from API 33, the system shows the copied text itself.
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
+      Utils.showSnackbar(view, getString(R.string.copied_to_clipboard, text));
   }
 }

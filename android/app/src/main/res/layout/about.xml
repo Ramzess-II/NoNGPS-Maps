@@ -38,6 +38,16 @@
         tools:text="2021.10.15-15-Google" />
 
     <TextView
+        android:id="@+id/nogps_addon_version"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:layout_marginBottom="@dimen/margin_half"
+        android:background="?selectableItemBackground"
+        android:textAppearance="@style/MwmTextAppearance.Body3"
+        tools:text="NonGPS add-on 1.0.0" />
+
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/margin_base"

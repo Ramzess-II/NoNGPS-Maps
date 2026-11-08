@@ -17,6 +17,7 @@ import androidx.annotation.RequiresApi;
 import androidx.core.content.ContextCompat;
 import app.organicmaps.sdk.BuildConfig;
 import app.organicmaps.sdk.R;
+import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.sdk.util.Assert;
 import app.organicmaps.sdk.util.Config;
 import app.organicmaps.sdk.util.ROMUtils;
@@ -294,6 +295,8 @@ public final class LogsManager
         .append(Config.getApplicationId())
         .append(' ')
         .append(Config.getVersionName())
+        .append("\nNonGPS add-on: ")
+        .append(NoGps.getAddonBuild())
         .append("\nLocale: ")
         .append(Locale.getDefault())
         .append("\nNetworks: ");

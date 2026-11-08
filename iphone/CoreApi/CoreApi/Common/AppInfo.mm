@@ -44,6 +44,19 @@
   return _buildNumber;
 }
 
+- (NSString *)gitHash
+{
+  static NSString * hash;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    NSString * path = [NSBundle.mainBundle pathForResource:@"nogps_git_hash" ofType:@"txt"];
+    hash = path ? [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:nil] : nil;
+    if (!hash)
+      hash = @"00000000";
+  });
+  return hash;
+}
+
 - (NSString *)languageId
 {
   return NSLocale.preferredLanguages.firstObject;

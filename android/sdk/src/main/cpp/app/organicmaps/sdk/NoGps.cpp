@@ -4,6 +4,7 @@
 
 #include "map/nogps/delegate.hpp"
 #include "map/nogps/engine.hpp"
+#include "map/nogps/version.hpp"
 
 #include "geometry/mercator.hpp"
 
@@ -252,11 +253,6 @@ JNIEXPORT jboolean Java_app_organicmaps_sdk_location_NoGps_nativePlaceMark(JNIEn
   return g_framework->NativeFramework()->PlaceNoGpsMark(mercator::FromLatLon(lat, lon));
 }
 
-JNIEXPORT jdouble Java_app_organicmaps_sdk_location_NoGps_nativeShiftPosition(JNIEnv *, jclass, jdouble distanceM)
-{
-  return NoGpsEngine().ShiftPosition(distanceM);
-}
-
 JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeReverseDirection(JNIEnv *, jclass)
 {
   NoGpsEngine().ReverseDirection();
@@ -308,16 +304,6 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeClearSpeedCalibrati
   NoGpsEngine().ClearSpeedCalibration();
 }
 
-JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeCycleShiftStep(JNIEnv *, jclass)
-{
-  NoGpsEngine().CycleShiftStep();
-}
-
-JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeSetShiftButtonsShown(JNIEnv *, jclass, jboolean shown)
-{
-  NoGpsEngine().SetShiftButtonsShown(shown);
-}
-
 JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * env, jclass, jobject out)
 {
   auto const status = NoGpsEngine().GetStatus();
@@ -333,10 +319,6 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsFloat(env, out, "workingGpsAccuracyM", status.m_workingGpsAccuracyM.value_or(-1));
   SetNoGpsFloat(env, out, "workingNetworkAccuracyM", status.m_workingNetworkAccuracyM.value_or(-1));
   SetNoGpsField(env, out, "movedByHand", status.m_movedByHand);
-  SetNoGpsField(env, out, "shiftForwardBlocked", status.m_shiftForwardBlocked);
-  SetNoGpsField(env, out, "shiftBackBlocked", status.m_shiftBackBlocked);
-  SetNoGpsField(env, out, "shiftStepM", status.m_shiftStepM);
-  SetNoGpsField(env, out, "shiftButtonsShown", status.m_shiftButtonsShown);
   SetNoGpsField(env, out, "inertialEnabled", status.m_inertialEnabled);
   SetNoGpsField(env, out, "esp32Source", status.m_esp32Source);
   SetNoGpsString(env, out, "elm327Address", status.m_elm327Address);
@@ -379,5 +361,10 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsField(env, out, "firmwareUpdateProgress", status.m_firmwareUpdateProgress);
   SetNoGpsString(env, out, "firmwareUpdateError", status.m_firmwareUpdateError);
   SetNoGpsField(env, out, "boxCalibrationAdvised", status.m_boxCalibrationAdvised);
+}
+
+JNIEXPORT jstring Java_app_organicmaps_sdk_location_NoGps_nativeGetAddonVersion(JNIEnv * env, jclass)
+{
+  return jni::ToJavaString(env, std::string(nogps::kAddonVersion));
 }
 }  // extern "C"

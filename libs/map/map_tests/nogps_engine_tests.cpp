@@ -291,16 +291,6 @@ UNIT_TEST(NoGps_Engine_ShiftStopsAtCrossing)
   TEST(!env.m_engine.IsShiftBlocked(true /* forward */), ());
 }
 
-UNIT_TEST(NoGps_Engine_CyclesShiftSteps)
-{
-  Env env(false /* inertial */);
-  TEST_EQUAL(env.m_engine.GetStatus().m_shiftStepM, 50, ());
-  env.m_engine.CycleShiftStep();
-  TEST_EQUAL(env.m_engine.GetStatus().m_shiftStepM, 100, ());
-  env.m_engine.CycleShiftStep();
-  TEST_EQUAL(env.m_engine.GetStatus().m_shiftStepM, 10, ());
-}
-
 // The app starts again with what the app before has saved.
 std::function<void(TestStorage &)> SavedBy(Env const & before)
 {
@@ -930,6 +920,113 @@ UNIT_TEST(NoGps_Engine_WayAfterTurnOffRoadsDropsNoMark)
   // The car may be on the other street still: both streets go on, it is followed too.
   TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
   TEST(!env.m_delegate.HasEvent(Event::RoadLost), ());
+}
+
+UNIT_TEST(NoGps_Engine_TurnFitsCrossingCarHasPassed)
+{
+  // The street going east has a side street going north at 200 m only. The mark is 46 m ahead of the car when it turns
+  // there, as on November 5 after a yard: the crossing is out of the search, the car is not at a crossing by the
+  // rules. It may have passed the crossing: the car may be on the side street too.
+  PieceRoads roads({{-300, 0, 600, 0}, {200, 0, 200, 400}}, {{200, 0}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 246 - 112);
+  env.Drive(10'000, 36, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 246, 2);
+  env.Drive(3000, 36, -30);
+  env.Drive(2000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+  // The way driven lies on the side street, not where the mark is: the car is shown there before the road is lost.
+  env.Drive(5000, 36, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 200, 2);
+  TEST_GREATER(North(env.Last().m_position), 30, ());
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_Engine_TurnFitsCrossingCarHasNotReached)
+{
+  // The same, the mark 46 m behind the car: the crossing is ahead of it, the car may be on the side street too.
+  PieceRoads roads({{-300, 0, 600, 0}, {200, 0, 200, 400}}, {{200, 0}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 154 - 112);
+  env.Drive(10'000, 36, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 154, 2);
+  env.Drive(3000, 36, -30);
+  env.Drive(2000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+  env.Drive(5000, 36, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 200, 2);
+  TEST_GREATER(North(env.Last().m_position), 30, ());
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_Engine_FarMarkIsNotTakenByFewMisses)
+{
+  // The car turns north at a crossing, its street goes 6 degrees off the heading, a far crossing is 46 m behind, as on
+  // October 24. The way misses the roads at a few points where the car is shown and at none at the far crossing: the
+  // car stays shown where the rules put it, the far one is only another mark.
+  PieceRoads roads({{-300, 0, 600, 0}, {200, 0, 200, 400}, {246, 0, 288, 400}}, {{200, 0}, {246, 0}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 246 - 112);
+  env.Drive(10'000, 36, 0);
+  env.Drive(1000, 36, -90);
+  env.Drive(2000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+  env.Drive(20'000, 36, 0);
+  TEST_GREATER(East(env.Last().m_position), 250, ());
+  TEST_GREATER(North(env.Last().m_position), 100, ());
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_Engine_TurnIntoYardTakesNoFarMark)
+{
+  // The car turns north at a crossing, a far crossing is 46 m behind: the far one is another mark. 110 m later the
+  // car turns east into a yard missing on the map, where only the street of the far mark has a road east, as on
+  // October 22 at 21:07:33: the car stays shown where it is.
+  PieceRoads roads({{-300, 0, 600, 0}, {200, 0, 200, 400}, {246, 0, 246, 400}, {200, 110, 230, 110}},
+                   {{200, 0}, {246, 0}, {200, 110}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 246 - 112);
+  env.Drive(10'000, 36, 0);
+  env.Drive(1000, 36, -90);
+  env.Drive(2000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+  while (North(env.Last().m_position) < 110 - 6)
+    env.Drive(100, 36, 0);
+  env.Drive(3000, 18, 30);
+  env.Drive(3000, 18, 0);
+  TEST_GREATER(East(env.Last().m_position), 240, (env.m_engine.GetTripLine()));
+  // The far one stays another mark: the way may still tell the car is there.
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_Engine_TurnFitsCrossingOtherMarkHasPassed)
+{
+  // After the turn the car may be on either street going north. A street goes east from the one 40 m to the east,
+  // 150 m to the north. The car turns right 46 m past it by the calculation: only the other mark has passed it.
+  PieceRoads roads({{-300, 0, 400, 0}, {200, 0, 200, 400}, {240, -10, 240, 400}, {240, 150, 400, 150}},
+                   {{200, 0}, {240, 150}});
+  Env env(true /* inertial */, &roads);
+  TurnLeftBesideCrossing(env);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+  while (North(env.Last().m_position) < 196 - 12)
+    env.Drive(100, 36, 0);
+  env.Drive(3000, 36, 30);
+  env.Drive(5000, 36, 0);
+  TestAlmostEqualAbs(North(env.Last().m_position), 150, 3);
+  TEST_GREATER(East(env.Last().m_position), 260, ());
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_Engine_TurnDoesNotFitCrossingBeforeKnownPlace)
+{
+  // The same, the car marked 30 m past the crossing: it has not passed the crossing since, the road is lost.
+  PieceRoads roads({{-300, 0, 600, 0}, {200, 0, 200, 400}}, {{200, 0}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 230);
+  env.Drive(1600, 36, 0);
+  env.Drive(3000, 36, -30);
+  env.Drive(2000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 0, (env.m_engine.GetTripLine()));
 }
 
 UNIT_TEST(NoGps_Engine_CarAtRoundaboutIsNotLost)

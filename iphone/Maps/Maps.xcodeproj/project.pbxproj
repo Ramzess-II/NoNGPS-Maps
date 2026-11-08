@@ -4344,6 +4344,7 @@
 				6741AA311BF340DE002C974C /* Frameworks */,
 				4740184523F5BDE900A93C81 /* Embed Frameworks */,
 				ED46DDE22D098A0C007CACD6 /* Embed Foundation Extensions */,
+				C02FFD142EBB0115709F1B7D /* NonGPS git hash */,
 			);
 			buildRules = (
 			);
@@ -4657,6 +4658,30 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		C02FFD142EBB0115709F1B7D /* NonGPS git hash */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "NonGPS git hash";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/nogps_git_hash.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# The commit of the build for About and the trip log, as android/build.gradle takes it. A file of its own in the\n# bundle, not Info.plist: Xcode signs the app again only when a declared output changes. git reads the repo,\n# so the target turns off the user script sandboxing.\nset -e\nHASH=$(git -C \"$SRCROOT\" describe --match= --always --abbrev=8 --dirty 2>/dev/null || echo 00000000)\nif [ \"$(cat \"$SCRIPT_OUTPUT_FILE_0\" 2>/dev/null)\" != \"$HASH\" ]; then\n  printf %s \"$HASH\" > \"$SCRIPT_OUTPUT_FILE_0\"\nfi\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		6741A9A01BF340DE002C974C /* Sources */ = {
@@ -5526,6 +5551,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 20;
 				DEVELOPMENT_TEAM = VTWF79TU37;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_KEY_CFBundleDisplayName = "Debug NonGPS Maps";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -5556,6 +5582,7 @@
 				CURRENT_PROJECT_VERSION = 20;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = VTWF79TU37;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				INFOPLIST_KEY_CFBundleDisplayName = "NonGPS Maps";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;

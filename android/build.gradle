@@ -33,10 +33,18 @@ def getVersion() {
     return new Tuple2(versionCode, versionName)
 }
 
+// The commit of the build, as version.sh takes it: the NonGPS add-on shows it in About and in the trip log.
+def getGitHash() {
+    def isWindows = DefaultNativePlatform.getCurrentOperatingSystem().isWindows()
+    def bash = isWindows ? 'C:\\Program Files\\Git\\bin\\bash.exe' : 'bash'
+    return run([bash, '-c', 'git describe --match= --always --abbrev=8 --dirty 2>/dev/null || echo 00000000'])
+}
+
 rootProject.ext {
     def ver = getVersion()
     versionCode = ver.V1
     versionName = ver.V2
+    gitHash = getGitHash()
     appId = 'ua.nogps.maps'
     CI = System.getenv("CI") != null
 }

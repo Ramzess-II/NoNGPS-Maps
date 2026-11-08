@@ -123,11 +123,6 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly) double workingNetworkAccuracyM;
 // The position is not from GPS: the user corrects it with the buttons.
 @property(nonatomic, readonly) BOOL movedByHand;
-// The position stands at a crossing and is moved that way after the car passes it.
-@property(nonatomic, readonly) BOOL shiftForwardBlocked;
-@property(nonatomic, readonly) BOOL shiftBackBlocked;
-@property(nonatomic, readonly) NSInteger shiftStepM;
-@property(nonatomic, readonly) BOOL shiftButtonsShown;
 
 @property(nonatomic, readonly) BOOL inertialEnabled;
 // The rest is known while the inertial navigation works.
@@ -182,6 +177,11 @@ NS_SWIFT_NAME(NoGpsStatus)
 NS_SWIFT_NAME(NoGps)
 @interface MWMNoGps : NSObject
 
+/// The version of the NonGPS add-on, MAJOR.MINOR.PATCH, see libs/map/nogps/version.hpp.
+@property(class, nonatomic, readonly) NSString * addonVersion;
+/// The version of the NonGPS add-on and the commit of the build, "1.0.0 (abcdef12)": tells which build it is.
+@property(class, nonatomic, readonly) NSString * addonBuild;
+
 /// A position from CoreLocation. The chosen position comes back to MWMLocationManager.
 + (void)onLocation:(CLLocation *)location;
 /// The last position from CoreLocation as it came: the GPS sheet shows its details.
@@ -199,9 +199,6 @@ NS_SWIFT_NAME(NoGps)
 /// The car is at the point: the mark goes to the nearest road, the map follows the car.
 /// @return NO if there is no road near, MWMNoGpsEventMarkNoRoad is posted then.
 + (BOOL)placeMarkAt:(CLLocationCoordinate2D)coordinate;
-/// Moves the position along the route or the road.
-/// @return the distance it was moved by, 0 if it can not be moved.
-+ (double)shiftPosition:(double)distanceM;
 + (void)reverseDirection;
 /// Shows the car on the next of the other roads it may be on.
 + (void)switchMark;
@@ -209,8 +206,6 @@ NS_SWIFT_NAME(NoGps)
 + (void)setInertialNavigationEnabled:(BOOL)enabled;
 + (void)calibrate;
 + (void)clearSpeedCalibration;
-+ (void)cycleShiftStep;
-+ (void)setShiftButtonsShown:(BOOL)shown;
 /// Sends the firmware of MWMNoGpsStatus.bundledFirmware to the box.
 + (void)startFirmwareUpdate;
 + (void)cancelFirmwareUpdate;

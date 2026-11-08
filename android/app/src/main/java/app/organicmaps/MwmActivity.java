@@ -882,45 +882,9 @@ public class MwmActivity extends BaseMwmFragmentActivity
     case trackRecordingStatus -> toggleTrackRecordingPP();
     case manualPosition -> toggleMarkByTap();
     case positionStatus -> showSensorsSheet();
-    case shiftPositionForward -> shiftPosition(true /* forward */);
-    case shiftPositionBack -> shiftPosition(false /* forward */);
     case reverseDirection -> NoGps.nativeReverseDirection();
     case switchMark -> NoGps.nativeSwitchMark();
     }
-  }
-
-  /**
-   * Moves the position along the road when it lags behind the car or has run ahead of it.
-   * @param forward true to move it forward by the chosen step, false to move it back.
-   */
-  private void shiftPosition(boolean forward)
-  {
-    final NoGps.Status status = NoGps.getStatus();
-    final int distanceM = forward ? status.shiftStepM : -status.shiftStepM;
-    // The position stands at a crossing, it is moved that way after the car passes it.
-    if (forward ? status.shiftForwardBlocked : status.shiftBackBlocked)
-    {
-      Toast.makeText(this, R.string.nogps_shift_at_turn, Toast.LENGTH_SHORT).show();
-      return;
-    }
-
-    final double applied = NoGps.nativeShiftPosition(distanceM);
-    final NoGps.Status after = NoGps.getStatus();
-    if (applied == 0 && (forward ? after.shiftForwardBlocked : after.shiftBackBlocked))
-    {
-      Toast.makeText(this, R.string.nogps_shift_at_turn, Toast.LENGTH_SHORT).show();
-      return;
-    }
-    // The position stops at the closest turn, so the user has to know when it was moved by less.
-    final long appliedM = Math.round(Math.abs(applied));
-    if (appliedM >= Math.abs(distanceM))
-      return;
-    Toast
-        .makeText(
-            this,
-            appliedM == 0 ? getString(R.string.nogps_shift_failed) : getString(R.string.nogps_shift_limited, appliedM),
-            Toast.LENGTH_SHORT)
-        .show();
   }
 
   /**
