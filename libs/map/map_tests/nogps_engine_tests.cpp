@@ -578,10 +578,13 @@ UNIT_TEST(NoGps_Engine_TurnMovedToCrossingKeepsGyroHeading)
   Env env(true /* inertial */, &roads);
   MarkCar(env, 177 - 112);
   env.Drive(10'000, 36, 0);
+  TEST(TripField(env, "hdg").ends_with("/ROAD"), (TripField(env, "hdg")));
   env.Drive(3000, 36, -30);
   env.Drive(2000, 36, 0);
   TestAlmostEqualAbs(std::stod(TripField(env, "turn")), 18, 2);
   TestAlmostEqualAbs(AngleDiff(*env.Last().m_bearingDeg, 0), 0, 8);
+  // The trip log tells the heading is the gyroscope's, not the one of the road or GPS it was set from before.
+  TEST(TripField(env, "hdg").ends_with("/GYRO"), (TripField(env, "hdg")));
   // The crossing is a known place: the heading is pulled to the road at once, not after 50 m.
   env.Drive(6000, 36, 0);
   TEST_LESS(std::fabs(AngleDiff(*env.Last().m_bearingDeg, 20)), 11, (*env.Last().m_bearingDeg));
