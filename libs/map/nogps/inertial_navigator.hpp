@@ -47,6 +47,8 @@ public:
     Gps,
     // The direction of the road the car is on, the user has chosen one of its two ways.
     Road,
+    // The gyroscope's: a turn moved to a crossing has kept it.
+    Gyro,
   };
 
   // What the last look for the road under the car has ended with, for the trip log.

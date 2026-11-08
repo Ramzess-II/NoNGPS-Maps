@@ -164,6 +164,8 @@ void InertialNavigator::SetRoadPosition(ms::LatLon const & position, double bear
   LeaveRoundabout();
   if (!keepHeading)
     SetHeading(bearingDeg, HeadingSource::Road);
+  else if (m_deadReckoning.HasHeading())
+    m_headingSource = HeadingSource::Gyro;
   m_steadyRoad = SteadyRoad{bearingDeg, position, m_pathM, m_clock.NowMs(), m_rotationDeg};
   StartRoughStretch(0);
 }
@@ -2131,6 +2133,7 @@ std::string DebugPrint(InertialNavigator::HeadingSource source)
   case InertialNavigator::HeadingSource::None: return "NONE";
   case InertialNavigator::HeadingSource::Gps: return "GPS";
   case InertialNavigator::HeadingSource::Road: return "ROAD";
+  case InertialNavigator::HeadingSource::Gyro: return "GYRO";
   }
   UNREACHABLE();
 }

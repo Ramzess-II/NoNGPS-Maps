@@ -32,6 +32,7 @@ std::string DebugPrint(CalibrationState state)
   case CalibrationState::Done: return "DONE";
   case CalibrationState::FailedMoving: return "FAILED_MOVING";
   case CalibrationState::MountMoved: return "MOUNT_MOVED";
+  case CalibrationState::LinkLost: return "LINK_LOST";
   }
   UNREACHABLE();
 }

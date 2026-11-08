@@ -46269,6 +46269,13 @@ en = failed, the car moved
 ru = не вышло, машина двигалась
 uk = не вийшло, машина рухалася
 
+[nogps_box_calibration_link_lost]
+comment = State of the sensors of the box, shown after "Sensors:": the Bluetooth link to the box was lost during the calibration
+tags = android-app,apple-maps
+en = stopped, the box is out of reach
+ru = прервана, блок вне связи
+uk = перервано, блок поза зв'язком
+
 [nogps_box_calibration_advised]
 comment = State of the sensors of the box, shown after "Sensors:": the box has been powered on since its calibration
 tags = android-app,apple-maps
@@ -47092,6 +47099,20 @@ tags = android-app
 en = Allow location
 ru = Разрешить геолокацию
 uk = Дозволити геолокацію
+
+[nogps_box_step_location_off]
+comment = Step of connecting the box: the system location is off, which Android before 12 needs to search Bluetooth devices
+tags = android-app
+en = Location is off
+ru = Геолокация выключена
+uk = Геолокацію вимкнено
+
+[nogps_box_turn_on_location]
+comment = Button: open the system settings to turn the location on, which Android before 12 needs to search Bluetooth devices
+tags = android-app
+en = Turn on location
+ru = Включить геолокацию
+uk = Увімкнути геолокацію
 
 [nogps_box_power_hint]
 comment = Hint while the box is searched

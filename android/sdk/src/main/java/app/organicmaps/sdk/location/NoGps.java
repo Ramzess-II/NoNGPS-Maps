@@ -1,12 +1,15 @@
 package app.organicmaps.sdk.location;
 
+import android.content.Context;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.Build;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.UiThread;
 import androidx.core.location.LocationCompat;
+import androidx.core.location.LocationManagerCompat;
 import app.organicmaps.sdk.BuildConfig;
 
 /**
@@ -109,6 +112,8 @@ public final class NoGps
     FAILED_MOVING,
     // The sensor box has been moved in the car since its calibration.
     MOUNT_MOVED,
+    // The link to the sensor box was lost during the calibration, it is not connected again yet.
+    LINK_LOST,
   }
 
   public enum Event
@@ -463,6 +468,21 @@ public final class NoGps
   public static String getAddonBuild()
   {
     return nativeGetAddonVersion() + " (" + BuildConfig.GIT_HASH + ")";
+  }
+
+  /// Before Android 12 the box is not found while the location of the phone is switched off: a Bluetooth scan finds
+  /// nothing then. The box state is BleState.DISABLED, as with Bluetooth off.
+  public static boolean isLocationOffForBox(@NonNull Context context, @NonNull Status status)
+  {
+    return status.getBleState() == BleState.DISABLED && isLocationOffForBox(context);
+  }
+
+  static boolean isLocationOffForBox(@NonNull Context context)
+  {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+      return false;
+    final LocationManager manager = (LocationManager) context.getSystemService(Context.LOCATION_SERVICE);
+    return manager != null && !LocationManagerCompat.isLocationEnabled(manager);
   }
 
   @Nullable
