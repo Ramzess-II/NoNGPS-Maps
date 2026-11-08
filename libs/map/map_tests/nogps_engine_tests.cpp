@@ -1426,6 +1426,32 @@ UNIT_TEST(NoGps_Engine_BranchOfForkIsToldByHeading)
   }
 }
 
+UNIT_TEST(NoGps_Engine_MarkAheadKeepsItsBentBranchOfFork)
+{
+  // The street going east bends to the right after 100 m, to 30 degrees in 90 m; a branch leaves it there going
+  // straight on, 10 degrees to the left.
+  PieceRoads roads({{-300, 0, 100, 0},
+                    {100, 0, 130, -4},
+                    {130, -4, 160, -14},
+                    {160, -14, 190, -31},
+                    {190, -31, 450, -181},
+                    {100, 0, 400, 53}},
+                   {{100, 0}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  // The mark is 15 m ahead of the car: it is on the bend while the car still drives east, then the car follows the
+  // bend. The mark never takes the branch.
+  for (int i = 0; i < 16; ++i)
+  {
+    env.Drive(1000, 54, i >= 8 && i < 11 ? 10 : 0);
+    if (East(env.Last().m_position) > 115)
+      TEST_LESS(North(env.Last().m_position), -1, (i, East(env.Last().m_position)));
+  }
+  TEST_LESS(North(env.Last().m_position), -50, ());
+  TestAlmostEqualAbs(*env.Last().m_bearingDeg, 120, 3);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), ());
+}
+
 UNIT_TEST(NoGps_Engine_CarOnRoadBesideRouteHasLeftRoute)
 {
   Env env(true /* inertial */);
@@ -1635,17 +1661,141 @@ UNIT_TEST(NoGps_Engine_RoadsTellSpeedErrorBeforeGps)
   TEST_EQUAL(TripField(env, "scale"), "1.000", ());
 }
 
-UNIT_TEST(NoGps_Engine_RoadsTellNothingAfterGps)
+UNIT_TEST(NoGps_Engine_RoadsTellFactorAfterGps)
 {
-  // GPS has measured the speedometer right at 30-40 km/h.
+  // GPS has measured the speedometer right at 30-40 km/h and the factor 1 over the last 1.6 km, the car is 3%
+  // faster now, e.g. on other tyres.
   SpeedTable table;
   table.OnDistance(36, 400, 400);
+  SpeedFactor factor;
+  factor.OnDistance(1600, 1600);
   auto roads = ZigzagStreet();
+  Env env(true /* inertial */, &roads, [&table, &factor](TestStorage & storage)
+  {
+    storage.Set(Storage::kSpeedTable, table.Serialize());
+    storage.Set(Storage::kSpeedFactor, factor.Serialize());
+  });
+  DriveZigzag(env);
+  // The rough table is not learned, the bends tell the factor over the GPS table: 3.2 km of them count as 800 m
+  // of GPS.
+  TEST_EQUAL(TripField(env, "rough"), "0", ());
+  TestAlmostEqualAbs(std::stod(TripField(env, "factor")), 1 + 0.03 * 800 / 2400, 0.004);
+  TestAlmostEqualAbs(std::stod(TripField(env, "scale")), std::stod(TripField(env, "factor")), 0.002);
+  TestAlmostEqualAbs(env.m_engine.GetStatus().m_speedTable[3].m_scale, std::stod(TripField(env, "factor")), 1e-3);
+
+  // It is cleared with the calibration.
+  env.m_engine.ClearSpeedCalibration();
+  TEST_EQUAL(TripField(env, "factor"), "1.000", ());
+}
+
+UNIT_TEST(NoGps_Engine_RoadsTellFactorNothingWhereGpsMeasures)
+{
+  // As above, but GPS switched off for the mark in the sheet tells the car speed is right, and it measures better.
+  SpeedTable table;
+  table.OnDistance(36, 400, 400);
+  SpeedFactor factor;
+  factor.OnDistance(1600, 1600);
+  auto roads = ZigzagStreet();
+  Env env(true /* inertial */, &roads, [&table, &factor](TestStorage & storage)
+  {
+    storage.Set(Storage::kSpeedTable, table.Serialize());
+    storage.Set(Storage::kSpeedFactor, factor.Serialize());
+  });
+  env.m_engine.SetGpsDisabled(true);
+  MarkCar(env, 0);
+  auto const drive = [&env](int64_t ms, double yawDegPerSec)
+  {
+    for (int64_t done = 0; done < ms; done += 1000)
+    {
+      env.Drive(std::min<int64_t>(1000, ms - done), 36, yawDegPerSec);
+      auto const & position = env.Last().m_position;
+      env.m_engine.OnFix(GpsAt(env.m_clock, East(position), North(position), *env.Last().m_bearingDeg, 10));
+    }
+  };
+  double const realMps = 10 * 1.03;
+  drive(std::llround((800 - realMps / 2) / realMps * 1000), 0);
+  for (int i = 1; i < 6; ++i)
+  {
+    drive(1000, i % 2 == 1 ? -25 : 25);
+    drive(std::llround((800 - realMps) / realMps * 1000), 0);
+  }
+  TestAlmostEqualAbs(std::stod(TripField(env, "factor")), 1, 0.002);
+}
+
+UNIT_TEST(NoGps_Engine_GpsFollowsStepChangeOfSpeedError)
+{
+  // The table has measured 10 km at 30-40 km/h with the car 3% slow, the error is 1.5% overnight.
+  SpeedTable table;
+  table.OnDistance(36, 10'000, 10'300);
+  PieceRoads roads({{-300, 0, 4000, 0}}, {});
   Env env(true /* inertial */, &roads,
           [&table](TestStorage & storage) { storage.Set(Storage::kSpeedTable, table.Serialize()); });
-  DriveZigzag(env);
+  MarkCar(env, 0);
+  TestAlmostEqualAbs(std::stod(TripField(env, "scale")), 1.03, 1e-3);
+  env.m_engine.SetGpsDisabled(true);
+  for (int i = 0; i < 300; ++i)
+  {
+    env.Drive(1000, 36, 0);
+    env.m_engine.OnFix(GpsAt(env.m_clock, 10.15 * i, 0, 90.0, 10.15));
+  }
+  // 3 km later the range has moved a little, the factor has taken the rest.
+  TEST_GREATER(env.m_engine.GetStatus().m_speedTable[3].m_carM, 0, ());
+  TEST_ALMOST_EQUAL_ABS(std::stod(TripField(env, "scale")), 1.015, 0.003, (env.m_engine.GetTripLine()));
+  TEST_LESS(std::stod(TripField(env, "factor")), 0.995, ());
+}
+
+UNIT_TEST(NoGps_Engine_WrongGpsSpeedTellsFactorNothing)
+{
+  // The table is right at 30-40 km/h, GPS tells 10% faster for 40 s.
+  SpeedTable table;
+  table.OnDistance(36, 10'000, 10'000);
+  SpeedFactor factor;
+  factor.OnDistance(2000, 2000);
+  PieceRoads roads({{-300, 0, 4000, 0}}, {});
+  Env env(true /* inertial */, &roads, [&table, &factor](TestStorage & storage)
+  {
+    storage.Set(Storage::kSpeedTable, table.Serialize());
+    storage.Set(Storage::kSpeedFactor, factor.Serialize());
+  });
+  MarkCar(env, 0);
+  env.m_engine.SetGpsDisabled(true);
+  for (int i = 0; i < 40; ++i)
+  {
+    env.Drive(1000, 36, 0);
+    env.m_engine.OnFix(GpsAt(env.m_clock, 10 * i, 0, 90.0, 11));
+  }
+  TEST_EQUAL(TripField(env, "factor"), "1.000", ());
+}
+
+UNIT_TEST(NoGps_Engine_TurnAtCrossingTellsSpeedError)
+{
+  // The street going east bends 25 degrees to the left at 800 m, a street crosses it 500 m after the bend.
+  double const sin65 = std::sin(math::DegToRad(65.0));
+  double const cos65 = std::cos(math::DegToRad(65.0));
+  double const crossingEast = 800 + 500 * sin65;
+  double const crossingNorth = 500 * cos65;
+  double const sin335 = std::sin(math::DegToRad(335.0));
+  double const cos335 = std::cos(math::DegToRad(335.0));
+  PieceRoads roads({{-300, 0, 800, 0},
+                    {800, 0, 800 + 900 * sin65, 900 * cos65},
+                    {crossingEast - 300 * sin335, crossingNorth - 300 * cos335, crossingEast + 400 * sin335,
+                     crossingNorth + 400 * cos335}},
+                   {{crossingEast, crossingNorth}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  // The car is 3% faster than it reports: the bend moves the mark ahead, from there the turn at the crossing tells
+  // the error.
+  double const realMps = 10 * 1.03;
+  env.Drive(std::llround((800 - realMps / 2) / realMps * 1000), 36, 0);
+  env.Drive(1000, 36, -25);
+  env.Drive(std::llround((495 - realMps / 2) / realMps * 1000), 36, 0);
   TEST_EQUAL(TripField(env, "rough"), "0", ());
-  TEST_EQUAL(TripField(env, "scale"), "1.000", ());
+  env.Drive(3000, 36, -30);
+  env.Drive(3000, 36, 0);
+  TestAlmostEqualAbs(AngleDiff(*env.Last().m_bearingDeg, 335), 0, 3);
+  TEST_GREATER(std::stod(TripField(env, "turn")), 5, ());
+  TEST_EQUAL(TripField(env, "rough"), "1", (env.m_engine.GetTripLine()));
+  TestAlmostEqualAbs(std::stod(TripField(env, "scale")), 1.03, 0.01);
 }
 
 UNIT_TEST(NoGps_Engine_GpsOffInSheetMeasuresSpeedOverRoughTable)
