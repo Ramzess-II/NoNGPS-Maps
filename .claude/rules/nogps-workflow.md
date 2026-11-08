@@ -24,15 +24,21 @@ merges stay clean. Fork rules go in `.claude/rules/nogps-*.md`, fork skills in `
    opens. Comment `@claude <request>` on a PR to ask for a re-review or a fix. If the PR changes the shared
    interface, the other person approves it. Otherwise the author merges after CI passes.
 
-## Raise the add-on version
+## Versions
 
-`kAddonVersion` in `libs/map/nogps/version.hpp` is the version of the NonGPS add-on, shown in About and in the first
-lines of the trip log on both apps. Every PR into `master` raises it in its own commit: PATCH for a fix, MINOR for new
-behavior, MAJOR when we decide. A PR of docs or CI only takes the label `no-version` instead. A merge of upstream
-changes the build, so it raises PATCH. The CI check `NoGPS add-on version` fails a PR that does neither.
+Nobody raises a version by hand. Each build takes them from git: `tools/unix/version.sh` gives the app version
+`YYYY.MM.DD` (on Android `versionName` is `YYYY.MM.DD-N`) and the build number `yyMMddNN`, from the UTC date of the
+last commit and the number of commits of that day. On iOS the "NonGPS versions" Run Script phases put them into the
+Info.plist through `tools/unix/nogps_version.sh ios_plist`. A rebuild of the same commit has the same version; the
+commit hash tells builds apart. About and the trip log show
+`2026.11.08 (26110807, abcdef12), Organic Maps 2026.10.27-10`.
 
-Two open PRs raise the same line, so the second one gets a merge conflict: take the bigger number and raise it once
-more.
+`tools/unix/nogps_upstream_version.txt` is the Organic Maps version the build is based on. After an upstream merge,
+run `tools/unix/nogps_version.sh upstream` and commit the file in the merge PR.
+
+The day's number counts the commits of the branch that is built, so a branch build can have a bigger build number
+than a later `master` build of the same day. Android then refuses to install the `master` build over it: uninstall
+first or use `adb install -r -d`.
 
 ## Work you don't do now goes to an issue
 
