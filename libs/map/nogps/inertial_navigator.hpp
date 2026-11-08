@@ -698,6 +698,7 @@ private:
     std::array<double, SpeedTable::kRanges> m_carM{};
     std::array<double, SpeedTable::kRanges> m_calculatedM{};
     double m_tableM = 0;
+    bool m_gpsSampled = false;
     double m_calculatedTotalM = 0;
     double m_errorM = 0;
     double m_roadM = 0;

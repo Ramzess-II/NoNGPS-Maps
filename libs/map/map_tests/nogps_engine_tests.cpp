@@ -1685,6 +1685,40 @@ UNIT_TEST(NoGps_Engine_RoadsTellFactorAfterGps)
   TEST_EQUAL(TripField(env, "factor"), "1.000", ());
 }
 
+UNIT_TEST(NoGps_Engine_RoadsTellFactorNothingWhereGpsMeasures)
+{
+  // As above, but GPS switched off for the mark in the sheet tells the car speed is right, and it measures better.
+  SpeedTable table;
+  table.OnDistance(36, 400, 400);
+  SpeedFactor factor;
+  factor.OnDistance(1600, 1600);
+  auto roads = ZigzagStreet();
+  Env env(true /* inertial */, &roads, [&table, &factor](TestStorage & storage)
+  {
+    storage.Set(Storage::kSpeedTable, table.Serialize());
+    storage.Set(Storage::kSpeedFactor, factor.Serialize());
+  });
+  env.m_engine.SetGpsDisabled(true);
+  MarkCar(env, 0);
+  auto const drive = [&env](int64_t ms, double yawDegPerSec)
+  {
+    for (int64_t done = 0; done < ms; done += 1000)
+    {
+      env.Drive(std::min<int64_t>(1000, ms - done), 36, yawDegPerSec);
+      auto const & position = env.Last().m_position;
+      env.m_engine.OnFix(GpsAt(env.m_clock, East(position), North(position), *env.Last().m_bearingDeg, 10));
+    }
+  };
+  double const realMps = 10 * 1.03;
+  drive(std::llround((800 - realMps / 2) / realMps * 1000), 0);
+  for (int i = 1; i < 6; ++i)
+  {
+    drive(1000, i % 2 == 1 ? -25 : 25);
+    drive(std::llround((800 - realMps) / realMps * 1000), 0);
+  }
+  TestAlmostEqualAbs(std::stod(TripField(env, "factor")), 1, 0.002);
+}
+
 UNIT_TEST(NoGps_Engine_GpsFollowsStepChangeOfSpeedError)
 {
   // The table has measured 10 km at 30-40 km/h with the car 3% slow, the error is 1.5% overnight.

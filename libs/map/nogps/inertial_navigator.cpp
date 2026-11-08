@@ -307,10 +307,10 @@ bool InertialNavigator::LearnRoughSpeed(double aheadM, char const * where)
   double const real = realM / calculatedM;
   if (byGps)
   {
-    double calculatedInRangesM = 0;
-    for (double const m : stretch.m_calculatedM)
-      calculatedInRangesM += m;
-    m_speedFactor.OnDistance(stretch.m_tableM * kRoadFactorWeight, calculatedInRangesM * real * kRoadFactorWeight);
+    // GPS has measured the stretch better, e.g. switched off for the mark in the sheet.
+    if (stretch.m_gpsSampled)
+      return true;
+    m_speedFactor.OnDistance(stretch.m_tableM * kRoadFactorWeight, realM * kRoadFactorWeight);
     m_storage.Set(Storage::kSpeedFactor, m_speedFactor.Serialize());
     LOG(LINFO, ("Speed factor: the", where, "tells the calculated distance is", std::round(errorM), "m off in",
                 std::round(calculatedM), "m, factor =", m_speedFactor.Get()));
@@ -345,6 +345,8 @@ void InertialNavigator::OnSpeedTableGps(Fix const & gps)
         SpeedFactor::IsGoodSample(m_speedKmh * *scale, *gps.m_speedMps * 3.6))
     {
       m_speedFactor.OnDistance(m_speedKmh / 3.6 * dt * *scale, *gps.m_speedMps * dt);
+      if (m_roughStretch)
+        m_roughStretch->m_gpsSampled = true;
     }
     m_speedTable.OnSample(m_speedKmh, *gps.m_speedMps, dt, accelerationMps2);
     if (++m_unsavedSpeedSamples >= kSpeedTableSaveSamples)
