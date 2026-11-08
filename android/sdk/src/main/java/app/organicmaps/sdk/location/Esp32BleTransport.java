@@ -23,6 +23,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -120,6 +121,8 @@ class Esp32BleTransport
       else if (BluetoothDevice.ACTION_BOND_STATE_CHANGED.equals(intent.getAction()))
         onBondStateChanged(intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE),
                            intent.getIntExtra(BluetoothDevice.EXTRA_BOND_STATE, BluetoothDevice.ERROR));
+      else if (LocationManager.MODE_CHANGED_ACTION.equals(intent.getAction()))
+        onLocationModeChanged();
     }
   };
 
@@ -136,6 +139,8 @@ class Esp32BleTransport
     mRetryDelayMs = RETRY_DELAY_MS;
     final IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
     filter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S)
+      filter.addAction(LocationManager.MODE_CHANGED_ACTION);
     ContextCompat.registerReceiver(mContext, mReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED);
     start();
   }
@@ -226,6 +231,12 @@ class Esp32BleTransport
       // The user is asked for it by the sensors screen, nobody tells when it is given.
       setState(STATE_NO_PERMISSION);
       mMainHandler.postDelayed(mStarter, RETRY_DELAY_MS);
+      return;
+    }
+    // Before Bluetooth, as the Box sheet tells it. MODE_CHANGED_ACTION tells when it is switched on.
+    if (NoGps.isLocationOffForBox(mContext))
+    {
+      setState(STATE_DISABLED);
       return;
     }
     final BluetoothLeScanner scanner = adapter.isEnabled() ? adapter.getBluetoothLeScanner() : null;
@@ -374,6 +385,16 @@ class Esp32BleTransport
     mRetryDelayMs = worked ? RETRY_DELAY_MS : Math.min(MAX_RETRY_DELAY_MS, mRetryDelayMs * 2);
     mMainHandler.removeCallbacks(mStarter);
     mMainHandler.postDelayed(mStarter, mRetryDelayMs);
+  }
+
+  /**
+   * The location is switched on or off: the search waits for it before Android 12. Other changes of the mode don't
+   * stop a search.
+   */
+  private void onLocationModeChanged()
+  {
+    if (mGatt == null && (mState == STATE_DISABLED || NoGps.isLocationOffForBox(mContext)))
+      start();
   }
 
   private void onAdapterStateChanged(int state)
