@@ -226,6 +226,18 @@ UNIT_TEST(NoGps_SpeedFactor_FollowsStepChange)
   TEST_ALMOST_EQUAL_ABS(factor.Get(), 0.988 * 1.01, 0.002, ());
 }
 
+UNIT_TEST(NoGps_SpeedFactor_TakesGpsNearTableOnly)
+{
+  // A change of the error by 2-3%.
+  TEST(SpeedFactor::IsGoodSample(50, 51.5), ());
+  TEST(SpeedFactor::IsGoodSample(100, 96.5), ());
+  // The car speed of 20 km/h is 19.5-20.5.
+  TEST(SpeedFactor::IsGoodSample(20, 21.4), ());
+  // GPS 10% faster for a while, as on November 8.
+  TEST(!SpeedFactor::IsGoodSample(44.9, 49.5), ());
+  TEST(!SpeedFactor::IsGoodSample(30.7, 34.7), ());
+}
+
 UNIT_TEST(NoGps_SpeedFactor_LimitsAndKeepsBetweenTrips)
 {
   SpeedFactor factor;

@@ -1610,6 +1610,29 @@ UNIT_TEST(NoGps_Engine_GpsFollowsStepChangeOfSpeedError)
   TEST_LESS(std::stod(TripField(env, "factor")), 0.995, ());
 }
 
+UNIT_TEST(NoGps_Engine_WrongGpsSpeedTellsFactorNothing)
+{
+  // The table is right at 30-40 km/h, GPS tells 10% faster for 40 s.
+  SpeedTable table;
+  table.OnDistance(36, 10'000, 10'000);
+  SpeedFactor factor;
+  factor.OnDistance(2000, 2000);
+  PieceRoads roads({{-300, 0, 4000, 0}}, {});
+  Env env(true /* inertial */, &roads, [&table, &factor](TestStorage & storage)
+  {
+    storage.Set(Storage::kSpeedTable, table.Serialize());
+    storage.Set(Storage::kSpeedFactor, factor.Serialize());
+  });
+  MarkCar(env, 0);
+  env.m_engine.SetGpsDisabled(true);
+  for (int i = 0; i < 40; ++i)
+  {
+    env.Drive(1000, 36, 0);
+    env.m_engine.OnFix(GpsAt(env.m_clock, 10 * i, 0, 90.0, 11));
+  }
+  TEST_EQUAL(TripField(env, "factor"), "1.000", ());
+}
+
 UNIT_TEST(NoGps_Engine_TurnAtCrossingTellsSpeedError)
 {
   // The street going east bends 25 degrees to the left at 800 m, a street crosses it 500 m after the bend.

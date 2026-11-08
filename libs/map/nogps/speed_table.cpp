@@ -135,6 +135,11 @@ std::string SpeedTable::ToString() const
   return result;
 }
 
+bool SpeedFactor::IsGoodSample(double expectedKmh, double gpsKmh)
+{
+  return std::fabs(gpsKmh - expectedKmh) <= std::max(kMaxSampleDiffKmh, kMaxSampleDiffRatio * expectedKmh);
+}
+
 void SpeedFactor::OnDistance(double expectedM, double realM)
 {
   if (expectedM <= 0 || realM < 0)

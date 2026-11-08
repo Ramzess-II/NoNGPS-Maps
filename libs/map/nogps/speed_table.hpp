@@ -100,6 +100,14 @@ public:
   // The error of the table changes by 1-2%, a larger factor is a wrong measurement.
   static double constexpr kMinFactor = 0.95;
   static double constexpr kMaxFactor = 1.05;
+  // A GPS speed farther than this from the speed by the table is a wrong one: the error changes by 1-2%. The car
+  // speed is whole km/h. On November 8 GPS was 10% faster for 40 s, it moved the factor by 1.1% and the mark ran
+  // 53 m ahead.
+  static double constexpr kMaxSampleDiffRatio = 0.04;
+  static double constexpr kMaxSampleDiffKmh = 1.5;
+
+  /// \returns true if a GPS speed may tell the factor, |expectedKmh| is the car speed by the table.
+  static bool IsGoodSample(double expectedKmh, double gpsKmh);
 
   /// Takes into account a distance driven: |expectedM| by the car speed and the table, |realM| the real one.
   void OnDistance(double expectedM, double realM);

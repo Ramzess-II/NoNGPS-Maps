@@ -341,7 +341,8 @@ void InertialNavigator::OnSpeedTableGps(Fix const & gps)
     double const accelerationMps2 = (*gps.m_speedMps - m_speedTableGpsSpeedMps) / dt;
     // Compared with the table before the sample is in it.
     if (auto const scale = m_speedTable.GetScale(m_speedKmh);
-        scale && SpeedTable::IsGoodSample(m_speedKmh, *gps.m_speedMps, dt, accelerationMps2))
+        scale && SpeedTable::IsGoodSample(m_speedKmh, *gps.m_speedMps, dt, accelerationMps2) &&
+        SpeedFactor::IsGoodSample(m_speedKmh * *scale, *gps.m_speedMps * 3.6))
     {
       m_speedFactor.OnDistance(m_speedKmh / 3.6 * dt * *scale, *gps.m_speedMps * dt);
     }
