@@ -110,6 +110,9 @@ public:
   // where the car is, so it is told by the smaller angle of the two. On October 18, 19 and 22 the mark 7-15 m ahead
   // took the straight branch beside its own bent one, and lost the road.
   static double constexpr kForkBehindM = 15;
+  // A branch bent more than this off the heading is not one the mark ahead is on: on October 15 the angle behind put
+  // the mark on a branch 44 degrees off, and the road was lost. On October 18 and 19 the bent branches were 24 and 17.
+  static double constexpr kMaxForkBentDeg = 30;
   // Places of roads closer than this are the same branch.
   static double constexpr kSameForkBranchM = 2;
   // The bends of the road are compared with the rotation of the car this often: it takes tens of road lookups.
