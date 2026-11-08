@@ -47093,6 +47093,20 @@ en = Allow location
 ru = Разрешить геолокацию
 uk = Дозволити геолокацію
 
+[nogps_box_step_location_off]
+comment = Step of connecting the box: the system location is off, which Android before 12 needs to search Bluetooth devices
+tags = android-app
+en = Location is off
+ru = Геолокация выключена
+uk = Геолокацію вимкнено
+
+[nogps_box_turn_on_location]
+comment = Button: open the system settings to turn the location on, which Android before 12 needs to search Bluetooth devices
+tags = android-app
+en = Turn on location
+ru = Включить геолокацию
+uk = Увімкнути геолокацію
+
 [nogps_box_power_hint]
 comment = Hint while the box is searched
 tags = android-app,apple-maps

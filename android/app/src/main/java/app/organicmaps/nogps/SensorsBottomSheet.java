@@ -564,11 +564,11 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   {
     // The phone keeps looking for a sleeping box.
     if (status.getSourceState() == NoGps.SourceState.BOX_SLEEPING)
-      return context.getString(R.string.nogps_box_sleeping) + " · " + context.getString(boxSearchText(status));
+      return context.getString(R.string.nogps_box_sleeping) + " · " + context.getString(boxSearchText(context, status));
     return context.getString(switch (status.getSourceState())
     {
       case DISCONNECTED -> R.string.nogps_elm_disconnected;
-      case CONNECTING -> boxSearchText(status);
+      case CONNECTING -> boxSearchText(context, status);
       case NO_ADAPTER -> R.string.nogps_elm_no_adapter;
       case OBD_DISABLED -> R.string.nogps_box_obd_disabled;
       case OBD_CONNECTING -> R.string.nogps_box_obd_connecting;
@@ -584,8 +584,10 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
   /**
    * The box is not heard yet: what the phone does to reach it.
    */
-  private static int boxSearchText(@NonNull NoGps.Status status)
+  private static int boxSearchText(@NonNull Context context, @NonNull NoGps.Status status)
   {
+    if (NoGps.isLocationOffForBox(context, status))
+      return R.string.nogps_box_step_location_off;
     return switch (status.getBleState())
     {
       // Named as in the settings: Android before 12 finds Bluetooth devices with the location permission.
