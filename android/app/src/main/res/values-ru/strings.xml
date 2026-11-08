@@ -1241,6 +1241,10 @@
     <string name="nogps_box_allow_nearby">Разрешить устройства поблизости</string>
     <!-- Button: allow the location to the app, which Android before 12 needs to search Bluetooth devices -->
     <string name="nogps_box_allow_location">Разрешить геолокацию</string>
+    <!-- Step of connecting the box: the system location is off, which Android before 12 needs to search Bluetooth devices -->
+    <string name="nogps_box_step_location_off">Геолокация выключена</string>
+    <!-- Button: open the system settings to turn the location on, which Android before 12 needs to search Bluetooth devices -->
+    <string name="nogps_box_turn_on_location">Включить геолокацию</string>
     <!-- Hint while the box is searched -->
     <string name="nogps_box_power_hint">Есть блок? Включите его рядом с телефоном: 2 минуты он принимает новый телефон. Телефон может спросить код с блока.</string>
 </resources>
