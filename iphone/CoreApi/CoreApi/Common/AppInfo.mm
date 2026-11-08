@@ -44,17 +44,16 @@
   return _buildNumber;
 }
 
-- (NSString *)gitHash
+- (NSString *)upstreamVersion
 {
-  static NSString * hash;
-  static dispatch_once_t onceToken;
-  dispatch_once(&onceToken, ^{
-    NSString * path = [NSBundle.mainBundle pathForResource:@"nogps_git_hash" ofType:@"txt"];
-    hash = path ? [NSString stringWithContentsOfFile:path encoding:NSUTF8StringEncoding error:nil] : nil;
-    if (!hash)
-      hash = @"00000000";
-  });
-  return hash;
+  return NSBundle.mainBundle.infoDictionary[@"NoGpsUpstreamVersion"] ?: @"";
+}
+
+- (NSString *)fullVersion
+{
+  NSString * gitHash = NSBundle.mainBundle.infoDictionary[@"NoGpsGitHash"] ?: @"00000000";
+  return [NSString stringWithFormat:@"%@ (%@, %@), Organic Maps %@", self.bundleVersion, self.buildNumber, gitHash,
+                                    self.upstreamVersion];
 }
 
 - (NSString *)languageId

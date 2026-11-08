@@ -11,6 +11,8 @@ import androidx.annotation.UiThread;
 import androidx.core.location.LocationCompat;
 import androidx.core.location.LocationManagerCompat;
 import app.organicmaps.sdk.BuildConfig;
+import app.organicmaps.sdk.util.Config;
+import java.util.Locale;
 
 /**
  * Navigation without GPS, done in the core (libs/map/nogps): it chooses the position to show from GPS, cell towers,
@@ -463,11 +465,20 @@ public final class NoGps
     return status;
   }
 
-  /// The version of the NonGPS add-on and the commit of the build, "1.0.0 (abcdef12)": tells which build it is.
+  /// The Organic Maps version the build is based on, "2026.10.27-10", see tools/unix/nogps_version.sh.
   @NonNull
-  public static String getAddonBuild()
+  public static String getUpstreamVersion()
   {
-    return nativeGetAddonVersion() + " (" + BuildConfig.GIT_HASH + ")";
+    return BuildConfig.UPSTREAM_VERSION;
+  }
+
+  /// "2026.11.08-7-Google (26110807, abcdef12), Organic Maps 2026.10.27-10", with the commit of the build: tells which
+  /// build it is, in About and the trip log.
+  @NonNull
+  public static String getFullVersion()
+  {
+    return String.format(Locale.ROOT, "%s (%d, %s), Organic Maps %s", Config.getVersionName(), Config.getVersionCode(),
+                         BuildConfig.GIT_HASH, BuildConfig.UPSTREAM_VERSION);
   }
 
   /// Before Android 12 the box is not found while the location of the phone is switched off: a Bluetooth scan finds
@@ -491,10 +502,6 @@ public final class NoGps
     final Event[] events = Event.values();
     return event >= 0 && event < events.length ? events[event] : null;
   }
-
-  /// The version of the NonGPS add-on, MAJOR.MINOR.PATCH, see libs/map/nogps/version.hpp.
-  @NonNull
-  public static native String nativeGetAddonVersion();
 
   private static native void nativeCreate(@NonNull Delegate delegate);
 

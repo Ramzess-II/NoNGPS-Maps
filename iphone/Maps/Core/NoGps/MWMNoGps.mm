@@ -8,7 +8,6 @@
 #include "map/nogps/clock.hpp"
 #include "map/nogps/delegate.hpp"
 #include "map/nogps/engine.hpp"
-#include "map/nogps/version.hpp"
 
 #include "geometry/mercator.hpp"
 
@@ -209,24 +208,14 @@ static CLLocation * lastPlatformLocation;
 
 + (void)start
 {
+  // A log file of the day goes on over runs, maybe of another build: each run tells its version.
+  LOG(LINFO, ("NonGPS Maps", AppInfo.sharedInfo.fullVersion.UTF8String));
   Engine().Start();
 }
 
 + (void)stop
 {
   Engine().Stop();
-}
-
-+ (NSString *)addonVersion
-{
-  return [[NSString alloc] initWithBytes:nogps::kAddonVersion.data()
-                                  length:nogps::kAddonVersion.size()
-                                encoding:NSUTF8StringEncoding];
-}
-
-+ (NSString *)addonBuild
-{
-  return [NSString stringWithFormat:@"%@ (%@)", self.addonVersion, AppInfo.sharedInfo.gitHash];
 }
 
 + (MWMNoGpsStatus *)status

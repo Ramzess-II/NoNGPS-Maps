@@ -5,7 +5,6 @@
 #include "map/nogps/map_api.hpp"
 #include "map/nogps/road_walker.hpp"
 #include "map/nogps/storage.hpp"
-#include "map/nogps/version.hpp"
 
 #include "base/assert.hpp"
 #include "base/logging.hpp"
@@ -109,8 +108,6 @@ void Engine::Start()
   CHECK_THREAD_CHECKER(m_threadChecker, ());
   if (m_active)
     return;
-  // A file of the day goes on over runs, maybe of another build: each run tells its version.
-  LOG(LINFO, ("NonGPS add-on", kAddonVersion));
   LOG(LINFO, ("Start"));
   m_active = true;
   m_loggedState = {};

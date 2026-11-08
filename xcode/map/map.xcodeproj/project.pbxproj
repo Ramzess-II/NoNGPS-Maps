@@ -149,7 +149,6 @@
 		88A572F8B0B013C7B52DA7C7 /* turn_matcher.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 504D60F473E5BB1E677C87EF /* turn_matcher.hpp */; };
 		D8FA8798D205EFF4B2C131F7 /* turn_sign_checker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3D7C415F450F2374806C248B /* turn_sign_checker.cpp */; };
 		BD19462370CC8C05491A13E9 /* turn_sign_checker.hpp in Headers */ = {isa = PBXBuildFile; fileRef = EBEC24975A4AD3578356B3A5 /* turn_sign_checker.hpp */; };
-		A7C10B702E98F00100E5D2A1 /* version.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A7C10B712E98F00100E5D2A1 /* version.hpp */; };
 		D567A97AC1295A8683C2F7A5 /* clock.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0F824D4B2330EF5DB4FE04B /* clock.cpp */; };
 		608965C3920EFF14DB99D0E7 /* clock.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 11F3ED56F3B91A860CB9CE97 /* clock.hpp */; };
 		CBB2E1FDAEE9C20B881FA3AA /* delegate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 09902338C0AF2C5309CC891A /* delegate.cpp */; };
@@ -352,7 +351,6 @@
 		504D60F473E5BB1E677C87EF /* turn_matcher.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = turn_matcher.hpp; sourceTree = "<group>"; };
 		3D7C415F450F2374806C248B /* turn_sign_checker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = turn_sign_checker.cpp; sourceTree = "<group>"; };
 		EBEC24975A4AD3578356B3A5 /* turn_sign_checker.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = turn_sign_checker.hpp; sourceTree = "<group>"; };
-		A7C10B712E98F00100E5D2A1 /* version.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = version.hpp; sourceTree = "<group>"; };
 		D0F824D4B2330EF5DB4FE04B /* clock.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = clock.cpp; sourceTree = "<group>"; };
 		11F3ED56F3B91A860CB9CE97 /* clock.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = clock.hpp; sourceTree = "<group>"; };
 		09902338C0AF2C5309CC891A /* delegate.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = delegate.cpp; sourceTree = "<group>"; };
@@ -650,7 +648,6 @@
 				504D60F473E5BB1E677C87EF /* turn_matcher.hpp */,
 				3D7C415F450F2374806C248B /* turn_sign_checker.cpp */,
 				EBEC24975A4AD3578356B3A5 /* turn_sign_checker.hpp */,
-				A7C10B712E98F00100E5D2A1 /* version.hpp */,
 			);
 			path = nogps;
 			sourceTree = "<group>";
@@ -693,7 +690,6 @@
 				B42CFD0375AD5867BD532C42 /* speed_table.hpp in Headers */,
 				88A572F8B0B013C7B52DA7C7 /* turn_matcher.hpp in Headers */,
 				BD19462370CC8C05491A13E9 /* turn_sign_checker.hpp in Headers */,
-				A7C10B702E98F00100E5D2A1 /* version.hpp in Headers */,
 				BB4E5F261FCC664A00A77250 /* transit_display.hpp in Headers */,
 				347B60771DD9926D0050FA24 /* traffic_manager.hpp in Headers */,
 				F6B283081C1B03320081957A /* gps_track_storage.hpp in Headers */,

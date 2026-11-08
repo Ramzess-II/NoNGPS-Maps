@@ -562,6 +562,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
     Logger.i(TAG, "provider = " + mLocationProvider.getClass().getSimpleName() + " mInFirstRun = " + mInFirstRun
                       + " oldInterval = " + oldInterval + " interval = " + mInterval);
     mActive = true;
+    // A log file of the day goes on over runs, maybe of another build: each run tells its version.
+    Logger.i(TAG, "NonGPS Maps " + NoGps.getFullVersion());
     NoGps.nativeStart();
     mLocationProvider.start(mInterval);
     mHandler.postDelayed(mLocationTimeoutRunnable, LOCATION_UPDATE_TIMEOUT_MS);
