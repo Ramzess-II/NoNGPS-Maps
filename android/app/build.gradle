@@ -75,6 +75,12 @@ android {
 
     base.archivesName = rootProject.name.replaceAll('\\s', '') + '-' + defaultConfig.versionCode
 
+    // C++ built with -O2 by -PnativeOptimized (see sdk/build.gradle): the version and the APK name tell it.
+    if (project.hasProperty('nativeOptimized')) {
+      versionNameSuffix '-O2'
+      base.archivesName = base.archivesName.get() + '-O2'
+    }
+
     ndk.debugSymbolLevel = 'full'
   }
 
