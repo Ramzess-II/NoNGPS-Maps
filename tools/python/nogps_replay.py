@@ -4,6 +4,9 @@
 A debug build of the Android application drives the file nogps-replay-in.txt put to its folder
 (/sdcard/Android/data/<package>/files/) through a navigation of its own when it starts, and writes the trip log of
 that drive to nogps-replay-out.txt, and nogps-replay-out.txt.done when it is over. See NoGpsReplay.cpp.
+Build it with optimized C++ for replays, about 6 times faster, ASSERTs kept:
+  ./gradlew assembleFdroidDebug -Parm64 -PnativeOptimized
+Compare a change only with a build of the same kind: a few diagnostic values differ in the last digit.
 
   nogps_replay.py input log-*.log --day 10-11 -o nogps-replay-in.txt [--no-taps] [--no-route] [--from HH:MM]
       [--to HH:MM]
