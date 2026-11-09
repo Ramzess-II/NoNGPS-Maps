@@ -40,6 +40,9 @@ public:
   // leaves at ~50 degrees off for 15-20 m.
   static double constexpr kMaxRoadStartDiffDeg = 60;
   static double constexpr kRoadCheckWalkM = 30;
+  // The road the car came by, bending a little, stays closer to its line that far along it: it is not a street
+  // joining at an angle. Such a street is ~25 m off after 30 m.
+  static double constexpr kMinAsideOfRoadM = 10;
   // The road the car was on going the new way within this difference has bent, the car has followed it.
   static double constexpr kMaxBendEndDiffDeg = 25;
   // A junction of the map is several crossings this close to each other, a turn is moved to any of them alike.
