@@ -35,6 +35,11 @@ public:
   static double constexpr kRoadCheckRadiusM = 6;
   // The snapping takes a road no farther off the heading, so the road of a turn must be no farther off either.
   static double constexpr kMaxRoadDiffDeg = DeadReckoning::kMaxSnapHeadingDiffDeg;
+  // A street joining at an angle leaves the crossing up to this far off the new way and turns to it later: its way is
+  // checked this far along it. A daily turn of the owner failed the check 13 times of 15, its street
+  // leaves at ~50 degrees off for 15-20 m.
+  static double constexpr kMaxRoadStartDiffDeg = 60;
+  static double constexpr kRoadCheckWalkM = 30;
   // The road the car was on going the new way within this difference has bent, the car has followed it.
   static double constexpr kMaxBendEndDiffDeg = 25;
   // A junction of the map is several crossings this close to each other, a turn is moved to any of them alike.

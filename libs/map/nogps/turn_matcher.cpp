@@ -20,9 +20,31 @@ bool HasRoadFromCrossing(Roads & roads, ms::LatLon const & crossing, double bear
 {
   auto const point = Move(crossing, bearingDeg, TurnMatcher::kRoadCheckDistanceM);
   auto const road = roads.Snap(point, bearingDeg, TurnMatcher::kRoadCheckRadiusM);
-  if (!road || Distance(point, road->m_point) > TurnMatcher::kRoadCheckRadiusM)
-    return false;
-  return std::fabs(AngleDiff(Orient(road->m_bearingDeg, bearingDeg), bearingDeg)) <= TurnMatcher::kMaxRoadDiffDeg;
+  if (road && Distance(point, road->m_point) <= TurnMatcher::kRoadCheckRadiusM &&
+      std::fabs(AngleDiff(Orient(road->m_bearingDeg, bearingDeg), bearingDeg)) <= TurnMatcher::kMaxRoadDiffDeg)
+  {
+    return true;
+  }
+  // A street joining at an angle: the roads leaving the crossing are taken by the way they start.
+  double constexpr kStepDeg = 15;
+  for (double diff = -TurnMatcher::kMaxRoadStartDiffDeg; diff <= TurnMatcher::kMaxRoadStartDiffDeg; diff += kStepDeg)
+  {
+    double const startDeg = bearingDeg + diff;
+    auto const start = roads.Snap(crossing, startDeg, TurnMatcher::kRoadCheckRadiusM);
+    if (!start)
+      continue;
+    double const roadStartDeg = Orient(start->m_bearingDeg, startDeg);
+    if (std::fabs(AngleDiff(roadStartDeg, bearingDeg)) > TurnMatcher::kMaxRoadStartDiffDeg)
+      continue;
+    auto const walked =
+        RoadWalker::Walk(roads, start->m_point, roadStartDeg, TurnMatcher::kRoadCheckWalkM, false /* stopAtCrossing */);
+    if (walked && walked->m_appliedM >= TurnMatcher::kRoadCheckDistanceM &&
+        std::fabs(AngleDiff(walked->m_bearingDeg, bearingDeg)) <= TurnMatcher::kMaxRoadDiffDeg)
+    {
+      return true;
+    }
+  }
+  return false;
 }
 }  // namespace
 

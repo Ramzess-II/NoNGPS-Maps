@@ -643,6 +643,40 @@ UNIT_TEST(NoGps_Engine_TurnToRoadFartherOffThanSnappingTakesIsNotMoved)
   TEST_EQUAL(TripField(env, "turn"), "NaN", ());
 }
 
+// The car marked 100 m before drives east at 36 km/h, turns left onto a road going north not joined to the street on
+// the map, ahead of it by the calculation, as on November 8, and drives on straight.
+void TurnPastRoadGoingNorth(Env & env)
+{
+  MarkCar(env, 65);
+  env.Drive(10'000, 36, 0);
+  env.Drive(3000, 36, -30);
+  env.Drive(5000, 36, 0);
+}
+
+UNIT_TEST(NoGps_Engine_CarIsPutOnRoadGoingItsWayBeforeRoadIsLost)
+{
+  // The turn finds no crossing, the car drives north 31 m beside the road: it is put on it, not lost.
+  PieceRoads roads({{-300, 0, 400, 0}, {165, 10, 165, 400}}, {});
+  Env env(true /* inertial */, &roads);
+  TurnPastRoadGoingNorth(env);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+  TEST_EQUAL(TripField(env, "road"), "1", ());
+  TestAlmostEqualAbs(East(env.Last().m_position), 165, 1);
+  TEST_GREATER(North(env.Last().m_position), 40, ());
+}
+
+UNIT_TEST(NoGps_Engine_RoadsGoingCarWayAreOtherMarks)
+{
+  // Two roads go north, 31 m to the left and 36 m to the right: the car is put on the closer one, the other is an other
+  // mark.
+  PieceRoads roads({{-300, 0, 400, 0}, {165, 10, 165, 400}, {232, 10, 232, 400}}, {});
+  Env env(true /* inertial */, &roads);
+  TurnPastRoadGoingNorth(env);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+  TestAlmostEqualAbs(East(env.Last().m_position), 165, 1);
+  TEST(env.m_engine.GetTripLine().find(" marks=2 ") != std::string::npos, (env.m_engine.GetTripLine()));
+}
+
 UNIT_TEST(NoGps_Engine_TurnOfCarManeuveringOffRoadsIsNotMoved)
 {
   for (bool twoStreets : {true, false})
@@ -772,6 +806,18 @@ UNIT_TEST(NoGps_Engine_SlowDriftOffRoadIsNotTurn)
   TurnLeftSlowly(env, 34);
   TEST(env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
   TEST_EQUAL(TripField(env, "turn"), "NaN", ());
+}
+
+UNIT_TEST(NoGps_Engine_RotatingCarIsNotPutOnRoadGoingItsWay)
+{
+  // A road going 44 degrees, the way the car looks after the slow turn, not joined to the street, is 30 m aside when
+  // the road is lost. The car still rotates then: it does not drive along a road, it is lost.
+  double const sin44 = std::sin(math::DegToRad(44.0));
+  double const cos44 = std::cos(math::DegToRad(44.0));
+  PieceRoads roads({{-3000, 0, 400, 0}, {163.5, 37.7, 163.5 + 300 * sin44, 37.7 + 300 * cos44}}, {});
+  Env env(true /* inertial */, &roads);
+  TurnLeftSlowly(env, 46);
+  TEST(env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
 }
 
 UNIT_TEST(NoGps_Engine_TurnAlongBranchIsNotMovedToNextCrossing)
