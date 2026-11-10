@@ -606,18 +606,17 @@ bool IndexRouter::IsRoundaboutNear(m2::PointD const & point, double radiusM)
 }
 
 bool IndexRouter::FindRoadAlong(m2::PointD const & point, m2::PointD const & direction, double radiusM,
-                                m2::PointD & projected, double & angleRad)
+                                RoadAlong & road)
 {
   std::vector<RoadAlong> roads;
   FindRoadsAlong(point, direction, radiusM, roads);
   RoadAlong const * best = nullptr;
-  for (auto const & road : roads)
-    if (best == nullptr || road.m_cost < best->m_cost)
-      best = &road;
+  for (auto const & candidate : roads)
+    if (best == nullptr || candidate.m_cost < best->m_cost)
+      best = &candidate;
   if (best == nullptr)
     return false;
-  projected = best->m_point;
-  angleRad = best->m_angleRad;
+  road = *best;
   return true;
 }
 
@@ -657,6 +656,7 @@ void IndexRouter::FindRoadsAlong(m2::PointD const & point, m2::PointD const & di
       double angle = ang::AngleTo(start, end);
       double cost = distanceM;
       bool wrongWay = false;
+      bool forward = true;
       if (hasDirection)
       {
         double diffDeg = std::fabs(math::RadToDeg(ang::GetShortestDistance(carAngle, angle)));
@@ -664,6 +664,7 @@ void IndexRouter::FindRoadsAlong(m2::PointD const & point, m2::PointD const & di
         {
           diffDeg = 180.0 - diffDeg;
           angle += math::pi;
+          forward = false;
           wrongWay = !road.m_roadInfo.m_bidirectional;
           if (wrongWay)
             cost += kWrongWayM;
@@ -673,7 +674,7 @@ void IndexRouter::FindRoadsAlong(m2::PointD const & point, m2::PointD const & di
         cost += diffDeg * kMetersPerDeg;
       }
       if (cost < best.m_cost)
-        best = {closest, angle, cost, wrongWay};
+        best = {closest, angle, cost, wrongWay, road.m_featureId, forward};
     }
     if (best.m_cost != std::numeric_limits<double>::max())
       roads.push_back(best);

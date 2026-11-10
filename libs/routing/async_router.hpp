@@ -61,8 +61,7 @@ public:
   void FindRoadCrossings(m2::RectD const & rect, std::vector<m2::PointD> & crossings);
   bool FindMainRoad(m2::PointD const & point, double radiusM, m2::PointD & projected, double & angleRad);
   bool IsRoundaboutNear(m2::PointD const & point, double radiusM);
-  bool FindRoadAlong(m2::PointD const & point, m2::PointD const & direction, double radiusM, m2::PointD & projected,
-                     double & angleRad);
+  bool FindRoadAlong(m2::PointD const & point, m2::PointD const & direction, double radiusM, RoadAlong & road);
   void FindRoadsAlong(m2::PointD const & point, m2::PointD const & direction, double radiusM,
                       std::vector<RoadAlong> & roads);
 

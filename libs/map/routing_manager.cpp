@@ -1658,7 +1658,7 @@ void SessionRoute::RebuildRouteIfOffRoute(location::GpsInfo const & info)
 }
 
 bool SessionRoute::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, double radiusM, bool matchRoute,
-                              ms::LatLon & snapped, double & snappedBearingDeg)
+                              ms::LatLon & snapped, double & snappedBearingDeg, FeatureID & roadId, bool & forward)
 {
   // A part of the route farther than the road by more than this is not where the car is: the car has left the
   // route, e.g. gone straight where the route turns, and the route would pull it back to the turn.
@@ -1671,9 +1671,12 @@ bool SessionRoute::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, doub
     double const angle = math::DegToRad(location::BearingToAngle(bearingDeg));
     direction = m2::PointD(std::cos(angle), std::sin(angle));
   }
-  m2::PointD projected;
-  double angleRad = 0.0;
-  bool found = m_session.FindRoadAlong(point, direction, radiusM, projected, angleRad);
+  routing::RoadAlong road;
+  bool found = m_session.FindRoadAlong(point, direction, radiusM, road);
+  m2::PointD projected = road.m_point;
+  double angleRad = road.m_angleRad;
+  roadId = road.m_featureId;
+  forward = road.m_forward;
   // The route and the road are compared as the road is chosen: by the distance and the direction. A route
   // branching away at a fork would pull the car from the road it goes straight along otherwise.
   auto const cost = [&](m2::PointD const & p, double roadAngle)
@@ -1707,6 +1710,8 @@ bool SessionRoute::SnapToRoad(ms::LatLon const & latLon, double bearingDeg, doub
         found = true;
         projected = anchor;
         angleRad = ang::AngleTo(points[anchorIdx], points[anchorIdx + 1]);
+        roadId = {};
+        forward = true;
       }
     }
   }

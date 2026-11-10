@@ -88,8 +88,10 @@ public:
   // Snaps a dead reckoning position (not from GPS) to the closest road within |radiusM|, preferring the
   // one going in the |bearingDeg| direction (negative if the direction is unknown). With |matchRoute| the
   // followed route is preferred, it is where the car really is. Returns false if there is no road.
+  // |roadId| is the feature of the road and |forward| whether the car goes the way of its points, an invalid
+  // feature for the followed route.
   bool SnapToRoad(ms::LatLon const & latLon, double bearingDeg, double radiusM, bool matchRoute, ms::LatLon & snapped,
-                  double & snappedBearingDeg);
+                  double & snappedBearingDeg, FeatureID & roadId, bool & forward);
   // Moves |latLon| along the followed route by |distanceM| (negative moves back), e.g. when a dead
   // reckoning position lags behind the car. |bearingDeg| is where the car looks, negative if it is unknown.
   // The movement stops at the closest turn or crossing in both directions, so the position never jumps

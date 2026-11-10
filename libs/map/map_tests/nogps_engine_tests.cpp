@@ -3513,4 +3513,100 @@ UNIT_TEST(NoGps_Engine_BoxAccelerometerTellsSpeedBeforeCar)
   TEST_LESS(bySpeed, 3, ());
   TEST_LESS(byAccel, bySpeed / 2, ());
 }
+
+// The grid of streets with the features of the map: the streets going east are the feature 1, going north 2. The car
+// goes the way of the points of a feature going east or north.
+class FeatureGridRoads : public GridRoads
+{
+public:
+  static uint32_t constexpr kEastStreet = 1;
+
+  std::optional<RoadPoint> Snap(ms::LatLon const & point, std::optional<double> bearingDeg, double radiusM) override
+  {
+    auto road = GridRoads::Snap(point, bearingDeg, radiusM);
+    if (!road)
+      return {};
+    road->m_featureId = FeatureID(MwmSet::MwmId(), road->m_bearingDeg == 90 ? kEastStreet : 2);
+    road->m_forward = !bearingDeg || std::cos(math::DegToRad(*bearingDeg - road->m_bearingDeg)) >= 0;
+    return road;
+  }
+};
+
+struct SpeedLimitEnv
+{
+  SpeedLimitEnv() : m_env(false /* inertial */, &m_roads) {}
+
+  int MarkAndGetLimit()
+  {
+    MarkCar(m_env, 60);
+    return m_env.m_engine.GetStatus().m_speedLimitKmh;
+  }
+
+  FeatureGridRoads m_roads;
+  Env m_env;
+};
+
+UNIT_TEST(NoGps_SpeedLimitForward)
+{
+  SpeedLimitEnv env;
+  env.m_env.m_map.m_maxspeeds[FeatureGridRoads::kEastStreet] =
+      routing::Maxspeed(measurement_utils::Units::Metric, 50, 30);
+  TEST_EQUAL(env.MarkAndGetLimit(), 50, ());
+  // The limit of a road in miles per hour is told in kilometers per hour.
+  env.m_env.m_map.m_maxspeeds[FeatureGridRoads::kEastStreet] =
+      routing::Maxspeed(measurement_utils::Units::Imperial, 30, routing::kInvalidSpeed);
+  env.m_env.m_engine.ShiftPosition(10);
+  TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, 48, ());
+}
+
+UNIT_TEST(NoGps_SpeedLimitBackward)
+{
+  SpeedLimitEnv env;
+  env.m_env.m_map.m_maxspeeds[FeatureGridRoads::kEastStreet] =
+      routing::Maxspeed(measurement_utils::Units::Metric, 50, 30);
+  TEST_EQUAL(env.MarkAndGetLimit(), 50, ());
+  env.m_env.m_engine.ReverseDirection();
+  TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, 30, ());
+  // A road with one limit has it both ways.
+  env.m_env.m_map.m_maxspeeds[FeatureGridRoads::kEastStreet] =
+      routing::Maxspeed(measurement_utils::Units::Metric, 40, routing::kInvalidSpeed);
+  env.m_env.m_engine.ShiftPosition(10);
+  TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, 40, ());
+}
+
+UNIT_TEST(NoGps_SpeedLimitNone)
+{
+  SpeedLimitEnv env;
+  env.m_env.m_map.m_maxspeeds[FeatureGridRoads::kEastStreet] =
+      routing::Maxspeed(measurement_utils::Units::Metric, routing::kNoneMaxSpeed, routing::kInvalidSpeed);
+  TEST_EQUAL(env.MarkAndGetLimit(), 0, ());
+}
+
+UNIT_TEST(NoGps_SpeedLimitUnknown)
+{
+  SpeedLimitEnv env;
+  // The map has a limit of another road only.
+  env.m_env.m_map.m_maxspeeds[2] = routing::Maxspeed(measurement_utils::Units::Metric, 50, routing::kInvalidSpeed);
+  TEST_EQUAL(env.MarkAndGetLimit(), -1, ());
+  // Without a position there is no limit either.
+  NewUser user;
+  TEST_EQUAL(user.Start().m_speedLimitKmh, -1, ());
+}
+
+UNIT_TEST(NoGps_SpeedLimitWithoutRoad)
+{
+  SpeedLimitEnv env;
+  env.m_env.m_map.m_maxspeeds[FeatureGridRoads::kEastStreet] =
+      routing::Maxspeed(measurement_utils::Units::Metric, 50, routing::kInvalidSpeed);
+  // GPS between the streets, farther from them than Engine::kSpeedLimitRoadM.
+  env.m_env.m_clock.Advance(1000);
+  env.m_env.m_engine.OnFix(GpsAt(env.m_env.m_clock, 50, 50, 90.0, 10.0));
+  auto status = env.m_env.m_engine.GetStatus();
+  TEST_EQUAL(status.m_source, PositionSource::Gps, ());
+  TEST_EQUAL(status.m_speedLimitKmh, -1, ());
+  // On the street.
+  env.m_env.m_clock.Advance(1000);
+  env.m_env.m_engine.OnFix(GpsAt(env.m_env.m_clock, 60, 8, 90.0, 10.0));
+  TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, 50, ());
+}
 }  // namespace nogps_engine_tests

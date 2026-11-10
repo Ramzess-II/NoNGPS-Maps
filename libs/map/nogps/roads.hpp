@@ -1,5 +1,7 @@
 #pragma once
 
+#include "indexer/feature_decl.hpp"
+
 #include "geometry/latlon.hpp"
 
 #include <optional>
@@ -12,6 +14,10 @@ struct RoadPoint
   ms::LatLon m_point;
   // Clockwise from the north, any of the two directions of the road.
   double m_bearingDeg = 0;
+  // The feature of the road and whether |m_bearingDeg| goes the way of its points, for its speed limit. Invalid on
+  // the followed route.
+  FeatureID m_featureId;
+  bool m_forward = true;
 };
 
 /// The roads of the map, the car is always on one of them.

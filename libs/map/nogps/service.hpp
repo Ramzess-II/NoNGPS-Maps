@@ -7,8 +7,15 @@
 #include "map/nogps/scheduler.hpp"
 #include "map/nogps/storage.hpp"
 
-#include <functional>
+#include "routing/maxspeeds.hpp"
 
+#include "indexer/mwm_set.hpp"
+
+#include <functional>
+#include <map>
+#include <memory>
+
+class DataSource;
 class SessionRoute;
 
 namespace nogps
@@ -19,7 +26,8 @@ class RoutingMapApi : public MapApi
 public:
   using ShowCarHeadingFn = std::function<void(double bearingDeg)>;
 
-  RoutingMapApi(SessionRoute & route, Clock const & clock, ShowCarHeadingFn && showCarHeading);
+  RoutingMapApi(SessionRoute & route, DataSource const & dataSource, Clock const & clock,
+                ShowCarHeadingFn && showCarHeading);
 
   // MapApi overrides:
   bool IsNavigating() const override;
@@ -31,6 +39,7 @@ public:
   std::optional<RoadWalker::Result> ShiftAlongRoute(ms::LatLon const & position, std::optional<double> bearingDeg,
                                                     double distanceM) override;
   std::optional<RoadPoint> SnapToMainRoad(ms::LatLon const & position, double radiusM) override;
+  routing::Maxspeed GetMaxspeed(FeatureID const & road) override;
   std::string GetDistanceLeft() const override;
   void ShowCarHeading(double bearingDeg) override { m_showCarHeading(bearingDeg); }
 
@@ -51,8 +60,11 @@ private:
   };
 
   SessionRoute & m_route;
+  DataSource const & m_dataSource;
   Clock const & m_clock;
   ShowCarHeadingFn m_showCarHeading;
+  // Loaded once per map: the limit is asked at every position.
+  std::map<MwmSet::MwmId, std::unique_ptr<routing::Maxspeeds>> m_maxspeeds;
   RoutingRoads m_roads;
   RoutingRoads m_routeRoads;
 };
@@ -61,7 +73,8 @@ private:
 class Service
 {
 public:
-  Service(Delegate & delegate, SessionRoute & route, RoutingMapApi::ShowCarHeadingFn && showCarHeading);
+  Service(Delegate & delegate, SessionRoute & route, DataSource const & dataSource,
+          RoutingMapApi::ShowCarHeadingFn && showCarHeading);
 
   Engine & GetEngine() { return m_engine; }
   Clock const & GetClock() const { return m_clock; }
