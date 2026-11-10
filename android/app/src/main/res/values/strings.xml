@@ -1099,8 +1099,6 @@
     <string name="nogps_based_on">Based on Organic Maps</string>
     <string name="nogps_map_data">Map data © OpenStreetMap and Organic Maps</string>
     <string name="nogps_source_code">Source code on GitHub</string>
-    <string name="nogps_speed_no_data">NO</string>
-    <string name="nogps_speed_no_elm">OBD</string>
     <string name="nogps_delete_recent_query">Delete from the history?</string>
     <string name="nogps_box_sleeping">sleeps: the engine is stopped</string>
     <string name="nogps_box_obd_sleeping">OBD sleeps: the engine is stopped</string>
