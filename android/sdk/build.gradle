@@ -51,6 +51,10 @@ android {
         if (project.hasProperty('unityBatchSize')) {
           arguments "-DCMAKE_UNITY_BUILD_BATCH_SIZE=${project.getProperty('unityBatchSize')}"
         }
+        // -PnativeOptimized: a debug build with optimized C++ that keeps ASSERTs, e.g. for NoGPS trip replays.
+        if (project.hasProperty('nativeOptimized')) {
+          arguments '-DCMAKE_C_FLAGS_DEBUG=-O2 -g', '-DCMAKE_CXX_FLAGS_DEBUG=-O2 -g'
+        }
         targets 'organicmaps'
       }
     }

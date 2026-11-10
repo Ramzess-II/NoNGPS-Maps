@@ -86,7 +86,8 @@ Ukrainian. The app's Russian translations in `data/strings/` stay as they are.
 - Core: unit tests `NoGps_*` in `map_tests`. macOS: `cmake --build build-<name> --target map_tests` then
   `build-<name>/map_tests --filter="NoGps_.*"`. Windows: the `C++ tests` CI check on the PR.
 - A change to how the mark moves: replay the recorded trips with `tools/python/nogps_replay.py` (Android debug
-  build) and put the before/after numbers in the PR. If nobody replayed it, the PR says so.
+  build, `-PnativeOptimized` for speed; before and after built the same way) and put the before/after numbers in
+  the PR. If nobody replayed it, the PR says so.
 - Every behavior change gets a unit test.
 - Strings: tag a string in `data/strings/strings.txt` only for the platforms whose code uses it. On iOS, write the
   key inside `L("key")`, not in a variable. Check with `python3 tools/python/validate_translation_keys.py`.
