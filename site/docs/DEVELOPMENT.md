@@ -22,13 +22,13 @@ Everything needed to continue work on this site. Paths are relative to the proje
 | `index.html` | All content. The explainer is one inline SVG inside `#stage`. |
 | `styles.css` | Theme tokens in `:root`, layout, per-step scene rules under "scene elements". |
 | `script.js` | Switches the explainer's steps on a timer; wires the step and pause buttons; loads the form iframe. |
-| `assets/icon-180.png` | Favicon, Apple touch icon and the top-bar logo; `app-icon.png` scaled down with `sips -Z 180`. |
+| `assets/icon-64.png`, `assets/icon-180.png` | Favicon and top-bar logo; Apple touch icon. Both are `app-icon.png` scaled down with `sips -Z`. |
 | `assets/og.png`, `assets/app-icon.png` | Link-preview image (1200×630, a headless Chrome screenshot of the icon and wordmark on the site background) and the Android app icon it is built from. |
 | `README.md` | Quick start / deploy. |
 
 ## How the explainer works
 - `script.js` shows each step for `STEP_MS[n-1]` (1.75 s; the last one 3 s, as long as the dot takes to drive its route once) and loops back to step 1.
-- The timer runs only while at least half of `#stage` is on screen, the tab is visible and the pause button is off; otherwise `#stage` gets `data-paused`. A step button jumps to that step and restarts its timer.
+- The timer runs only while at least half of `#stage` is on screen, the tab is visible and the pause button is off; otherwise `#stage` gets `data-paused`, which also pauses the scene's CSS and SMIL animations. Step 5 restarts the dot's `animateMotion` so it drives the route once. A step button jumps to that step and restarts its timer.
 - The current step's progress bar fills over `--step`, which `script.js` sets to the step's time; `data-paused` pauses the fill.
 - It sets classes on `#stage`: cumulative `at-1…at-n` (things that stay on once introduced) and a single `s-n` (things only shown during the current step, e.g. captions, status text).
 - CSS defines each SVG part's hidden default, then reveals/animates it under `.stage.at-N` or `.stage.s-N`. To add or change an effect, edit the rules in `styles.css` rather than the JS.

@@ -155,7 +155,7 @@ h1 { font-size: clamp(34px, 6vw, 64px); line-height: 1.08; margin: 12px 0 18px; 
 }
 .stage.at-1 [data-go="1"], .stage.at-2 [data-go="2"], .stage.at-3 [data-go="3"], .stage.at-4 [data-go="4"], .stage.at-5 [data-go="5"] { background-size: 100% 100%; }
 .stage.s-1 [data-go="1"], .stage.s-2 [data-go="2"], .stage.s-3 [data-go="3"], .stage.s-4 [data-go="4"], .stage.s-5 [data-go="5"] { animation: fill var(--step, 1.75s) linear both; }
-.stage[data-paused] [data-go] { animation-play-state: paused; }
+.stage[data-paused] * { animation-play-state: paused; }
 @keyframes fill { from { background-size: 0 100%; } to { background-size: 100% 100%; } }
 .progress .play {
   display: grid; place-items: center; width: 28px; height: 28px; margin-left: 6px; padding: 0; cursor: pointer;
