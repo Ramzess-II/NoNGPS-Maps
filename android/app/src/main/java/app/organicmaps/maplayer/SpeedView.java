@@ -10,6 +10,7 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import app.organicmaps.R;
 import app.organicmaps.sdk.location.NoGps;
+import app.organicmaps.sdk.settings.UnitLocale;
 import app.organicmaps.sdk.util.StringUtils;
 import app.organicmaps.util.ThemeUtils;
 
@@ -20,6 +21,7 @@ import app.organicmaps.util.ThemeUtils;
 class SpeedView
 {
   private static final float MPS_TO_KMH = 3.6f;
+  private static final float MPS_TO_MPH = 2.2369363f;
   private static final String NO_LIMIT = "∞";
   private static final int CAMERA_UNITS_COLOR = 0xCCFFFFFF;
 
@@ -59,7 +61,7 @@ class SpeedView
     mUnits.setText(speedAndUnits.second);
 
     final int limit = status.speedLimitKmh;
-    final boolean over = isOverLimit(speed, limit);
+    final boolean over = isOverLimit(speed, limit, UnitLocale.getUnits() == UnitLocale.UNITS_FOOT);
     mView.setActivated(camera);
     if (camera)
     {
@@ -89,11 +91,16 @@ class SpeedView
   }
 
   /**
+   * Compares the speed with the limit as both are shown: rounded in the units of the user.
    * @param speedMps the speed of the car.
    * @param limitKmh the limit of the road: 0 if there is none, -1 if unknown.
+   * @param imperial the speeds are shown in miles per hour.
    */
-  static boolean isOverLimit(float speedMps, int limitKmh)
+  static boolean isOverLimit(float speedMps, int limitKmh, boolean imperial)
   {
-    return limitKmh > 0 && Math.round(speedMps * MPS_TO_KMH) > limitKmh;
+    if (limitKmh <= 0)
+      return false;
+    final float perMps = imperial ? MPS_TO_MPH : MPS_TO_KMH;
+    return Math.round(speedMps * perMps) > Math.round(limitKmh / MPS_TO_KMH * perMps);
   }
 }
