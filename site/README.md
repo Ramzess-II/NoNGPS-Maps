@@ -13,7 +13,7 @@ Static site (HTML/CSS/JS, no build). Ukrainian only.
 Search `TODO` in `index.html` for anything not filled in yet (none at the moment).
 
 ## Deploy
-`.github/workflows/site-pages.yaml` publishes this folder to GitHub Pages on every push to `master` that touches `site/`. One-time setup: repo Settings → Pages → Source: GitHub Actions.
+`.github/workflows/site-pages.yaml` publishes this folder to GitHub Pages on every push to `master` that touches `site/`. One-time setup: repo Settings → Pages → Source: GitHub Actions. The site is served at https://non-gps.com (custom domain in the same settings); absolute URLs such as `og:image` use it.
 
 ## Structure
 - `index.html` — sections; the explainer is one inline SVG whose parts react to `.at-N` / `.s-N` classes on `#stage`

@@ -44,7 +44,6 @@ Everything needed to continue work on this site. Paths are relative to the proje
 - `script.js` fills the iframe and the "open in new tab" link from it and hides the placeholder. Iframe height is `900px` in `.form-box iframe`; adjust to the form's length.
 
 ## Open items
-- `og:image` URL in `index.html` is absolute and uses `https://ramzess-ii.github.io/NoNGPS-Maps/`; change it if a custom domain is attached.
 - Delivery time is "Повідомимо після передзамовлення" until it is fixed.
 - Labels inside the explainer SVG are very small at ~375px width.
 - Accuracy is described qualitatively (car sensors, not phone); no measured figure is published.
