@@ -221,7 +221,10 @@ summary { cursor: pointer; padding: 14px 0; font-family: var(--slab); font-weigh
 
 /* features */
 .features, .preorder { padding: 72px 0 24px; }
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+/* flex, not grid, so a short last row is centered: 4 cards per row, 2 on tablets, 1 on phones */
+.cards { display: flex; flex-wrap: wrap; justify-content: center; gap: 16px; }
+.card { flex: 0 0 calc((100% - 3 * 16px) / 4); }
+@media (max-width: 1000px) { .card { flex-basis: calc((100% - 16px) / 2); } }
 .card {
   position: relative; overflow: hidden;
   background: var(--surface); border: 1.5px solid var(--line); border-radius: 14px; padding: 26px 22px 22px;
@@ -250,6 +253,7 @@ summary { cursor: pointer; padding: 14px 0; font-family: var(--slab); font-weigh
 @media (max-width: 640px) {
   .topbar nav a:not(.btn) { display: none; }
   .brand { font-size: 14px; gap: 8px; }
+  .card { flex-basis: 100%; }
   .steps li { padding-left: 62px; grid-template-columns: 1fr; }
   .step-art { width: 150px; }
   .steps h3 { font-size: 19px; }
