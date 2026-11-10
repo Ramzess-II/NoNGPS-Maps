@@ -46563,14 +46563,6 @@ en = Source code on GitHub
 ru = Исходный код на GitHub
 uk = Вихідний код на GitHub
 
-[nogps_speed_no_data]
-tags = android-app,apple-maps
-en = NO
-
-[nogps_speed_no_elm]
-tags = android-app,apple-maps
-en = OBD
-
 [nogps_delete_recent_query]
 tags = android-app
 en = Delete from the history?
