@@ -168,9 +168,9 @@
     </ol>
   </section>
 
-  <!-- HOW IT WORKS: sticky scroll-driven story -->
-  <section id="how" class="scroll" aria-labelledby="how-title">
-    <div class="sticky">
+  <!-- HOW IT WORKS: the story steps on its own while the section is on screen -->
+  <section id="how" class="how" aria-labelledby="how-title">
+    <div>
       <div class="wrap">
         <h2 id="how-title" class="section-title">Як це працює</h2>
 
@@ -271,7 +271,7 @@
             </g>
           </svg>
 
-          <div class="captions" aria-live="polite">
+          <div class="captions">
             <ol>
               <li data-step="1"><b>1</b> GPS заглушено або підмінено — карта зависає.</li>
               <li data-step="2"><b>2</b> Вставте пристрій у OBD-II роз'єм авто.</li>
@@ -279,12 +279,15 @@
               <li data-step="4"><b>4</b> Дані летять на телефон через Bluetooth.</li>
               <li data-step="5"><b>5</b> Додаток сам рахує позицію — без супутників.</li>
             </ol>
-            <div class="progress" role="tablist" aria-label="Кроки">
+            <div class="progress" role="group" aria-label="Кроки">
               <button data-go="1" aria-label="Крок 1"></button>
               <button data-go="2" aria-label="Крок 2"></button>
               <button data-go="3" aria-label="Крок 3"></button>
               <button data-go="4" aria-label="Крок 4"></button>
               <button data-go="5" aria-label="Крок 5"></button>
+              <button class="play" type="button" aria-label="Пауза" aria-pressed="false">
+                <svg viewBox="0 0 12 12" aria-hidden="true"><path class="i-pause" d="M3.5 2v8M8.5 2v8"/><path class="i-play" d="M3 1.5l7.5 4.5-7.5 4.5z"/></svg>
+              </button>
             </div>
           </div>
         </div>

@@ -18,4 +18,4 @@ Search `TODO` in `index.html` for anything not filled in yet (none at the moment
 ## Structure
 - `index.html` — sections; the explainer is one inline SVG whose parts react to `.at-N` / `.s-N` classes on `#stage`
 - `styles.css` — theme tokens in `:root`, per-step animation rules under "scene elements"
-- `script.js` — maps scroll position in `#how` to steps 1–5; loads the form
+- `script.js` — switches the steps 1–5 in `#how` on a timer; loads the form

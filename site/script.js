@@ -1,42 +1,62 @@
 (function () {
-  const STEPS = 5;
-  const section = document.getElementById("how");
+  // How long each step of the explainer is shown; the last one lets the dot drive its route once.
+  const STEP_MS = [3500, 3500, 3500, 3500, 6000];
+  const STEPS = STEP_MS.length;
   const stage = document.getElementById("stage");
+  const play = stage.querySelector(".play");
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let step = 1;
+  let visible = false;
+  let paused = false;
+  let timer = 0;
 
   // Cumulative classes at-1..at-N (everything up to the step is on) and s-N (only the current step).
   function setStep(n) {
-    if (stage.dataset.step === String(n)) return;
-    stage.dataset.step = n;
+    step = n;
     stage.className = "stage";
     for (let i = 1; i <= n; i++) stage.classList.add("at-" + i);
     stage.classList.add("s-" + n);
+    stage.style.setProperty("--step", STEP_MS[n - 1] + "ms");
   }
 
-  function onScroll() {
-    const rect = section.getBoundingClientRect();
-    const total = rect.height - window.innerHeight;
-    const p = Math.min(1, Math.max(0, -rect.top / total));
-    setStep(Math.min(STEPS, Math.floor(p * STEPS) + 1));
+  // Runs the timer only while the section is on screen, the tab is open and the user didn't pause.
+  function update() {
+    const running = visible && !paused && !document.hidden;
+    stage.toggleAttribute("data-paused", !running);
+    clearTimeout(timer);
+    if (!running) return;
+    // The timer starts over, so the progress fill of the current step starts over too.
+    const bar = stage.querySelector('[data-go="' + step + '"]');
+    bar.style.animation = "none";
+    void bar.offsetWidth;
+    bar.style.animation = "";
+    timer = setTimeout(() => go((step % STEPS) + 1), STEP_MS[step - 1]);
+  }
+
+  function go(n) {
+    setStep(n);
+    update();
   }
 
   if (reduced) {
     setStep(STEPS);
   } else {
     setStep(1);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    onScroll();
+    update();
+    new IntersectionObserver((entries) => {
+      visible = entries[0].isIntersecting;
+      update();
+    }, { threshold: 0.5 }).observe(stage);
+    document.addEventListener("visibilitychange", update);
   }
 
-  // Progress buttons jump to the matching scroll position.
-  document.querySelectorAll("[data-go]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const n = Number(btn.dataset.go);
-      const total = section.offsetHeight - window.innerHeight;
-      const top = section.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo({ top: top + total * ((n - 0.5) / STEPS) });
-    });
+  stage.querySelectorAll("[data-go]").forEach((btn) => {
+    btn.addEventListener("click", () => go(Number(btn.dataset.go)));
+  });
+  play.addEventListener("click", () => {
+    paused = !paused;
+    play.setAttribute("aria-pressed", String(paused));
+    update();
   });
 
   // Google Form: URL lives in data-form-url on #preorder.
