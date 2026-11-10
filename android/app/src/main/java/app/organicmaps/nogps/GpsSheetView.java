@@ -1,101 +1,76 @@
 package app.organicmaps.nogps;
 
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.location.Location;
-import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.os.SystemClock;
 import android.provider.Settings;
+import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
-import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.location.GnssStatusCompat;
 import androidx.core.location.LocationCompat;
-import androidx.core.widget.ImageViewCompat;
 import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
 import app.organicmaps.maplayer.StatusBar;
 import app.organicmaps.sdk.location.LocationHelper;
 import app.organicmaps.sdk.location.NoGps;
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 /**
- * What GPS is worth now and why, whether the car follows it, the details of its last position and the satellites.
+ * What GPS is worth now and why, the details of its last position and the satellites: the GPS page of the Box sheet.
+ * The owner calls {@link #update} while it is shown.
  */
-public class GpsBottomSheet extends BottomSheetDialogFragment
+public class GpsSheetView extends LinearLayout
 {
-  public static final String TAG = GpsBottomSheet.class.getSimpleName();
-  private static final long UPDATE_INTERVAL_MS = 1000;
   // An older position tells nothing about GPS now.
   private static final long MAX_FIX_AGE_NS = 10_000_000_000L;
 
-  private final Handler mHandler = new Handler(Looper.getMainLooper());
-  private final Runnable mUpdater = new Runnable() {
-    @Override
-    public void run()
-    {
-      update();
-      mHandler.postDelayed(this, UPDATE_INTERVAL_MS);
-    }
-  };
-
-  private ImageView mIcon;
-  private TextView mState;
+  private final StatusBar.Button mTile;
+  private final TextView mState;
   // A grey state is read as disabled: it is shown in the color of the text.
-  private ColorStateList mStateColors;
-  private TextView mWhy;
-  private SwitchCompat mUse;
-  private TextView mLastFix;
-  private TextView mAccuracy;
-  private TextView mSpeedCourse;
-  private View mNetworkRow;
-  private TextView mNetwork;
-  private TextView mSatellitesUsed;
-  private TextView mSystems;
-  private TextView mSignal;
+  private final ColorStateList mStateColors;
+  private final TextView mWhy;
+  private final TextView mLastFix;
+  private final TextView mAccuracy;
+  private final TextView mSpeedCourse;
+  private final View mNetworkRow;
+  private final TextView mNetwork;
+  private final TextView mSatellitesUsed;
+  private final TextView mSystems;
+  private final TextView mSignal;
 
-  @Nullable
-  @Override
-  public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
-                           @Nullable Bundle savedInstanceState)
+  public GpsSheetView(@NonNull Context context, @Nullable AttributeSet attrs)
   {
-    final View view = inflater.inflate(R.layout.nogps_gps_sheet, container, false);
-    mIcon = view.findViewById(R.id.gps_icon);
-    mState = view.findViewById(R.id.gps_state);
-    mWhy = view.findViewById(R.id.gps_why);
-    mUse = view.findViewById(R.id.gps_use);
+    super(context, attrs);
+    setOrientation(VERTICAL);
+    final LayoutInflater inflater = LayoutInflater.from(context);
+    inflater.inflate(R.layout.nogps_gps_view, this);
+    mTile =
+        new StatusBar.Button(findViewById(R.id.gps_tile), findViewById(R.id.gps_icon), findViewById(R.id.gps_badge));
+    mState = findViewById(R.id.gps_state);
     mStateColors = mState.getTextColors();
-    mUse.setOnClickListener(v -> {
-      NoGps.nativeSetGpsDisabled(!mUse.isChecked());
-      update();
-    });
-    final LinearLayout details = view.findViewById(R.id.gps_details);
+    mWhy = findViewById(R.id.gps_why);
+    final LinearLayout details = findViewById(R.id.gps_details);
     mLastFix = addRow(inflater, details, R.string.nogps_gps_last_fix);
     mAccuracy = addRow(inflater, details, R.string.nogps_gps_accuracy);
     mSpeedCourse = addRow(inflater, details, R.string.nogps_gps_speed_course);
     mNetwork = addRow(inflater, details, R.string.nogps_gps_network);
     mNetworkRow = (View) mNetwork.getParent();
-    final LinearLayout satellites = view.findViewById(R.id.gps_satellites);
+    final LinearLayout satellites = findViewById(R.id.gps_satellites);
     mSatellitesUsed = addRow(inflater, satellites, R.string.nogps_gps_sat_used);
     mSystems = addRow(inflater, satellites, R.string.nogps_gps_sat_systems);
     mSignal = addRow(inflater, satellites, R.string.nogps_gps_sat_signal);
-    view.findViewById(R.id.gps_settings)
-        .setOnClickListener(v -> startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)));
-    return view;
+    findViewById(R.id.gps_settings)
+        .setOnClickListener(v -> context.startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)));
   }
 
   @NonNull
@@ -107,40 +82,27 @@ public class GpsBottomSheet extends BottomSheetDialogFragment
     return row.findViewById(R.id.row_value);
   }
 
-  @Override
-  public void onStart()
+  /**
+   * Stops the pulsing of the icon, the next update starts it again.
+   */
+  public void stop()
   {
-    super.onStart();
-    mHandler.post(mUpdater);
+    mTile.pulse(false);
   }
 
-  @Override
-  public void onStop()
+  public void update(@NonNull NoGps.Status status)
   {
-    super.onStop();
-    mHandler.removeCallbacks(mUpdater);
-  }
-
-  private void update()
-  {
-    final Context context = requireContext();
-    final NoGps.Status status = NoGps.getStatus();
+    final Context context = getContext();
     final StatusBar.Look look = StatusBar.getGpsLook(context, status);
-    mIcon.setImageResource(look.icon);
-    final int color = look.getColor(context);
-    ImageViewCompat.setImageTintList(mIcon, ColorStateList.valueOf(color));
+    mTile.show(look);
     mState.setText(StatusBar.getGpsStateText(context, status));
     if (look.color == R.color.source_sleeping)
       mState.setTextColor(mStateColors);
     else
-      mState.setTextColor(color);
+      mState.setTextColor(look.getColor(context));
     final String why = StatusBar.getGpsWhyText(context, status);
     mWhy.setText(why);
     mWhy.setVisibility(why == null ? View.GONE : View.VISIBLE);
-    // GPS is turned off for the car only while the box can drive it: nothing would move the mark otherwise.
-    mUse.setEnabled(status.gpsDisabled || BoxBottomSheet.isBoxHeard(status));
-    if (!mUse.isPressed())
-      mUse.setChecked(!status.gpsDisabled);
 
     mLastFix.setText(status.lastGoodGpsAgeMs < 0 ? "—" : agoText(context, status.lastGoodGpsAgeMs));
     final LocationHelper locationHelper = MwmApplication.from(context).getLocationHelper();
@@ -158,7 +120,7 @@ public class GpsBottomSheet extends BottomSheetDialogFragment
     mSystems.setText(satellites == null || satellites.used == 0 ? "—" : systemsText(satellites.usedBySystem));
     mSignal.setText(satellites == null || satellites.used == 0
                         ? "—"
-                        : getString(R.string.nogps_gps_db_hz, Math.round(satellites.meanCn0DbHz)));
+                        : context.getString(R.string.nogps_gps_db_hz, Math.round(satellites.meanCn0DbHz)));
   }
 
   @NonNull
@@ -218,14 +180,5 @@ public class GpsBottomSheet extends BottomSheetDialogFragment
       case GnssStatusCompat.CONSTELLATION_IRNSS -> "NavIC";
       default -> "?";
     };
-  }
-
-  @Override
-  public void onDismiss(@NonNull DialogInterface dialog)
-  {
-    super.onDismiss(dialog);
-    // The bottom bar shows the choice at once.
-    if (!requireActivity().isChangingConfigurations())
-      getParentFragmentManager().setFragmentResult(SensorsBottomSheet.RESULT_CLOSED, Bundle.EMPTY);
   }
 }

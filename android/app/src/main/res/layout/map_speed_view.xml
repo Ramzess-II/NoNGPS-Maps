@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The speed of the car and the limit of the road at the bottom start of the map, see MapButtonsController. -->
+<FrameLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  xmlns:tools="http://schemas.android.com/tools"
+  android:id="@+id/speed_view"
+  android:layout_width="@dimen/speed_view_size"
+  android:layout_height="@dimen/speed_view_size"
+  android:background="@drawable/speed_cams_bg"
+  android:clipChildren="false"
+  android:elevation="4dp"
+  android:visibility="invisible"
+  tools:visibility="visible">
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical">
+    <TextView
+      android:id="@+id/speed_view_value"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:fontFeatureSettings="tnum"
+      android:importantForAccessibility="no"
+      android:includeFontPadding="false"
+      android:maxLines="1"
+      android:textColor="?android:textColorPrimary"
+      android:textSize="22sp"
+      android:textStyle="bold"
+      tools:text="54" />
+    <TextView
+      android:id="@+id/speed_view_units"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="2dp"
+      android:importantForAccessibility="no"
+      android:includeFontPadding="false"
+      android:maxLines="1"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="10sp"
+      tools:text="km/h" />
+  </LinearLayout>
+  <!-- The limit is a road sign: its text is read with the speed. -->
+  <TextView
+    android:id="@+id/speed_view_limit"
+    android:layout_width="@dimen/speed_limit_size"
+    android:layout_height="@dimen/speed_limit_size"
+    android:layout_gravity="top|end"
+    android:layout_marginTop="-8dp"
+    android:layout_marginEnd="-8dp"
+    android:background="@drawable/bg_speed_limit_sign"
+    android:elevation="1dp"
+    android:fontFeatureSettings="tnum"
+    android:gravity="center"
+    android:importantForAccessibility="no"
+    android:includeFontPadding="false"
+    android:maxLines="1"
+    android:textColor="@color/black_primary"
+    android:textSize="12sp"
+    android:textStyle="bold"
+    android:visibility="gone"
+    app:autoSizeMaxTextSize="12sp"
+    app:autoSizeMinTextSize="8sp"
+    app:autoSizeTextType="uniform"
+    tools:text="60"
+    tools:visibility="visible" />
+</FrameLayout>

@@ -68,4 +68,5 @@
   <color name="source_bad">#FFFF453A</color>
   <color name="source_connecting">#FF4AA3FF</color>
   <color name="source_warning">#FFFF9F0A</color>
+  <color name="source_inertial">#FFBF5AF2</color>
 </resources>

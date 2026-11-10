@@ -45,7 +45,6 @@ import app.organicmaps.MwmActivity;
 import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
 import app.organicmaps.nogps.BoxBottomSheet;
-import app.organicmaps.nogps.GpsBottomSheet;
 import app.organicmaps.nogps.NoGpsFlagRecorder;
 import app.organicmaps.nogps.NoGpsFlags;
 import app.organicmaps.nogps.SensorsBottomSheet;
@@ -59,6 +58,7 @@ import app.organicmaps.sdk.maplayer.isolines.IsolinesManager;
 import app.organicmaps.sdk.maplayer.subway.SubwayManager;
 import app.organicmaps.sdk.maplayer.traffic.TrafficManager;
 import app.organicmaps.sdk.routing.RoutingController;
+import app.organicmaps.sdk.routing.RoutingInfo;
 import app.organicmaps.sdk.util.Config;
 import app.organicmaps.sdk.util.log.Logger;
 import app.organicmaps.sdk.util.log.LogsManager;
@@ -123,6 +123,8 @@ public class MapButtonsController extends Fragment
   private View mTrackRecordingPanel;
   @Nullable
   private StatusBar mStatusBar;
+  @Nullable
+  private SpeedView mSpeedView;
   @Nullable
   private FloatingActionButton mManualPositionButton;
   @Nullable
@@ -214,21 +216,12 @@ public class MapButtonsController extends Fragment
     mManualPositionButton = mFrame.findViewById(R.id.manual_position);
     mPositionStatus = mFrame.findViewById(R.id.position_status);
     mPositionStatus.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.positionStatus));
-    final View statusBar = mFrame.findViewById(R.id.status_bar);
+    final View statusBar = mFrame.findViewById(R.id.status_nav);
     if (statusBar != null)
-      mStatusBar = new StatusBar(statusBar, new StatusBar.Listener() {
-        @Override
-        public void showGpsSheet()
-        {
-          showSheet(new GpsBottomSheet(), GpsBottomSheet.TAG);
-        }
-
-        @Override
-        public void showBoxSheet()
-        {
-          showSheet(new BoxBottomSheet(), BoxBottomSheet.TAG);
-        }
-      });
+      mStatusBar = new StatusBar(statusBar, () -> showSheet(new BoxBottomSheet(), BoxBottomSheet.TAG));
+    final View speedView = mFrame.findViewById(R.id.speed_view);
+    if (speedView != null)
+      mSpeedView = new SpeedView(speedView);
     mManualPositionButton.setOnClickListener((v) -> {
       mMapButtonClickListener.onMapButtonClick(MapButtons.manualPosition);
       updatePositionStatus();
@@ -375,6 +368,7 @@ public class MapButtonsController extends Fragment
 
     if (mStatusBar != null)
       mStatusBar.update(status);
+    updateSpeedView(status);
     mMapButtonsViewModel.setNoGpsStatus(status);
 
     mCarButtonsShown.clear();
@@ -404,6 +398,16 @@ public class MapButtonsController extends Fragment
     if (hasCarButtons || !mCarPanelShown)
       applyCarButtons();
     showCarPanel(hasCarButtons);
+  }
+
+  private void updateSpeedView(@NonNull NoGps.Status status)
+  {
+    if (mSpeedView == null)
+      return;
+    final Location location = MwmApplication.from(requireContext()).getLocationHelper().getSavedLocation();
+    final RoutingController routing = RoutingController.get();
+    final RoutingInfo info = routing.isNavigating() ? routing.getCachedRoutingInfo() : null;
+    mSpeedView.update(status, location, info != null && info.isSpeedCamLimitExceeded());
   }
 
   /**

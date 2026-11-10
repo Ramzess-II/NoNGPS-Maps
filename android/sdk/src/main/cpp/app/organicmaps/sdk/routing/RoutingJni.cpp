@@ -225,6 +225,7 @@ jobject CreateRoutingInfo(JNIEnv * env, routing::FollowingInfo const & info, Rou
     "("
     "Lapp/organicmaps/sdk/util/Distance;"                      // distToTarget
     "Lapp/organicmaps/sdk/util/Distance;"                      // distToTurn
+    "Lapp/organicmaps/sdk/util/Distance;"                      // distCovered
     "Ljava/lang/String;"                                       // currentStreet
     "Ljava/lang/String;"                                       // nextStreet
     "Lapp/organicmaps/sdk/routing/roadshield/RoadShieldInfo;"  // nextStreetRoadShields
@@ -248,6 +249,7 @@ jobject CreateRoutingInfo(JNIEnv * env, routing::FollowingInfo const & info, Rou
   jobject const result = env->NewObject(klass, ctorRouteInfoID,
     ToJavaDistance(env, info.m_distToTarget),
     ToJavaDistance(env, info.m_distToTurn),
+    ToJavaDistance(env, platform::Distance::CreateFormatted(info.m_distCoveredM)),
     ToJavaString(env, info.m_currentStreetName),
     ToJavaString(env, info.m_nextStreetName),
     ToJavaRoadShieldInfo(env, info.m_nextStreetShields),

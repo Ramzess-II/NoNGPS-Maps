@@ -326,6 +326,7 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsField(env, out, "bleState", static_cast<int>(status.m_bleState));
   SetNoGpsString(env, out, "deviceName", status.m_deviceName);
   SetNoGpsField(env, out, "speedKmh", status.m_speedKmh);
+  SetNoGpsField(env, out, "speedLimitKmh", status.m_speedLimitKmh);
   SetNoGpsField(env, out, "hasCarInfo", status.m_carInfo.has_value());
   if (auto const & car = status.m_carInfo)
   {
