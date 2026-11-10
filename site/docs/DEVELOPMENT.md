@@ -11,7 +11,7 @@ Everything needed to continue work on this site. Paths are relative to the proje
 - Style: light and warm, taken from the app icon: apricot graph-paper background, brown wood (`--wood`) with diagonal hatching (`--hatch`) and a dark-brown outline (`--ink`), slab-serif headings. Rust (`--warn`) marks "GPS jammed", green (`--ok`) the working state, blue (`--bt`) Bluetooth and the position dot. Light only, so the embedded Google Form doesn't stand out.
 - Audience: both drivers and enthusiasts, so the story is simple and the jargon sits in the collapsed "Технічні деталі" block.
 - Lead message: resilience to GPS jamming/spoofing. Tunnels/garages and offline/privacy are secondary.
-- Animation: the 5-step story switches on a short timer while the section is on screen, with step buttons and a pause button. It used to be driven by scrolling through a pinned section; that was dropped as too slow to get through.
+- Animation: the 5-step story switches on a short timer while the section is on screen, with step buttons and a pause button.
 - Platforms mentioned: Android + iOS.
 - Branding: text wordmark "Non-GPS Organic Maps" plus an explicit "fork of Organic Maps, not affiliated" note in the footer.
 - Sections: hero, how to get it (5 steps from the OBD-II port to accurate navigation), explainer, tech details, feature cards + specs strip, pre-order, footer. No FAQ.
