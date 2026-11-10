@@ -27,7 +27,7 @@ Everything needed to continue work on this site. Paths are relative to the proje
 | `README.md` | Quick start / deploy. |
 
 ## How the explainer works
-- `script.js` shows each step for `STEP_MS[n-1]` (3.5 s; the last one 6 s, so the dot drives its route once) and loops back to step 1.
+- `script.js` shows each step for `STEP_MS[n-1]` (1.75 s; the last one 3 s, as long as the dot takes to drive its route once) and loops back to step 1.
 - The timer runs only while at least half of `#stage` is on screen, the tab is visible and the pause button is off; otherwise `#stage` gets `data-paused`. A step button jumps to that step and restarts its timer.
 - The current step's progress bar fills over `--step`, which `script.js` sets to the step's time; `data-paused` pauses the fill.
 - It sets classes on `#stage`: cumulative `at-1…at-n` (things that stay on once introduced) and a single `s-n` (things only shown during the current step, e.g. captions, status text).

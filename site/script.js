@@ -1,6 +1,6 @@
 (function () {
   // How long each step of the explainer is shown; the last one lets the dot drive its route once.
-  const STEP_MS = [3500, 3500, 3500, 3500, 6000];
+  const STEP_MS = [1750, 1750, 1750, 1750, 3000];
   const STEPS = STEP_MS.length;
   const stage = document.getElementById("stage");
   const play = stage.querySelector(".play");
