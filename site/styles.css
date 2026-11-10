@@ -93,6 +93,24 @@ h1 { font-size: clamp(34px, 6vw, 64px); line-height: 1.08; margin: 12px 0 18px; 
   background: var(--hatch), var(--wood);
 }
 
+/* how to get it: numbered pins joined by a dashed route */
+.get { padding: 72px 0 24px; }
+.steps { list-style: none; margin: 0; padding: 0; max-width: 760px; counter-reset: step; }
+.steps li { position: relative; counter-increment: step; padding: 0 0 32px 72px; }
+.steps li::before {
+  content: counter(step); position: absolute; z-index: 1; left: 0; top: 0;
+  width: 48px; height: 48px; display: grid; place-items: center;
+  border: 2px solid var(--ink); border-radius: 50%; box-shadow: 0 3px 0 var(--ink);
+  background: var(--hatch), var(--wood); color: var(--surface); font: 700 20px var(--slab);
+}
+.steps li:not(:last-child)::after { content: ""; position: absolute; left: 22px; top: 52px; bottom: 4px; border-left: 3px dashed rgb(156 91 54 / .5); }
+.steps h3 { margin: 8px 0 4px; font-size: 22px; line-height: 1.25; }
+.steps p { margin: 0; color: var(--muted); }
+.steps .note {
+  margin: 12px 0 16px; padding: 10px 14px; font-size: 15px; color: var(--text);
+  background: var(--surface); border: 1.5px solid var(--line); border-left: 4px solid var(--warn); border-radius: 8px;
+}
+
 /* scroll-driven story */
 .scroll { height: 600vh; position: relative; }
 .sticky { position: sticky; top: 56px; min-height: calc(100svh - 56px); display: flex; align-items: center; padding: 12px 0; }
@@ -200,6 +218,8 @@ summary { cursor: pointer; padding: 14px 0; font-family: var(--slab); font-weigh
 @media (max-width: 640px) {
   .topbar nav a:not(.btn) { display: none; }
   .brand { font-size: 14px; gap: 8px; }
+  .steps li { padding-left: 62px; }
+  .steps h3 { font-size: 19px; }
   .stage svg { max-height: 50svh; }
   .captions ol { min-height: 4.6em; }
 }

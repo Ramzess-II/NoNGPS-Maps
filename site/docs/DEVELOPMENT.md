@@ -14,7 +14,7 @@ Everything needed to continue work on this site. Paths are relative to the proje
 - Animation: scroll-driven story with a sticky stage (5 steps).
 - Platforms mentioned: Android + iOS.
 - Branding: text wordmark "Non-GPS Organic Maps" plus an explicit "fork of Organic Maps, not affiliated" note in the footer.
-- Sections: hero, explainer, tech details, feature cards + specs strip, pre-order, footer. No FAQ.
+- Sections: hero, how to get it (5 steps from the OBD-II port to accurate navigation), explainer, tech details, feature cards + specs strip, pre-order, footer. No FAQ.
 
 ## Files
 | File | Purpose |
