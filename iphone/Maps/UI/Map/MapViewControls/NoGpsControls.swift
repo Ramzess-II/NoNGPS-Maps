@@ -17,6 +17,8 @@ final class NoGpsControls: NSObject {
     static let blinkOpacity = Float(0.2)
     static let noneColor = UIColor(red: 0xD3 / 255, green: 0x2F / 255, blue: 0x2F / 255, alpha: 1)
     static let panelPlaceKey = "NoGpsLeftPanelY"
+    // Of the speed from the corner of the free area, and from the panel above it.
+    static let speedMargin = CGFloat(10)
     /// Of a flag screenshot: the street names stay readable, the png stays small for the mail.
     static let screenshotScale = CGFloat(2)
   }
@@ -49,6 +51,9 @@ final class NoGpsControls: NSObject {
   private weak var calibrationAlert: UIAlertController?
   private weak var firmwareAlert: UIAlertController?
   private let flagRecorder = NoGpsFlagRecorder()
+  private let speedView = NoGpsSpeedView()
+  private var speedEdge = NSLayoutConstraint()
+  private var speedBottom = NSLayoutConstraint()
 
   @objc
   init(owner: MapViewController) {
@@ -60,11 +65,13 @@ final class NoGpsControls: NSObject {
     RunLoop.main.add(timer, forMode: .common)
     self.timer = timer
     NotificationCenter.default.addObserver(self, selector: #selector(onEvent), name: NoGps.eventNotification, object: nil)
+    LocationManager.add(observer: self)
     NoGpsFlags.deleteExpired()
   }
 
   deinit {
     timer?.invalidate()
+    LocationManager.remove(observer: self)
   }
 
   static func updateAvailableArea(_ frame: CGRect) {
@@ -126,6 +133,10 @@ final class NoGpsControls: NSObject {
     panel.translatesAutoresizingMaskIntoConstraints = false
     superview.addSubview(panel)
     superview.addSubview(buttons)
+    superview.addSubview(speedView)
+    speedEdge = Self.isRTL ? speedView.rightAnchor.constraint(equalTo: superview.leftAnchor)
+      : speedView.leftAnchor.constraint(equalTo: superview.leftAnchor)
+    speedBottom = speedView.bottomAnchor.constraint(equalTo: superview.topAnchor)
 
     statusTop = statusButton.topAnchor.constraint(equalTo: superview.topAnchor)
     statusCenterX = statusButton.centerXAnchor.constraint(equalTo: superview.leftAnchor)
@@ -133,7 +144,7 @@ final class NoGpsControls: NSObject {
       : buttons.leftAnchor.constraint(equalTo: superview.leftAnchor)
     buttonsCenterY = buttons.centerYAnchor.constraint(equalTo: superview.topAnchor)
     NSLayoutConstraint.activate([
-      statusTop, statusCenterX, buttonsEdge, buttonsCenterY,
+      statusTop, statusCenterX, buttonsEdge, buttonsCenterY, speedEdge, speedBottom,
       // The panel goes on to the edge of the screen, under the safe area too.
       Self.isRTL ? panel.rightAnchor.constraint(equalTo: superview.rightAnchor)
         : panel.leftAnchor.constraint(equalTo: superview.leftAnchor),
@@ -158,12 +169,15 @@ final class NoGpsControls: NSObject {
     guard !area.isEmpty else { return }
     let height = buttonsHeight
     let fraction = dragger?.fraction ?? MapPanelDragger.Constants.defaultFraction
+    let panelArea = panelAreaHeight
     let place = {
       self.statusTop.constant = area.minY + Constants.statusTopOffset
       self.statusCenterX.constant = area.midX
       self.buttonsEdge.constant = Self.isRTL ? area.maxX : area.minX
       // The side buttons on the right have the same center by default.
-      self.buttonsCenterY.constant = area.minY + height / 2 + fraction * max(0, area.height - height)
+      self.buttonsCenterY.constant = area.minY + height / 2 + fraction * max(0, panelArea - height)
+      self.speedEdge.constant = Self.isRTL ? area.maxX - Constants.speedMargin : area.minX + Constants.speedMargin
+      self.speedBottom.constant = area.maxY - Constants.speedMargin
     }
     if animated, let superview = buttons.superview {
       superview.animateConstraints(animations: place)
@@ -171,7 +185,13 @@ final class NoGpsControls: NSObject {
       place()
     }
     // A panel can leave no place for the buttons.
-    showPanel(hasButtons && height <= area.height)
+    showPanel(hasButtons && height <= panelArea)
+  }
+
+  /// The panel moves above the speed.
+  private var panelAreaHeight: CGFloat {
+    let speed = speedView.isHidden ? 0 : NoGpsSpeedView.side + 2 * Constants.speedMargin
+    return Self.availableArea.height - speed
   }
 
   private var buttonsHeight: CGFloat {
@@ -179,7 +199,7 @@ final class NoGpsControls: NSObject {
   }
 
   private var panelTravel: CGFloat {
-    max(0, Self.availableArea.height - buttonsHeight)
+    max(0, panelAreaHeight - buttonsHeight)
   }
 
   private func applyButtonsHidden() {
@@ -217,6 +237,7 @@ final class NoGpsControls: NSObject {
 
   private func refresh() {
     let status = NoGps.status()
+    speedView.update(status: status, location: LocationManager.lastLocation())
     // The mark stands and waits for the user: a toast about it is easy to miss while driving. The bottom bar tells the
     // source and the accuracy.
     statusButton.isHidden = !status.roadLost
@@ -505,6 +526,16 @@ extension UITableView {
     } else {
       shown = rows
       reloadData()
+    }
+  }
+}
+
+extension NoGpsControls: MWMLocationObserver {
+  func onLocationUpdate(_ location: CLLocation) {
+    let shown = !speedView.isHidden
+    speedView.update(status: NoGps.status(), location: location)
+    if shown == speedView.isHidden {
+      updateLayout()
     }
   }
 }

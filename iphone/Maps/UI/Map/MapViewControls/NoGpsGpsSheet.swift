@@ -1,4 +1,4 @@
-/// What GPS is worth now and why, whether the car follows it, and the details of its last position.
+/// The GPS page of the Box sheet: what GPS is worth now and why, and the details of its last position.
 final class NoGpsGpsSheet: MWMTableViewController {
   private enum Constants {
     static let refreshInterval: TimeInterval = 1
@@ -9,7 +9,6 @@ final class NoGpsGpsSheet: MWMTableViewController {
 
   private enum Row {
     case state
-    case use
     case lastFix
     case accuracy
     case speedCourse
@@ -26,12 +25,7 @@ final class NoGpsGpsSheet: MWMTableViewController {
   private var sections: [Section] = []
   private var status = NoGps.status()
   private var timer: Timer?
-  private let useSwitch = UISwitch()
   private var shownRows: [[Row]] = []
-
-  static func show() {
-    NoGpsControls.showSheet(NoGpsGpsSheet(style: .insetGrouped))
-  }
 
   override func viewDidLoad() {
     super.viewDidLoad()
@@ -39,7 +33,6 @@ final class NoGpsGpsSheet: MWMTableViewController {
     navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .close, target: self,
                                                         action: #selector(close))
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
-    useSwitch.addTarget(self, action: #selector(useChanged), for: .valueChanged)
     refresh()
   }
 
@@ -56,6 +49,14 @@ final class NoGpsGpsSheet: MWMTableViewController {
     timer = nil
   }
 
+  override func viewDidDisappear(_ animated: Bool) {
+    super.viewDidDisappear(animated)
+    // The sheet is closed from this page, the Box page under it doesn't disappear.
+    if navigationController?.isBeingDismissed == true {
+      (navigationController?.viewControllers.first as? NoGpsBoxSheet)?.stopSearchIfNotFound()
+    }
+  }
+
   private func refresh() {
     status = NoGps.status()
     var details: [Row] = [.lastFix, .accuracy, .speedCourse]
@@ -64,7 +65,6 @@ final class NoGpsGpsSheet: MWMTableViewController {
     }
     sections = [
       Section(rows: [.state]),
-      Section(rows: [.use], footer: L("nogps_gps_use_hint")),
       Section(rows: details),
       Section(rows: [.fixSource]),
       Section(rows: [.settings]),
@@ -98,22 +98,12 @@ final class NoGpsGpsSheet: MWMTableViewController {
     case .state:
       content = UIListContentConfiguration.subtitleCell()
       let look = NoGpsStatusBar.gpsLook(status)
-      content.image = look.image
-      content.imageProperties.tintColor = look.color
+      content.image = NoGpsStatusBar.tileImage(look, side: 44, traits: tableView.traitCollection)
       content.text = NoGpsStatusBar.gpsStateText(status)
       content.textProperties.font = .preferredFont(forTextStyle: .headline)
       content.textProperties.color = look.color == .secondaryLabel ? .label : look.color
       content.secondaryText = NoGpsStatusBar.gpsWhyText(status)
       content.secondaryTextProperties.color = .secondaryLabel
-    case .use:
-      content = UIListContentConfiguration.cell()
-      content.text = L("nogps_gps_use")
-      // GPS is turned off for the car only while the box can drive it: nothing would move the mark otherwise.
-      useSwitch.isEnabled = status.gpsDisabled || NoGpsBoxSheet.isBoxHeard(status)
-      if !useSwitch.isTracking {
-        useSwitch.isOn = !status.gpsDisabled
-      }
-      cell.accessoryView = useSwitch
     case .lastFix:
       content.text = L("nogps_gps_last_fix")
       content.secondaryText = status.lastGoodGpsAge < 0 ? "—" : Self.agoText(status.lastGoodGpsAge)
@@ -185,13 +175,6 @@ final class NoGpsGpsSheet: MWMTableViewController {
   }
 
   // MARK: - Actions
-
-  @objc
-  private func useChanged() {
-    NoGps.setGpsDisabled(!useSwitch.isOn)
-    refresh()
-    NoGpsStatusBar.update(status)
-  }
 
   @objc
   private func close() {

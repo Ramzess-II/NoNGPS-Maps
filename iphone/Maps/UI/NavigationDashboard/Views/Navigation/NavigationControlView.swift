@@ -3,26 +3,20 @@ final class NavigationControlView: SolidTouchView {
     static let buttonContentInset: CGFloat = 15
     static var metricFont: UIFont { .bold22.dynamic(maxSize: 26) }
     static var metricLegendFont: UIFont { .bold12.dynamic(maxSize: 16) }
+    static var metricSubFont: UIFont { .regular13.dynamic(maxSize: 17) }
+    /// A drag shorter than this is not meant to move the sheet.
+    static let dragDistance = CGFloat(20)
   }
 
-  @IBOutlet private var distanceLabel: UILabel!
-  @IBOutlet private var distanceLegendLabel: UILabel!
   @IBOutlet private var distanceWithLegendLabel: UILabel!
+  @IBOutlet private var coveredLabel: UILabel!
   @IBOutlet private var progressView: UIView!
   @IBOutlet private var routingProgress: NSLayoutConstraint!
-  @IBOutlet private var speedLabel: UILabel!
-  @IBOutlet private var speedBackground: UIView!
-  @IBOutlet private var speedLegendLabel: UILabel!
-  @IBOutlet private var speedWithLegendLabel: UILabel!
   @IBOutlet private var timeLabel: UILabel!
-  @IBOutlet private var timePageControl: UIPageControl!
+  @IBOutlet private var arrivalLabel: UILabel!
+  @IBOutlet private var handleView: UIView!
+  @IBOutlet private var handleBar: UIView!
   @IBOutlet private var extendedView: UIView!
-
-  @IBOutlet private var extendButton: UIButton! {
-    didSet {
-      setExtendButtonImage()
-    }
-  }
 
   @IBOutlet private var settingsButton: MWMButton!
   @IBOutlet private var stopButton: UIButton!
@@ -39,7 +33,7 @@ final class NavigationControlView: SolidTouchView {
   @IBOutlet private var trackRecordingButton: MWMButton!
   @IBOutlet private var searchButton: MWMButton!
   @IBOutlet private var sourceView: UIView!
-  private let sourceButton = StateButton()
+  private let sourceButton = NavButton(style: .tile)
 
   private lazy var dimBackground: DimBackground = .init(mainView: self, tapAction: { [weak self] in
     self?.diminish()
@@ -65,10 +59,6 @@ final class NavigationControlView: SolidTouchView {
   }
 
   private var isExtended = false {
-    willSet {
-      guard isExtended != newValue else { return }
-      morphExtendButton()
-    }
     didSet {
       guard isVisible, superview != nil, isExtended != oldValue else { return }
 
@@ -87,26 +77,18 @@ final class NavigationControlView: SolidTouchView {
     }
   }
 
-  private var metricsLabels: [UILabel] {
-    [distanceLabel, distanceWithLegendLabel, speedLabel, speedWithLegendLabel, timeLabel]
-  }
-
-  private var metricsLegendLabels: [UILabel] {
-    [distanceLegendLabel, speedLegendLabel]
-  }
-
   private var lastViewportHeight: CGFloat = 0
 
   override func awakeFromNib() {
     super.awakeFromNib()
 
-    for label in metricsLabels {
+    for label in [distanceWithLegendLabel, timeLabel] as [UILabel] {
       configureMetricLabel(label, font: Constants.metricFont)
     }
-    for label in metricsLegendLabels {
-      configureMetricLabel(label, font: Constants.metricLegendFont)
+    for label in [coveredLabel, arrivalLabel] as [UILabel] {
+      configureMetricLabel(label, font: Constants.metricSubFont)
     }
-    updateLegendSize()
+    configureHandle()
 
     configureButton(settingsButton)
     configureButton(ttsButton)
@@ -137,6 +119,16 @@ final class NavigationControlView: SolidTouchView {
                                             right: Constants.buttonContentInset)
   }
 
+  /// The handle opens and closes the buttons under the numbers by a tap, the whole sheet by a drag.
+  private func configureHandle() {
+    handleBar.layer.cornerRadius = handleBar.bounds.height / 2
+    handleView.isAccessibilityElement = true
+    handleView.accessibilityTraits = .button
+    handleView.accessibilityLabel = L("placepage_more_button")
+    handleView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(extendAction)))
+    addGestureRecognizer(UIPanGestureRecognizer(target: self, action: #selector(handleDragged)))
+  }
+
   private func configureSourceButton() {
     sourceView.addSubview(sourceButton)
     NSLayoutConstraint.activate([
@@ -157,7 +149,6 @@ final class NavigationControlView: SolidTouchView {
 
   override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
     super.traitCollectionDidChange(previousTraitCollection)
-    updateLegendSize()
     if let navigationInfo {
       onNavigationInfoUpdated(navigationInfo)
     }
@@ -174,8 +165,8 @@ final class NavigationControlView: SolidTouchView {
   private func addView() {
     guard superview != ownerView, !ownerView.subviews.contains(self) else { return }
     ownerView.addSubview(self)
-    NoGpsStatusBar.navButton = sourceButton
-    NoGpsStatusBar.showNav(NoGps.status(), on: sourceButton)
+    NoGpsStatusBar.navTile = sourceButton
+    sourceButton.show(NoGps.status())
 
     let lg = ownerView.safeAreaLayoutGuide
     leadingAnchor.constraint(equalTo: lg.leadingAnchor).isActive = true
@@ -205,19 +196,6 @@ final class NavigationControlView: SolidTouchView {
     MapViewController.shared()?.updateVisibleAreaInsets(for: self, insets: insets, updatingViewport: true)
   }
 
-  private func updateLegendSize() {
-    let isCompact = traitCollection.verticalSizeClass == .compact
-    distanceLabel.isHidden = isCompact
-    distanceLegendLabel.isHidden = isCompact
-    distanceWithLegendLabel.isHidden = !isCompact
-    speedLabel.isHidden = isCompact
-    speedLegendLabel.isHidden = isCompact
-    speedWithLegendLabel.isHidden = !isCompact
-
-    let pgScale: CGFloat = isCompact ? 0.7 : 1
-    timePageControl.transform = CGAffineTransform(scaleX: pgScale, y: pgScale)
-  }
-
   func setTrackRecordingState(_ state: TrackRecordingState) {
     trackRecordingButton.coloring = state == .active ? .red : .black
   }
@@ -236,76 +214,35 @@ final class NavigationControlView: SolidTouchView {
         NSAttributedString.Key.font: Constants.metricLegendFont,
       ]
 
-    if timePageControl.currentPage == 0 {
-      timeLabel.text = DurationFormatter.routingDurationString(from: TimeInterval(info.timeToTarget))
-    } else {
-      timeLabel.text = info.arrival
-    }
+    timeLabel.text = DurationFormatter.routingDurationString(from: TimeInterval(info.timeToTarget))
+    arrivalLabel.text = info.arrival
 
-    var distanceWithLegend: NSMutableAttributedString?
     if let targetDistance = info.targetDistance {
-      distanceLabel.text = targetDistance
-      distanceWithLegend = NSMutableAttributedString(string: targetDistance, attributes: routingNumberAttributes)
-    }
-
-    if let targetUnits = info.targetUnits {
-      distanceLegendLabel.text = targetUnits
-      if let distanceWithLegend = distanceWithLegend {
-        distanceWithLegend.append(NSAttributedString(string: targetUnits, attributes: routingLegendAttributes))
-        distanceWithLegendLabel.attributedText = distanceWithLegend
+      let distanceWithLegend = NSMutableAttributedString(string: targetDistance, attributes: routingNumberAttributes)
+      if let targetUnits = info.targetUnits {
+        distanceWithLegend.append(NSAttributedString(string: " " + targetUnits, attributes: routingLegendAttributes))
       }
+      distanceWithLegendLabel.attributedText = distanceWithLegend
     }
-
-    var speedMps = 0.0
-    if let s = LocationManager.lastLocation()?.speed, s > 0 {
-      speedMps = s
-    }
-    let speedMeasure = Measure(asSpeed: speedMps)
-    var speed = speedMeasure.valueAsString
-
-    // @todo Draw speed limit sign similar to the CarPlay implemenation.
-    // speedLimitMps >= 0 means known limited speed.
-    if info.speedLimitMps >= 0 {
-      // A compact separator keeps the speed from overlapping durations of an hour or more.
-      let separator = info.timeToTarget < 60 * 60 ? " / " : "/"
-      let speedLimitMeasure = Measure(asSpeed: info.speedLimitMps)
-      // speedLimitMps == 0 means unlimited speed.
-      speed += separator + (info.speedLimitMps == 0 ? "∞" : speedLimitMeasure.valueAsString)
-    }
-
-    speedLabel.text = speed
-    speedLegendLabel.text = speedMeasure.unit
-    let speedWithLegend = NSMutableAttributedString(string: speed, attributes: routingNumberAttributes)
-    speedWithLegend.append(NSAttributedString(string: speedMeasure.unit, attributes: routingLegendAttributes))
-    speedWithLegendLabel.attributedText = speedWithLegend
-
-    if MWMRouter.isSpeedCamLimitExceeded() {
-      speedLabel.textColor = .whitePrimary
-      speedBackground.backgroundColor = .buttonRed
-    } else {
-      let isSpeedLimitExceeded = info.speedLimitMps > 0 && speedMps > info.speedLimitMps
-      speedLabel.textColor = isSpeedLimitExceeded ? .buttonRed : .blackPrimaryText
-      speedBackground.backgroundColor = UIColor.clear
-    }
-    speedLegendLabel.textColor = speedLabel.textColor
-    speedWithLegendLabel.textColor = speedLabel.textColor
-    showNoCarData(numberAttributes: routingNumberAttributes, legendAttributes: routingLegendAttributes)
+    // Not known on a transit route.
+    coveredLabel.text = info.distanceCovered.map { String(format: L("nogps_nav_covered"), $0) }
 
     routingProgress.constant = progressView.width * info.progress / 100
   }
 
-  @IBAction
-  private func toggleInfoAction() {
-    if let navigationInfo = navigationInfo {
-      timePageControl.currentPage = (timePageControl.currentPage + 1) % timePageControl.numberOfPages
-      onNavigationInfoUpdated(navigationInfo)
-    }
+  @objc
+  private func extendAction() {
+    isExtended = !isExtended
     refreshDiminishTimer()
   }
 
-  @IBAction
-  private func extendAction() {
-    isExtended = !isExtended
+  /// Up opens the sheet, down closes it.
+  @objc
+  private func handleDragged(_ gesture: UIPanGestureRecognizer) {
+    guard gesture.state == .ended else { return }
+    let dy = gesture.translation(in: self).y
+    guard abs(dy) >= Constants.dragDistance else { return }
+    isExtended = dy < 0
     refreshDiminishTimer()
   }
 
@@ -338,34 +275,6 @@ final class NavigationControlView: SolidTouchView {
   @objc
   private func sourceButtonAction() {
     NoGpsStatusBar.showNavSheet()
-  }
-
-  private func morphExtendButton() {
-    guard let imageView = extendButton.imageView else { return }
-    let morphImagesCount = 6
-    let startValue = isExtended ? morphImagesCount : 1
-    let endValue = isExtended ? 0 : morphImagesCount + 1
-    let stepValue = isExtended ? -1 : 1
-    var morphImages: [UIImage] = []
-    for i in stride(from: startValue, to: endValue, by: stepValue) {
-      morphImages.append(UIImage(named: "ic_menu_\(i)")!)
-    }
-    imageView.animationImages = morphImages
-    imageView.animationRepeatCount = 1
-    imageView.image = morphImages.last
-    imageView.startAnimating()
-    setExtendButtonImage()
-  }
-
-  private func setExtendButtonImage() {
-    DispatchQueue.main.async {
-      guard let imageView = self.extendButton.imageView else { return }
-      if imageView.isAnimating {
-        self.setExtendButtonImage()
-      } else {
-        self.extendButton.setImage(UIImage(resource: self.isExtended ? .icMenuDown : .icMenu), for: .normal)
-      }
-    }
   }
 
   private func refreshDiminishTimer() {
@@ -409,28 +318,5 @@ extension NavigationControlView: MWMTextToSpeechObserver {
       ttsButton.isSelected = MWMTextToSpeech.tts().active
     }
     refreshDiminishTimer()
-  }
-}
-
-private extension NavigationControlView {
-  /// Shows that the car speed doesn't come instead of the speed: 0 km/h of a standing car looks the same with and
-  /// without the car connected, and without it the position is not calculated when GPS is lost.
-  /// A box that is not heard is shown by the box button only.
-  func showNoCarData(numberAttributes: [NSAttributedString.Key: Any],
-                     legendAttributes: [NSAttributedString.Key: Any]) {
-    let status = NoGps.status()
-    guard status.inertialStarted,
-          ![.connected, .disconnected, .connecting, .boxSleeping].contains(status.sourceState) else { return }
-    let value = L("nogps_speed_no_data")
-    let units = L("nogps_speed_no_elm")
-    speedLabel.text = value
-    speedLegendLabel.text = units
-    let valueWithUnits = NSMutableAttributedString(string: value, attributes: numberAttributes)
-    valueWithUnits.append(NSAttributedString(string: units, attributes: legendAttributes))
-    speedWithLegendLabel.attributedText = valueWithUnits
-    speedLabel.textColor = .buttonRed
-    speedLegendLabel.textColor = .buttonRed
-    speedWithLegendLabel.textColor = .buttonRed
-    speedBackground.backgroundColor = .clear
   }
 }

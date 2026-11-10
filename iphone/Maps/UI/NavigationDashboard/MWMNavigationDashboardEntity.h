@@ -9,6 +9,8 @@
 @property(copy, nonatomic, readonly) NSString * targetUnits;
 @property(copy, nonatomic, readonly) NSString * turnUnits;
 @property(nonatomic, readonly) double speedLimitMps;
+/// Driven along the route since navigation started, with units, e.g. "12.4 km".
+@property(copy, nonatomic, readonly) NSString * distanceCovered;
 @property(nonatomic, readonly) CGFloat progress;
 @property(nonatomic, readonly) NSUInteger roundExitNumber;
 /// Remaining time in seconds; duration labels round it without affecting the arrival calculation.

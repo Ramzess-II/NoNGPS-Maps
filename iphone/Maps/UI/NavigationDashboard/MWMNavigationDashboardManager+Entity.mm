@@ -151,6 +151,7 @@ NSTextAttachment * walkAttachment(UIFont * font)
     _turnUnits = @(info.m_distToTurn.GetUnitsString().c_str());
     _streetName = @(info.m_nextStreetName.c_str());
     _speedLimitMps = info.m_speedLimitMps;
+    _distanceCovered = @(platform::Distance::CreateFormatted(info.m_distCoveredM).ToString().c_str());
 
     _isWalk = NO;
     _showEta = showEta;

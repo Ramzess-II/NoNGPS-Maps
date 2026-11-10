@@ -1,8 +1,8 @@
 class BottomTabBarViewController: UIViewController {
   private enum Constants {
     static let panelTopInset = CGFloat(6)
-    static let statusBarWidth = CGFloat(260)
-    static let statusBarSpacing = CGFloat(4)
+    static let statusBarSpacing = CGFloat(6)
+    static let statusBarMaxWidth = CGFloat(360)
   }
 
   var presenter: BottomTabBarPresenterProtocol!
@@ -49,15 +49,17 @@ class BottomTabBarViewController: UIViewController {
     NoGpsStatusBar.styleButton(moreButton)
     statusBar.translatesAutoresizingMaskIntoConstraints = false
     container.addSubview(statusBar)
-    // Search and the menu are placed symmetrically, so the bar keeps away from both.
-    let width = statusBar.widthAnchor.constraint(equalToConstant: Constants.statusBarWidth)
-    width.priority = .defaultHigh
+    // The navigation button takes the place between Search and the menu, they are placed symmetrically. A wide
+    // screen leaves the rest of it empty.
+    let fill = statusBar.widthAnchor.constraint(equalTo: container.widthAnchor)
+    fill.priority = .defaultLow
     NSLayoutConstraint.activate([
-      width,
+      fill,
       statusBar.centerXAnchor.constraint(equalTo: container.centerXAnchor),
       statusBar.centerYAnchor.constraint(equalTo: container.centerYAnchor),
       statusBar.leadingAnchor.constraint(greaterThanOrEqualTo: searchButton.trailingAnchor,
                                          constant: Constants.statusBarSpacing),
+      statusBar.widthAnchor.constraint(lessThanOrEqualToConstant: Constants.statusBarMaxWidth),
     ])
   }
 
