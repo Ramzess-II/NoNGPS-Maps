@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Non-GPS Organic Maps — навігація без GPS</title>
+  <meta name="description" content="Форк Organic Maps, який веде по карті без GPS: невеликий пристрій в OBD-II роз'ємі авто передає телефону швидкість і поворот. Не залежить від глушіння та підміни GPS.">
+  <meta name="theme-color" content="#fbf1e3">
+  <meta property="og:title" content="Non-GPS Organic Maps — навігація, яку не можна заглушити">
+  <meta property="og:description" content="Офлайн-навігація без супутників: пристрій в OBD-II + форк Organic Maps.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://ramzess-ii.github.io/NoNGPS-Maps/assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/icon-64.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/icon-180.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Shared by the inline illustrations: hatched wood like the app icon's pin -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <pattern id="wood" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="8" height="8" fill="#9c5b36"/>
+      <path d="M0 0V8" stroke="#fff" stroke-opacity=".22" stroke-width="1.2"/>
+    </pattern>
+  </defs>
+</svg>
+
+<header class="topbar">
+  <a class="brand" href="#top" aria-label="Non-GPS Organic Maps">
+    <img src="assets/icon-64.png" alt="" width="30" height="30">
+    <span>Non-GPS <b>Organic Maps</b></span>
+  </a>
+  <nav>
+    <a href="#get">Як отримати</a>
+    <a href="#how">Як це працює</a>
+    <a href="#features">Можливості</a>
+    <a class="btn btn-small" href="#preorder">Передзамовити</a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <svg class="hero-bg" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <path id="hero-route" d="M-20 480 C 200 480 260 300 450 320 S 700 520 860 380 S 1050 150 1240 200" fill="none" stroke="#9c5b36" stroke-opacity=".6" stroke-width="3" stroke-dasharray="8 9" stroke-linecap="round"/>
+      <circle r="9" fill="#9c5b36" stroke="#3a2a20" stroke-width="2.5">
+        <animateMotion dur="9s" repeatCount="indefinite"><mpath href="#hero-route"/></animateMotion>
+      </circle>
+      <circle r="9" fill="none" stroke="#9c5b36" stroke-width="2">
+        <animateMotion dur="9s" repeatCount="indefinite"><mpath href="#hero-route"/></animateMotion>
+        <animate attributeName="r" values="9;30" dur="1.5s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values=".8;0" dur="1.5s" repeatCount="indefinite"/>
+      </circle>
+    </svg>
+
+    <div class="wrap hero-inner">
+      <p class="badge warn"><span class="blink"></span> GPS: сигнал заглушено</p>
+      <h1>Навігація, яку <span class="accent">не можна заглушити</span></h1>
+      <p class="lead">
+        Non-GPS Organic Maps веде вас по карті без супутників.
