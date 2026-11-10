@@ -985,12 +985,17 @@ int Engine::GetSpeedLimitKmh()
   if (m_speedLimit && m_speedLimit->m_position == position && m_speedLimit->m_bearingDeg == bearingDeg)
     return m_speedLimit->m_kmh;
 
-  int kmh = -1;
   auto const road = m_map.GetRoads(false /* matchRoute */).Snap(position, bearingDeg, kSpeedLimitRoadM);
-  if (road && Distance(position, road->m_point) <= kSpeedLimitRoadM)
+  // Not kept: the map of the place may come later.
+  if (!road || Distance(position, road->m_point) > kSpeedLimitRoadM)
+    return -1;
+  int kmh = -1;
+  auto const maxspeed = m_map.GetMaxspeed(road->m_featureId);
+  // Without a direction the way the car goes along the road is not known.
+  if (bearingDeg || !maxspeed.IsBidirectional())
   {
     // Without the time the conditional limit is not taken, it is not shown.
-    auto const speed = m_map.GetMaxspeed(road->m_featureId).GetCurrentSpeed(0 /* time */, road->m_forward);
+    auto const speed = maxspeed.GetCurrentSpeed(0 /* time */, road->m_forward);
     if (speed.GetSpeed() == routing::kNoneMaxSpeed)
       kmh = 0;
     else if (speed.IsNumeric())

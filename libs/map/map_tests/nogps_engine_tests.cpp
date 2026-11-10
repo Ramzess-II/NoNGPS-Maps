@@ -3609,4 +3609,36 @@ UNIT_TEST(NoGps_SpeedLimitWithoutRoad)
   env.m_env.m_engine.OnFix(GpsAt(env.m_env.m_clock, 60, 8, 90.0, 10.0));
   TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, 50, ());
 }
+
+UNIT_TEST(NoGps_SpeedLimitWithoutDirection)
+{
+  SpeedLimitEnv env;
+  // A standing car: GPS without a bearing.
+  env.m_env.m_clock.Advance(1000);
+  env.m_env.m_engine.OnFix(GpsAt(env.m_env.m_clock, 60, 3));
+  env.m_env.m_map.m_maxspeeds[FeatureGridRoads::kEastStreet] =
+      routing::Maxspeed(measurement_utils::Units::Metric, 50, 30);
+  // The two ways have different limits: which one is not known.
+  TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, -1, ());
+  env.m_env.m_map.m_maxspeeds[FeatureGridRoads::kEastStreet] =
+      routing::Maxspeed(measurement_utils::Units::Metric, 50, routing::kInvalidSpeed);
+  env.m_env.m_clock.Advance(1000);
+  env.m_env.m_engine.OnFix(GpsAt(env.m_env.m_clock, 61, 3));
+  TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, 50, ());
+}
+
+UNIT_TEST(NoGps_SpeedLimitRoadFoundLater)
+{
+  // The map of the place comes while the car stands there.
+  PieceRoads none({}, {});
+  SpeedLimitEnv env;
+  env.m_env.m_map.m_maxspeeds[FeatureGridRoads::kEastStreet] =
+      routing::Maxspeed(measurement_utils::Units::Metric, 50, routing::kInvalidSpeed);
+  env.m_env.m_map.m_roads = &none;
+  env.m_env.m_clock.Advance(1000);
+  env.m_env.m_engine.OnFix(GpsAt(env.m_env.m_clock, 60, 3, 90.0, 10.0));
+  TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, -1, ());
+  env.m_env.m_map.m_roads = &env.m_roads;
+  TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, 50, ());
+}
 }  // namespace nogps_engine_tests
