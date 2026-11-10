@@ -8,7 +8,7 @@ Everything needed to continue work on this site. Paths are relative to the proje
 ## Decisions made
 - Stack: static HTML/CSS/JS, no build step, no dependencies (GitHub Pages / Netlify / Cloudflare Pages).
 - Language: Ukrainian only (`lang="uk"`).
-- Style: tech/hardware, dark background, neon-green accent (`--accent`), amber (`--amber`) for "GPS jammed" warnings, monospace accents.
+- Style: light and warm, taken from the app icon: apricot graph-paper background, brown wood (`--wood`) with diagonal hatching (`--hatch`) and a dark-brown outline (`--ink`), slab-serif headings. Rust (`--warn`) marks "GPS jammed", green (`--ok`) the working state, blue (`--bt`) Bluetooth and the position dot. Light only, so the embedded Google Form doesn't stand out.
 - Audience: both drivers and enthusiasts, so the story is simple and the jargon sits in the collapsed "Технічні деталі" block.
 - Lead message: resilience to GPS jamming/spoofing. Tunnels/garages and offline/privacy are secondary.
 - Animation: scroll-driven story with a sticky stage (5 steps).
@@ -22,8 +22,8 @@ Everything needed to continue work on this site. Paths are relative to the proje
 | `index.html` | All content. The explainer is one inline SVG inside `#stage`. |
 | `styles.css` | Theme tokens in `:root`, layout, per-step scene rules under "scene elements". |
 | `script.js` | Maps scroll position in `#how` to steps 1–5; wires the progress buttons; loads the form iframe. |
-| `assets/favicon.svg` | Favicon. |
-| `assets/og.png`, `assets/app-icon.png` | Link-preview image (1200×630) and the Android app icon it is built from. |
+| `assets/icon-180.png` | Favicon, Apple touch icon and the top-bar logo; `app-icon.png` scaled down with `sips -Z 180`. |
+| `assets/og.png`, `assets/app-icon.png` | Link-preview image (1200×630, a headless Chrome screenshot of the icon and wordmark on the site background) and the Android app icon it is built from. |
 | `README.md` | Quick start / deploy. |
 
 ## How the explainer works
