@@ -34,6 +34,8 @@ Everything needed to continue work on this site. Paths are relative to the proje
 - Step captions live in `.captions li[data-step]`; the status text inside the phone is `.st1 .st2 .st4 .st5`.
 - Changing the number of steps requires updating `STEPS` in `script.js`, the captions and progress buttons in `index.html`, the `.scroll` height in CSS (roughly 120vh per step), and the CSS rules.
 - Reduced motion: `prefers-reduced-motion` turns off animation, un-pins the section, jumps to the final step and lists all captions.
+- The hatched wood fill `url(#wood)` is defined once in a hidden SVG at the top of `<body>`; the explainer and the step illustrations in `#get` use it.
+- Gotcha: the explainer's scene classes (`.device`, `.led`, `.data`, `.route`, `.arc`, `.spin`, …) are global and start hidden; other SVGs use `il-` classes instead.
 - Gotcha: SVG elements that use `transform-box: fill-box` (wheels, pulse ring) need it set in CSS. SMIL animations (`animateMotion`) in the SVG are not paused by the CSS reduced-motion rule.
 
 ## Pre-order form

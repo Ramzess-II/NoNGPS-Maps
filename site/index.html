@@ -19,6 +19,16 @@
 </head>
 <body>
 
+<!-- Shared by the inline illustrations: hatched wood like the app icon's pin -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <pattern id="wood" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="8" height="8" fill="#9c5b36"/>
+      <path d="M0 0V8" stroke="#fff" stroke-opacity=".22" stroke-width="1.2"/>
+    </pattern>
+  </defs>
+</svg>
+
 <header class="topbar">
   <a class="brand" href="#top" aria-label="Non-GPS Organic Maps">
     <img src="assets/icon-180.png" alt="" width="30" height="30">
@@ -69,26 +79,91 @@
     <h2 id="get-title" class="section-title">Як отримати навігацію без GPS</h2>
     <ol class="steps">
       <li>
-        <h3>Знайдіть OBD-II роз'єм у своєму авто</h3>
-        <p>Якщо він є — замовте пристрій.</p>
-        <p class="note">Без пристрою навігація не працює: саме він передає телефону швидкість і поворот авто. <a href="#how">Як це працює ↓</a></p>
-        <a class="btn btn-small" href="#preorder">Передзамовити</a>
+        <div>
+          <h3>Знайдіть OBD-II роз'єм у своєму авто</h3>
+          <p>Якщо він є — замовте пристрій.</p>
+          <p class="note">Без пристрою навігація не працює: саме він передає телефону швидкість і поворот авто. <a href="#how">Як це працює ↓</a></p>
+          <a class="btn btn-small" href="#preorder">Передзамовити</a>
+        </div>
+        <svg class="step-art" viewBox="0 0 160 110" aria-hidden="true">
+          <path d="M10 22H112" stroke="currentColor" stroke-width="2.5" opacity=".3"/>
+          <path d="M24 42H104L96 78H32Z" fill="var(--tan)" stroke="currentColor" stroke-width="2.5"/>
+          <g fill="currentColor">
+            <circle cx="38" cy="53" r="2.2"/><circle cx="45.5" cy="53" r="2.2"/><circle cx="53" cy="53" r="2.2"/><circle cx="60.5" cy="53" r="2.2"/>
+            <circle cx="68" cy="53" r="2.2"/><circle cx="75.5" cy="53" r="2.2"/><circle cx="83" cy="53" r="2.2"/><circle cx="90.5" cy="53" r="2.2"/>
+            <circle cx="41" cy="66" r="2.2"/><circle cx="47.5" cy="66" r="2.2"/><circle cx="54" cy="66" r="2.2"/><circle cx="60.5" cy="66" r="2.2"/>
+            <circle cx="67" cy="66" r="2.2"/><circle cx="73.5" cy="66" r="2.2"/><circle cx="80" cy="66" r="2.2"/><circle cx="86.5" cy="66" r="2.2"/>
+          </g>
+          <path d="M128 62 146 82" stroke="currentColor" stroke-width="11"/>
+          <path d="M128 62 146 82" stroke="var(--wood)" stroke-width="6"/>
+          <circle cx="112" cy="46" r="22" fill="var(--surface)" fill-opacity=".55" stroke="currentColor" stroke-width="3"/>
+          <path d="M100 36a14 14 0 0 1 10 -5" fill="none" stroke="currentColor" stroke-width="2" opacity=".4"/>
+        </svg>
       </li>
       <li>
-        <h3>Отримайте пристрій і вставте його в авто</h3>
-        <p>Пристрій вставляється в той самий OBD-II роз'єм.</p>
+        <div>
+          <h3>Отримайте пристрій і вставте його в авто</h3>
+          <p>Пристрій вставляється в той самий OBD-II роз'єм.</p>
+        </div>
+        <svg class="step-art" viewBox="0 0 160 110" aria-hidden="true">
+          <path d="M44 84H116L110 102H50Z" fill="var(--tan)" stroke="currentColor" stroke-width="2.5"/>
+          <g fill="currentColor"><circle cx="60" cy="93" r="2"/><circle cx="70" cy="93" r="2"/><circle cx="80" cy="93" r="2"/><circle cx="90" cy="93" r="2"/><circle cx="100" cy="93" r="2"/></g>
+          <path d="M56 52H104L99 66H61Z" fill="var(--tan)" stroke="currentColor" stroke-width="2.5"/>
+          <rect x="50" y="14" width="60" height="38" rx="7" fill="url(#wood)" stroke="currentColor" stroke-width="2.5"/>
+          <circle cx="62" cy="26" r="3.5" fill="var(--ok)" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M72 26H98M72 35H90" stroke="var(--surface)" stroke-width="2.5" opacity=".8"/>
+          <g fill="none" stroke="var(--wood)" stroke-width="2.5">
+            <path d="M30 40V76M24 68 30 76 36 68"/>
+            <path d="M130 40V76M124 68 130 76 136 68"/>
+          </g>
+        </svg>
       </li>
       <li>
-        <h3>Встановіть додаток і підключіть пристрій</h3>
-        <p>Додаток з'єднується з пристроєм через Bluetooth.</p>
+        <div>
+          <h3>Встановіть додаток і підключіть пристрій</h3>
+          <p>Додаток з'єднується з пристроєм через Bluetooth.</p>
+        </div>
+        <svg class="step-art" viewBox="0 0 160 110" aria-hidden="true">
+          <rect x="8" y="56" width="40" height="26" rx="5" fill="url(#wood)" stroke="currentColor" stroke-width="2.5"/>
+          <circle cx="18" cy="65" r="3" fill="var(--ok)" stroke="currentColor" stroke-width="1.2"/>
+          <path class="il-link" d="M50 62Q76 26 100 42" fill="none" stroke="var(--wood)" stroke-width="2.5" stroke-dasharray="3 7"/>
+          <path d="M69 66 81 78 75 84V60L81 66 69 78" fill="none" stroke="var(--bt)" stroke-width="2.5"/>
+          <rect x="102" y="8" width="48" height="94" rx="9" fill="var(--surface)" stroke="currentColor" stroke-width="2.5"/>
+          <rect x="108" y="18" width="36" height="74" rx="3" fill="var(--bg)" stroke="currentColor" stroke-opacity=".3"/>
+          <rect x="115" y="32" width="22" height="22" rx="5" fill="var(--tan)" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M126 51C121 45.5 119.5 43.5 119.5 41A6.5 6.5 0 0 1 132.5 41C132.5 43.5 131 45.5 126 51Z" fill="url(#wood)" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M114 66H138M118 74H134" stroke="currentColor" stroke-width="2" opacity=".3"/>
+        </svg>
       </li>
       <li>
-        <h3>Пройдіть калібрування</h3>
-        <p>Так пристрій налаштовується під ваше авто.</p>
+        <div>
+          <h3>Пройдіть калібрування</h3>
+          <p>Так пристрій налаштовується під ваше авто.</p>
+        </div>
+        <svg class="step-art" viewBox="0 0 160 110" aria-hidden="true">
+          <path d="M24 90A56 56 0 0 1 136 90Z" fill="var(--surface)" stroke="currentColor" stroke-width="2.5"/>
+          <path d="M36 90A44 44 0 0 1 80 46" fill="none" stroke="var(--tan)" stroke-width="8" stroke-linecap="butt"/>
+          <path d="M80 46A44 44 0 0 1 124 90" fill="none" stroke="var(--ok)" stroke-opacity=".75" stroke-width="8" stroke-linecap="butt"/>
+          <path d="M52.3 74 47.1 71M64 62.3 61 57.1M80 58V52M96 62.3 99 57.1M107.7 74 112.9 71" stroke="currentColor" stroke-width="2"/>
+          <path class="il-needle" d="M80 90 104 64" stroke="currentColor" stroke-width="4"/>
+          <circle cx="80" cy="90" r="8" fill="url(#wood)" stroke="currentColor" stroke-width="2.5"/>
+          <path d="M14 90H146" stroke="currentColor" stroke-width="2.5"/>
+        </svg>
       </li>
       <li>
-        <h3>Їздіть — і точність зростає</h3>
-        <p>Чим більше ви їздите, тим точніше додаток знає ваше авто.</p>
+        <div>
+          <h3>Їздіть — і точність зростає</h3>
+          <p>Чим більше ви їздите, тим точніше додаток знає ваше авто.</p>
+        </div>
+        <svg class="step-art" viewBox="0 0 160 110" aria-hidden="true">
+          <path d="M22 88C50 88 50 60 78 60S112 36 136 32" fill="none" stroke="var(--wood)" stroke-width="3" stroke-dasharray="7 7" opacity=".7"/>
+          <g fill="var(--bt)" fill-opacity=".12" stroke="var(--bt)" stroke-opacity=".5" stroke-width="1.5">
+            <circle cx="22" cy="88" r="16"/><circle cx="78" cy="60" r="10"/><circle cx="136" cy="32" r="6"/>
+          </g>
+          <g fill="var(--bt)" stroke="var(--surface)" stroke-width="2"><circle cx="22" cy="88" r="4.5"/><circle cx="78" cy="60" r="4.5"/></g>
+          <path d="M136 32C129 24 127 21.5 127 18A9 9 0 0 1 145 18C145 21.5 143 24 136 32Z" fill="url(#wood)" stroke="currentColor" stroke-width="2.2"/>
+          <circle cx="136" cy="18" r="3" fill="var(--surface)" stroke="currentColor" stroke-width="1.2"/>
+        </svg>
       </li>
     </ol>
   </section>
@@ -101,12 +176,6 @@
 
         <div class="stage at-1" id="stage">
           <svg viewBox="0 0 860 470" role="img" aria-label="Схема: пристрій в OBD-II роз'ємі авто передає дані через Bluetooth у телефон, який рахує позицію без GPS">
-            <defs>
-              <pattern id="wood" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-                <rect width="8" height="8" fill="#9c5b36"/>
-                <path d="M0 0V8" stroke="#fff" stroke-opacity=".22" stroke-width="1.2"/>
-              </pattern>
-            </defs>
 
             <!-- Satellite + jammed GPS signal -->
             <g class="sat">
