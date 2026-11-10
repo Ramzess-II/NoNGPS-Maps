@@ -1515,6 +1515,24 @@
 /* Under the switch in the GPS sheet */
 "nogps_gps_use_hint" = "Выключено: GPS не используется, машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.";
 
+/* Under the disabled switch Use GPS for the car in the Box sheet: no box is heard */
+"nogps_gps_use_needs_box" = "GPS можно выключить, только когда подключён блок: иначе машину ничто не поведёт.";
+
+/* Under the distance left in navigation: the distance driven since navigation started, e.g. 12.4 km covered */
+"nogps_nav_covered" = "пройдено %@";
+
+/* Accessibility label of the speed indicator on the map, e.g. Speed 54 km/h */
+"nogps_speed_view" = "Скорость %@";
+
+/* Accessibility value of the speed indicator: the speed limit of the road, e.g. Limit 60 km/h */
+"nogps_speed_limit" = "Ограничение %@";
+
+/* Accessibility value of the speed indicator: the road has no speed limit */
+"nogps_speed_no_limit" = "Без ограничения";
+
+/* Accessibility value of the speed indicator: faster than the speed camera ahead allows */
+"nogps_speed_over_camera" = "Быстрее, чем разрешает камера";
+
 /* Row of the GPS sheet: when GPS gave the last good position */
 "nogps_gps_last_fix" = "Последняя хорошая точка";
 
