@@ -15,14 +15,50 @@ namespace nogps
 {
 namespace
 {
-// Returns true if a road leaves the crossing in the direction.
-bool HasRoadFromCrossing(Roads & roads, ms::LatLon const & crossing, double bearingDeg)
+// Returns true if a road leaves the crossing in the direction. For the road going the new way of a turn from
+// |fromBearingDeg|, a street joining at an angle counts too.
+bool HasRoadFromCrossing(Roads & roads, ms::LatLon const & crossing, double bearingDeg,
+                         std::optional<double> fromBearingDeg = {})
 {
   auto const point = Move(crossing, bearingDeg, TurnMatcher::kRoadCheckDistanceM);
   auto const road = roads.Snap(point, bearingDeg, TurnMatcher::kRoadCheckRadiusM);
-  if (!road || Distance(point, road->m_point) > TurnMatcher::kRoadCheckRadiusM)
+  if (road && Distance(point, road->m_point) <= TurnMatcher::kRoadCheckRadiusM &&
+      std::fabs(AngleDiff(Orient(road->m_bearingDeg, bearingDeg), bearingDeg)) <= TurnMatcher::kMaxRoadDiffDeg)
+  {
+    return true;
+  }
+  if (!fromBearingDeg)
     return false;
-  return std::fabs(AngleDiff(Orient(road->m_bearingDeg, bearingDeg), bearingDeg)) <= TurnMatcher::kMaxRoadDiffDeg;
+  // The roads leaving the crossing are taken by the way they start, each walked once.
+  double constexpr kStepDeg = 15;
+  std::vector<double> walkedStartsDeg;
+  for (double diff = -TurnMatcher::kMaxRoadStartDiffDeg; diff <= TurnMatcher::kMaxRoadStartDiffDeg; diff += kStepDeg)
+  {
+    double const startDeg = bearingDeg + diff;
+    auto const start = roads.Snap(crossing, startDeg, TurnMatcher::kRoadCheckRadiusM);
+    if (!start)
+      continue;
+    double const roadStartDeg = Orient(start->m_bearingDeg, startDeg);
+    if (std::fabs(AngleDiff(roadStartDeg, bearingDeg)) > TurnMatcher::kMaxRoadStartDiffDeg ||
+        std::any_of(walkedStartsDeg.begin(), walkedStartsDeg.end(),
+                    [&](double walkedDeg) { return std::fabs(AngleDiff(walkedDeg, roadStartDeg)) < 1; }))
+    {
+      continue;
+    }
+    walkedStartsDeg.push_back(roadStartDeg);
+    auto const walked =
+        RoadWalker::Walk(roads, start->m_point, roadStartDeg, TurnMatcher::kRoadCheckWalkM, false /* stopAtCrossing */);
+    if (!walked || walked->m_appliedM < TurnMatcher::kRoadCheckDistanceM ||
+        std::fabs(AngleDiff(walked->m_bearingDeg, bearingDeg)) > TurnMatcher::kMaxRoadDiffDeg)
+    {
+      continue;
+    }
+    // The road the car came by, ahead of the crossing or behind it, stays along its line however it bends.
+    double const lineAngle = math::DegToRad(AngleDiff(Bearing(crossing, walked->m_position), *fromBearingDeg));
+    if (std::fabs(Distance(crossing, walked->m_position) * std::sin(lineAngle)) >= TurnMatcher::kMinAsideOfRoadM)
+      return true;
+  }
+  return false;
 }
 }  // namespace
 
@@ -87,7 +123,7 @@ std::optional<ms::LatLon> TurnMatcher::FindCrossing(Roads & roads, ms::LatLon co
       ++noRoadBack;
       continue;
     }
-    if (!HasRoadFromCrossing(roads, crossing, toBearingDeg))
+    if (!HasRoadFromCrossing(roads, crossing, toBearingDeg, fromBearingDeg))
     {
       ++noRoadAhead;
       continue;
@@ -154,7 +190,7 @@ std::string TurnMatcher::DescribeCrossings(Roads & roads, ms::LatLon const & cor
     std::snprintf(buf, sizeof(buf), "%s%+ld/%+ld/%c%c", result.empty() ? "" : ",",
                   std::lround(item.m_distance * std::cos(angle)), std::lround(item.m_distance * std::sin(angle)),
                   HasRoadFromCrossing(roads, item.m_point, fromBearingDeg + 180) ? 'B' : '-',
-                  HasRoadFromCrossing(roads, item.m_point, toBearingDeg) ? 'A' : '-');
+                  HasRoadFromCrossing(roads, item.m_point, toBearingDeg, fromBearingDeg) ? 'A' : '-');
     result += buf;
   }
   return result.empty() ? "-" : result;

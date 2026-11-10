@@ -508,9 +508,41 @@ void InertialNavigator::TrackOffRoad(double distanceM, int64_t timestampNs)
     StartFollowingApart();
     return;
   }
-  if (m_offRoadM < kLostRoadM || MatchLateTurn(timestampNs))
+  if (m_offRoadM < kLostRoadM || MatchLateTurn(timestampNs) || JumpToRoadGoingCarWay())
     return;
   LoseRoad(std::to_string(std::lround(m_offRoadM)) + " m");
+}
+
+bool InertialNavigator::JumpToRoadGoingCarWay()
+{
+  // A road a turn has fitted is taken first, see LoseRoad().
+  if (FindOtherMarkOnRoad())
+    return false;
+  auto const rotated = m_bendMatcher.GetRotationDeg(kLostRoadM);
+  if (!rotated || std::fabs(*rotated) >= kWaitStraightDeg)
+    return false;
+  double const heading = m_deadReckoning.GetHeading();
+  auto const position = m_deadReckoning.GetPosition();
+  std::vector<RoadPoint> roads;
+  for (auto const & road : m_roads.SnapAll(position, heading, kJumpSearchM))
+  {
+    if (Distance(position, road.m_point) <= kJumpSearchM &&
+        std::fabs(AngleDiff(Orient(road.m_bearingDeg, heading), heading)) <= DeadReckoning::kMaxSnapHeadingDiffDeg)
+    {
+      roads.push_back(road);
+    }
+  }
+  if (roads.empty())
+    return false;
+  std::sort(roads.begin(), roads.end(), [&](RoadPoint const & a, RoadPoint const & b)
+  { return Distance(position, a.m_point) < Distance(position, b.m_point); });
+  auto const & nearest = roads.front();
+  LOG(LINFO, ("The road is lost after", std::lround(m_offRoadM), "m, a road goes the car's way",
+              std::lround(Distance(position, nearest.m_point)), "m aside, roads going so", roads.size()));
+  PutOnRoad(nearest.m_point, Orient(nearest.m_bearingDeg, heading));
+  for (size_t i = 1; i < roads.size(); ++i)
+    AddOtherMark(roads[i], heading, "going the car's way");
+  return true;
 }
 
 bool InertialNavigator::MatchLateTurn(int64_t timestampNs)

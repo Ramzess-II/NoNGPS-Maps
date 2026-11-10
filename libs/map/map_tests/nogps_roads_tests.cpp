@@ -287,4 +287,59 @@ UNIT_TEST(NoGps_TurnMatcher_IgnoresBendWithSideStreet)
   TEST(crossing, ());
   TestAt(-30, 0, *crossing);
 }
+
+// A street going east with a crossing at 100 m: a side street leaves it to the south-east |startDeg| for 15 m, then
+// goes |thenDeg|.
+PieceRoads StreetWithAngledSideStreet(double startDeg, double thenDeg)
+{
+  double const start = math::DegToRad(startDeg);
+  double const then = math::DegToRad(thenDeg);
+  double const x = 100 + 15 * std::sin(start);
+  double const y = 15 * std::cos(start);
+  return PieceRoads({{-300, 0, 300, 0}, {100, 0, x, y}, {x, y, x + 300 * std::sin(then), y + 300 * std::cos(then)}},
+                    {{100, 0}});
+}
+
+UNIT_TEST(NoGps_TurnMatcher_AngledSideStreetFits)
+{
+  // The car going east turns south. The side street leaves the crossing 40 degrees off south, as the street of a
+  // daily turn of the owner did, and turns south 15 m from it: 12 m from the crossing it is 8 m off the way south.
+  auto roads = StreetWithAngledSideStreet(140, 180);
+  std::string whyNot;
+  auto const crossing = TurnMatcher::FindCrossing(roads, At(90, 0), 90, 180, 25, &whyNot);
+  TEST(crossing, (whyNot));
+  TestAt(100, 0, *crossing);
+  TEST_EQUAL(TurnMatcher::DescribeCrossings(roads, At(90, 0), 90, 180), "+10/+0/BA", ());
+}
+
+UNIT_TEST(NoGps_TurnMatcher_AngledStreetKeepsItsWay)
+{
+  // The side street goes on 40 degrees off south: the car turning south has not turned to it.
+  auto roads = StreetWithAngledSideStreet(140, 140);
+  std::string whyNot;
+  TEST(!TurnMatcher::FindCrossing(roads, At(90, 0), 90, 180, 25, &whyNot), ());
+  TEST(whyNot.find("without a road going the new way 1") != std::string::npos, (whyNot));
+  // Nor is a street leaving 70 degrees off and turning south later.
+  auto sharp = StreetWithAngledSideStreet(110, 180);
+  TEST(!TurnMatcher::FindCrossing(sharp, At(90, 0), 90, 180, 25), ());
+}
+
+UNIT_TEST(NoGps_TurnMatcher_RoadCarCameByIsNotAngledStreet)
+{
+  // The street going east bends 10 degrees to the left past the crossing at 100 m, the side street goes north. The car
+  // turns 38 degrees left: the street it came by, 28 degrees off the new way 30 m on, is not a street joining at an
+  // angle, nor is the side street.
+  double const bend = math::DegToRad(85.0);
+  double const after = math::DegToRad(80.0);
+  double const x = 100 + 15 * std::sin(bend);
+  double const y = 15 * std::cos(bend);
+  PieceRoads roads({{-300, 0, 100, 0},
+                    {100, 0, x, y},
+                    {x, y, x + 300 * std::sin(after), y + 300 * std::cos(after)},
+                    {100, 0, 100, 300}},
+                   {{100, 0}});
+  std::string whyNot;
+  TEST(!TurnMatcher::FindCrossing(roads, At(95, 0), 90, 52, 25, &whyNot), ());
+  TEST(whyNot.find("without a road going the new way 1") != std::string::npos, (whyNot));
+}
 }  // namespace nogps_roads_tests

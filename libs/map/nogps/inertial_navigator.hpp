@@ -251,6 +251,10 @@ public:
   // roads. So is a turn that has started but found no crossing: on October 16 driven again one 46 m away was 1 m
   // farther than searched, and the road was lost.
   static double constexpr kLateTurnFromRoadM = kTurnFromRoadM + kLostRoadM;
+  // A car driving straight that fast is on a road: before its road is lost, the mark is put on a road going its way
+  // this close, the others going so become other marks. On November 8 a turn found no crossing with the mark 15-20 m
+  // ahead, the mark drove 20-25 m beside the street the car had turned to, and the road was lost.
+  static double constexpr kJumpSearchM = 40;
   // After a long way without a known place the mark runs ahead of the car: it comes to a bend first, and its road goes
   // away while the car still drives straight. On November 1 after 62 km the mark was 270 m ahead, left its road at a
   // bend before a roundabout and was lost; the car turned there 270 m later. A mark leaving its road so waits where it
@@ -499,6 +503,8 @@ private:
   void TrackOffRoad(double distanceM, int64_t timestampNs);
   // \returns true if the car leaving its road has turned at a crossing, see kLateTurnFromRoadM.
   bool MatchLateTurn(int64_t timestampNs);
+  // \returns true if the car driving straight has been put on a road going its way, see kJumpSearchM.
+  bool JumpToRoadGoingCarWay();
   // The car is on another road a turn has fitted, or it is stopped at the last road point. |after| tells why, for the
   // log.
   void LoseRoad(std::string const & after);
