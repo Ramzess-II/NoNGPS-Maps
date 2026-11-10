@@ -90,24 +90,27 @@ final class NoGpsSpeedView: UIView {
     }
     isHidden = false
     let measure = Measure(asSpeed: max(0, location.speed))
-    speed.text = measure.valueAsString
+    // Whole numbers, as on Android and in the navigation of Organic Maps: a standing car shows 0, not 0.0.
+    let value = Int(measure.value.rounded())
+    speed.text = String(value)
     units.text = measure.unit
 
     // In the units of the speed, compared as shown: 50.4 shown as 50 is not over 50.
-    let limit = status.speedLimitKmh > 0 ? Measure(asSpeed: Double(status.speedLimitKmh) / 3.6) : nil
+    let limit = status.speedLimitKmh > 0 ? Int(Measure(asSpeed: Double(status.speedLimitKmh) / 3.6).value.rounded())
+      : nil
     sign.isHidden = status.speedLimitKmh < 0
-    signLabel.text = limit?.valueAsString ?? "∞"
-    let overLimit = limit.map { measure.value.rounded() > $0.value.rounded() } ?? false
+    signLabel.text = limit.map(String.init) ?? "∞"
+    let overLimit = limit.map { value > $0 } ?? false
     let overCamera = MWMRouter.isRoutingActive() && MWMRouter.isSpeedCamLimitExceeded()
     backgroundColor = overCamera ? .systemRed : Constants.background
     speed.textColor = overCamera ? .white : overLimit ? .systemRed : .label
     units.textColor = overCamera ? .white : .secondaryLabel
 
-    accessibilityLabel = String(format: L("nogps_speed_view"), measure.valueAsString + " " + measure.unit)
+    accessibilityLabel = String(format: L("nogps_speed_view"), "\(value) " + measure.unit)
     if overCamera {
       accessibilityValue = L("nogps_speed_over_camera")
     } else if let limit {
-      accessibilityValue = String(format: L("nogps_speed_limit"), limit.valueAsString + " " + limit.unit)
+      accessibilityValue = String(format: L("nogps_speed_limit"), "\(limit) " + measure.unit)
     } else {
       accessibilityValue = status.speedLimitKmh == 0 ? L("nogps_speed_no_limit") : nil
     }
