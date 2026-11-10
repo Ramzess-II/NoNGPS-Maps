@@ -41,6 +41,7 @@ h1, h2, h3 { font-family: var(--slab); color: var(--ink); }
 .accent-t { fill: var(--wood); }
 .todo { color: var(--warn); font-family: var(--mono); font-size: .9em; }
 .fine { color: var(--muted); font-size: 14px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 /* top bar */
 .topbar {
@@ -239,6 +240,12 @@ summary { cursor: pointer; padding: 14px 0; font-family: var(--slab); font-weigh
 .specs div { background: var(--tan); padding: 14px 18px; }
 .specs dt { color: var(--muted); font-size: 13px; font-family: var(--mono); }
 .specs dd { margin: 2px 0 0; color: var(--ink); }
+.specs .price { background: var(--hatch), var(--wood); }
+.specs .price dt { color: var(--tan); }
+.price dd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 10px; color: var(--surface); }
+.price s { opacity: .7; text-decoration-thickness: 2px; }
+.price b { font: 700 26px/1.2 var(--slab); }
+.price small { flex-basis: 100%; font-size: 13px; color: var(--tan); }
 
 /* pre-order */
 .form-box { margin-top: 24px; border: 1.5px solid var(--line); border-radius: 14px; background: var(--surface); overflow: hidden; }
