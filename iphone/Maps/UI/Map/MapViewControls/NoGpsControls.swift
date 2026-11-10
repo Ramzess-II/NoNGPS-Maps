@@ -65,13 +65,11 @@ final class NoGpsControls: NSObject {
     RunLoop.main.add(timer, forMode: .common)
     self.timer = timer
     NotificationCenter.default.addObserver(self, selector: #selector(onEvent), name: NoGps.eventNotification, object: nil)
-    LocationManager.add(observer: self)
     NoGpsFlags.deleteExpired()
   }
 
   deinit {
     timer?.invalidate()
-    LocationManager.remove(observer: self)
   }
 
   static func updateAvailableArea(_ frame: CGRect) {
@@ -237,6 +235,7 @@ final class NoGpsControls: NSObject {
 
   private func refresh() {
     let status = NoGps.status()
+    // Once a second: the status is too heavy for every position.
     speedView.update(status: status, location: LocationManager.lastLocation())
     // The mark stands and waits for the user: a toast about it is easy to miss while driving. The bottom bar tells the
     // source and the accuracy.
@@ -526,16 +525,6 @@ extension UITableView {
     } else {
       shown = rows
       reloadData()
-    }
-  }
-}
-
-extension NoGpsControls: MWMLocationObserver {
-  func onLocationUpdate(_ location: CLLocation) {
-    let shown = !speedView.isHidden
-    speedView.update(status: NoGps.status(), location: location)
-    if shown == speedView.isHidden {
-      updateLayout()
     }
   }
 }
