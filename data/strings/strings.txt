@@ -46771,6 +46771,48 @@ en = Off: GPS is ignored, the box and your marks place the car. For places where
 ru = Выключено: GPS не используется, машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.
 uk = Вимкнено: GPS не використовується, машину ведуть блок і ваші мітки. Для місць, де GPS підмінений, а застосунок цього не бачить.
 
+[nogps_gps_use_needs_box]
+comment = Under the disabled switch Use GPS for the car in the Box sheet: no box is heard
+tags = android-app,apple-maps
+en = GPS can be turned off only while a box is connected: nothing else would move the car.
+ru = GPS можно выключить, только когда подключён блок: иначе машину ничто не поведёт.
+uk = GPS можна вимкнути, лише коли блок підключений: інакше машину ніщо не поведе.
+
+[nogps_nav_covered]
+comment = Under the distance left in navigation: the distance driven since navigation started, e.g. 12.4 km covered
+tags = android-app,apple-maps
+en = %s covered
+ru = пройдено %s
+uk = пройдено %s
+
+[nogps_speed_view]
+comment = Accessibility label of the speed indicator on the map, e.g. Speed 54 km/h
+tags = android-app,apple-maps
+en = Speed %s
+ru = Скорость %s
+uk = Швидкість %s
+
+[nogps_speed_limit]
+comment = Accessibility value of the speed indicator: the speed limit of the road, e.g. Limit 60 km/h
+tags = android-app,apple-maps
+en = Limit %s
+ru = Ограничение %s
+uk = Обмеження %s
+
+[nogps_speed_no_limit]
+comment = Accessibility value of the speed indicator: the road has no speed limit
+tags = android-app,apple-maps
+en = No limit
+ru = Без ограничения
+uk = Без обмеження
+
+[nogps_speed_over_camera]
+comment = Accessibility value of the speed indicator: faster than the speed camera ahead allows
+tags = android-app,apple-maps
+en = Over the speed camera limit
+ru = Быстрее, чем разрешает камера
+uk = Швидше, ніж дозволяє камера
+
 [nogps_gps_last_fix]
 comment = Row of the GPS sheet: when GPS gave the last good position
 tags = android-app,apple-maps
