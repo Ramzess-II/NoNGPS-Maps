@@ -18,12 +18,16 @@ final class AboutController: MWMViewController {
     static let socialMediaCollectionViewSpacing: CGFloat = 25
     static let socialMediaCollectionNumberOfItemsInRowCompact: CGFloat = 5
     static let socialMediaCollectionNumberOfItemsInRowRegular: CGFloat = 10
+    static let versionSpacing: CGFloat = 4
+    static let organicMapsURL = "https://organicmaps.app"
   }
 
   private let scrollView = UIScrollView()
   private let stackView = UIStackView()
-  private let upstreamVersionLabel = UILabel()
   private let logoImageView = UIImageView()
+  private let appNameLabel = UILabel()
+  private let versionLabel = UILabel()
+  private let upstreamVersionLabel = UILabel()
   private let headerTitleLabel = UILabel()
   private let additionalInfoStackView = UIStackView()
   private var donationView: DonationView?
@@ -80,23 +84,29 @@ final class AboutController: MWMViewController {
 private extension AboutController {
   func setupViews() {
     func setupTitle() {
-      let titleView = UILabel()
-      titleView.text = Self.formattedAppVersion()
-      titleView.setFontStyle(.semibold17, color: .whitePrimary)
-      titleView.isUserInteractionEnabled = true
-      titleView.configureSingleLineAutoScaling()
-      let titleDidTapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(appVersionButtonTapped))
-      titleView.addGestureRecognizer(titleDidTapGestureRecognizer)
-      navigationItem.titleView = titleView
+      title = L("nogps_about_title")
     }
 
-    func setupUpstreamVersion() {
-      upstreamVersionLabel.setFontStyle(.regular14, color: .blackSecondary)
-      upstreamVersionLabel.text = "Organic Maps \u{2066}\(AppInfo.shared().upstreamVersion)\u{2069}"
+    // NonGPS Maps and its version first, the Organic Maps it is based on below with less accent.
+    func setupVersions() {
+      appNameLabel.setFontStyle(.bold22, color: .blackPrimary)
+      appNameLabel.text = "NonGPS Maps"
+      appNameLabel.textAlignment = .center
+
+      // Strong left-to-right unicode direction characters keep the versions readable in RTL languages.
+      versionLabel.setFontStyle(.regular16, color: .blackPrimary)
+      versionLabel.text = String(format: L("nogps_version"), "\u{2066}\(AppInfo.shared().appVersion)\u{2069}")
+      versionLabel.textAlignment = .center
+      versionLabel.numberOfLines = 0
+      versionLabel.isUserInteractionEnabled = true
+      versionLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(versionTapped)))
+
+      upstreamVersionLabel.setFontStyle(.regular13, color: .blackSecondary)
+      upstreamVersionLabel.text = String(format: L("nogps_based_on"), "\u{2066}\(AppInfo.shared().upstreamVersion)\u{2069}")
       upstreamVersionLabel.textAlignment = .center
+      upstreamVersionLabel.numberOfLines = 0
       upstreamVersionLabel.isUserInteractionEnabled = true
-      let upstreamVersionDidTapGestureRecognizer = UITapGestureRecognizer(target: self, action: #selector(fullVersionButtonTapped))
-      upstreamVersionLabel.addGestureRecognizer(upstreamVersionDidTapGestureRecognizer)
+      upstreamVersionLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(upstreamVersionTapped)))
     }
 
     func setupScrollAndStack() {
@@ -182,7 +192,7 @@ private extension AboutController {
     view.setStyle(.pressBackground)
 
     setupTitle()
-    setupUpstreamVersion()
+    setupVersions()
     setupScrollAndStack()
     setupLogo()
     setupHeaderTitle()
@@ -200,8 +210,12 @@ private extension AboutController {
   func arrangeViews() {
     view.addSubview(scrollView)
     scrollView.addSubview(stackView)
-    stackView.addArrangedSubview(upstreamVersionLabel)
     stackView.addArrangedSubview(logoImageView)
+    stackView.addArrangedSubview(appNameLabel)
+    stackView.addArrangedSubview(versionLabel)
+    stackView.addArrangedSubview(upstreamVersionLabel)
+    stackView.setCustomSpacing(Constants.versionSpacing, after: appNameLabel)
+    stackView.setCustomSpacing(Constants.versionSpacing, after: versionLabel)
     stackView.addArrangedSubview(headerTitleLabel)
     stackView.addArrangedSubviewWithSeparator(additionalInfoStackView)
     if let donationView {
@@ -326,12 +340,6 @@ private extension AboutController {
     return df.string(from: mapsDate)
   }
 
-  static func formattedAppVersion() -> String {
-    let appInfo = AppInfo.shared()
-    // Use strong left-to-right unicode direction characters for the app version.
-    return String(format: L("version"), "\u{2066}\(appInfo.bundleVersion)-\(appInfo.buildNumber)\u{2069}")
-  }
-
   func showCopyright() {
     let path = Bundle.main.path(forResource: "copyright", ofType: "html")!
     let html = try! String(contentsOfFile: path, encoding: String.Encoding.utf8)
@@ -351,13 +359,13 @@ private extension AboutController {
 // MARK: - Actions
 
 private extension AboutController {
-  @objc func appVersionButtonTapped() {
-    copyToClipboard(Self.formattedAppVersion())
+  /// With the commit of the build and the Organic Maps version: the line tells which build was tested.
+  @objc func versionTapped() {
+    copyToClipboard("NonGPS Maps \u{2066}\(AppInfo.shared().fullVersion)\u{2069}")
   }
 
-  /// With the commit of the build: the line tells which build was tested.
-  @objc func fullVersionButtonTapped() {
-    copyToClipboard("NonGPS Maps \u{2066}\(AppInfo.shared().fullVersion)\u{2069}")
+  @objc func upstreamVersionTapped() {
+    openUrl(Constants.organicMapsURL)
   }
 
   @objc func osmMapsDataButtonTapped() {

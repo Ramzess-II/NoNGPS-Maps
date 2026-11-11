@@ -11234,7 +11234,7 @@ zh-Hant = 藍灰色
 
 [version]
 comment = Prints version number in About dialog
-tags = apple-maps,qt
+tags = qt
 en = Organic Maps version: %@
 af = Organic Maps weergawe: %@
 ar = Organic Maps الإصدار: %@
@@ -46545,11 +46545,19 @@ en = Without GPS the car is driven by the inertial navigation: the turns come fr
 ru = Без GPS машину ведёт инерциальная навигация: повороты — по гироскопу, расстояние — по скорости автомобиля из OBD-II. Машина держится дорог офлайн-карты.
 uk = Без GPS машину веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю автомобіля з OBD-II. Машина тримається доріг офлайн-карти.
 
+[nogps_version]
+comment = NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12)
+tags = android-app,apple-maps
+en = Version %@
+ru = Версия %@
+uk = Версія %@
+
 [nogps_based_on]
-tags = android-app
-en = Based on Organic Maps
-ru = На основе Organic Maps
-uk = На основі Organic Maps
+comment = Under the NonGPS Maps version in About, %@ is the Organic Maps version like 2026.10.27-10
+tags = android-app,apple-maps
+en = Based on Organic Maps %@
+ru = На основе Organic Maps %@
+uk = На основі Organic Maps %@
 
 [nogps_map_data]
 tags = android-app

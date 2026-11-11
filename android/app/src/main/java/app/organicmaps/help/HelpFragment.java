@@ -64,16 +64,17 @@ public class HelpFragment extends BaseMwmFragment implements View.OnClickListene
     mDonateUrl = Utils.getDonateUrl(requireContext());
     View root = inflater.inflate(R.layout.about, container, false);
 
-    ((TextView) root.findViewById(R.id.version)).setText(BuildConfig.VERSION_NAME);
-    setupItem(R.id.nogps_upstream_version, false, root).setText("Organic Maps " + NoGps.getUpstreamVersion());
+    // NonGPS Maps and its version first, the Organic Maps it is based on below with less accent.
+    setupItem(R.id.version, false, root).setText(getString(R.string.nogps_version, NoGps.getVersion()));
+    setupItem(R.id.upstream_version, false, root)
+        .setText(getString(R.string.nogps_based_on, NoGps.getUpstreamVersion()));
 
     final String dataVersion = DateUtils.getShortDateFormatter().format(Framework.getDataVersion());
     final TextView osmPresentationView = root.findViewById(R.id.osm_presentation);
     if (osmPresentationView != null)
       osmPresentationView.setText(getString(R.string.osm_presentation, dataVersion));
 
-    // The project and the map data are credited with clickable names, as Organic Maps and OpenStreetMap ask.
-    linkNames(root.findViewById(R.id.based_on), "Organic Maps", ORGANIC_MAPS_URL, null, null);
+    // The map data is credited with clickable names, as Organic Maps and OpenStreetMap ask.
     linkNames(root.findViewById(R.id.map_data), "OpenStreetMap", OSM_COPYRIGHT_URL, "Organic Maps", ORGANIC_MAPS_URL);
     for (int id : ORGANIC_MAPS_ITEMS)
       root.findViewById(id).setVisibility(View.GONE);
@@ -108,15 +109,14 @@ public class HelpFragment extends BaseMwmFragment implements View.OnClickListene
   }
 
   /**
-   * Makes the names in the text clickable links, the second name is optional.
+   * Makes the two names in the text clickable links.
    */
-  private void linkNames(@NonNull TextView view, @NonNull String name, @NonNull String url, @Nullable String secondName,
-                         @Nullable String secondUrl)
+  private void linkNames(@NonNull TextView view, @NonNull String name, @NonNull String url, @NonNull String secondName,
+                         @NonNull String secondUrl)
   {
     final SpannableString text = new SpannableString(view.getText());
     linkName(text, name, url);
-    if (secondName != null && secondUrl != null)
-      linkName(text, secondName, secondUrl);
+    linkName(text, secondName, secondUrl);
     view.setText(text);
     view.setMovementMethod(LinkMovementMethod.getInstance());
   }
@@ -147,8 +147,10 @@ public class HelpFragment extends BaseMwmFragment implements View.OnClickListene
       Utils.openAppInMarket(requireActivity(), BuildConfig.REVIEW_URL);
     else if (id == R.id.copyright)
       ((HelpActivity) requireActivity()).stackFragment(CopyrightFragment.class, getString(R.string.copyright), null);
-    else if (id == R.id.nogps_upstream_version)
+    else if (id == R.id.version)
       copyFullVersion(v);
+    else if (id == R.id.upstream_version)
+      Utils.openUrl(requireActivity(), ORGANIC_MAPS_URL);
   }
 
   /// With the commit of the build: the line tells which build was tested.

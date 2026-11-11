@@ -34,14 +34,34 @@
           app:layout_constraintVertical_bias="0.5">
 
           <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/margin_quarter"
+            android:text="NonGPS Maps"
+            android:textAlignment="center"
+            android:textAppearance="@style/MwmTextAppearance.Title"
+            android:textStyle="bold"
+            tools:ignore="HardcodedText" />
+
+          <TextView
             android:id="@+id/version"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:selectAllOnFocus="true"
+            android:layout_marginBottom="@dimen/margin_quarter"
+            android:background="?selectableItemBackground"
+            android:textAlignment="center"
+            android:textAppearance="@style/MwmTextAppearance.Body2.Primary"
+            tools:text="Version 2026.11.08-7-Google (26110807, abcdef12)" />
+
+          <TextView
+            android:id="@+id/upstream_version"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="@dimen/margin_base"
+            android:background="?selectableItemBackground"
             android:textAlignment="center"
             android:textAppearance="@style/MwmTextAppearance.Body3"
-            android:textIsSelectable="true"
-            tools:text="2021.10.15-15-Google" />
+            tools:text="Based on Organic Maps 2026.10.27-10" />
 
           <TextView
             android:layout_width="match_parent"
@@ -49,8 +69,7 @@
             android:text="@string/nogps_about_headline"
             android:textAlignment="center"
             android:textAppearance="@style/MwmTextAppearance.Headline"
-            android:textColor="?android:textColorPrimary"
-            app:layout_constraintTop_toTopOf="@id/version" />
+            android:textColor="?android:textColorPrimary" />
         </LinearLayout>
 
         <ImageView
@@ -89,15 +108,6 @@
             android:layout_height="match_parent"
             android:layout_marginBottom="@dimen/margin_half"
             android:text="@string/nogps_about_description"
-            android:textAppearance="@style/MwmTextAppearance.Body1"
-            android:textColor="?android:textColorPrimary" />
-
-          <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:layout_marginBottom="@dimen/margin_half"
-            android:id="@+id/based_on"
-        android:text="@string/nogps_based_on"
             android:textAppearance="@style/MwmTextAppearance.Body1"
             android:textColor="?android:textColorPrimary" />
 
