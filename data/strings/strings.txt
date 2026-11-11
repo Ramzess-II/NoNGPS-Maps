@@ -47147,3 +47147,10 @@ tags = android-app,apple-maps
 en = Have a box? Power it on near the phone: it accepts a new phone for 2 minutes. The phone may ask for the code from the box.
 ru = Есть блок? Включите его рядом с телефоном: 2 минуты он принимает новый телефон. Телефон может спросить код с блока.
 uk = Маєте блок? Увімкніть його поруч із телефоном: 2 хвилини він приймає новий телефон. Телефон може спитати код із блока.
+
+[nogps_shared_no_place]
+comment = Toast after another app, e.g. Google Maps, shares a link to the app, but the link has no place: usually a short link while offline
+tags = android-app,apple-maps
+en = The shared link has no place. Connect to the internet and share it again.
+ru = В ссылке нет места. Подключитесь к интернету и поделитесь ещё раз.
+uk = У посиланні немає місця. Підключіться до інтернету й поділіться ще раз.
