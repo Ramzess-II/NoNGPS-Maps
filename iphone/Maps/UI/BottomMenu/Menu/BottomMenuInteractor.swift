@@ -6,7 +6,6 @@ protocol BottomMenuInteractorProtocol: AnyObject {
   func donate()
   func openSettings()
   func openBookmarks()
-  func openNoGpsSensors()
   func openAbout()
   func shareLocation(cell: BottomMenuItemCell)
   func toggleTrackRecording()
@@ -69,16 +68,6 @@ extension BottomMenuInteractor: BottomMenuInteractorProtocol {
   func openBookmarks() {
     close()
     mapViewController?.bookmarksCoordinator.open()
-  }
-
-  func openNoGpsSensors() {
-    close()
-    // The menu is a modal sheet: the screen can be presented only when it is gone.
-    if let coordinator = viewController?.transitionCoordinator {
-      coordinator.animate(alongsideTransition: nil) { _ in NoGpsControls.showSensors() }
-    } else {
-      NoGpsControls.showSensors()
-    }
   }
 
   func openAbout() {

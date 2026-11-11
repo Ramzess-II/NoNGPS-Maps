@@ -11,7 +11,6 @@ class BottomMenuPresenter: NSObject {
     case downloadMaps
     case donate
     case settings
-    case nogpsSensors
     case share
     case about
   }
@@ -124,8 +123,6 @@ extension BottomMenuPresenter {
       case .settings:
         cell.configure(image: UIImage(resource: .icMenuSettings),
                        title: L("settings"))
-      case .nogpsSensors:
-        cell.configure(image: UIImage(systemName: "speedometer")!, title: L("nogps_sensors_title"))
       case .share:
         cell.configure(image: UIImage(resource: .icMenuShare),
                        title: L("share_my_location"))
@@ -181,8 +178,6 @@ extension BottomMenuPresenter {
         interactor.donate()
       case .settings:
         interactor.openSettings()
-      case .nogpsSensors:
-        interactor.openNoGpsSensors()
       case .share:
         if let cell = tableView.cellForRow(at: indexPath) as? BottomMenuItemCell {
           interactor.shareLocation(cell: cell)
