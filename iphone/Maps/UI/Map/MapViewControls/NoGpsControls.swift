@@ -9,6 +9,7 @@ final class NoGpsControls: NSObject {
     static let buttonWidth = CGFloat(56)
     static let buttonHeight = CGFloat(48)
     static let statusTopOffset = CGFloat(8)
+    static let turnsGap = CGFloat(8)
     static let statusMinHeight = CGFloat(36)
     static let statusMaxWidth = CGFloat(260)
     static let refreshInterval: TimeInterval = 1
@@ -27,6 +28,8 @@ final class NoGpsControls: NSObject {
   private static var logFlags = 0
   private static var lastFlag = ""
   private static var availableArea = CGRect.zero
+  /// The bottom of the turns of the navigation in the window, 0 without them. They are at the edge of the panel.
+  private static var turnsBottom = CGFloat(0)
 
   private let statusButton = UIButton(type: .custom)
   // The side buttons are on the left in right-to-left languages.
@@ -74,6 +77,14 @@ final class NoGpsControls: NSObject {
 
   static func updateAvailableArea(_ frame: CGRect) {
     availableArea = frame
+    DispatchQueue.main.async {
+      shared?.updateLayout(animated: true)
+    }
+  }
+
+  static func updateTurnsBottom(_ bottom: CGFloat) {
+    guard bottom != turnsBottom else { return }
+    turnsBottom = bottom
     DispatchQueue.main.async {
       shared?.updateLayout(animated: true)
     }
@@ -167,13 +178,14 @@ final class NoGpsControls: NSObject {
     guard !area.isEmpty else { return }
     let height = buttonsHeight
     let fraction = dragger?.fraction ?? MapPanelDragger.Constants.defaultFraction
+    let panelTop = panelTop
     let panelArea = panelAreaHeight
     let place = {
       self.statusTop.constant = area.minY + Constants.statusTopOffset
       self.statusCenterX.constant = area.midX
       self.buttonsEdge.constant = Self.isRTL ? area.maxX : area.minX
       // The side buttons on the right have the same center by default.
-      self.buttonsCenterY.constant = area.minY + height / 2 + fraction * max(0, panelArea - height)
+      self.buttonsCenterY.constant = panelTop + height / 2 + fraction * max(0, panelArea - height)
       self.speedEdge.constant = Self.isRTL ? area.maxX - Constants.speedMargin : area.minX + Constants.speedMargin
       self.speedBottom.constant = area.maxY - Constants.speedMargin
     }
@@ -187,9 +199,22 @@ final class NoGpsControls: NSObject {
   }
 
   /// The panel moves above the speed.
-  private var panelAreaHeight: CGFloat {
+  private var panelBottom: CGFloat {
     let speed = speedView.isHidden ? 0 : NoGpsSpeedView.side + 2 * Constants.speedMargin
-    return Self.availableArea.height - speed
+    return Self.availableArea.maxY - speed
+  }
+
+  /// The panel moves under the turns of the navigation, unless it doesn't fit there: then it can cover them, as in
+  /// landscape on a phone.
+  private var panelTop: CGFloat {
+    let area = Self.availableArea
+    guard Self.turnsBottom > 0, let superview = buttons.superview else { return area.minY }
+    let turns = superview.convert(CGPoint(x: 0, y: Self.turnsBottom), from: nil).y + Constants.turnsGap
+    return turns > area.minY && panelBottom - turns >= buttonsHeight ? turns : area.minY
+  }
+
+  private var panelAreaHeight: CGFloat {
+    panelBottom - panelTop
   }
 
   private var buttonsHeight: CGFloat {

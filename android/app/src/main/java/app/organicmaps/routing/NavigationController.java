@@ -80,8 +80,10 @@ public class NavigationController implements TrafficManager.TrafficCallback, Nav
 
     // Top frame
     mTopFrame = mFrame.findViewById(R.id.nav_top_frame);
-    mTopFrame.addOnLayoutChangeListener(
-        (v, l, t, r, b, ol, ot, or, ob) -> mMapButtonsViewModel.setTopHeaderHeight(computeNavContentHeight()));
+    mTopFrame.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+      mMapButtonsViewModel.setTopHeaderHeight(computeNavContentHeight());
+      updatePanelsTop();
+    });
     View turnFrame = mTopFrame.findViewById(R.id.nav_next_turn_frame);
     mNextTurnImage = turnFrame.findViewById(R.id.turn);
     mNextTurnDistance = turnFrame.findViewById(R.id.distance);
@@ -160,6 +162,28 @@ public class NavigationController implements TrafficManager.TrafficCallback, Nav
     return mStreetFrame.getHeight() + Math.max(turnAndSpeedHeight, lanesHeight);
   }
 
+  // The panels of map buttons at the start and the end edges stay under the views of the top at their edge: the turns
+  // and, in portrait, the speed limit under them at the start, the lanes at the end.
+  private void updatePanelsTop()
+  {
+    if (!UiUtils.isVisible(mFrame))
+      return;
+    final int street = bottomOnScreen(mStreetFrame);
+    int start = Math.max(street, bottomOnScreen(mNextTurnContainer));
+    if (mFrame.getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT)
+      start = Math.max(start, bottomOnScreen(mSpeedLimit));
+    mMapButtonsViewModel.setNavTopBottoms(start, Math.max(street, bottomOnScreen(mLanesView)));
+  }
+
+  private static int bottomOnScreen(@NonNull View view)
+  {
+    if (!UiUtils.isVisible(view))
+      return 0;
+    final int[] location = new int[2];
+    view.getLocationOnScreen(location);
+    return location[1] + view.getHeight();
+  }
+
   private void updateVehicle(@NonNull RoutingInfo info)
   {
     mNextTurnDistance.setText(Utils.formatDistance(mFrame.getContext(), info.distToTurn));
@@ -228,7 +252,10 @@ public class NavigationController implements TrafficManager.TrafficCallback, Nav
     }
     UiUtils.showIf(show, mFrame);
     if (!show)
+    {
       mMapButtonsViewModel.setTopHeaderHeight(0);
+      mMapButtonsViewModel.setNavTopBottoms(0, 0);
+    }
   }
 
   public boolean isNavMenuCollapsed()
