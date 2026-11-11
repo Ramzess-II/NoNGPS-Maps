@@ -268,8 +268,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     ((ComponentDialog) requireDialog())
         .getOnBackPressedDispatcher()
         .addCallback(getViewLifecycleOwner(), mBackFromPage);
-    // Without a box the sheet opens at the height of its rows, as on iOS: the search and the offer to buy one.
-    if ((mSearching || !NoGps.getStatus().inertialEnabled) && !mGpsShown)
+    if (fitsRows() && !mGpsShown)
       getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
   }
 
@@ -473,6 +472,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     switchPage(shown, mGpsPage);
   }
 
+  // Without a box the sheet is at the height of its rows, as on iOS: the search and the offer to buy one.
+  private boolean fitsRows()
+  {
+    return mSearching || !NoGps.getStatus().inertialEnabled;
+  }
+
   @NonNull
   private BottomSheetBehavior<?> getBehavior()
   {
@@ -485,7 +490,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final BottomSheetBehavior<?> behavior = getBehavior();
     behavior.setPeekHeight(shown ? ((View) requireView().getParent()).getHeight()
                                  : BottomSheetBehavior.PEEK_HEIGHT_AUTO);
-    behavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+    behavior.setState(!shown && fitsRows() ? BottomSheetBehavior.STATE_EXPANDED : BottomSheetBehavior.STATE_COLLAPSED);
     // The page comes from the end as a new screen does, and goes back there.
     final TransitionSet transition = new TransitionSet()
                                          .addTransition(new Slide(Gravity.END).addTarget(page))
