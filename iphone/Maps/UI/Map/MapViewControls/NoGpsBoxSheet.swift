@@ -1,6 +1,6 @@
 /// The sensor box: its state, the car speed, the firmware and what the user does with the box. Without a box it is
-/// searched while the sheet is open, step by step, and the sheet offers to buy one. The first row is GPS: it opens the
-/// GPS page and turns GPS off for the car.
+/// searched while the sheet is open, step by step, and the sheet offers to buy one. On the top the box and GPS are side
+/// by side, GPS opens its page. The first row turns GPS off for the car.
 final class NoGpsBoxSheet: MWMTableViewController {
   private enum Constants {
     static let refreshInterval: TimeInterval = 0.5
@@ -11,7 +11,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
   }
 
   private enum Row {
-    case gps
+    case gpsUse
     case bluetooth
     case search
     case name
@@ -42,8 +42,9 @@ final class NoGpsBoxSheet: MWMTableViewController {
   // before it is found.
   private var searching = false
   private let searchView = BoxSearchView()
-  private let header = BoxHeaderView()
-  private let gpsRow = GpsRowView()
+  private let header = StatusTilesView()
+  private let gpsUse = UISwitch()
+  private let gpsUseFooter = GpsUseFooterView()
   private let speedLagValue: UILabel = {
     let label = UILabel()
     label.font = .preferredFont(forTextStyle: .body)
@@ -60,21 +61,16 @@ final class NoGpsBoxSheet: MWMTableViewController {
 
   override func viewDidLoad() {
     super.viewDidLoad()
-    // The header has the title.
+    // The sheet has no title: the box tile tells what it is about.
     navigationItem.backButtonTitle = L("nogps_box_title")
     navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .close, target: self,
                                                         action: #selector(close))
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
     tableView.tableHeaderView = header
     searchView.onAction = { [weak self] in self?.openSettings() }
-    gpsRow.onOpen = { [weak self] in
-      self?.navigationController?.pushViewController(NoGpsGpsSheet(style: .insetGrouped), animated: true)
-    }
-    gpsRow.onUseChanged = { [weak self] use in
-      NoGps.setGpsDisabled(!use)
-      self?.refresh()
-      NoGpsStatusBar.update(NoGps.status())
-    }
+    header.gps.addTarget(self, action: #selector(openGps), for: .touchUpInside)
+    gpsUse.accessibilityLabel = L("nogps_gps_use")
+    gpsUse.addTarget(self, action: #selector(gpsUseChanged), for: .valueChanged)
     if !status.inertialEnabled {
       searching = true
       NoGps.setInertialNavigationEnabled(true)
@@ -122,11 +118,21 @@ final class NoGpsBoxSheet: MWMTableViewController {
     if searching, Self.isBoxHeard(status) {
       searching = false
     }
-    header.update(status, searching: searching)
+    var boxLook = NoGpsStatusBar.boxLook(status)
+    // The waves of the search show it.
+    boxLook.pulsing = boxLook.pulsing && !searching
+    header.box.show(boxLook, state: searching ? L("nogps_box_searching")
+      : status.inertialEnabled ? NoGpsSensorsViewController.boxStateText(status) : L("nogps_box_buy_title"))
+    header.gps.show(NoGpsStatusBar.gpsLook(status), state: NoGpsStatusBar.gpsStateText(status))
     layoutHeader()
-    gpsRow.update(status)
     // GPS is turned off for the car only while the box can drive it: nothing would move the mark otherwise.
-    let gps = Section(rows: [.gps], footer: L(gpsRow.canChangeUse ? "nogps_gps_use_hint" : "nogps_gps_use_needs_box"))
+    let canChangeGpsUse = status.gpsDisabled || Self.isBoxHeard(status)
+    gpsUse.isEnabled = canChangeGpsUse
+    if !gpsUse.isTracking {
+      gpsUse.isOn = !status.gpsDisabled
+    }
+    gpsUseFooter.update(canChangeUse: canChangeGpsUse)
+    let gps = Section(rows: [.gpsUse])
     if searching {
       searchView.update(status)
       sections = [
@@ -209,6 +215,10 @@ final class NoGpsBoxSheet: MWMTableViewController {
     sections[section].footer
   }
 
+  override func tableView(_: UITableView, viewForFooterInSection section: Int) -> UIView? {
+    sections[section].rows == [.gpsUse] ? gpsUseFooter : nil
+  }
+
   override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
     let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
     var content = UIListContentConfiguration.cell()
@@ -219,11 +229,10 @@ final class NoGpsBoxSheet: MWMTableViewController {
     cell.accessoryView = accessoryView(row)
     switch row {
     case .search:
-      embed(searchView, in: cell, margins: true)
+      embed(searchView, in: cell)
       return cell
-    case .gps:
-      embed(gpsRow, in: cell, margins: false)
-      return cell
+    case .gpsUse:
+      content.text = L("nogps_gps_use")
     case .bluetooth:
       content.text = L("nogps_box_allow")
       content.textProperties.color = .linkBlue
@@ -292,22 +301,27 @@ final class NoGpsBoxSheet: MWMTableViewController {
 
   /// The same views each refresh: new ones fly in from the corner of the reconfigured cell.
   private func accessoryView(_ row: Row) -> UIView? {
-    row == .speedLag ? speedLagValue : nil
+    switch row {
+    case .speedLag: return speedLagValue
+    // A switch is not reset while it is turned.
+    case .gpsUse: return gpsUse
+    default: return nil
+    }
   }
 
-  /// A row of its own view, the same one every refresh: a switch is not reset while it is turned.
-  private func embed(_ view: UIView, in cell: UITableViewCell, margins: Bool) {
+  /// A row of its own view, the same one every refresh: its animation goes on.
+  private func embed(_ view: UIView, in cell: UITableViewCell) {
     cell.contentConfiguration = nil
     guard view.superview !== cell.contentView else { return }
     view.removeFromSuperview()
     view.translatesAutoresizingMaskIntoConstraints = false
     cell.contentView.addSubview(view)
-    let guide: UILayoutGuide = margins ? cell.contentView.layoutMarginsGuide : cell.contentView.safeAreaLayoutGuide
+    let guide = cell.contentView.layoutMarginsGuide
     NSLayoutConstraint.activate([
       view.leadingAnchor.constraint(equalTo: guide.leadingAnchor),
       view.trailingAnchor.constraint(equalTo: guide.trailingAnchor),
-      view.topAnchor.constraint(equalTo: margins ? guide.topAnchor : cell.contentView.topAnchor),
-      view.bottomAnchor.constraint(equalTo: margins ? guide.bottomAnchor : cell.contentView.bottomAnchor),
+      view.topAnchor.constraint(equalTo: guide.topAnchor),
+      view.bottomAnchor.constraint(equalTo: guide.bottomAnchor),
     ])
   }
 
@@ -380,6 +394,18 @@ final class NoGpsBoxSheet: MWMTableViewController {
     if let url = URL(string: UIApplication.openSettingsURLString) {
       UIApplication.shared.open(url)
     }
+  }
+
+  @objc
+  private func openGps() {
+    navigationController?.pushViewController(NoGpsGpsSheet(style: .insetGrouped), animated: true)
+  }
+
+  @objc
+  private func gpsUseChanged() {
+    NoGps.setGpsDisabled(!gpsUse.isOn)
+    refresh()
+    NoGpsStatusBar.update(NoGps.status())
   }
 
   @objc
@@ -642,45 +668,27 @@ private final class BoxSearchView: UIView {
   }
 }
 
-/// The top of the Box sheet: the box on the tint of its state, the title and the state.
-private final class BoxHeaderView: UIView {
-  private enum Constants {
-    static let tileSide = CGFloat(44)
-  }
-
-  private let tile = UIImageView()
-  private let title = UILabel()
-  private let state = UILabel()
-  /// While the box is searched, connects, waits for the car data or takes a firmware, as the button pulses.
-  private let progress = UIActivityIndicatorView(style: .medium)
-  private var look: NoGpsStatusBar.Look?
+/// The top of the Box sheet: the box and GPS side by side. GPS opens its page.
+private final class StatusTilesView: UIView {
+  let box = StatusTileView(opensPage: false)
+  let gps = StatusTileView(opensPage: true)
 
   init() {
     super.init(frame: .zero)
-    title.text = L("nogps_box_title")
-    title.font = Self.boldFont(.title3)
-    title.adjustsFontForContentSizeCategory = true
-    title.numberOfLines = 0
-    title.accessibilityTraits = .header
-    state.font = Self.boldFont(.subheadline)
-    state.adjustsFontForContentSizeCategory = true
-    state.numberOfLines = 0
-    let text = UIStackView(arrangedSubviews: [title, state])
-    text.axis = .vertical
-    text.spacing = 2
-    progress.hidesWhenStopped = true
-    let row = UIStackView(arrangedSubviews: [tile, text, progress])
-    row.alignment = .center
+    box.accessibilityLabel = L("nogps_box_title")
+    gps.accessibilityLabel = L("nogps_status_gps")
+    let row = UIStackView(arrangedSubviews: [box, gps])
+    row.distribution = .fillEqually
     row.spacing = 12
     row.translatesAutoresizingMaskIntoConstraints = false
     addSubview(row)
+    // As wide as the groups of rows under it.
+    preservesSuperviewLayoutMargins = true
     NSLayoutConstraint.activate([
-      tile.widthAnchor.constraint(equalToConstant: Constants.tileSide),
-      tile.heightAnchor.constraint(equalToConstant: Constants.tileSide),
       row.leadingAnchor.constraint(equalTo: layoutMarginsGuide.leadingAnchor),
       row.trailingAnchor.constraint(equalTo: layoutMarginsGuide.trailingAnchor),
       row.topAnchor.constraint(equalTo: topAnchor, constant: 4),
-      row.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -4),
+      row.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -16),
     ])
   }
 
@@ -688,121 +696,75 @@ private final class BoxHeaderView: UIView {
   required init?(coder _: NSCoder) {
     fatalError("init(coder:) has not been implemented")
   }
-
-  private static func boldFont(_ style: UIFont.TextStyle) -> UIFont {
-    let font = UIFont.preferredFont(forTextStyle: style)
-    return font.fontDescriptor.withSymbolicTraits(.traitBold).map { UIFont(descriptor: $0, size: 0) } ?? font
-  }
-
-  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
-    super.traitCollectionDidChange(previousTraitCollection)
-    drawTile()
-  }
-
-  func update(_ status: NoGpsStatus, searching: Bool) {
-    let look = NoGpsStatusBar.boxLook(status)
-    self.look = look
-    drawTile()
-    if searching {
-      state.text = L("nogps_box_searching")
-      state.textColor = .linkBlue
-    } else if status.inertialEnabled {
-      // The states follow "Box: name ·" on the sensors screen, here they start the line.
-      let text = NoGpsSensorsViewController.boxStateText(status)
-      state.text = text.prefix(1).uppercased(with: .current) + text.dropFirst()
-      state.textColor = look.color == .secondaryLabel ? .label : look.color
-    } else {
-      state.text = nil
-    }
-    state.isHidden = state.text == nil
-    if look.pulsing, !searching {
-      progress.startAnimating()
-    } else {
-      progress.stopAnimating()
-    }
-  }
-
-  private func drawTile() {
-    guard let look else { return }
-    tile.image = NoGpsStatusBar.tileImage(look, side: Constants.tileSide, traits: traitCollection)
-  }
 }
 
-/// The GPS row of the Box sheet: its state and why, opening the GPS page, and the switch that turns GPS off for the car.
-private final class GpsRowView: UIView {
+/// The icon of a source on the tint of its state, and the state under it. Its height doesn't follow the state: the
+/// sheet doesn't jump as the states change, a longer state is cut.
+private final class StatusTileView: UIControl {
   private enum Constants {
-    static let tileSide = CGFloat(32)
+    static let tileSide = CGFloat(44)
+    static let stateLines = 3
+    static let cornerRadius = CGFloat(10)
   }
 
-  var onOpen: (() -> Void)?
-  var onUseChanged: ((Bool) -> Void)?
-  /// The car can be driven without GPS only by the box.
-  private(set) var canChangeUse = false
-
-  private let open = UIControl()
   private let tile = UIImageView()
-  private let title = UILabel()
-  private let subtitle = UILabel()
-  private let useSwitch = UISwitch()
+  private let stateLabel = UILabel()
+  private var stateHeight: NSLayoutConstraint!
   private var look: NoGpsStatusBar.Look?
 
-  init() {
+  init(opensPage: Bool) {
     super.init(frame: .zero)
-    title.font = .preferredFont(forTextStyle: .headline)
-    title.adjustsFontForContentSizeCategory = true
-    title.numberOfLines = 0
-    subtitle.font = .preferredFont(forTextStyle: .footnote)
-    subtitle.adjustsFontForContentSizeCategory = true
-    subtitle.textColor = .secondaryLabel
-    subtitle.numberOfLines = 0
-    let text = UIStackView(arrangedSubviews: [title, subtitle])
-    text.axis = .vertical
-    text.spacing = 2
+    backgroundColor = .secondarySystemGroupedBackground
+    layer.cornerRadius = Constants.cornerRadius
+    layer.cornerCurve = .continuous
+    isAccessibilityElement = true
+    accessibilityTraits = opensPage ? .button : .none
+    isUserInteractionEnabled = opensPage
+    stateLabel.font = UIFontMetrics(forTextStyle: .footnote).scaledFont(for: .systemFont(ofSize: 13, weight: .semibold))
+    stateLabel.adjustsFontForContentSizeCategory = true
+    stateLabel.numberOfLines = Constants.stateLines
+    stateLabel.textAlignment = .center
+    // The state starts under the icon, whatever its length.
+    let stateBox = UIView()
+    stateBox.addSubview(stateLabel)
+    let content = UIStackView(arrangedSubviews: [tile, stateBox])
+    content.axis = .vertical
+    content.alignment = .center
+    content.spacing = 8
+    content.isUserInteractionEnabled = false
+    for view in [content, stateLabel] {
+      view.translatesAutoresizingMaskIntoConstraints = false
+    }
+    addSubview(content)
+    stateHeight = stateBox.heightAnchor.constraint(equalToConstant: 0)
+    NSLayoutConstraint.activate([
+      tile.widthAnchor.constraint(equalToConstant: Constants.tileSide),
+      tile.heightAnchor.constraint(equalToConstant: Constants.tileSide),
+      stateBox.widthAnchor.constraint(equalTo: content.widthAnchor),
+      stateHeight,
+      stateLabel.leadingAnchor.constraint(equalTo: stateBox.leadingAnchor),
+      stateLabel.trailingAnchor.constraint(equalTo: stateBox.trailingAnchor),
+      stateLabel.topAnchor.constraint(equalTo: stateBox.topAnchor),
+      stateLabel.bottomAnchor.constraint(lessThanOrEqualTo: stateBox.bottomAnchor),
+      content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+      content.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+      content.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+      content.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
+    ])
+    updateStateHeight()
+    guard opensPage else { return }
     let chevron = UIImageView(image: UIImage(systemName: "chevron.forward",
                                              withConfiguration: UIImage.SymbolConfiguration(pointSize: 13,
                                                                                             weight: .semibold)))
     chevron.tintColor = .tertiaryLabel
-    chevron.setContentHuggingPriority(.required, for: .horizontal)
-    let content = UIStackView(arrangedSubviews: [tile, text, chevron])
-    content.alignment = .center
-    content.spacing = 12
-    content.isUserInteractionEnabled = false
-    content.translatesAutoresizingMaskIntoConstraints = false
-    open.addSubview(content)
-    open.isAccessibilityElement = true
-    open.accessibilityTraits = .button
-    open.addTarget(self, action: #selector(openTapped), for: .touchUpInside)
-    open.addTarget(self, action: #selector(openPressed), for: [.touchDown, .touchDragEnter])
-    open.addTarget(self, action: #selector(openReleased), for: [.touchUpInside, .touchUpOutside, .touchCancel,
-                                                               .touchDragExit])
-
-    let divider = UIView()
-    divider.backgroundColor = .separator
-    useSwitch.accessibilityLabel = L("nogps_gps_use")
-    useSwitch.setContentHuggingPriority(.required, for: .horizontal)
-    useSwitch.addTarget(self, action: #selector(useChanged), for: .valueChanged)
-    for view in [open, divider, useSwitch] {
-      view.translatesAutoresizingMaskIntoConstraints = false
-      addSubview(view)
-    }
+    chevron.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(chevron)
     NSLayoutConstraint.activate([
-      tile.widthAnchor.constraint(equalToConstant: Constants.tileSide),
-      tile.heightAnchor.constraint(equalToConstant: Constants.tileSide),
-      open.leadingAnchor.constraint(equalTo: leadingAnchor),
-      open.topAnchor.constraint(equalTo: topAnchor),
-      open.bottomAnchor.constraint(equalTo: bottomAnchor),
-      content.leadingAnchor.constraint(equalTo: open.leadingAnchor, constant: 16),
-      content.trailingAnchor.constraint(equalTo: open.trailingAnchor, constant: -8),
-      content.topAnchor.constraint(equalTo: open.topAnchor, constant: 10),
-      content.bottomAnchor.constraint(equalTo: open.bottomAnchor, constant: -10),
-      divider.leadingAnchor.constraint(equalTo: open.trailingAnchor),
-      divider.widthAnchor.constraint(equalToConstant: 1 / UIScreen.main.scale),
-      divider.topAnchor.constraint(equalTo: topAnchor, constant: 12),
-      divider.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
-      useSwitch.leadingAnchor.constraint(equalTo: divider.trailingAnchor, constant: 12),
-      useSwitch.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -16),
-      useSwitch.centerYAnchor.constraint(equalTo: centerYAnchor),
+      chevron.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+      chevron.centerYAnchor.constraint(equalTo: tile.centerYAnchor),
     ])
+    addTarget(self, action: #selector(pressed), for: [.touchDown, .touchDragEnter])
+    addTarget(self, action: #selector(released), for: [.touchUpInside, .touchUpOutside, .touchCancel, .touchDragExit])
   }
 
   @available(*, unavailable)
@@ -813,22 +775,23 @@ private final class GpsRowView: UIView {
   override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
     super.traitCollectionDidChange(previousTraitCollection)
     drawTile()
+    updateStateHeight()
   }
 
-  func update(_ status: NoGpsStatus) {
-    look = NoGpsStatusBar.gpsLook(status)
+  func show(_ look: NoGpsStatusBar.Look, state text: String) {
+    self.look = look
     drawTile()
-    let state = NoGpsStatusBar.gpsStateText(status)
-    title.text = L("nogps_status_gps") + " · " + state
-    subtitle.text = NoGpsStatusBar.gpsWhyText(status)
-    subtitle.isHidden = subtitle.text == nil
-    open.accessibilityLabel = title.text
-    open.accessibilityValue = subtitle.text
-    canChangeUse = status.gpsDisabled || NoGpsBoxSheet.isBoxHeard(status)
-    useSwitch.isEnabled = canChangeUse
-    if !useSwitch.isTracking {
-      useSwitch.isOn = !status.gpsDisabled
-    }
+    NavButton.pulse(tile.layer, look.pulsing)
+    // The states follow "Box: name ·" on the sensors screen, here they start the line.
+    stateLabel.text = text.prefix(1).uppercased(with: .current) + text.dropFirst()
+    // A grey state is read as disabled.
+    stateLabel.textColor = look.color == .secondaryLabel ? .label : look.color
+    accessibilityValue = stateLabel.text
+  }
+
+  /// All the lines of a state, at the text size of the user.
+  private func updateStateHeight() {
+    stateHeight.constant = ceil(stateLabel.font.lineHeight * CGFloat(Constants.stateLines))
   }
 
   private func drawTile() {
@@ -837,22 +800,53 @@ private final class GpsRowView: UIView {
   }
 
   @objc
-  private func openTapped() {
-    onOpen?()
+  private func pressed() {
+    backgroundColor = .systemFill
   }
 
   @objc
-  private func openPressed() {
-    open.backgroundColor = .systemFill
+  private func released() {
+    UIView.animate(withDuration: AppConstants.defaultAnimationDuration) {
+      self.backgroundColor = .secondarySystemGroupedBackground
+    }
+  }
+}
+
+/// Why GPS can be turned off for the car, or why not. Both texts take their place: the sheet doesn't jump as the box
+/// comes and goes.
+private final class GpsUseFooterView: UITableViewHeaderFooterView {
+  private let hint = UILabel()
+  private let needsBox = UILabel()
+
+  init() {
+    super.init(reuseIdentifier: nil)
+    hint.text = L("nogps_gps_use_hint")
+    needsBox.text = L("nogps_gps_use_needs_box")
+    for label in [hint, needsBox] {
+      label.font = .preferredFont(forTextStyle: .footnote)
+      label.adjustsFontForContentSizeCategory = true
+      label.textColor = .secondaryLabel
+      label.numberOfLines = 0
+      label.translatesAutoresizingMaskIntoConstraints = false
+      contentView.addSubview(label)
+      NSLayoutConstraint.activate([
+        label.leadingAnchor.constraint(equalTo: contentView.layoutMarginsGuide.leadingAnchor),
+        label.trailingAnchor.constraint(equalTo: contentView.layoutMarginsGuide.trailingAnchor),
+        label.topAnchor.constraint(equalTo: contentView.layoutMarginsGuide.topAnchor),
+        label.bottomAnchor.constraint(lessThanOrEqualTo: contentView.layoutMarginsGuide.bottomAnchor),
+      ])
+    }
   }
 
-  @objc
-  private func openReleased() {
-    UIView.animate(withDuration: AppConstants.defaultAnimationDuration) { self.open.backgroundColor = nil }
+  @available(*, unavailable)
+  required init?(coder _: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
   }
 
-  @objc
-  private func useChanged() {
-    onUseChanged?(useSwitch.isOn)
+  func update(canChangeUse: Bool) {
+    hint.alpha = canChangeUse ? 1 : 0
+    needsBox.alpha = canChangeUse ? 0 : 1
+    hint.accessibilityElementsHidden = !canChangeUse
+    needsBox.accessibilityElementsHidden = canChangeUse
   }
 }

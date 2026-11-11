@@ -1,5 +1,5 @@
 /// The middle of the bottom bar: one button with the look of what moves the mark, the source word and the accuracy. A
-/// badge tells about the other source. The button opens the Box sheet, its first row is GPS.
+/// badge tells about the other source. The button opens the Box sheet with the box and GPS.
 final class NoGpsStatusBar: UIView {
   private enum Constants {
     static let gpsSymbol = "antenna.radiowaves.left.and.right"
@@ -366,7 +366,7 @@ final class NavButton: UIControl {
       badge.image = badgeLook.symbol.flatMap { UIImage(systemName: $0, withConfiguration: Constants.badgeSymbol) }
       badge.backgroundColor = badgeLook.color
     }
-    pulse(look.pulsing)
+    Self.pulse(icon.layer, look.pulsing)
 
     let source = NoGpsStatusBar.sourceText(status)
     word.text = source.word
@@ -384,9 +384,9 @@ final class NavButton: UIControl {
     accessibilityValue = states.joined(separator: ". ")
   }
 
-  private func pulse(_ on: Bool) {
+  /// Also the tiles of the Box sheet.
+  static func pulse(_ layer: CALayer, _ on: Bool) {
     // The system removes the animation in the background, the next update adds it again.
-    let layer = icon.layer
     guard on != (layer.animation(forKey: Constants.pulseKey) != nil) else { return }
     guard on else {
       layer.removeAnimation(forKey: Constants.pulseKey)
