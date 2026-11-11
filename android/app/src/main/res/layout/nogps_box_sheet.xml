@@ -195,6 +195,38 @@
         android:textColor="?android:textColorSecondary"
         android:textSize="13sp" />
     </FrameLayout>
+    <!-- Other apps take the position of the car while GPS isn't used. -->
+    <androidx.appcompat.widget.SwitchCompat
+      android:id="@+id/box_share_position"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="12dp"
+      android:background="@drawable/bg_nogps_group"
+      android:minHeight="56dp"
+      android:paddingHorizontal="16dp"
+      android:text="@string/nogps_share_position"
+      android:textSize="16sp" />
+    <TextView
+      android:id="@+id/box_share_position_hint"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginHorizontal="4dp"
+      android:layout_marginTop="6dp"
+      android:text="@string/nogps_share_position_hint"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="13sp" />
+    <!-- Tapped, opens Developer options. -->
+    <TextView
+      android:id="@+id/box_share_position_needs_mock"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="2dp"
+      android:background="?selectableItemBackground"
+      android:paddingHorizontal="4dp"
+      android:paddingVertical="4dp"
+      android:text="@string/nogps_share_position_needs_mock"
+      android:textColor="?colorAccent"
+      android:textSize="13sp" />
   </LinearLayout>
 
   <LinearLayout

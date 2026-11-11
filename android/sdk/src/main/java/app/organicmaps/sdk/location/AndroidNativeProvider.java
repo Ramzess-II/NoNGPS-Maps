@@ -34,6 +34,9 @@ public class AndroidNativeProvider extends BaseLocationProvider
     public void onProviderDisabled(@NonNull String provider)
     {
       Logger.d(TAG, "Disabled location provider: " + provider);
+      // MockLocationShare replaces it with a mock one, added disabled and enabled at once.
+      if (mLocationManager.isProviderEnabled(provider))
+        return;
       mProviders.remove(provider);
       if (mProviders.isEmpty())
         mListener.onLocationDisabled();

@@ -288,6 +288,8 @@ def allowedPermissions = [
     "name='android.permission.ACCESS_COARSE_LOCATION'",
     "name='android.permission.ACCESS_FINE_LOCATION'",
     "name='android.permission.ACCESS_LOCATION_EXTRA_COMMANDS'",
+    // the position of the navigation without GPS for other apps
+    "name='android.permission.ACCESS_MOCK_LOCATION'",
     // network
     "name='android.permission.INTERNET'",
     "name='android.permission.ACCESS_NETWORK_STATE'",
