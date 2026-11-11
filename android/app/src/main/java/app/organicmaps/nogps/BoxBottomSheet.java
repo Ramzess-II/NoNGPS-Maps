@@ -5,6 +5,7 @@ import android.animation.Animator;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
+import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -39,6 +40,7 @@ import androidx.transition.TransitionManager;
 import androidx.transition.TransitionSet;
 import app.organicmaps.R;
 import app.organicmaps.maplayer.StatusBar;
+import app.organicmaps.sdk.location.MockLocationShare;
 import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.util.Utils;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
@@ -62,6 +64,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private static final String STATE_SEARCHING = "searching";
   private static final String STATE_SPEED_TABLE = "speed_table";
   private static final String STATE_GPS = "gps";
+  private static final String STATE_SHARE_ASKED = "share_asked";
   private static final String BOX_NAME = "NonGPS-OBD";
 
   private enum StepState
@@ -94,6 +97,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private boolean mSpeedTableShown;
   // The GPS details are shown on a page of their own too. The search goes on while it is shown.
   private boolean mGpsShown;
+  // The user has turned the share on before the app is picked as the mock location app.
+  private boolean mShareAsked;
   private final OnBackPressedCallback mBackFromPage = new OnBackPressedCallback(false) {
     @Override
     public void handleOnBackPressed()
@@ -115,6 +120,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private SwitchCompat mGpsUse;
   private View mGpsUseHint;
   private View mGpsUseNeedsBox;
+  private SwitchCompat mSharePosition;
+  private View mSharePositionNeedsMock;
   private View mGpsPage;
   private GpsSheetView mGpsView;
   private TextView mState;
@@ -154,6 +161,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       mSearching = savedInstanceState.getBoolean(STATE_SEARCHING);
       mSpeedTableShown = savedInstanceState.getBoolean(STATE_SPEED_TABLE);
       mGpsShown = savedInstanceState.getBoolean(STATE_GPS);
+      mShareAsked = savedInstanceState.getBoolean(STATE_SHARE_ASKED);
       return;
     }
     if (!NoGps.getStatus().inertialEnabled)
@@ -171,6 +179,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     outState.putBoolean(STATE_SEARCHING, mSearching);
     outState.putBoolean(STATE_SPEED_TABLE, mSpeedTableShown);
     outState.putBoolean(STATE_GPS, mGpsShown);
+    outState.putBoolean(STATE_SHARE_ASKED, mShareAsked);
   }
 
   @Nullable
@@ -200,6 +209,18 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       NoGps.nativeSetGpsDisabled(!mGpsUse.isChecked());
       update();
     });
+    mSharePosition = view.findViewById(R.id.box_share_position);
+    mSharePositionNeedsMock = view.findViewById(R.id.box_share_position_needs_mock);
+    mSharePosition.setOnClickListener(v -> {
+      final boolean share = mSharePosition.isChecked();
+      mShareAsked = share && !MockLocationShare.isAllowed(requireContext());
+      MockLocationShare.setEnabled(share && !mShareAsked);
+      // The share is turned on when the user comes back with the app picked there.
+      if (mShareAsked)
+        openDeveloperOptions();
+      update();
+    });
+    mSharePositionNeedsMock.setOnClickListener(v -> openDeveloperOptions());
     mState = view.findViewById(R.id.box_state);
     mStateColors = mState.getTextColors();
     mConnected = view.findViewById(R.id.box_connected);
@@ -341,6 +362,32 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       mGpsUse.setChecked(!status.gpsDisabled);
     mGpsUseHint.setVisibility(canSwitch ? View.VISIBLE : View.INVISIBLE);
     mGpsUseNeedsBox.setVisibility(canSwitch ? View.INVISIBLE : View.VISIBLE);
+
+    // Off until the app is picked as the mock location app, the hint tells where.
+    final boolean shareAllowed = MockLocationShare.isAllowed(context);
+    if (mShareAsked && shareAllowed)
+    {
+      mShareAsked = false;
+      MockLocationShare.setEnabled(true);
+    }
+    // Also unpicked since the share was turned on.
+    final boolean shareNeedsMock = (mShareAsked || MockLocationShare.isEnabled()) && !shareAllowed;
+    if (!mSharePosition.isPressed())
+      mSharePosition.setChecked(MockLocationShare.isEnabled() && shareAllowed);
+    mSharePositionNeedsMock.setVisibility(shareNeedsMock ? View.VISIBLE : View.GONE);
+  }
+
+  private void openDeveloperOptions()
+  {
+    try
+    {
+      startActivity(new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
+    }
+    catch (ActivityNotFoundException e)
+    {
+      // Developer options are turned on in About phone.
+      startActivity(new Intent(Settings.ACTION_DEVICE_INFO_SETTINGS));
+    }
   }
 
   /**

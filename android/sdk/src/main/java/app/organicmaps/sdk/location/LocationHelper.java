@@ -95,6 +95,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
   private final Elm327Transport mElm327 = new Elm327Transport();
   @NonNull
   private final Esp32BleTransport mEsp32Ble;
+  @NonNull
+  private final MockLocationShare mMockShare;
   // Some providers (e.g. Google fused) don't report network positions separately, so request them explicitly.
   private final LocationListenerCompat mNetworkListener = this::onLocationChanged;
 
@@ -161,6 +163,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     {
       mSavedLocation = location;
       mMyPosition = null;
+      mMockShare.onPosition(location);
       notifyLocationUpdated();
     }
 
@@ -223,6 +226,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     mHandler = new Handler(Looper.getMainLooper());
     mMotionSensors = new MotionSensors(context);
     mEsp32Ble = new Esp32BleTransport(context);
+    mMockShare = new MockLocationShare(context);
   }
 
   /**
@@ -349,6 +353,9 @@ public class LocationHelper implements BaseLocationProvider.Listener
       Logger.w(TAG, "Provider is not active");
       return;
     }
+    // Our own position, shared with other apps.
+    if (mMockShare.dropsFix(location))
+      return;
 
     if (!LocationManager.NETWORK_PROVIDER.equals(location.getProvider()))
       mLastPlatformLocation = location;
@@ -417,7 +424,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     }
     // Verify the very first GPS positions too, the fresh network position may arrive only several seconds later.
     final Location lastNetworkLocation = locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER);
-    if (lastNetworkLocation != null)
+    if (lastNetworkLocation != null && !mMockShare.dropsFix(lastNetworkLocation))
       NoGps.onLocation(lastNetworkLocation, true /* lastKnownNetwork */);
     final LocationRequestCompat request = new LocationRequestCompat.Builder(INTERVAL_NETWORK_MS).build();
     LocationManagerCompat.requestLocationUpdates(locationManager, LocationManager.NETWORK_PROVIDER, request,
@@ -565,6 +572,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     // A log file of the day goes on over runs, maybe of another build: each run tells its version.
     Logger.i(TAG, "NonGPS Maps " + NoGps.getFullVersion());
     NoGps.nativeStart();
+    mMockShare.start();
     mLocationProvider.start(mInterval);
     mHandler.postDelayed(mLocationTimeoutRunnable, LOCATION_UPDATE_TIMEOUT_MS);
     subscribeToGnssStatusUpdates();
@@ -590,6 +598,8 @@ public class LocationHelper implements BaseLocationProvider.Listener
       stopNetworkUpdates();
     }
     mSystemLocationPaused = false;
+    mMockShare.setGpsHeard(true);
+    mMockShare.stop();
     NoGps.nativeStop();
     mSensorHelper.stop();
     mHandler.removeCallbacks(mLocationTimeoutRunnable);
@@ -610,6 +620,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
     stopNetworkUpdates();
     mHandler.removeCallbacks(mLocationTimeoutRunnable);
     mSystemLocationPaused = true;
+    mMockShare.setGpsHeard(false);
   }
 
   @RequiresPermission(anyOf = {ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION})
@@ -619,6 +630,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
       return;
     Logger.i(TAG);
     mSystemLocationPaused = false;
+    mMockShare.setGpsHeard(true);
     mLocationProvider.start(mInterval);
     mHandler.postDelayed(mLocationTimeoutRunnable, LOCATION_UPDATE_TIMEOUT_MS);
     subscribeToGnssStatusUpdates();
