@@ -57,6 +57,8 @@ std::string const kIntScale = R"((\d+))";
 // 2gis can accept float or int coordinates and scale.
 std::string const kFloatIntCoord = R"(([+-]?\d+\.?\d*))";
 std::string const kFloatIntScale = R"((\d+\.?\d*))";
+
+std::string_view constexpr kPlacePath = "maps/place/";
 }  // namespace
 
 LatLonParser::LatLonParser() : m_info(nullptr), m_regexp(kFloatCoord + ", *" + kFloatCoord) {}
@@ -383,9 +385,10 @@ GoogleMapsParser::GoogleMapsParser() : m_placeRe("!3d" + kFloatCoord + "!4d" + k
 
 bool GoogleMapsParser::Parse(url::Url const & url, GeoURLInfo & info) const
 {
+  // Directions and search links have "!3d!4d" of other points.
   std::string const & path = url.GetPath();
   std::smatch m;
-  if (!std::regex_search(path, m, m_placeRe))
+  if (!path.starts_with(kPlacePath) || !std::regex_search(path, m, m_placeRe))
     return false;
 
   double lat, lon;
@@ -401,12 +404,11 @@ bool GoogleMapsParser::Parse(url::Url const & url, GeoURLInfo & info) const
 
 std::string GoogleMapsParser::GetPlaceName(url::Url const & url)
 {
-  std::string_view constexpr kPlace = "maps/place/";
   std::string_view path = url.GetPath();
-  if (!path.starts_with(kPlace))
+  if (!path.starts_with(kPlacePath))
     return {};
 
-  path.remove_prefix(kPlace.size());
+  path.remove_prefix(kPlacePath.size());
   return url::UrlDecode(path.substr(0, path.find('/')));
 }
 

@@ -723,6 +723,8 @@ UNIT_TEST(SharedText_ToApiUrl)
   // Nothing to show.
   TEST_EQUAL(SharedTextToApiUrl("https://maps.app.goo.gl/AbC123", "https://maps.app.goo.gl/AbC123"), "", ());
   TEST_EQUAL(SharedTextToApiUrl("", ""), "", ());
+  // A long text is not a place.
+  TEST_EQUAL(SharedTextToApiUrl(std::string(600, 'a'), ""), "", ());
 
   // Text without a link, and links that open as they are.
   url = SharedTextToApiUrl("  Kyiv,  Khreshchatyk 1 ", "");

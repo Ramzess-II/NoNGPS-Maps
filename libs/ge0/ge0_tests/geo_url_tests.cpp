@@ -232,6 +232,12 @@ UNIT_TEST(GeoURL_GoogleMapsPlace)
       ());
   TEST(!parser.Parse("https://maps.app.goo.gl/AbCdEf123456", info), ());
 
+  // Directions: "!3d!4d" is not the shared place, "@" is the map centre.
+  TEST(parser.Parse("https://www.google.com/maps/dir/A/B/@48.85,2.29,13z/data=!4m8!4m7!1m0!1m5!1m1!8m2!3d48.1!4d2.1",
+                    info),
+       ());
+  TEST_ALMOST_EQUAL_ABS(info.m_lat, 48.85, kEps, ());
+
   TEST_EQUAL(GoogleMapsParser::GetPlaceName(url::Url("https://www.google.com/maps/place/Eiffel+Tower/data=!4m2")),
              "Eiffel Tower", ());
   TEST_EQUAL(GoogleMapsParser::GetPlaceName(url::Url("https://www.google.com/maps/place/Eiffel+Tower")), "Eiffel Tower",

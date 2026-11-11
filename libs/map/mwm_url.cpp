@@ -41,6 +41,7 @@ uint32_t constexpr kMaxClearCoordinatesZoom = scales::UPPER_STYLE_SCALE;
 double constexpr kShortLinkTimeoutSec = 5.0;
 // maps.app.goo.gl redirects to the long link at once; the limit only stops a loop of short links.
 int constexpr kMaxShortLinkRedirects = 3;
+size_t constexpr kMaxSharedQueryLength = 512;
 
 namespace map
 {
@@ -595,14 +596,15 @@ std::string SharedTextToApiUrl(std::string_view text, std::string const & link)
         query = *value;
   }
 
-  if (query.empty())
+  // A longer text is not a place; the search history refuses texts over 1024 bytes.
+  if (query.empty() || query.size() > kMaxSharedQueryLength)
     return {};
   return "om://search?query=" + url::UrlEncode(query);
 }
 
 void ResolveSharedText(std::string text, std::function<void(std::string const & url)> callback)
 {
-  GetPlatform().RunTask(Platform::Thread::Network, [text = std::move(text), callback = std::move(callback)]
+  GetPlatform().RunTask(Platform::Thread::Network, [text = std::move(text), callback = std::move(callback)]() mutable
   {
     // Each redirect is read from the Location header: following it would download the Google Maps page.
     std::string link = ExtractUrl(text);
@@ -621,7 +623,9 @@ void ResolveSharedText(std::string text, std::function<void(std::string const & 
 
     std::string url = SharedTextToApiUrl(text, link);
     LOG(LINFO, ("Shared link", link, "is opened as", url));
-    GetPlatform().RunTask(Platform::Thread::Gui, [url = std::move(url), callback] { callback(url); });
+    // The GUI thread releases the callback: on Android it holds a JNI reference.
+    GetPlatform().RunTask(Platform::Thread::Gui,
+                          [url = std::move(url), callback = std::move(callback)] { callback(url); });
   });
 }
 }  // namespace url_scheme
