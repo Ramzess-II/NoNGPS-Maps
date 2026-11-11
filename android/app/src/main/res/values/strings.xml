@@ -1250,4 +1250,6 @@
     <string name="nogps_box_turn_on_location">Turn on location</string>
     <!-- Hint while the box is searched -->
     <string name="nogps_box_power_hint">Have a box? Power it on near the phone: it accepts a new phone for 2 minutes. The phone may ask for the code from the box.</string>
+    <!-- Toast after another app, e.g. Google Maps, shares a link to the app, but the link has no place: usually a short link while offline -->
+    <string name="nogps_shared_no_place">The shared link has no place. Connect to the internet and share it again.</string>
 </resources>

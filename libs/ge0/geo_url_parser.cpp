@@ -57,6 +57,8 @@ std::string const kIntScale = R"((\d+))";
 // 2gis can accept float or int coordinates and scale.
 std::string const kFloatIntCoord = R"(([+-]?\d+\.?\d*))";
 std::string const kFloatIntScale = R"((\d+\.?\d*))";
+
+std::string_view constexpr kPlacePath = "maps/place/";
 }  // namespace
 
 LatLonParser::LatLonParser() : m_info(nullptr), m_regexp(kFloatCoord + ", *" + kFloatCoord) {}
@@ -140,7 +142,8 @@ int LatLonParser::GetCoordinatesPriority(std::string const & token)
     return 3;
   if (token.find("point") != std::string::npos)
     return 4;
-  if (token == "ll")
+  // "coordinate" is Apple Maps.
+  if (token == "ll" || token == "coordinate")
     return kLLPriority;
   if (token == "x" || token == "y")
     return kXYPriority;
@@ -378,6 +381,37 @@ bool GeoURLInfo::SetLon(double x)
   return false;
 }
 
+GoogleMapsParser::GoogleMapsParser() : m_placeRe("!3d" + kFloatCoord + "!4d" + kFloatCoord) {}
+
+bool GoogleMapsParser::Parse(url::Url const & url, GeoURLInfo & info) const
+{
+  // Directions and search links have "!3d!4d" of other points.
+  std::string const & path = url.GetPath();
+  std::smatch m;
+  if (!path.starts_with(kPlacePath) || !std::regex_search(path, m, m_placeRe))
+    return false;
+
+  double lat, lon;
+  VERIFY(strings::to_double(ToView(m[1]), lat), ());
+  VERIFY(strings::to_double(ToView(m[2]), lon), ());
+  info.Reset();
+  if (!info.SetLat(lat) || !info.SetLon(lon))
+    return false;
+
+  info.m_label = GetPlaceName(url);
+  return true;
+}
+
+std::string GoogleMapsParser::GetPlaceName(url::Url const & url)
+{
+  std::string_view path = url.GetPath();
+  if (!path.starts_with(kPlacePath))
+    return {};
+
+  path.remove_prefix(kPlacePath.size());
+  return url::UrlDecode(path.substr(0, path.find('/')));
+}
+
 bool UnifiedParser::Parse(std::string const & raw, GeoURLInfo & res)
 {
   if (raw.starts_with("geo:"))
@@ -390,16 +424,36 @@ bool UnifiedParser::Parse(std::string const & raw, GeoURLInfo & res)
   if (url.GetScheme() != "https" && url.GetScheme() != "http")
     return false;
 
+  // In the EU, a Google Maps link redirects to the cookie consent page with the link in "continue=".
+  if (MatchHost(url, "consent.google."))
+  {
+    auto const * link = url.GetParamValue("continue");
+    return link && Parse(*link, res);
+  }
+
   if (MatchHost(url, "2gis") && m_dgParser.Parse(url, res))
     return true;
   else if (MatchHost(url, "openstreetmap") && m_osmParser.Parse(url, res))
+    return true;
+  else if (MatchHost(url, "google") && m_googleParser.Parse(url, res))
     return true;
   // Fall through.
 
   m_llParser.Reset(url, res);
   m_llParser({}, url.GetHostAndPath());
   url.ForEachParam(m_llParser);
-  return m_llParser.IsValid();
+  if (!m_llParser.IsValid())
+    return false;
+
+  // Apple Maps has the place name in "name=" (links since iOS 18) or "q=" (older links).
+  if (MatchHost(url, "maps.apple"))
+  {
+    if (auto const * name = url.GetParamValue("name"))
+      res.m_label = *name;
+    else if (auto const * q = url.GetParamValue("q"))
+      res.m_label = *q;
+  }
+  return true;
 }
 
 }  // namespace geo

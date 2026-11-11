@@ -11,7 +11,12 @@
 #include "geometry/mercator.hpp"
 #include "indexer/scales.hpp"
 
+#include "platform/http_client.hpp"
+#include "platform/platform.hpp"
+
 #include "drape_frontend/visual_params.hpp"
+
+#include "coding/url.hpp"
 
 #include "base/logging.hpp"
 #include "base/scope_guard.hpp"
@@ -32,6 +37,11 @@ std::string_view constexpr kAppName = "appname";
 // (missing, malformed or out of range) falls back to the default.
 int constexpr kDefaultClearCoordinatesZoom = 14;
 uint32_t constexpr kMaxClearCoordinatesZoom = scales::UPPER_STYLE_SCALE;
+
+double constexpr kShortLinkTimeoutSec = 5.0;
+// maps.app.goo.gl redirects to the long link at once; the limit only stops a loop of short links.
+int constexpr kMaxShortLinkRedirects = 3;
+size_t constexpr kMaxSharedQueryLength = 512;
 
 namespace map
 {
@@ -529,5 +539,93 @@ std::string DebugPrint(ParsedMapApi::UrlType type)
   case ParsedMapApi::UrlType::Settings: return "Settings";
   }
   UNREACHABLE();
+}
+
+std::string ExtractUrl(std::string_view text)
+{
+  std::string url;
+  strings::Tokenize(text, " \t\r\n", [&url](std::string_view token)
+  {
+    if (!url.empty())
+      return;
+    // A link can be quoted or ended by a punctuation mark.
+    auto const start = token.find_first_not_of("(<[\"'");
+    if (start == std::string_view::npos)
+      return;
+    token.remove_prefix(start);
+    token = token.substr(0, token.find_last_not_of(")>]\"'.,;!?") + 1);
+    if (token.starts_with("https://") || token.starts_with("http://") || token.starts_with("geo:"))
+      url = token;
+  });
+  return url;
+}
+
+bool IsShortMapLink(std::string const & url)
+{
+  url::Url const u(url);
+  if (!u.IsValid() || (u.GetScheme() != "https" && u.GetScheme() != "http"))
+    return false;
+  std::string const & host = u.GetHost();
+  return host == "maps.app.goo.gl" || (host == "goo.gl" && u.GetPath().starts_with("maps")) ||
+         (host == "maps.apple" && u.GetPath().starts_with("p/"));
+}
+
+std::string SharedTextToApiUrl(std::string_view text, std::string const & link)
+{
+  if (!link.empty() && ParsedMapApi(link).GetRequestType() != ParsedMapApi::UrlType::Incorrect)
+    return link;
+
+  std::string const textLink = ExtractUrl(text);
+  std::string query;
+  strings::Tokenize(text, " \t\r\n", [&query, &textLink](std::string_view token)
+  {
+    if (!textLink.empty() && token.find(textLink) != std::string_view::npos)
+      return;
+    if (!query.empty())
+      query += ' ';
+    query += token;
+  });
+
+  if (query.empty() && !link.empty())
+  {
+    url::Url const u(link);
+    query = geo::GoogleMapsParser::GetPlaceName(u);
+    // "q" is Google and older Apple links, "query" and "address" are Apple links since iOS 18.
+    for (auto const * key : {"q", "query", "address"})
+      if (auto const * value = u.GetParamValue(key); query.empty() && value)
+        query = *value;
+  }
+
+  // A longer text is not a place; the search history refuses texts over 1024 bytes.
+  if (query.empty() || query.size() > kMaxSharedQueryLength)
+    return {};
+  return "om://search?query=" + url::UrlEncode(query);
+}
+
+void ResolveSharedText(std::string text, std::function<void(std::string const & url)> callback)
+{
+  GetPlatform().RunTask(Platform::Thread::Network, [text = std::move(text), callback = std::move(callback)]() mutable
+  {
+    // Each redirect is read from the Location header: following it would download the Google Maps page.
+    std::string link = ExtractUrl(text);
+    for (int i = 0; i < kMaxShortLinkRedirects && IsShortMapLink(link); ++i)
+    {
+      platform::HttpClient request(link);
+      request.SetTimeout(kShortLinkTimeoutSec).SetFollowRedirects(false);
+      bool const redirected = request.RunHttpRequest() && request.ErrorCode() >= 300 && request.ErrorCode() < 400;
+      if (!redirected || request.UrlReceived().empty() || request.UrlReceived() == link)
+      {
+        LOG(LWARNING, ("Can't resolve the short link", link, "code", request.ErrorCode()));
+        break;
+      }
+      link = request.UrlReceived();
+    }
+
+    std::string url = SharedTextToApiUrl(text, link);
+    LOG(LINFO, ("Shared link", link, "is opened as", url));
+    // The GUI thread releases the callback: on Android it holds a JNI reference.
+    GetPlatform().RunTask(Platform::Thread::Gui,
+                          [url = std::move(url), callback = std::move(callback)] { callback(url); });
+  });
 }
 }  // namespace url_scheme

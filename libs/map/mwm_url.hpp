@@ -3,6 +3,7 @@
 #include "geometry/latlon.hpp"
 #include "geometry/point2d.hpp"
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -145,4 +146,15 @@ private:
 };
 
 std::string DebugPrint(ParsedMapApi::UrlType type);
+
+// The first http(s) or geo: link in a text that another app shares, or empty.
+std::string ExtractUrl(std::string_view text);
+// A short link of Google or Apple Maps: it has coordinates only after its redirect is resolved over the network.
+bool IsShortMapLink(std::string const & url);
+// A URL for ParsedMapApi from a shared text and the link of the text, resolved if it was short: the link when it has a
+// place, otherwise a search for the text without the link, or for the place name in the link. Empty if there is none.
+std::string SharedTextToApiUrl(std::string_view text, std::string const & link);
+// SharedTextToApiUrl() for a text that another app shares. A short link is resolved on the network thread, and
+// the callback gets the URL on the GUI thread.
+void ResolveSharedText(std::string text, std::function<void(std::string const & url)> callback);
 }  // namespace url_scheme
