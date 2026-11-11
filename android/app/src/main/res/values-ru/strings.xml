@@ -1164,6 +1164,12 @@
     <string name="nogps_gps_use_hint">Выключено: GPS не используется, машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.</string>
     <!-- Under the disabled switch Use GPS for the car in the Box sheet: no box is heard -->
     <string name="nogps_gps_use_needs_box">GPS можно выключить, только когда подключён блок: иначе машину ничто не поведёт.</string>
+    <!-- Switch in the Box sheet under Use GPS for the car: the app is the mock location app for other apps -->
+    <string name="nogps_share_position">Передавать позицию другим приложениям</string>
+    <!-- Under the switch Share the position with other apps -->
+    <string name="nogps_share_position_hint">Пока GPS не используется, Google Карты, Waze и другие приложения берут позицию машины отсюда. Раз в минуту GPS проверяется 10 с.</string>
+    <!-- Under the switch Share the position with other apps, tapped opens Developer options of Android -->
+    <string name="nogps_share_position_needs_mock">Выберите NonGPS Maps приложением для фиктивных местоположений в параметрах разработчика. Нажмите, чтобы открыть их.</string>
     <!-- Under the distance left in navigation: the distance driven since navigation started, e.g. 12.4 km covered -->
     <string name="nogps_nav_covered">пройдено %s</string>
     <!-- Accessibility label of the speed indicator on the map, e.g. Speed 54 km/h -->
