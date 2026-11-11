@@ -56,6 +56,13 @@ final class NoGpsBoxSheet: MWMTableViewController {
 
   /// The height of the rows the sheet was fitted to.
   private var fittedHeight = CGFloat(0)
+  /// The bottom of the bar in a shown sheet: iOS moves the bar and makes it higher only as the sheet opens. The sheet
+  /// is fitted with it from the start, else it would grow as it opens. Taken again from every shown sheet.
+  private static var barBottom: CGFloat = if #available(iOS 26.0, *) {
+    70
+  } else {
+    56
+  }
 
   static func show() {
     let root = NoGpsBoxSheet(style: .insetGrouped)
@@ -66,9 +73,8 @@ final class NoGpsBoxSheet: MWMTableViewController {
         sheet.detents = [.custom { [weak root] context in
           root.map { min($0.sheetHeight, context.maximumDetentValue) }
         }, .large()]
-        // The rows are laid out before the sheet is: it opens at their height.
-        let window = UIViewController.topViewController().view.window?.bounds ?? UIScreen.main.bounds
-        navigation.view.frame = window
+        // The rows are laid out before the sheet is: it opens at their height, not at the bar only.
+        navigation.view.frame = UIViewController.topViewController().view.window?.bounds ?? UIScreen.main.bounds
         navigation.view.layoutIfNeeded()
       }
       sheet.prefersGrabberVisible = true
@@ -81,7 +87,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
   private var sheetHeight: CGFloat {
     let window = view.window?.bounds.height ?? UIScreen.main.bounds.height
     guard searching || !status.inertialEnabled else { return window / 2 + Constants.extraSheetHeight }
-    return (navigationController?.navigationBar.frame.maxY ?? 0) + tableView.contentSize.height
+    return Self.barBottom + tableView.contentSize.height
   }
 
   override func viewDidLoad() {
@@ -110,6 +116,13 @@ final class NoGpsBoxSheet: MWMTableViewController {
     self.timer = timer
   }
 
+  override func viewDidAppear(_ animated: Bool) {
+    super.viewDidAppear(animated)
+    if let bar = navigationController?.navigationBar {
+      Self.barBottom = bar.frame.maxY
+    }
+  }
+
   override func viewWillDisappear(_ animated: Bool) {
     super.viewWillDisappear(animated)
     timer?.invalidate()
@@ -119,10 +132,11 @@ final class NoGpsBoxSheet: MWMTableViewController {
   override func viewDidLayoutSubviews() {
     super.viewDidLayoutSubviews()
     layoutHeader()
-    // Rows come and go, the box is found: the sheet follows.
+    // Rows come and go, the box is found: the sheet follows. Not for the fractions of a point the layout differs by.
+    let height = sheetHeight
     if #available(iOS 16.0, *), let sheet = navigationController?.sheetPresentationController,
-       sheetHeight != fittedHeight {
-      fittedHeight = sheetHeight
+       abs(height - fittedHeight) >= 1 {
+      fittedHeight = height
       sheet.animateChanges { sheet.invalidateDetents() }
     }
   }
