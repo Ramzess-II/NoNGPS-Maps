@@ -50,7 +50,8 @@ import java.util.Locale;
 
 /**
  * The sensor box: its state, the car speed, the firmware and what the user does with the box. Without a box it is
- * searched while the sheet is open, step by step, and the sheet offers to buy one.
+ * searched while the sheet is open, step by step, and the sheet offers to buy one. On the top the box and GPS are side
+ * by side, GPS opens its page. Under them GPS is turned off for the car.
  */
 public class BoxBottomSheet extends BottomSheetDialogFragment
 {
@@ -104,18 +105,19 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     }
   };
   private ViewGroup mRoot;
-  private View mHeader;
+  private View mTiles;
+  private View mBox;
   private StatusBar.Button mTile;
+  private View mGpsRow;
   private View mGpsGroup;
   private StatusBar.Button mGpsTile;
-  private TextView mGpsTitle;
-  private TextView mGpsSubtitle;
+  private TextView mGpsState;
   private SwitchCompat mGpsUse;
-  private TextView mGpsFooter;
+  private View mGpsUseHint;
+  private View mGpsUseNeedsBox;
   private View mGpsPage;
   private GpsSheetView mGpsView;
   private TextView mState;
-  private View mProgress;
   private ColorStateList mStateColors;
   private View mConnected;
   private TextView mName;
@@ -178,26 +180,27 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     final View view = inflater.inflate(R.layout.nogps_box_sheet, container, false);
     mRoot = (ViewGroup) ((ViewGroup) view).getChildAt(0);
-    mHeader = view.findViewById(R.id.box_header);
+    mTiles = view.findViewById(R.id.box_tiles);
+    mBox = view.findViewById(R.id.box_box);
     mTile = new StatusBar.Button(view.findViewById(R.id.box_tile), view.findViewById(R.id.box_icon),
                                  view.findViewById(R.id.box_badge));
     mGpsGroup = view.findViewById(R.id.box_gps_group);
     mGpsTile = new StatusBar.Button(view.findViewById(R.id.box_gps_tile), view.findViewById(R.id.box_gps_icon),
                                     view.findViewById(R.id.box_gps_badge));
-    mGpsTitle = view.findViewById(R.id.box_gps_title);
-    mGpsSubtitle = view.findViewById(R.id.box_gps_subtitle);
+    mGpsState = view.findViewById(R.id.box_gps_state);
     mGpsUse = view.findViewById(R.id.box_gps_use);
-    mGpsFooter = view.findViewById(R.id.box_gps_footer);
+    mGpsUseHint = view.findViewById(R.id.box_gps_use_hint);
+    mGpsUseNeedsBox = view.findViewById(R.id.box_gps_use_needs_box);
     mGpsPage = view.findViewById(R.id.box_gps_page);
     mGpsView = view.findViewById(R.id.box_gps_view);
-    view.findViewById(R.id.box_gps_row).setOnClickListener(v -> showGps(true));
+    mGpsRow = view.findViewById(R.id.box_gps_row);
+    mGpsRow.setOnClickListener(v -> showGps(true));
     view.findViewById(R.id.box_gps_back).setOnClickListener(v -> showGps(false));
     mGpsUse.setOnClickListener(v -> {
       NoGps.nativeSetGpsDisabled(!mGpsUse.isChecked());
       update();
     });
     mState = view.findViewById(R.id.box_state);
-    mProgress = view.findViewById(R.id.box_progress);
     mStateColors = mState.getTextColors();
     mConnected = view.findViewById(R.id.box_connected);
     mName = view.findViewById(R.id.box_name);
@@ -297,7 +300,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final boolean speedTable = mSpeedTableShown && !mGpsShown && !mSearching && status.inertialEnabled;
     final boolean page = speedTable || mGpsShown;
     mBackFromPage.setEnabled(page);
-    mHeader.setVisibility(page ? View.GONE : View.VISIBLE);
+    mTiles.setVisibility(page ? View.GONE : View.VISIBLE);
     mGpsGroup.setVisibility(page ? View.GONE : View.VISIBLE);
     mGpsPage.setVisibility(mGpsShown ? View.VISIBLE : View.GONE);
     mSpeedTablePage.setVisibility(speedTable ? View.VISIBLE : View.GONE);
@@ -322,16 +325,15 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final StatusBar.Look look = StatusBar.getGpsLook(context, status);
     mGpsTile.show(look);
     final String state = StatusBar.getGpsStateText(context, status);
-    mGpsTitle.setText(getString(R.string.nogps_status_gps) + " · " + state);
-    final String why = StatusBar.getGpsWhyText(context, status);
-    mGpsSubtitle.setText(why);
-    mGpsSubtitle.setVisibility(why == null ? View.GONE : View.VISIBLE);
+    showState(mGpsState, look, state);
+    mGpsRow.setContentDescription(getString(R.string.nogps_status_gps) + ": " + state);
     // GPS is turned off for the car only while the box can drive it: nothing would move the mark otherwise.
     final boolean canSwitch = status.gpsDisabled || isBoxHeard(status);
     mGpsUse.setEnabled(canSwitch);
     if (!mGpsUse.isPressed())
       mGpsUse.setChecked(!status.gpsDisabled);
-    mGpsFooter.setText(canSwitch ? R.string.nogps_gps_use_hint : R.string.nogps_gps_use_needs_box);
+    mGpsUseHint.setVisibility(canSwitch ? View.VISIBLE : View.INVISIBLE);
+    mGpsUseNeedsBox.setVisibility(canSwitch ? View.INVISIBLE : View.VISIBLE);
   }
 
   /**
@@ -382,7 +384,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final Context context = requireContext();
     animateRings(false);
     final StatusBar.Look look = StatusBar.getBoxLook(status);
-    showState(look, status.inertialEnabled ? SensorsBottomSheet.boxStateText(context, status) : "");
+    showBox(look, status.inertialEnabled ? SensorsBottomSheet.boxStateText(context, status)
+                                         : getString(R.string.nogps_box_buy_title));
     if (!status.inertialEnabled)
       return;
     final boolean bluetoothFailed = isBluetoothFailed(status);
@@ -473,7 +476,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final TransitionSet transition = new TransitionSet()
                                          .addTransition(new Slide(Gravity.END).addTarget(page))
                                          .addTransition(new Slide(Gravity.START)
-                                                            .addTarget(mHeader)
+                                                            .addTarget(mTiles)
                                                             .addTarget(mGpsGroup)
                                                             .addTarget(mConnected)
                                                             .addTarget(mSearch)
@@ -522,7 +525,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     final NoGps.BleState ble = status.getBleState();
     final boolean bluetoothFailed = isBluetoothFailed(status);
-    showState(new StatusBar.Look(R.drawable.ic_nogps_box, 0), getString(R.string.nogps_box_searching));
+    showBox(new StatusBar.Look(R.drawable.ic_nogps_box, 0), getString(R.string.nogps_box_searching));
     final boolean searched = ble == NoGps.BleState.SEARCHING || ble == NoGps.BleState.PAIRING_CLOSED;
     final boolean connecting = ble == NoGps.BleState.CONNECTING || ble == NoGps.BleState.PAIRING;
     final boolean connected = ble == NoGps.BleState.CONNECTED;
@@ -541,19 +544,22 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     animateRings(!bluetoothFailed);
   }
 
-  private void showState(@NonNull StatusBar.Look look, @NonNull String text)
+  private void showBox(@NonNull StatusBar.Look look, @NonNull String text)
   {
-    final int color = look.getColor(requireContext());
-    // The progress bar shows what is in progress, the icon doesn't pulse.
-    mTile.show(look, false);
+    mTile.show(look);
+    showState(mState, look, text);
+    mBox.setContentDescription(getString(R.string.nogps_box_title) + ": " + mState.getText());
+  }
+
+  private void showState(@NonNull TextView state, @NonNull StatusBar.Look look, @NonNull String text)
+  {
     // The states follow "Box: name ·" on the sensors screen, here they start the line.
-    mState.setText(text.isEmpty() ? text : text.substring(0, 1).toUpperCase(Locale.getDefault()) + text.substring(1));
-    mProgress.setVisibility(look.pulsing ? View.VISIBLE : View.GONE);
+    state.setText(text.isEmpty() ? text : text.substring(0, 1).toUpperCase(Locale.getDefault()) + text.substring(1));
     // A grey state is read as disabled: it is shown in the color of the text.
     if (look.color == 0 || look.color == R.color.source_sleeping)
-      mState.setTextColor(mStateColors);
+      state.setTextColor(mStateColors);
     else
-      mState.setTextColor(color);
+      state.setTextColor(look.getColor(requireContext()));
   }
 
   private void showStep(int i, @NonNull StepState state)

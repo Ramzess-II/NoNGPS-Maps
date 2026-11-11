@@ -15,97 +15,80 @@
   android:paddingTop="16dp"
   android:paddingBottom="24dp">
 
+  <!-- The box and GPS side by side, GPS opens its page. The states keep their height: the sheet doesn't jump as they
+       change, a longer state is cut. -->
   <LinearLayout
-    android:id="@+id/box_header"
+    android:id="@+id/box_tiles"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:gravity="center_vertical"
     android:orientation="horizontal">
-    <FrameLayout
-      android:id="@+id/box_tile"
-      android:layout_width="@dimen/map_button_size"
-      android:layout_height="@dimen/map_button_size"
-      android:background="@drawable/bg_status_button">
-      <FrameLayout
-        android:layout_width="26dp"
-        android:layout_height="26dp"
-        android:layout_gravity="center">
-        <ImageView
-          android:id="@+id/box_icon"
-          android:layout_width="24dp"
-          android:layout_height="24dp"
-          android:layout_gravity="center"
-          android:importantForAccessibility="no" />
-        <ImageView
-          android:id="@+id/box_badge"
-          android:layout_width="11dp"
-          android:layout_height="11dp"
-          android:layout_gravity="top|end"
-          android:background="@drawable/bg_source_badge"
-          android:importantForAccessibility="no"
-          android:padding="1dp"
-          android:visibility="gone" />
-      </FrameLayout>
-    </FrameLayout>
     <LinearLayout
+      android:id="@+id/box_box"
       android:layout_width="0dp"
       android:layout_height="wrap_content"
-      android:layout_marginStart="12dp"
       android:layout_weight="1"
-      android:orientation="vertical">
-      <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/nogps_box_title"
-        android:textAppearance="?android:textAppearanceLarge"
-        android:textStyle="bold" />
+      android:background="@drawable/bg_nogps_group"
+      android:focusable="true"
+      android:gravity="center_horizontal"
+      android:orientation="vertical"
+      android:padding="12dp">
+      <FrameLayout
+        android:id="@+id/box_tile"
+        android:layout_width="@dimen/map_button_size"
+        android:layout_height="@dimen/map_button_size"
+        android:background="@drawable/bg_status_button">
+        <FrameLayout
+          android:layout_width="26dp"
+          android:layout_height="26dp"
+          android:layout_gravity="center">
+          <ImageView
+            android:id="@+id/box_icon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center"
+            android:importantForAccessibility="no" />
+          <ImageView
+            android:id="@+id/box_badge"
+            android:layout_width="11dp"
+            android:layout_height="11dp"
+            android:layout_gravity="top|end"
+            android:background="@drawable/bg_source_badge"
+            android:importantForAccessibility="no"
+            android:padding="1dp"
+            android:visibility="gone" />
+        </FrameLayout>
+      </FrameLayout>
       <TextView
         android:id="@+id/box_state"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="15sp"
+        android:layout_marginTop="8dp"
+        android:ellipsize="end"
+        android:gravity="center_horizontal|top"
+        android:lines="3"
+        android:textSize="13sp"
         android:textStyle="bold" />
     </LinearLayout>
-    <!-- While the box is searched, connects, waits for the car data or takes a firmware, as the button pulses. -->
-    <ProgressBar
-      android:id="@+id/box_progress"
-      style="?android:progressBarStyleSmall"
-      android:layout_width="24dp"
-      android:layout_height="24dp"
-      android:layout_marginStart="12dp"
-      android:indeterminate="true"
-      android:visibility="gone" />
-  </LinearLayout>
-
-  <!-- GPS: the left part opens its page, the switch tells if the car follows it. -->
-  <LinearLayout
-    android:id="@+id/box_gps_group"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="16dp"
-    android:orientation="vertical">
-    <LinearLayout
-      android:layout_width="match_parent"
+    <FrameLayout
+      android:id="@+id/box_gps_row"
+      android:layout_width="0dp"
       android:layout_height="wrap_content"
+      android:layout_marginStart="12dp"
+      android:layout_weight="1"
       android:background="@drawable/bg_nogps_group"
-      android:gravity="center_vertical"
-      android:orientation="horizontal">
+      android:clickable="true"
+      android:focusable="true"
+      android:foreground="?selectableItemBackground">
       <LinearLayout
-        android:id="@+id/box_gps_row"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:background="?selectableItemBackground"
-        android:clickable="true"
-        android:focusable="true"
-        android:gravity="center_vertical"
-        android:minHeight="64dp"
-        android:orientation="horizontal"
-        android:padding="10dp">
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="12dp">
         <FrameLayout
           android:id="@+id/box_gps_tile"
-          android:layout_width="44dp"
-          android:layout_height="44dp"
+          android:layout_width="@dimen/map_button_size"
+          android:layout_height="@dimen/map_button_size"
           android:background="@drawable/bg_status_button">
           <FrameLayout
             android:layout_width="26dp"
@@ -128,51 +111,65 @@
               android:visibility="gone" />
           </FrameLayout>
         </FrameLayout>
-        <LinearLayout
-          android:layout_width="0dp"
+        <TextView
+          android:id="@+id/box_gps_state"
+          android:layout_width="match_parent"
           android:layout_height="wrap_content"
-          android:layout_marginStart="12dp"
-          android:layout_weight="1"
-          android:orientation="vertical">
-          <TextView
-            android:id="@+id/box_gps_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="16sp"
-            android:textStyle="bold" />
-          <TextView
-            android:id="@+id/box_gps_subtitle"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textColor="?android:textColorSecondary"
-            android:textSize="13sp" />
-        </LinearLayout>
-        <ImageView
-          android:layout_width="24dp"
-          android:layout_height="24dp"
-          android:importantForAccessibility="no"
-          app:srcCompat="@drawable/ic_nogps_chevron" />
+          android:layout_marginTop="8dp"
+          android:ellipsize="end"
+          android:gravity="center_horizontal|top"
+          android:lines="3"
+          android:textSize="13sp"
+          android:textStyle="bold" />
       </LinearLayout>
-      <View
-        android:layout_width="1dp"
-        android:layout_height="32dp"
-        android:background="?android:listDivider" />
-      <androidx.appcompat.widget.SwitchCompat
-        android:id="@+id/box_gps_use"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:contentDescription="@string/nogps_gps_use"
-        android:minHeight="48dp"
-        android:paddingHorizontal="14dp" />
-    </LinearLayout>
-    <TextView
-      android:id="@+id/box_gps_footer"
+      <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="22dp"
+        android:layout_marginEnd="8dp"
+        android:importantForAccessibility="no"
+        app:srcCompat="@drawable/ic_nogps_chevron" />
+    </FrameLayout>
+  </LinearLayout>
+
+  <!-- If the car follows GPS. -->
+  <LinearLayout
+    android:id="@+id/box_gps_group"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="12dp"
+    android:orientation="vertical">
+    <androidx.appcompat.widget.SwitchCompat
+      android:id="@+id/box_gps_use"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:background="@drawable/bg_nogps_group"
+      android:minHeight="56dp"
+      android:paddingHorizontal="16dp"
+      android:text="@string/nogps_gps_use"
+      android:textSize="16sp" />
+    <!-- Both texts take their place: the sheet doesn't jump as the box comes and goes. -->
+    <FrameLayout
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginHorizontal="4dp"
-      android:layout_marginTop="6dp"
-      android:textColor="?android:textColorSecondary"
-      android:textSize="13sp" />
+      android:layout_marginTop="6dp">
+      <TextView
+        android:id="@+id/box_gps_use_hint"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/nogps_gps_use_hint"
+        android:textColor="?android:textColorSecondary"
+        android:textSize="13sp" />
+      <TextView
+        android:id="@+id/box_gps_use_needs_box"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/nogps_gps_use_needs_box"
+        android:textColor="?android:textColorSecondary"
+        android:textSize="13sp" />
+    </FrameLayout>
   </LinearLayout>
 
   <LinearLayout
