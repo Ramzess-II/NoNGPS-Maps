@@ -174,7 +174,8 @@
           sd.onViewportChanged(kSearchInViewportZoom)
         }
       }
-      let searchQuery = SearchQuery(sd.query, locale: sd.locale, source: .deeplink)
+      // A link without "locale=" searches in the app language: the search history refuses an empty locale.
+      let searchQuery = SearchQuery(sd.query, locale: sd.locale.isEmpty ? nil : sd.locale, source: .deeplink)
       if sd.isSearchOnMap {
         MWMMapViewControlsManager.manager()?.search(onMap: searchQuery)
       } else {
