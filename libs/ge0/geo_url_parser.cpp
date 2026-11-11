@@ -378,6 +378,37 @@ bool GeoURLInfo::SetLon(double x)
   return false;
 }
 
+GoogleMapsParser::GoogleMapsParser() : m_placeRe("!3d" + kFloatCoord + "!4d" + kFloatCoord) {}
+
+bool GoogleMapsParser::Parse(url::Url const & url, GeoURLInfo & info) const
+{
+  std::string const & path = url.GetPath();
+  std::smatch m;
+  if (!std::regex_search(path, m, m_placeRe))
+    return false;
+
+  double lat, lon;
+  VERIFY(strings::to_double(ToView(m[1]), lat), ());
+  VERIFY(strings::to_double(ToView(m[2]), lon), ());
+  info.Reset();
+  if (!info.SetLat(lat) || !info.SetLon(lon))
+    return false;
+
+  info.m_label = GetPlaceName(url);
+  return true;
+}
+
+std::string GoogleMapsParser::GetPlaceName(url::Url const & url)
+{
+  std::string_view constexpr kPlace = "maps/place/";
+  std::string_view path = url.GetPath();
+  if (!path.starts_with(kPlace))
+    return {};
+
+  path.remove_prefix(kPlace.size());
+  return url::UrlDecode(path.substr(0, path.find('/')));
+}
+
 bool UnifiedParser::Parse(std::string const & raw, GeoURLInfo & res)
 {
   if (raw.starts_with("geo:"))
@@ -390,9 +421,18 @@ bool UnifiedParser::Parse(std::string const & raw, GeoURLInfo & res)
   if (url.GetScheme() != "https" && url.GetScheme() != "http")
     return false;
 
+  // In the EU, a Google Maps link redirects to the cookie consent page with the link in "continue=".
+  if (MatchHost(url, "consent.google."))
+  {
+    auto const * link = url.GetParamValue("continue");
+    return link && Parse(*link, res);
+  }
+
   if (MatchHost(url, "2gis") && m_dgParser.Parse(url, res))
     return true;
   else if (MatchHost(url, "openstreetmap") && m_osmParser.Parse(url, res))
+    return true;
+  else if (MatchHost(url, "google") && m_googleParser.Parse(url, res))
     return true;
   // Fall through.
 

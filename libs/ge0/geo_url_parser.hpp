@@ -48,6 +48,19 @@ private:
   std::regex m_regex;
 };
 
+class GoogleMapsParser
+{
+public:
+  GoogleMapsParser();
+  // The place itself from "!3d<lat>!4d<lon>". Place links also have "@lat,lon", but it is only the map centre.
+  bool Parse(url::Url const & url, GeoURLInfo & info) const;
+  // "Eiffel Tower" from ".../maps/place/Eiffel+Tower/...", or empty.
+  static std::string GetPlaceName(url::Url const & url);
+
+private:
+  std::regex m_placeRe;
+};
+
 class LatLonParser
 {
 public:
@@ -98,6 +111,7 @@ private:
   GeoParser m_geoParser;
   DoubleGISParser m_dgParser;
   OpenStreetMapParser m_osmParser;
+  GoogleMapsParser m_googleParser;
   LatLonParser m_llParser;
 };
 

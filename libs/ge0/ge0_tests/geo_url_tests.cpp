@@ -201,6 +201,67 @@ UNIT_TEST(GeoURL_GoogleMaps)
   TEST_ALMOST_EQUAL_ABS(info.m_lon, -37.6130029, kEps, ());
 }
 
+UNIT_TEST(GeoURL_GoogleMapsPlace)
+{
+  UnifiedParser parser;
+  GeoURLInfo info;
+
+  // "!3d!4d" is the place, "@" is the map centre next to it.
+  TEST(parser.Parse("https://www.google.com/maps/place/Eiffel+Tower/@48.8583701,2.2919064,17z/"
+                    "data=!3m1!4b1!4m6!3m5!1s0x47e66e2964e34e2d:0x8ddca9ee380ef7e0!8m2!3d48.8583736!4d2.2944813"
+                    "!16zL20vMDJqODE?entry=ttu",
+                    info),
+       ());
+  TEST_ALMOST_EQUAL_ABS(info.m_lat, 48.8583736, kEps, ());
+  TEST_ALMOST_EQUAL_ABS(info.m_lon, 2.2944813, kEps, ());
+  TEST_EQUAL(info.m_label, "Eiffel Tower", ());
+
+  // A place link without "@".
+  TEST(parser.Parse("https://www.google.com/maps/place/Caf%C3%A9+de+Flore/data=!4m2!3m1!1s0x0:0x0!8m2!3d-33.85!4d151.2"
+                    "?utm_source=mstt_1&entry=gps",
+                    info),
+       ());
+  TEST_ALMOST_EQUAL_ABS(info.m_lat, -33.85, kEps, ());
+  TEST_ALMOST_EQUAL_ABS(info.m_lon, 151.2, kEps, ());
+  TEST_EQUAL(info.m_label, "Café de Flore", ());
+
+  // Neither coordinates nor "@": the place id needs Google.
+  TEST(
+      !parser.Parse(
+          "https://www.google.com/maps/place/Eiffel+Tower/data=!4m2!3m1!1s0x47e66e2964e34e2d:0x8ddca9ee380ef7e0", info),
+      ());
+  TEST(!parser.Parse("https://maps.app.goo.gl/AbCdEf123456", info), ());
+
+  TEST_EQUAL(GoogleMapsParser::GetPlaceName(url::Url("https://www.google.com/maps/place/Eiffel+Tower/data=!4m2")),
+             "Eiffel Tower", ());
+  TEST_EQUAL(GoogleMapsParser::GetPlaceName(url::Url("https://www.google.com/maps/place/Eiffel+Tower")), "Eiffel Tower",
+             ());
+  TEST_EQUAL(GoogleMapsParser::GetPlaceName(url::Url("https://www.google.com/maps/@48.85,2.29,17z")), "", ());
+}
+
+UNIT_TEST(GeoURL_GoogleConsent)
+{
+  UnifiedParser parser;
+  GeoURLInfo info;
+
+  // The EU cookie consent page in front of the link.
+  TEST(parser.Parse("https://consent.google.com/m?continue=https://www.google.com/maps/place/Eiffel%2BTower/"
+                    "data%3D!4m2!3m1!8m2!3d48.8583736!4d2.2944813%3Fentry%3Dttu&gl=DE&m=0&pc=m&uxe=eomtm&hl=en&src=1",
+                    info),
+       ());
+  TEST_ALMOST_EQUAL_ABS(info.m_lat, 48.8583736, kEps, ());
+  TEST_ALMOST_EQUAL_ABS(info.m_lon, 2.2944813, kEps, ());
+  TEST_EQUAL(info.m_label, "Eiffel Tower", ());
+
+  TEST(
+      parser.Parse("https://consent.google.com/ml?continue=https://www.google.com/maps/%4055.75,37.61,15z&gl=DE", info),
+      ());
+  TEST_ALMOST_EQUAL_ABS(info.m_lat, 55.75, kEps, ());
+  TEST_ALMOST_EQUAL_ABS(info.m_lon, 37.61, kEps, ());
+
+  TEST(!parser.Parse("https://consent.google.com/m?gl=DE&hl=en", info), ());
+}
+
 UNIT_TEST(GeoURL_Yandex)
 {
   UnifiedParser parser;

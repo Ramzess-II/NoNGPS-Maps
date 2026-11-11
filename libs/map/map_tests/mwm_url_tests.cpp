@@ -664,6 +664,113 @@ void generateRandomTest(uint32_t numberOfPoints, size_t stringLength)
 
 }  // namespace
 
+UNIT_TEST(SharedText_ExtractUrl)
+{
+  // Google Maps on Android: name, address, short link.
+  TEST_EQUAL(
+      ExtractUrl("Eiffel Tower\nAv. Gustave Eiffel, 75007 Paris, France\nhttps://maps.app.goo.gl/AbC123?g_st=ac"),
+      "https://maps.app.goo.gl/AbC123?g_st=ac", ());
+  TEST_EQUAL(ExtractUrl("https://maps.app.goo.gl/AbC123"), "https://maps.app.goo.gl/AbC123", ());
+  TEST_EQUAL(ExtractUrl("See (https://omaps.app/o4B4pYZsRs/Zoo)."), "https://omaps.app/o4B4pYZsRs/Zoo", ());
+  TEST_EQUAL(ExtractUrl("Here: geo:53.9,27.56?z=16, and http://a.b/c"), "geo:53.9,27.56?z=16", ());
+  TEST_EQUAL(ExtractUrl("Eiffel Tower, Paris"), "", ());
+  TEST_EQUAL(ExtractUrl(""), "", ());
+  // Not a link in the middle of a word.
+  TEST_EQUAL(ExtractUrl("ftp://a.b xhttps://a.b"), "", ());
+}
+
+UNIT_TEST(SharedText_IsShortMapLink)
+{
+  TEST(IsShortMapLink("https://maps.app.goo.gl/AbC123?g_st=ac"), ());
+  TEST(IsShortMapLink("http://goo.gl/maps/AbC123"), ());
+  TEST(!IsShortMapLink("https://goo.gl/AbC123"), ());
+  TEST(!IsShortMapLink("https://www.google.com/maps/place/Eiffel+Tower"), ());
+  TEST(!IsShortMapLink("geo:53.9,27.56"), ());
+  TEST(!IsShortMapLink(""), ());
+}
+
+UNIT_TEST(SharedText_ToApiUrl)
+{
+  auto const typeOf = [](std::string const & url) { return ParsedMapApi(url).GetRequestType(); };
+
+  std::string const text = "Eiffel Tower\nAv. Gustave Eiffel, 75007 Paris\nhttps://maps.app.goo.gl/AbC123";
+  std::string const place =
+      "https://www.google.com/maps/place/Eiffel+Tower/@48.8583701,2.2919064,17z/data=!4m6!3m5!8m2!3d48.8583736"
+      "!4d2.2944813?entry=ttu";
+
+  // The resolved link has the place.
+  TEST_EQUAL(SharedTextToApiUrl(text, place), place, ());
+  ParsedMapApi api(SharedTextToApiUrl(text, place));
+  TEST_EQUAL(api.GetRequestType(), UrlType::Map, ());
+  TEST_ALMOST_EQUAL_ABS(api.GetMapPoints()[0].m_lat, 48.8583736, kEps, ());
+  TEST_EQUAL(api.GetMapPoints()[0].m_name, "Eiffel Tower", ());
+
+  // No network: the short link stays, so the text is searched.
+  std::string url = SharedTextToApiUrl(text, "https://maps.app.goo.gl/AbC123");
+  TEST_EQUAL(typeOf(url), UrlType::Search, (url));
+  TEST_EQUAL(ParsedMapApi(url).GetSearchRequest().m_query, "Eiffel Tower Av. Gustave Eiffel, 75007 Paris", ());
+
+  // Only the link was shared, and it has no coordinates: the place name, then "q=".
+  url = SharedTextToApiUrl("https://maps.app.goo.gl/AbC123",
+                           "https://www.google.com/maps/place/Caf%C3%A9+de+Flore/data=!4m2!3m1!1s0x0:0x0");
+  TEST_EQUAL(ParsedMapApi(url).GetSearchRequest().m_query, "Café de Flore", ());
+  url = SharedTextToApiUrl("https://maps.app.goo.gl/AbC123",
+                           "https://maps.google.com/?q=Rue+de+Rivoli+1,+Paris&ftid=0x0");
+  TEST_EQUAL(ParsedMapApi(url).GetSearchRequest().m_query, "Rue de Rivoli 1, Paris", ());
+
+  // Nothing to show.
+  TEST_EQUAL(SharedTextToApiUrl("https://maps.app.goo.gl/AbC123", "https://maps.app.goo.gl/AbC123"), "", ());
+  TEST_EQUAL(SharedTextToApiUrl("", ""), "", ());
+
+  // Text without a link, and links that open as they are.
+  url = SharedTextToApiUrl("  Kyiv,  Khreshchatyk 1 ", "");
+  TEST_EQUAL(ParsedMapApi(url).GetSearchRequest().m_query, "Kyiv, Khreshchatyk 1", ());
+  TEST_EQUAL(typeOf(SharedTextToApiUrl("Here geo:53.9,27.56", "geo:53.9,27.56")), UrlType::Map, ());
+  TEST_EQUAL(typeOf(SharedTextToApiUrl("", "https://www.openstreetmap.org/#map=16/53.9/27.56")), UrlType::Map, ());
+  TEST_EQUAL(typeOf(SharedTextToApiUrl("", "https://omaps.app/o4B4pYZsRs/Zoo")), UrlType::Map, ());
+}
+
+// Real links of Google Maps, resolved from maps.app.goo.gl in November 2026, with the tracking parameters cut.
+UNIT_TEST(SharedText_GoogleMapsSamples)
+{
+  // A place: "@" is the map centre, 200 m away from the place.
+  ParsedMapApi api(SharedTextToApiUrl(
+      "https://maps.app.goo.gl/9T1wfbxMrprjHYAUA",
+      "https://www.google.com/maps/place/Flatiron+Building/@43.648436,-79.376746,17z/"
+      "data=!3m2!4b1!5s0x89d4cb31fd7e2b53:"
+      "0x9a633b5928680c3c!4m6!3m5!1s0x89d4cb2c979b5019:0xa4dcd0f662b39ea5!8m2!3d43.6484321!4d-79.3741711!16s%2Fg%2F"
+      "11jf9d4xbb?entry=tts&g_ep=EgoyMDI2MDkxNS4wIPu8ASoASAFQAw%3D%3D"));
+  TEST_EQUAL(api.GetRequestType(), UrlType::Map, ());
+  TEST_ALMOST_EQUAL_ABS(api.GetMapPoints()[0].m_lat, 43.6484321, kEps, ());
+  TEST_ALMOST_EQUAL_ABS(api.GetMapPoints()[0].m_lon, -79.3741711, kEps, ());
+  TEST_EQUAL(api.GetMapPoints()[0].m_name, "Flatiron Building", ());
+
+  // A Street View photo: only "@".
+  api.SetUrlAndParse(SharedTextToApiUrl(
+      "https://maps.app.goo.gl/xsM9yzentBL22Fd47",
+      "https://www.google.com/maps/place/Karpagam+College+of+Engineering,+Myleripalayam+Village,+Othakkal+Mandapam,+"
+      "Tamil+Nadu+641032/@10.8801012,77.0223694,3a,90y,180.79h,106.63t/data=!3m5!1e1!3m3!1sCIHM0ogKEICAgIDMtP_5swE!2e10"
+      "!4m2!3m1!1s0x3ba84ffc9b3ea755:0xda7508a90583d22f?utm_source=mstt_0"));
+  TEST_EQUAL(api.GetRequestType(), UrlType::Map, ());
+  TEST_ALMOST_EQUAL_ABS(api.GetMapPoints()[0].m_lat, 10.8801012, kEps, ());
+
+  // A place without coordinates: its name is searched.
+  api.SetUrlAndParse(SharedTextToApiUrl(
+      "https://maps.app.goo.gl/HDBmrfw9FwKXYDpt7",
+      "https://www.google.com/maps/place/Trattoria+no+zu+Tot%C3%B3+e+niputi,+Via+dei+Candelai,+110,+90134+Palermo+PA,+"
+      "Italien/data=!4m2!3m1!1s0x1319efe0e678dbfb:0xb9c7cb609cfeb1d3!18m1!1e1?utm_source=mstt_1&entry=gps"));
+  TEST_EQUAL(api.GetRequestType(), UrlType::Search, ());
+  TEST_EQUAL(api.GetSearchRequest().m_query,
+             "Trattoria no zu Totó e niputi, Via dei Candelai, 110, 90134 Palermo PA, Italien", ());
+
+  // A list of places has no place.
+  TEST_EQUAL(
+      SharedTextToApiUrl("https://maps.app.goo.gl/ATFVu6FJ9oBBpH8K7",
+                         "https://www.google.com/maps/@/data=!3m1!4b1!4m3!11m2!2spz4Lz54cq6RodKvvNZbI85htJHaqkw!3e1"
+                         "?entry=tts"),
+      "", ());
+}
+
 UNIT_TEST(100FullEnteriesRandomTest)
 {
   generateRandomTest(100, 10);

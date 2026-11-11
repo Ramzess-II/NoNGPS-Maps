@@ -11,7 +11,12 @@
 #include "geometry/mercator.hpp"
 #include "indexer/scales.hpp"
 
+#include "platform/http_client.hpp"
+#include "platform/platform.hpp"
+
 #include "drape_frontend/visual_params.hpp"
+
+#include "coding/url.hpp"
 
 #include "base/logging.hpp"
 #include "base/scope_guard.hpp"
@@ -32,6 +37,10 @@ std::string_view constexpr kAppName = "appname";
 // (missing, malformed or out of range) falls back to the default.
 int constexpr kDefaultClearCoordinatesZoom = 14;
 uint32_t constexpr kMaxClearCoordinatesZoom = scales::UPPER_STYLE_SCALE;
+
+double constexpr kShortLinkTimeoutSec = 5.0;
+// maps.app.goo.gl redirects to the long link at once; the limit only stops a loop of short links.
+int constexpr kMaxShortLinkRedirects = 3;
 
 namespace map
 {
@@ -529,5 +538,87 @@ std::string DebugPrint(ParsedMapApi::UrlType type)
   case ParsedMapApi::UrlType::Settings: return "Settings";
   }
   UNREACHABLE();
+}
+
+std::string ExtractUrl(std::string_view text)
+{
+  std::string url;
+  strings::Tokenize(text, " \t\r\n", [&url](std::string_view token)
+  {
+    if (!url.empty())
+      return;
+    // A link can be quoted or ended by a punctuation mark.
+    auto const start = token.find_first_not_of("(<[\"'");
+    if (start == std::string_view::npos)
+      return;
+    token.remove_prefix(start);
+    token = token.substr(0, token.find_last_not_of(")>]\"'.,;!?") + 1);
+    if (token.starts_with("https://") || token.starts_with("http://") || token.starts_with("geo:"))
+      url = token;
+  });
+  return url;
+}
+
+bool IsShortMapLink(std::string const & url)
+{
+  url::Url const u(url);
+  if (!u.IsValid() || (u.GetScheme() != "https" && u.GetScheme() != "http"))
+    return false;
+  std::string const & host = u.GetHost();
+  return host == "maps.app.goo.gl" || (host == "goo.gl" && u.GetPath().starts_with("maps"));
+}
+
+std::string SharedTextToApiUrl(std::string_view text, std::string const & link)
+{
+  if (!link.empty() && ParsedMapApi(link).GetRequestType() != ParsedMapApi::UrlType::Incorrect)
+    return link;
+
+  std::string const textLink = ExtractUrl(text);
+  std::string query;
+  strings::Tokenize(text, " \t\r\n", [&query, &textLink](std::string_view token)
+  {
+    if (!textLink.empty() && token.find(textLink) != std::string_view::npos)
+      return;
+    if (!query.empty())
+      query += ' ';
+    query += token;
+  });
+
+  if (query.empty() && !link.empty())
+  {
+    url::Url const u(link);
+    query = geo::GoogleMapsParser::GetPlaceName(u);
+    if (auto const * q = u.GetParamValue("q"); query.empty() && q)
+      query = *q;
+  }
+
+  if (query.empty())
+    return {};
+  return "om://search?query=" + url::UrlEncode(query);
+}
+
+void ResolveSharedText(std::string text, std::function<void(std::string const & url)> callback)
+{
+  GetPlatform().RunTask(Platform::Thread::Network, [text = std::move(text), callback = std::move(callback)]
+  {
+    // Each redirect is read from the Location header: following it would download the Google Maps page.
+    std::string link = ExtractUrl(text);
+    for (int i = 0; i < kMaxShortLinkRedirects && IsShortMapLink(link); ++i)
+    {
+      platform::HttpClient request(link);
+      request.SetTimeout(kShortLinkTimeoutSec).SetFollowRedirects(false);
+      bool const redirected = request.RunHttpRequest() && request.ErrorCode() >= 300 && request.ErrorCode() < 400;
+      if (!redirected || request.UrlReceived().empty() || request.UrlReceived() == link)
+      {
+        LOG(LWARNING, ("Can't resolve the short link", link, "code", request.ErrorCode()));
+        break;
+      }
+      link = request.UrlReceived();
+    }
+
+    std::string url = SharedTextToApiUrl(text, link);
+    LOG(LINFO, ("Shared link", link, "is opened as", url));
+    GetPlatform().RunTask(Platform::Thread::Gui, [url = std::move(url), callback] { callback(url); });
+  });
 }
 }  // namespace url_scheme
