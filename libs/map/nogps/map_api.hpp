@@ -4,6 +4,8 @@
 #include "map/nogps/road_walker.hpp"
 #include "map/nogps/roads.hpp"
 
+#include "routing_common/maxspeed_conversion.hpp"
+
 #include "geometry/latlon.hpp"
 
 #include <optional>
@@ -48,6 +50,9 @@ public:
   /// \returns the closest road within |radiusM|, a main road rather than a driveway branching off it nearly as
   /// close.
   virtual std::optional<RoadPoint> SnapToMainRoad(ms::LatLon const & position, double radiusM) = 0;
+
+  /// \returns the speed limits of the road from the map, invalid ones if the map has none or the road is unknown.
+  virtual routing::Maxspeed GetMaxspeed(FeatureID const & road) = 0;
 
   /// \returns the distance left to the end of the route for the log of a drive, empty if there is no route.
   virtual std::string GetDistanceLeft() const = 0;

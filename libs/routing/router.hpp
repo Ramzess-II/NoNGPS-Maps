@@ -39,6 +39,9 @@ struct RoadAlong
   double m_cost = 0.0;
   // A one-way road going against the car, e.g. the other carriageway.
   bool m_wrongWay = false;
+  // The feature of the road and whether the car goes the way of its points: its speed limit.
+  FeatureID m_featureId;
+  bool m_forward = true;
 };
 
 /// Routing engine type.
@@ -115,9 +118,9 @@ public:
 
   /// Finds the road a car at |point| going the |direction| way drives along: the closest one, but a road going
   /// the car's way is preferred to a closer one bending aside, and a road crossing the car's way is not taken.
-  /// Without the direction it is the closest road. |angleRad| is the direction along the road the car goes.
+  /// Without the direction it is the closest road, the car goes the way of its points.
   virtual bool FindRoadAlong(m2::PointD const & /* point */, m2::PointD const & /* direction */, double /* radiusM */,
-                             m2::PointD & /* projected */, double & /* angleRad */)
+                             RoadAlong & /* road */)
   {
     return false;
   }

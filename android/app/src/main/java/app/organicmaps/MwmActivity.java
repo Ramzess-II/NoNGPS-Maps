@@ -649,7 +649,9 @@ public class MwmActivity extends BaseMwmFragmentActivity
       if (mCurrentWindowInsets == null)
         updateCompassOffset(trackRecorderOffset + systemBars.top, systemBars.right);
       refreshLightStatusBar();
-      updateBottomWidgetsOffset(systemBars.left);
+      // The ruler is at the end edge.
+      final boolean rtl = view.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+      updateBottomWidgetsOffset(rtl ? systemBars.left : systemBars.right);
       mCurrentWindowInsets = windowInsets;
       return windowInsets;
     });

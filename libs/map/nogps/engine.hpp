@@ -77,6 +77,8 @@ struct Status
   std::optional<double> m_workingNetworkAccuracyM;
   // The position is not from GPS: the user corrects it with the buttons.
   bool m_movedByHand = false;
+  // The speed limit of the road the car is on, the way it goes, from OpenStreetMap: 0 for none, -1 if unknown.
+  int m_speedLimitKmh = -1;
 
   bool m_inertialEnabled = false;
   bool m_esp32Source = false;
@@ -204,6 +206,8 @@ public:
   static int64_t constexpr kGpsStatusMaxGapMs = 4000;
   // Cell tower positions come once in several seconds.
   static int64_t constexpr kNetworkStatusMaxAgeMs = 60'000;
+  // The road of the speed limit: the mark is on it, GPS within its accuracy, a road farther is another one.
+  static double constexpr kSpeedLimitRoadM = 20;
   // The trusted position is saved not more often than this.
   static int64_t constexpr kSaveTrustedIntervalMs = 30'000;
   // The place of a driving car is saved not more often than this, of a standing one at once: the car is left where
@@ -353,6 +357,7 @@ private:
   void SaveHeardBox();
   bool IsInertialActive() const;
   std::optional<double> GetCarBearing() const;
+  int GetSpeedLimitKmh();
   void ShowCarHeading();
   void NotifyLocationUpdated();
   /// GPS gives a position every second, and the map moves the mark to a new one in 0.2 s: it would jump and stand.
@@ -448,6 +453,14 @@ private:
   bool m_wasOnRouteRoad = true;
   // When the last position of the platform was shown: the positions between GPS ones go on from it since then.
   int64_t m_fixShownMs = 0;
+  // The speed limit at the shown position, it is looked up once per position.
+  struct SpeedLimit
+  {
+    ms::LatLon m_position;
+    std::optional<double> m_bearingDeg;
+    int m_kmh = -1;
+  };
+  std::optional<SpeedLimit> m_speedLimit;
   // Positions shown between GPS positions in the last second, for the trip log.
   int m_positionsBetweenGps = 0;
   // When the last TRIP line was written, and when the car last drove or a state changed, see kTripLogStandTailMs.

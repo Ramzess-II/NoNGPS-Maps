@@ -31,6 +31,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
 import androidx.transition.Slide;
@@ -49,7 +50,8 @@ import java.util.Locale;
 
 /**
  * The sensor box: its state, the car speed, the firmware and what the user does with the box. Without a box it is
- * searched while the sheet is open, step by step, and the sheet offers to buy one.
+ * searched while the sheet is open, step by step, and the sheet offers to buy one. On the top the box and GPS are side
+ * by side, GPS opens its page. Under them GPS is turned off for the car.
  */
 public class BoxBottomSheet extends BottomSheetDialogFragment
 {
@@ -59,6 +61,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private static final String SHOP_URL = "https://non-gps.com";
   private static final String STATE_SEARCHING = "searching";
   private static final String STATE_SPEED_TABLE = "speed_table";
+  private static final String STATE_GPS = "gps";
   private static final String BOX_NAME = "NonGPS-OBD";
 
   private enum StepState
@@ -89,18 +92,32 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private boolean mSearching;
   // The speed table is shown on its own page of the sheet, Back returns from it.
   private boolean mSpeedTableShown;
-  private final OnBackPressedCallback mBackFromSpeedTable = new OnBackPressedCallback(false) {
+  // The GPS details are shown on a page of their own too. The search goes on while it is shown.
+  private boolean mGpsShown;
+  private final OnBackPressedCallback mBackFromPage = new OnBackPressedCallback(false) {
     @Override
     public void handleOnBackPressed()
     {
-      showSpeedTable(false);
+      if (mGpsShown)
+        showGps(false);
+      else
+        showSpeedTable(false);
     }
   };
   private ViewGroup mRoot;
-  private View mHeader;
-  private ImageView mIcon;
+  private View mTiles;
+  private View mBox;
+  private StatusBar.Button mTile;
+  private View mGpsRow;
+  private View mGpsGroup;
+  private StatusBar.Button mGpsTile;
+  private TextView mGpsState;
+  private SwitchCompat mGpsUse;
+  private View mGpsUseHint;
+  private View mGpsUseNeedsBox;
+  private View mGpsPage;
+  private GpsSheetView mGpsView;
   private TextView mState;
-  private View mProgress;
   private ColorStateList mStateColors;
   private View mConnected;
   private TextView mName;
@@ -136,6 +153,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     {
       mSearching = savedInstanceState.getBoolean(STATE_SEARCHING);
       mSpeedTableShown = savedInstanceState.getBoolean(STATE_SPEED_TABLE);
+      mGpsShown = savedInstanceState.getBoolean(STATE_GPS);
       return;
     }
     if (!NoGps.getStatus().inertialEnabled)
@@ -152,6 +170,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     super.onSaveInstanceState(outState);
     outState.putBoolean(STATE_SEARCHING, mSearching);
     outState.putBoolean(STATE_SPEED_TABLE, mSpeedTableShown);
+    outState.putBoolean(STATE_GPS, mGpsShown);
   }
 
   @Nullable
@@ -161,10 +180,27 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     final View view = inflater.inflate(R.layout.nogps_box_sheet, container, false);
     mRoot = (ViewGroup) ((ViewGroup) view).getChildAt(0);
-    mHeader = view.findViewById(R.id.box_header);
-    mIcon = view.findViewById(R.id.box_icon);
+    mTiles = view.findViewById(R.id.box_tiles);
+    mBox = view.findViewById(R.id.box_box);
+    mTile = new StatusBar.Button(view.findViewById(R.id.box_tile), view.findViewById(R.id.box_icon),
+                                 view.findViewById(R.id.box_badge));
+    mGpsGroup = view.findViewById(R.id.box_gps_group);
+    mGpsTile = new StatusBar.Button(view.findViewById(R.id.box_gps_tile), view.findViewById(R.id.box_gps_icon),
+                                    view.findViewById(R.id.box_gps_badge));
+    mGpsState = view.findViewById(R.id.box_gps_state);
+    mGpsUse = view.findViewById(R.id.box_gps_use);
+    mGpsUseHint = view.findViewById(R.id.box_gps_use_hint);
+    mGpsUseNeedsBox = view.findViewById(R.id.box_gps_use_needs_box);
+    mGpsPage = view.findViewById(R.id.box_gps_page);
+    mGpsView = view.findViewById(R.id.box_gps_view);
+    mGpsRow = view.findViewById(R.id.box_gps_row);
+    mGpsRow.setOnClickListener(v -> showGps(true));
+    view.findViewById(R.id.box_gps_back).setOnClickListener(v -> showGps(false));
+    mGpsUse.setOnClickListener(v -> {
+      NoGps.nativeSetGpsDisabled(!mGpsUse.isChecked());
+      update();
+    });
     mState = view.findViewById(R.id.box_state);
-    mProgress = view.findViewById(R.id.box_progress);
     mStateColors = mState.getTextColors();
     mConnected = view.findViewById(R.id.box_connected);
     mName = view.findViewById(R.id.box_name);
@@ -231,7 +267,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     super.onViewCreated(view, savedInstanceState);
     ((ComponentDialog) requireDialog())
         .getOnBackPressedDispatcher()
-        .addCallback(getViewLifecycleOwner(), mBackFromSpeedTable);
+        .addCallback(getViewLifecycleOwner(), mBackFromPage);
+    if (fitsRows() && !mGpsShown)
+      getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
   }
 
   @Override
@@ -250,6 +288,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     super.onStop();
     mHandler.removeCallbacks(mUpdater);
     animateRings(false);
+    mTile.pulse(false);
+    mGpsTile.pulse(false);
+    mGpsView.stop();
   }
 
   private void update()
@@ -257,21 +298,49 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final NoGps.Status status = NoGps.getStatus();
     // The box connected while it was searched: the sheet shows it as any other.
     if (mSearching && isBoxHeard(status))
+    {
       mSearching = false;
-    final boolean speedTable = mSpeedTableShown && !mSearching && status.inertialEnabled;
-    mBackFromSpeedTable.setEnabled(speedTable);
-    mHeader.setVisibility(speedTable ? View.GONE : View.VISIBLE);
+      // As with a box set up: the sheet goes down to its height, its rows go on below.
+      if (!mGpsShown)
+        getBehavior().setState(BottomSheetBehavior.STATE_COLLAPSED);
+    }
+    final boolean speedTable = mSpeedTableShown && !mGpsShown && !mSearching && status.inertialEnabled;
+    final boolean page = speedTable || mGpsShown;
+    mBackFromPage.setEnabled(page);
+    mTiles.setVisibility(page ? View.GONE : View.VISIBLE);
+    mGpsGroup.setVisibility(page ? View.GONE : View.VISIBLE);
+    mGpsPage.setVisibility(mGpsShown ? View.VISIBLE : View.GONE);
     mSpeedTablePage.setVisibility(speedTable ? View.VISIBLE : View.GONE);
-    mSearch.setVisibility(mSearching ? View.VISIBLE : View.GONE);
-    mConnected.setVisibility(!mSearching && status.inertialEnabled && !speedTable ? View.VISIBLE : View.GONE);
+    mSearch.setVisibility(mSearching && !page ? View.VISIBLE : View.GONE);
+    mConnected.setVisibility(!mSearching && status.inertialEnabled && !page ? View.VISIBLE : View.GONE);
     // Forgotten in the sensors sheet, or being searched.
-    mShop.setVisibility(mSearching || !status.inertialEnabled ? View.VISIBLE : View.GONE);
-    if (mSearching)
+    mShop.setVisibility((mSearching || !status.inertialEnabled) && !page ? View.VISIBLE : View.GONE);
+    updateGps(status);
+    if (mGpsShown)
+      mGpsView.update(status);
+    else if (mSearching)
       updateSearch(status);
     else if (speedTable)
       updateSpeedTable(status);
     else
       updateBox(status);
+  }
+
+  private void updateGps(@NonNull NoGps.Status status)
+  {
+    final Context context = requireContext();
+    final StatusBar.Look look = StatusBar.getGpsLook(context, status);
+    mGpsTile.show(look);
+    final String state = StatusBar.getGpsStateText(context, status);
+    showState(mGpsState, look, state);
+    mGpsRow.setContentDescription(getString(R.string.nogps_status_gps) + ": " + state);
+    // GPS is turned off for the car only while the box can drive it: nothing would move the mark otherwise.
+    final boolean canSwitch = status.gpsDisabled || isBoxHeard(status);
+    mGpsUse.setEnabled(canSwitch);
+    if (!mGpsUse.isPressed())
+      mGpsUse.setChecked(!status.gpsDisabled);
+    mGpsUseHint.setVisibility(canSwitch ? View.VISIBLE : View.INVISIBLE);
+    mGpsUseNeedsBox.setVisibility(canSwitch ? View.INVISIBLE : View.VISIBLE);
   }
 
   /**
@@ -322,7 +391,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final Context context = requireContext();
     animateRings(false);
     final StatusBar.Look look = StatusBar.getBoxLook(status);
-    showState(look, status.inertialEnabled ? SensorsBottomSheet.boxStateText(context, status) : "");
+    showBox(look, status.inertialEnabled ? SensorsBottomSheet.boxStateText(context, status)
+                                         : getString(R.string.nogps_box_buy_title));
     if (!status.inertialEnabled)
       return;
     final boolean bluetoothFailed = isBluetoothFailed(status);
@@ -393,16 +463,43 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private void showSpeedTable(boolean shown)
   {
     mSpeedTableShown = shown;
+    switchPage(shown, mSpeedTablePage);
+  }
+
+  private void showGps(boolean shown)
+  {
+    mGpsShown = shown;
+    switchPage(shown, mGpsPage);
+  }
+
+  // Without a box the sheet is at the height of its rows, as on iOS: the search and the offer to buy one.
+  private boolean fitsRows()
+  {
+    return mSearching || !NoGps.getStatus().inertialEnabled;
+  }
+
+  @NonNull
+  private BottomSheetBehavior<?> getBehavior()
+  {
+    return ((BottomSheetDialog) requireDialog()).getBehavior();
+  }
+
+  private void switchPage(boolean shown, @NonNull View page)
+  {
     // The page opens at the height of the sheet, as on iOS, and is swiped up to see all of it.
-    final BottomSheetBehavior<?> behavior = ((BottomSheetDialog) requireDialog()).getBehavior();
+    final BottomSheetBehavior<?> behavior = getBehavior();
     behavior.setPeekHeight(shown ? ((View) requireView().getParent()).getHeight()
                                  : BottomSheetBehavior.PEEK_HEIGHT_AUTO);
-    behavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
+    behavior.setState(!shown && fitsRows() ? BottomSheetBehavior.STATE_EXPANDED : BottomSheetBehavior.STATE_COLLAPSED);
     // The page comes from the end as a new screen does, and goes back there.
-    final TransitionSet transition =
-        new TransitionSet()
-            .addTransition(new Slide(Gravity.END).addTarget(mSpeedTablePage))
-            .addTransition(new Slide(Gravity.START).addTarget(mHeader).addTarget(mConnected));
+    final TransitionSet transition = new TransitionSet()
+                                         .addTransition(new Slide(Gravity.END).addTarget(page))
+                                         .addTransition(new Slide(Gravity.START)
+                                                            .addTarget(mTiles)
+                                                            .addTarget(mGpsGroup)
+                                                            .addTarget(mConnected)
+                                                            .addTarget(mSearch)
+                                                            .addTarget(mShop));
     TransitionManager.beginDelayedTransition(mRoot, transition);
     update();
   }
@@ -447,7 +544,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     final NoGps.BleState ble = status.getBleState();
     final boolean bluetoothFailed = isBluetoothFailed(status);
-    showState(new StatusBar.Look(R.drawable.ic_nogps_box, 0), getString(R.string.nogps_box_searching));
+    showBox(new StatusBar.Look(R.drawable.ic_nogps_box, 0), getString(R.string.nogps_box_searching));
     final boolean searched = ble == NoGps.BleState.SEARCHING || ble == NoGps.BleState.PAIRING_CLOSED;
     final boolean connecting = ble == NoGps.BleState.CONNECTING || ble == NoGps.BleState.PAIRING;
     final boolean connected = ble == NoGps.BleState.CONNECTED;
@@ -466,19 +563,22 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     animateRings(!bluetoothFailed);
   }
 
-  private void showState(@NonNull StatusBar.Look look, @NonNull String text)
+  private void showBox(@NonNull StatusBar.Look look, @NonNull String text)
   {
-    final int color = look.getColor(requireContext());
-    mIcon.setImageResource(look.icon);
-    ImageViewCompat.setImageTintList(mIcon, ColorStateList.valueOf(color));
+    mTile.show(look);
+    showState(mState, look, text);
+    mBox.setContentDescription(getString(R.string.nogps_box_title) + ": " + mState.getText());
+  }
+
+  private void showState(@NonNull TextView state, @NonNull StatusBar.Look look, @NonNull String text)
+  {
     // The states follow "Box: name ·" on the sensors screen, here they start the line.
-    mState.setText(text.isEmpty() ? text : text.substring(0, 1).toUpperCase(Locale.getDefault()) + text.substring(1));
-    mProgress.setVisibility(look.pulsing ? View.VISIBLE : View.GONE);
+    state.setText(text.isEmpty() ? text : text.substring(0, 1).toUpperCase(Locale.getDefault()) + text.substring(1));
     // A grey state is read as disabled: it is shown in the color of the text.
     if (look.color == 0 || look.color == R.color.source_sleeping)
-      mState.setTextColor(mStateColors);
+      state.setTextColor(mStateColors);
     else
-      mState.setTextColor(color);
+      state.setTextColor(look.getColor(requireContext()));
   }
 
   private void showStep(int i, @NonNull StepState state)

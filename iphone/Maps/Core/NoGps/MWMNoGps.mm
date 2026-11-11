@@ -124,6 +124,7 @@ std::optional<double> NonNegative(double value)
     _workingGpsAccuracyM = status.m_workingGpsAccuracyM.value_or(-1);
     _workingNetworkAccuracyM = status.m_workingNetworkAccuracyM.value_or(-1);
     _movedByHand = status.m_movedByHand;
+    _speedLimitKmh = status.m_speedLimitKmh;
     _inertialEnabled = status.m_inertialEnabled;
     _inertialStarted = status.m_inertialStarted;
     _sourceState = static_cast<MWMNoGpsSourceState>(status.m_sourceState);

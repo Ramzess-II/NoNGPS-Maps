@@ -1,29 +1,22 @@
 package app.organicmaps.widget.menu;
 
 import android.graphics.drawable.Drawable;
-import android.location.Location;
-import android.util.Pair;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 import androidx.lifecycle.DefaultLifecycleObserver;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ViewModelProvider;
-import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
 import app.organicmaps.maplayer.MapButtonsViewModel;
 import app.organicmaps.maplayer.StatusBar;
-import app.organicmaps.sdk.location.LocationHelper;
 import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.sdk.routing.RoutingInfo;
 import app.organicmaps.sdk.sound.TtsPlayer;
-import app.organicmaps.sdk.util.StringUtils;
 import app.organicmaps.util.Graphics;
-import app.organicmaps.util.ThemeUtils;
 import app.organicmaps.util.UiUtils;
 import app.organicmaps.util.Utils;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
@@ -37,9 +30,6 @@ public class NavMenu implements DefaultLifecycleObserver
   private final View mHeaderFrame;
 
   private final ImageView mTts;
-  private final View mSpeedViewContainer;
-  private final TextView mSpeedValue;
-  private final TextView mSpeedUnits;
   private final TextView mTimeHourValue;
   private final TextView mTimeHourUnits;
   private final TextView mTimeMinuteValue;
@@ -47,6 +37,7 @@ public class NavMenu implements DefaultLifecycleObserver
   private final TextView mTimeEstimate;
   private final TextView mDistanceValue;
   private final TextView mDistanceUnits;
+  private final TextView mDistanceCovered;
   private final LinearProgressIndicator mRouteProgress;
   private final View mSource;
   private final StatusBar.Button mSourceButton;
@@ -103,9 +94,6 @@ public class NavMenu implements DefaultLifecycleObserver
     });
 
     // Bottom frame
-    mSpeedViewContainer = bottomFrame.findViewById(R.id.speed_view_container);
-    mSpeedValue = bottomFrame.findViewById(R.id.speed_value);
-    mSpeedUnits = bottomFrame.findViewById(R.id.speed_dimen);
     mTimeHourValue = bottomFrame.findViewById(R.id.time_hour_value);
     mTimeHourUnits = bottomFrame.findViewById(R.id.time_hour_dimen);
     mTimeMinuteValue = bottomFrame.findViewById(R.id.time_minute_value);
@@ -113,15 +101,13 @@ public class NavMenu implements DefaultLifecycleObserver
     mTimeEstimate = bottomFrame.findViewById(R.id.time_estimate);
     mDistanceValue = bottomFrame.findViewById(R.id.distance_value);
     mDistanceUnits = bottomFrame.findViewById(R.id.distance_dimen);
+    mDistanceCovered = bottomFrame.findViewById(R.id.distance_covered);
     mRouteProgress = bottomFrame.findViewById(R.id.navigation_progress);
     mSource = bottomFrame.findViewById(R.id.nav_source);
     mSourceButton = new StatusBar.Button(mSource, bottomFrame.findViewById(R.id.nav_source_icon),
                                          bottomFrame.findViewById(R.id.nav_source_badge));
     mSourceAccuracy = bottomFrame.findViewById(R.id.nav_source_accuracy);
-    mSource.setOnClickListener(v -> {
-      final NoGps.Status status = NoGps.getStatus();
-      mNavMenuListener.onSourceClicked(StatusBar.navShowsBox(status.getSource(), status.inertialEnabled));
-    });
+    mSource.setOnClickListener(v -> mNavMenuListener.onSourceClicked());
 
     // Bottom frame buttons
     ImageView mSettings = bottomFrame.findViewById(R.id.settings);
@@ -258,77 +244,22 @@ public class NavMenu implements DefaultLifecycleObserver
     mTimeEstimate.setText(Utils.formatArrivalTime(mActivity, seconds));
   }
 
-  private void updateSpeedView(@NonNull RoutingInfo info)
-  {
-    final LocationHelper locationHelper = MwmApplication.from(mActivity).getLocationHelper();
-    if (showNoCarData())
-      return;
-
-    final Location last = locationHelper.getSavedLocation();
-    if (last == null)
-      return;
-
-    Pair<String, String> speedAndUnits = StringUtils.nativeFormatSpeedAndUnits(last.getSpeed());
-    mSpeedValue.setText(speedAndUnits.first);
-
-    if (info.speedLimitMps > 0.0 && last.getSpeed() > info.speedLimitMps)
-    {
-      if (info.isSpeedCamLimitExceeded())
-        mSpeedValue.setTextColor(ContextCompat.getColor(mActivity, R.color.white_primary));
-      else
-        mSpeedValue.setTextColor(ContextCompat.getColor(mActivity, R.color.base_red));
-    }
-    else
-      mSpeedValue.setTextColor(ThemeUtils.getColor(mActivity, android.R.attr.textColorPrimary));
-
-    mSpeedUnits.setText(speedAndUnits.second);
-    mSpeedViewContainer.setActivated(info.isSpeedCamLimitExceeded());
-  }
-
-  /**
-   * Shows that the car speed doesn't come instead of the speed: 0 km/h of a standing car looks the same with
-   * and without the car connected, and without it the position is not calculated when GPS is lost.
-   * @return whether it is shown.
-   */
-  private boolean showNoCarData()
-  {
-    final NoGps.Status status = NoGps.getStatus();
-    if (!status.inertialStarted)
-      return false;
-    final NoGps.SourceState state = status.getSourceState();
-    if (state == NoGps.SourceState.CONNECTED)
-      return false;
-    // A box that is not heard is shown by the source button only.
-    if (status.esp32Source
-        && (state == NoGps.SourceState.DISCONNECTED || state == NoGps.SourceState.CONNECTING
-            || state == NoGps.SourceState.BOX_SLEEPING))
-      return false;
-
-    mSpeedValue.setText(R.string.nogps_speed_no_data);
-    mSpeedValue.setTextColor(ContextCompat.getColor(mActivity, R.color.base_red));
-    mSpeedUnits.setText(R.string.nogps_speed_no_elm);
-    mSpeedViewContainer.setActivated(false);
-    return true;
-  }
-
   void updateSource(@NonNull NoGps.Status status)
   {
-    final boolean box = StatusBar.navShowsBox(status.getSource(), status.inertialEnabled);
-    mSourceButton.show(StatusBar.getNavLook(mActivity, status));
+    mSourceButton.show(StatusBar.getBarLook(mActivity, status));
     final String accuracy = StatusBar.getAccuracyText(mActivity, status);
     mSourceAccuracy.setText(accuracy);
     mSourceAccuracy.setVisibility(accuracy != null ? View.VISIBLE : View.GONE);
-    final String source = StatusBar.getSourceWord(mActivity, status);
-    mSource.setContentDescription(mActivity.getString(box ? R.string.nogps_box_title : R.string.nogps_status_gps) + ", "
-                                  + (accuracy != null ? source + " " + accuracy : source));
+    mSource.setContentDescription(StatusBar.getBarDescription(mActivity, status));
   }
 
   public void update(@NonNull RoutingInfo info)
   {
-    updateSpeedView(info);
     updateTime(info.totalTimeInSeconds);
     mDistanceValue.setText(info.distToTarget.mDistanceStr);
     mDistanceUnits.setText(info.distToTarget.getUnitsStr(mActivity.getApplicationContext()));
+    mDistanceCovered.setText(
+        mActivity.getString(R.string.nogps_nav_covered, info.distCovered.toString(mActivity.getApplicationContext())));
     mRouteProgress.setProgressCompat((int) info.completionPercent, true);
   }
 
@@ -342,7 +273,7 @@ public class NavMenu implements DefaultLifecycleObserver
 
     void onSearchClicked();
 
-    // Opens the box sheet when the button shows the box, the GPS sheet otherwise.
-    void onSourceClicked(boolean box);
+    // Opens the Box sheet, with the GPS row in it.
+    void onSourceClicked();
   }
 }

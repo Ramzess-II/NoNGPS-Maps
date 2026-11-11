@@ -140,6 +140,11 @@ public:
   {
     return GetRoads(false).Snap(position, {}, radiusM);
   }
+  routing::Maxspeed GetMaxspeed(FeatureID const & road) override
+  {
+    auto const it = m_maxspeeds.find(road.m_index);
+    return it == m_maxspeeds.end() ? routing::Maxspeed() : it->second;
+  }
   std::string GetDistanceLeft() const override { return {}; }
   void ShowCarHeading(double bearingDeg) override { m_carHeading = bearingDeg; }
 
@@ -149,6 +154,8 @@ public:
   // How far aside of the car the followed route is.
   std::optional<double> m_routeAsideM;
   std::optional<double> m_carHeading;
+  // The speed limits by the index of the road feature.
+  std::map<uint32_t, routing::Maxspeed> m_maxspeeds;
   GridRoads m_grid;
   // Other roads instead of the grid.
   nogps::Roads * m_roads = nullptr;

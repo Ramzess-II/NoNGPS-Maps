@@ -441,6 +441,7 @@ void RoutingSession::GetRouteFollowingInfo(FollowingInfo & info) const
   }
 
   info.m_distToTarget = platform::Distance::CreateFormatted(m_route->GetCurrentDistanceToEndMeters());
+  info.m_distCoveredM = m_passedDistanceOnRouteMeters + m_route->GetCurrentDistanceFromBeginMeters();
 
   double distanceToTurnMeters = 0.;
   turns::TurnItem turn;
@@ -719,10 +720,10 @@ bool RoutingSession::IsRoundaboutNear(m2::PointD const & point, double radiusM) 
 }
 
 bool RoutingSession::FindRoadAlong(m2::PointD const & point, m2::PointD const & direction, double radiusM,
-                                   m2::PointD & projected, double & angleRad) const
+                                   RoadAlong & road) const
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());
-  return m_router && m_router->FindRoadAlong(point, direction, radiusM, projected, angleRad);
+  return m_router && m_router->FindRoadAlong(point, direction, radiusM, road);
 }
 
 void RoutingSession::FindRoadsAlong(m2::PointD const & point, m2::PointD const & direction, double radiusM,

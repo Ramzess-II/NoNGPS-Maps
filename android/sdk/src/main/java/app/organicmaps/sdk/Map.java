@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Rect;
 import android.view.MotionEvent;
 import android.view.Surface;
+import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import app.organicmaps.sdk.display.DisplayType;
@@ -117,7 +118,7 @@ public final class Map
    * Moves the ruler and copyright using the given offsets.
    *
    * @param context Context.
-   * @param offsetX Pixel offset from the left.  -1 to keep the previous value.
+   * @param offsetX Pixel offset from the end edge (the right one, the left in RTL). -1 to keep the previous value.
    * @param offsetY Pixel offset from the bottom. -1 to keep the previous value.
    */
   public void updateBottomWidgetsOffset(final Context context, int offsetX, int offsetY)
@@ -344,17 +345,23 @@ public final class Map
   {
     // Raise the ruler a bit above the bottom edge so it stays visible over the search bar in compact mode.
     final int additionalOffset = Utils.dimen(context, R.dimen.ruler_additional_offset);
-    nativeSetupWidget(WIDGET_RULER, Utils.dimen(context, R.dimen.margin_ruler) + offsetX,
-                      mHeight - Utils.dimen(context, R.dimen.margin_ruler) - offsetY - additionalOffset,
-                      ANCHOR_LEFT_BOTTOM);
-    if (mSurfaceCreated)
-      nativeApplyWidgets();
+    setupBottomEndWidget(context, WIDGET_RULER, offsetX, offsetY + additionalOffset);
   }
 
   private void updateAttributionOffset(final Context context, int offsetX, int offsetY)
   {
-    nativeSetupWidget(WIDGET_COPYRIGHT, Utils.dimen(context, R.dimen.margin_ruler) + offsetX,
-                      mHeight - Utils.dimen(context, R.dimen.margin_ruler) - offsetY, ANCHOR_LEFT_BOTTOM);
+    setupBottomEndWidget(context, WIDGET_COPYRIGHT, offsetX, offsetY);
+  }
+
+  // The ruler and the copyright are at the bottom end corner: the speed indicator of the app is at the start one.
+  private void setupBottomEndWidget(final Context context, int widget, int offsetX, int offsetY)
+  {
+    final int margin = Utils.dimen(context, R.dimen.margin_ruler);
+    final float y = mHeight - margin - offsetY;
+    if (context.getResources().getConfiguration().getLayoutDirection() == View.LAYOUT_DIRECTION_RTL)
+      nativeSetupWidget(widget, margin + offsetX, y, ANCHOR_LEFT_BOTTOM);
+    else
+      nativeSetupWidget(widget, mWidth - margin - offsetX, y, ANCHOR_RIGHT_BOTTOM);
     if (mSurfaceCreated)
       nativeApplyWidgets();
   }

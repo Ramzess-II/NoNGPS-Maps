@@ -1,5 +1,6 @@
 /// The sensor box: its state, the car speed, the firmware and what the user does with the box. Without a box it is
-/// searched while the sheet is open, step by step, and the sheet offers to buy one.
+/// searched while the sheet is open, step by step, and the sheet offers to buy one. On the top the box and GPS are side
+/// by side, GPS opens its page. The first row turns GPS off for the car.
 final class NoGpsBoxSheet: MWMTableViewController {
   private enum Constants {
     static let refreshInterval: TimeInterval = 0.5
@@ -10,7 +11,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
   }
 
   private enum Row {
-    case state
+    case gpsUse
     case bluetooth
     case search
     case name
@@ -41,8 +42,9 @@ final class NoGpsBoxSheet: MWMTableViewController {
   // before it is found.
   private var searching = false
   private let searchView = BoxSearchView()
-  /// While the box is searched, connects, waits for the car data or takes a firmware, as the button pulses.
-  private let stateProgress = UIActivityIndicatorView(style: .medium)
+  private let header = StatusTilesView()
+  private let gpsUse = UISwitch()
+  private let gpsUseFooter = GpsUseFooterView()
   private let speedLagValue: UILabel = {
     let label = UILabel()
     label.font = .preferredFont(forTextStyle: .body)
@@ -52,18 +54,54 @@ final class NoGpsBoxSheet: MWMTableViewController {
 
   private var shownRows: [[Row]] = []
 
+  /// The height of the rows the sheet was fitted to.
+  private var fittedHeight = CGFloat(0)
+  /// The bottom of the bar in a shown sheet: iOS moves the bar and makes it higher only as the sheet opens. The sheet
+  /// is fitted with it from the start, else it would grow as it opens. Taken again from every shown sheet.
+  private static var barBottom: CGFloat = if #available(iOS 26.0, *) {
+    70
+  } else {
+    56
+  }
+
   static func show() {
-    // The buy row under the box rows fits.
-    NoGpsControls.showSheet(NoGpsBoxSheet(style: .insetGrouped), extraHeight: Constants.extraSheetHeight)
+    let root = NoGpsBoxSheet(style: .insetGrouped)
+    let navigation = UINavigationController(rootViewController: root)
+    if let sheet = navigation.sheetPresentationController {
+      sheet.detents = [.medium(), .large()]
+      if #available(iOS 16.0, *) {
+        sheet.detents = [.custom { [weak root] context in
+          root.map { min($0.sheetHeight, context.maximumDetentValue) }
+        }, .large()]
+        // The rows are laid out before the sheet is: it opens at their height, not at the bar only.
+        navigation.view.frame = UIViewController.topViewController().view.window?.bounds ?? UIScreen.main.bounds
+        navigation.view.layoutIfNeeded()
+      }
+      sheet.prefersGrabberVisible = true
+    }
+    UIViewController.topViewController().present(navigation, animated: true)
+  }
+
+  /// Without a box the sheet fits its rows: the search and the offer to buy one. With a box it opens at half the
+  /// window, with the buy row under the box rows, and more of them are seen when it is pulled up.
+  private var sheetHeight: CGFloat {
+    let window = view.window?.bounds.height ?? UIScreen.main.bounds.height
+    guard searching || !status.inertialEnabled else { return window / 2 + Constants.extraSheetHeight }
+    return Self.barBottom + tableView.contentSize.height
   }
 
   override func viewDidLoad() {
     super.viewDidLoad()
-    title = L("nogps_box_title")
+    // The sheet has no title: the box tile tells what it is about.
+    navigationItem.backButtonTitle = L("nogps_box_title")
     navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .close, target: self,
                                                         action: #selector(close))
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
+    tableView.tableHeaderView = header
     searchView.onAction = { [weak self] in self?.openSettings() }
+    header.gps.addTarget(self, action: #selector(openGps), for: .touchUpInside)
+    gpsUse.accessibilityLabel = L("nogps_gps_use")
+    gpsUse.addTarget(self, action: #selector(gpsUseChanged), for: .valueChanged)
     if !status.inertialEnabled {
       searching = true
       NoGps.setInertialNavigationEnabled(true)
@@ -78,16 +116,42 @@ final class NoGpsBoxSheet: MWMTableViewController {
     self.timer = timer
   }
 
+  override func viewDidAppear(_ animated: Bool) {
+    super.viewDidAppear(animated)
+    if let bar = navigationController?.navigationBar {
+      Self.barBottom = bar.frame.maxY
+    }
+  }
+
   override func viewWillDisappear(_ animated: Bool) {
     super.viewWillDisappear(animated)
     timer?.invalidate()
     timer = nil
   }
 
+  override func viewDidLayoutSubviews() {
+    super.viewDidLayoutSubviews()
+    layoutHeader()
+    // Rows come and go, the box is found: the sheet follows. Not for the fractions of a point the layout differs by.
+    let height = sheetHeight
+    if #available(iOS 16.0, *), let sheet = navigationController?.sheetPresentationController,
+       abs(height - fittedHeight) >= 1 {
+      fittedHeight = height
+      sheet.animateChanges { sheet.invalidateDetents() }
+    }
+  }
+
   override func viewDidDisappear(_ animated: Bool) {
     super.viewDidDisappear(animated)
-    // Closed by the button or swiped down before a box was found: the phone stops looking for it.
-    if navigationController?.isBeingDismissed ?? isBeingDismissed, searching, NoGps.status().bleState != .connected {
+    // Not when the GPS page is opened over it.
+    if navigationController?.isBeingDismissed ?? isBeingDismissed {
+      stopSearchIfNotFound()
+    }
+  }
+
+  /// Closed by the button or swiped down, from either page, before a box was found: the phone stops looking for it.
+  func stopSearchIfNotFound() {
+    if searching, NoGps.status().bleState != .connected {
       NoGps.setInertialNavigationEnabled(false)
       NoGpsStatusBar.update(NoGps.status())
     }
@@ -99,11 +163,26 @@ final class NoGpsBoxSheet: MWMTableViewController {
     if searching, Self.isBoxHeard(status) {
       searching = false
     }
+    var boxLook = NoGpsStatusBar.boxLook(status)
+    // The waves of the search show it.
+    boxLook.pulsing = boxLook.pulsing && !searching
+    header.box.show(boxLook, state: searching ? L("nogps_box_searching")
+      : status.inertialEnabled ? NoGpsSensorsViewController.boxStateText(status) : L("nogps_box_buy_title"))
+    header.gps.show(NoGpsStatusBar.gpsLook(status), state: NoGpsStatusBar.gpsStateText(status))
+    layoutHeader()
+    // GPS is turned off for the car only while the box can drive it: nothing would move the mark otherwise.
+    let canChangeGpsUse = status.gpsDisabled || Self.isBoxHeard(status)
+    gpsUse.isEnabled = canChangeGpsUse
+    if !gpsUse.isTracking {
+      gpsUse.isOn = !status.gpsDisabled
+    }
+    gpsUseFooter.update(canChangeUse: canChangeGpsUse)
+    let gps = Section(rows: [.gpsUse])
     if searching {
       searchView.update(status)
       sections = [
-        Section(header: L("nogps_box_searching"), rows: [.search],
-                footer: L("nogps_box_power_hint") + "\n\n" + L("nogps_box_buy_text")),
+        gps,
+        Section(rows: [.search], footer: L("nogps_box_power_hint") + "\n\n" + L("nogps_box_buy_text")),
         Section(rows: [.buy]),
       ]
     } else if status.inertialEnabled {
@@ -125,8 +204,10 @@ final class NoGpsBoxSheet: MWMTableViewController {
       if connected {
         info.append(.calibrate)
       }
-      let state: [Row] = status.bleState == .noPermission ? [.state, .bluetooth] : [.state]
-      sections = [Section(rows: state), Section(rows: info)]
+      if status.bleState == .noPermission {
+        info.insert(.bluetooth, at: 0)
+      }
+      sections = [gps, Section(rows: info)]
       // What the app has learned about the car speed.
       if status.inertialStarted {
         sections.append(Section(rows: [.speedTable, .speedLag, .clearSpeed]))
@@ -134,9 +215,21 @@ final class NoGpsBoxSheet: MWMTableViewController {
       sections.append(Section(rows: [.shop, .forget]))
     } else {
       // Forgotten in the sensors screen.
-      sections = [Section(rows: [.buy], footer: L("nogps_box_buy_text"))]
+      sections = [gps, Section(rows: [.buy], footer: L("nogps_box_buy_text"))]
     }
     tableView.reloadData(keepingRows: sections.map(\.rows), &shownRows)
+  }
+
+  /// The header of a table keeps the height it had when it was set.
+  private func layoutHeader() {
+    let width = tableView.bounds.width
+    guard width > 0 else { return }
+    let height = header.systemLayoutSizeFitting(CGSize(width: width, height: 0),
+                                                withHorizontalFittingPriority: .required,
+                                                verticalFittingPriority: .fittingSizeLevel).height
+    guard header.frame.width != width || header.frame.height != height else { return }
+    header.frame = CGRect(x: 0, y: 0, width: width, height: height)
+    tableView.tableHeaderView = header
   }
 
   /// Before the box tells its sensor.
@@ -167,6 +260,10 @@ final class NoGpsBoxSheet: MWMTableViewController {
     sections[section].footer
   }
 
+  override func tableView(_: UITableView, viewForFooterInSection section: Int) -> UIView? {
+    sections[section].rows == [.gpsUse] ? gpsUseFooter : nil
+  }
+
   override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
     let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
     var content = UIListContentConfiguration.cell()
@@ -177,28 +274,10 @@ final class NoGpsBoxSheet: MWMTableViewController {
     cell.accessoryView = accessoryView(row)
     switch row {
     case .search:
-      cell.contentConfiguration = nil
-      guard searchView.superview !== cell.contentView else { return cell }
-      searchView.removeFromSuperview()
-      searchView.translatesAutoresizingMaskIntoConstraints = false
-      cell.contentView.addSubview(searchView)
-      NSLayoutConstraint.activate([
-        searchView.leadingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.leadingAnchor),
-        searchView.trailingAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.trailingAnchor),
-        searchView.topAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.topAnchor),
-        searchView.bottomAnchor.constraint(equalTo: cell.contentView.layoutMarginsGuide.bottomAnchor),
-      ])
+      embed(searchView, in: cell)
       return cell
-    case .state:
-      content = UIListContentConfiguration.subtitleCell()
-      let look = NoGpsStatusBar.boxLook(status)
-      content.image = look.image
-      content.imageProperties.tintColor = look.color
-      // The states follow "Box: name ·" on the sensors screen, here they start the line.
-      let text = NoGpsSensorsViewController.boxStateText(status)
-      content.text = text.prefix(1).uppercased(with: .current) + text.dropFirst()
-      content.textProperties.font = .preferredFont(forTextStyle: .headline)
-      content.textProperties.color = look.color == .secondaryLabel ? .label : look.color
+    case .gpsUse:
+      content.text = L("nogps_gps_use")
     case .bluetooth:
       content.text = L("nogps_box_allow")
       content.textProperties.color = .linkBlue
@@ -268,14 +347,27 @@ final class NoGpsBoxSheet: MWMTableViewController {
   /// The same views each refresh: new ones fly in from the corner of the reconfigured cell.
   private func accessoryView(_ row: Row) -> UIView? {
     switch row {
-    case .speedLag:
-      return speedLagValue
-    case .state where NoGpsStatusBar.boxLook(status).pulsing:
-      stateProgress.startAnimating()
-      return stateProgress
-    default:
-      return nil
+    case .speedLag: return speedLagValue
+    // A switch is not reset while it is turned.
+    case .gpsUse: return gpsUse
+    default: return nil
     }
+  }
+
+  /// A row of its own view, the same one every refresh: its animation goes on.
+  private func embed(_ view: UIView, in cell: UITableViewCell) {
+    cell.contentConfiguration = nil
+    guard view.superview !== cell.contentView else { return }
+    view.removeFromSuperview()
+    view.translatesAutoresizingMaskIntoConstraints = false
+    cell.contentView.addSubview(view)
+    let guide = cell.contentView.layoutMarginsGuide
+    NSLayoutConstraint.activate([
+      view.leadingAnchor.constraint(equalTo: guide.leadingAnchor),
+      view.trailingAnchor.constraint(equalTo: guide.trailingAnchor),
+      view.topAnchor.constraint(equalTo: guide.topAnchor),
+      view.bottomAnchor.constraint(equalTo: guide.bottomAnchor),
+    ])
   }
 
   // MARK: - UITableViewDelegate
@@ -347,6 +439,18 @@ final class NoGpsBoxSheet: MWMTableViewController {
     if let url = URL(string: UIApplication.openSettingsURLString) {
       UIApplication.shared.open(url)
     }
+  }
+
+  @objc
+  private func openGps() {
+    navigationController?.pushViewController(NoGpsGpsSheet(style: .insetGrouped), animated: true)
+  }
+
+  @objc
+  private func gpsUseChanged() {
+    NoGps.setGpsDisabled(!gpsUse.isOn)
+    refresh()
+    NoGpsStatusBar.update(NoGps.status())
   }
 
   @objc
@@ -606,5 +710,192 @@ private final class BoxSearchView: UIView {
   @objc
   private func actionTapped() {
     onAction?()
+  }
+}
+
+/// The top of the Box sheet: the box and GPS side by side. GPS opens its page.
+private final class StatusTilesView: UIView {
+  let box = StatusTileView(title: L("nogps_box_title"), opensPage: false)
+  let gps = StatusTileView(title: L("nogps_status_gps"), opensPage: true)
+
+  init() {
+    super.init(frame: .zero)
+    let row = UIStackView(arrangedSubviews: [box, gps])
+    row.distribution = .fillEqually
+    row.spacing = 12
+    row.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(row)
+    // As wide as the groups of rows under it.
+    preservesSuperviewLayoutMargins = true
+    NSLayoutConstraint.activate([
+      row.leadingAnchor.constraint(equalTo: layoutMarginsGuide.leadingAnchor),
+      row.trailingAnchor.constraint(equalTo: layoutMarginsGuide.trailingAnchor),
+      row.topAnchor.constraint(equalTo: topAnchor, constant: 4),
+      row.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -16),
+    ])
+  }
+
+  @available(*, unavailable)
+  required init?(coder _: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+}
+
+/// The name of a source, its icon on the tint of its state, and the state under it. Its height doesn't follow the state: the
+/// sheet doesn't jump as the states change, a longer state is cut.
+private final class StatusTileView: UIControl {
+  private enum Constants {
+    static let tileSide = CGFloat(44)
+    static let stateLines = 3
+    static let cornerRadius = CGFloat(10)
+  }
+
+  private let titleLabel = UILabel()
+  private let tile = UIImageView()
+  private let stateLabel = UILabel()
+  private var stateHeight: NSLayoutConstraint!
+  private var look: NoGpsStatusBar.Look?
+
+  init(title: String, opensPage: Bool) {
+    super.init(frame: .zero)
+    backgroundColor = .secondarySystemGroupedBackground
+    layer.cornerRadius = Constants.cornerRadius
+    layer.cornerCurve = .continuous
+    isAccessibilityElement = true
+    accessibilityLabel = title
+    accessibilityTraits = opensPage ? .button : .none
+    isUserInteractionEnabled = opensPage
+    titleLabel.text = title
+    titleLabel.font = .preferredFont(forTextStyle: .caption1)
+    titleLabel.adjustsFontForContentSizeCategory = true
+    titleLabel.textColor = .secondaryLabel
+    stateLabel.font = UIFontMetrics(forTextStyle: .footnote).scaledFont(for: .systemFont(ofSize: 13, weight: .semibold))
+    stateLabel.adjustsFontForContentSizeCategory = true
+    stateLabel.numberOfLines = Constants.stateLines
+    stateLabel.textAlignment = .center
+    // The state starts under the icon, whatever its length.
+    let stateBox = UIView()
+    stateBox.addSubview(stateLabel)
+    let content = UIStackView(arrangedSubviews: [titleLabel, tile, stateBox])
+    content.axis = .vertical
+    content.alignment = .center
+    content.spacing = 8
+    content.isUserInteractionEnabled = false
+    for view in [content, stateLabel] {
+      view.translatesAutoresizingMaskIntoConstraints = false
+    }
+    addSubview(content)
+    stateHeight = stateBox.heightAnchor.constraint(equalToConstant: 0)
+    NSLayoutConstraint.activate([
+      tile.widthAnchor.constraint(equalToConstant: Constants.tileSide),
+      tile.heightAnchor.constraint(equalToConstant: Constants.tileSide),
+      stateBox.widthAnchor.constraint(equalTo: content.widthAnchor),
+      stateHeight,
+      stateLabel.leadingAnchor.constraint(equalTo: stateBox.leadingAnchor),
+      stateLabel.trailingAnchor.constraint(equalTo: stateBox.trailingAnchor),
+      stateLabel.topAnchor.constraint(equalTo: stateBox.topAnchor),
+      stateLabel.bottomAnchor.constraint(lessThanOrEqualTo: stateBox.bottomAnchor),
+      content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+      content.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+      content.topAnchor.constraint(equalTo: topAnchor, constant: 12),
+      content.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
+    ])
+    updateStateHeight()
+    guard opensPage else { return }
+    let chevron = UIImageView(image: UIImage(systemName: "chevron.forward",
+                                             withConfiguration: UIImage.SymbolConfiguration(pointSize: 13,
+                                                                                            weight: .semibold)))
+    chevron.tintColor = .tertiaryLabel
+    chevron.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(chevron)
+    NSLayoutConstraint.activate([
+      chevron.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+      chevron.centerYAnchor.constraint(equalTo: tile.centerYAnchor),
+    ])
+    addTarget(self, action: #selector(pressed), for: [.touchDown, .touchDragEnter])
+    addTarget(self, action: #selector(released), for: [.touchUpInside, .touchUpOutside, .touchCancel, .touchDragExit])
+  }
+
+  @available(*, unavailable)
+  required init?(coder _: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
+  override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+    super.traitCollectionDidChange(previousTraitCollection)
+    drawTile()
+    updateStateHeight()
+  }
+
+  func show(_ look: NoGpsStatusBar.Look, state text: String) {
+    self.look = look
+    drawTile()
+    NavButton.pulse(tile.layer, look.pulsing)
+    // The states follow "Box: name ·" on the sensors screen, here they start the line.
+    stateLabel.text = text.prefix(1).uppercased(with: .current) + text.dropFirst()
+    // A grey state is read as disabled.
+    stateLabel.textColor = look.color == .secondaryLabel ? .label : look.color
+    accessibilityValue = stateLabel.text
+  }
+
+  /// All the lines of a state, at the text size of the user.
+  private func updateStateHeight() {
+    stateHeight.constant = ceil(stateLabel.font.lineHeight * CGFloat(Constants.stateLines))
+  }
+
+  private func drawTile() {
+    guard let look else { return }
+    tile.image = NoGpsStatusBar.tileImage(look, side: Constants.tileSide, traits: traitCollection)
+  }
+
+  @objc
+  private func pressed() {
+    backgroundColor = .systemFill
+  }
+
+  @objc
+  private func released() {
+    UIView.animate(withDuration: AppConstants.defaultAnimationDuration) {
+      self.backgroundColor = .secondarySystemGroupedBackground
+    }
+  }
+}
+
+/// Why GPS can be turned off for the car, or why not. Both texts take their place: the sheet doesn't jump as the box
+/// comes and goes.
+private final class GpsUseFooterView: UITableViewHeaderFooterView {
+  private let hint = UILabel()
+  private let needsBox = UILabel()
+
+  init() {
+    super.init(reuseIdentifier: nil)
+    hint.text = L("nogps_gps_use_hint")
+    needsBox.text = L("nogps_gps_use_needs_box")
+    for label in [hint, needsBox] {
+      label.font = .preferredFont(forTextStyle: .footnote)
+      label.adjustsFontForContentSizeCategory = true
+      label.textColor = .secondaryLabel
+      label.numberOfLines = 0
+      label.translatesAutoresizingMaskIntoConstraints = false
+      contentView.addSubview(label)
+      NSLayoutConstraint.activate([
+        label.leadingAnchor.constraint(equalTo: contentView.layoutMarginsGuide.leadingAnchor),
+        label.trailingAnchor.constraint(equalTo: contentView.layoutMarginsGuide.trailingAnchor),
+        label.topAnchor.constraint(equalTo: contentView.layoutMarginsGuide.topAnchor),
+        label.bottomAnchor.constraint(lessThanOrEqualTo: contentView.layoutMarginsGuide.bottomAnchor),
+      ])
+    }
+  }
+
+  @available(*, unavailable)
+  required init?(coder _: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
+  func update(canChangeUse: Bool) {
+    hint.alpha = canChangeUse ? 1 : 0
+    needsBox.alpha = canChangeUse ? 0 : 1
+    hint.accessibilityElementsHidden = !canChangeUse
+    needsBox.accessibilityElementsHidden = canChangeUse
   }
 }

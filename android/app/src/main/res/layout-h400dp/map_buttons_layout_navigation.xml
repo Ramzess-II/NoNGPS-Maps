@@ -55,17 +55,27 @@
     android:layout_width="wrap_content"
     android:layout_height="match_parent"
     android:layout_marginTop="@dimen/action_bar_extended_height"
-    android:layout_marginBottom="@dimen/map_buttons_bottom_margin"
+    android:layout_marginBottom="@dimen/nav_menu_height"
     android:clipChildren="false"
     android:clipToPadding="false"
     app:layout_constraintBottom_toBottomOf="parent"
     app:layout_constraintStart_toStartOf="parent">
+    <!-- The panel stops above the speed view, which keeps its place while it has nothing to show. -->
     <include
       layout="@layout/map_buttons_manual_position"
       android:layout_width="wrap_content"
       android:layout_height="wrap_content"
-      app:layout_constraintBottom_toBottomOf="parent"
+      android:layout_marginBottom="@dimen/margin_half"
+      app:layout_constraintBottom_toTopOf="@+id/speed_view"
       app:layout_constraintStart_toStartOf="parent"
       app:layout_constraintTop_toTopOf="parent" />
+    <include
+      layout="@layout/map_speed_view"
+      android:layout_width="@dimen/speed_view_size"
+      android:layout_height="@dimen/speed_view_size"
+      android:layout_marginStart="@dimen/margin_base"
+      android:layout_marginBottom="@dimen/margin_half"
+      app:layout_constraintBottom_toBottomOf="parent"
+      app:layout_constraintStart_toStartOf="parent" />
   </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -1099,8 +1099,6 @@
     <string name="nogps_based_on">Based on Organic Maps</string>
     <string name="nogps_map_data">Map data © OpenStreetMap and Organic Maps</string>
     <string name="nogps_source_code">Source code on GitHub</string>
-    <string name="nogps_speed_no_data">NO</string>
-    <string name="nogps_speed_no_elm">OBD</string>
     <string name="nogps_delete_recent_query">Delete from the history?</string>
     <string name="nogps_box_sleeping">sleeps: the engine is stopped</string>
     <string name="nogps_box_obd_sleeping">OBD sleeps: the engine is stopped</string>
@@ -1151,6 +1149,18 @@
     <string name="nogps_gps_use">Use GPS for the car</string>
     <!-- Under the switch in the GPS sheet -->
     <string name="nogps_gps_use_hint">Off: GPS is ignored, the box and your marks place the car. For places where GPS is spoofed but the app doesn\'t see it.</string>
+    <!-- Under the disabled switch Use GPS for the car in the Box sheet: no box is heard -->
+    <string name="nogps_gps_use_needs_box">GPS can be turned off only while a box is connected: nothing else would move the car.</string>
+    <!-- Under the distance left in navigation: the distance driven since navigation started, e.g. 12.4 km covered -->
+    <string name="nogps_nav_covered">%s covered</string>
+    <!-- Accessibility label of the speed indicator on the map, e.g. Speed 54 km/h -->
+    <string name="nogps_speed_view">Speed %s</string>
+    <!-- Accessibility value of the speed indicator: the speed limit of the road, e.g. Limit 60 km/h -->
+    <string name="nogps_speed_limit">Limit %s</string>
+    <!-- Accessibility value of the speed indicator: the road has no speed limit -->
+    <string name="nogps_speed_no_limit">No limit</string>
+    <!-- Accessibility value of the speed indicator: faster than the speed camera ahead allows -->
+    <string name="nogps_speed_over_camera">Over the speed camera limit</string>
     <!-- Row of the GPS sheet: when GPS gave the last good position -->
     <string name="nogps_gps_last_fix">Last good fix</string>
     <!-- How long ago, in seconds -->

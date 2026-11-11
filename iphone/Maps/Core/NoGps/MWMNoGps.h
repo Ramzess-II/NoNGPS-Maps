@@ -124,6 +124,8 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly) double workingNetworkAccuracyM;
 // The position is not from GPS: the user corrects it with the buttons.
 @property(nonatomic, readonly) BOOL movedByHand;
+/// The speed limit of the road the car is on, the way it goes: 0 for none, -1 if unknown.
+@property(nonatomic, readonly) NSInteger speedLimitKmh;
 
 @property(nonatomic, readonly) BOOL inertialEnabled;
 // The rest is known while the inertial navigation works.

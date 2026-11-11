@@ -45,7 +45,6 @@ import app.organicmaps.MwmActivity;
 import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
 import app.organicmaps.nogps.BoxBottomSheet;
-import app.organicmaps.nogps.GpsBottomSheet;
 import app.organicmaps.nogps.NoGpsFlagRecorder;
 import app.organicmaps.nogps.NoGpsFlags;
 import app.organicmaps.nogps.SensorsBottomSheet;
@@ -59,6 +58,7 @@ import app.organicmaps.sdk.maplayer.isolines.IsolinesManager;
 import app.organicmaps.sdk.maplayer.subway.SubwayManager;
 import app.organicmaps.sdk.maplayer.traffic.TrafficManager;
 import app.organicmaps.sdk.routing.RoutingController;
+import app.organicmaps.sdk.routing.RoutingInfo;
 import app.organicmaps.sdk.util.Config;
 import app.organicmaps.sdk.util.log.Logger;
 import app.organicmaps.sdk.util.log.LogsManager;
@@ -124,6 +124,8 @@ public class MapButtonsController extends Fragment
   @Nullable
   private StatusBar mStatusBar;
   @Nullable
+  private SpeedView mSpeedView;
+  @Nullable
   private FloatingActionButton mManualPositionButton;
   @Nullable
   private View mReverseButton;
@@ -171,6 +173,7 @@ public class MapButtonsController extends Fragment
     showButton(enable, MapButtons.trackRecordingStatus);
   };
   private final Observer<Integer> mTopButtonMarginObserver = this::updateTopButtonsMargin;
+  private final Observer<int[]> mNavTopObserver = this::keepPanelsUnderNavTop;
   private final Observer<SearchWheel.SearchOption> mSearchOptionObserver = (option) ->
   {
     if (mSearchWheel != null)
@@ -195,6 +198,16 @@ public class MapButtonsController extends Fragment
 
     mInnerRightButtonsFrame = mFrame.findViewById(R.id.map_buttons_inner_right);
     mCarButtonsFrame = mFrame.findViewById(R.id.map_buttons_inner_car);
+    // The frames change size after the views of the navigation top are laid out, as the screen turns.
+    final View.OnLayoutChangeListener navTopListener = (v, l, t, r, b, ol, ot, or, ob) ->
+    {
+      final int[] bottoms = mMapButtonsViewModel.getNavTopBottoms().getValue();
+      if (bottoms != null)
+        keepPanelsUnderNavTop(bottoms);
+    };
+    for (View frame : new View[] {mInnerRightButtonsFrame, mCarButtonsFrame})
+      if (frame != null)
+        frame.addOnLayoutChangeListener(navTopListener);
     mBottomButtonsFrame = mFrame.findViewById(R.id.map_buttons_bottom);
 
     final FloatingActionButton helpButton = mFrame.findViewById(R.id.help_button);
@@ -214,21 +227,12 @@ public class MapButtonsController extends Fragment
     mManualPositionButton = mFrame.findViewById(R.id.manual_position);
     mPositionStatus = mFrame.findViewById(R.id.position_status);
     mPositionStatus.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.positionStatus));
-    final View statusBar = mFrame.findViewById(R.id.status_bar);
+    final View statusBar = mFrame.findViewById(R.id.status_nav);
     if (statusBar != null)
-      mStatusBar = new StatusBar(statusBar, new StatusBar.Listener() {
-        @Override
-        public void showGpsSheet()
-        {
-          showSheet(new GpsBottomSheet(), GpsBottomSheet.TAG);
-        }
-
-        @Override
-        public void showBoxSheet()
-        {
-          showSheet(new BoxBottomSheet(), BoxBottomSheet.TAG);
-        }
-      });
+      mStatusBar = new StatusBar(statusBar, () -> showSheet(new BoxBottomSheet(), BoxBottomSheet.TAG));
+    final View speedView = mFrame.findViewById(R.id.speed_view);
+    if (speedView != null)
+      mSpeedView = new SpeedView(speedView);
     mManualPositionButton.setOnClickListener((v) -> {
       mMapButtonClickListener.onMapButtonClick(MapButtons.manualPosition);
       updatePositionStatus();
@@ -375,6 +379,7 @@ public class MapButtonsController extends Fragment
 
     if (mStatusBar != null)
       mStatusBar.update(status);
+    updateSpeedView(status);
     mMapButtonsViewModel.setNoGpsStatus(status);
 
     mCarButtonsShown.clear();
@@ -404,6 +409,16 @@ public class MapButtonsController extends Fragment
     if (hasCarButtons || !mCarPanelShown)
       applyCarButtons();
     showCarPanel(hasCarButtons);
+  }
+
+  private void updateSpeedView(@NonNull NoGps.Status status)
+  {
+    if (mSpeedView == null)
+      return;
+    final Location location = MwmApplication.from(requireContext()).getLocationHelper().getSavedLocation();
+    final RoutingController routing = RoutingController.get();
+    final RoutingInfo info = routing.isNavigating() ? routing.getCachedRoutingInfo() : null;
+    mSpeedView.update(status, location, info != null && info.isSpeedCamLimitExceeded());
   }
 
   /**
@@ -600,6 +615,38 @@ public class MapButtonsController extends Fragment
   private static int dpToPx(float dp, Context context)
   {
     return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, context.getResources().getDisplayMetrics());
+  }
+
+  /**
+   * In navigation the panels at the edges move under the views of the top at their edge, as long as they fit there.
+   *
+   * @param bottoms of the views over the start and the end edges, on the screen, px; 0 without them.
+   */
+  private void keepPanelsUnderNavTop(@NonNull int[] bottoms)
+  {
+    padTop(mCarButtonsFrame, mCarControls, bottoms[0]);
+    padTop(mInnerRightButtonsFrame, mFrame.findViewById(R.id.right_panel), bottoms[1]);
+  }
+
+  private void padTop(@Nullable View frame, @Nullable View panel, int bottom)
+  {
+    if (frame == null || panel == null)
+      return;
+    int padding = 0;
+    if (bottom > 0)
+    {
+      final int[] location = new int[2];
+      frame.getLocationOnScreen(location);
+      padding = Math.max(0, bottom + dpToPx(8, frame.getContext()) - location[1]);
+      // The panel stops above the speed view, which keeps its place.
+      final View speed = frame.findViewById(R.id.speed_view);
+      final int limit = speed != null ? speed.getTop() : frame.getHeight() - frame.getPaddingBottom();
+      final int margin = ((ViewGroup.MarginLayoutParams) panel.getLayoutParams()).bottomMargin;
+      if (limit - margin - padding < panel.getHeight())
+        padding = 0;
+    }
+    if (padding != frame.getPaddingTop())
+      frame.setPadding(frame.getPaddingLeft(), padding, frame.getPaddingRight(), frame.getPaddingBottom());
   }
 
   private void updateTopButtonsMargin(int margin)
@@ -851,6 +898,7 @@ public class MapButtonsController extends Fragment
     mMapButtonsViewModel.getMyPositionMode().observe(viewLifecycleOwner, mMyPositionModeObserver);
     mMapButtonsViewModel.getTrackRecorderState().observe(viewLifecycleOwner, mTrackRecorderObserver);
     mMapButtonsViewModel.getTopButtonsMarginTop().observe(viewLifecycleOwner, mTopButtonMarginObserver);
+    mMapButtonsViewModel.getNavTopBottoms().observe(viewLifecycleOwner, mNavTopObserver);
     mMapButtonsViewModel.getSearchOption().observe(viewLifecycleOwner, mSearchOptionObserver);
     mHandler.post(mPositionStatusUpdater);
   }

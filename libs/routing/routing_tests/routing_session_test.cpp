@@ -10,6 +10,7 @@
 
 #include "platform/duration.hpp"
 
+#include "geometry/mercator.hpp"
 #include "geometry/point2d.hpp"
 #include "geometry/point_with_altitude.hpp"
 
@@ -756,6 +757,72 @@ UNIT_CLASS_TEST(AsyncGuiThreadTestWithRoutingSession, TestFailedRebuildKeepsRout
     });
     TEST(checkSignal.WaitUntil(steady_clock::now() + kRouteBuildingMaxDuration), ("Route checking timeout."));
   }
+}
+
+// The distance covered since the navigation has started grows along the route and keeps adding up after a rebuild.
+UNIT_CLASS_TEST(AsyncGuiThreadTestWithRoutingSession, TestDistanceCoveredAcrossRebuild)
+{
+  vector<m2::PointD> const kRoute = {{0.0, 0.001}, {0.0, 0.002}, {0.0, 0.003}, {0.0, 0.004}};
+  TimedSignal builtSignal;
+  GetPlatform().RunTask(Platform::Thread::Gui, [&builtSignal, &kRoute, this]()
+  {
+    InitRoutingSession();
+    m_session->SetRouter(
+        make_unique<ReturnCodesRouter>(
+            initializer_list<RouterResultCode>{RouterResultCode::NoError, RouterResultCode::NoError}, kRoute),
+        nullptr);
+    m_session->SetRoutingCallbacks([&builtSignal](RoutesResult const &, RouterResultCode) {
+      builtSignal.Signal();
+    }, nullptr /* rebuildReadyCallback */, nullptr /* needMoreMapsCallback */, nullptr /* removeRouteCallback */);
+    m_session->BuildRoute(Checkpoints(kRoute.front(), kRoute.back()), RouterDelegate::kNoTimeout);
+  });
+  TEST(builtSignal.WaitUntil(steady_clock::now() + kRouteBuildingMaxDuration), ("Route was not built."));
+
+  location::GpsInfo info;
+  info.m_horizontalAccuracy = 5.0;
+  info.m_longitude = 0.0;
+  auto const covered = [this]()
+  {
+    FollowingInfo following;
+    m_session->GetRouteFollowingInfo(following);
+    return following.m_distCoveredM;
+  };
+  double const kStepM = mercator::DistanceOnEarth({0.0, 0.001}, {0.0, 0.002});
+  TimedSignal rebuiltSignal;
+  GetPlatform().RunTask(Platform::Thread::Gui, [&]()
+  {
+    info.m_latitude = 0.001;
+    m_session->OnLocationPositionChanged(info);
+    TEST_ALMOST_EQUAL_ABS(covered(), 0.0, 1.0, ());
+    info.m_latitude = 0.002;
+    m_session->OnLocationPositionChanged(info);
+    TEST_ALMOST_EQUAL_ABS(covered(), kStepM, 1.0, ());
+
+    SessionState state = SessionState::OnRoute;
+    info.m_latitude = 0.0;
+    for (size_t j = 0; j < 20 && state != SessionState::RouteNeedRebuild; ++j, info.m_latitude -= 0.001)
+      state = m_session->OnLocationPositionChanged(info);
+    TEST_EQUAL(state, SessionState::RouteNeedRebuild, ());
+
+    m_session->RebuildRoute(kRoute.front(), [&rebuiltSignal](RoutesResult const &, RouterResultCode)
+    { rebuiltSignal.Signal(); }, nullptr /* needMoreMapsCallback */, nullptr /* removeRouteCallback */,
+                            RouterDelegate::kNoTimeout, SessionState::RouteRebuilding, false /* adjustToPrevRoute */);
+  });
+  TEST(rebuiltSignal.WaitUntil(steady_clock::now() + kRouteBuildingMaxDuration), ("Route was not rebuilt."));
+
+  TimedSignal checkSignal;
+  GetPlatform().RunTask(Platform::Thread::Gui, [&]()
+  {
+    // The rebuilt route starts again, the distance driven before it is kept.
+    TEST_ALMOST_EQUAL_ABS(covered(), kStepM, 1.0, ());
+    info.m_latitude = 0.001;
+    m_session->OnLocationPositionChanged(info);
+    info.m_latitude = 0.002;
+    m_session->OnLocationPositionChanged(info);
+    TEST_ALMOST_EQUAL_ABS(covered(), 2 * kStepM, 1.0, ());
+    checkSignal.Signal();
+  });
+  TEST(checkSignal.WaitUntil(steady_clock::now() + kRouteBuildingMaxDuration), ("Route checking timeout."));
 }
 
 // The core rebuilds a route by itself before the user starts, e.g. from a mark of the navigation without GPS. Start

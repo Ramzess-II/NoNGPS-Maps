@@ -82,5 +82,8 @@ public:
   // Current speed limit in meters per second.
   // If no info about speed limit then m_speedLimitMps < 0.
   double m_speedLimitMps = -1.0;
+
+  // Driven along the route since the navigation has started, along the routes left and rebuilt too.
+  double m_distCoveredM = 0.0;
 };
 }  // namespace routing

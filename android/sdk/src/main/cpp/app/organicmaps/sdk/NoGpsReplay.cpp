@@ -336,7 +336,8 @@ void ReplayLogMessage(base::LogLevel level, base::SrcPoint const & src, std::str
 class Replay
 {
 public:
-  Replay(RoutingManager & routing, std::string const & inputPath, std::string const & outputPath)
+  Replay(RoutingManager & routing, DataSource const & dataSource, std::string const & inputPath,
+         std::string const & outputPath)
     : m_input(inputPath)
     , m_output(outputPath, std::ios::trunc)
     , m_donePath(outputPath + ".done")
@@ -345,7 +346,7 @@ public:
     , m_storage(std::ifstream(inputPath.substr(0, inputPath.find_last_of('/') + 1) + "nogps-replay-fresh.txt").good())
     , m_route(routing, m_clock, [this](std::string const & text) { Write(text); })
     , m_delegate([this](Fix const & fix) { m_route.OnPosition(fix); })
-    , m_map(m_route.Get(), m_clock, [](double) {})
+    , m_map(m_route.Get(), dataSource, m_clock, [](double) {})
   {
     std::remove(m_donePath.c_str());
     NewEngine();
@@ -674,6 +675,7 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeReplay(JNIEnv * env
     return;
   LOG(LINFO, ("A trip is driven again from", jni::ToNativeString(env, inputPath)));
   g_replay = std::make_unique<Replay>(g_framework->NativeFramework()->GetRoutingManager(),
+                                      g_framework->NativeFramework()->GetDataSource(),
                                       jni::ToNativeString(env, inputPath), jni::ToNativeString(env, outputPath));
   GetPlatform().RunTask(Platform::Thread::Gui, &RunReplay);
 }

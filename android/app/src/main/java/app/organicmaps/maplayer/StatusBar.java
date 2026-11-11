@@ -12,6 +12,7 @@ import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.ColorUtils;
 import androidx.core.widget.ImageViewCompat;
 import app.organicmaps.R;
 import app.organicmaps.nogps.SensorsBottomSheet;
@@ -20,19 +21,22 @@ import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.util.ThemeUtils;
 
 /**
- * The middle of the bottom bar: the sensor box, where the position of the car comes from with its accuracy, and GPS.
- * The box and GPS show their state by the shape and the color of the icon, and open their sheets.
+ * The middle of the bottom bar: one button with where the position of the car comes from and its accuracy. It shows the
+ * state of what moves the mark by the shape and the color of the icon and the tint of the background, and opens the
+ * Box sheet.
  */
 public class StatusBar
 {
   interface Listener
   {
-    void showGpsSheet();
-
     void showBoxSheet();
   }
 
   private static final long PULSE_DURATION_MS = 700;
+  // The tint of the button background: the color of the look at this alpha, 16 % in the light theme and 24 % in the
+  // dark.
+  private static final int TINT_ALPHA_LIGHT = 0x29;
+  private static final int TINT_ALPHA_DARK = 0x3D;
 
   /**
    * How a state is drawn: the icon, its color, a badge and if it pulses while something is in progress.
@@ -70,14 +74,23 @@ public class StatusBar
     {
       return color == 0 ? ThemeUtils.getColor(context, R.attr.iconTint) : ContextCompat.getColor(context, color);
     }
+
+    @ColorInt
+    public int getTint(@NonNull Context context)
+    {
+      return ColorUtils.setAlphaComponent(getColor(context),
+                                          ThemeUtils.isDarkTheme(context) ? TINT_ALPHA_DARK : TINT_ALPHA_LIGHT);
+    }
+
+    @NonNull
+    Look withBadge(@DrawableRes int badge, @ColorRes int badgeColor)
+    {
+      return new Look(icon, color, badge, badgeColor, pulsing);
+    }
   }
 
   @NonNull
-  private final Button mBox;
-  @NonNull
-  private final Button mGps;
-  @NonNull
-  private final View mSource;
+  private final Button mNav;
   @NonNull
   private final TextView mWord;
   @NonNull
@@ -85,38 +98,40 @@ public class StatusBar
 
   StatusBar(@NonNull View root, @NonNull Listener listener)
   {
-    mBox = new Button(root.findViewById(R.id.status_box), root.findViewById(R.id.status_box_icon),
-                      root.findViewById(R.id.status_box_badge));
-    mGps = new Button(root.findViewById(R.id.status_gps), root.findViewById(R.id.status_gps_icon),
-                      root.findViewById(R.id.status_gps_badge));
-    mSource = root.findViewById(R.id.status_source);
+    mNav = new Button(root, root.findViewById(R.id.status_nav_icon), root.findViewById(R.id.status_nav_badge));
     mWord = root.findViewById(R.id.status_word);
     mAccuracy = root.findViewById(R.id.status_accuracy);
-    mBox.mView.setOnClickListener(v -> listener.showBoxSheet());
-    mGps.mView.setOnClickListener(v -> listener.showGpsSheet());
+    root.setOnClickListener(v -> listener.showBoxSheet());
   }
 
   void update(@NonNull NoGps.Status status)
   {
-    final Context context = mSource.getContext();
-    final String word = getSourceWord(context, status);
-    mWord.setText(word);
+    final Context context = mNav.mView.getContext();
+    mWord.setText(getSourceWord(context, status));
     final String accuracy = getAccuracyText(context, status);
     mAccuracy.setText(accuracy);
     mAccuracy.setVisibility(accuracy != null ? View.VISIBLE : View.GONE);
-    mSource.setContentDescription(accuracy != null ? word + " " + accuracy : word);
+    mNav.show(getBarLook(context, status));
+    mNav.mView.setContentDescription(getBarDescription(context, status));
+  }
 
-    mBox.show(getBoxLook(status));
-    final String box = context.getString(R.string.nogps_box_title);
-    mBox.mView.setContentDescription(
-        status.inertialEnabled ? box + ", " + SensorsBottomSheet.boxStateText(context, status) : box);
-    mGps.show(getGpsLook(context, status));
-    String gps = context.getString(R.string.nogps_status_gps) + ", " + getGpsStateText(context, status);
-    // The pause badge is not read out: the reason tells that the car doesn't follow GPS.
-    final String why = status.gpsDisabled ? getGpsWhyText(context, status) : null;
-    if (why != null)
-      gps += ". " + why;
-    mGps.mView.setContentDescription(gps);
+  /**
+   * What the button tells to a screen reader: what moves the mark, its state and the accuracy.
+   */
+  @NonNull
+  public static String getBarDescription(@NonNull Context context, @NonNull NoGps.Status status)
+  {
+    final boolean box = navShowsBox(status.getSource(), status.inertialEnabled);
+    final String title = context.getString(box ? R.string.nogps_box_title : R.string.nogps_status_gps);
+    final String state = box ? status.inertialEnabled ? SensorsBottomSheet.boxStateText(context, status) : ""
+                             : getGpsStateText(context, status);
+    final String accuracy = getAccuracyText(context, status);
+    final StringBuilder text = new StringBuilder(title);
+    if (!state.isEmpty())
+      text.append(", ").append(state);
+    if (accuracy != null)
+      text.append(", ").append(accuracy);
+    return text.toString();
   }
 
   @NonNull
@@ -157,10 +172,35 @@ public class StatusBar
     };
   }
 
+  /**
+   * The look of the button: of what moves the mark. One badge on it: the look's own, else "+" without a box, else a dot
+   * in the color of the other source when it is orange or red.
+   */
   @NonNull
-  public static Look getNavLook(@NonNull Context context, @NonNull NoGps.Status status)
+  public static Look getBarLook(@NonNull NoGps.Status status)
   {
-    return navShowsBox(status.getSource(), status.inertialEnabled) ? getBoxLook(status) : getGpsLook(context, status);
+    return getBarLook(status, getGpsLook(status));
+  }
+
+  @NonNull
+  public static Look getBarLook(@NonNull Context context, @NonNull NoGps.Status status)
+  {
+    return getBarLook(status, getGpsLook(context, status));
+  }
+
+  @NonNull
+  private static Look getBarLook(@NonNull NoGps.Status status, @NonNull Look gps)
+  {
+    final boolean box = navShowsBox(status.getSource(), status.inertialEnabled);
+    final Look own = box ? getBoxLook(status) : gps;
+    if (own.badge != 0)
+      return own;
+    if (!status.inertialEnabled)
+      return own.withBadge(R.drawable.ic_nogps_badge_add, R.color.source_connecting);
+    final Look other = box ? gps : getBoxLook(status);
+    if (other.color == R.color.source_warning || other.color == R.color.source_bad)
+      return own.withBadge(R.drawable.ic_nogps_badge_dot, other.color);
+    return own;
   }
 
   @NonNull
@@ -201,7 +241,7 @@ public class StatusBar
       return new Look(R.drawable.ic_nogps_box, 0, R.drawable.ic_nogps_badge_add, R.color.source_connecting, false);
     return switch (status.getSourceState())
     {
-      case CONNECTED -> new Look(R.drawable.ic_nogps_box, R.color.source_good);
+      case CONNECTED -> new Look(R.drawable.ic_nogps_box, R.color.source_inertial);
       case UPDATING ->
         new Look(R.drawable.ic_nogps_box, R.color.source_connecting, R.drawable.ic_nogps_badge_update,
                  R.color.source_connecting, true);
@@ -210,7 +250,8 @@ public class StatusBar
         new Look(R.drawable.ic_nogps_box, R.color.source_sleeping, R.drawable.ic_nogps_badge_sleep,
                  R.color.source_sleeping, false);
       case NO_CAR_DATA, OBD_DISABLED, OBD_CONNECTING, OBD_ERROR, NO_ADAPTER ->
-        new Look(R.drawable.ic_nogps_box, 0, R.drawable.ic_nogps_badge_alert, R.color.source_warning, false);
+        new Look(R.drawable.ic_nogps_box, R.color.source_warning, R.drawable.ic_nogps_badge_alert,
+                 R.color.source_warning, false);
       case DISCONNECTED, CONNECTING -> getBoxSearchLook(status);
     };
   }
@@ -300,12 +341,11 @@ public class StatusBar
    */
   void stop()
   {
-    mGps.pulse(false);
-    mBox.pulse(false);
+    mNav.pulse(false);
   }
 
   /**
-   * A button showing a state: its icon with a badge.
+   * A button showing a state: its icon with a badge on a tinted background.
    */
   public static class Button
   {
@@ -327,7 +367,16 @@ public class StatusBar
 
     public void show(@NonNull Look look)
     {
+      show(look, look.pulsing);
+    }
+
+    /**
+     * @param pulse whether the icon pulses; a sheet may show the progress in another way.
+     */
+    public void show(@NonNull Look look, boolean pulse)
+    {
       final Context context = mView.getContext();
+      mView.setBackgroundTintList(ColorStateList.valueOf(look.getTint(context)));
       mIcon.setImageResource(look.icon);
       ImageViewCompat.setImageTintList(mIcon, ColorStateList.valueOf(look.getColor(context)));
       mBadge.setVisibility(look.badge == 0 ? View.GONE : View.VISIBLE);
@@ -337,7 +386,7 @@ public class StatusBar
         mBadge.setBackgroundTintList(ColorStateList.valueOf(ContextCompat.getColor(context, look.badgeColor)));
         ImageViewCompat.setImageTintList(mBadge, ColorStateList.valueOf(0xFFFFFFFF));
       }
-      pulse(look.pulsing);
+      pulse(pulse);
     }
 
     public void pulse(boolean on)

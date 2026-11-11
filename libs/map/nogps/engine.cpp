@@ -976,6 +976,35 @@ std::optional<double> Engine::GetCarBearing() const
   return {};
 }
 
+int Engine::GetSpeedLimitKmh()
+{
+  if (!m_savedLocation)
+    return -1;
+  auto const & position = m_savedLocation->m_position;
+  auto const bearingDeg = GetCarBearing();
+  if (m_speedLimit && m_speedLimit->m_position == position && m_speedLimit->m_bearingDeg == bearingDeg)
+    return m_speedLimit->m_kmh;
+
+  auto const road = m_map.GetRoads(false /* matchRoute */).Snap(position, bearingDeg, kSpeedLimitRoadM);
+  // Not kept: the map of the place may come later.
+  if (!road || Distance(position, road->m_point) > kSpeedLimitRoadM)
+    return -1;
+  int kmh = -1;
+  auto const maxspeed = m_map.GetMaxspeed(road->m_featureId);
+  // Without a direction the way the car goes along the road is not known.
+  if (bearingDeg || !maxspeed.IsBidirectional())
+  {
+    // Without the time the conditional limit is not taken, it is not shown.
+    auto const speed = maxspeed.GetCurrentSpeed(0 /* time */, road->m_forward);
+    if (speed.GetSpeed() == routing::kNoneMaxSpeed)
+      kmh = 0;
+    else if (speed.IsNumeric())
+      kmh = speed.GetSpeedKmPH();
+  }
+  m_speedLimit = SpeedLimit{position, bearingDeg, kmh};
+  return kmh;
+}
+
 bool Engine::IsCarHeadingShown() const
 {
   if (!GetCarBearing())
@@ -1457,6 +1486,9 @@ Status Engine::GetStatus()
   // The position is moved by hand only when it does not come from GPS: a GPS one is moved by the car.
   status.m_movedByHand =
       m_manualMode || status.m_source == PositionSource::Inertial || status.m_source == PositionSource::Manual;
+  // A position from cell towers is not on a road.
+  if (status.m_source != PositionSource::None && status.m_source != PositionSource::Network)
+    status.m_speedLimitKmh = GetSpeedLimitKmh();
 
   status.m_inertialEnabled = IsInertialNavigationEnabled();
   status.m_esp32Source = m_storage.IsEsp32Source();

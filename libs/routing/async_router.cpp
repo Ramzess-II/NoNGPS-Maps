@@ -101,9 +101,9 @@ bool AsyncRouter::IsRoundaboutNear(m2::PointD const & point, double radiusM)
 }
 
 bool AsyncRouter::FindRoadAlong(m2::PointD const & point, m2::PointD const & direction, double radiusM,
-                                m2::PointD & projected, double & angleRad)
+                                RoadAlong & road)
 {
-  return m_router->FindRoadAlong(point, direction, radiusM, projected, angleRad);
+  return m_router->FindRoadAlong(point, direction, radiusM, road);
 }
 
 void AsyncRouter::FindRoadsAlong(m2::PointD const & point, m2::PointD const & direction, double radiusM,

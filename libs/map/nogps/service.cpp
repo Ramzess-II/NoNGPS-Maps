@@ -4,6 +4,8 @@
 
 #include "routing/following_info.hpp"
 
+#include "indexer/data_source.hpp"
+
 #include "platform/location.hpp"
 #include "platform/platform.hpp"
 
@@ -95,8 +97,11 @@ std::optional<RoadPoint> RoutingMapApi::RoutingRoads::Snap(ms::LatLon const & po
                                                            double radiusM)
 {
   RoadPoint road;
-  if (!m_route.SnapToRoad(point, ToCoreBearing(bearingDeg), radiusM, m_matchRoute, road.m_point, road.m_bearingDeg))
+  if (!m_route.SnapToRoad(point, ToCoreBearing(bearingDeg), radiusM, m_matchRoute, road.m_point, road.m_bearingDeg,
+                          road.m_featureId, road.m_forward))
+  {
     return {};
+  }
   return road;
 }
 
@@ -118,8 +123,10 @@ bool RoutingMapApi::RoutingRoads::IsRoundaboutNear(ms::LatLon const & center, do
   return m_route.IsRoundaboutNear(center, radiusM);
 }
 
-RoutingMapApi::RoutingMapApi(SessionRoute & route, Clock const & clock, ShowCarHeadingFn && showCarHeading)
+RoutingMapApi::RoutingMapApi(SessionRoute & route, DataSource const & dataSource, Clock const & clock,
+                             ShowCarHeadingFn && showCarHeading)
   : m_route(route)
+  , m_dataSource(dataSource)
   , m_clock(clock)
   , m_showCarHeading(std::move(showCarHeading))
   , m_roads(route, false /* matchRoute */)
@@ -182,6 +189,21 @@ std::optional<RoadWalker::Result> RoutingMapApi::ShiftAlongRoute(ms::LatLon cons
   return result;
 }
 
+routing::Maxspeed RoutingMapApi::GetMaxspeed(FeatureID const & road)
+{
+  if (!road.IsValid())
+    return {};
+  auto it = m_maxspeeds.find(road.m_mwmId);
+  if (it == m_maxspeeds.end())
+  {
+    auto const handle = m_dataSource.GetMwmHandleById(road.m_mwmId);
+    if (!handle.IsAlive())
+      return {};
+    it = m_maxspeeds.emplace(road.m_mwmId, routing::LoadMaxspeeds(handle)).first;
+  }
+  return it->second->GetMaxspeed(road.m_index);
+}
+
 std::optional<RoadPoint> RoutingMapApi::SnapToMainRoad(ms::LatLon const & position, double radiusM)
 {
   RoadPoint road;
@@ -201,8 +223,9 @@ std::string RoutingMapApi::GetDistanceLeft() const
   return info.m_distToTarget.GetDistanceString() + info.m_distToTarget.GetUnitsString();
 }
 
-Service::Service(Delegate & delegate, SessionRoute & route, RoutingMapApi::ShowCarHeadingFn && showCarHeading)
-  : m_map(route, m_clock, std::move(showCarHeading))
+Service::Service(Delegate & delegate, SessionRoute & route, DataSource const & dataSource,
+                 RoutingMapApi::ShowCarHeadingFn && showCarHeading)
+  : m_map(route, dataSource, m_clock, std::move(showCarHeading))
   , m_engine(delegate, m_map, m_storage, m_clock, m_scheduler)
 {
   m_engine.SetFirmwares(LoadFirmwares());

@@ -231,6 +231,9 @@ public final class NoGps
     public int speedKmh = -1;
     @Keep
     public boolean hasCarInfo;
+    // The limit of the road the mark is on, the way it goes, in km/h: 0 if there is none, -1 if unknown.
+    @Keep
+    public int speedLimitKmh = -1;
     // -1 if unknown, 0 if stopped, 1 if running.
     @Keep
     public int engineRunning = -1;

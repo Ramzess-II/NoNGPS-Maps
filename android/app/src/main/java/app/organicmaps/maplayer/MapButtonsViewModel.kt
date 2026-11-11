@@ -43,6 +43,10 @@ class MapButtonsViewModel : ViewModel() {
     private val _topHeaderHeight = MutableLiveData(0)
     val topHeaderHeight: LiveData<Int> = _topHeaderHeight
 
+    // The bottoms of the navigation views at the top over the start and the end edges, on the screen, px; 0 without.
+    private val _navTopBottoms = MutableLiveData(intArrayOf(0, 0))
+    val navTopBottoms: LiveData<IntArray> = _navTopBottoms
+
     fun setButtonsHidden(buttonsHidden: Boolean) {
         _buttonsHidden.value = buttonsHidden
     }
@@ -81,6 +85,12 @@ class MapButtonsViewModel : ViewModel() {
 
     fun setTrackRecorderState(state: Boolean) {
         _trackRecorderState.value = state
+    }
+
+    fun setNavTopBottoms(start: Int, end: Int) {
+        if (!_navTopBottoms.value.contentEquals(intArrayOf(start, end))) {
+            _navTopBottoms.value = intArrayOf(start, end)
+        }
     }
 
     fun setTopHeaderHeight(height: Int) {
