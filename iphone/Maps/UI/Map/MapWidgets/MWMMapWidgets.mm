@@ -25,9 +25,29 @@
   self.visualScale = p.m_visualScale;
   m_skin.reset(new gui::Skin(gui::ResolveGuiSkinFile("default"), p.m_visualScale));
   m_skin->Resize(p.m_surfaceWidth, p.m_surfaceHeight);
-  m_skin->ForEach([&p](gui::EWidget widget, gui::Position const & pos) { p.m_widgetsInitInfo[widget] = pos; });
+  bool const rtl = [self isRTL];
+  m_skin->ForEach([&](gui::EWidget widget, gui::Position const & pos)
+  {
+    bool const bottom = widget == gui::WIDGET_RULER || widget == gui::WIDGET_COPYRIGHT;
+    p.m_widgetsInitInfo[widget] = bottom ? [self trailingPosition:pos rtl:rtl] : pos;
+  });
   p.m_widgetsInitInfo[gui::WIDGET_SCALE_FPS_LABEL] =
       gui::Position(m2::PointF(self.visualScale * 10, self.visualScale * 45), dp::LeftTop);
+}
+
+- (BOOL)isRTL
+{
+  return [MapViewController sharedController].mapView.effectiveUserInterfaceLayoutDirection ==
+         UIUserInterfaceLayoutDirectionRightToLeft;
+}
+
+// The ruler and the copyright go to the trailing bottom corner: NoGpsSpeedView is at the leading one. The skin puts
+// them at the left edge, which is the trailing one in RTL.
+- (gui::Position)trailingPosition:(gui::Position const &)pos rtl:(bool)rtl
+{
+  if (rtl)
+    return pos;
+  return gui::Position(m2::PointF(m_skin->GetWidth() - pos.m_pixelPivot.x, pos.m_pixelPivot.y), dp::RightBottom);
 }
 
 - (CGRect)carPlayLayout
@@ -80,8 +100,9 @@
   auto const viewHeight = [MapViewController sharedController].mapView.height;
   auto const viewWidth = [MapViewController sharedController].mapView.width;
   auto const kRulerAdditionalYOffset = 4.0;
-  auto const rulerOffset =
-      m2::PointF(frame.origin.x * vs, (frame.origin.y + frame.size.height - viewHeight - kRulerAdditionalYOffset) * vs);
+  bool const rtl = [self isRTL];
+  auto const rulerOffset = m2::PointF((rtl ? frame.origin.x : frame.origin.x + frame.size.width - viewWidth) * vs,
+                                      (frame.origin.y + frame.size.height - viewHeight - kRulerAdditionalYOffset) * vs);
   auto const kCompassAdditionalYOffset = [TrackRecordingManager.shared isActive] ? 50 : 0;
   auto const compassOffset = m2::PointF((frame.origin.x + frame.size.width - viewWidth) * vs,
                                         (frame.origin.y + kCompassAdditionalYOffset) * vs);
@@ -91,12 +112,10 @@
     switch (w)
     {
     case gui::WIDGET_RULER:
-    case gui::WIDGET_COPYRIGHT: pivot += rulerOffset; break;
+    case gui::WIDGET_COPYRIGHT: pivot = [self trailingPosition:pos rtl:rtl].m_pixelPivot + rulerOffset; break;
     case gui::WIDGET_COMPASS:
       pivot += compassOffset;
-      if (![MWMCarPlayService shared].isCarplayActivated &&
-          [MapViewController sharedController].mapView.effectiveUserInterfaceLayoutDirection ==
-              UIUserInterfaceLayoutDirectionRightToLeft)
+      if (![MWMCarPlayService shared].isCarplayActivated && rtl)
         pivot.x = m_skin->GetWidth() - pos.m_pixelPivot.x + frame.origin.x * vs;
       break;
     case gui::WIDGET_SCALE_FPS_LABEL:
