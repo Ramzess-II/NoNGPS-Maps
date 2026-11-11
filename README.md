@@ -99,6 +99,9 @@ just android        # зібрати, встановити й запустити
 just apk            # лише зібрати APK
 just test           # зібрати й запустити тести NoGps_ на комп'ютері (macOS, Linux)
 just logs logs.zip  # переглянути поїздки з логів застосунку в браузері
+just ios            # macOS: зібрати, встановити й запустити налагоджувальну збірку iOS на підключеному iPhone,
+                    # без нього — на симуляторі; `just ios sim` — на симуляторі, `just ios "<назва>"` — на ньому
+just appstore       # macOS: зібрати релізну збірку iOS з версією останнього коміту й надіслати в App Store Connect
 ```
 
 iOS збирається з `xcode/omim.xcworkspace`, схема `OMaps` (див. [iphone/CLAUDE.md](iphone/CLAUDE.md)). На iOS
