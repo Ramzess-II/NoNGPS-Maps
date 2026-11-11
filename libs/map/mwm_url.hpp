@@ -149,7 +149,7 @@ std::string DebugPrint(ParsedMapApi::UrlType type);
 
 // The first http(s) or geo: link in a text that another app shares, or empty.
 std::string ExtractUrl(std::string_view text);
-// A Google Maps short link: it has coordinates only after its redirect is resolved over the network.
+// A short link of Google or Apple Maps: it has coordinates only after its redirect is resolved over the network.
 bool IsShortMapLink(std::string const & url);
 // A URL for ParsedMapApi from a shared text and the link of the text, resolved if it was short: the link when it has a
 // place, otherwise a search for the text without the link, or for the place name in the link. Empty if there is none.

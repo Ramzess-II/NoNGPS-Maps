@@ -684,6 +684,8 @@ UNIT_TEST(SharedText_IsShortMapLink)
   TEST(IsShortMapLink("https://maps.app.goo.gl/AbC123?g_st=ac"), ());
   TEST(IsShortMapLink("http://goo.gl/maps/AbC123"), ());
   TEST(!IsShortMapLink("https://goo.gl/AbC123"), ());
+  TEST(IsShortMapLink("https://maps.apple/p/4q59TQb02Pk6pV"), ());
+  TEST(!IsShortMapLink("https://maps.apple/"), ());
   TEST(!IsShortMapLink("https://www.google.com/maps/place/Eiffel+Tower"), ());
   TEST(!IsShortMapLink("geo:53.9,27.56"), ());
   TEST(!IsShortMapLink(""), ());
@@ -769,6 +771,24 @@ UNIT_TEST(SharedText_GoogleMapsSamples)
                          "https://www.google.com/maps/@/data=!3m1!4b1!4m3!11m2!2spz4Lz54cq6RodKvvNZbI85htJHaqkw!3e1"
                          "?entry=tts"),
       "", ());
+}
+
+UNIT_TEST(SharedText_AppleMapsSamples)
+{
+  // maps.apple/p/4q59TQb02Pk6pV resolved in November 2026.
+  ParsedMapApi api(SharedTextToApiUrl("https://maps.apple/p/4q59TQb02Pk6pV",
+                                      "https://maps.apple.com/place?address=900+Brentwood+Rd+NE%2C+Washington%2C+DC++"
+                                      "20018%2C+United+States&coordinate=38.9167939%2C-76.9947735"));
+  TEST_EQUAL(api.GetRequestType(), UrlType::Map, ());
+  TEST_ALMOST_EQUAL_ABS(api.GetMapPoints()[0].m_lat, 38.9167939, kEps, ());
+
+  // No coordinates: the address is searched.
+  api.SetUrlAndParse(SharedTextToApiUrl("", "http://maps.apple.com/?q=900%20BRENTWOOD%20RD%20NE%20WASHINGTON%20DC"));
+  TEST_EQUAL(api.GetSearchRequest().m_query, "900 BRENTWOOD RD NE WASHINGTON DC", ());
+  api.SetUrlAndParse(SharedTextToApiUrl("", "https://maps.apple.com/place?address=Champ+de+Mars,+Paris&place-id=I6A"));
+  TEST_EQUAL(api.GetSearchRequest().m_query, "Champ de Mars, Paris", ());
+  api.SetUrlAndParse(SharedTextToApiUrl("", "https://maps.apple.com/search?query=Coffee&center=48.85,2.29"));
+  TEST_EQUAL(api.GetSearchRequest().m_query, "Coffee", ());
 }
 
 UNIT_TEST(100FullEnteriesRandomTest)

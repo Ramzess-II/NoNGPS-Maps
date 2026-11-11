@@ -239,6 +239,39 @@ UNIT_TEST(GeoURL_GoogleMapsPlace)
   TEST_EQUAL(GoogleMapsParser::GetPlaceName(url::Url("https://www.google.com/maps/@48.85,2.29,17z")), "", ());
 }
 
+UNIT_TEST(GeoURL_AppleMaps)
+{
+  UnifiedParser parser;
+  GeoURLInfo info;
+
+  // maps.apple/p/4q59TQb02Pk6pV resolved in November 2026.
+  TEST(parser.Parse("https://maps.apple.com/place?address=900+Brentwood+Rd+NE%2C+Washington%2C+DC++20018%2C+"
+                    "United+States&coordinate=38.9167939%2C-76.9947735",
+                    info),
+       ());
+  TEST_ALMOST_EQUAL_ABS(info.m_lat, 38.9167939, kEps, ());
+  TEST_ALMOST_EQUAL_ABS(info.m_lon, -76.9947735, kEps, ());
+  TEST_EQUAL(info.m_label, "", ());
+
+  TEST(parser.Parse("https://maps.apple.com/place?coordinate=48.858370,2.294481&name=Eiffel%20Tower&place-id=I6A1B2C3D",
+                    info),
+       ());
+  TEST_ALMOST_EQUAL_ABS(info.m_lat, 48.85837, kEps, ());
+  TEST_ALMOST_EQUAL_ABS(info.m_lon, 2.294481, kEps, ());
+  TEST_EQUAL(info.m_label, "Eiffel Tower", ());
+
+  // Older links.
+  TEST(parser.Parse("https://maps.apple.com/?address=Champ+de+Mars,+Paris&auid=123&ll=48.858370,2.294481&lsp=9902&"
+                    "q=Eiffel%20Tower",
+                    info),
+       ());
+  TEST_ALMOST_EQUAL_ABS(info.m_lat, 48.85837, kEps, ());
+  TEST_EQUAL(info.m_label, "Eiffel Tower", ());
+
+  // Only an address.
+  TEST(!parser.Parse("http://maps.apple.com/?q=900%20BRENTWOOD%20RD%20NE%20WASHINGTON%20DC", info), ());
+}
+
 UNIT_TEST(GeoURL_GoogleConsent)
 {
   UnifiedParser parser;

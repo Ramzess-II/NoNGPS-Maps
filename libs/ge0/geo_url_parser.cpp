@@ -140,7 +140,8 @@ int LatLonParser::GetCoordinatesPriority(std::string const & token)
     return 3;
   if (token.find("point") != std::string::npos)
     return 4;
-  if (token == "ll")
+  // "coordinate" is Apple Maps.
+  if (token == "ll" || token == "coordinate")
     return kLLPriority;
   if (token == "x" || token == "y")
     return kXYPriority;
@@ -439,7 +440,18 @@ bool UnifiedParser::Parse(std::string const & raw, GeoURLInfo & res)
   m_llParser.Reset(url, res);
   m_llParser({}, url.GetHostAndPath());
   url.ForEachParam(m_llParser);
-  return m_llParser.IsValid();
+  if (!m_llParser.IsValid())
+    return false;
+
+  // Apple Maps has the place name in "name=" (links since iOS 18) or "q=" (older links).
+  if (MatchHost(url, "maps.apple"))
+  {
+    if (auto const * name = url.GetParamValue("name"))
+      res.m_label = *name;
+    else if (auto const * q = url.GetParamValue("q"))
+      res.m_label = *q;
+  }
+  return true;
 }
 
 }  // namespace geo

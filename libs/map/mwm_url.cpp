@@ -565,7 +565,8 @@ bool IsShortMapLink(std::string const & url)
   if (!u.IsValid() || (u.GetScheme() != "https" && u.GetScheme() != "http"))
     return false;
   std::string const & host = u.GetHost();
-  return host == "maps.app.goo.gl" || (host == "goo.gl" && u.GetPath().starts_with("maps"));
+  return host == "maps.app.goo.gl" || (host == "goo.gl" && u.GetPath().starts_with("maps")) ||
+         (host == "maps.apple" && u.GetPath().starts_with("p/"));
 }
 
 std::string SharedTextToApiUrl(std::string_view text, std::string const & link)
@@ -588,8 +589,10 @@ std::string SharedTextToApiUrl(std::string_view text, std::string const & link)
   {
     url::Url const u(link);
     query = geo::GoogleMapsParser::GetPlaceName(u);
-    if (auto const * q = u.GetParamValue("q"); query.empty() && q)
-      query = *q;
+    // "q" is Google and older Apple links, "query" and "address" are Apple links since iOS 18.
+    for (auto const * key : {"q", "query", "address"})
+      if (auto const * value = u.GetParamValue(key); query.empty() && value)
+        query = *value;
   }
 
   if (query.empty())
