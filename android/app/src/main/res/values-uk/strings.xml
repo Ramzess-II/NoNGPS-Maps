@@ -1106,7 +1106,10 @@
     <string name="nogps_about_menu">Про застосунок · Organic Maps</string>
     <string name="nogps_about_headline">Навігація, коли GPS глушать або підміняють</string>
     <string name="nogps_about_description">Без GPS машину веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю автомобіля з OBD-II. Машина тримається доріг офлайн-карти.</string>
-    <string name="nogps_based_on">На основі Organic Maps</string>
+    <!-- NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) -->
+    <string name="nogps_version">Версія %s</string>
+    <!-- Under the NonGPS Maps version in About, %@ is the Organic Maps version like 2026.10.27-10 -->
+    <string name="nogps_based_on">На основі Organic Maps %s</string>
     <string name="nogps_map_data">Дані карт © OpenStreetMap і Organic Maps</string>
     <string name="nogps_source_code">Вихідний код на GitHub</string>
     <string name="nogps_delete_recent_query">Видалити з історії?</string>

@@ -395,9 +395,6 @@
 /* blue gray color */
 "blue_gray" = "Mėlynai pilkas";
 
-/* Prints version number in About dialog */
-"version" = "„Organic Maps“ versija: %@";
-
 /* Settings «Map» category: «Appearance» title */
 "pref_appearance_title" = "Išvaizda";
 
@@ -1449,6 +1446,12 @@
 "nogps_clear_speed_title" = "Reset the speed calibration?";
 "nogps_clear_speed_message" = "The speed corrections learned from GPS at different speeds and from your corrections will be forgotten. Do it after new tyres or another car. They are learned anew while GPS works.";
 "nogps_about_title" = "About NonGPS Maps";
+
+/* NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) */
+"nogps_version" = "Version %@";
+
+/* Under the NonGPS Maps version in About, %@ is the Organic Maps version like 2026.10.27-10 */
+"nogps_based_on" = "Based on Organic Maps %@";
 "nogps_box_sleeping" = "sleeps: the engine is stopped";
 "nogps_box_obd_sleeping" = "OBD sleeps: the engine is stopped";
 "nogps_sensors_car" = "Engine: %1$@\nEngine speed: %2$@\nVoltage, box ADC: %3$@\nVoltage, OBD: %4$@\nVoltage, car control unit: %5$@";
