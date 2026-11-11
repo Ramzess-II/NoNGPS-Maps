@@ -32,6 +32,17 @@
       android:gravity="center_horizontal"
       android:orientation="vertical"
       android:padding="12dp">
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:ellipsize="end"
+        android:gravity="center_horizontal"
+        android:importantForAccessibility="no"
+        android:maxLines="1"
+        android:text="@string/nogps_box_title"
+        android:textColor="?android:textColorSecondary"
+        android:textSize="12sp" />
       <FrameLayout
         android:id="@+id/box_tile"
         android:layout_width="@dimen/map_button_size"
@@ -85,31 +96,53 @@
         android:gravity="center_horizontal"
         android:orientation="vertical"
         android:padding="12dp">
+        <TextView
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginBottom="8dp"
+          android:ellipsize="end"
+          android:gravity="center_horizontal"
+          android:importantForAccessibility="no"
+          android:maxLines="1"
+          android:text="@string/nogps_status_gps"
+          android:textColor="?android:textColorSecondary"
+          android:textSize="12sp" />
         <FrameLayout
-          android:id="@+id/box_gps_tile"
-          android:layout_width="@dimen/map_button_size"
-          android:layout_height="@dimen/map_button_size"
-          android:background="@drawable/bg_status_button">
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content">
           <FrameLayout
-            android:layout_width="26dp"
-            android:layout_height="26dp"
-            android:layout_gravity="center">
-            <ImageView
-              android:id="@+id/box_gps_icon"
-              android:layout_width="24dp"
-              android:layout_height="24dp"
-              android:layout_gravity="center"
-              android:importantForAccessibility="no" />
-            <ImageView
-              android:id="@+id/box_gps_badge"
-              android:layout_width="11dp"
-              android:layout_height="11dp"
-              android:layout_gravity="top|end"
-              android:background="@drawable/bg_source_badge"
-              android:importantForAccessibility="no"
-              android:padding="1dp"
-              android:visibility="gone" />
+            android:id="@+id/box_gps_tile"
+            android:layout_width="@dimen/map_button_size"
+            android:layout_height="@dimen/map_button_size"
+            android:layout_gravity="center_horizontal"
+            android:background="@drawable/bg_status_button">
+            <FrameLayout
+              android:layout_width="26dp"
+              android:layout_height="26dp"
+              android:layout_gravity="center">
+              <ImageView
+                android:id="@+id/box_gps_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:importantForAccessibility="no" />
+              <ImageView
+                android:id="@+id/box_gps_badge"
+                android:layout_width="11dp"
+                android:layout_height="11dp"
+                android:layout_gravity="top|end"
+                android:background="@drawable/bg_source_badge"
+                android:importantForAccessibility="no"
+                android:padding="1dp"
+                android:visibility="gone" />
+            </FrameLayout>
           </FrameLayout>
+          <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center_vertical|end"
+            android:importantForAccessibility="no"
+            app:srcCompat="@drawable/ic_nogps_chevron" />
         </FrameLayout>
         <TextView
           android:id="@+id/box_gps_state"
@@ -122,14 +155,6 @@
           android:textSize="13sp"
           android:textStyle="bold" />
       </LinearLayout>
-      <ImageView
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_gravity="top|end"
-        android:layout_marginTop="22dp"
-        android:layout_marginEnd="8dp"
-        android:importantForAccessibility="no"
-        app:srcCompat="@drawable/ic_nogps_chevron" />
     </FrameLayout>
   </LinearLayout>
 

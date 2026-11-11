@@ -701,13 +701,11 @@ private final class BoxSearchView: UIView {
 
 /// The top of the Box sheet: the box and GPS side by side. GPS opens its page.
 private final class StatusTilesView: UIView {
-  let box = StatusTileView(opensPage: false)
-  let gps = StatusTileView(opensPage: true)
+  let box = StatusTileView(title: L("nogps_box_title"), opensPage: false)
+  let gps = StatusTileView(title: L("nogps_status_gps"), opensPage: true)
 
   init() {
     super.init(frame: .zero)
-    box.accessibilityLabel = L("nogps_box_title")
-    gps.accessibilityLabel = L("nogps_status_gps")
     let row = UIStackView(arrangedSubviews: [box, gps])
     row.distribution = .fillEqually
     row.spacing = 12
@@ -729,7 +727,7 @@ private final class StatusTilesView: UIView {
   }
 }
 
-/// The icon of a source on the tint of its state, and the state under it. Its height doesn't follow the state: the
+/// The name of a source, its icon on the tint of its state, and the state under it. Its height doesn't follow the state: the
 /// sheet doesn't jump as the states change, a longer state is cut.
 private final class StatusTileView: UIControl {
   private enum Constants {
@@ -738,19 +736,25 @@ private final class StatusTileView: UIControl {
     static let cornerRadius = CGFloat(10)
   }
 
+  private let titleLabel = UILabel()
   private let tile = UIImageView()
   private let stateLabel = UILabel()
   private var stateHeight: NSLayoutConstraint!
   private var look: NoGpsStatusBar.Look?
 
-  init(opensPage: Bool) {
+  init(title: String, opensPage: Bool) {
     super.init(frame: .zero)
     backgroundColor = .secondarySystemGroupedBackground
     layer.cornerRadius = Constants.cornerRadius
     layer.cornerCurve = .continuous
     isAccessibilityElement = true
+    accessibilityLabel = title
     accessibilityTraits = opensPage ? .button : .none
     isUserInteractionEnabled = opensPage
+    titleLabel.text = title
+    titleLabel.font = .preferredFont(forTextStyle: .caption1)
+    titleLabel.adjustsFontForContentSizeCategory = true
+    titleLabel.textColor = .secondaryLabel
     stateLabel.font = UIFontMetrics(forTextStyle: .footnote).scaledFont(for: .systemFont(ofSize: 13, weight: .semibold))
     stateLabel.adjustsFontForContentSizeCategory = true
     stateLabel.numberOfLines = Constants.stateLines
@@ -758,7 +762,7 @@ private final class StatusTileView: UIControl {
     // The state starts under the icon, whatever its length.
     let stateBox = UIView()
     stateBox.addSubview(stateLabel)
-    let content = UIStackView(arrangedSubviews: [tile, stateBox])
+    let content = UIStackView(arrangedSubviews: [titleLabel, tile, stateBox])
     content.axis = .vertical
     content.alignment = .center
     content.spacing = 8
