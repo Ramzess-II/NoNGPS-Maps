@@ -1257,4 +1257,6 @@
     <string name="nogps_box_turn_on_location">Увімкнути геолокацію</string>
     <!-- Hint while the box is searched -->
     <string name="nogps_box_power_hint">Маєте блок? Увімкніть його поруч із телефоном: 2 хвилини він приймає новий телефон. Телефон може спитати код із блока.</string>
+    <!-- Toast after another app, e.g. Google Maps, shares a link to the app, but the link has no place: usually a short link while offline -->
+    <string name="nogps_shared_no_place">У посиланні немає місця. Підключіться до інтернету й поділіться ще раз.</string>
 </resources>
