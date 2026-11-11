@@ -475,13 +475,19 @@ public final class NoGps
     return BuildConfig.UPSTREAM_VERSION;
   }
 
-  /// "2026.11.08-7-Google (26110807, abcdef12), Organic Maps 2026.10.27-10", with the commit of the build: tells which
-  /// build it is, in About and the trip log.
+  /// "2026.11.08-7-Google (26110807, abcdef12)", with the commit of the build: tells which build it is.
+  @NonNull
+  public static String getVersion()
+  {
+    return String.format(Locale.ROOT, "%s (%d, %s)", Config.getVersionName(), Config.getVersionCode(),
+                         BuildConfig.GIT_HASH);
+  }
+
+  /// "2026.11.08-7-Google (26110807, abcdef12), Organic Maps 2026.10.27-10", in About and the trip log.
   @NonNull
   public static String getFullVersion()
   {
-    return String.format(Locale.ROOT, "%s (%d, %s), Organic Maps %s", Config.getVersionName(), Config.getVersionCode(),
-                         BuildConfig.GIT_HASH, BuildConfig.UPSTREAM_VERSION);
+    return getVersion() + ", Organic Maps " + BuildConfig.UPSTREAM_VERSION;
   }
 
   /// Before Android 12 the box is not found while the location of the phone is switched off: a Bluetooth scan finds

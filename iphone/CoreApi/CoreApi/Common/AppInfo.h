@@ -11,8 +11,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, readonly) NSString * buildNumber;
 /// The Organic Maps version the build is based on, "2026.10.27-10". The versions come from tools/unix/nogps_version.sh.
 @property(nonatomic, readonly) NSString * upstreamVersion;
-/// "2026.11.08 (26110807, abcdef12), Organic Maps 2026.10.27-10", with the commit of the build: tells which build it
-/// is, in About and the trip log.
+/// "2026.11.08 (26110807, abcdef12)", with the commit of the build: tells which build it is.
+@property(nonatomic, readonly) NSString * appVersion;
+/// "2026.11.08 (26110807, abcdef12), Organic Maps 2026.10.27-10", in About and the trip log.
 @property(nonatomic, readonly) NSString * fullVersion;
 @property(nonatomic, readonly) NSString * languageId;
 @property(nonatomic, readonly) NSString * twoLetterLanguageId;

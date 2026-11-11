@@ -395,9 +395,6 @@
 /* blue gray color */
 "blue_gray" = "Сіро-блакитний";
 
-/* Prints version number in About dialog */
-"version" = "Версія Organic Maps: %@";
-
 /* Settings «Map» category: «Appearance» title */
 "pref_appearance_title" = "Вигляд";
 
@@ -1449,6 +1446,12 @@
 "nogps_clear_speed_title" = "Скинути калібрування швидкості?";
 "nogps_clear_speed_message" = "Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або машини. Поки працює GPS, вони вимірюються наново.";
 "nogps_about_title" = "Про NonGPS Maps";
+
+/* NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) */
+"nogps_version" = "Версія %@";
+
+/* Under the NonGPS Maps version in About, %@ is the Organic Maps version like 2026.10.27-10 */
+"nogps_based_on" = "На основі Organic Maps %@";
 "nogps_box_sleeping" = "спить: двигун заглушено";
 "nogps_box_obd_sleeping" = "OBD спить: двигун заглушено";
 "nogps_sensors_car" = "Двигун: %1$@\nОберти: %2$@\nНапруга, АЦП блоку: %3$@\nНапруга, OBD: %4$@\nНапруга, блок керування машини: %5$@";
