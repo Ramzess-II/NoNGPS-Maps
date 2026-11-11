@@ -54,9 +54,34 @@ final class NoGpsBoxSheet: MWMTableViewController {
 
   private var shownRows: [[Row]] = []
 
+  /// The height of the rows the sheet was fitted to.
+  private var fittedHeight = CGFloat(0)
+
   static func show() {
-    // The buy row under the box rows fits.
-    NoGpsControls.showSheet(NoGpsBoxSheet(style: .insetGrouped), extraHeight: Constants.extraSheetHeight)
+    let root = NoGpsBoxSheet(style: .insetGrouped)
+    let navigation = UINavigationController(rootViewController: root)
+    if let sheet = navigation.sheetPresentationController {
+      sheet.detents = [.medium(), .large()]
+      if #available(iOS 16.0, *) {
+        sheet.detents = [.custom { [weak root] context in
+          root.map { min($0.sheetHeight, context.maximumDetentValue) }
+        }, .large()]
+        // The rows are laid out before the sheet is: it opens at their height.
+        let window = UIViewController.topViewController().view.window?.bounds ?? UIScreen.main.bounds
+        navigation.view.frame = window
+        navigation.view.layoutIfNeeded()
+      }
+      sheet.prefersGrabberVisible = true
+    }
+    UIViewController.topViewController().present(navigation, animated: true)
+  }
+
+  /// Without a box the sheet fits its rows: the search and the offer to buy one. With a box it opens at half the
+  /// window, with the buy row under the box rows, and more of them are seen when it is pulled up.
+  private var sheetHeight: CGFloat {
+    let window = view.window?.bounds.height ?? UIScreen.main.bounds.height
+    guard searching || !status.inertialEnabled else { return window / 2 + Constants.extraSheetHeight }
+    return (navigationController?.navigationBar.frame.maxY ?? 0) + tableView.contentSize.height
   }
 
   override func viewDidLoad() {
@@ -94,6 +119,12 @@ final class NoGpsBoxSheet: MWMTableViewController {
   override func viewDidLayoutSubviews() {
     super.viewDidLayoutSubviews()
     layoutHeader()
+    // Rows come and go, the box is found: the sheet follows.
+    if #available(iOS 16.0, *), let sheet = navigationController?.sheetPresentationController,
+       sheetHeight != fittedHeight {
+      fittedHeight = sheetHeight
+      sheet.animateChanges { sheet.invalidateDetents() }
+    }
   }
 
   override func viewDidDisappear(_ animated: Bool) {

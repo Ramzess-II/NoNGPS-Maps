@@ -321,25 +321,6 @@ final class NoGpsControls: NSObject {
     top.present(UINavigationController(rootViewController: sensors), animated: true)
   }
 
-  /// Shows a sheet of the bottom bar: half of the screen over the map, pulled up for the rest. The sheets are refreshed
-  /// every second, see UITableView.reloadData(keepingRows:_:).
-  /// - Parameter extraHeight: added to the half, iOS 16+, for a sheet whose last row is cut off.
-  static func showSheet(_ root: UIViewController, extraHeight: CGFloat = 0) {
-    let navigation = UINavigationController(rootViewController: root)
-    if let sheet = navigation.sheetPresentationController {
-      sheet.detents = [.medium(), .large()]
-      // The medium detent is half of the window, not of the large detent.
-      if #available(iOS 16.0, *), extraHeight > 0 {
-        sheet.detents = [.custom { [weak navigation] context in
-          let window = navigation?.view.window?.bounds.height ?? UIScreen.main.bounds.height
-          return min(window / 2 + extraHeight, context.maximumDetentValue)
-        }, .large()]
-      }
-      sheet.prefersGrabberVisible = true
-    }
-    UIViewController.topViewController().present(navigation, animated: true)
-  }
-
   /// The sensor box has been plugged in: asks the user to calibrate it, the car should stand on a level place.
   private func offerBoxCalibration() {
     // As on Android, not asked in the background: the car may be driving when the user comes back. The sensors

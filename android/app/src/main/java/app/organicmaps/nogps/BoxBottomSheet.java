@@ -268,6 +268,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     ((ComponentDialog) requireDialog())
         .getOnBackPressedDispatcher()
         .addCallback(getViewLifecycleOwner(), mBackFromPage);
+    // Without a box the sheet opens at the height of its rows, as on iOS: the search and the offer to buy one.
+    if ((mSearching || !NoGps.getStatus().inertialEnabled) && !mGpsShown)
+      getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
   }
 
   @Override
@@ -296,7 +299,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final NoGps.Status status = NoGps.getStatus();
     // The box connected while it was searched: the sheet shows it as any other.
     if (mSearching && isBoxHeard(status))
+    {
       mSearching = false;
+      // As with a box set up: the sheet goes down to its height, its rows go on below.
+      if (!mGpsShown)
+        getBehavior().setState(BottomSheetBehavior.STATE_COLLAPSED);
+    }
     final boolean speedTable = mSpeedTableShown && !mGpsShown && !mSearching && status.inertialEnabled;
     final boolean page = speedTable || mGpsShown;
     mBackFromPage.setEnabled(page);
@@ -465,10 +473,16 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     switchPage(shown, mGpsPage);
   }
 
+  @NonNull
+  private BottomSheetBehavior<?> getBehavior()
+  {
+    return ((BottomSheetDialog) requireDialog()).getBehavior();
+  }
+
   private void switchPage(boolean shown, @NonNull View page)
   {
     // The page opens at the height of the sheet, as on iOS, and is swiped up to see all of it.
-    final BottomSheetBehavior<?> behavior = ((BottomSheetDialog) requireDialog()).getBehavior();
+    final BottomSheetBehavior<?> behavior = getBehavior();
     behavior.setPeekHeight(shown ? ((View) requireView().getParent()).getHeight()
                                  : BottomSheetBehavior.PEEK_HEIGHT_AUTO);
     behavior.setState(BottomSheetBehavior.STATE_COLLAPSED);
