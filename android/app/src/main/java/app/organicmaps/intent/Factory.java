@@ -5,10 +5,12 @@ import static app.organicmaps.api.Const.EXTRA_PICK_POINT;
 import android.content.ContentResolver;
 import android.content.Intent;
 import android.net.Uri;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.core.content.IntentCompat;
 import app.organicmaps.MwmActivity;
 import app.organicmaps.MwmApplication;
+import app.organicmaps.R;
 import app.organicmaps.editor.OsmLoginActivity;
 import app.organicmaps.sdk.Framework;
 import app.organicmaps.sdk.Map;
@@ -82,8 +84,12 @@ public class Factory
       final Uri uri = intent.getData();
       if (uri == null)
         return false;
+      return processUrl(uri.toString(), target);
+    }
 
-      switch (Framework.nativeParseAndSetApiUrl(uri.toString()))
+    static boolean processUrl(@NonNull String url, @NonNull MwmActivity target)
+    {
+      switch (Framework.nativeParseAndSetApiUrl(url))
       {
       case RequestType.INCORRECT: return false;
 
@@ -153,6 +159,28 @@ public class Factory
       }
 
       return false;
+    }
+  }
+
+  // A link or a text shared by another app, e.g. a place in Google Maps.
+  public static class SharedTextProcessor implements IntentProcessor
+  {
+    @Override
+    public boolean process(@NonNull Intent intent, @NonNull MwmActivity activity)
+    {
+      if (!Intent.ACTION_SEND.equals(intent.getAction()))
+        return false;
+      final String text = intent.getStringExtra(Intent.EXTRA_TEXT);
+      if (text == null || text.trim().isEmpty())
+        return false;
+
+      Framework.nativeResolveSharedText(text, url -> {
+        if (activity.isDestroyed())
+          return;
+        if (url.isEmpty() || !UrlProcessor.processUrl(url, activity))
+          Toast.makeText(activity, R.string.nogps_shared_no_place, Toast.LENGTH_LONG).show();
+      });
+      return true;
     }
   }
 

@@ -205,6 +205,13 @@
         <data android:mimeType="application/vnd.google-earth.kmz+xml"/>
       </intent-filter>
 
+      <!-- A link or a text shared by another app, e.g. a place in Google Maps. -->
+      <intent-filter>
+        <action android:name="android.intent.action.SEND"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+        <data android:mimeType="text/plain"/>
+      </intent-filter>
+
       <intent-filter>
         <action android:name="android.intent.action.SEND"/>
         <action android:name="android.intent.action.SEND_MULTIPLE"/>

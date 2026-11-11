@@ -336,6 +336,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
         new Factory.GoggleAssistanceIntentProcessor(),
         new Factory.UrlProcessor(),
         new Factory.KmzKmlProcessor(),
+        new Factory.SharedTextProcessor(),
     };
     for (IntentProcessor ip : mIntentProcessors)
     {

@@ -8,6 +8,7 @@ import androidx.annotation.Size;
 import app.organicmaps.sdk.api.ParsedRoutingData;
 import app.organicmaps.sdk.api.ParsedSearchRequest;
 import app.organicmaps.sdk.api.RequestType;
+import app.organicmaps.sdk.api.SharedTextListener;
 import app.organicmaps.sdk.bookmarks.data.DistanceAndAzimut;
 import app.organicmaps.sdk.bookmarks.data.MapObject;
 import app.organicmaps.sdk.products.ProductsConfig;
@@ -176,6 +177,9 @@ public class Framework
   @NonNull
   public static native @RequestType int nativeParseAndSetApiUrl(String url);
   public static native ParsedRoutingData nativeGetParsedRoutingData();
+  // Turns a text that another app shares into a URL for nativeParseAndSetApiUrl(). Resolves short Google Maps links
+  // over the network.
+  public static native void nativeResolveSharedText(@NonNull String text, @NonNull SharedTextListener listener);
 
   // Custom raster background tiles (Settings -> Background Map tiles).
   public static native void nativeSetBackgroundTiles(boolean enabled, @NonNull String url, int cacheSizeMB,

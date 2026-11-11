@@ -825,6 +825,18 @@ JNIEXPORT jint Java_app_organicmaps_sdk_Framework_nativeParseAndSetApiUrl(JNIEnv
   return static_cast<jint>(frm()->ParseAndSetApiURL(jni::ToNativeString(env, url)));
 }
 
+JNIEXPORT void Java_app_organicmaps_sdk_Framework_nativeResolveSharedText(JNIEnv * env, jclass, jstring text,
+                                                                          jobject listener)
+{
+  url_scheme::ResolveSharedText(jni::ToNativeString(env, text),
+                                [listener = jni::make_global_ref(listener)](std::string const & url)
+  {
+    JNIEnv * env = jni::GetEnv();
+    jmethodID const methodId = jni::GetMethodID(env, *listener, "onSharedTextResolved", "(Ljava/lang/String;)V");
+    env->CallVoidMethod(*listener, methodId, jni::TScopedLocalRef(env, jni::ToJavaString(env, url)).get());
+  });
+}
+
 JNIEXPORT jobject Java_app_organicmaps_sdk_Framework_nativeGetParsedRoutingData(JNIEnv * env, jclass clazz)
 {
   using namespace url_scheme;
