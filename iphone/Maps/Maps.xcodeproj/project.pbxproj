@@ -715,6 +715,8 @@
 		FA853BEF26BC5BA40026D455 /* libdescriptions.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FA853BEE26BC5BA40026D455 /* libdescriptions.a */; };
 		FA853BF326BC5DE50026D455 /* libshaders.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FA853BF226BC5DE50026D455 /* libshaders.a */; };
 		FAF9DDA32A86DC54000D7037 /* libharfbuzz.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FAF9DDA22A86DC54000D7037 /* libharfbuzz.a */; };
+		F756620427FBAA5B9225472A /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C82FA3DF484E54AD36C1977 /* ShareViewController.swift */; };
+		716A012EE67AD0D686628FE0 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C317E5E5F544EEF9E19ADDE8 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -760,6 +762,13 @@
 			remoteGlobalIDString = 4598437B21394BE000F8CAB2;
 			remoteInfo = shaders_metal;
 		};
+		547C6F89C115A3DCC98F1549 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 29B97313FDCFA39411CA2CEA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 47030F03BA031C09FBB5925F;
+			remoteInfo = ShareExtension;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -782,6 +791,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				ED46DDE12D098A0C007CACD6 /* OMapsWidgetExtension.appex in Embed Foundation Extensions */,
+				716A012EE67AD0D686628FE0 /* ShareExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1916,6 +1926,9 @@
 		EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsBoxSheet.swift; sourceTree = "<group>"; };
 		FEE938673CC3D8E7866C20B8 /* NavigationDashboardViewControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationDashboardViewControllerTests.swift; sourceTree = "<group>"; };
 		53CD1FA9DD1A1E3B5ECE5670 /* NavigationSourceButtonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationSourceButtonTests.swift; sourceTree = "<group>"; };
+		C317E5E5F544EEF9E19ADDE8 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		6C82FA3DF484E54AD36C1977 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		C917032E1D0EBB32BD9906C7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1978,6 +1991,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C58B2D236B657344F1446024 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -1997,6 +2017,7 @@
 				6741AA5D1BF340DE002C974C /* Organic Maps (Debug).app */,
 				ED097E762BB80C320006ED01 /* OMapsTests.xctest */,
 				ED46DDCC2D098A0B007CACD6 /* OMapsWidgetExtension.appex */,
+				C317E5E5F544EEF9E19ADDE8 /* ShareExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -2017,6 +2038,7 @@
 				ED82C4F12F90180300FA103D /* UI */,
 				ED1ADA312BC6B19E0029209F /* Tests */,
 				ED2D74372D14337500660FBF /* OMapsWidgetExtension */,
+				EC1B19E78133EB83EBB074D3 /* ShareExtension */,
 			);
 			indentWidth = 2;
 			name = Maps;
@@ -4334,6 +4356,15 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		EC1B19E78133EB83EBB074D3 /* ShareExtension */ = {
+			isa = PBXGroup;
+			children = (
+				C917032E1D0EBB32BD9906C7 /* Info.plist */,
+				6C82FA3DF484E54AD36C1977 /* ShareViewController.swift */,
+			);
+			path = ShareExtension;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -4354,6 +4385,7 @@
 			dependencies = (
 				FA456C4D26BDCC9400B83C20 /* PBXTargetDependency */,
 				ED46DDE02D098A0C007CACD6 /* PBXTargetDependency */,
+				3BA9A3B57A3EBA3371A30A69 /* PBXTargetDependency */,
 			);
 			name = OMaps;
 			productName = Maps;
@@ -4396,6 +4428,26 @@
 			);
 			productName = OMapsWidgetExtension;
 			productReference = ED46DDCC2D098A0B007CACD6 /* OMapsWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		47030F03BA031C09FBB5925F /* ShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7CFF71974E43018AB5AE5E18 /* Build configuration list for PBXNativeTarget "ShareExtension" */;
+			buildPhases = (
+				A09F4734D0425449F1ED1F22 /* Sources */,
+				C58B2D236B657344F1446024 /* Frameworks */,
+				3E00A536E0647C74D10BAF0D /* Resources */,
+				DA19D66D1E85D33920D1395C /* NonGPS versions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShareExtension;
+			packageProductDependencies = (
+			);
+			productName = ShareExtension;
+			productReference = C317E5E5F544EEF9E19ADDE8 /* ShareExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -4503,6 +4555,7 @@
 				6741A93D1BF340DE002C974C /* OMaps */,
 				ED097E752BB80C320006ED01 /* OMapsTests */,
 				ED46DDCB2D098A0B007CACD6 /* OMapsWidgetExtension */,
+				47030F03BA031C09FBB5925F /* ShareExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -4661,6 +4714,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		3E00A536E0647C74D10BAF0D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
@@ -4687,6 +4747,28 @@
 			showEnvVarsInLog = 0;
 		};
 		C02FFD152EBB0115709F1B7D /* NonGPS versions */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "NonGPS versions";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/nogps_version.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# The versions of this commit into the built Info.plist, see tools/unix/nogps_version.sh. The built Info.plist\n# as the input runs the phase after Xcode makes it. git reads the repo, so the target turns off the user script\n# sandboxing.\n\"$SRCROOT/../../tools/unix/nogps_version.sh\" ios_plist \"$SCRIPT_INPUT_FILE_0\" \"$SCRIPT_OUTPUT_FILE_0\"\n";
+			showEnvVarsInLog = 0;
+		};
+		DA19D66D1E85D33920D1395C /* NonGPS versions */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -5290,6 +5372,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A09F4734D0425449F1ED1F22 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F756620427FBAA5B9225472A /* ShareViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -5307,6 +5397,11 @@
 			isa = PBXTargetDependency;
 			name = shaders_metal;
 			targetProxy = FA456C4C26BDCC9400B83C20 /* PBXContainerItemProxy */;
+		};
+		3BA9A3B57A3EBA3371A30A69 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 47030F03BA031C09FBB5925F /* ShareExtension */;
+			targetProxy = 547C6F89C115A3DCC98F1549 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -5808,6 +5903,62 @@
 			};
 			name = Release;
 		};
+		3F43468BC144E9FA08D89CDB /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 20;
+				DEVELOPMENT_TEAM = VTWF79TU37;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "NonGPS Maps";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2026.10.15;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.non-gps.debug.share";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_OBJC_INTERFACE_HEADER_NAME = "";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+			};
+			name = Debug;
+		};
+		ACF7CC35306A0E837D7767C7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 20;
+				DEVELOPMENT_TEAM = VTWF79TU37;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "NonGPS Maps";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 2026.10.15;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.non-gps.share";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_OBJC_INTERFACE_HEADER_NAME = "";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -5843,6 +5994,15 @@
 			buildConfigurations = (
 				ED46DDE32D098A0C007CACD6 /* Debug */,
 				ED46DDE42D098A0C007CACD6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7CFF71974E43018AB5AE5E18 /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3F43468BC144E9FA08D89CDB /* Debug */,
+				ACF7CC35306A0E837D7767C7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

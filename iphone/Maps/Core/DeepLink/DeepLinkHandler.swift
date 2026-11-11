@@ -109,6 +109,19 @@
       .replacingOccurrences(of: "https://omaps.app", with: "om:/"))
   }
 
+  /// om://share?text=… comes from the share extension with a link or a text that another app shared.
+  private func handleSharedText(url: URL) -> Bool {
+    let text = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?
+      .first(where: { $0.name == "text" })?.value ?? ""
+    guard !text.isEmpty else { return false }
+    DeepLinkParser.resolveSharedText(text) { apiUrl in
+      if apiUrl.map({ self.handleDeepLink(url: $0) }) != true {
+        Toast.show(withText: L("nogps_shared_no_place"))
+      }
+    }
+    return true
+  }
+
   private func copyFileToTemporaryDirectory(_ url: URL) throws -> URL {
     let temporaryDirectory = FileManager.default.temporaryDirectory
       .appendingPathComponent("FileImports/\(UUID().uuidString)", isDirectory: true)
@@ -121,6 +134,10 @@
 
   private func handleDeepLink(url: URL) -> Bool {
     LOG(.info, "handleDeepLink: \(url)")
+
+    if url.scheme == "om", url.host == "share" {
+      return handleSharedText(url: url)
+    }
 
     var url = url
     if #available(iOS 18.4, *), let omURL = GeoNavigationToOMURLConverter.convert(url) {

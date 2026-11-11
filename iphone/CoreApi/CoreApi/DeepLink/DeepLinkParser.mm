@@ -38,4 +38,10 @@ static inline DeeplinkUrlType deeplinkUrlType(url_scheme::ParsedMapApi::UrlType 
   GetFramework().AddBookmarksFile(url.path.UTF8String, isTemporaryFile);
 }
 
++ (void)resolveSharedText:(NSString *)text completion:(void (^)(NSURL * _Nullable url))completion
+{
+  url_scheme::ResolveSharedText(text.UTF8String, [completion](std::string const & url)
+  { completion(url.empty() ? nil : [NSURL URLWithString:@(url.c_str())]); });
+}
+
 @end
