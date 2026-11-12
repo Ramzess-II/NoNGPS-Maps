@@ -41,6 +41,7 @@ public class NavMenu implements DefaultLifecycleObserver
   private final LinearProgressIndicator mRouteProgress;
   private final View mSource;
   private final StatusBar.Button mSourceButton;
+  private final TextView mSourceWord;
   private final TextView mSourceAccuracy;
 
   private final AppCompatActivity mActivity;
@@ -104,9 +105,10 @@ public class NavMenu implements DefaultLifecycleObserver
     mDistanceCovered = bottomFrame.findViewById(R.id.distance_covered);
     mRouteProgress = bottomFrame.findViewById(R.id.navigation_progress);
     mSource = bottomFrame.findViewById(R.id.nav_source);
-    mSourceButton = new StatusBar.Button(mSource, bottomFrame.findViewById(R.id.nav_source_icon),
-                                         bottomFrame.findViewById(R.id.nav_source_badge));
-    mSourceAccuracy = bottomFrame.findViewById(R.id.nav_source_accuracy);
+    mSourceButton = new StatusBar.Button(mSource, mSource.findViewById(R.id.status_nav_icon),
+                                         mSource.findViewById(R.id.status_nav_badge));
+    mSourceWord = mSource.findViewById(R.id.status_word);
+    mSourceAccuracy = mSource.findViewById(R.id.status_accuracy);
     mSource.setOnClickListener(v -> mNavMenuListener.onSourceClicked());
 
     // Bottom frame buttons
@@ -247,6 +249,7 @@ public class NavMenu implements DefaultLifecycleObserver
   void updateSource(@NonNull NoGps.Status status)
   {
     mSourceButton.show(StatusBar.getBarLook(mActivity, status));
+    mSourceWord.setText(StatusBar.getSourceWord(mActivity, status));
     final String accuracy = StatusBar.getAccuracyText(mActivity, status);
     mSourceAccuracy.setText(accuracy);
     mSourceAccuracy.setVisibility(accuracy != null ? View.VISIBLE : View.GONE);

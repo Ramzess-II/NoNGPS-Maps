@@ -28,10 +28,10 @@ final class NoGpsStatusBar: UIView {
   }
 
   private weak static var shared: NoGpsStatusBar?
-  /// The tile of the navigation sheet, it is shown while the bar is hidden.
-  weak static var navTile: NavButton?
+  /// The button of the navigation sheet, it is shown while the bar is hidden.
+  weak static var navSheetButton: NavButton?
 
-  private let button = NavButton(style: .bar)
+  private let button = NavButton()
 
   init() {
     super.init(frame: .zero)
@@ -54,7 +54,7 @@ final class NoGpsStatusBar: UIView {
 
   static func update(_ status: NoGpsStatus) {
     shared?.button.show(status)
-    navTile?.show(status)
+    navSheetButton?.show(status)
   }
 
   /// Where the position comes from: the box when the car follows it, or when the mark is set by hand with a box set up,
@@ -229,23 +229,18 @@ final class NoGpsStatusBar: UIView {
   }
 }
 
-/// The navigation button: the icon of the source that moves the mark with a badge, on the tint of its color. In the
-/// bottom bar it also has the source word, the accuracy and a chevron, as a tile in the navigation sheet only the
-/// accuracy under the icon.
+/// The navigation button: the icon of the source that moves the mark with a badge, on the tint of its color, the source
+/// word, the accuracy and a chevron. The same in the bottom bar and in the navigation sheet.
 final class NavButton: UIControl {
-  enum Style {
-    case bar
-    case tile
-  }
-
   private enum Constants {
     static let iconSize = CGFloat(24)
     static let dotSize = CGFloat(11)
     static let badgeSize = CGFloat(14)
     static let badgeSymbol = UIImage.SymbolConfiguration(pointSize: 8, weight: .black)
     static let cornerRadius = CGFloat(14)
-    static let barHeight = CGFloat(48)
-    static let tileSide = CGFloat(56)
+    static let height = CGFloat(48)
+    /// Of the text from the icon: the badge sticks out of the icon into it.
+    static let iconSpacing = CGFloat(14)
     static let pulseKey = "pulse"
     static let pulseDuration: CFTimeInterval = 0.7
     static let pulseOpacity = Float(0.3)
@@ -253,7 +248,6 @@ final class NavButton: UIControl {
     static let minScale = CGFloat(0.75)
   }
 
-  private let style: Style
   private let icon = UIImageView()
   private let badge = UIImageView()
   private var badgeWidth = NSLayoutConstraint()
@@ -261,8 +255,7 @@ final class NavButton: UIControl {
   private let word = UILabel()
   private let accuracy = UILabel()
 
-  init(style: Style) {
-    self.style = style
+  init() {
     super.init(frame: .zero)
     isAccessibilityElement = true
     accessibilityTraits = .button
@@ -301,53 +294,37 @@ final class NavButton: UIControl {
       badge.centerYAnchor.constraint(equalTo: icon.topAnchor, constant: 1),
     ])
 
-    accuracy.font = .monospacedDigitSystemFont(ofSize: style == .bar ? 13 : 12, weight: style == .bar ? .regular
-      : .semibold)
+    accuracy.font = .monospacedDigitSystemFont(ofSize: 13, weight: .regular)
     accuracy.textColor = .secondaryLabel
     accuracy.adjustsFontSizeToFitWidth = true
     accuracy.minimumScaleFactor = Constants.minScale
 
-    let content: UIStackView
-    switch style {
-    case .bar:
-      word.font = .systemFont(ofSize: 15, weight: .semibold)
-      word.textColor = .label
-      word.adjustsFontSizeToFitWidth = true
-      word.minimumScaleFactor = Constants.minScale
-      word.baselineAdjustment = .alignCenters
-      let text = UIStackView(arrangedSubviews: [word, accuracy])
-      text.axis = .vertical
-      text.alignment = .leading
-      text.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-      let chevron = UIImageView(image: UIImage(systemName: "chevron.up",
-                                               withConfiguration: UIImage.SymbolConfiguration(pointSize: 12,
-                                                                                              weight: .bold)))
-      chevron.tintColor = .secondaryLabel
-      chevron.setContentHuggingPriority(.required, for: .horizontal)
-      content = UIStackView(arrangedSubviews: [icon, text, chevron])
-      content.axis = .horizontal
-      content.alignment = .center
-      content.spacing = 10
-      heightAnchor.constraint(equalToConstant: Constants.barHeight).isActive = true
-    case .tile:
-      accuracy.textColor = .label
-      content = UIStackView(arrangedSubviews: [icon, accuracy])
-      content.axis = .vertical
-      content.alignment = .center
-      content.spacing = 3
-      NSLayoutConstraint.activate([
-        widthAnchor.constraint(equalToConstant: Constants.tileSide),
-        heightAnchor.constraint(equalToConstant: Constants.tileSide),
-      ])
-    }
+    word.font = .systemFont(ofSize: 15, weight: .semibold)
+    word.textColor = .label
+    word.adjustsFontSizeToFitWidth = true
+    word.minimumScaleFactor = Constants.minScale
+    word.baselineAdjustment = .alignCenters
+    let text = UIStackView(arrangedSubviews: [word, accuracy])
+    text.axis = .vertical
+    text.alignment = .leading
+    text.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    let chevron = UIImageView(image: UIImage(systemName: "chevron.up",
+                                             withConfiguration: UIImage.SymbolConfiguration(pointSize: 12,
+                                                                                            weight: .bold)))
+    chevron.tintColor = .secondaryLabel
+    chevron.setContentHuggingPriority(.required, for: .horizontal)
+    let content = UIStackView(arrangedSubviews: [icon, text, chevron])
+    content.axis = .horizontal
+    content.alignment = .center
+    content.spacing = 10
+    content.setCustomSpacing(Constants.iconSpacing, after: icon)
     content.isUserInteractionEnabled = false
     content.translatesAutoresizingMaskIntoConstraints = false
     addSubview(content)
-    let inset = style == .bar ? UIEdgeInsets(top: 0, left: 14, bottom: 0, right: 10)
-      : UIEdgeInsets(top: 0, left: 3, bottom: 0, right: 3)
     NSLayoutConstraint.activate([
-      content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: inset.left),
-      content.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -inset.right),
+      heightAnchor.constraint(equalToConstant: Constants.height),
+      content.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+      content.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
       content.centerYAnchor.constraint(equalTo: centerYAnchor),
     ])
   }
@@ -371,7 +348,7 @@ final class NavButton: UIControl {
     let source = NoGpsStatusBar.sourceText(status)
     word.text = source.word
     accuracy.text = source.accuracy
-    accuracy.isHidden = source.accuracy == nil && style == .bar
+    accuracy.isHidden = source.accuracy == nil
     accessibilityLabel = [source.word, source.accuracy].compactMap { $0 }.joined(separator: " ")
     // The states of both sources: the badge tells about the other one.
     var states = [NoGpsStatusBar.gpsStateText(status)]
