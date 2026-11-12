@@ -1234,6 +1234,9 @@
 /* Toast after the tester taps the voice flag button: a flag is saved and a voice note to it is recorded for 15 seconds or until the button is tapped again */
 "nogps_flag_voice_recording" = "Recording a voice note for 15 s. Tap the button again to stop.";
 
+/* Toast when the voice note to a flag is recorded and saved: its length in seconds */
+"nogps_flag_voice_saved" = "Voice note saved: %d s";
+
 /* Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. */
 "nogps_flag_mic_denied" = "The flag is saved without a voice note: allow the microphone in the system settings.";
 
