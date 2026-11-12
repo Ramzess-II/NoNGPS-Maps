@@ -10,7 +10,9 @@ namespace nogps
 /// How much the speed from the car differs from the real one at different speeds: the speedometer error grows
 /// with the speed, and the speed is rounded to 1 km/h, which matters at low speeds. The real speed is taken from
 /// trusted GPS while it works, the table is kept between trips and used without GPS.
-/// The speeds are split into ranges, every range keeps the distance driven by the car speed and by GPS.
+/// The speeds are split into ranges, every range keeps the distance driven by the car speed and by GPS, and the time.
+/// A car that cuts its speed down to whole km/h is slower by a constant, which a ratio can't follow at low speeds: the
+/// real speed is the ratio of the range times the car speed plus an offset, learned from GPS.
 class SpeedTable
 {
 public:
@@ -32,6 +34,15 @@ public:
   static double constexpr kMaxSpeedDiffRatio = 0.15;
   static double constexpr kMinScale = 0.8;
   static double constexpr kMaxScale = 1.25;
+  // Cut down to whole km/h, the speed is 0.5 km/h slower on average. On 2026-11-11..12 such a car was 0.5 km/h and 1%
+  // slower: the table had 1.08 at 5-10 km/h, 1.02 at 50-60, and 1.2-1.5 was right at 1-4 km/h.
+  static double constexpr kMaxOffsetKmh = 0.5;
+  // The offset is a straight line through the mean speeds of the ranges below 50 km/h, the 5-10 km/h one among them:
+  // a line through faster ranges only is too far from 0, and the table follows the error of faster speeds.
+  static int constexpr kOffsetRanges = 5;
+
+  /// \param learnsOffset the roads tell a distance too roughly for the offset, only GPS learns it.
+  explicit SpeedTable(bool learnsOffset = true) : m_learnsOffset(learnsOffset) {}
 
   /// One range as the user sees it.
   struct RangeState
@@ -58,32 +69,39 @@ public:
   /// \returns the range of the speed.
   static int Range(double carSpeedKmh);
 
-  /// \returns the ratio the car speed is multiplied by, nothing if nothing is known yet. A speed not measured yet
-  /// is interpolated from the closest measured ones.
+  /// \returns the ratio the car speed is multiplied by, the offset included, nothing if nothing is known yet. A speed
+  /// not measured yet is interpolated from the closest measured ones.
   std::optional<double> GetScale(double carSpeedKmh) const;
+
+  /// \returns the km/h added to the car speed before the ratio of its range, 0 to kMaxOffsetKmh.
+  double GetOffsetKmh() const;
 
   /// \returns how many speed ranges are measured.
   int GetKnownRanges() const;
-  /// \returns every range with its distance and its ratio, not interpolated.
+  /// \returns every range with its distance and its ratio, the offset included at its mean speed, not interpolated.
   Ranges GetRanges() const;
 
   void Clear();
 
-  /// \returns the table to keep between trips: the car and GPS distances of every range.
+  /// \returns the table to keep between trips: the car and GPS distances and the time of every range.
   std::string Serialize() const;
   /// Restores the table kept before, a broken one is ignored.
   void Deserialize(std::string_view table);
 
-  /// \returns the measured ranges for the log: speed and ratio.
+  /// \returns the measured ranges for the log: speed and ratio without the offset, then the offset if any.
   std::string ToString() const;
 
 private:
   bool IsKnown(int i) const { return m_carM[i] >= kMinDistanceM; }
-  double ScaleOf(int i) const;
+  // The ratio of the range to the car speed plus |offsetKmh|.
+  double ScaleOf(int i, double offsetKmh) const;
+  std::optional<double> InterpolateScale(int i, double offsetKmh) const;
 
+  bool m_learnsOffset;
   std::array<double, kRanges> m_carM{};
   // The real distance: by GPS, or by the roads for a rough table.
   std::array<double, kRanges> m_gpsM{};
+  std::array<double, kRanges> m_sec{};
 };
 
 /// A change of the speed error common to all speeds, e.g. other tyres or the cold: the table keeps the error of every

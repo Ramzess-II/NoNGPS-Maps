@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 namespace nogps_speed_tests
 {
@@ -209,6 +210,69 @@ UNIT_TEST(NoGps_SpeedTable_KeepsBetweenTrips)
 
   restored.Deserialize("broken");
   TEST_EQUAL(restored.GetKnownRanges(), 0, ());
+}
+
+double constexpr kSweepRatio = 1.01;
+
+// The real speed goes from |fromKmh| to |toKmh| evenly, the car tells it 1% slower, cut down to whole km/h or rounded.
+void DriveSweep(SpeedTable & table, bool cutDown, double fromKmh, double toKmh)
+{
+  for (double realKmh = fromKmh; realKmh < toKmh; realKmh += 0.01)
+  {
+    double const carKmh = realKmh / kSweepRatio;
+    table.OnSample(cutDown ? std::floor(carKmh) : std::round(carKmh), realKmh / 3.6, 1, 0);
+  }
+}
+
+UNIT_TEST(NoGps_SpeedTable_LearnsOffsetOfCutDownSpeed)
+{
+  SpeedTable table;
+  DriveSweep(table, true /* cutDown */, 5 * kSweepRatio, 50 * kSweepRatio);
+  TEST_ALMOST_EQUAL_ABS(table.GetOffsetKmh(), 0.5, 0.05, ());
+  // The car telling these km/h drives on average half a km/h faster, 1% more.
+  for (double const carKmh : {2, 7, 15, 45})
+    TEST_ALMOST_EQUAL_ABS(*table.GetScale(carKmh) * carKmh, (carKmh + 0.5) * kSweepRatio, 0.01 * carKmh,
+                          ("car speed", carKmh));
+  // The sheet shows the ratio at the mean speed of a range.
+  TEST_ALMOST_EQUAL_ABS(table.GetRanges()[0].m_scale, 7.5 / 7 * kSweepRatio, 0.01, ());
+
+  SpeedTable restored;
+  restored.Deserialize(table.Serialize());
+  TEST_ALMOST_EQUAL_ABS(restored.GetOffsetKmh(), table.GetOffsetKmh(), 0.01, ());
+  TEST_ALMOST_EQUAL_ABS(*restored.GetScale(2), *table.GetScale(2), 0.01, ());
+}
+
+UNIT_TEST(NoGps_SpeedTable_NoOffsetOfRoundedSpeed)
+{
+  SpeedTable table;
+  DriveSweep(table, false /* cutDown */, 4.5 * kSweepRatio, 49.5 * kSweepRatio);
+  TEST_ALMOST_EQUAL_ABS(table.GetOffsetKmh(), 0.0, 0.05, ());
+  for (double const carKmh : {2, 7, 15, 45})
+    TEST_ALMOST_EQUAL_ABS(*table.GetScale(carKmh), kSweepRatio, 0.01, ("car speed", carKmh));
+}
+
+UNIT_TEST(NoGps_SpeedTable_OffsetNeedsLowSpeeds)
+{
+  // Without the 5-10 km/h range a line through faster ranges goes too far to 0.
+  SpeedTable table;
+  DriveSweep(table, true /* cutDown */, 10 * kSweepRatio, 50 * kSweepRatio);
+  TEST_EQUAL(table.GetOffsetKmh(), 0, ());
+  // The roads don't learn it.
+  SpeedTable rough(false /* learnsOffset */);
+  DriveSweep(rough, true /* cutDown */, 5 * kSweepRatio, 50 * kSweepRatio);
+  TEST_EQUAL(rough.GetOffsetKmh(), 0, ());
+  TEST_EQUAL(rough.ToString().find("offset"), std::string::npos, ());
+}
+
+UNIT_TEST(NoGps_SpeedTable_ReadsTableWithoutTime)
+{
+  SpeedTable table;
+  // 5-10 km/h: 8% faster, 10-20 km/h: 4% faster, the table of a cut down speed kept before the time.
+  table.Deserialize("1000:1080;1000:1040;0:0;0:0;0:0;0:0;0:0;0:0;0:0;0:0;0:0;0:0;0:0;0:0");
+  TEST_ALMOST_EQUAL_ABS(table.GetRanges()[0].m_scale, 1.08, 1e-9, ());
+  TEST_GREATER(table.GetOffsetKmh(), 0.3, ());
+  TEST_ALMOST_EQUAL_ABS(*table.GetScale(7.5), 1.08, 1e-9, ());
+  TEST_ALMOST_EQUAL_ABS(*table.GetScale(15), 1.04, 1e-9, ());
 }
 
 UNIT_TEST(NoGps_SpeedFactor_FollowsStepChange)

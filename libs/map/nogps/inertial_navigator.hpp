@@ -701,7 +701,7 @@ private:
   // The speed errors measured by trusted GPS at different speeds.
   SpeedTable m_speedTable;
   // The speed errors told by the roads until GPS has measured them, see kMinRoughStretchM.
-  SpeedTable m_roughSpeedTable;
+  SpeedTable m_roughSpeedTable{false /* learnsOffset */};
   // The change of the GPS table told by GPS and the roads, see kMinRoadFactorStretchM.
   SpeedFactor m_speedFactor;
   // The distance driven since the place known along the road, in the ranges of the speed table: by the car speed
