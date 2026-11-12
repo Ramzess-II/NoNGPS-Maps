@@ -697,6 +697,8 @@ private:
   BendMatcher m_bendMatcher;
   PathMatcher m_pathMatcher;
   int64_t m_lastBendMatchMs = 0;
+  // Where a bend that told nothing was logged: once per BendMatcher::kWindowM.
+  std::optional<double> m_bendWhyNotPathM;
   // The places told by the bends of a slow car since the position was set.
   struct SlowBends
   {
