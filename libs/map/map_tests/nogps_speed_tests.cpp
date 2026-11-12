@@ -261,6 +261,7 @@ struct CarAccelerometer
   double m_slope = 0;
   double m_lagSec = 1.2;
   int m_ms = 0;
+  bool m_speedHeard = true;
   // How many times the accelerometer told the speed gain, and its largest error, m/s.
   int m_gains = 0;
   double m_maxError = 0;
@@ -280,7 +281,7 @@ struct CarAccelerometer
       for (size_t i = 0; i < 3; ++i)
         a[i] = m_forward[i] * along + m_up[i] * 9.81;
       accel.OnAccel(m_ms, a);
-      if (m_ms % 200 == 0)
+      if (m_ms % 200 == 0 && m_speedHeard)
         accel.OnCarSpeed(m_ms, std::floor(TrueSpeed(t - m_lagSec) * 3.6) / 3.6);
       if (auto const gain = accel.GetGain(m_ms))
       {
@@ -406,5 +407,53 @@ UNIT_TEST(NoGps_AccelSpeed_SilentSensorTellsNothing)
     accel.OnCarSpeed(car.m_ms, 10);
   }
   TEST(!accel.GetGain(car.m_ms), ());
+}
+
+UNIT_TEST(NoGps_AccelSpeed_FindsStartBeforeSpeedIsHeard)
+{
+  AccelSpeed accel;
+  CarAccelerometer car;
+  // It stands since 190 s, and its speed is not heard since 192 s. It starts at 200 s at 1.5 m/s².
+  car.Drive(accel, 192);
+  TEST(accel.IsUsable(), ());
+  auto const stand = accel.GetAccelAlong(190'500, 191'500);
+  TEST(stand, ());
+  car.m_speedHeard = false;
+  car.Drive(accel, 12);
+  // Its speed is heard at 204 s, the one of 202.8 s.
+  double const speedMps = std::floor(TrueSpeed(202.8) * 3.6) / 3.6;
+  auto const start = accel.FindStart(191'500, 202'800, speedMps, *stand);
+  TEST(start, ());
+  TEST_ALMOST_EQUAL_ABS(static_cast<double>(start->m_timeMs), 200'000.0, 300.0, ());
+  TEST_ALMOST_EQUAL_ABS(start->m_distanceM, 1.5 * 2.8 * 2.8 / 2, 0.5, ());
+
+  // The car stood for sure till after the start.
+  TEST(!accel.FindStart(200'500, 202'800, speedMps, *stand), ());
+  // Too slow to tell.
+  TEST(!accel.FindStart(191'500, 200'400, 0.6, *stand), ());
+  // Too long ago.
+  AccelSpeed::Params params;
+  params.m_maxStartMs = 2000;
+  AccelSpeed shortMemory(params);
+  CarAccelerometer other;
+  other.Drive(shortMemory, 192);
+  other.m_speedHeard = false;
+  other.Drive(shortMemory, 12);
+  TEST(!shortMemory.FindStart(191'500, 202'800, speedMps, *stand), ());
+}
+
+UNIT_TEST(NoGps_AccelSpeed_SilentSensorFindsNoStart)
+{
+  AccelSpeed accel;
+  CarAccelerometer car;
+  car.Drive(accel, 192);
+  auto const stand = accel.GetAccelAlong(190'500, 191'500);
+  TEST(stand, ());
+  car.m_speedHeard = false;
+  car.Drive(accel, 8);
+  // The sensor is silent for 2 s during the start.
+  car.m_ms += 2000;
+  car.Drive(accel, 2);
+  TEST(!accel.FindStart(191'500, 202'800, std::floor(TrueSpeed(202.8) * 3.6) / 3.6, *stand), ());
 }
 }  // namespace nogps_speed_tests

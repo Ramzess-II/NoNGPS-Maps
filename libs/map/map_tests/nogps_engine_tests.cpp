@@ -2571,15 +2571,25 @@ public:
       m_east += m_speed * 0.02 * std::sin(math::DegToRad(m_headingDeg));
       m_north += m_speed * 0.02 * std::cos(math::DegToRad(m_headingDeg));
       m_speeds.push_back(std::fabs(m_speed));
-      int const reportedKmh = std::max(m_minReportedKmh, static_cast<int>(std::lround(m_speeds.front() * 3.6)));
+      // The box sends the last speed it has heard, and how long ago.
+      if (m_speedUnheard)
+      {
+        m_speedAgeMs += 20;
+      }
+      else
+      {
+        m_reportedKmh = std::max(m_minReportedKmh, static_cast<int>(std::lround(m_speeds.front() * 3.6)));
+        m_speedAgeMs = 0;
+      }
       m_speeds.pop_front();
 
       m_env.m_clock.Advance(20);
       m_boxTimeMs += 20;
       char body[160];
-      int const length = std::snprintf(body, sizeof(body), "NGD,1,%lld,%lld,%lld,0,0,%d,0,%X",
-                                       static_cast<long long>(++m_seq), static_cast<long long>(m_boxTimeMs),
-                                       static_cast<long long>(std::llround(m_yawMdeg)), reportedKmh, kCalibratedFlags);
+      int const length =
+          std::snprintf(body, sizeof(body), "NGD,1,%lld,%lld,%lld,0,0,%d,%d,%X", static_cast<long long>(++m_seq),
+                        static_cast<long long>(m_boxTimeMs), static_cast<long long>(std::llround(m_yawMdeg)),
+                        m_reportedKmh, m_speedAgeMs, kCalibratedFlags);
       // A little of the gravity is left in the other axes.
       if (m_accelerometer)
         std::snprintf(body + length, sizeof(body) - length, ",%d,50,-60,100",
@@ -2608,6 +2618,8 @@ public:
   double m_slopeMps2 = 0;
   // The car reports at least this speed, e.g. 1 km/h while it changes the gear.
   int m_minReportedKmh = 0;
+  // The box doesn't hear the car speed, e.g. while the engine is off.
+  bool m_speedUnheard = false;
 
 private:
   Env & m_env;
@@ -2619,6 +2631,8 @@ private:
   double m_speed = 0;
   // The speeds of the car of the last 1.2 s.
   std::deque<double> m_speeds;
+  int m_reportedKmh = 0;
+  int m_speedAgeMs = 0;
   int64_t m_seq = 1000;
   int64_t m_boxTimeMs = 200'000;
   double m_yawMdeg = 0;
@@ -2687,6 +2701,54 @@ UNIT_TEST(NoGps_Engine_TurnStartedBeforeCarReportsSpeedIsNotLost)
   // The car starts and turns right at once, by 90 degrees in 4.5 s. It reports that it moves 1.3 s later: it has
   // turned by 26 degrees by then.
   car.Drive(4.5, 1, 20);
+  car.Drive(1.5, 0, 0);
+  TestAlmostEqualAbs(AngleDiff(*env.Last().m_bearingDeg, 180), 0, 2);
+}
+
+UNIT_TEST(NoGps_Engine_StartBeforeCarSpeedIsHeardIsNotLost)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  for (bool accelerometer : {true, false})
+  {
+    Env env(true /* inertial */, &roads);
+    MarkCar(env, -450);
+    BoxCar car(env, -450, accelerometer);
+    car.SpeedUpAndBrake();
+    car.Drive(3, 0, 0);
+    TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 5);
+    double const stoodEast = East(env.Last().m_position) - car.East();
+
+    // The engine is off for 30 s, and the box doesn't hear the car speed. The car starts at once after the engine,
+    // and its speed is heard 6 s later only, when it has driven 18 m.
+    car.m_speedUnheard = true;
+    car.Drive(30, 0, 0);
+    car.Drive(6, 1, 0);
+    car.m_speedUnheard = false;
+    car.Drive(3, 0, 0);
+    TEST_EQUAL(env.m_engine.GetStatus().m_source, PositionSource::Inertial, ());
+    double const behindM = car.East() - East(env.Last().m_position) + stoodEast;
+    // Without the accelerometer it has driven the lag at the speed it is heard with, 1.2 s at 4.8 m/s.
+    if (accelerometer)
+      TestAlmostEqualAbs(behindM, 0, 2);
+    else
+      TestAlmostEqualAbs(behindM, 18 - 5.8, 2);
+  }
+}
+
+UNIT_TEST(NoGps_Engine_TurnBeforeCarSpeedIsHeardIsNotLost)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+  car.Drive(3, 0, 0);
+  // The car speed is not heard. The gyroscope drifts by 0.5 deg/s, the car stands: that is not its turn.
+  car.m_speedUnheard = true;
+  car.Drive(10, 0, 0.5);
+  // The car starts and turns right by 90 degrees in 4.5 s, and its speed is heard after that.
+  car.Drive(4.5, 1, 20);
+  car.m_speedUnheard = false;
   car.Drive(1.5, 0, 0);
   TestAlmostEqualAbs(AngleDiff(*env.Last().m_bearingDeg, 180), 0, 2);
 }

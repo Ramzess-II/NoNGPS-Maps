@@ -51,7 +51,8 @@ void AccelSpeed::OnAccel(int64_t timeMs, Vec3 const & acceleration)
     slice.m_acceleration[i] = m_sliceSum[i] / m_sliceCount;
   m_slices.push_back(slice);
   m_sliceCount = 0;
-  int64_t const keepMs = m_params.m_biasMs + m_params.m_carStepMs + kMaxLagMs + 2000;
+  int64_t const keepMs =
+      std::max(m_params.m_biasMs + m_params.m_carStepMs + 2000, m_params.m_maxStartMs + 1000) + kMaxLagMs;
   while (!m_slices.empty() && timeMs - m_slices.front().m_endMs > keepMs)
     m_slices.pop_front();
 }
@@ -338,5 +339,43 @@ std::optional<double> AccelSpeed::GetGain(int64_t nowMs) const
   double const lagSec = m_lagMs / 1000.0;
   double const limit = m_params.m_maxAccelerationMps2 * lagSec;
   return std::clamp((Dot(m_direction, *accel) - *bias) * lagSec, -limit, limit);
+}
+
+std::optional<AccelSpeed::Start> AccelSpeed::FindStart(int64_t fromMs, int64_t toMs, double speedMps,
+                                                       double standAccel) const
+{
+  if (!IsUsable() || speedMps < 2 * m_params.m_startSpeedMps)
+    return {};
+  fromMs = std::max(fromMs, toMs - m_params.m_maxStartMs);
+  double speed = speedMps;
+  double distanceM = 0;
+  // The sensor is summed back to this time.
+  int64_t summedFromMs = toMs;
+  for (auto it = m_slices.rbegin(); it != m_slices.rend(); ++it)
+  {
+    int64_t const sliceFromMs = it->m_endMs - it->m_durationMs;
+    if (sliceFromMs >= toMs)
+      continue;
+    int64_t const sliceToMs = std::min(it->m_endMs, toMs);
+    if (summedFromMs - sliceToMs > m_params.m_maxAccelGapMs || sliceToMs <= fromMs)
+      return {};
+    double const dtSec = (sliceToMs - sliceFromMs) / 1000.0;
+    double const accel = Dot(m_direction, it->m_acceleration) - standAccel;
+    double const before = speed - accel * dtSec;
+    if (before <= m_params.m_startSpeedMps)
+    {
+      // It has reached the slower speed within the slice, and that speed at the mean acceleration since 0.
+      double const startSpeed = m_params.m_startSpeedMps;
+      double const drivenSec = (speed - startSpeed) / accel;
+      double const reachedSec = (toMs - sliceToMs) / 1000.0 + drivenSec;
+      double const startSec = reachedSec * startSpeed / (speedMps - startSpeed);
+      distanceM += (speed + startSpeed) / 2 * drivenSec + startSpeed * startSec / 2;
+      return Start{toMs - static_cast<int64_t>((reachedSec + startSec) * 1000), distanceM};
+    }
+    distanceM += (speed + before) / 2 * dtSec;
+    speed = before;
+    summedFromMs = sliceFromMs;
+  }
+  return {};
 }
 }  // namespace nogps

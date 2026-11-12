@@ -526,6 +526,10 @@ private:
   void SetDirection(int direction);
   // Nothing is known about the way the car drives: it drives forward.
   void ResetDirection();
+  // The car speed is not heard from a standing car: what it stood with is kept, see m_unheardStand.
+  void RememberUnheardStand();
+  // The speed is heard again: the way the car has driven since it has started unheard is added.
+  void CatchUpStart(double speedMps);
   bool HasDrivenBackLately() const;
   void ResetLag();
   void RestoreBoxAccel();
@@ -838,6 +842,16 @@ private:
   double m_startMarkM = 0;
   // When it drove backwards the last time.
   std::optional<int64_t> m_lastBackMs;
+  // The car speed is not heard since the car stood, e.g. the engine was off. The car may start before it is heard
+  // again: when the accelerometer of the box felt that is looked for back from the first speed heard. It stood for
+  // sure till the time kept here, with the acceleration along it kept too. On November 11 at 13:00 the speed came
+  // 8 s after the start, and the mark stayed 17 m behind the car.
+  struct UnheardStand
+  {
+    int64_t m_toMs;
+    std::optional<double> m_accel;
+  };
+  std::optional<UnheardStand> m_unheardStand;
   // The box the accelerometer is learned with, and when it was saved.
   std::string m_boxAccelId;
   int64_t m_boxAccelSavedMs = 0;

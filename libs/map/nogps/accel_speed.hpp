@@ -56,6 +56,18 @@ public:
     // A longer silence of the sensor or of the car speed is a break.
     int64_t m_maxAccelGapMs = 1000;
     int64_t m_maxSpeedGapMs = 2500;
+    // A start the car speed has missed is looked for this long before the speed is heard again, see FindStart().
+    int64_t m_maxStartMs = 20'000;
+    // The speed felt back to the start is not 0 exactly: the car rounds its speed to 1 km/h, its error is a few
+    // percent. The car has started the time it would take to reach this speed at its mean acceleration before it
+    // has. A car heard at less than twice that speed is not looked at.
+    double m_startSpeedMps = 0.5;
+  };
+
+  struct Start
+  {
+    int64_t m_timeMs;
+    double m_distanceM;
   };
 
   AccelSpeed() = default;
@@ -88,6 +100,13 @@ public:
   /// \returns the mean acceleration along the car in (fromMs, toMs] with its constant part, the gravity on a slope.
   /// Nothing if the direction along the car is not known or the sensor was silent for a part of the time.
   std::optional<double> GetAccelAlong(int64_t fromMs, int64_t toMs) const;
+
+  /// The car stood with |standAccel| along it, see GetAccelAlong(), and drove at |speedMps| at |toMs|, in the time of
+  /// OnAccel(). Its acceleration summed back from |toMs| takes that speed down to 0 at the start.
+  /// \returns when it has started after |fromMs| and the way it has driven since then till |toMs|. Nothing if the
+  /// sensor doesn't follow the car, or was silent, or didn't feel a start in m_maxStartMs.
+  std::optional<Start> FindStart(int64_t fromMs, int64_t toMs, double speedMps, double standAccel) const;
+  int64_t GetMaxStartMs() const { return m_params.m_maxStartMs; }
 
   /// \returns true if the direction along the car is learned.
   bool IsDirectionKnown() const;
