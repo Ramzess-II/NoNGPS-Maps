@@ -151,7 +151,7 @@
   <dimen name="nav_button_height">@dimen/primary_button_min_height</dimen>
   <dimen name="nav_icon_size">48dp</dimen>
   <dimen name="nav_bottom_gap">12dp</dimen>
-  <dimen name="nav_source_size">56dp</dimen>
+  <dimen name="nav_source_width">136dp</dimen>
   <dimen name="speed_view_size">60dp</dimen>
   <dimen name="speed_limit_size">30dp</dimen>
   <dimen name="nav_search_wheel_radius">96dp</dimen>
