@@ -2583,7 +2583,7 @@ public:
       // A little of the gravity is left in the other axes.
       if (m_accelerometer)
         std::snprintf(body + length, sizeof(body) - length, ",%d,50,-60,100",
-                      static_cast<int>(std::lround((accelerationMps2 + m_slopeMps2) * 1000)));
+                      static_cast<int>(std::lround((m_accelSign * accelerationMps2 + m_slopeMps2) * 1000)));
       m_env.m_engine.OnEsp32BleBytes(BoxLine(body));
     }
   }
@@ -2608,6 +2608,8 @@ public:
   double m_slopeMps2 = 0;
   // The car reports at least this speed, e.g. 1 km/h while it changes the gear.
   int m_minReportedKmh = 0;
+  // -1: the box is put in turned around.
+  double m_accelSign = 1;
 
 private:
   Env & m_env;
@@ -2787,6 +2789,78 @@ UNIT_TEST(NoGps_Engine_CarDrivingFastDoesNotDriveBack)
   car.Drive(5, 0, 0);
   TEST(env.m_engine.GetTripLine().find(" back=0") != std::string::npos, (env.m_engine.GetTripLine()));
   TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 5);
+}
+
+UNIT_TEST(NoGps_Engine_BoxTurnedAroundDoesNotDriveEveryStartBack)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+
+  // The box is put in turned by 180 degrees: its accelerometer feels every start forward as a start backward.
+  car.m_accelSign = -1;
+  int back = 0;
+  for (int i = 0; i < 4; ++i)
+  {
+    car.Drive(3, 1, 0);
+    if (env.m_engine.GetTripLine().find(" back=1") != std::string::npos)
+      ++back;
+    // Faster than anybody drives backwards, it speeds up and brakes: the accelerometer is compared with the car.
+    car.Drive(5, 1, 0);
+    car.Drive(8, 0, 0);
+    for (int j = 0; j < 2; ++j)
+    {
+      car.Drive(3, 1, 0);
+      car.Drive(3, -1, 0);
+    }
+    car.Drive(8, -1, 0);
+    car.Drive(3, 0, 0);
+  }
+  // Only the first start, before the accelerometer is found not to follow the car.
+  TEST_LESS_OR_EQUAL(back, 1, ());
+  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 15);
+}
+
+UNIT_TEST(NoGps_Engine_BoxCalibrationForgetsAccelerometer)
+{
+  // The trip line tells "boxacc=<correlation>/-" while the box accelerometer is not used.
+  auto const accelUsed = [](Env & env)
+  {
+    std::string const line = env.m_engine.GetTripLine();
+    auto const at = line.find(" boxacc=");
+    TEST(at != std::string::npos, (line));
+    return line[line.find('/', at) + 1] != '-';
+  };
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+  TEST(accelUsed(env), ());
+
+  // The box is put in turned around and calibrated: the direction learned before is forgotten.
+  env.m_engine.Calibrate();
+  TEST(!accelUsed(env), ());
+  car.m_accelSign = -1;
+  car.Drive(3, 1, 0);
+  TEST(env.m_engine.GetTripLine().find(" back=0") != std::string::npos, (env.m_engine.GetTripLine()));
+  car.Drive(3, -1, 0);
+  car.Drive(3, 0, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 5);
+
+  // It is learned anew, the right way.
+  car.SpeedUpAndBrake();
+  TEST(accelUsed(env), ());
+  double const stoppedEast = East(env.Last().m_position);
+  car.Drive(2, -1, 0);
+  car.Drive(2, 0, 0);
+  TEST(env.m_engine.GetTripLine().find(" back=1") != std::string::npos, (env.m_engine.GetTripLine()));
+  car.Drive(2, 0, 0);
+  car.Drive(2, 1, 0);
+  car.Drive(3, 0, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), stoppedEast - 12, 3);
 }
 
 UNIT_TEST(NoGps_Engine_InertialDrivingBackIsNotShownBetweenGpsPositions)

@@ -105,6 +105,13 @@ void InertialNavigator::Calibrate()
   LOG(LINFO, ("Calibrate"));
   if (m_source)
     m_source->Calibrate();
+  if (m_esp32)
+  {
+    // The box is calibrated after it was put in again, maybe turned another way.
+    m_boxAccelSpeed.Reset();
+    m_storage.Set(Storage::kBoxAccel, m_boxAccelId + ":");
+    LOG(LINFO, ("The accelerometer of the box is learned anew"));
+  }
 }
 
 void InertialNavigator::OnGpsPosition(Fix const & gps)
@@ -862,15 +869,19 @@ void InertialNavigator::TrackDirection()
     if (m_standAccel && start)
     {
       double const feltMps = m_startFromMps + (*start - *m_standAccel) * (now - m_startStandToMs) / 1000.0;
+      // An accelerometer that doesn't follow the car now may look the other way: a box put in turned around
+      // feels every start backward.
+      bool const usable = m_boxAccelSpeed.IsUsable();
       if (m_startAfterSlow)
         direction = feltMps >= kReverseStartSpeedMps ? 1 : direction;
       else
-        direction = feltMps <= -kReverseStartSpeedMps ? -1 : 1;
+        direction = feltMps <= -kReverseStartSpeedMps && usable ? -1 : 1;
       LOG(LINFO, ("The car has started", direction > 0 ? "forward" : "backward", "the accelerometer has felt", feltMps,
                   "m/s, standing", *m_standAccel, "starting", *start, "m/s2, it stood", stoodSec, "s",
                   m_startAfterSlow ? "after driving at 1 km/h, the stand before it is taken"
                   : kept           ? "too short, the stand before it is taken"
-                                   : ""));
+                                   : "",
+                  usable ? "" : "the accelerometer is not usable, it doesn't tell a start backward"));
     }
     else
     {
@@ -890,7 +901,8 @@ void InertialNavigator::TrackDirection()
     int const felt = feltMps < 0 ? -1 : 1;
     bool const clear = std::fabs(feltMps) >= std::max(kReverseStartSpeedMps, kMinFeltSpeedRatio * speedMps) &&
                        std::fabs(feltMps) <= kMaxFeltSpeedRatio * speedMps + kMaxFeltSpeedExtraMps;
-    if (!clear || felt == direction || (felt < 0 && (now - *m_startMs > kStartCheckBackMs || m_startAfterSlow)))
+    if (!clear || felt == direction ||
+        (felt < 0 && (now - *m_startMs > kStartCheckBackMs || m_startAfterSlow || !m_boxAccelSpeed.IsUsable())))
     {
       m_otherWayMs.reset();
     }
