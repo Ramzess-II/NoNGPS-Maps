@@ -196,7 +196,8 @@ void AccelSpeed::Learn(int64_t timeMs)
     m_checkAY = m_checkAY * keep + a * y;
     m_checkAA = m_checkAA * keep + a * a;
     m_checkYY = m_checkYY * keep + y * y;
-    if (m_checkN >= 2 * m_params.m_minCheckSamples &&
+    // m_checkN only approaches m_checkMemory, so it is compared with a smaller number.
+    if (IsDirectionKnown() && m_checkN >= m_params.m_minCheckSamples &&
         (GetRecentCorrelation() < m_params.m_movedCorrelation || GetRecentScale() < m_params.m_movedScale))
     {
       Forget();

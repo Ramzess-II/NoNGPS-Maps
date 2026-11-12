@@ -393,6 +393,36 @@ UNIT_TEST(NoGps_AccelSpeed_MovedSensorIsLearnedAnew)
   TEST_LESS(car.m_maxError, 0.25, ());
 }
 
+UNIT_TEST(NoGps_AccelSpeed_TurnedAroundSensorIsForgotten)
+{
+  AccelSpeed accel;
+  CarAccelerometer car;
+  car.Drive(accel, 400);
+  TEST(accel.IsUsable(), ());
+  auto const before = accel.GetDirection();
+  TEST(before, ());
+
+  // The box is put in again turned by 180 degrees, the application isn't restarted.
+  for (auto & v : car.m_forward)
+    v = -v;
+  bool forgotten = false;
+  for (int i = 0; i < 60 && !forgotten; ++i)
+  {
+    car.Drive(accel, 1);
+    forgotten = !accel.IsDirectionKnown();
+  }
+  TEST(forgotten, ());
+
+  car.Drive(accel, 200);
+  TEST(accel.IsUsable(), ());
+  auto const after = accel.GetDirection();
+  TEST(after, ());
+  double dot = 0;
+  for (size_t i = 0; i < 3; ++i)
+    dot += (*before)[i] * (*after)[i];
+  TEST_LESS(dot, -0.95, ());
+}
+
 UNIT_TEST(NoGps_AccelSpeed_SilentSensorTellsNothing)
 {
   AccelSpeed accel;
