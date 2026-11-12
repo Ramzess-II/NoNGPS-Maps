@@ -399,13 +399,14 @@ void InertialNavigator::ClearSpeedCalibration()
   m_storage.Set(Storage::kSpeedScale, 1.0);
 }
 
-void InertialNavigator::SetPosition(ms::LatLon const & position)
+void InertialNavigator::SetPosition(ms::LatLon const & position, double distanceSinceFixM, double accuracyM)
 {
   DropOtherMarks();
   EndFollowingApart();
   m_steadyRoad.reset();
   m_roughStretch.reset();
-  m_deadReckoning.SetPosition(position);
+  m_deadReckoning.SetPosition(position, distanceSinceFixM);
+  m_deadReckoning.WidenAccuracy(accuracyM);
   SetRoadPoint(position);
   if (m_deadReckoning.HasHeading())
     return;
@@ -1809,9 +1810,16 @@ void InertialNavigator::MatchTurn(int64_t timestampNs)
   std::vector<TurnPlace> fitting;
   if (stay)
     fitting.push_back(*stay);
+  // Where the car is put at each crossing the turn fits, the chosen one too.
+  std::vector<ms::LatLon> atCrossings;
   for (auto const & to : crossings)
+  {
     if (auto const moved = movedTo(to))
+    {
       fitting.push_back(*moved);
+      atCrossings.push_back(moved->m_road.m_point);
+    }
+  }
   for (auto const & to : far)
   {
     if (auto moved = movedTo(to))
@@ -1844,14 +1852,37 @@ void InertialNavigator::MatchTurn(int64_t timestampNs)
   }
   else if (places.m_chosen && places.m_chosen->m_shiftM)
   {
-    m_lastTurnShiftM = places.m_chosen->m_shiftM;
+    auto const & chosen = *places.m_chosen;
+    m_lastTurnShiftM = chosen.m_shiftM;
+    // The car may be at any crossing the turn fits: the next turns and bends search that far. On November 11 at
+    // 12:48:46 the nearest of 6 crossings was the wrong one, and the next turn searched 25 m only and found nothing.
+    double spreadM = 0;
+    for (auto const & point : atCrossings)
+      spreadM = std::max(spreadM, Distance(point, chosen.m_road.m_point));
+    // A car turning slowly where the way driven misses the roads may be in a yard missing on the map: its place is
+    // known no better than before. On November 11 at 19:18:51 such a turn in a yard was moved by 21 m, 24 m from GPS.
+    std::optional<double> keptAccuracyM;
+    if (m_turnMaxKmh / 3.6 <= kMaxManeuverSpeedMps)
+      if (auto const misses = m_pathMatcher.CountMissesAt(m_roads, chosen.m_road.m_point);
+          misses && *misses > kWayFitMisses)
+        keptAccuracyM = m_deadReckoning.GetAccuracy();
+    bool const known = spreadM <= TurnMatcher::kSameCrossingM && !keptAccuracyM;
+    double const accuracyM = std::max(spreadM, keptAccuracyM.value_or(0));
     LOG(LINFO, ("Turn from", std::round(m_turnFromBearing), "to", std::round(toBearing), "is moved to the crossing by",
-                std::round(*m_lastTurnShiftM), "m"));
+                std::round(*m_lastTurnShiftM), "m", known ? "" : ", the car may be farther from it by",
+                known ? "" : std::to_string(std::lround(accuracyM)) + " m"));
     // The crossing is a known place, the distance error is gone. The heading stays the gyroscope's: the road found
     // for the turn was 31° off on October 21, and a turn still going on was counted twice on October 23.
-    LearnRoughSpeed(places.m_chosen->m_aheadM, "turn");
-    SetRoadPosition(places.m_chosen->m_road.m_point, places.m_chosen->m_road.m_bearingDeg, true /* keepHeading */);
+    if (known)
+      LearnRoughSpeed(chosen.m_aheadM, "turn");
+    SetRoadPosition(chosen.m_road.m_point, chosen.m_road.m_bearingDeg, true /* keepHeading */);
     m_deadReckoning.TrustRoad();
+    if (!known)
+    {
+      // Neither the stretch ending here nor the one starting tells the speed error.
+      m_roughStretch.reset();
+      m_deadReckoning.WidenAccuracy(accuracyM);
+    }
   }
   for (auto const & place : places.m_others)
   {
@@ -1973,8 +2004,11 @@ void InertialNavigator::FollowOtherMarks()
              std::fabs(AngleDiff(reckoning.GetHeading(), shownHeading)) <= DeadReckoning::kMaxSnapHeadingDiffDeg &&
              IsOnShownRoad(reckoning.GetPosition()))
     {
-      dropped = "it is on the road of the shown one " +
-                std::to_string(std::lround(Distance(reckoning.GetPosition(), shown))) + " m away";
+      double const awayM = Distance(reckoning.GetPosition(), shown);
+      dropped = "it is on the road of the shown one " + std::to_string(std::lround(awayM)) + " m away";
+      // Two marks of one road tell the error of the way: the car may be there still.
+      if (!mark.m_far)
+        m_deadReckoning.WidenAccuracy(awayM);
     }
     else
     {

@@ -773,9 +773,17 @@ void Engine::SaveCarPosition(bool now)
 
   // GPS absent since the restart is not untrusted.
   bool const gpsUntrusted = m_manualMode && !m_manualUntilGps;
-  char buf[96];
-  std::snprintf(buf, sizeof(buf), "%.7f,%.7f,%s,%d", position.m_lat, position.m_lon,
-                FormatOptional(GetCarBearing()).c_str(), gpsUntrusted ? 1 : 0);
+  // The calculated place is not known better on the next trip: a trip ended 5 km after the known place was 115 m off.
+  double wayM = 0;
+  double accuracyM = DeadReckoning::kBaseAccuracyM;
+  if (m_inertial && SourceOf(*m_savedLocation) == PositionSource::Inertial)
+  {
+    wayM = m_inertial->GetDistanceSinceFix();
+    accuracyM = m_savedLocation->m_accuracyM;
+  }
+  char buf[128];
+  std::snprintf(buf, sizeof(buf), "%.7f,%.7f,%s,%d,%.0f,%.0f", position.m_lat, position.m_lon,
+                FormatOptional(GetCarBearing()).c_str(), gpsUntrusted ? 1 : 0, wayM, accuracyM);
   if (buf == m_savedCar || (!now && !stands && MsSince(m_carSavedMs) < kSaveCarIntervalMs))
     return;
   m_savedCar = buf;
@@ -792,10 +800,15 @@ void Engine::RestoreCarPosition()
   auto const parts = strings::Tokenize(saved, ",");
   double lat, lon, bearing = 0;
   int manual;
+  // Saved before the way since the known place was.
+  bool const withWay = parts.size() == 7;
+  double wayM = 0;
+  double accuracyM = DeadReckoning::kBaseAccuracyM;
   int64_t unixTimeMs;
-  if (parts.size() != 5 || !strings::to_double(parts[0], lat) || !strings::to_double(parts[1], lon) ||
+  if ((parts.size() != 5 && !withWay) || !strings::to_double(parts[0], lat) || !strings::to_double(parts[1], lon) ||
       (parts[2] != "-" && !strings::to_double(parts[2], bearing)) || !strings::to_int(parts[3], manual) ||
-      !strings::to_int(parts[4], unixTimeMs))
+      (withWay && (!strings::to_double(parts[4], wayM) || !strings::to_double(parts[5], accuracyM))) ||
+      !strings::to_int(parts.back(), unixTimeMs))
   {
     if (!saved.empty())
       LOG(LERROR, ("Wrong car position =", saved));
@@ -820,15 +833,15 @@ void Engine::RestoreCarPosition()
   m_lastPositionSource = PositionSource::Manual;
   m_savedCar = saved.substr(0, saved.rfind(','));
   if (m_inertial)
-    StartInertialAtMark();
+    StartInertialAtMark(wayM, accuracyM);
 }
 
-void Engine::StartInertialAtMark()
+void Engine::StartInertialAtMark(double distanceSinceFixM, double accuracyM)
 {
   // The car is not put on a road again: it may stand in a yard. Without the heading it looks along its road.
   if (m_manualLocation->m_bearingDeg)
     m_inertial->SetHeading(*m_manualLocation->m_bearingDeg, InertialNavigator::HeadingSource::Road);
-  m_inertial->SetPosition(m_manualLocation->m_position);
+  m_inertial->SetPosition(m_manualLocation->m_position, distanceSinceFixM, accuracyM);
 }
 
 bool Engine::IsInertialNavigationEnabled() const

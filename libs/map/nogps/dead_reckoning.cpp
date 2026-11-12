@@ -7,12 +7,18 @@
 
 namespace nogps
 {
-void DeadReckoning::SetPosition(ms::LatLon const & position)
+void DeadReckoning::SetPosition(ms::LatLon const & position, double distanceSinceFixM)
 {
   m_hasPosition = true;
   m_position = position;
-  m_distanceSinceFixM = 0;
+  m_distanceSinceFixM = distanceSinceFixM;
+  m_fixAccuracyM = kBaseAccuracyM;
   ++m_fixCount;
+}
+
+void DeadReckoning::WidenAccuracy(double accuracyM)
+{
+  m_fixAccuracyM = std::max(m_fixAccuracyM, accuracyM - kAccuracyPerMeter * m_distanceSinceFixM);
 }
 
 void DeadReckoning::MoveTo(ms::LatLon const & position)

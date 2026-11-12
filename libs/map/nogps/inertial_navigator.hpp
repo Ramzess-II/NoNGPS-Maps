@@ -378,7 +378,10 @@ public:
   void ClearSpeedCalibration();
   /// Moves the position without changing the heading, e.g. to the shown position while the inertial
   /// navigation doesn't work yet.
-  void SetPosition(ms::LatLon const & position);
+  /// \param distanceSinceFixM, accuracyM how far the car had driven since the last known place and how accurate the
+  /// position was, e.g. where the trip before has ended.
+  void SetPosition(ms::LatLon const & position, double distanceSinceFixM = 0,
+                   double accuracyM = DeadReckoning::kBaseAccuracyM);
   /// \param headingDeg the direction the car looks at, clockwise from the north.
   void SetHeading(double headingDeg, HeadingSource source);
   /// \returns where the car that has left the roads maneuvering is by the calculation: it is followed apart, its
