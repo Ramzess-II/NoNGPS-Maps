@@ -44154,9 +44154,9 @@ uk = Блок датчиків у машині передає повороти �
 [NSMicrophoneUsageDescription]
 comment = Needed to explain why we require access to the microphone: a tester records a voice note to a flag of a test drive.
 tags = apple-infoplist
-en = A tester holds the flag on the map to record a voice note about the test drive.
-ru = Тестировщик удерживает флаг на карте, чтобы записать голосовую заметку о тестовой поездке.
-uk = Тестувальник утримує прапорець на мапі, щоб записати голосову нотатку про тестову поїздку.
+en = A tester taps the voice flag on the map to record a voice note about the test drive.
+ru = Тестировщик нажимает голосовой флаг на карте, чтобы записать голосовую заметку о тестовой поездке.
+uk = Тестувальник натискає голосовий прапорець на мапі, щоб записати голосову нотатку про тестову поїздку.
 
 [login_osm_credentials]
 comment = Login to OSM button text
@@ -45730,15 +45730,22 @@ en = Flag %1$d is in the log at %2$@
 ru = Флаг %1$d записан в журнал в %2$@
 uk = Прапорець %1$d записано в журнал о %2$@
 
-[nogps_flag_recording]
-comment = Toast while the tester holds the flag button: a voice note to the flag is recorded until the finger is lifted
+[nogps_flag_voice_recording]
+comment = Toast after the tester taps the voice flag button: a flag is saved and a voice note to it is recorded for 15 seconds or until the button is tapped again
 tags = android-app,apple-maps
-en = Recording a voice note. Release the flag to stop.
-ru = Идёт запись голосовой заметки. Отпустите флаг, чтобы остановить.
-uk = Триває запис голосової нотатки. Відпустіть прапорець, щоб зупинити.
+en = Recording a voice note for 15 s. Tap the button again to stop.
+ru = Идёт запись голосовой заметки на 15 с. Нажмите кнопку ещё раз, чтобы остановить.
+uk = Триває запис голосової нотатки на 15 с. Натисніть кнопку ще раз, щоб зупинити.
+
+[nogps_flag_voice_saved]
+comment = Toast when the voice note to a flag is recorded and saved: its length in seconds
+tags = android-app,apple-maps
+en = Voice note saved: %d s
+ru = Голосовая заметка сохранена: %d с
+uk = Голосову нотатку збережено: %d с
 
 [nogps_flag_mic_denied]
-comment = Toast: the tester held the flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice.
+comment = Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice.
 tags = android-app,apple-maps
 en = The flag is saved without a voice note: allow the microphone in the system settings.
 ru = Флаг сохранён без голосовой заметки: разрешите микрофон в настройках системы.

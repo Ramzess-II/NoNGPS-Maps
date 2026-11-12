@@ -34,4 +34,4 @@
 "NSBluetoothAlwaysUsageDescription" = "The sensor box in the car gives the turns and the speed of the car over Bluetooth.";
 
 /* Needed to explain why we require access to the microphone: a tester records a voice note to a flag of a test drive. */
-"NSMicrophoneUsageDescription" = "A tester holds the flag on the map to record a voice note about the test drive.";
+"NSMicrophoneUsageDescription" = "A tester taps the voice flag on the map to record a voice note about the test drive.";

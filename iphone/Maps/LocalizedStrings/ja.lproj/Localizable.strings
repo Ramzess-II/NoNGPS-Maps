@@ -1231,10 +1231,13 @@
 /* Toast after the tester pressed the flag button in a test drive: the flag number and the time are written to the trip log to find the moment later */
 "nogps_log_flag" = "Flag %1$d is in the log at %2$@";
 
-/* Toast while the tester holds the flag button: a voice note to the flag is recorded until the finger is lifted */
-"nogps_flag_recording" = "Recording a voice note. Release the flag to stop.";
+/* Toast after the tester taps the voice flag button: a flag is saved and a voice note to it is recorded for 15 seconds or until the button is tapped again */
+"nogps_flag_voice_recording" = "Recording a voice note for 15 s. Tap the button again to stop.";
 
-/* Toast: the tester held the flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. */
+/* Toast when the voice note to a flag is recorded and saved: its length in seconds */
+"nogps_flag_voice_saved" = "Voice note saved: %d s";
+
+/* Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. */
 "nogps_flag_mic_denied" = "The flag is saved without a voice note: allow the microphone in the system settings.";
 
 /* Settings row and screen title: the list of the flags saved in test drives, to send them to the developers by email */

@@ -922,9 +922,11 @@
     <string name="nogps_manual_position">Вказати своє місцезнаходження вручну</string>
     <!-- Toast after the tester pressed the flag button in a test drive: the flag number and the time are written to the trip log to find the moment later -->
     <string name="nogps_log_flag">Прапорець %1$d записано в журнал о %2$s</string>
-    <!-- Toast while the tester holds the flag button: a voice note to the flag is recorded until the finger is lifted -->
-    <string name="nogps_flag_recording">Триває запис голосової нотатки. Відпустіть прапорець, щоб зупинити.</string>
-    <!-- Toast: the tester held the flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. -->
+    <!-- Toast after the tester taps the voice flag button: a flag is saved and a voice note to it is recorded for 15 seconds or until the button is tapped again -->
+    <string name="nogps_flag_voice_recording">Триває запис голосової нотатки на 15 с. Натисніть кнопку ще раз, щоб зупинити.</string>
+    <!-- Toast when the voice note to a flag is recorded and saved: its length in seconds -->
+    <string name="nogps_flag_voice_saved">Голосову нотатку збережено: %d с</string>
+    <!-- Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. -->
     <string name="nogps_flag_mic_denied">Прапорець збережено без голосової нотатки: дозвольте мікрофон у налаштуваннях системи.</string>
     <!-- Settings row and screen title: the list of the flags saved in test drives, to send them to the developers by email -->
     <string name="nogps_flags_send_title">Надіслати прапорці</string>
