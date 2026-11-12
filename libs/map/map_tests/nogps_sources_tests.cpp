@@ -36,12 +36,14 @@ public:
   {
     m_yawDeg += yawDeltaDeg;
     m_dtSec += dtSec;
+    m_maxDtSec = std::max(m_maxDtSec, dtSec);
     ++m_motions;
   }
 
   std::vector<int> m_speeds;
   double m_yawDeg = 0;
   double m_dtSec = 0;
+  double m_maxDtSec = 0;
   int m_motions = 0;
 };
 
@@ -182,6 +184,70 @@ UNIT_TEST(NoGps_Esp32Source_SendsHelloAndReadsData)
   clock.Advance(Esp32Source::kDataTimeoutMs + 1);
   TEST_EQUAL(source.GetState(), SourceState::Connecting, ());
   TEST(!source.IsCalibrated(), ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_TakesRotationOfPauseFromTotals)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxDataLine(1, 5000, 0, 36, kCalibratedFlags));
+
+  // The lines of 1.5 s are lost in a turn: the pause comes as the lines the box would have sent.
+  clock.Advance(1500);
+  source.OnBleBytes(BoxDataLine(2, 6500, 15'000, 36, kCalibratedFlags));
+  TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 15.0, 1e-9, ());
+  TEST_ALMOST_EQUAL_ABS(listener.m_dtSec, 1.5, 1e-9, ());
+  TEST_EQUAL(listener.m_motions, 1500 / Esp32Source::kLineIntervalMs, ());
+  TEST_ALMOST_EQUAL_ABS(listener.m_maxDtSec, 0.02, 1e-9, ());
+
+  // Bluetooth has connected again: the box has counted on.
+  source.OnBleState(BleState::Searching);
+  clock.Advance(3000);
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxDataLine(3, 9500, 45'000, 36, kCalibratedFlags));
+  TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 45.0, 1e-9, ());
+  TEST_ALMOST_EQUAL_ABS(listener.m_dtSec, 4.5, 1e-9, ());
+
+  // The lines were late at the phone, not at the box.
+  clock.Advance(Esp32Source::kDataTimeoutMs + 100);
+  source.OnBleBytes(BoxDataLine(4, 9520, 45'500, 36, kCalibratedFlags));
+  TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 45.5, 1e-9, ());
+  TEST_ALMOST_EQUAL_ABS(listener.m_dtSec, 4.52, 1e-9, ());
+
+  // The calibration was lost in the pause: what the box has counted meanwhile is not known.
+  int const motions = listener.m_motions;
+  clock.Advance(1500);
+  source.OnBleBytes(BoxDataLine(5, 11'020, 60'500, 36, kCalibratedFlags & ~esp32::kFlagBiasOk));
+  TEST_EQUAL(listener.m_motions, motions, ());
+  clock.Advance(1500);
+  source.OnBleBytes(BoxDataLine(6, 12'520, 75'500, 36, kCalibratedFlags));
+  TEST_EQUAL(listener.m_motions, motions, ());
+
+  // The longest pause taken.
+  clock.Advance(20);
+  source.OnBleBytes(BoxDataLine(7, 12'540, 76'000, 36, kCalibratedFlags));
+  clock.Advance(Esp32Source::kMaxBridgedPauseMs);
+  source.OnBleBytes(BoxDataLine(8, 12'540 + Esp32Source::kMaxBridgedPauseMs, 86'000, 36, kCalibratedFlags));
+  TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 56.0, 1e-9, ());
+  int const motions2 = listener.m_motions;
+
+  // A longer pause may be a sleep of the box.
+  clock.Advance(Esp32Source::kMaxBridgedPauseMs + 20);
+  source.OnBleBytes(BoxDataLine(9, 17'540 + Esp32Source::kMaxBridgedPauseMs + 20, 90'500, 36, kCalibratedFlags));
+  TEST_EQUAL(listener.m_motions, motions2, ());
+
+  // The box has restarted in the pause and counts from the start.
+  clock.Advance(1500);
+  source.OnBleBytes(BoxDataLine(1, 1000, 1000, 36, kCalibratedFlags));
+  TEST_EQUAL(listener.m_motions, motions2, ());
+  TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 56.0, 1e-9, ());
+  clock.Advance(20);
+  source.OnBleBytes(BoxDataLine(2, 1020, 1500, 36, kCalibratedFlags));
+  TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 56.5, 1e-9, ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_ReadsLinesOfBluetoothStream)

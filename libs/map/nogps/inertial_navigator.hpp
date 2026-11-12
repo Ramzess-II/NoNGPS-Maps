@@ -88,7 +88,8 @@ public:
   static double constexpr kMinGpsHeadingSpeedMps = 3;
   static double constexpr kMinAccurateGpsHeadingSpeedMps = 1;
   static double constexpr kMaxGpsHeadingErrorDeg = 10;
-  // A longer pause of the source is a lost connection, the car could do anything meanwhile.
+  // A longer pause of the source is a lost connection, the car could do anything meanwhile. The box gives its shorter
+  // pauses in steps, see Esp32Source::kMaxBridgedPauseMs.
   static double constexpr kMaxMotionDtSec = 1;
   // A second the car stands in goes to the trip log if the car has rotated at least this much in it.
   static double constexpr kGyroLogMinRotationDeg = 1;

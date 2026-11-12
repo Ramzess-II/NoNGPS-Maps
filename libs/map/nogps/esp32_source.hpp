@@ -28,7 +28,11 @@ public:
   // The box sends data while it hears the phone.
   static int64_t constexpr kHelloIntervalMs = 1000;
   // The box sends 50 lines a second, a longer silence means it is lost.
+  static int64_t constexpr kLineIntervalMs = 20;
   static int64_t constexpr kDataTimeoutMs = 1000;
+  // The rotation of a longer pause of the data is lost: the box may have restarted or slept. A shorter one, e.g. a
+  // reconnection of Bluetooth while the car drives, is taken from the totals of the box.
+  static int64_t constexpr kMaxBridgedPauseMs = 5000;
   // A box connected again after a parking is awake this long after a silent connection ends: the phone connects
   // again in a few seconds.
   static int64_t constexpr kWakingLinkGapMs = 30'000;
