@@ -51,7 +51,8 @@ public class NoGpsFlagsFragment extends BaseMwmFragment
   @Nullable
   private MediaPlayer mPlayer;
   private String mPlaying = "";
-  private TextView mEmpty;
+  private View mEmpty;
+  private View mList;
   private View mSend;
 
   @Override
@@ -63,6 +64,7 @@ public class NoGpsFlagsFragment extends BaseMwmFragment
     mSend = root.findViewById(R.id.send);
     mSend.setOnClickListener((v) -> send());
     final ListView list = root.findViewById(R.id.list);
+    mList = list;
     list.setAdapter(mAdapter);
     list.setOnItemClickListener((parent, view, position, id) -> {
       if (!(mRows.get(position) instanceof NoGpsFlags.Flag flag))
@@ -119,6 +121,7 @@ public class NoGpsFlagsFragment extends BaseMwmFragment
     }
     mSelected.retainAll(names);
     mEmpty.setVisibility(flags.isEmpty() ? View.VISIBLE : View.GONE);
+    mList.setVisibility(flags.isEmpty() ? View.GONE : View.VISIBLE);
     mSend.setEnabled(!mSelected.isEmpty());
     mAdapter.notifyDataSetChanged();
   }
