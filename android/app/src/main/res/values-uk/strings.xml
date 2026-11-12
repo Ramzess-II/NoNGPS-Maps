@@ -928,12 +928,12 @@
     <string name="nogps_flag_voice_saved">Голосову нотатку збережено: %d с</string>
     <!-- Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. -->
     <string name="nogps_flag_mic_denied">Прапорець збережено без голосової нотатки: дозвольте мікрофон у налаштуваннях системи.</string>
-    <!-- Settings row and screen title: the list of the flags saved in test drives, to send them to the developers by email -->
-    <string name="nogps_flags_send_title">Надіслати прапорці</string>
+    <!-- Settings row and screen title: the list of the flags saved in test drives, to send them with the trip logs to the developers by email -->
+    <string name="nogps_flags_send_title">Надіслати журнали</string>
     <!-- Button: send the ticked flags of test drives by email -->
     <string name="nogps_flags_send">Надіслати</string>
-    <!-- The list of the flags of test drives is empty -->
-    <string name="nogps_flags_empty">Прапорців ще немає. У тестовій поїздці натисніть прапорець на мапі, коли машину показано не там.</string>
+    <!-- The list of the flags of test drives is empty: what a flag is, how to make one with the flag button or the microphone button under it on the map, and how to send flags from this list -->
+    <string name="nogps_flags_empty">Прапорці позначають моменти поїздки, коли машину показано не там. Кожен прапорець зберігає час, місце на мапі та знімок екрана.\n\nЩоб поставити прапорець, натисніть кнопку з прапорцем на мапі під час поїздки. Кнопка з мікрофоном під нею ще й записує голосову нотатку на 15 с: скажіть, що не так.\n\nПотім позначте прапорці тут і натисніть «Надіслати». Вони підуть розробникам поштою разом із журналами своїх днів. Прапорці зберігаються 7 днів.</string>
     <!-- In the list of the flags of test drives: the length of the voice note of a flag, in seconds -->
     <string name="nogps_flag_voice">Голосова нотатка %d с</string>
     <!-- In the list of the flags of test drives: the flag has been sent by email already -->
