@@ -11,7 +11,7 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * Records the voice note of a flag while the tester holds the flag button, see NoGpsFlags.
+ * Records the voice note of a flag after a tap of the voice flag button, see NoGpsFlags.
  */
 public final class NoGpsFlagRecorder
 {
@@ -23,6 +23,28 @@ public final class NoGpsFlagRecorder
   private Context mContext;
   private String mName = "";
   private long mStart;
+  @Nullable
+  private OnStop mOnStop;
+
+  public interface OnStop
+  {
+    /**
+     * Called when a recording is over, at VOICE_MAX_S too.
+     *
+     * @param seconds of the note, 0 if it is not kept.
+     */
+    void onStop(int seconds);
+  }
+
+  public void setOnStop(@Nullable OnStop onStop)
+  {
+    mOnStop = onStop;
+  }
+
+  public boolean isRecording()
+  {
+    return mRecorder != null;
+  }
 
   /**
    * Records to the flag up to VOICE_MAX_S. The app must have the microphone.
@@ -91,8 +113,10 @@ public final class NoGpsFlagRecorder
     recorder.release();
     Logger.i(TAG, "FLAG voice " + name + " " + seconds + " s");
     final boolean kept = recorded && seconds > 0;
+    if (mOnStop != null)
+      mOnStop.onStop(kept ? seconds : 0);
     NoGpsFlags.EXECUTOR.execute(() -> {
-      // A hold just over the long press has nothing to hear.
+      // A second tap right after the first has nothing to hear.
       if (!kept)
       {
         // noinspection ResultOfMethodCallIgnored

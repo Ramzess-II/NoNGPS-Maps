@@ -1231,20 +1231,23 @@
 /* Toast after the tester pressed the flag button in a test drive: the flag number and the time are written to the trip log to find the moment later */
 "nogps_log_flag" = "Флаг %1$d записан в журнал в %2$@";
 
-/* Toast while the tester holds the flag button: a voice note to the flag is recorded until the finger is lifted */
-"nogps_flag_recording" = "Идёт запись голосовой заметки. Отпустите флаг, чтобы остановить.";
+/* Toast after the tester taps the voice flag button: a flag is saved and a voice note to it is recorded for 15 seconds or until the button is tapped again */
+"nogps_flag_voice_recording" = "Идёт запись голосовой заметки на 15 с. Нажмите кнопку ещё раз, чтобы остановить.";
 
-/* Toast: the tester held the flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. */
+/* Toast when the voice note to a flag is recorded and saved: its length in seconds */
+"nogps_flag_voice_saved" = "Голосовая заметка сохранена: %d с";
+
+/* Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. */
 "nogps_flag_mic_denied" = "Флаг сохранён без голосовой заметки: разрешите микрофон в настройках системы.";
 
-/* Settings row and screen title: the list of the flags saved in test drives, to send them to the developers by email */
-"nogps_flags_send_title" = "Отправить флаги";
+/* Settings row and screen title: the list of the flags saved in test drives, to send them with the trip logs to the developers by email */
+"nogps_flags_send_title" = "Отправить логи";
 
 /* Button: send the ticked flags of test drives by email */
 "nogps_flags_send" = "Отправить";
 
-/* The list of the flags of test drives is empty */
-"nogps_flags_empty" = "Флагов пока нет. В тестовой поездке нажмите флаг на карте, когда машина показана не там.";
+/* The list of the flags of test drives is empty: what a flag is, how to make one with the flag button or the microphone button under it on the map, and how to send flags from this list */
+"nogps_flags_empty" = "Флаги отмечают моменты поездки, когда машина показана не там. Каждый флаг хранит время, место на карте и снимок экрана.\n\nЧтобы поставить флаг, нажмите кнопку с флагом на карте во время поездки. Кнопка с микрофоном под ней ещё и записывает голосовую заметку на 15 с: скажите, что не так.\n\nЗатем отметьте флаги здесь и нажмите «Отправить». Они уйдут разработчикам по почте вместе с логами своих дней. Флаги хранятся 7 дней.";
 
 /* In the list of the flags of test drives: the length of the voice note of a flag, in seconds */
 "nogps_flag_voice" = "Голосовая заметка %d с";

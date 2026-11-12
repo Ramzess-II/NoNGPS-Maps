@@ -78,59 +78,13 @@
     </LinearLayout>
   </FrameLayout>
 
-  <!-- Where the position comes from, with its accuracy: the look of the bottom bar button without the word. -->
-  <LinearLayout
+  <!-- Where the position comes from: the button of the bottom bar. Its width doesn't follow the text, so the numbers
+       around it stay in place. -->
+  <include
     android:id="@+id/nav_source"
-    android:layout_width="@dimen/nav_source_size"
-    android:layout_height="@dimen/nav_source_size"
-    android:background="@drawable/bg_status_button"
-    android:clickable="true"
-    android:focusable="true"
-    android:foreground="?selectableItemBackground"
-    android:gravity="center"
-    android:orientation="vertical">
-
-    <FrameLayout
-      android:layout_width="26dp"
-      android:layout_height="26dp">
-
-      <ImageView
-        android:id="@+id/nav_source_icon"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:layout_gravity="center"
-        android:importantForAccessibility="no" />
-
-      <ImageView
-        android:id="@+id/nav_source_badge"
-        android:layout_width="11dp"
-        android:layout_height="11dp"
-        android:layout_gravity="top|end"
-        android:background="@drawable/bg_source_badge"
-        android:importantForAccessibility="no"
-        android:padding="1dp"
-        android:visibility="gone" />
-    </FrameLayout>
-
-    <TextView
-      android:id="@+id/nav_source_accuracy"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:layout_marginTop="2dp"
-      android:fontFeatureSettings="tnum"
-      android:gravity="center"
-      android:importantForAccessibility="no"
-      android:includeFontPadding="false"
-      android:maxLines="1"
-      android:paddingHorizontal="2dp"
-      android:textColor="?android:textColorPrimary"
-      android:textSize="12sp"
-      android:textStyle="bold"
-      app:autoSizeMaxTextSize="12sp"
-      app:autoSizeMinTextSize="9sp"
-      app:autoSizeTextType="uniform"
-      tools:text="±999 m" />
-  </LinearLayout>
+    layout="@layout/map_status_bar"
+    android:layout_width="@dimen/nav_source_width"
+    android:layout_height="wrap_content" />
 
   <!-- Distance left over the distance covered since the navigation started. -->
   <FrameLayout

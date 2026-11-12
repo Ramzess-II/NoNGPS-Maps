@@ -33,7 +33,7 @@ final class NavigationControlView: SolidTouchView {
   @IBOutlet private var trackRecordingButton: MWMButton!
   @IBOutlet private var searchButton: MWMButton!
   @IBOutlet private var sourceView: UIView!
-  private let sourceButton = NavButton(style: .tile)
+  private let sourceButton = NavButton()
 
   private lazy var dimBackground: DimBackground = .init(mainView: self, tapAction: { [weak self] in
     self?.diminish()
@@ -134,8 +134,7 @@ final class NavigationControlView: SolidTouchView {
     NSLayoutConstraint.activate([
       sourceButton.leadingAnchor.constraint(equalTo: sourceView.leadingAnchor),
       sourceButton.trailingAnchor.constraint(equalTo: sourceView.trailingAnchor),
-      sourceButton.topAnchor.constraint(equalTo: sourceView.topAnchor),
-      sourceButton.bottomAnchor.constraint(equalTo: sourceView.bottomAnchor),
+      sourceButton.centerYAnchor.constraint(equalTo: sourceView.centerYAnchor),
     ])
     sourceButton.addTarget(self, action: #selector(sourceButtonAction), for: .touchUpInside)
   }
@@ -165,7 +164,7 @@ final class NavigationControlView: SolidTouchView {
   private func addView() {
     guard superview != ownerView, !ownerView.subviews.contains(self) else { return }
     ownerView.addSubview(self)
-    NoGpsStatusBar.navTile = sourceButton
+    NoGpsStatusBar.navSheetButton = sourceButton
     sourceButton.show(NoGps.status())
 
     let lg = ownerView.safeAreaLayoutGuide

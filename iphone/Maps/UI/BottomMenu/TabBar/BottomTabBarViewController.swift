@@ -1,5 +1,6 @@
 class BottomTabBarViewController: UIViewController {
   private enum Constants {
+    /// Of the panel above the buttons: as the top of the buttons in the xib.
     static let panelTopInset = CGFloat(6)
     static let statusBarSpacing = CGFloat(6)
     static let statusBarMaxWidth = CGFloat(360)
@@ -38,9 +39,8 @@ class BottomTabBarViewController: UIViewController {
   override func viewDidLayoutSubviews() {
     super.viewDidLayoutSubviews()
     // The panel goes on to the edges of the screen, under the home indicator and the safe area too.
-    let top = (searchButton.superview?.frame.minY ?? 0) - Constants.panelTopInset
     let screenWidth = view.window?.bounds.width ?? UIScreen.main.bounds.width
-    panel.frame = CGRect(x: -view.frame.minX, y: top, width: screenWidth, height: view.bounds.height - top)
+    panel.frame = CGRect(x: -view.frame.minX, y: 0, width: screenWidth, height: view.bounds.height)
   }
 
   private func setupStatusBar() {
@@ -85,10 +85,13 @@ class BottomTabBarViewController: UIViewController {
     if avaliableArea == .zero {
       return
     }
+    // The view takes the panel above the buttons too, as the xib puts them under its top: the speed, the ruler and the
+    // side buttons keep their margins from the panel.
+    let inset = Constants.panelTopInset
     let newFrame = CGRect(x: avaliableArea.minX,
-                          y: isHidden ? avaliableArea.minY + avaliableArea.height : avaliableArea.minY,
+                          y: isHidden ? avaliableArea.maxY : avaliableArea.minY - inset,
                           width: avaliableArea.width,
-                          height: avaliableArea.height)
+                          height: avaliableArea.height + inset)
     let alpha: CGFloat = isHidden ? 0 : 1
     if animated {
       UIView.animate(withDuration: AppConstants.defaultAnimationDuration,

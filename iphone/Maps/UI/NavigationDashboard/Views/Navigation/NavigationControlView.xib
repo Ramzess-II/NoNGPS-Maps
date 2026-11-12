@@ -43,7 +43,7 @@
                             </constraints>
                         </view>
                         <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="HNY-h1-A95">
-                            <rect key="frame" x="6.0" y="22" width="153" height="44"/>
+                            <rect key="frame" x="6.0" y="22" width="113.5" height="44"/>
                             <subviews>
                                         <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="wEc-R2-1Tv">
                                             <rect key="frame" x="0.0" y="0.0" width="0.0" height="0.0"/>
@@ -76,15 +76,15 @@
                             </constraints>
                         </view>
                         <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="Nsb-Kq-7Vw" userLabel="Source">
-                            <rect key="frame" x="165.5" y="18" width="56" height="56"/>
+                            <rect key="frame" x="125.5" y="18" width="136" height="56"/>
                             <color key="backgroundColor" red="0.0" green="0.0" blue="0.0" alpha="0.0" colorSpace="custom" customColorSpace="sRGB"/>
                             <constraints>
-                                <constraint firstAttribute="width" constant="56" id="Nsb-Wd-t64"/>
+                                <constraint firstAttribute="width" constant="136" id="Nsb-Wd-t64"/>
                                 <constraint firstAttribute="height" constant="56" id="Nsb-Ht-t56"/>
                             </constraints>
                         </view>
                         <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="sUB-KS-dnn">
-                            <rect key="frame" x="228" y="22" width="153" height="44"/>
+                            <rect key="frame" x="267.5" y="22" width="113.5" height="44"/>
                             <subviews>
                                         <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="fxK-Ae-ebd">
                                             <rect key="frame" x="0.0" y="0.0" width="0.0" height="0.0"/>

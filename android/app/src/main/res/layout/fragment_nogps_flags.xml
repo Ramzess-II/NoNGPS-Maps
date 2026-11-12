@@ -4,13 +4,18 @@
               android:layout_width="match_parent"
               android:layout_height="match_parent"
               android:orientation="vertical">
-  <TextView android:id="@+id/empty"
-            style="@style/MwmWidget.TextView.Item"
-            android:layout_height="wrap_content"
-            android:paddingTop="@dimen/margin_base"
-            android:paddingBottom="@dimen/margin_base"
-            android:visibility="gone"
-            android:text="@string/nogps_flags_empty"/>
+  <!-- Scrolls so that the long text doesn't push Send off a small screen. -->
+  <ScrollView android:id="@+id/empty"
+              android:layout_width="match_parent"
+              android:layout_height="0dp"
+              android:layout_weight="1"
+              android:visibility="gone">
+    <TextView style="@style/MwmWidget.TextView.Item"
+              android:layout_height="wrap_content"
+              android:paddingTop="@dimen/margin_base"
+              android:paddingBottom="@dimen/margin_base"
+              android:text="@string/nogps_flags_empty"/>
+  </ScrollView>
 
   <ListView android:id="@+id/list"
             android:layout_width="match_parent"

@@ -6,6 +6,7 @@ final class NoGpsFlagsViewController: MWMTableViewController {
   private enum Constants {
     static let cellId = "flag"
     static let thumbnailSize = CGSize(width: 48, height: 64)
+    static let emptyTop: CGFloat = 20
   }
 
   private var days = [[NoGpsFlag]]()
@@ -53,10 +54,17 @@ final class NoGpsFlagsViewController: MWMTableViewController {
     if flags.isEmpty {
       let label = UILabel()
       label.text = L("nogps_flags_empty")
-      label.textAlignment = .center
       label.numberOfLines = 0
       label.textColor = .blackSecondaryText
-      tableView.backgroundView = label
+      label.translatesAutoresizingMaskIntoConstraints = false
+      let background = UIView()
+      background.addSubview(label)
+      NSLayoutConstraint.activate([
+        label.topAnchor.constraint(equalTo: background.safeAreaLayoutGuide.topAnchor, constant: Constants.emptyTop),
+        label.leadingAnchor.constraint(equalTo: background.readableContentGuide.leadingAnchor),
+        label.trailingAnchor.constraint(equalTo: background.readableContentGuide.trailingAnchor),
+      ])
+      tableView.backgroundView = background
     } else {
       tableView.backgroundView = nil
     }

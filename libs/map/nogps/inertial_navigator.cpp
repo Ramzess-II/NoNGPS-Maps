@@ -81,6 +81,7 @@ void InertialNavigator::Start()
   ResetDirection();
   m_lastBackMs.reset();
   m_standRotation.clear();
+  m_unheardStand.reset();
   m_delegate.StartMotionSensors(!esp32 /* gyroscope */);
 }
 
@@ -955,6 +956,45 @@ void InertialNavigator::SetDirection(int direction)
   m_pathMatcher.Reset();
 }
 
+void InertialNavigator::RememberUnheardStand()
+{
+  // The car has reported 0 the lag after it stood.
+  int64_t const toMs = m_speedTimeMs - static_cast<int64_t>(m_speedLag.Get() * 1000);
+  int64_t const fromMs = std::max(*m_standMs, toMs - kMaxStandFeltMs);
+  m_unheardStand = UnheardStand{toMs, {}};
+  if (toMs - fromMs >= kMinStandFeltMs)
+    m_unheardStand->m_accel = m_boxAccelSpeed.GetAccelAlong(fromMs, toMs);
+}
+
+void InertialNavigator::CatchUpStart(double speedMps)
+{
+  auto const stand = *m_unheardStand;
+  m_unheardStand.reset();
+  if (speedMps <= 0)
+    return;
+  // It has driven with the speed for the lag, as at any start.
+  m_lagSpeedMps = 0;
+  int64_t const reportedMs = m_clock.NowMs() - static_cast<int64_t>(m_speedLag.Get() * 1000);
+  std::optional<AccelSpeed::Start> start;
+  if (stand.m_accel)
+    start = m_boxAccelSpeed.FindStart(stand.m_toMs, reportedMs, speedMps, *stand.m_accel);
+  int64_t const startMs = start ? start->m_timeMs : reportedMs;
+  // It has turned since the start, the rotation before it is the drift of the gyroscope.
+  while (!m_standRotation.empty() && m_standRotation.front().first < startMs - kStandMarginMs)
+    m_standRotation.pop_front();
+  if (!start)
+  {
+    LOG(LINFO,
+        ("The car speed is heard again, the car drives: the accelerometer tells nothing about its start,",
+         "the stand is known =", stand.m_accel.has_value(), "the sensor is usable =", m_boxAccelSpeed.IsUsable()));
+    return;
+  }
+  m_lagPendingM += start->m_distanceM;
+  LOG(LINFO,
+      ("The car speed is heard again, the car drives: it has started", (reportedMs - startMs) / 1000.0,
+       "s before its speed of", speedMps, "m/s, the accelerometer tells, and has driven", start->m_distanceM, "m"));
+}
+
 void InertialNavigator::ResetDirection()
 {
   m_direction = 1;
@@ -1154,6 +1194,10 @@ void InertialNavigator::OnSpeed(int speedKmh, int64_t timeMs)
 {
   m_speedKmh = speedKmh;
   m_speedTimeMs = timeMs;
+  m_moving = speedKmh > 0;
+  // The box repeats the last speed it has heard while it doesn't hear the car: that speed tells nothing of now.
+  if (!IsSpeedFresh())
+    return;
   // The time the position is calculated with this speed since, not the time the car measured it at.
   int64_t const now = m_clock.NowMs();
   double const speedMps = speedKmh / 3.6 * GetSpeedScale(speedKmh);
@@ -1166,7 +1210,8 @@ void InertialNavigator::OnSpeed(int speedKmh, int64_t timeMs)
     accelSpeed->SetLearning(!m_offRoadCar && !HasDrivenBackLately() && speedKmh >= kNotManeuveringSpeedKmh);
     accelSpeed->OnCarSpeed(now, speedMps);
   }
-  m_moving = speedKmh > 0;
+  if (m_unheardStand)
+    CatchUpStart(speedMps);
   if (!m_offRoadCar)
     return;
   if (speedKmh < kNotManeuveringSpeedKmh)
@@ -1213,9 +1258,15 @@ void InertialNavigator::OnMotion(double yawDeltaDeg, double dtSec, int64_t times
   bool const speedFresh = IsSpeedFresh();
   m_deadReckoning.SetSpeed(speedFresh ? m_speedKmh / 3.6 * GetSpeedScale(m_speedKmh) : 0);
   if (speedFresh)
+  {
     TrackDirection();
+  }
   else
+  {
+    if (m_standMs && m_speedKmh == 0)
+      RememberUnheardStand();
     ResetDirection();
+  }
   bool const back = m_direction < 0;
   // The mark stands where it is while the car maneuvering off the roads is followed apart, and after the road is lost.
   bool const stopped = m_offRoadCar || m_roadLost;
@@ -1240,10 +1291,11 @@ void InertialNavigator::OnMotion(double yawDeltaDeg, double dtSec, int64_t times
     }
     rotatedDeg += Rotate(yawDeltaDeg, dtSec, timestampNs, trackTurn);
   }
-  else if (calibrated)
+  else if (calibrated || (m_unheardStand && m_source && m_source->IsCalibrated()))
   {
     m_standRotation.emplace_back(now, yawDeltaDeg);
-    int64_t const keepMs = static_cast<int64_t>(m_speedLag.Get() * 1000) + kStandMarginMs;
+    int64_t const keepMs = static_cast<int64_t>(m_speedLag.Get() * 1000) + kStandMarginMs +
+                           (m_unheardStand ? m_boxAccelSpeed.GetMaxStartMs() : 0);
     while (now - m_standRotation.front().first > keepMs)
       m_standRotation.pop_front();
   }

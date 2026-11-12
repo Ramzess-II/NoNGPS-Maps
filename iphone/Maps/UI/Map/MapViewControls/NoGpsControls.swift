@@ -22,6 +22,9 @@ final class NoGpsControls: NSObject {
     static let speedMargin = CGFloat(10)
     /// Of a flag screenshot: the street names stay readable, the png stays small for the mail.
     static let screenshotScale = CGFloat(2)
+    /// A thick line above the buttons of the testers: they stand apart from those correcting the car.
+    static let testersGap = CGFloat(12)
+    static let testersDividerHeight = CGFloat(4)
   }
 
   private weak static var shared: NoGpsControls?
@@ -44,8 +47,9 @@ final class NoGpsControls: NSObject {
   private var buttonsHidden = [UIView: Bool]()
   private let reverseButton = NoGpsControls.makeButton("arrow.triangle.2.circlepath")
   private let switchMarkButton = NoGpsControls.makeButton("arrow.left.arrow.right")
-  private let flagButton = NoGpsControls.makeButton("flag.fill")
   private let manualButton = NoGpsControls.makeButton("hand.point.up.left")
+  private let flagButton = NoGpsControls.makeButton("flag.fill")
+  private let voiceFlagButton = NoGpsControls.makeButton("mic.fill")
   private var statusTop = NSLayoutConstraint()
   private var statusCenterX = NSLayoutConstraint()
   private var buttonsEdge = NSLayoutConstraint()
@@ -68,6 +72,9 @@ final class NoGpsControls: NSObject {
     RunLoop.main.add(timer, forMode: .common)
     self.timer = timer
     NotificationCenter.default.addObserver(self, selector: #selector(onEvent), name: NoGps.eventNotification, object: nil)
+    // As on Android: a voice note is not recorded in the background.
+    NotificationCenter.default.addObserver(self, selector: #selector(stopVoiceFlag),
+                                           name: UIApplication.didEnterBackgroundNotification, object: nil)
     NoGpsFlags.deleteExpired()
   }
 
@@ -119,25 +126,34 @@ final class NoGpsControls: NSObject {
 
     reverseButton.addTarget(self, action: #selector(reverseDirection), for: .touchUpInside)
     switchMarkButton.addTarget(self, action: #selector(switchMark), for: .touchUpInside)
-    flagButton.addTarget(self, action: #selector(flagLog), for: .touchUpInside)
-    flagButton.addGestureRecognizer(UILongPressGestureRecognizer(target: self, action: #selector(flagHeld)))
     manualButton.addTarget(self, action: #selector(toggleMarkByTap), for: .touchUpInside)
+    flagButton.addTarget(self, action: #selector(flagLog), for: .touchUpInside)
+    voiceFlagButton.addTarget(self, action: #selector(voiceFlag), for: .touchUpInside)
+    flagRecorder.onFinish = { [weak self] seconds in
+      self?.refresh()
+      if seconds > 0 {
+        Toast.show(withText: String(format: L("nogps_flag_voice_saved"), seconds))
+      }
+    }
     reverseButton.accessibilityLabel = L("nogps_reverse_direction")
     switchMarkButton.accessibilityLabel = L("nogps_switch_mark")
     manualButton.accessibilityLabel = L("nogps_manual_position")
-    // For the testers only, no string for it.
+    // For the testers only, no strings for them.
     flagButton.isAccessibilityElement = false
+    voiceFlagButton.isAccessibilityElement = false
 
     buttons.axis = .vertical
     buttons.alignment = .center
     buttons.spacing = MapControlsPanel.groupGap
     buttons.translatesAutoresizingMaskIntoConstraints = false
-    let items = [reverseButton, switchMarkButton, flagButton, manualButton]
+    let items = [reverseButton, switchMarkButton, manualButton, flagButton, voiceFlagButton]
     for item in items {
       buttons.addArrangedSubview(item)
     }
     for item in items.dropFirst() {
-      dividers[item] = MapControlsPanel.addGroupDivider(above: item)
+      dividers[item] = item === flagButton
+        ? MapControlsPanel.addGroupDivider(above: item, gap: Constants.testersGap, height: Constants.testersDividerHeight)
+        : MapControlsPanel.addGroupDivider(above: item)
     }
     panel.translatesAutoresizingMaskIntoConstraints = false
     superview.addSubview(panel)
@@ -168,7 +184,6 @@ final class NoGpsControls: NSObject {
                               travel: { [weak self] in self?.panelTravel ?? 0 },
                               onLift: { [weak self] in self?.panel.isLifted = $0 },
                               onMove: { [weak self] in self?.updateLayout() })
-    dragger?.excludedViews = [flagButton]
     updateLayout()
   }
 
@@ -225,6 +240,10 @@ final class NoGpsControls: NSObject {
     max(0, panelAreaHeight - buttonsHeight)
   }
 
+  private func gap(above button: UIView) -> CGFloat {
+    button === flagButton ? Constants.testersGap : MapControlsPanel.groupGap
+  }
+
   private func applyButtonsHidden() {
     for (button, hidden) in buttonsHidden where button.isHidden != hidden {
       button.isHidden = hidden
@@ -232,6 +251,10 @@ final class NoGpsControls: NSObject {
     let shown = buttons.arrangedSubviews.filter { !$0.isHidden }
     for (button, divider) in dividers {
       divider.isHidden = button === shown.first
+    }
+    // The gap is set after the button shown above: a hidden one takes no spacing.
+    for (above, below) in zip(shown, shown.dropFirst()) {
+      buttons.setCustomSpacing(gap(above: below), after: above)
     }
   }
 
@@ -282,10 +305,13 @@ final class NoGpsControls: NSObject {
       NoGps.setMarkByTap(false)
     }
     manualButton.tintColor = canMark && status.markByTap ? .linkBlue : .blackSecondaryText
+    voiceFlagButton.tintColor = flagRecorder.isRecording ? Constants.noneColor : .blackSecondaryText
+    let logging = Settings.isFileLoggingEnabled()
     buttonsHidden = [reverseButton: !status.movedByHand,
                      switchMarkButton: !(status.movedByHand && status.otherMarks > 0),
-                     flagButton: !Settings.isFileLoggingEnabled(),
-                     manualButton: !canMark]
+                     manualButton: !canMark,
+                     flagButton: !logging,
+                     voiceFlagButton: !logging]
     hasButtons = buttonsHidden.values.contains(false)
     // Nothing to correct: the panel slides out as it is, its buttons are hidden after that.
     if hasButtons || !isPanelShown {
@@ -405,33 +431,35 @@ final class NoGpsControls: NSObject {
     saveFlag(toast: true)
   }
 
-  /// Holding the flag records a voice note to it while the finger is down.
+  /// Saves a flag and records a voice note to it up to kFlagVoiceMaxS, a second tap stops earlier.
   @objc
-  private func flagHeld(_ gesture: UILongPressGestureRecognizer) {
-    switch gesture.state {
-    case .began:
-      switch NoGpsFlagRecorder.checkPermission() {
-      case .granted:
-        let name = saveFlag(toast: false)
-        if flagRecorder.start(name) {
-          Toast.show(withText: L("nogps_flag_recording"))
-        }
-      case .denied:
-        saveFlag(toast: false)
-        Toast.show(withText: L("nogps_flag_mic_denied"))
-      case .asked:
-        saveFlag(toast: true)
-      }
-    case .ended, .cancelled, .failed:
+  private func voiceFlag() {
+    guard !flagRecorder.isRecording else {
       flagRecorder.stop()
-    default:
-      break
+      return
     }
+    switch NoGpsFlagRecorder.checkPermission() {
+    case .granted:
+      if flagRecorder.start(saveFlag(toast: false)) {
+        Toast.show(withText: L("nogps_flag_voice_recording"))
+      }
+    case .denied:
+      saveFlag(toast: false)
+      Toast.show(withText: L("nogps_flag_mic_denied"))
+    case .asked:
+      saveFlag(toast: true)
+    }
+    refresh()
+  }
+
+  @objc
+  private func stopVoiceFlag() {
+    flagRecorder.stop()
   }
 
   @discardableResult
   private func saveFlag(toast: Bool) -> String {
-    // The files of a flag are named by the second: a second flag in it, or a hold after a tap, is the same moment.
+    // The files of a flag are named by the second: a second flag in it, a voice flag too, is the same moment.
     let name = NoGpsFlags.name(of: Date())
     guard name != Self.lastFlag else { return name }
     Self.lastFlag = name

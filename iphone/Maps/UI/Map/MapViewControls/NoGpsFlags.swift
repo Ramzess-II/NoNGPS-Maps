@@ -28,7 +28,7 @@ enum NoGpsFlags {
     /// kFlagKeepDays: older flags are deleted at launch.
     static let keepDays = 7
     /// kFlagVoiceMaxS.
-    static let voiceMaxS: TimeInterval = 60
+    static let voiceMaxS: TimeInterval = 15
     /// kFlagMailMaxMB: a mail server may refuse bigger attachments, the user is warned.
     static let mailMaxMB = 20
     static let json = "json"
@@ -176,8 +176,10 @@ enum NoGpsFlags {
   }
 }
 
-/// Records the voice note of a flag while the tester holds the flag button.
+/// Records the voice note of a flag after a tap of the voice flag button.
 final class NoGpsFlagRecorder: NSObject {
+  /// On the main thread when a recording is over, at kFlagVoiceMaxS too: the seconds of the note, 0 if not kept.
+  var onFinish: ((Int) -> Void)?
   private var recorder: AVAudioRecorder?
   private var name = ""
   private var start: CFTimeInterval = 0
@@ -269,8 +271,9 @@ extension NoGpsFlagRecorder: AVAudioRecorderDelegate {
     let name = name
     let url = recorder.url
     LOG(.info, "FLAG voice \(name) \(seconds) s")
+    DispatchQueue.main.async { [weak self] in self?.onFinish?(seconds) }
     NoGpsFlags.queue.async {
-      // A hold just over the long press has nothing to hear.
+      // A second tap right after the first has nothing to hear.
       guard seconds > 0 else {
         try? FileManager.default.removeItem(at: url)
         return
