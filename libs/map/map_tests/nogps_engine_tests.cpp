@@ -83,6 +83,14 @@ public:
   /// The box sends nothing, |ms| pass by its clock.
   void SleepBox(int64_t ms) { m_boxTimeMs += ms; }
 
+  /// The lines of the box are lost for |ms| while the car turns on at |yawRateDegS|.
+  void LoseBoxLines(int64_t ms, double yawRateDegS)
+  {
+    m_clock.Advance(ms);
+    m_boxTimeMs += ms;
+    m_yawMdeg += yawRateDegS * ms;
+  }
+
   Fix const & Last() const { return m_delegate.m_positions.back(); }
 
   TestClock m_clock;
@@ -562,6 +570,22 @@ void TurnLeftAtCrossing(Env & env, double beforeTurnM)
   env.Drive(3000, 36, -30);
   env.Drive(3000, 36, 0);
   // The car is on the street going north from the crossing.
+  TestAlmostEqualAbs(East(env.Last().m_position), 200, 1);
+  TEST_GREATER(North(env.Last().m_position), 20, ());
+  TestAlmostEqualAbs(AngleDiff(*env.Last().m_bearingDeg, 0), 0, 3);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), ());
+}
+
+UNIT_TEST(NoGps_Engine_BoxPauseInTurnKeepsHeading)
+{
+  Env env(true /* inertial */);
+  MarkCar(env, 200 - 112);
+  env.Drive(10'000, 36, 0);
+  // The lines of half the turn are lost.
+  env.Drive(1000, 36, -30);
+  env.LoseBoxLines(1500, -30);
+  env.Drive(500, 36, -30);
+  env.Drive(3000, 36, 0);
   TestAlmostEqualAbs(East(env.Last().m_position), 200, 1);
   TEST_GREATER(North(env.Last().m_position), 20, ());
   TestAlmostEqualAbs(AngleDiff(*env.Last().m_bearingDeg, 0), 0, 3);

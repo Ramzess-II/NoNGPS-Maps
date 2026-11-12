@@ -15,6 +15,12 @@ bool IsLinked(BleState state)
 {
   return state == BleState::Pairing || state == BleState::Connected;
 }
+
+bool HasCalibratedFlags(int flags)
+{
+  int constexpr kRequired = esp32::kFlagImuOk | esp32::kFlagBiasOk | esp32::kFlagUpOk;
+  return (flags & kRequired) == kRequired && (flags & esp32::kFlagMountMoved) == 0;
+}
 }  // namespace
 
 Esp32Source::Esp32Source(Delegate & delegate, Scheduler & scheduler, Clock const & clock,
@@ -243,6 +249,8 @@ void Esp32Source::OnData(esp32::Data const & data)
 {
   int64_t const now = m_clock.NowMs();
   bool const fresh = m_lastDataMs && now - *m_lastDataMs <= kDataTimeoutMs;
+  int64_t const lastDataMs = m_lastDataMs.value_or(now);
+  int const lastFlags = m_flags;
   m_lastDataMs = now;
   m_wakingLinkMs.reset();
   m_dataTimesMs.push_back(now);
@@ -287,11 +295,30 @@ void Esp32Source::OnData(esp32::Data const & data)
   }
 
   // The box sends the totals: a lost line loses nothing, the next one has the rotation.
-  if (m_hasLast && fresh)
+  if (m_hasLast)
   {
     int64_t const dtMs = (data.m_timeMs - m_lastTimeMs) & (kBoxTimeWrapMs - 1);
     double const yawDeltaDeg = IsCalibrated() ? (data.m_yawMdeg - m_lastYawMdeg) / 1000.0 : 0;
-    m_listener.OnMotion(yawDeltaDeg, dtMs / 1000.0, now * 1'000'000);
+    if (fresh && dtMs <= kDataTimeoutMs)
+    {
+      m_listener.OnMotion(yawDeltaDeg, dtMs / 1000.0, now * 1'000'000);
+    }
+    // The box has counted through a pause unless its calibration has changed meanwhile. The pause comes as the lines
+    // the box would have sent, with its mean rotation: one step of many degrees is not a turn rate.
+    else if (dtMs <= kMaxBridgedPauseMs && HasCalibratedFlags(lastFlags) == HasCalibratedFlags(data.m_flags))
+    {
+      LOG(LINFO, ("The box data paused for", dtMs, "ms, rotation =", yawDeltaDeg));
+      int64_t const steps = std::max<int64_t>(1, (dtMs + kLineIntervalMs - 1) / kLineIntervalMs);
+      for (int64_t i = 1; i <= steps; ++i)
+      {
+        int64_t const stepMs = lastDataMs + (now - lastDataMs) * i / steps;
+        m_listener.OnMotion(yawDeltaDeg / steps, dtMs / 1000.0 / steps, stepMs * 1'000'000);
+      }
+    }
+    else
+    {
+      LOG(LINFO, ("The box data paused for", dtMs, "ms, its rotation is not counted"));
+    }
   }
   m_hasLast = true;
   m_lastTimeMs = data.m_timeMs;
@@ -433,8 +460,7 @@ std::optional<CarInfo> Esp32Source::GetCarInfo() const
 
 bool Esp32Source::IsCalibrated() const
 {
-  int constexpr kRequired = esp32::kFlagImuOk | esp32::kFlagBiasOk | esp32::kFlagUpOk;
-  return IsConnected() && (m_flags & kRequired) == kRequired && (m_flags & esp32::kFlagMountMoved) == 0;
+  return IsConnected() && HasCalibratedFlags(m_flags);
 }
 
 CalibrationState Esp32Source::GetCalibrationState()
