@@ -34,4 +34,4 @@
 "NSBluetoothAlwaysUsageDescription" = "Блок датчиків у машині передає повороти та швидкість машини через Bluetooth.";
 
 /* Needed to explain why we require access to the microphone: a tester records a voice note to a flag of a test drive. */
-"NSMicrophoneUsageDescription" = "Тестувальник утримує прапорець на мапі, щоб записати голосову нотатку про тестову поїздку.";
+"NSMicrophoneUsageDescription" = "Тестувальник натискає голосовий прапорець на мапі, щоб записати голосову нотатку про тестову поїздку.";
