@@ -1605,9 +1605,17 @@ void InertialNavigator::MatchBend()
   auto const position = m_deadReckoning.GetPosition();
   double const heading = m_deadReckoning.GetHeading();
   double const maxShiftM = std::min(kMaxBendShiftM, std::max(kMinBendSearchM, m_deadReckoning.GetAccuracy()));
-  auto const aheadM = m_bendMatcher.Match(m_roads, position, heading, maxShiftM);
+  std::string whyNot;
+  auto const aheadM = m_bendMatcher.Match(m_roads, position, heading, maxShiftM, &whyNot);
   if (!aheadM)
+  {
+    if (!whyNot.empty() && (!m_bendWhyNotPathM || m_pathM - *m_bendWhyNotPathM >= BendMatcher::kWindowM))
+    {
+      m_bendWhyNotPathM = m_pathM;
+      LOG(LINFO, ("Bend: tells nothing, searched", std::round(maxShiftM), "m:", whyNot));
+    }
     return;
+  }
   if (std::fabs(*aheadM) < kMinBendShiftM)
   {
     LOG(LINFO, ("Bend: the position fits the road, ahead by", std::round(*aheadM), "m"));

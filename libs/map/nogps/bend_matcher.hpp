@@ -6,6 +6,7 @@
 
 #include <deque>
 #include <optional>
+#include <string>
 
 namespace nogps
 {
@@ -38,9 +39,12 @@ public:
   /// \param position the calculated position on a road.
   /// \param bearingDeg where the car looks at.
   /// \param maxShiftM the largest error to look for.
+  /// \param whyNot why the car has rotated by kMinBendDeg and the place is not known, for the log. Empty when
+  /// the place is known, the car has rotated less or has driven less than kWindowM.
   /// \returns how far the calculated position is ahead of the car along the road, negative if it is behind.
   /// Nothing if it is not known: the road is straight, or its shape doesn't tell the place clearly.
-  std::optional<double> Match(Roads & roads, ms::LatLon const & position, double bearingDeg, double maxShiftM) const;
+  std::optional<double> Match(Roads & roads, ms::LatLon const & position, double bearingDeg, double maxShiftM,
+                              std::string * whyNot = nullptr) const;
 
   /// \returns how much the car has rotated clockwise while driving the last |distanceM|, nothing if it has driven
   /// less since the way was forgotten. |distanceM| is not longer than kWindowM.

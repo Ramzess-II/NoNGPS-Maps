@@ -3,10 +3,11 @@
 #include "map/nogps/geo.hpp"
 
 #include "base/assert.hpp"
+#include "base/string_utils.hpp"
 
 #include <algorithm>
 #include <cmath>
-#include <limits>
+#include <string>
 #include <vector>
 
 namespace nogps
@@ -18,14 +19,28 @@ double constexpr kBendHistoryStepM = 2;
 double constexpr kMaxRoadBendDeg = 45;
 double constexpr kBendRoadSnapRadiusM = 8;
 
+std::string Meters(double m)
+{
+  return std::to_string(static_cast<int>(std::lround(m))) + " m";
+}
+
+std::string Degrees(double deg)
+{
+  return strings::to_string_dac(deg, 1) + " degrees";
+}
+
 // Returns the directions of the road the car drives along at every step from the position, forward or back,
-// continuous: without jumps at 360 degrees. Nothing if the road ends or turns sharply earlier.
+// continuous: without jumps at 360 degrees. Nothing if the road ends or turns sharply earlier, |whyNot| tells where.
 std::optional<std::vector<double>> WalkRoadBearings(Roads & roads, ms::LatLon const & position, double bearingDeg,
-                                                    int steps, bool forward)
+                                                    int steps, bool forward, std::string & whyNot)
 {
   auto const start = roads.Snap(position, bearingDeg, kBendRoadSnapRadiusM);
   if (!start)
+  {
+    whyNot = "no road at the mark";
     return {};
+  }
+  char const * side = forward ? " ahead" : " behind";
   std::vector<double> result(steps + 1);
   ms::LatLon pos = start->m_point;
   // Where the car looks at, also when walking back.
@@ -36,11 +51,17 @@ std::optional<std::vector<double>> WalkRoadBearings(Roads & roads, ms::LatLon co
     double const moveBearing = forward ? carBearing : carBearing + 180;
     auto const road = roads.Snap(Move(pos, moveBearing, BendMatcher::kStepM), moveBearing, kBendRoadSnapRadiusM);
     if (!road)
+    {
+      whyNot = "the road ends " + Meters(i * BendMatcher::kStepM) + side;
       return {};
+    }
     double const roadBearing = Orient(road->m_bearingDeg, carBearing);
     double const bend = AngleDiff(roadBearing, carBearing);
     if (std::fabs(bend) > kMaxRoadBendDeg)
+    {
+      whyNot = "the road turns by " + Degrees(std::fabs(bend)) + " " + Meters(i * BendMatcher::kStepM) + side;
       return {};
+    }
     pos = road->m_point;
     carBearing = roadBearing;
     result[i] = result[i - 1] + bend;
@@ -84,8 +105,17 @@ void BendMatcher::OnMotion(double yawDeltaDeg, double distanceM)
 }
 
 std::optional<double> BendMatcher::Match(Roads & roads, ms::LatLon const & position, double bearingDeg,
-                                         double maxShiftM) const
+                                         double maxShiftM, std::string * whyNot) const
 {
+  if (whyNot)
+    whyNot->clear();
+  std::string why;
+  auto const no = [&why, whyNot]()
+  {
+    if (whyNot)
+      *whyNot = why;
+    return std::optional<double>();
+  };
   auto const count = static_cast<int>(kWindowM / kStepM) + 1;
   if (m_history.empty() || m_odometerM - m_history.front().m_odometerM < kWindowM)
     return {};
@@ -101,10 +131,12 @@ std::optional<double> BendMatcher::Match(Roads & roads, ms::LatLon const & posit
   // The direction of the road at every step from maxShiftM ahead of the position to the end of the window
   // behind the car, were the position ahead of the car by maxShiftM.
   auto const shiftSteps = static_cast<int>(std::ceil(maxShiftM / kStepM));
-  auto const ahead = WalkRoadBearings(roads, position, bearingDeg, shiftSteps, true /* forward */);
-  auto const behind = WalkRoadBearings(roads, position, bearingDeg, count - 1 + shiftSteps, false /* forward */);
-  if (!ahead || !behind)
-    return {};
+  auto const ahead = WalkRoadBearings(roads, position, bearingDeg, shiftSteps, true /* forward */, why);
+  if (!ahead)
+    return no();
+  auto const behind = WalkRoadBearings(roads, position, bearingDeg, count - 1 + shiftSteps, false /* forward */, why);
+  if (!behind)
+    return no();
   // road[shiftSteps] is the position, larger indexes are behind it.
   std::vector<double> road(ahead->size() + behind->size() - 1);
   for (size_t i = 0; i < ahead->size(); ++i)
@@ -112,26 +144,38 @@ std::optional<double> BendMatcher::Match(Roads & roads, ms::LatLon const & posit
   for (size_t i = 1; i < behind->size(); ++i)
     road[shiftSteps + i] = (*behind)[i];
 
-  double best = std::numeric_limits<double>::max();
-  double bestShift = 0;
   auto const shifts = static_cast<int>(std::round(maxShiftM / kBendShiftStepM));
   std::vector<double> diffs(2 * shifts + 1);
-  for (int s = -shifts; s <= shifts; ++s)
+  int bestIndex = 0;
+  for (int i = 0; i < static_cast<int>(diffs.size()); ++i)
   {
-    diffs[s + shifts] = BendDifference(car, road, shiftSteps + s * kBendShiftStepM / kStepM);
-    if (diffs[s + shifts] < best)
+    diffs[i] = BendDifference(car, road, shiftSteps + (i - shifts) * kBendShiftStepM / kStepM);
+    if (diffs[i] < diffs[bestIndex])
+      bestIndex = i;
+  }
+  double const best = diffs[bestIndex];
+  double const bestShift = (bestIndex - shifts) * kBendShiftStepM;
+  if (best > kMaxDiffDeg)
+  {
+    why = "the bends differ by " + Degrees(best) + " at best, ahead by " + Meters(bestShift);
+    return no();
+  }
+  // The real place may be farther.
+  if (bestIndex == 0 || bestIndex + 1 == static_cast<int>(diffs.size()))
+  {
+    why = "the best fit is at the edge of the search, ahead by " + Meters(bestShift);
+    return no();
+  }
+  auto const aside = static_cast<int>(std::round(kClearAsideM / kBendShiftStepM));
+  for (int i = 0; i < static_cast<int>(diffs.size()); ++i)
+  {
+    if (std::abs(i - bestIndex) >= aside && diffs[i] < kClearRatio * std::max(best, kMinAsideDiffDeg))
     {
-      best = diffs[s + shifts];
-      bestShift = s * kBendShiftStepM;
+      why = "not clear: ahead by " + Meters(bestShift) + " differs by " + Degrees(best) + ", ahead by " +
+            Meters((i - shifts) * kBendShiftStepM) + " by " + Degrees(diffs[i]);
+      return no();
     }
   }
-  if (best > kMaxDiffDeg || std::fabs(bestShift) >= maxShiftM)
-    return {};
-  auto const aside = static_cast<int>(std::round(kClearAsideM / kBendShiftStepM));
-  int const bestIndex = static_cast<int>(std::round(bestShift / kBendShiftStepM)) + shifts;
-  for (int i = 0; i < static_cast<int>(diffs.size()); ++i)
-    if (std::abs(i - bestIndex) >= aside && diffs[i] < kClearRatio * std::max(best, kMinAsideDiffDeg))
-      return {};
   return bestShift;
 }
 

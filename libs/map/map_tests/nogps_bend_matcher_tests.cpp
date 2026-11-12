@@ -11,6 +11,7 @@
 
 #include <cmath>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace nogps_bend_matcher_tests
@@ -95,10 +96,11 @@ BendMatcher Drive(Road const & road, double distanceM, std::optional<double> lan
   return matcher;
 }
 
-std::optional<double> Match(BendMatcher const & matcher, Road & road, double positionM)
+std::optional<double> Match(BendMatcher const & matcher, Road & road, double positionM, std::string * whyNot = nullptr,
+                            double maxShiftM = 60)
 {
   auto const position = road.AtDistance(positionM);
-  return matcher.Match(road, position.m_point, position.m_bearingDeg, 60);
+  return matcher.Match(road, position.m_point, position.m_bearingDeg, maxShiftM, whyNot);
 }
 
 // 300 m east, a bend of 40 degrees to the right 80 m long, 300 m straight again.
@@ -142,7 +144,10 @@ UNIT_TEST(NoGps_BendMatcher_TellsNothingOnStraightRoad)
   Road road(90);
   road.Add(600, 0);
   auto const matcher = Drive(road, 400, {});
-  TEST(!Match(matcher, road, 420), ());
+  std::string whyNot;
+  TEST(!Match(matcher, road, 420, &whyNot), ());
+  // Nothing to tell in the log.
+  TEST(whyNot.empty(), (whyNot));
 }
 
 UNIT_TEST(NoGps_BendMatcher_LaneChangeIsNotBend)
@@ -164,7 +169,9 @@ UNIT_TEST(NoGps_BendMatcher_TellsNothingOnEvenBend)
   Road road(90);
   road.Add(100, 0).Add(500, 300);
   auto const matcher = Drive(road, 400, {});
-  TEST(!Match(matcher, road, 420), ());
+  std::string whyNot;
+  TEST(!Match(matcher, road, 420, &whyNot), ());
+  TEST(whyNot.starts_with("not clear"), (whyNot));
 }
 
 UNIT_TEST(NoGps_BendMatcher_TellsNothingBeforeEnoughIsDriven)
@@ -180,7 +187,39 @@ UNIT_TEST(NoGps_BendMatcher_TellsNothingWhenErrorIsLarger)
   auto road = BentRoad();
   // The position is 100 m ahead: the bend is not within the searched 60 m, the road around looks straight.
   auto const matcher = Drive(road, 440, {});
-  TEST(!Match(matcher, road, 540), ());
+  std::string whyNot;
+  TEST(!Match(matcher, road, 540, &whyNot), ());
+  TEST(whyNot.starts_with("the bends differ"), (whyNot));
+}
+
+UNIT_TEST(NoGps_BendMatcher_TellsNothingAtEdgeOfSearch)
+{
+  auto road = BentRoad();
+  auto const matcher = Drive(road, 440, {});
+  // The position is 39 m ahead, the search is 37.3 m: the best fit is at 37 m, the edge, the real place is
+  // farther.
+  std::string whyNot;
+  TEST(!Match(matcher, road, 479, &whyNot, 37.3), ());
+  TEST(whyNot.starts_with("the best fit is at the edge"), (whyNot));
+  TEST(!Match(matcher, road, 479, &whyNot, 37.6), ());
+  TEST(!Match(matcher, road, 401, &whyNot, 37.3), ());
+  TEST(whyNot.starts_with("the best fit is at the edge"), (whyNot));
+  // A longer search finds it.
+  auto const ahead = Match(matcher, road, 479, nullptr, 45);
+  TEST(ahead, ());
+  TEST_ALMOST_EQUAL_ABS(*ahead, 39.0, 3.0, ());
+}
+
+UNIT_TEST(NoGps_BendMatcher_TellsNothingWhenRoadIsNotFollowed)
+{
+  // The road turns by 90 degrees within 4 m, 200 m behind the position: within the 210 m walked back.
+  Road road(0);
+  road.Add(20, 0).Add(4, 90).Add(50, 0).Add(80, 40).Add(300, 0);
+  auto const matcher = Drive(road, 220, {});
+  std::string whyNot;
+  TEST(!Match(matcher, road, 220, &whyNot), ());
+  TEST(whyNot.starts_with("the road turns by"), (whyNot));
+  TEST(whyNot.ends_with("behind"), (whyNot));
 }
 
 UNIT_TEST(NoGps_BendMatcher_RotationOfLastMeters)
