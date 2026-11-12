@@ -240,7 +240,7 @@ final class NavButton: UIControl {
     static let cornerRadius = CGFloat(14)
     static let height = CGFloat(48)
     /// Of the text from the icon: the badge sticks out of the icon into it.
-    static let iconSpacing = CGFloat(14)
+    static let iconSpacing = CGFloat(18)
     static let pulseKey = "pulse"
     static let pulseDuration: CFTimeInterval = 0.7
     static let pulseOpacity = Float(0.3)
