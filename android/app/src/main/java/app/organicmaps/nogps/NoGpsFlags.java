@@ -44,7 +44,7 @@ public final class NoGpsFlags
   // kFlagKeepDays: older flags are deleted at launch.
   static final int KEEP_DAYS = 7;
   // kFlagVoiceMaxS.
-  static final int VOICE_MAX_S = 60;
+  static final int VOICE_MAX_S = 15;
   // kFlagMailMaxMB: a mail server may refuse bigger attachments, the user is warned.
   static final int MAIL_MAX_MB = 20;
   static final String JSON = ".json";

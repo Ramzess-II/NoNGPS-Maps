@@ -3,7 +3,6 @@ package app.organicmaps.maplayer;
 import android.Manifest;
 import android.animation.ArgbEvaluator;
 import android.animation.ObjectAnimator;
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
@@ -20,7 +19,6 @@ import android.text.style.RelativeSizeSpan;
 import android.util.TypedValue;
 import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
@@ -106,6 +104,8 @@ public class MapButtonsController extends Fragment
   private View mCarButtonsFrame;
   @Nullable
   private View mFlagLogButton;
+  @Nullable
+  private FloatingActionButton mVoiceFlagButton;
   // What car buttons the status asks for, applied after the panel slides out when it asks for none.
   private final Map<View, Boolean> mCarButtonsShown = new LinkedHashMap<>();
   // Of every car button but the first one.
@@ -241,7 +241,9 @@ public class MapButtonsController extends Fragment
     mReverseButton.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.reverseDirection));
     mSwitchMarkButton = mFrame.findViewById(R.id.switch_mark);
     mSwitchMarkButton.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.switchMark));
-    initFlagButton(mFrame.findViewById(R.id.flag_log));
+    mFlagLogButton = mFrame.findViewById(R.id.flag_log);
+    mFlagLogButton.setOnClickListener((v) -> saveFlag(v, true));
+    initVoiceFlagButton(mFrame.findViewById(R.id.flag_voice));
     addCarDividers();
 
     // Some buttons do not exist in navigation mode
@@ -388,9 +390,6 @@ public class MapButtonsController extends Fragment
     // A turn has fitted several roads: the user may see the car is on another one.
     if (mSwitchMarkButton != null)
       mCarButtonsShown.put(mSwitchMarkButton, status.movedByHand && status.otherMarks > 0);
-    if (mFlagLogButton != null)
-      mCarButtonsShown.put(mFlagLogButton, LogsManager.INSTANCE.isFileLoggingEnabled());
-
     // The car is marked by hand only while the position does not come from GPS. The button is blue while the next
     // tap on the map shows where the car is, the tap is taken back when GPS is used again.
     if (mManualPositionButton != null)
@@ -403,6 +402,12 @@ public class MapButtonsController extends Fragment
                                                   : ThemeUtils.getColor(context, R.attr.iconTint);
       ImageViewCompat.setImageTintList(mManualPositionButton, ColorStateList.valueOf(color));
     }
+    final boolean logging = LogsManager.INSTANCE.isFileLoggingEnabled();
+    if (mFlagLogButton != null)
+      mCarButtonsShown.put(mFlagLogButton, logging);
+    if (mVoiceFlagButton != null)
+      mCarButtonsShown.put(mVoiceFlagButton, logging);
+    updateVoiceFlagButton();
 
     final boolean hasCarButtons = mCarButtonsShown.containsValue(true);
     // Nothing to correct: the panel slides out as it is, its buttons are hidden after that.
@@ -422,42 +427,50 @@ public class MapButtonsController extends Fragment
   }
 
   /**
-   * The log of a test drive is analysed afterwards: the tester marks the moments the car was shown wrong at. The flag
-   * is kept with a screenshot to be sent from the settings, holding it records a voice note to it, see NoGpsFlags.
+   * The voice flag saves a flag and records a voice note to it up to VOICE_MAX_S, a second tap stops earlier.
    */
-  @SuppressLint("ClickableViewAccessibility")
-  private void initFlagButton(@NonNull View flagLog)
+  private void initVoiceFlagButton(@NonNull FloatingActionButton voiceFlag)
   {
-    mFlagLogButton = flagLog;
-    if (mCarPanelDragger != null)
-      mCarPanelDragger.exclude(flagLog);
-    flagLog.setOnClickListener((v) -> saveFlag(v, true));
-    flagLog.setOnLongClickListener((v) -> {
+    mVoiceFlagButton = voiceFlag;
+    mFlagRecorder.setOnStop(this::updateVoiceFlagButton);
+    voiceFlag.setOnClickListener((v) -> {
+      if (mFlagRecorder.isRecording())
+      {
+        mFlagRecorder.stop();
+        return;
+      }
       if (ContextCompat.checkSelfPermission(v.getContext(), Manifest.permission.RECORD_AUDIO)
           != PackageManager.PERMISSION_GRANTED)
       {
         saveFlag(v, true);
         mMicPermission.launch(Manifest.permission.RECORD_AUDIO);
-        return true;
+        return;
       }
-      final String name = saveFlag(v, false);
-      if (mFlagRecorder.start(v.getContext(), name))
-        Toast.makeText(v.getContext(), R.string.nogps_flag_recording, Toast.LENGTH_SHORT).show();
-      return true;
-    });
-    // The voice is recorded while the finger is down.
-    flagLog.setOnTouchListener((v, event) -> {
-      final int action = event.getActionMasked();
-      if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL)
-        mFlagRecorder.stop();
-      return false;
+      if (mFlagRecorder.start(v.getContext(), saveFlag(v, false)))
+        Toast.makeText(v.getContext(), R.string.nogps_flag_voice_recording, Toast.LENGTH_SHORT).show();
+      updateVoiceFlagButton();
     });
   }
 
+  // Red while recording.
+  private void updateVoiceFlagButton()
+  {
+    if (mVoiceFlagButton == null)
+      return;
+    final Context context = mVoiceFlagButton.getContext();
+    final int color = mFlagRecorder.isRecording() ? ContextCompat.getColor(context, R.color.source_bad)
+                                                  : ThemeUtils.getColor(context, R.attr.iconTint);
+    ImageViewCompat.setImageTintList(mVoiceFlagButton, ColorStateList.valueOf(color));
+  }
+
+  /**
+   * The log of a test drive is analysed afterwards: the tester marks the moments the car was shown wrong at. The flag
+   * is kept with a screenshot to be sent from the settings, see NoGpsFlags.
+   */
   @NonNull
   private String saveFlag(@NonNull View button, boolean toast)
   {
-    // The files of a flag are named by the second: a second flag in it, or a hold after a tap, is the same moment.
+    // The files of a flag are named by the second: a second flag in it, a voice flag too, is the same moment.
     final String name = NoGpsFlags.name(new Date());
     if (name.equals(sLastFlag))
       return name;
@@ -493,9 +506,10 @@ public class MapButtonsController extends Fragment
       final LinearLayout.LayoutParams params =
           new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(2, context));
       final int margin = dpToPx(10, context);
-      final int gap = dpToPx(3, context);
-      params.setMargins(margin, gap, margin, gap);
       final View button = panel.getChildAt(i);
+      // The buttons of the testers stand apart from those correcting the car.
+      final int gap = dpToPx(button == mFlagLogButton ? 9 : 3, context);
+      params.setMargins(margin, gap, margin, gap);
       panel.addView(divider, i, params);
       mCarDividers.put(button, divider);
     }
@@ -927,7 +941,7 @@ public class MapButtonsController extends Fragment
       mBlinkingAnimator.cancel();
       mBlinkingAnimator = null;
     }
-    // The finger may still be on the flag.
+    // Not recorded in the background.
     mFlagRecorder.stop();
   }
 

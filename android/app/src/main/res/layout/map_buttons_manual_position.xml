@@ -25,7 +25,13 @@
     android:visibility="gone"
     app:srcCompat="@drawable/ic_switch_mark"
     android:contentDescription="@string/nogps_switch_mark" />
-  <!-- For the test drives, shown while logging to a file is on: marks in the log the moment the car was shown wrong at. -->
+  <com.google.android.material.floatingactionbutton.FloatingActionButton
+    android:id="@+id/manual_position"
+    style="@style/MwmWidget.MapButton.InPanel"
+    app:srcCompat="@drawable/ic_manual_position"
+    android:contentDescription="@string/nogps_manual_position" />
+  <!-- For the test drives, shown while logging to a file is on: mark in the log the moment the car was shown wrong at,
+       the second one with a voice note. -->
   <com.google.android.material.floatingactionbutton.FloatingActionButton
     android:id="@+id/flag_log"
     style="@style/MwmWidget.MapButton.InPanel"
@@ -33,8 +39,9 @@
     android:importantForAccessibility="no"
     app:srcCompat="@drawable/ic_flag_log" />
   <com.google.android.material.floatingactionbutton.FloatingActionButton
-    android:id="@+id/manual_position"
+    android:id="@+id/flag_voice"
     style="@style/MwmWidget.MapButton.InPanel"
-    app:srcCompat="@drawable/ic_manual_position"
-    android:contentDescription="@string/nogps_manual_position" />
+    android:visibility="gone"
+    android:importantForAccessibility="no"
+    app:srcCompat="@drawable/ic_flag_voice" />
 </app.organicmaps.maplayer.MapPanelLayout>
