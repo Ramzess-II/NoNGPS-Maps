@@ -27,7 +27,10 @@ public:
   // A car turning after the crossing it was put on may be taking a branch there: the road is not trusted any more.
   static double constexpr kMaxTrustedRotationDeg = 10;
 
-  void SetPosition(ms::LatLon const & position);
+  /// \param distanceSinceFixM the way driven since the last known place, e.g. kept from the trip before.
+  void SetPosition(ms::LatLon const & position, double distanceSinceFixM = 0);
+  /// The car may be this far from the position at least, e.g. at another crossing a turn fits.
+  void WidenAccuracy(double accuracyM);
   /// Moves the position without making it a reference one: the accuracy keeps degrading.
   void MoveTo(ms::LatLon const & position);
   /// \param headingDeg clockwise from the north.
@@ -63,7 +66,7 @@ public:
   double GetDistanceSinceFix() const { return m_distanceSinceFixM; }
   /// How many times the position has been set: what was told about it before is not about the new one.
   int GetFixCount() const { return m_fixCount; }
-  double GetAccuracy() const { return kBaseAccuracyM + kAccuracyPerMeter * m_distanceSinceFixM; }
+  double GetAccuracy() const { return m_fixAccuracyM + kAccuracyPerMeter * m_distanceSinceFixM; }
   /// \returns how far ahead of the car or behind it along the road the position may be.
   double GetAlongErrorM() const { return kBaseAccuracyM + kAlongErrorPerMeter * m_distanceSinceFixM; }
 
@@ -74,6 +77,7 @@ private:
   double m_headingDeg = 0;
   double m_speedMps = 0;
   double m_distanceSinceFixM = 0;
+  double m_fixAccuracyM = kBaseAccuracyM;
   int m_fixCount = 0;
   double m_odometerM = 0;
   // The heading went aside from the road to the side of |m_asideSign| at this odometer.

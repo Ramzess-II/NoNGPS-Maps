@@ -10,6 +10,7 @@
 
 #include "base/logging.hpp"
 #include "base/math.hpp"
+#include "base/string_utils.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -361,6 +362,34 @@ UNIT_TEST(NoGps_Engine_DrivingCarIsSavedSeldom)
   Env after(true /* inertial */, nullptr, SavedBy(env));
   after.Drive(500, 0, 0);
   TestAlmostEqualAbs(Distance(after.Last().m_position, env.Last().m_position), 0, 0.1);
+}
+
+UNIT_TEST(NoGps_Engine_CarIsKnownAfterRestartAsWhenItWasLeft)
+{
+  // The car has driven 500 m since it was marked: it is 25 m off at most, and as much on the next trip.
+  Env before(true /* inertial */);
+  MarkCar(before, 20);
+  before.Drive(50'000, 36, 0);
+  before.Drive(3000, 0, 0);
+  double const leftAccuracyM = before.Last().m_accuracyM;
+  TEST_GREATER(leftAccuracyM, DeadReckoning::kBaseAccuracyM + 8, ());
+  Env after(true /* inertial */, nullptr, SavedBy(before));
+  after.Drive(5000, 36, 0);
+  TEST_EQUAL(after.Last().m_provider, Provider::Inertial, ());
+  TestAlmostEqualAbs(after.Last().m_accuracyM, leftAccuracyM + 1, 1);
+
+  // A car saved before the way was is a known place.
+  TestStorage old;
+  old.Set(Storage::kInertialEnabled, true);
+  auto const saved = before.m_storage.Get<std::string>(Storage::kCarPosition, "");
+  auto const parts = strings::Tokenize(saved, ",");
+  TEST_EQUAL(parts.size(), 7, (saved));
+  old.Set(Storage::kCarPosition, std::string(parts[0]) + "," + std::string(parts[1]) + "," + std::string(parts[2]) +
+                                     "," + std::string(parts[3]) + "," + std::string(parts[6]));
+  Env older(true /* inertial */, nullptr, [&old](TestStorage & storage) { storage = old; });
+  older.Drive(5000, 36, 0);
+  TEST_EQUAL(older.Last().m_provider, Provider::Inertial, ());
+  TestAlmostEqualAbs(older.Last().m_accuracyM, DeadReckoning::kBaseAccuracyM + 1, 1);
 }
 
 /// Counts the TRIP lines of the trip log while it lives, the other messages are logged as before.
@@ -1113,6 +1142,76 @@ UNIT_TEST(NoGps_Engine_TurnDoesNotFitCrossingBeforeKnownPlace)
   env.Drive(3000, 36, -30);
   env.Drive(2000, 36, 0);
   TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 0, (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_Engine_TurnFittingTwoCrossingsKeepsThemInReach)
+{
+  // Streets go north from the street going east at 200 and 240 m, the one at 240 m to a street going east 100 m to the
+  // north. The car turns left 17 m past the crossing at 200 m by the calculation, 23 m before the one at 240 m: both
+  // fit, the nearer is taken.
+  PieceRoads roads(
+      {{-300, 0, 600, 0}, {200, 0, 200, 400}, {240, 0, 240, 100}, {150, 100, 600, 100}, {300, 100, 300, 400}},
+      {{200, 0}, {240, 0}, {200, 100}, {240, 100}, {300, 100}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 212 - 112);
+  env.Drive(10'000, 36, 0);
+  env.Drive(3000, 36, -30);
+  env.Drive(2000, 36, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 200, 2);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+  // The car may be at the other crossing: its place is known no better than that.
+  TEST_GREATER_OR_EQUAL(env.Last().m_accuracyM, 40, ());
+
+  // The car turns right onto the street going east: the other mark comes onto it 40 m ahead of the shown one and is
+  // dropped, the car may be there still.
+  while (North(env.Last().m_position) < 100 - 12)
+    env.Drive(100, 36, 0);
+  env.Drive(3000, 36, 30);
+  env.Drive(3000, 36, 0);
+  TestAlmostEqualAbs(North(env.Last().m_position), 100, 2);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 0, (env.m_engine.GetTripLine()));
+  TEST_GREATER_OR_EQUAL(env.Last().m_accuracyM, 40, ());
+
+  // It turns left at the street at 300 m, the mark is 33 m before it: the crossing is still found.
+  while (East(env.Last().m_position) < 300 - 33 - 5)
+    env.Drive(100, 36, 0);
+  env.Drive(3000, 36, -30);
+  env.Drive(3000, 36, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 300, 2);
+  TEST_GREATER(North(env.Last().m_position), 120, (env.m_engine.GetTripLine()));
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_Engine_SlowTurnWhereWayMissesRoadsIsNotKnownPlace)
+{
+  // The car drives at 15 km/h along the street going east and turns left 12 m before the crossing at 200 m by the
+  // calculation. On the way there it swerves aside by 10 m and back, as through a yard missing on the map: the way
+  // driven misses the street where the turn is moved to, the place is known no better than before.
+  for (bool const swerves : {false, true})
+  {
+    PieceRoads roads({{-400, 0, 600, 0}, {200, 0, 200, 400}}, {{200, 0}});
+    Env env(true /* inertial */, &roads);
+    MarkCar(env, -150);
+    while (East(env.Last().m_position) < 60)
+      env.Drive(100, 15, 0);
+    if (swerves)
+    {
+      env.Drive(4000, 15, -5);
+      env.Drive(6000, 15, 0);
+      env.Drive(4000, 15, 5);
+    }
+    while (East(env.Last().m_position) < 183)
+      env.Drive(100, 15, 0);
+    double const accuracyM = env.Last().m_accuracyM;
+    env.Drive(3000, 15, -30);
+    env.Drive(2000, 15, 0);
+    TestAlmostEqualAbs(East(env.Last().m_position), 200, 2);
+    TestAlmostEqualAbs(std::stod(TripField(env, "turn")), 12, 3);
+    if (swerves)
+      TEST_GREATER(env.Last().m_accuracyM, accuracyM, (env.m_engine.GetTripLine()));
+    else
+      TEST_LESS(env.Last().m_accuracyM, DeadReckoning::kBaseAccuracyM + 1, (env.m_engine.GetTripLine()));
+  }
 }
 
 UNIT_TEST(NoGps_Engine_CarAtRoundaboutIsNotLost)
@@ -1879,6 +1978,37 @@ UNIT_TEST(NoGps_Engine_TurnAtCrossingTellsSpeedError)
   TEST_GREATER(std::stod(TripField(env, "turn")), 5, ());
   TEST_EQUAL(TripField(env, "rough"), "1", (env.m_engine.GetTripLine()));
   TestAlmostEqualAbs(std::stod(TripField(env, "scale")), 1.03, 0.01);
+}
+
+UNIT_TEST(NoGps_Engine_TurnFittingTwoCrossingsTellsNoSpeedError)
+{
+  // As above, another street crosses the street after the bend 30 m before the crossing, parallel to the other one:
+  // the turn fits both, it tells nothing about the speed.
+  double const sin65 = std::sin(math::DegToRad(65.0));
+  double const cos65 = std::cos(math::DegToRad(65.0));
+  double const sin335 = std::sin(math::DegToRad(335.0));
+  double const cos335 = std::cos(math::DegToRad(335.0));
+  std::vector<PieceRoads::Piece> pieces{{-300, 0, 800, 0}, {800, 0, 800 + 900 * sin65, 900 * cos65}};
+  std::vector<std::pair<double, double>> crossings;
+  for (double const alongM : {470.0, 500.0})
+  {
+    double const east = 800 + alongM * sin65;
+    double const north = alongM * cos65;
+    pieces.push_back({east - 300 * sin335, north - 300 * cos335, east + 400 * sin335, north + 400 * cos335});
+    crossings.emplace_back(east, north);
+  }
+  PieceRoads roads(pieces, crossings);
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  double const realMps = 10 * 1.03;
+  env.Drive(std::llround((800 - realMps / 2) / realMps * 1000), 36, 0);
+  env.Drive(1000, 36, -25);
+  env.Drive(std::llround((495 - realMps / 2) / realMps * 1000), 36, 0);
+  env.Drive(3000, 36, -30);
+  env.Drive(3000, 36, 0);
+  TEST_GREATER(std::stod(TripField(env, "turn")), 5, ());
+  TEST_EQUAL(TripField(env, "rough"), "0", (env.m_engine.GetTripLine()));
+  TEST_EQUAL(TripField(env, "scale"), "1.000", ());
 }
 
 UNIT_TEST(NoGps_Engine_GpsOffInSheetMeasuresSpeedOverRoughTable)
