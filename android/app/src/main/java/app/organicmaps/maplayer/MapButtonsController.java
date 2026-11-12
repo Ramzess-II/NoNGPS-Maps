@@ -432,7 +432,12 @@ public class MapButtonsController extends Fragment
   private void initVoiceFlagButton(@NonNull FloatingActionButton voiceFlag)
   {
     mVoiceFlagButton = voiceFlag;
-    mFlagRecorder.setOnStop(this::updateVoiceFlagButton);
+    mFlagRecorder.setOnStop((seconds) -> {
+      updateVoiceFlagButton();
+      final Context context = voiceFlag.getContext();
+      if (seconds > 0)
+        Toast.makeText(context, context.getString(R.string.nogps_flag_voice_saved, seconds), Toast.LENGTH_SHORT).show();
+    });
     voiceFlag.setOnClickListener((v) -> {
       if (mFlagRecorder.isRecording())
       {
@@ -503,12 +508,13 @@ public class MapButtonsController extends Fragment
     {
       final View divider = new View(context);
       divider.setBackgroundColor(ContextCompat.getColor(context, R.color.map_panel_divider));
-      final LinearLayout.LayoutParams params =
-          new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(2, context));
-      final int margin = dpToPx(10, context);
       final View button = panel.getChildAt(i);
-      // The buttons of the testers stand apart from those correcting the car.
-      final int gap = dpToPx(button == mFlagLogButton ? 9 : 3, context);
+      // A thick line above the buttons of the testers: they stand apart from those correcting the car.
+      final boolean testers = button == mFlagLogButton;
+      final LinearLayout.LayoutParams params =
+          new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dpToPx(testers ? 4 : 2, context));
+      final int margin = dpToPx(10, context);
+      final int gap = dpToPx(testers ? 4 : 3, context);
       params.setMargins(margin, gap, margin, gap);
       panel.addView(divider, i, params);
       mCarDividers.put(button, divider);

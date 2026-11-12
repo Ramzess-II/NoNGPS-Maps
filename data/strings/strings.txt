@@ -45737,6 +45737,13 @@ en = Recording a voice note for 15 s. Tap the button again to stop.
 ru = Идёт запись голосовой заметки на 15 с. Нажмите кнопку ещё раз, чтобы остановить.
 uk = Триває запис голосової нотатки на 15 с. Натисніть кнопку ще раз, щоб зупинити.
 
+[nogps_flag_voice_saved]
+comment = Toast when the voice note to a flag is recorded and saved: its length in seconds
+tags = android-app,apple-maps
+en = Voice note saved: %d s
+ru = Голосовая заметка сохранена: %d с
+uk = Голосову нотатку збережено: %d с
+
 [nogps_flag_mic_denied]
 comment = Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice.
 tags = android-app,apple-maps

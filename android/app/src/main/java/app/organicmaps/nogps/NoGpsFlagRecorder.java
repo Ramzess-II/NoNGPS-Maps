@@ -24,12 +24,19 @@ public final class NoGpsFlagRecorder
   private String mName = "";
   private long mStart;
   @Nullable
-  private Runnable mOnStop;
+  private OnStop mOnStop;
 
-  /**
-   * Called when a recording is over, at VOICE_MAX_S too.
-   */
-  public void setOnStop(@Nullable Runnable onStop)
+  public interface OnStop
+  {
+    /**
+     * Called when a recording is over, at VOICE_MAX_S too.
+     *
+     * @param seconds of the note, 0 if it is not kept.
+     */
+    void onStop(int seconds);
+  }
+
+  public void setOnStop(@Nullable OnStop onStop)
   {
     mOnStop = onStop;
   }
@@ -105,9 +112,9 @@ public final class NoGpsFlagRecorder
     }
     recorder.release();
     Logger.i(TAG, "FLAG voice " + name + " " + seconds + " s");
-    if (mOnStop != null)
-      mOnStop.run();
     final boolean kept = recorded && seconds > 0;
+    if (mOnStop != null)
+      mOnStop.onStop(kept ? seconds : 0);
     NoGpsFlags.EXECUTOR.execute(() -> {
       // A second tap right after the first has nothing to hear.
       if (!kept)

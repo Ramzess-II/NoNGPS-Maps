@@ -22,8 +22,9 @@ final class NoGpsControls: NSObject {
     static let speedMargin = CGFloat(10)
     /// Of a flag screenshot: the street names stay readable, the png stays small for the mail.
     static let screenshotScale = CGFloat(2)
-    /// Above the buttons of the testers: they stand apart from those correcting the car.
-    static let testersGap = CGFloat(20)
+    /// A thick line above the buttons of the testers: they stand apart from those correcting the car.
+    static let testersGap = CGFloat(12)
+    static let testersDividerHeight = CGFloat(4)
   }
 
   private weak static var shared: NoGpsControls?
@@ -125,7 +126,12 @@ final class NoGpsControls: NSObject {
     manualButton.addTarget(self, action: #selector(toggleMarkByTap), for: .touchUpInside)
     flagButton.addTarget(self, action: #selector(flagLog), for: .touchUpInside)
     voiceFlagButton.addTarget(self, action: #selector(voiceFlag), for: .touchUpInside)
-    flagRecorder.onFinish = { [weak self] in self?.refresh() }
+    flagRecorder.onFinish = { [weak self] seconds in
+      self?.refresh()
+      if seconds > 0 {
+        Toast.show(withText: String(format: L("nogps_flag_voice_saved"), seconds))
+      }
+    }
     reverseButton.accessibilityLabel = L("nogps_reverse_direction")
     switchMarkButton.accessibilityLabel = L("nogps_switch_mark")
     manualButton.accessibilityLabel = L("nogps_manual_position")
@@ -142,7 +148,9 @@ final class NoGpsControls: NSObject {
       buttons.addArrangedSubview(item)
     }
     for item in items.dropFirst() {
-      dividers[item] = MapControlsPanel.addGroupDivider(above: item, gap: gap(above: item))
+      dividers[item] = item === flagButton
+        ? MapControlsPanel.addGroupDivider(above: item, gap: Constants.testersGap, height: Constants.testersDividerHeight)
+        : MapControlsPanel.addGroupDivider(above: item)
     }
     panel.translatesAutoresizingMaskIntoConstraints = false
     superview.addSubview(panel)

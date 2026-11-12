@@ -138,14 +138,15 @@ final class MapControlsPanel: UIView {
     return path
   }
 
-  /// The gap between buttons that holds a group divider, see addGroupDivider(above:gap:).
+  /// The gap between buttons that holds a group divider, see addGroupDivider(above:gap:height:).
   @objc static let groupGap = CGFloat(8)
   @objc static let groupDividerHeight = CGFloat(2)
   @objc static let groupDividerMargin = CGFloat(10)
 
   /// A line in the middle of the gap above a button, with margins on every side.
   @discardableResult
-  static func addGroupDivider(above view: UIView, gap: CGFloat = groupGap) -> UIView {
+  static func addGroupDivider(above view: UIView, gap: CGFloat = groupGap,
+                              height: CGFloat = groupDividerHeight) -> UIView {
     let divider = UIView()
     divider.setStyleAndApply(.solidDivider)
     divider.isUserInteractionEnabled = false
@@ -155,7 +156,7 @@ final class MapControlsPanel: UIView {
       divider.centerYAnchor.constraint(equalTo: view.topAnchor, constant: -gap / 2),
       divider.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: groupDividerMargin),
       divider.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -groupDividerMargin),
-      divider.heightAnchor.constraint(equalToConstant: groupDividerHeight),
+      divider.heightAnchor.constraint(equalToConstant: height),
     ])
     return divider
   }

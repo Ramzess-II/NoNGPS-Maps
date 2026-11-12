@@ -178,8 +178,8 @@ enum NoGpsFlags {
 
 /// Records the voice note of a flag after a tap of the voice flag button.
 final class NoGpsFlagRecorder: NSObject {
-  /// On the main thread when a recording is over, at kFlagVoiceMaxS too.
-  var onFinish: (() -> Void)?
+  /// On the main thread when a recording is over, at kFlagVoiceMaxS too: the seconds of the note, 0 if not kept.
+  var onFinish: ((Int) -> Void)?
   private var recorder: AVAudioRecorder?
   private var name = ""
   private var start: CFTimeInterval = 0
@@ -271,7 +271,7 @@ extension NoGpsFlagRecorder: AVAudioRecorderDelegate {
     let name = name
     let url = recorder.url
     LOG(.info, "FLAG voice \(name) \(seconds) s")
-    DispatchQueue.main.async { [weak self] in self?.onFinish?() }
+    DispatchQueue.main.async { [weak self] in self?.onFinish?(seconds) }
     NoGpsFlags.queue.async {
       // A second tap right after the first has nothing to hear.
       guard seconds > 0 else {
