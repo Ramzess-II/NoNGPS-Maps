@@ -72,6 +72,9 @@ final class NoGpsControls: NSObject {
     RunLoop.main.add(timer, forMode: .common)
     self.timer = timer
     NotificationCenter.default.addObserver(self, selector: #selector(onEvent), name: NoGps.eventNotification, object: nil)
+    // As on Android: a voice note is not recorded in the background.
+    NotificationCenter.default.addObserver(self, selector: #selector(stopVoiceFlag),
+                                           name: UIApplication.didEnterBackgroundNotification, object: nil)
     NoGpsFlags.deleteExpired()
   }
 
@@ -447,6 +450,11 @@ final class NoGpsControls: NSObject {
       saveFlag(toast: true)
     }
     refresh()
+  }
+
+  @objc
+  private func stopVoiceFlag() {
+    flagRecorder.stop()
   }
 
   @discardableResult
