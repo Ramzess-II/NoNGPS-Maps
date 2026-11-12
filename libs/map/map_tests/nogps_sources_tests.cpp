@@ -227,19 +227,27 @@ UNIT_TEST(NoGps_Esp32Source_TakesRotationOfPauseFromTotals)
   source.OnBleBytes(BoxDataLine(6, 12'520, 75'500, 36, kCalibratedFlags));
   TEST_EQUAL(listener.m_motions, motions, ());
 
+  // The longest pause taken.
+  clock.Advance(20);
+  source.OnBleBytes(BoxDataLine(7, 12'540, 76'000, 36, kCalibratedFlags));
+  clock.Advance(Esp32Source::kMaxBridgedPauseMs);
+  source.OnBleBytes(BoxDataLine(8, 12'540 + Esp32Source::kMaxBridgedPauseMs, 86'000, 36, kCalibratedFlags));
+  TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 56.0, 1e-9, ());
+  int const motions2 = listener.m_motions;
+
   // A longer pause may be a sleep of the box.
   clock.Advance(Esp32Source::kMaxBridgedPauseMs + 20);
-  source.OnBleBytes(BoxDataLine(7, 12'520 + Esp32Source::kMaxBridgedPauseMs + 20, 90'500, 36, kCalibratedFlags));
-  TEST_EQUAL(listener.m_motions, motions, ());
+  source.OnBleBytes(BoxDataLine(9, 17'540 + Esp32Source::kMaxBridgedPauseMs + 20, 90'500, 36, kCalibratedFlags));
+  TEST_EQUAL(listener.m_motions, motions2, ());
 
   // The box has restarted in the pause and counts from the start.
   clock.Advance(1500);
   source.OnBleBytes(BoxDataLine(1, 1000, 1000, 36, kCalibratedFlags));
-  TEST_EQUAL(listener.m_motions, motions, ());
-  TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 45.5, 1e-9, ());
+  TEST_EQUAL(listener.m_motions, motions2, ());
+  TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 56.0, 1e-9, ());
   clock.Advance(20);
   source.OnBleBytes(BoxDataLine(2, 1020, 1500, 36, kCalibratedFlags));
-  TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 46.0, 1e-9, ());
+  TEST_ALMOST_EQUAL_ABS(listener.m_yawDeg, 56.5, 1e-9, ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_ReadsLinesOfBluetoothStream)
