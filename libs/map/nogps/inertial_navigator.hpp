@@ -255,6 +255,10 @@ public:
   // this close, the others going so become other marks. On November 8 a turn found no crossing with the mark 15-20 m
   // ahead, the mark drove 20-25 m beside the street the car had turned to, and the road was lost.
   static double constexpr kJumpSearchM = 40;
+  // The roads going the car's way are searched within the accuracy of the mark too, up to this far: the car may be on
+  // any of them, and its road is lost only when none is left. Those farther than kJumpSearchM are far marks, shown
+  // only as strictly, see kFarMarkMisses: parallel streets part late.
+  static double constexpr kMaxJumpSearchM = 150;
   // After a long way without a known place the mark runs ahead of the car: it comes to a bend first, and its road goes
   // away while the car still drives straight. On November 1 after 62 km the mark was 270 m ahead, left its road at a
   // bend before a roundabout and was lost; the car turned there 270 m later. A mark leaving its road so waits where it
@@ -503,10 +507,11 @@ private:
   void TrackOffRoad(double distanceM, int64_t timestampNs);
   // \returns true if the car leaving its road has turned at a crossing, see kLateTurnFromRoadM.
   bool MatchLateTurn(int64_t timestampNs);
-  // \returns true if the car driving straight has been put on a road going its way, see kJumpSearchM.
+  // \returns true if the car driving straight has been put on a road going its way, see kJumpSearchM. The roads farther
+  // become far marks, see kMaxJumpSearchM.
   bool JumpToRoadGoingCarWay();
-  // The car is on another road a turn has fitted, or it is stopped at the last road point. |after| tells why, for the
-  // log.
+  // The car is shown on another mark, on a road first, or it is stopped at the last road point. |after| tells why, for
+  // the log.
   void LoseRoad(std::string const & after);
   // The car has turned less than kWaitStraightDeg in the last kWaitStraightM.
   bool IsDrivingStraight() const;

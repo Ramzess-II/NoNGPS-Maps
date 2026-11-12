@@ -643,12 +643,12 @@ UNIT_TEST(NoGps_Engine_TurnToRoadFartherOffThanSnappingTakesIsNotMoved)
   TEST_EQUAL(TripField(env, "turn"), "NaN", ());
 }
 
-// The car marked 100 m before drives east at 36 km/h, turns left onto a road going north not joined to the street on
-// the map, ahead of it by the calculation, as on November 8, and drives on straight.
-void TurnPastRoadGoingNorth(Env & env)
+// The car marked at |markedEastM| drives east at 36 km/h, at 165 m turns left onto a road going north not joined to
+// the street on the map, ahead of it by the calculation, as on November 8, and drives on straight.
+void TurnPastRoadGoingNorth(Env & env, double markedEastM = 65)
 {
-  MarkCar(env, 65);
-  env.Drive(10'000, 36, 0);
+  MarkCar(env, markedEastM);
+  env.Drive(std::lround((165 - markedEastM) * 100), 36, 0);
   env.Drive(3000, 36, -30);
   env.Drive(5000, 36, 0);
 }
@@ -675,6 +675,43 @@ UNIT_TEST(NoGps_Engine_RoadsGoingCarWayAreOtherMarks)
   TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
   TestAlmostEqualAbs(East(env.Last().m_position), 165, 1);
   TEST(env.m_engine.GetTripLine().find(" marks=2 ") != std::string::npos, (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_Engine_RoadGoingCarWayWithinAccuracyIsTaken)
+{
+  for (bool longWay : {false, true})
+  {
+    // A road goes north ~50 m to the right of the car, farther than kJumpSearchM. After 2.6 km without a known place
+    // the accuracy is ~70 m: the car is shown there, not lost.
+    PieceRoads roads({{-3000, 0, 400, 0}, {245, 10, 245, 400}}, {});
+    Env env(true /* inertial */, &roads);
+    TurnPastRoadGoingNorth(env, longWay ? -2500 : 65);
+    TEST_EQUAL(env.m_delegate.HasEvent(Event::RoadLost), !longWay, (env.m_engine.GetTripLine()));
+    if (longWay)
+      TestAlmostEqualAbs(East(env.Last().m_position), 245, 1);
+  }
+
+  // The road within kJumpSearchM is taken first, the far one is an other mark.
+  PieceRoads roads({{-3000, 0, 400, 0}, {165, 10, 165, 400}, {245, 10, 245, 400}}, {});
+  Env env(true /* inertial */, &roads);
+  TurnPastRoadGoingNorth(env, -2500);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+  TestAlmostEqualAbs(East(env.Last().m_position), 165, 1);
+  TEST(env.m_engine.GetTripLine().find(" marks=2 ") != std::string::npos, (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_Engine_RoadIsNotLostWhileOtherMarkLives)
+{
+  // The road the car is put on ends at 100 m north. The other one, 67 m to the right, has a gap at 115-160 m: its mark
+  // is off the road when the shown one is lost, and comes back onto it.
+  PieceRoads roads({{-300, 0, 400, 0}, {165, 10, 165, 100}, {232, 10, 232, 115}, {232, 160, 232, 400}}, {});
+  Env env(true /* inertial */, &roads);
+  TurnPastRoadGoingNorth(env);
+  TEST(env.m_engine.GetTripLine().find(" marks=2 ") != std::string::npos, (env.m_engine.GetTripLine()));
+  env.Drive(15'000, 36, 0);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+  TestAlmostEqualAbs(East(env.Last().m_position), 232, 1);
+  TEST_GREATER(North(env.Last().m_position), 160, ());
 }
 
 UNIT_TEST(NoGps_Engine_TurnOfCarManeuveringOffRoadsIsNotMoved)
