@@ -66,6 +66,7 @@ void Esp32Source::Stop()
   m_lastDataMs.reset();
   m_wakingLinkMs.reset();
   m_info.reset();
+  m_carSilent = false;
   m_boxValues.clear();
   m_hellosWithoutInfo = 0;
   m_update.Reset();
@@ -360,6 +361,7 @@ void Esp32Source::OnBleState(BleState state)
   {
     // Another box may be found, or this one with a new firmware.
     m_info.reset();
+    m_carSilent = false;
     m_boxValues.clear();
     m_hellosWithoutInfo = 0;
     m_update.OnLinkLost();
@@ -475,6 +477,11 @@ void Esp32Source::OnLine(std::string_view text)
     else if (*obdState != "INIT")
       m_obdAdapterMissing = false;
   }
+  // A link made again may start with the same state.
+  if (obdState == "NO_CAR" || obdState == "NO_DATA")
+    m_carSilent = true;
+  else if (obdState && obdState != "SEARCHING")
+    m_carSilent = false;
 }
 
 void Esp32Source::OnData(esp32::Data const & data)
@@ -682,6 +689,9 @@ SourceState Esp32Source::GetState() const
     return SourceState::NoCarData;
   if (*m_obdState == "DISABLED")
     return SourceState::ObdDisabled;
+  // The box searches the protocol again every few seconds while the car is silent.
+  if (*m_obdState == "SEARCHING" && m_carSilent)
+    return SourceState::NoCarData;
   if (*m_obdState == "INIT" || *m_obdState == "SEARCHING")
     return SourceState::ObdConnecting;
   if (*m_obdState == "ERROR")

@@ -612,6 +612,46 @@ UNIT_TEST(NoGps_Esp32Source_TellsSleepingBox)
   TEST_EQUAL(source.GetState(), SourceState::Disconnected, ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_SilentCarIsNotSearchedAgain)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, esp32::kFlagImuOk));
+  auto const status = [&](std::string const & obdState)
+  { source.OnBleBytes(BoxLine("NGS,1,0.4.0,ICM20602,500," + obdState + ",,,331,0,OK,0x12,NONE,0,-386,4,,,")); };
+  status("SEARCHING");
+  TEST_EQUAL(source.GetState(), SourceState::ObdConnecting, ());
+  // The adapter answers, the car doesn't: the box searches the protocol again every few seconds.
+  status("NO_CAR");
+  TEST_EQUAL(source.GetState(), SourceState::NoCarData, ());
+  status("SEARCHING");
+  TEST_EQUAL(source.GetState(), SourceState::NoCarData, ());
+  status("NO_DATA");
+  status("SEARCHING");
+  TEST_EQUAL(source.GetState(), SourceState::NoCarData, ());
+
+  // The first search after the link is made again is shown.
+  source.OnBleState(BleState::Searching);
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxDataLine(2, 9000, 0, 0, esp32::kFlagImuOk));
+  status("SEARCHING");
+  TEST_EQUAL(source.GetState(), SourceState::ObdConnecting, ());
+  // The box repeats the state it had before the link was lost.
+  status("NO_CAR");
+  status("SEARCHING");
+  TEST_EQUAL(source.GetState(), SourceState::NoCarData, ());
+
+  // Another state of the adapter ends it.
+  status("ERROR");
+  TEST_EQUAL(source.GetState(), SourceState::ObdError, ());
+  status("SEARCHING");
+  TEST_EQUAL(source.GetState(), SourceState::ObdConnecting, ());
+}
+
 UNIT_TEST(NoGps_Esp32Source_WakingBoxIsConnecting)
 {
   TestClock clock;
