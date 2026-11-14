@@ -1529,6 +1529,7 @@ Status Engine::GetStatus()
     {
       if (box->GetInfo())
         status.m_boxFirmware = box->GetInfo()->m_firmware;
+      status.m_boxValues = box->GetBoxValues();
       if (auto const * firmware = FindBoxFirmware())
         status.m_bundledFirmware = firmware->m_version;
       status.m_firmwareUpdate = box->GetUpdate().GetState();

@@ -2,6 +2,7 @@
 
 #include "base/string_utils.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
 
@@ -46,6 +47,67 @@ int ParseOptionalInt(Fields const & fields, size_t index)
   if (index >= fields.size() || !strings::to_int(fields[index], value))
     return -1;
   return value;
+}
+
+// A field of a line shown on the page of the box values. A field the box sends in smaller units is divided.
+struct BoxField
+{
+  size_t m_index;
+  BoxValue m_value;
+  int m_divisor = 1;
+  int m_decimals = 0;
+};
+
+// The firmware is in both lines, it is shown from the status.
+BoxField constexpr kStatusFields[] = {
+    {2, BoxValue::Firmware},
+    {3, BoxValue::ImuName},
+    {4, BoxValue::ImuRate},
+    {5, BoxValue::ObdState},
+    {6, BoxValue::ObdProtocol},
+    {7, BoxValue::BiasAge},
+    {8, BoxValue::ImuTemperature, 10, 1},
+    {9, BoxValue::ImuErrors},
+    {10, BoxValue::ImuState},
+    {11, BoxValue::ImuChipId},
+    {12, BoxValue::ObdError},
+    {13, BoxValue::ObdBaud},
+    {14, BoxValue::Bias, 1000, 3},
+    {15, BoxValue::LastEvent},
+    {16, BoxValue::Engine},
+    {17, BoxValue::Rpm},
+    {18, BoxValue::BoxVoltage, 1000, 2},
+    {19, BoxValue::ElmVoltage, 1000, 2},
+    {20, BoxValue::EcuVoltage, 1000, 2},
+};
+
+BoxField constexpr kInfoFields[] = {
+    {3, BoxValue::BuildDate}, {4, BoxValue::Chip},       {5, BoxValue::Board},
+    {6, BoxValue::Id},        {7, BoxValue::FlashSize},  {8, BoxValue::MaxImageSize, 1024, 0},
+    {9, BoxValue::Slot},      {10, BoxValue::SlotState}, {11, BoxValue::Abilities},
+    {12, BoxValue::PowerOns},
+};
+
+// An empty or a wrong field is shown as it is.
+std::string ToBoxValue(std::string const & field, int divisor, int decimals)
+{
+  int64_t value;
+  if (divisor == 1 || !strings::to_int(field, value))
+    return field;
+  char text[32];
+  std::snprintf(text, sizeof(text), "%.*f", decimals, static_cast<double>(value) / divisor);
+  return text;
+}
+
+template <size_t N>
+BoxValues ToBoxValues(Fields const & fields, BoxField const (&boxFields)[N])
+{
+  BoxValues values;
+  for (auto const & field : boxFields)
+    if (field.m_index < fields.size())
+      values.emplace_back(field.m_value, ToBoxValue(fields[field.m_index], field.m_divisor, field.m_decimals));
+  std::sort(values.begin(), values.end());
+  return values;
 }
 }  // namespace
 
@@ -231,6 +293,23 @@ std::optional<CarInfo> ParseCarInfo(Fields const & fields)
   car.m_voltageMismatch = car.m_boxMillivolts >= 0 && reference >= 0 &&
                           std::abs(car.m_boxMillivolts - reference) * 100 > reference * kMaxVoltageDiffPercent;
   return car;
+}
+
+BoxValues ParseBoxValues(Fields const & fields)
+{
+  int version;
+  if (fields.size() < 2 || !strings::to_int(fields[1], version) || version != kVersion)
+    return {};
+  if (fields[0] == "NGS")
+    return ToBoxValues(fields, kStatusFields);
+  if (fields[0] == "NGI")
+    return ToBoxValues(fields, kInfoFields);
+  return {};
+}
+
+std::string DebugPrint(BoxValue value)
+{
+  return std::to_string(static_cast<int>(value));
 }
 }  // namespace esp32
 }  // namespace nogps

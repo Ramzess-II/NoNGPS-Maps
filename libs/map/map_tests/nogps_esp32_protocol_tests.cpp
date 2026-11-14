@@ -2,6 +2,7 @@
 
 #include "map/nogps/esp32_protocol.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <string>
 
@@ -183,6 +184,70 @@ UNIT_TEST(NoGps_Esp32_ParsesCarInfo)
 
   // A status of an older firmware and other lines tell nothing about the car.
   TEST(!ParseCarInfo(*Parse("$NGA,18,OK*461D")), ());
+}
+
+UNIT_TEST(NoGps_Esp32_BoxValues)
+{
+  using V = BoxValue;
+  // The status of spec 2, 16 fields: in the units they are shown in.
+  TEST_EQUAL(ParseBoxValues(*Parse("$NGS,1,2.0.0,ICM42688,400,OK,ISO 15765-4 CAN 11 500,12,412,0,OK,0x47,NONE,38400,"
+                                   "-15,0*6D29")),
+             BoxValues({{V::ImuName, "ICM42688"},
+                        {V::ImuState, "OK"},
+                        {V::ImuChipId, "0x47"},
+                        {V::ImuRate, "400"},
+                        {V::ImuTemperature, "41.2"},
+                        {V::ImuErrors, "0"},
+                        {V::BiasAge, "12"},
+                        {V::Bias, "-0.015"},
+                        {V::ObdState, "OK"},
+                        {V::ObdProtocol, "ISO 15765-4 CAN 11 500"},
+                        {V::ObdError, "NONE"},
+                        {V::ObdBaud, "38400"},
+                        {V::Firmware, "2.0.0"},
+                        {V::LastEvent, "0"}}),
+             ());
+
+  // 21 fields: the car.
+  auto values =
+      ParseBoxValues(*Parse("$NGS,1,0.2.0,ICM20602,500,OK,ISO 15765-4 (CAN 11/500),12,331,0,OK,0x12,NONE,"
+                            "38400,-386,9,RUN,812,14100,13800,14080*AF2F"));
+  TEST_EQUAL(values.size(), 19, ());
+  TEST_EQUAL(BoxValues(values.begin(), values.begin() + 5),
+             BoxValues({{V::Engine, "RUN"},
+                        {V::Rpm, "812"},
+                        {V::BoxVoltage, "14.10"},
+                        {V::ElmVoltage, "13.80"},
+                        {V::EcuVoltage, "14.08"}}),
+             ());
+
+  // Empty fields stay empty, the absent ones are not shown.
+  values = ParseBoxValues(*Parse("$NGS,1,0.2.0,ICM20602,500,NO_ADAPTER,,,331,0,OK,0x12,NO_ADAPTER,0,-386,4,,,*D654"));
+  TEST_EQUAL(values.size(), 17, ());
+  TEST_EQUAL(BoxValues(values.begin(), values.begin() + 3),
+             BoxValues({{V::Engine, ""}, {V::Rpm, ""}, {V::BoxVoltage, ""}}), ());
+  auto const value = [&values](V id)
+  { return std::find_if(values.begin(), values.end(), [id](auto const & v) { return v.first == id; })->second; };
+  TEST_EQUAL(value(V::ObdProtocol), "", ());
+  TEST_EQUAL(value(V::BiasAge), "", ());
+  TEST_EQUAL(value(V::ImuTemperature), "33.1", ());
+
+  // The info, 13 fields: the firmware is shown from the status.
+  TEST_EQUAL(ParseBoxValues(*Parse("$NGI,1,0.3.5,2026-10-10T10:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,"
+                                   "WIFI BLE OTA,0*92DA")),
+             BoxValues({{V::BuildDate, "2026-10-10T10:35"},
+                        {V::Chip, "esp32s3"},
+                        {V::Board, "s3zero"},
+                        {V::Id, "C47D"},
+                        {V::FlashSize, "4096"},
+                        {V::MaxImageSize, "1984"},
+                        {V::Slot, "ota_0"},
+                        {V::SlotState, "VALID"},
+                        {V::Abilities, "WIFI BLE OTA"},
+                        {V::PowerOns, "0"}}),
+             ());
+
+  TEST(ParseBoxValues(*Parse("$NGA,18,OK*461D")).empty(), ());
 }
 
 UNIT_TEST(NoGps_Esp32_ParsesLinesOfFirmware)
