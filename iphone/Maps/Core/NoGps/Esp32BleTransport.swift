@@ -44,6 +44,9 @@ final class Esp32BleTransport: NSObject {
     static let maxSilentConnections = 6
     // Silent connections further apart are not counted together: the box has slept in between.
     static let silentConnectionsGap: TimeInterval = 180
+    // A shorter connection was lost by the radio, it is not counted: the box asks for the encryption 1.5 s after the
+    // connection, a refused one lasts longer.
+    static let minSilentLink: TimeInterval = 3
     // A new box waits this long for a paired one to be found: both may be near.
     static let newBoxDelay: TimeInterval = 3
     // A paired box answers HELLO at once over an encrypted connection. One that stays silent is connected again: the
@@ -71,8 +74,8 @@ final class Esp32BleTransport: NSObject {
   private var acceptsNewPhone = false
   /// The box had sent data before, when it was found.
   private var isKnown = false
-  /// The connection is made.
-  private var isLinked = false
+  /// When the connection was made.
+  private var linkedTime: TimeInterval?
   /// Silent connections to a known box in a row, the last one ended at lastSilentTime.
   private var silentConnections = 0
   private var lastSilentTime: TimeInterval = 0
@@ -285,7 +288,7 @@ final class Esp32BleTransport: NSObject {
     isHeard = false
     acceptsNewPhone = false
     isKnown = false
-    isLinked = false
+    linkedTime = nil
     isWriting = false
     outgoing.removeAll()
     firmware.removeAll()
@@ -293,7 +296,8 @@ final class Esp32BleTransport: NSObject {
 
   private func restartLater() {
     let worked = isReady
-    let silent = isLinked && !isHeard
+    let linkedFor = linkedTime.map { ProcessInfo.processInfo.systemUptime - $0 } ?? 0
+    let silent = linkedFor >= Constants.minSilentLink && !isHeard
     let known = isKnown
     closeConnection()
     guard isOpen else { return }
@@ -408,7 +412,7 @@ extension Esp32BleTransport: CBCentralManagerDelegate {
   func centralManager(_: CBCentralManager, didConnect peripheral: CBPeripheral) {
     guard peripheral === self.peripheral else { return }
     LOG(.info, "Connected")
-    isLinked = true
+    linkedTime = ProcessInfo.processInfo.systemUptime
     // The system asks for the code of a new box now, or of a known one the phone has forgotten.
     if !isKnown || acceptsNewPhone {
       scheduleWatchdog(after: Constants.pairingWatchdog)

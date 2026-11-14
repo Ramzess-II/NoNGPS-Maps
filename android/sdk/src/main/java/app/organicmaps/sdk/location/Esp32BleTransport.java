@@ -92,6 +92,9 @@ class Esp32BleTransport
   private static final int MAX_SILENT_CONNECTIONS = 6;
   // Silent connections further apart are not counted together: the box has slept in between.
   private static final long SILENT_CONNECTIONS_GAP_MS = 3 * 60 * 1000;
+  // A shorter connection was lost by the radio, it is not counted: the box asks for the encryption 1.5 s after the
+  // connection, a refused one lasts longer.
+  private static final long MIN_SILENT_LINK_MS = 3000;
   // The box doesn't answer the commands, a few of them wait for the previous one to leave at most.
   private static final int MAX_OUTGOING = 16;
   // The box takes the pieces of a firmware 4096 bytes ahead of what it has written: 17 pieces.
@@ -133,13 +136,16 @@ class Esp32BleTransport
   };
   // The box was paired when it was found.
   private boolean mBonded;
-  // The connection is made.
-  private boolean mLinked;
+  // When the connection was made, -1 before.
+  private long mLinkedMs = -1;
   // The box has sent data over the connection.
   private boolean mHeard;
   // Silent connections to a paired box in a row, the last one ended at mLastSilentMs.
   private int mSilentConnections;
   private long mLastSilentMs;
+  // The box that has forgotten the phone: the search starts again when its pairing is removed.
+  @Nullable
+  private BluetoothDevice mBondLostBox;
 
   private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
     @Override
@@ -379,7 +385,7 @@ class Esp32BleTransport
     setState(STATE_CONNECTING);
     mMtu = 23;
     mBonded = bonded;
-    mLinked = false;
+    mLinkedMs = -1;
     mHeard = false;
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
       mGatt = device.connectGatt(mContext, false, mGattCallback, BluetoothDevice.TRANSPORT_LE);
@@ -458,13 +464,16 @@ class Esp32BleTransport
   private void restartLater()
   {
     final boolean worked = mReady;
-    final boolean silent = mBonded && mLinked && !mHeard;
+    final boolean silent =
+        mBonded && !mHeard && mLinkedMs >= 0 && SystemClock.elapsedRealtime() - mLinkedMs >= MIN_SILENT_LINK_MS;
+    final BluetoothDevice box = mGatt != null ? mGatt.getDevice() : null;
     closeGatt();
     if (!mOpen)
       return;
     if (silent && countSilentConnection())
     {
       Logger.w(TAG, "The box has forgotten the phone: " + mSilentConnections + " silent connections");
+      mBondLostBox = box;
       stopUntilRetry(STATE_BOND_LOST);
       return;
     }
@@ -515,8 +524,9 @@ class Esp32BleTransport
   private void onBondStateChanged(@Nullable BluetoothDevice device, int bondState, int previousBondState)
   {
     final BluetoothGatt gatt = mGatt;
-    // The user has removed a pairing in the settings, as the hint about a lost bond asks.
-    if (gatt == null && mState == STATE_BOND_LOST && bondState == BluetoothDevice.BOND_NONE)
+    // The user has removed the pairing of the box in the settings, as the hint about a lost bond asks.
+    if (gatt == null && mState == STATE_BOND_LOST && bondState == BluetoothDevice.BOND_NONE && device != null
+        && device.equals(mBondLostBox))
     {
       retry();
       return;
@@ -531,7 +541,8 @@ class Esp32BleTransport
     }
     else if (bondState == BluetoothDevice.BOND_BONDED)
     {
-      startWatchdog(CONNECT_WATCHDOG_MS);
+      if (!mHeard)
+        startWatchdog(CONNECT_WATCHDOG_MS);
       if (mReady)
         setState(STATE_CONNECTED);
       else if (mRx != null)
@@ -631,7 +642,7 @@ class Esp32BleTransport
       restartLater();
       return;
     }
-    mLinked = true;
+    mLinkedMs = SystemClock.elapsedRealtime();
     // The connection interval is not asked for: the box asks for the one it needs by itself.
     try
     {
