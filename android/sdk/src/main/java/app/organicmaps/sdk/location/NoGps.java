@@ -107,6 +107,28 @@ public final class NoGps
     PAIRING_FAILED,
     // A paired box sends nothing: it has forgotten the phone. Not tried again until the user asks.
     BOND_LOST,
+    // A box is found that doesn't know the phone and has phones: a new one is added on one of them.
+    PAIRING_BY_PHONE,
+    // The same, and the box has no room: a phone is removed on one of them first.
+    PAIRING_FULL,
+  }
+
+  /**
+   * What the box does about a new phone, see nativeStartAddPhone().
+   */
+  public enum AddPhone
+  {
+    NONE,
+    // The code is sent to the box.
+    OPENING,
+    // The box takes a new phone with the code for addPhoneSecondsLeft.
+    OPEN,
+    ADDED,
+    // No phone has paired in time.
+    EXPIRED,
+    // The box has 4 phones.
+    FULL,
+    FAILED,
   }
 
   public enum CalibrationState
@@ -199,6 +221,8 @@ public final class NoGps
     // The sensor box has been powered on: it is new in the car, or it was taken out and may be put in another
     // way. The user should calibrate it on a level place.
     BOX_CALIBRATION_ADVISED,
+    // The box has removed this phone on the request of the user: the car of the box is forgotten.
+    THIS_PHONE_REMOVED,
   }
 
   // nogps::Provider.
@@ -353,6 +377,26 @@ public final class NoGps
     // The sensor box has been powered on since the user calibrated it.
     @Keep
     public boolean boxCalibrationAdvised;
+    // The box is connected and knows its phones: they are listed, removed and added.
+    @Keep
+    public boolean boxHasPhones;
+    // The box has listed its phones in boxPhones.
+    @Keep
+    public boolean boxPhonesListed;
+    @Keep
+    @NonNull
+    public Phone[] boxPhones = new Phone[0];
+    // Another phone has connected to the box first and changes it: this one gets the data only.
+    @Keep
+    public boolean boxReadOnly;
+    @Keep
+    int addPhone;
+    // The code to enter on the new phone while addPhone is OPEN.
+    @Keep
+    @NonNull
+    public String addPhoneCode = "";
+    @Keep
+    public int addPhoneSecondsLeft;
     // All the sensor box has told in this connection, in the order of BoxValue: the values with their units, empty if
     // the box sends the field empty. See getBoxValueId().
     @Keep
@@ -410,6 +454,38 @@ public final class NoGps
     public BoxValue getBoxValueId(int i)
     {
       return BoxValue.values()[boxValueIds[i]];
+    }
+
+    @NonNull
+    public AddPhone getAddPhone()
+    {
+      return AddPhone.values()[addPhone];
+    }
+  }
+
+  /**
+   * A phone paired with the sensor box.
+   */
+  @Keep
+  public static final class Phone
+  {
+    // The Bluetooth address the box knows the phone by: nativeForgetBoxPhone() takes it.
+    @NonNull
+    public final String address;
+    // The model the phone has told the box, empty if none.
+    @NonNull
+    public final String name;
+    // When it connected the last time, 0 if unknown.
+    public final long seenUnixS;
+    public final boolean thisPhone;
+
+    @Keep
+    Phone(@NonNull String address, @NonNull String name, long seenUnixS, boolean thisPhone)
+    {
+      this.address = address;
+      this.name = name;
+      this.seenUnixS = seenUnixS;
+      this.thisPhone = thisPhone;
     }
   }
 
@@ -484,6 +560,13 @@ public final class NoGps
 
     @Keep
     void esp32BleClose();
+
+    /**
+     * The model of the phone: the sensor box shows it in the list of its phones.
+     */
+    @Keep
+    @NonNull
+    String getPhoneName();
 
     /**
      * The position to show and to navigate by.
@@ -692,6 +775,26 @@ public final class NoGps
    * See LocationHelper.forgetCar(): the box is not connected again either.
    */
   static native void nativeForgetCar(@NonNull String id);
+
+  /**
+   * Asks the box of the car for its phones again, see Status.boxPhones.
+   */
+  public static native void nativeListBoxPhones();
+
+  /**
+   * Removes the phone from the box. Removing this phone ends with Event.THIS_PHONE_REMOVED.
+   */
+  public static native void nativeForgetBoxPhone(@NonNull String address);
+
+  /**
+   * Lets the box take a new phone with a new code for two minutes, see Status.addPhone.
+   */
+  public static native void nativeStartAddPhone();
+
+  /**
+   * The code is not shown any more.
+   */
+  public static native void nativeEndAddPhone();
 
   private static native void nativeGetStatus(@NonNull Status status);
 }

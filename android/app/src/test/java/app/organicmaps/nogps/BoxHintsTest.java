@@ -17,6 +17,10 @@ public class BoxHintsTest
   {
     assertEquals(R.string.nogps_box_bt_pairing_closed,
                  BoxBottomSheet.linkHintText(status(SourceState.CONNECTING, BleState.PAIRING_CLOSED)));
+    assertEquals(R.string.nogps_box_bt_pairing_by_phone,
+                 BoxBottomSheet.linkHintText(status(SourceState.CONNECTING, BleState.PAIRING_BY_PHONE)));
+    assertEquals(R.string.nogps_box_bt_pairing_full,
+                 BoxBottomSheet.linkHintText(status(SourceState.CONNECTING, BleState.PAIRING_FULL)));
     assertEquals(R.string.nogps_box_bt_pairing,
                  BoxBottomSheet.linkHintText(status(SourceState.CONNECTING, BleState.PAIRING)));
     assertEquals(R.string.nogps_box_bt_pairing_failed,

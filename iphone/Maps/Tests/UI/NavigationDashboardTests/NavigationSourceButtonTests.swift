@@ -106,6 +106,8 @@ extension NavigationSourceButtonTests {
       (.disabled, nil, nil),
       (.noPermission, nil, L("nogps_box_allow")),
       (.pairingClosed, L("nogps_box_bt_pairing_closed"), nil),
+      (.pairingByPhone, L("nogps_box_bt_pairing_by_phone"), nil),
+      (.pairingFull, L("nogps_box_bt_pairing_full"), nil),
       (.pairing, L("nogps_box_bt_pairing"), nil),
       (.pairingFailed, L("nogps_box_bt_pairing_failed"), L("nogps_box_try_again")),
       (.bondLost, L("nogps_box_bt_bond_lost"), L("nogps_box_try_again")),

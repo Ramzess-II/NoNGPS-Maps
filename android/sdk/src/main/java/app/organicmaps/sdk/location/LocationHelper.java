@@ -8,6 +8,7 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import androidx.annotation.NonNull;
@@ -156,6 +157,13 @@ public class LocationHelper implements BaseLocationProvider.Listener
     public void esp32BleClose()
     {
       mEsp32Ble.close();
+    }
+
+    @NonNull
+    @Override
+    public String getPhoneName()
+    {
+      return Build.MODEL;
     }
 
     @Override

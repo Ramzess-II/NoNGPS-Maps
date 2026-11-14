@@ -3,9 +3,12 @@
 #include "map/nogps/clock.hpp"
 #include "map/nogps/delegate.hpp"
 
+#include "base/assert.hpp"
 #include "base/logging.hpp"
 
 #include <algorithm>
+#include <cstdio>
+#include <random>
 
 namespace nogps
 {
@@ -43,6 +46,7 @@ void Esp32Source::Start()
     return;
   LOG(LINFO, ("ESP32 started"));
   m_running = true;
+  m_phoneName = esp32::PhoneName(m_delegate.GetPhoneName());
   m_delegate.Esp32BleOpen();
   SendHello();
 }
@@ -66,12 +70,14 @@ void Esp32Source::Stop()
   m_hellosWithoutInfo = 0;
   m_update.Reset();
   ForgetCarRequests();
+  ForgetPhoneRequests();
+  m_addPhone.reset();
   ForgetJournal();
 }
 
 void Esp32Source::SendHello()
 {
-  Send("HELLO", ++m_helloId);
+  Send(esp32::Hello(m_phoneName, m_clock.UnixNowMs()), ++m_helloId);
   // The box tells about itself when a connection starts, the application may have missed it: the box was
   // talking to it before it was restarted.
   if (!m_info && IsConnected() && m_hellosWithoutInfo < kInfoRequestHellos * kMaxInfoRequests &&
@@ -102,7 +108,8 @@ void Esp32Source::SendFirmwarePiece(std::string const & piece)
 
 bool Esp32Source::CanUpdate() const
 {
-  return m_running && m_bleState == BleState::Connected && m_info && m_info->m_canUpdate && !m_update.IsActive();
+  return m_running && m_bleState == BleState::Connected && m_info && m_info->m_canUpdate && !m_update.IsActive() &&
+         !IsReadOnly();
 }
 
 void Esp32Source::StartUpdate(Firmware const & firmware)
@@ -183,14 +190,130 @@ void Esp32Source::ForgetCarRequests()
   m_carWrites.clear();
 }
 
+bool Esp32Source::HasPhones() const
+{
+  return m_running && m_bleState == BleState::Connected && m_info && m_info->m_hasPhones;
+}
+
+void Esp32Source::ListPhones()
+{
+  if (!HasPhones() || m_listId != 0)
+    return;
+  m_listId = m_nextCommandId++;
+  Send("BT_LIST", m_listId);
+}
+
+void Esp32Source::ForgetPhone(std::string const & address)
+{
+  if (!HasPhones() || IsReadOnly() || m_forget || !m_phones)
+    return;
+  auto const & phones = m_phones->m_phones;
+  auto const it = std::find_if(phones.begin(), phones.end(), [&](auto const & p) { return p.m_address == address; });
+  if (it == phones.end())
+    return;
+  LOG(LINFO, ("Forget the phone", address, "this =", it->m_thisPhone));
+  m_forget = ForgetRequest{m_nextCommandId++, address, it->m_thisPhone};
+  Send("BT_FORGET," + address, m_forget->m_id);
+}
+
+void Esp32Source::StartAddPhone()
+{
+  if (!HasPhones() || IsReadOnly())
+    return;
+  // The code is what keeps a stranger out: it comes from the random source of the system.
+  std::random_device random;
+  std::uniform_int_distribution<int> digits(0, 999'999);
+  char code[8];
+  std::snprintf(code, sizeof(code), "%06d", digits(random));
+  m_addPhone = AddPhoneRequest{code, m_nextCommandId++};
+  m_addPhone->m_lastEvent = m_loggedEvents.empty() ? -1 : *m_loggedEvents.rbegin();
+  LOG(LINFO, ("Add a phone"));
+  Send("BT_PAIR," + m_addPhone->m_code, m_addPhone->m_id);
+}
+
+Esp32Source::AddPhone Esp32Source::GetAddPhoneState() const
+{
+  if (!m_addPhone)
+    return AddPhone::None;
+  if (m_addPhone->m_state == AddPhone::Open && GetAddPhoneMsLeft() == 0)
+    return AddPhone::Expired;
+  return m_addPhone->m_state;
+}
+
+int64_t Esp32Source::GetAddPhoneMsLeft() const
+{
+  if (!m_addPhone || m_addPhone->m_state != AddPhone::Open)
+    return 0;
+  return std::max<int64_t>(0, m_addPhone->m_openMs + esp32::kPairingWindowMs - m_clock.NowMs());
+}
+
+bool Esp32Source::OnPhonesReply(esp32::Reply const & reply)
+{
+  if (reply.m_id == m_listId)
+  {
+    m_listId = 0;
+    m_phones = esp32::ParsePhones(reply);
+    if (m_phones)
+      m_readOnly = !m_phones->m_changesBox;
+    else
+      LOG(LWARNING, ("The box has not listed its phones, error =", reply.m_error));
+    return true;
+  }
+  if (m_forget && reply.m_id == m_forget->m_id)
+  {
+    auto const forget = std::move(*m_forget);
+    m_forget.reset();
+    if (!reply.m_ok)
+      LOG(LWARNING, ("The box has not forgotten", forget.m_address, "error =", reply.m_error));
+    else if (forget.m_thisPhone)
+      m_listener.OnThisPhoneRemoved();
+    ListPhones();
+    return true;
+  }
+  if (m_addPhone && reply.m_id == m_addPhone->m_id)
+  {
+    if (reply.m_ok)
+    {
+      m_addPhone->m_state = AddPhone::Open;
+      m_addPhone->m_openMs = m_clock.NowMs();
+    }
+    else
+    {
+      LOG(LWARNING, ("The box has not taken the code, error =", reply.m_error));
+      m_addPhone->m_state = reply.m_error == "FULL" ? AddPhone::Full : AddPhone::Failed;
+    }
+    return true;
+  }
+  return false;
+}
+
+void Esp32Source::ForgetPhoneRequests()
+{
+  // The box drops the link of the phone it forgets, often before its reply comes.
+  bool const removed = m_forget && m_forget->m_thisPhone;
+  m_forget.reset();
+  m_listId = 0;
+  m_phones.reset();
+  m_readOnly = false;
+  // The box keeps the window open without the link, but this phone can't hear the new one pair.
+  if (m_addPhone && m_addPhone->m_state == AddPhone::Opening)
+    m_addPhone->m_state = AddPhone::Failed;
+  if (removed)
+    m_listener.OnThisPhoneRemoved();
+}
+
 void Esp32Source::OnInfo(esp32::Info const & info)
 {
   if (!m_info || m_info->m_firmware != info.m_firmware)
     LOG(LINFO,
         ("Box", info.m_id, "firmware =", info.m_firmware, info.m_chip, info.m_board, "updates =", info.m_canUpdate));
+  bool const phonesNew = info.m_hasPhones && (!m_info || !m_info->m_hasPhones);
   m_info = info;
   m_update.OnBoxFirmware(info.m_firmware);
   m_listener.OnBoxHeard(info.m_id, info.m_firmware);
+  // The list tells if this phone changes the box.
+  if (phonesNew)
+    ListPhones();
 }
 
 void Esp32Source::StoreBoxValues(esp32::Fields const & fields)
@@ -232,6 +355,7 @@ void Esp32Source::OnBleState(BleState state)
     m_hellosWithoutInfo = 0;
     m_update.OnLinkLost();
     ForgetCarRequests();
+    ForgetPhoneRequests();
     ForgetJournal();
     if (m_calibrationId != 0)
     {
@@ -445,6 +569,22 @@ void Esp32Source::OnEvent(esp32::Event const & event)
   // "fw 0.3.3 reset POWERON": the box was plugged in. It restarts by itself for other reasons.
   else if (event.m_code == "BOOT")
     m_poweredOn = event.m_text.ends_with("reset POWERON");
+  else if (event.m_code == "BT_PAIR_OPEN" && m_addPhone && m_addPhone->m_openEvent < 0 &&
+           event.m_number > m_addPhone->m_lastEvent)
+  {
+    m_addPhone->m_openEvent = event.m_number;
+  }
+  else if (event.m_code == "BT_PAIRED" && m_addPhone && m_addPhone->m_state == AddPhone::Open &&
+           m_addPhone->m_openEvent >= 0 && event.m_number > m_addPhone->m_openEvent)
+  {
+    m_addPhone->m_state = AddPhone::Added;
+    ListPhones();
+  }
+  // The phone that came first has left: this one may change the box now.
+  else if (event.m_code == "PHONE_LOST" && m_readOnly)
+  {
+    ListPhones();
+  }
   if (event.m_number > lastNumber + 1)
     RequestLostEvents(lastNumber + 1);
 }
@@ -480,7 +620,12 @@ void Esp32Source::OnLastEventNumber(int64_t lastNumber)
 
 void Esp32Source::OnReply(esp32::Reply const & reply)
 {
-  if (m_update.OnReply(reply) || OnCarReply(reply) || reply.m_id != m_calibrationId)
+  if (!reply.m_ok && reply.m_error == "BUSY" && !m_readOnly)
+  {
+    LOG(LINFO, ("Another phone changes the box"));
+    m_readOnly = true;
+  }
+  if (m_update.OnReply(reply) || OnCarReply(reply) || OnPhonesReply(reply) || reply.m_id != m_calibrationId)
     return;
   if (reply.m_progress)
   {
@@ -587,8 +732,8 @@ CalibrationState Esp32Source::GetCalibrationState()
 
 void Esp32Source::Calibrate()
 {
-  // The box can't hear the command, and no answer would come to end the calibration.
-  if (m_bleState != BleState::Connected)
+  // The box can't hear the command, and no answer would come to end the calibration. Another phone calibrates.
+  if (m_bleState != BleState::Connected || IsReadOnly())
     return;
   // The box zeroes the gyroscope and finds its vertical in the car at once.
   m_calibrationId = m_nextCommandId++;
@@ -603,5 +748,19 @@ void Esp32Source::Calibrate()
 std::string Esp32Source::GetDeviceName() const
 {
   return m_imuName.empty() ? "NonGPS-OBD" : "NonGPS-OBD · " + m_imuName;
+}
+std::string DebugPrint(Esp32Source::AddPhone state)
+{
+  switch (state)
+  {
+  case Esp32Source::AddPhone::None: return "None";
+  case Esp32Source::AddPhone::Opening: return "Opening";
+  case Esp32Source::AddPhone::Open: return "Open";
+  case Esp32Source::AddPhone::Added: return "Added";
+  case Esp32Source::AddPhone::Expired: return "Expired";
+  case Esp32Source::AddPhone::Full: return "Full";
+  case Esp32Source::AddPhone::Failed: return "Failed";
+  }
+  UNREACHABLE();
 }
 }  // namespace nogps

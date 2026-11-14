@@ -908,6 +908,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     {
       case FIRMWARE_UPDATE_AVAILABLE, FIRMWARE_UPDATE_DONE, FIRMWARE_UPDATE_FAILED -> onFirmwareEvent(event);
       case BOX_CALIBRATION_ADVISED -> onBoxCalibrationAdvised();
+      case THIS_PHONE_REMOVED -> onThisPhoneRemoved();
       // The buttons show the mode, they are updated every second.
       case MANUAL_MODE_CHANGED -> 0;
       case GPS_BACK -> R.string.nogps_gps_back_auto;
@@ -964,6 +965,17 @@ public class MwmActivity extends BaseMwmFragmentActivity
    * The sensor box has been plugged in: asks the user to calibrate it, the car should stand on a level place.
    * @return 0, there is no message of a fixed text.
    */
+  /**
+   * The box doesn't take this phone any more: its car is forgotten as by the user.
+   */
+  private int onThisPhoneRemoved()
+  {
+    final String carId = NoGps.getStatus().carId;
+    if (!carId.isEmpty())
+      MwmApplication.from(this).getLocationHelper().forgetCar(carId);
+    return R.string.nogps_phone_removed;
+  }
+
   private int onBoxCalibrationAdvised()
   {
     if (isFinishing() || getSupportFragmentManager().isStateSaved())

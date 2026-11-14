@@ -68,6 +68,8 @@ enum class Event
   // The sensor box has been powered on: it is new in the car, or it was taken out and may be put in another way.
   // The user should calibrate it on a level place. Told once for a power-on, while the car stands.
   BoxCalibrationAdvised,
+  // The box has removed this phone on the request of the user: the platform forgets the car of the box.
+  ThisPhoneRemoved,
 };
 
 /// What the platform does about the ESP32 sensor box over Bluetooth LE, told to Engine::OnEsp32BleState().
@@ -93,6 +95,12 @@ enum class BleState
   // A paired box connects but sends nothing again and again: it has forgotten the phone. The user should remove the
   // box in the Bluetooth settings and power it again. Not tried again until the user asks.
   BondLost,
+  // A box is found, but it doesn't know the phone and has phones: a new one is added on one of them, see
+  // Engine::StartAddPhone().
+  PairingByPhone,
+  // A box is found, but it doesn't know the phone and has esp32::kMaxPhones phones: one of them is removed on a
+  // paired phone first.
+  PairingFull,
 };
 
 std::string DebugPrint(Provider provider);
@@ -126,6 +134,8 @@ public:
   /// order of the calls, the lines of Esp32BleSend() go between the pieces. Section 18 of the same document.
   virtual void Esp32BleSendFirmware(std::string const & /* piece */) {}
   virtual void Esp32BleClose() {}
+  /// The model of the phone, e.g. "Pixel 8": the sensor box shows it in the list of its phones.
+  virtual std::string GetPhoneName() { return {}; }
 
   /// The position to show and to navigate by.
   virtual void OnPosition(Fix const & fix) = 0;

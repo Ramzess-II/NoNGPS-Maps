@@ -600,6 +600,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       case OFF, DISABLED -> R.string.nogps_box_bt_disabled;
       case SEARCHING -> R.string.nogps_box_bt_searching;
       case PAIRING_CLOSED -> R.string.nogps_box_bt_pairing_closed;
+      case PAIRING_BY_PHONE -> R.string.nogps_box_bt_pairing_by_phone;
+      case PAIRING_FULL -> R.string.nogps_box_bt_pairing_full;
       case CONNECTING -> R.string.nogps_box_bt_connecting;
       case PAIRING -> R.string.nogps_box_bt_pairing;
       case CONNECTED -> R.string.nogps_box_bt_waiting;

@@ -2621,6 +2621,34 @@ UNIT_TEST(NoGps_BoxCarValues_ValueChangedByPhoneIsWritten)
   TEST_EQUAL(box.m_values["car_name"], "Opel", ());
 }
 
+UNIT_TEST(NoGps_Engine_ThisPhoneRemovedFromBox)
+{
+  Env env(true /* inertial */);
+  auto const last = [&env] { return *esp32::Parse(env.m_delegate.m_esp32BleSent.back()); };
+  env.m_engine.OnEsp32BleBytes(
+      BoxLine("NGI,1,0.4.2,2026-11-14T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES MULTI,3"));
+  env.Drive(1000, 0, 0);
+  // The values of the car are read one by one first, the list is asked at once.
+  auto const sent = env.m_delegate.m_esp32BleSent;
+  auto const list = std::find_if(sent.begin(), sent.end(),
+                                 [](auto const & line) { return line.find(",BT_LIST*") != std::string::npos; });
+  TEST(list != sent.end(), ());
+  auto const listId = (*esp32::Parse(*list))[1];
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + listId + ",OK,BC:D0:74:A9:71:92|Pixel 8|1794685760|1,1"));
+  auto status = env.m_engine.GetStatus();
+  TEST(status.m_boxHasPhones && status.m_boxPhones && !status.m_boxReadOnly, ());
+  TEST_EQUAL(status.m_boxPhones->size(), 1, ());
+
+  env.m_engine.ForgetBoxPhone("BC:D0:74:A9:71:92");
+  auto const forget = last();
+  TEST_EQUAL(forget[2], "BT_FORGET", ());
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + forget[1] + ",OK"));
+  // The platform forgets the car after the box has been read.
+  TEST(!env.m_delegate.HasEvent(Event::ThisPhoneRemoved), ());
+  env.m_clock.Advance(1);
+  TEST(env.m_delegate.HasEvent(Event::ThisPhoneRemoved), ());
+}
+
 UNIT_TEST(NoGps_BoxCarValues_PlaceIsWrittenSeldom)
 {
   CarBox box;

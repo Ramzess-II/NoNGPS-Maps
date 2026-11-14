@@ -23,6 +23,8 @@ final class Esp32BleTransport: NSObject {
     // The box tells in its advertisement if it accepts a new phone now: company 0xFFFF, format version, flags.
     static let manufacturerId: [UInt8] = [0xFF, 0xFF]
     static let pairingOpenFlag: UInt8 = 1
+    static let fullFlag: UInt8 = 1 << 1
+    static let hasPhonesFlag: UInt8 = 1 << 2
     static let knownBoxesKey = "NoGpsKnownBoxes"
     // The boxes of the cars the user has forgotten: still paired, they are not connected until the user adds the car.
     static let forgottenBoxesKey = "NoGpsForgottenBoxes"
@@ -251,10 +253,13 @@ final class Esp32BleTransport: NSObject {
   }
 
   private func isPairingOpen(_ advertisementData: [String: Any]) -> Bool {
-    guard let data = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data else { return false }
+    advertisedFlags(advertisementData) & Constants.pairingOpenFlag != 0
+  }
+
+  private func advertisedFlags(_ advertisementData: [String: Any]) -> UInt8 {
+    guard let data = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data else { return 0 }
     let bytes = [UInt8](data)
-    return bytes.count >= 4 && Array(bytes[0 ..< 2]) == Constants.manufacturerId
-      && bytes[3] & Constants.pairingOpenFlag != 0
+    return bytes.count >= 4 && Array(bytes[0 ..< 2]) == Constants.manufacturerId ? bytes[3] : 0
   }
 
   /// The four characters of the name of the box, NoGPS-XXXX, nil if the box doesn't tell it.
@@ -311,9 +316,15 @@ final class Esp32BleTransport: NSObject {
   }
 
   /// The box tells in every advertisement that it doesn't accept a new phone: the state is kept while they come.
-  private func onPairingClosed() {
+  private func onPairingClosed(_ flags: UInt8) {
     pairingClosedTime = ProcessInfo.processInfo.systemUptime
-    setState(.pairingClosed)
+    if flags & Constants.fullFlag != 0 {
+      setState(.pairingFull)
+    } else if flags & Constants.hasPhonesFlag != 0 {
+      setState(.pairingByPhone)
+    } else {
+      setState(.pairingClosed)
+    }
     guard pairingClosedCheck == nil else { return }
     schedulePairingClosedCheck(after: Constants.pairingClosedTimeout)
   }
@@ -322,7 +333,7 @@ final class Esp32BleTransport: NSObject {
     let item = DispatchWorkItem { [weak self] in
       guard let self else { return }
       pairingClosedCheck = nil
-      guard state == .pairingClosed else { return }
+      guard [.pairingClosed, .pairingByPhone, .pairingFull].contains(state) else { return }
       let left = pairingClosedTime + Constants.pairingClosedTimeout - ProcessInfo.processInfo.systemUptime
       if left > 0 {
         schedulePairingClosedCheck(after: left)
@@ -464,9 +475,10 @@ extension Esp32BleTransport: CBCentralManagerDelegate {
     guard id.map({ isBoxWanted($0, known: known) }) ?? !(newBoxOnly && known) else { return }
     let pairingOpen = isPairingOpen(advertisementData)
     if !known {
-      // The box accepts a new phone for two minutes after it is powered, the system asks for its code.
+      // A box accepts a new phone for two minutes after it is powered, if it has no phones, or after a paired phone has
+      // let it. The system asks for the code.
       guard pairingOpen else {
-        onPairingClosed()
+        onPairingClosed(advertisedFlags(advertisementData))
         return
       }
       // A box paired already is taken first if it is near: the new one may be somebody else's. Without it the new box

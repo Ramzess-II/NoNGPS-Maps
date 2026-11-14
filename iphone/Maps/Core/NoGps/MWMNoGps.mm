@@ -41,6 +41,7 @@ public:
   void Esp32BleSend(std::string const & line) override { [m_esp32 send:ToData(line)]; }
   void Esp32BleSendFirmware(std::string const & piece) override { [m_esp32 sendFirmware:ToData(piece)]; }
   void Esp32BleClose() override { [m_esp32 close]; }
+  std::string GetPhoneName() override { return AppInfo.sharedInfo.deviceModel.UTF8String; }
 
   bool IsBoxPairing() const { return m_esp32.isPairing; }
   void ForgetBoxes() { [m_esp32 forgetKnownBoxes]; }
@@ -148,6 +149,30 @@ std::optional<double> NonNegative(double value)
 
 @end
 
+@interface MWMNoGpsPhone ()
+
+- (instancetype)initWithPhone:(nogps::esp32::Phone const &)phone;
+
+@end
+
+@implementation MWMNoGpsPhone
+
+- (instancetype)initWithPhone:(nogps::esp32::Phone const &)phone
+{
+  self = [super init];
+  if (self)
+  {
+    _address = @(phone.m_address.c_str());
+    _name = @(phone.m_name.c_str());
+    if (phone.m_seenUnixS > 0)
+      _lastSeen = [NSDate dateWithTimeIntervalSince1970:phone.m_seenUnixS];
+    _thisPhone = phone.m_thisPhone;
+  }
+  return self;
+}
+
+@end
+
 @interface MWMNoGpsStatus ()
 
 - (instancetype)initWithStatus:(nogps::Status const &)status;
@@ -219,6 +244,18 @@ std::optional<double> NonNegative(double value)
       [boxValues addObject:[[MWMNoGpsBoxValueItem alloc] initWithKind:static_cast<MWMNoGpsBoxValue>(kind)
                                                                 value:@(value.c_str())]];
     _boxValues = boxValues;
+    _boxHasPhones = status.m_boxHasPhones;
+    if (status.m_boxPhones)
+    {
+      NSMutableArray<MWMNoGpsPhone *> * phones = [NSMutableArray arrayWithCapacity:status.m_boxPhones->size()];
+      for (auto const & phone : *status.m_boxPhones)
+        [phones addObject:[[MWMNoGpsPhone alloc] initWithPhone:phone]];
+      _boxPhones = phones;
+    }
+    _boxReadOnly = status.m_boxReadOnly;
+    _addPhone = static_cast<MWMNoGpsAddPhone>(status.m_addPhone);
+    _addPhoneCode = @(status.m_addPhoneCode.c_str());
+    _addPhoneSecondsLeft = status.m_addPhoneSecondsLeft;
   }
   return self;
 }
@@ -351,6 +388,26 @@ static CLLocation * lastPlatformLocation;
   // A box found later is new, even this one after a reset.
   if (Engine().GetCars().empty())
     Delegate().ForgetBoxes();
+}
+
++ (void)listBoxPhones
+{
+  Engine().ListBoxPhones();
+}
+
++ (void)forgetBoxPhone:(NSString *)address
+{
+  Engine().ForgetBoxPhone(address.UTF8String);
+}
+
++ (void)startAddPhone
+{
+  Engine().StartAddPhone();
+}
+
++ (void)endAddPhone
+{
+  Engine().EndAddPhone();
 }
 
 + (void)searchNewBox:(BOOL)newOnly

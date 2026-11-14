@@ -58,6 +58,24 @@ public:
   // The box answers a command at once, a lost reply ends the reading of the values of the car.
   static int64_t constexpr kCarReplyTimeoutMs = 5000;
 
+  /// What the box does about a new phone, see StartAddPhone().
+  enum class AddPhone
+  {
+    None,
+    // The code is sent to the box.
+    Opening,
+    // The box takes a new phone with the code until GetAddPhoneMsLeft() ends.
+    Open,
+    // A new phone has paired.
+    Added,
+    // No phone has paired in time: the code works no more.
+    Expired,
+    // The box has kMaxPhones phones: one is to be removed first.
+    Full,
+    // The box has refused, or the link was lost before it answered.
+    Failed,
+  };
+
   /// A start of the box by a power-on: it was plugged into the car.
   struct PowerOn
   {
@@ -121,6 +139,24 @@ public:
   /// Writes a value of the car, an empty one erases it. The listener gets the reply.
   void WriteCarValue(std::string const & key, std::string const & value);
 
+  /// \returns true if the box is connected and knows its phones. It tells them at the connection.
+  bool HasPhones() const;
+  /// Asks the box for its phones again.
+  void ListPhones();
+  /// The phones of the box from its last list in this connection.
+  std::optional<esp32::Phones> const & GetPhones() const { return m_phones; }
+  /// Removes a phone from the box, this one too: the listener is told then.
+  void ForgetPhone(std::string const & address);
+  /// \returns true if another phone has connected to the box first: the box takes from it the commands that change
+  /// the box, this phone gets the data only.
+  bool IsReadOnly() const { return HasPhones() && m_readOnly; }
+  /// Makes a new code and lets the box take a new phone with it for esp32::kPairingWindowMs. The code is not kept.
+  void StartAddPhone();
+  void EndAddPhone() { m_addPhone.reset(); }
+  AddPhone GetAddPhoneState() const;
+  std::string GetAddPhoneCode() const { return m_addPhone ? m_addPhone->m_code : ""; }
+  int64_t GetAddPhoneMsLeft() const;
+
 private:
   // Esp32Update::Link overrides:
   int SendUpdateCommand(std::string const & command) override;
@@ -138,6 +174,8 @@ private:
   void ReadNextCarValue();
   bool OnCarReply(esp32::Reply const & reply);
   void ForgetCarRequests();
+  bool OnPhonesReply(esp32::Reply const & reply);
+  void ForgetPhoneRequests();
   void RequestLostEvents(int64_t fromNumber);
   void ForgetJournal();
   bool IsConnected() const;
@@ -209,5 +247,34 @@ private:
   std::optional<CarRead> m_carRead;
   // The writes of the values of the car waiting for their replies, by the command: the key and the value.
   std::map<int, std::pair<std::string, std::string>> m_carWrites;
+
+  // The name of the phone for the box, see esp32::PhoneName().
+  std::string m_phoneName;
+  std::optional<esp32::Phones> m_phones;
+  // The list of the phones asked, 0 if none.
+  int m_listId = 0;
+  struct ForgetRequest
+  {
+    int m_id = 0;
+    std::string m_address;
+    bool m_thisPhone = false;
+  };
+  std::optional<ForgetRequest> m_forget;
+  // The box has answered BUSY: another phone came first. Until the list tells otherwise or the link is lost.
+  bool m_readOnly = false;
+  struct AddPhoneRequest
+  {
+    std::string m_code;
+    int m_id = 0;
+    AddPhone m_state = AddPhone::Opening;
+    int64_t m_openMs = 0;
+    // The last event of the box before the code was sent: the box tells it has opened the window by a newer one,
+    // and a phone paired after that is the new one.
+    int64_t m_lastEvent = -1;
+    int64_t m_openEvent = -1;
+  };
+  std::optional<AddPhoneRequest> m_addPhone;
 };
+
+std::string DebugPrint(Esp32Source::AddPhone state);
 }  // namespace nogps
