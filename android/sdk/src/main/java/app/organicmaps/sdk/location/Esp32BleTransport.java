@@ -413,7 +413,8 @@ class Esp32BleTransport
     final BluetoothDevice device = result.getDevice();
     final boolean bonded = device.getBondState() == BluetoothDevice.BOND_BONDED;
     final String id = getBoxId(result);
-    if (id != null && !isBoxWanted(id, bonded))
+    // A paired box without its name may be of a car: not while a new one is added.
+    if (id != null ? !isBoxWanted(id, bonded) : mNewBoxOnly && bonded)
       return;
     if (!bonded)
     {

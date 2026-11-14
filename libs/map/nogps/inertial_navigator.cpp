@@ -390,6 +390,9 @@ void InertialNavigator::ClearSpeedCalibration()
 
 void InertialNavigator::SaveCalibration()
 {
+  // Saved when it was stopped.
+  if (!m_started)
+    return;
   SaveSpeedTable();
   if (m_esp32)
     SaveBoxAccel();

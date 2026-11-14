@@ -460,9 +460,8 @@ extension Esp32BleTransport: CBCentralManagerDelegate {
     guard isOpen, self.peripheral == nil else { return }
     let known = knownBoxes.contains(peripheral.identifier.uuidString)
     let id = Self.boxId(peripheral, advertisementData)
-    if let id, !isBoxWanted(id, known: known) {
-      return
-    }
+    // A known box without its name may be of a car: not while a new one is added.
+    guard id.map({ isBoxWanted($0, known: known) }) ?? !(newBoxOnly && known) else { return }
     let pairingOpen = isPairingOpen(advertisementData)
     if !known {
       // The box accepts a new phone for two minutes after it is powered, the system asks for its code.
