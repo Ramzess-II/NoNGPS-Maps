@@ -402,7 +402,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
       }
       refresh()
     case .forget:
-      NoGps.setInertialNavigationEnabled(false)
+      NoGps.forgetBox()
       dismiss(animated: true)
     default:
       break

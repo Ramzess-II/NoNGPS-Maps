@@ -29,10 +29,21 @@ final class Esp32BleTransport: NSObject {
     // refused to pair with it. One that was is tried again soon: after a parking, the first connections may stay
     // silent (October 31, three times in a row).
     static let maxRetryDelay: TimeInterval = 60
-    // iOS tries to connect forever, and the box may have gone since it was found. Not in the background: the timer
-    // doesn't run while the app is suspended and fires late, when the app is woken up, maybe by this connection made.
-    // On October 31 it cancelled the connection 3 s after the box was back from a parking.
-    static let connectTimeout: TimeInterval = 15
+    // From the connection to the first data: iOS tries to connect forever, the box may have gone since it was found, and
+    // a step may wait for a callback that never comes. Not in the background: the timer doesn't run while the app is
+    // suspended and fires late, when the app is woken up, maybe by this connection made. On October 31 it cancelled
+    // the connection 3 s after the box was back from a parking.
+    static let connectWatchdog: TimeInterval = 20
+    // A new box: the user enters the code meanwhile.
+    static let pairingWatchdog: TimeInterval = 60
+    // The box tells in every advertisement that it doesn't accept a new phone. Without them it has gone, e.g. it was a
+    // box of the neighbours.
+    static let pairingClosedTimeout: TimeInterval = 10
+    // A known box that connects but sends nothing again and again has forgotten the phone (BLE-15). After a parking up
+    // to 3 connections in a row stay silent, the next one works (#154).
+    static let maxSilentConnections = 6
+    // Silent connections further apart are not counted together: the box has slept in between.
+    static let silentConnectionsGap: TimeInterval = 180
     // A new box waits this long for a paired one to be found: both may be near.
     static let newBoxDelay: TimeInterval = 3
     // A paired box answers HELLO at once over an encrypted connection. One that stays silent is connected again: the
@@ -58,6 +69,16 @@ final class Esp32BleTransport: NSObject {
   private var isHeard = false
   /// The box accepted a new phone when it was found: the user may be entering its code.
   private var acceptsNewPhone = false
+  /// The box had sent data before, when it was found.
+  private var isKnown = false
+  /// The connection is made.
+  private var isLinked = false
+  /// Silent connections to a known box in a row, the last one ended at lastSilentTime.
+  private var silentConnections = 0
+  private var lastSilentTime: TimeInterval = 0
+  /// The last advertisement of a box that doesn't accept a new phone, and the check that it still comes.
+  private var pairingClosedTime: TimeInterval = 0
+  private var pairingClosedCheck: DispatchWorkItem?
   // A line written with a response waits for it.
   private var isWriting = false
   private var outgoing: [Data] = []
@@ -84,6 +105,7 @@ final class Esp32BleTransport: NSObject {
     close()
     isOpen = true
     retryDelay = Constants.retryDelay
+    silentConnections = 0
     if central == nil {
       // The user is asked for Bluetooth the first time, centralManagerDidUpdateState() follows.
       central = CBCentralManager(delegate: self, queue: nil)
@@ -115,11 +137,28 @@ final class Esp32BleTransport: NSObject {
     writeNext()
   }
 
+  /// The user asks to look for the box again after a failed pairing or a lost bond, which stop the search.
+  @objc
+  func retry() {
+    guard isOpen, peripheral == nil else { return }
+    retryDelay = Constants.retryDelay
+    silentConnections = 0
+    start()
+  }
+
+  /// The user has forgotten the box: a box found later is new, even this one after a reset.
+  @objc
+  func forgetKnownBoxes() {
+    knownBoxes.removeAll()
+    UserDefaults.standard.removeObject(forKey: Constants.knownBoxesKey)
+  }
+
   @objc
   func close() {
     guard isOpen else { return }
     isOpen = false
     timer?.cancel()
+    cancelPairingClosedCheck()
     endBackgroundWait()
     if central?.state == .poweredOn {
       central?.stopScan()
@@ -178,26 +217,57 @@ final class Esp32BleTransport: NSObject {
       && bytes[3] & Constants.pairingOpenFlag != 0
   }
 
-  private func connect(_ peripheral: CBPeripheral, acceptsNewPhone: Bool) {
+  private func connect(_ peripheral: CBPeripheral, known: Bool, acceptsNewPhone: Bool) {
     central?.stopScan()
+    cancelPairingClosedCheck()
     self.peripheral = peripheral
+    isKnown = known
     self.acceptsNewPhone = acceptsNewPhone
     peripheral.delegate = self
     setState(.connecting)
     central?.connect(peripheral)
-    scheduleConnectTimeout()
+    scheduleWatchdog(after: Constants.connectWatchdog)
   }
 
-  private func scheduleConnectTimeout() {
-    schedule(after: Constants.connectTimeout) { [weak self] in
+  private func scheduleWatchdog(after delay: TimeInterval) {
+    schedule(after: delay) { [weak self] in
       guard let self else { return }
       if UIApplication.shared.applicationState == .background {
-        scheduleConnectTimeout()
+        scheduleWatchdog(after: delay)
         return
       }
-      LOG(.warning, "Connection timeout")
+      LOG(.warning, "No data from the box in time")
       restartLater()
     }
+  }
+
+  /// The box tells in every advertisement that it doesn't accept a new phone: the state is kept while they come.
+  private func onPairingClosed() {
+    pairingClosedTime = ProcessInfo.processInfo.systemUptime
+    setState(.pairingClosed)
+    guard pairingClosedCheck == nil else { return }
+    schedulePairingClosedCheck(after: Constants.pairingClosedTimeout)
+  }
+
+  private func schedulePairingClosedCheck(after delay: TimeInterval) {
+    let item = DispatchWorkItem { [weak self] in
+      guard let self else { return }
+      pairingClosedCheck = nil
+      guard state == .pairingClosed else { return }
+      let left = pairingClosedTime + Constants.pairingClosedTimeout - ProcessInfo.processInfo.systemUptime
+      if left > 0 {
+        schedulePairingClosedCheck(after: left)
+      } else {
+        setState(.searching)
+      }
+    }
+    pairingClosedCheck = item
+    DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: item)
+  }
+
+  private func cancelPairingClosedCheck() {
+    pairingClosedCheck?.cancel()
+    pairingClosedCheck = nil
   }
 
   private func closeConnection() {
@@ -214,6 +284,8 @@ final class Esp32BleTransport: NSObject {
     isReady = false
     isHeard = false
     acceptsNewPhone = false
+    isKnown = false
+    isLinked = false
     isWriting = false
     outgoing.removeAll()
     firmware.removeAll()
@@ -221,8 +293,23 @@ final class Esp32BleTransport: NSObject {
 
   private func restartLater() {
     let worked = isReady
+    let silent = isLinked && !isHeard
+    let known = isKnown
     closeConnection()
     guard isOpen else { return }
+    if silent, !known {
+      // The system has asked for the code: it was cancelled or wrong, or the box stopped accepting a new phone. Asked
+      // again at once, the code window would come back every few seconds, and the box refuses for 60 s after 3 failures
+      // (BLE-12).
+      LOG(.warning, "Pairing failed")
+      stopUntilRetry(.pairingFailed)
+      return
+    }
+    if silent, countSilentConnection() {
+      LOG(.warning, "The box has forgotten the phone: \(silentConnections) silent connections")
+      stopUntilRetry(.bondLost)
+      return
+    }
     setState(.searching)
     retryDelay = worked ? Constants.retryDelay : min(Constants.maxRetryDelay, retryDelay * 2)
     schedule(after: retryDelay) { [weak self] in self?.start() }
@@ -233,6 +320,22 @@ final class Esp32BleTransport: NSObject {
         self?.start()
       }
     }
+  }
+
+  /// The box is not searched until the user asks for it: see retry().
+  private func stopUntilRetry(_ newState: NoGpsBleState) {
+    // Its end would search again.
+    endBackgroundWait()
+    setState(newState)
+  }
+
+  /// Returns true if there are too many silent connections in a row.
+  private func countSilentConnection() -> Bool {
+    let now = ProcessInfo.processInfo.systemUptime
+    let inRow = silentConnections > 0 && now - lastSilentTime <= Constants.silentConnectionsGap
+    silentConnections = inRow ? silentConnections + 1 : 1
+    lastSilentTime = now
+    return silentConnections >= Constants.maxSilentConnections
   }
 
   private func endBackgroundWait() {
@@ -289,7 +392,7 @@ extension Esp32BleTransport: CBCentralManagerDelegate {
     if !known {
       // The box accepts a new phone for two minutes after it is powered, the system asks for its code.
       guard pairingOpen else {
-        setState(.pairingClosed)
+        onPairingClosed()
         return
       }
       // A box paired already is taken first if it is near: the new one may be somebody else's. Without it the new box
@@ -299,14 +402,17 @@ extension Esp32BleTransport: CBCentralManagerDelegate {
       }
     }
     LOG(.info, "Found \(peripheral.identifier) rssi \(RSSI) known \(known) pairing open \(pairingOpen)")
-    connect(peripheral, acceptsNewPhone: pairingOpen)
+    connect(peripheral, known: known, acceptsNewPhone: pairingOpen)
   }
 
   func centralManager(_: CBCentralManager, didConnect peripheral: CBPeripheral) {
     guard peripheral === self.peripheral else { return }
     LOG(.info, "Connected")
-    // No timeout from now on: the user may be entering the code. The box drops a connection that is not encrypted.
-    timer?.cancel()
+    isLinked = true
+    // The system asks for the code of a new box now, or of a known one the phone has forgotten.
+    if !isKnown || acceptsNewPhone {
+      scheduleWatchdog(after: Constants.pairingWatchdog)
+    }
     // Nothing else is asked for: the box asks for the connection it needs by itself.
     peripheral.discoverServices([Constants.service])
   }
@@ -376,6 +482,7 @@ extension Esp32BleTransport: CBPeripheralDelegate {
     guard peripheral === self.peripheral, error == nil, let data = characteristic.value, !data.isEmpty else { return }
     if !isHeard {
       isHeard = true
+      silentConnections = 0
       timer?.cancel()
       remember(peripheral)
       // The lines waiting for a write with a response go without it now.

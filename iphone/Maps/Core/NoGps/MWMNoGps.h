@@ -263,6 +263,10 @@ NS_SWIFT_NAME(NoGps)
 + (void)switchMark;
 + (void)setGpsDisabled:(BOOL)disabled;
 + (void)setInertialNavigationEnabled:(BOOL)enabled;
+/// Turns the navigation by the box off, and a box found later is taken for a new one.
++ (void)forgetBox;
+/// Looks for the box again after MWMNoGpsBleStatePairingFailed or MWMNoGpsBleStateBondLost.
++ (void)retryBox;
 + (void)calibrate;
 + (void)clearSpeedCalibration;
 /// Sends the firmware of MWMNoGpsStatus.bundledFirmware to the box.

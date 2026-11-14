@@ -43,6 +43,8 @@ public:
   void Esp32BleClose() override { [m_esp32 close]; }
 
   bool IsBoxPairing() const { return m_esp32.isPairing; }
+  void ForgetBoxes() { [m_esp32 forgetKnownBoxes]; }
+  void RetryBox() { [m_esp32 retry]; }
 
   void OnPosition(nogps::Fix const & fix) override
   {
@@ -284,6 +286,17 @@ static CLLocation * lastPlatformLocation;
 + (void)setInertialNavigationEnabled:(BOOL)enabled
 {
   Engine().SetInertialNavigationEnabled(enabled);
+}
+
++ (void)forgetBox
+{
+  Engine().SetInertialNavigationEnabled(false);
+  Delegate().ForgetBoxes();
+}
+
++ (void)retryBox
+{
+  Delegate().RetryBox();
 }
 
 + (void)calibrate

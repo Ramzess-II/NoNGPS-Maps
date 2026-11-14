@@ -239,6 +239,15 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   /**
+   * Looks for the sensor box again after a failed pairing or a lost bond: see NoGps.BleState.
+   */
+  @UiThread
+  public void retryBox()
+  {
+    mEsp32Ble.retry();
+  }
+
+  /**
    * @return MapObject.MY_POSITION, null if location is not yet determined or "My position" button is switched off.
    */
   @Nullable

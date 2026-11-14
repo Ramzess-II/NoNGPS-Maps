@@ -233,7 +233,7 @@ final class NoGpsSensorsViewController: MWMTableViewController {
       NoGps.setInertialNavigationEnabled(true)
       refresh()
     case .forget:
-      NoGps.setInertialNavigationEnabled(false)
+      NoGps.forgetBox()
       refresh()
     case .firmwareAction:
       // The row does what it shows, if the update still allows it: the box may have gone on since it was drawn.
