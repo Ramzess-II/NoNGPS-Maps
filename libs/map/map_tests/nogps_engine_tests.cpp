@@ -2,6 +2,7 @@
 
 #include "map/map_tests/nogps_test_env.hpp"
 
+#include "map/nogps/box_car_values.hpp"
 #include "map/nogps/engine.hpp"
 #include "map/nogps/esp32_protocol.hpp"
 #include "map/nogps/geo.hpp"
@@ -18,6 +19,7 @@
 #include <cstdio>
 #include <deque>
 #include <functional>
+#include <map>
 #include <set>
 #include <string>
 #include <utility>
@@ -2475,6 +2477,260 @@ UNIT_TEST(NoGps_Engine_CarOfBoxIsShownWhereItWasLeft)
   fresh.Drive(500, 0, 0);
   HearBox(fresh, "1234");
   TestAlmostEqualAbs(East(fresh.Last().m_position), 150, 0.5);
+}
+
+/// The box of a firmware that keeps the values of its car: it answers the phone connected to it.
+class CarBox
+{
+public:
+  /// The box connects and tells about itself, the phone reads the values of the car.
+  void Connect(Env & env, std::string const & id = "C47D")
+  {
+    env.ConnectBox();
+    m_answered = env.m_delegate.m_esp32BleSent.size();
+    env.m_engine.OnEsp32BleBytes(
+        BoxLine("NGI,1,0.4.1,2026-11-15T10:00,esp32s3,s3zero," + id + ",4096,2031616,ota_0,VALID,BLE OTA CAR,3"));
+    Answer(env);
+    env.Drive(1000, 0, 0);
+    Answer(env);
+  }
+
+  /// Answers the commands about the car the phone has sent since the last time.
+  void Answer(Env & env)
+  {
+    auto const & sent = env.m_delegate.m_esp32BleSent;
+    // The replies make the phone send more.
+    while (m_answered < sent.size())
+    {
+      auto const fields = esp32::Parse(sent[m_answered++]);
+      if (!fields || fields->size() < 4)
+        continue;
+      std::string reply;
+      if ((*fields)[2] == "CAR_GET")
+      {
+        auto const it = m_values.find((*fields)[3]);
+        reply = it == m_values.end() ? "OK" : "OK," + it->second;
+      }
+      else if ((*fields)[2] == "CAR_SET" && fields->size() == 5)
+      {
+        reply = m_busy ? "ERR,BUSY" : "OK";
+        if (!m_busy)
+        {
+          m_written.push_back((*fields)[3]);
+          if ((*fields)[4].empty())
+            m_values.erase((*fields)[3]);
+          else
+            m_values[(*fields)[3]] = (*fields)[4];
+        }
+      }
+      else
+      {
+        continue;
+      }
+      env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + (*fields)[1] + "," + reply));
+    }
+  }
+
+  std::map<std::string, std::string> m_values;
+  // The keys written, in their order.
+  std::vector<std::string> m_written;
+  // Another phone keeps the box.
+  bool m_busy = false;
+
+private:
+  size_t m_answered = 0;
+};
+
+UNIT_TEST(NoGps_BoxCarValues_PhonesOfCarShareItsValues)
+{
+  CarBox box;
+  // The roads have told the speedometer is 5% low at 30-40 km/h, before the box kept the values.
+  SpeedTable rough;
+  rough.OnDistance(36, 1000, 1050);
+  Env first(true /* inertial */, nullptr,
+            [&rough](TestStorage & storage) { storage.Set(Storage::kRoughSpeedTable, rough.Serialize()); });
+  box.Connect(first);
+  // The box had nothing: the phone gives it what it has.
+  auto const roughOnBox = BoxCarValues::Encode(Storage::kRoughSpeedTable, rough.Serialize());
+  TEST_EQUAL(box.m_values["spd_rough_lo"], roughOnBox[0].second, ());
+  TEST_EQUAL(box.m_values["spd_rough_hi"], roughOnBox[1].second, ());
+  first.m_engine.RenameCar("C47D", "Ауді, моя");
+  box.Answer(first);
+  TEST_EQUAL(box.m_values["car_name"], BoxCarValues::Encode(CarStorage::kCarName, "Ауді, моя")[0].second, ());
+  // Where the car is left goes to the box at once when the navigation stops.
+  MarkCar(first, 50);
+  TEST(!box.m_values.contains("car_pos"), ());
+  first.m_engine.Stop();
+  box.Answer(first);
+  TEST(box.m_values.contains("car_pos"), ());
+
+  // Another phone in the car takes all of it. It has not shown the car anywhere: the car is where it was left.
+  Env second(true /* inertial */);
+  size_t const written = box.m_written.size();
+  box.Connect(second);
+  TEST_EQUAL(box.m_written.size(), written, ());
+  TEST_EQUAL(second.m_engine.GetStatus().m_roughSpeedTableRanges, 1, ());
+  TEST_EQUAL(second.m_engine.GetCars()[0].m_name, "Ауді, моя", ());
+  TestAlmostEqualAbs(East(second.Last().m_position), 50, 0.5);
+
+  // The second phone clears the calibration, the first one takes it at its next connection.
+  second.m_engine.ClearSpeedCalibration();
+  box.Answer(second);
+  Env firstAgain(true /* inertial */, nullptr, SavedBy(first));
+  TEST_EQUAL(firstAgain.m_engine.GetStatus().m_roughSpeedTableRanges, 1, ());
+  box.Connect(firstAgain);
+  TEST_EQUAL(firstAgain.m_engine.GetStatus().m_roughSpeedTableRanges, 0, ());
+  TEST_EQUAL(firstAgain.m_engine.GetCars()[0].m_name, "Ауді, моя", ());
+}
+
+UNIT_TEST(NoGps_BoxCarValues_ValueChangedByPhoneIsWritten)
+{
+  CarBox box;
+  Env env(true /* inertial */);
+  box.Connect(env);
+  env.m_engine.RenameCar("C47D", "Kia");
+  box.Answer(env);
+  TEST_EQUAL(box.m_values["car_name"], "Kia", ());
+
+  // The box is out of reach while the user renames the car: it gets the name at the next connection.
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  env.m_engine.RenameCar("C47D", "Lada");
+  box.Connect(env);
+  TEST_EQUAL(box.m_values["car_name"], "Lada", ());
+
+  // The link drops before the box answers: the box has the name, the phone doesn't know it.
+  env.m_engine.RenameCar("C47D", "Kia");
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  box.Answer(env);
+  TEST_EQUAL(box.m_values["car_name"], "Kia", ());
+  // Another phone has renamed the car since: its name is newer.
+  box.m_values["car_name"] = "Opel";
+  box.Connect(env);
+  TEST_EQUAL(env.m_engine.GetCars()[0].m_name, "Opel", ());
+  TEST_EQUAL(box.m_values["car_name"], "Opel", ());
+
+  // The box has lost its values: the phone gives it its own.
+  box.m_values.clear();
+  box.Connect(env);
+  TEST_EQUAL(box.m_values["car_name"], "Opel", ());
+
+  // A name given by the user to the box of another car waits for that box.
+  box.Connect(env, "42FD");
+  env.m_engine.RenameCar("C47D", "Kia");
+  box.Answer(env);
+  TEST_EQUAL(box.m_values["car_name"], "Opel", ());
+}
+
+UNIT_TEST(NoGps_BoxCarValues_PlaceIsWrittenSeldom)
+{
+  CarBox box;
+  Env env(true /* inertial */);
+  // The box gets what the phone has at once, then not more often than in 5 minutes.
+  box.Connect(env);
+  TEST(!box.m_written.empty(), ());
+  MarkCar(env, 50);
+  box.Answer(env);
+  TEST(!box.m_values.contains("car_pos"), ());
+  env.Drive(BoxCarValues::kSaveIntervalMs, 0, 0);
+  box.Answer(env);
+  auto const marked = box.m_values["car_pos"];
+  TEST(!marked.empty(), ());
+
+  TEST(env.m_engine.PlaceMarkByTap(At(150, 3)), ());
+  env.Drive(2000, 0, 0);
+  box.Answer(env);
+  TEST_EQUAL(box.m_values["car_pos"], marked, ());
+  env.Drive(BoxCarValues::kSaveIntervalMs, 0, 0);
+  box.Answer(env);
+  auto const moved = box.m_values["car_pos"];
+  TEST_NOT_EQUAL(moved, marked, ());
+
+  // The engine stops: the box sleeps in a minute, the place is written at once.
+  TEST(env.m_engine.PlaceMarkByTap(At(250, 3)), ());
+  env.Drive(2000, 0, 0);
+  box.Answer(env);
+  TEST_EQUAL(box.m_values["car_pos"], moved, ());
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGS,1,0.4.1,ICM20602,500,SLEEP,,0,331,0,OK,0x12,NONE,0,-386,3,OFF,0,12600,,"));
+  env.Drive(1000, 0, 0);
+  box.Answer(env);
+  TEST_NOT_EQUAL(box.m_values["car_pos"], moved, ());
+}
+
+UNIT_TEST(NoGps_BoxCarValues_PhoneConnectedSecondDoesNotWrite)
+{
+  CarBox box;
+  box.m_busy = true;
+  Env env(true /* inertial */);
+  box.Connect(env);
+  env.m_engine.RenameCar("C47D", "Kia");
+  box.Answer(env);
+  TEST(box.m_values.empty(), ());
+  // Not until the next connection.
+  auto const countSets = [&env]
+  {
+    return std::count_if(env.m_delegate.m_esp32BleSent.begin(), env.m_delegate.m_esp32BleSent.end(),
+                         [](std::string const & line) { return line.find(",CAR_SET,") != std::string::npos; });
+  };
+  auto const sets = countSets();
+  env.m_engine.RenameCar("C47D", "Lada");
+  env.Drive(BoxCarValues::kSaveIntervalMs, 0, 0);
+  TEST_EQUAL(countSets(), sets, ());
+
+  // The other phone has gone.
+  box.m_busy = false;
+  box.Connect(env);
+  TEST_EQUAL(box.m_values["car_name"], "Lada", ());
+}
+
+UNIT_TEST(NoGps_BoxCarValues_OldFirmwareIsNotAsked)
+{
+  Env env(true /* inertial */);
+  HearBox(env, "C47D");
+  env.m_engine.RenameCar("C47D", "Kia");
+  MarkCar(env, 50);
+  env.m_engine.Stop();
+  for (auto const & line : env.m_delegate.m_esp32BleSent)
+    TEST_EQUAL(line.find(",CAR_"), std::string::npos, (line));
+}
+
+UNIT_TEST(NoGps_BoxCarValues_PlaceMovesCarShownWhereItWasLeft)
+{
+  CarBox box;
+  Env first(true /* inertial */);
+  box.Connect(first);
+  MarkCar(first, 150);
+  first.m_engine.Stop();
+  box.Answer(first);
+
+  // Another phone has driven the car and left it elsewhere since.
+  Env second(true /* inertial */);
+  box.Connect(second);
+  TestAlmostEqualAbs(East(second.Last().m_position), 150, 0.5);
+  TEST(second.m_engine.PlaceMarkByTap(At(50, 3)), ());
+  second.Drive(500, 0, 0);
+  second.m_engine.Stop();
+  box.Answer(second);
+
+  // The first phone starts where it has left the car, the box tells where the car is.
+  Env after(true /* inertial */, nullptr, SavedBy(first));
+  after.Drive(500, 0, 0);
+  TestAlmostEqualAbs(East(after.Last().m_position), 150, 0.5);
+  box.Connect(after);
+  TestAlmostEqualAbs(East(after.Last().m_position), 50, 0.5);
+
+  // The user has marked the car before the box connected: the mark stays, it goes to the box.
+  Env marked(true /* inertial */, nullptr, SavedBy(first));
+  marked.Drive(500, 0, 0);
+  TEST(marked.m_engine.PlaceMarkByTap(At(250, 3)), ());
+  marked.Drive(500, 0, 0);
+  box.Connect(marked);
+  TestAlmostEqualAbs(East(marked.Last().m_position), 250, 0.5);
+  marked.m_engine.Stop();
+  Env markedAfter(true /* inertial */, nullptr, SavedBy(marked));
+  markedAfter.Drive(500, 0, 0);
+  TestAlmostEqualAbs(East(markedAfter.Last().m_position), 250, 0.5);
+  box.Connect(markedAfter);
+  TestAlmostEqualAbs(East(markedAfter.Last().m_position), 250, 0.5);
 }
 
 UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)

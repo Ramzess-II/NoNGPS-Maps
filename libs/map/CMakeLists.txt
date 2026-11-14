@@ -41,6 +41,8 @@ set(SRC
   nogps/accel_speed.hpp
   nogps/bend_matcher.cpp
   nogps/bend_matcher.hpp
+  nogps/box_car_values.cpp
+  nogps/box_car_values.hpp
   nogps/clock.cpp
   nogps/clock.hpp
   nogps/dead_reckoning.cpp

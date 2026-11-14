@@ -229,9 +229,13 @@ std::optional<Info> ParseInfo(Fields const & fields)
   info.m_chip = fields[4];
   info.m_board = fields[5];
   if (fields.size() > 11)
+  {
     for (auto const ability : strings::Tokenize(fields[11], " "))
       if (ability == "OTA")
         info.m_canUpdate = true;
+      else if (ability == "CAR")
+        info.m_canStoreCarValues = true;
+  }
   if (fields.size() > 6)
     info.m_id = fields[6];
   if (int64_t powerOns; fields.size() > 12 && strings::to_int(fields[12], powerOns))

@@ -11,10 +11,11 @@ namespace nogps
 {
 namespace
 {
-// What the car is, kept by the keys of the car as its values: NoGpsCar.C47D.Name.
-std::string_view constexpr kCarName = "NoGpsName";
+// What the car is, kept by the keys of the car as its values: NoGpsCar.C47D.Firmware.
 std::string_view constexpr kCarFirmware = "NoGpsFirmware";
 std::string_view constexpr kCarLastSeen = "NoGpsLastSeen";
+// What the box of the car kept when the phone saw it the last time, "car_name:Kia,spd_scale:1.04".
+std::string_view constexpr kCarKnownBoxValues = "NoGpsKnownBoxValues";
 
 // The identifier goes into the keys and the list of the cars.
 bool IsCarId(std::string_view id)
@@ -81,6 +82,41 @@ void CarStorage::SetString(std::string_view key, std::string const & value)
 void CarStorage::Remove(std::string_view key)
 {
   m_storage.Remove(MapKey(key));
+}
+
+std::optional<std::string> CarStorage::GetCarValue(std::string const & id, std::string_view key) const
+{
+  return m_storage.GetString(GetCarKey(id, key));
+}
+
+void CarStorage::SetCarValue(std::string const & id, std::string_view key, std::string const & value)
+{
+  if (value.empty())
+    m_storage.Remove(GetCarKey(id, key));
+  else
+    m_storage.SetString(GetCarKey(id, key), value);
+}
+
+std::map<std::string, std::string> CarStorage::GetKnownBoxValues(std::string const & id) const
+{
+  // The keys of the box are [a-z0-9_], its values have no commas.
+  std::map<std::string, std::string> values;
+  for (auto const item : strings::Tokenize(m_storage.Get<std::string>(GetCarKey(id, kCarKnownBoxValues), ""), ","))
+    if (auto const colon = item.find(':'); colon != std::string_view::npos && colon + 1 < item.size())
+      values.emplace(item.substr(0, colon), item.substr(colon + 1));
+  return values;
+}
+
+void CarStorage::SetKnownBoxValues(std::string const & id, std::map<std::string, std::string> const & values)
+{
+  std::string text;
+  for (auto const & [key, value] : values)
+    if (!value.empty())
+      text += (text.empty() ? "" : ",") + key + ":" + value;
+  if (text.empty())
+    m_storage.Remove(GetCarKey(id, kCarKnownBoxValues));
+  else
+    m_storage.Set(GetCarKey(id, kCarKnownBoxValues), text);
 }
 
 std::vector<std::string> CarStorage::GetIds() const
@@ -180,10 +216,7 @@ void CarStorage::RenameCar(std::string const & id, std::string const & name)
   std::string text = name;
   std::replace(text.begin(), text.end(), '\n', ' ');
   strings::Trim(text);
-  if (text.empty())
-    m_storage.Remove(GetCarKey(id, kCarName));
-  else
-    m_storage.Set(GetCarKey(id, kCarName), text);
+  SetCarValue(id, kCarName, text);
 }
 
 void CarStorage::ForgetCar(std::string const & id)
@@ -197,7 +230,7 @@ void CarStorage::ForgetCar(std::string const & id)
   SetIds(ids);
   for (auto const key : kCarValues)
     m_storage.Remove(GetCarKey(id, key));
-  for (auto const key : {kCarName, kCarFirmware, kCarLastSeen})
+  for (auto const key : {kCarName, kCarFirmware, kCarLastSeen, kCarKnownBoxValues})
     m_storage.Remove(GetCarKey(id, key));
   if (m_storage.Get<std::string>(kCurrentCar, "") != id)
     return;

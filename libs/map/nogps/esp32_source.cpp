@@ -65,6 +65,7 @@ void Esp32Source::Stop()
   m_boxValues.clear();
   m_hellosWithoutInfo = 0;
   m_update.Reset();
+  ForgetCarRequests();
   ForgetJournal();
 }
 
@@ -77,6 +78,11 @@ void Esp32Source::SendHello()
       ++m_hellosWithoutInfo % kInfoRequestHellos == 0)
   {
     Send("INFO", m_nextCommandId++);
+  }
+  if (m_carRead && m_clock.NowMs() - m_carRead->m_sentMs > kCarReplyTimeoutMs)
+  {
+    LOG(LWARNING, ("No reply to the reading of", m_carRead->m_keys.front()));
+    m_carRead.reset();
   }
   m_helloTimer.Start(kHelloIntervalMs, [this] { SendHello(); });
 }
@@ -103,6 +109,78 @@ void Esp32Source::StartUpdate(Firmware const & firmware)
 {
   if (CanUpdate())
     m_update.Start(firmware.m_read(), firmware.m_version);
+}
+
+bool Esp32Source::CanStoreCarValues() const
+{
+  return m_running && m_bleState == BleState::Connected && m_info && m_info->m_canStoreCarValues &&
+         !m_update.IsActive();
+}
+
+void Esp32Source::ReadCarValues(std::vector<std::string> keys)
+{
+  if (!CanStoreCarValues() || keys.empty())
+    return;
+  m_carRead = CarRead{};
+  m_carRead->m_keys = std::move(keys);
+  ReadNextCarValue();
+}
+
+void Esp32Source::ReadNextCarValue()
+{
+  auto & read = *m_carRead;
+  read.m_id = m_nextCommandId++;
+  read.m_sentMs = m_clock.NowMs();
+  Send("CAR_GET," + read.m_keys[read.m_values.size()], read.m_id);
+}
+
+void Esp32Source::WriteCarValue(std::string const & key, std::string const & value)
+{
+  if (!CanStoreCarValues())
+    return;
+  int const id = m_nextCommandId++;
+  m_carWrites[id] = {key, value};
+  Send("CAR_SET," + key + "," + value, id);
+}
+
+bool Esp32Source::OnCarReply(esp32::Reply const & reply)
+{
+  if (auto const it = m_carWrites.find(reply.m_id); it != m_carWrites.end())
+  {
+    auto [key, value] = std::move(it->second);
+    m_carWrites.erase(it);
+    if (!reply.m_ok)
+      LOG(LWARNING, ("The box has not written", key, "error =", reply.m_error));
+    m_listener.OnBoxCarWritten(key, value, reply.m_ok ? "" : reply.m_error);
+    return true;
+  }
+  if (!m_carRead || reply.m_id != m_carRead->m_id)
+    return false;
+  auto & read = *m_carRead;
+  auto const & key = read.m_keys[read.m_values.size()];
+  if (!reply.m_ok)
+  {
+    LOG(LWARNING, ("The box has not read", key, "error =", reply.m_error));
+    m_carRead.reset();
+    return true;
+  }
+  read.m_values[key] = reply.m_values.empty() ? "" : reply.m_values.front();
+  if (read.m_values.size() < read.m_keys.size())
+  {
+    ReadNextCarValue();
+    return true;
+  }
+  auto const values = std::move(read.m_values);
+  m_carRead.reset();
+  m_listener.OnBoxCarValues(values);
+  return true;
+}
+
+void Esp32Source::ForgetCarRequests()
+{
+  // The replies don't come over another link.
+  m_carRead.reset();
+  m_carWrites.clear();
 }
 
 void Esp32Source::OnInfo(esp32::Info const & info)
@@ -153,6 +231,7 @@ void Esp32Source::OnBleState(BleState state)
     m_boxValues.clear();
     m_hellosWithoutInfo = 0;
     m_update.OnLinkLost();
+    ForgetCarRequests();
     ForgetJournal();
     if (m_calibrationId != 0)
     {
@@ -401,7 +480,7 @@ void Esp32Source::OnLastEventNumber(int64_t lastNumber)
 
 void Esp32Source::OnReply(esp32::Reply const & reply)
 {
-  if (m_update.OnReply(reply) || reply.m_id != m_calibrationId)
+  if (m_update.OnReply(reply) || OnCarReply(reply) || reply.m_id != m_calibrationId)
     return;
   if (reply.m_progress)
   {

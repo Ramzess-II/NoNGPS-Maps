@@ -79,15 +79,18 @@ void InertialNavigator::Stop()
   if (!m_started)
     return;
   m_started = false;
+  SaveSpeedTable();
   if (m_esp32)
+  {
     SaveBoxAccel();
+    m_listener.OnBoxStopping();
+  }
   m_delegate.StopMotionSensors();
   m_source->Stop();
   m_phone = nullptr;
   m_esp32 = nullptr;
   m_source.reset();
   m_speedKmh = -1;
-  SaveSpeedTable();
 }
 
 void InertialNavigator::Calibrate()
@@ -400,6 +403,15 @@ void InertialNavigator::SaveCalibration()
 
 void InertialNavigator::RestoreCalibration()
 {
+  m_boxAccelSpeed.Reset();
+  m_boxAccelId.clear();
+  if (m_esp32)
+    RestoreBoxAccel();
+  RestoreSpeedCalibration();
+}
+
+void InertialNavigator::RestoreSpeedCalibration()
+{
   m_speedTable.Deserialize(m_storage.Get<std::string>(Storage::kSpeedTable, ""));
   m_roughSpeedTable.Deserialize(m_storage.Get<std::string>(Storage::kRoughSpeedTable, ""));
   m_speedFactor.Deserialize(m_storage.Get<std::string>(Storage::kSpeedFactor, ""));
@@ -407,18 +419,24 @@ void InertialNavigator::RestoreCalibration()
   // The speedometer error is the same on every trip.
   m_speedScale.Set(m_storage.Get<double>(Storage::kSpeedScale, 1));
   m_unsavedSpeedSamples = 0;
-  // Measured with the table of another car.
+  // Measured with another table.
   m_roughStretch.reset();
-  m_boxAccelSpeed.Reset();
-  m_boxAccelId.clear();
-  if (m_esp32)
-    RestoreBoxAccel();
   LogSpeedCalibration();
 }
 
 void InertialNavigator::OnBoxHeard(std::string const & id, std::string const & firmware)
 {
   m_listener.OnBoxHeard(id, firmware);
+}
+
+void InertialNavigator::OnBoxCarValues(std::map<std::string, std::string> const & values)
+{
+  m_listener.OnBoxCarValues(values);
+}
+
+void InertialNavigator::OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error)
+{
+  m_listener.OnBoxCarWritten(key, value, error);
 }
 
 void InertialNavigator::SetPosition(ms::LatLon const & position, double distanceSinceFixM, double accuracyM)

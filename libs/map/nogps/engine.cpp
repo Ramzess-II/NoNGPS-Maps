@@ -842,15 +842,23 @@ void Engine::OnCarChanged()
 {
   if (m_inertial)
     m_inertial->RestoreCalibration();
-  // The mark has moved since the start: the car is there, whatever box it has.
-  if (!m_parkedAt || !m_manualMode || !m_manualLocation || m_manualLocation->m_position != *m_parkedAt)
-    return;
+  MoveParkedCar();
+}
+
+bool Engine::MoveParkedCar()
+{
+  // The mark has moved since the start: the car is there, whatever box it has. A phone that shows no car yet, e.g. one
+  // that was not in this car, shows it where it was left.
+  bool const parked = m_parkedAt && m_manualMode && m_manualLocation && m_manualLocation->m_position == *m_parkedAt;
+  if (!parked && (m_savedLocation || m_manualLocation))
+    return false;
   // A new car has no place yet: the user marks it.
   if (m_storage.Get<std::string>(Storage::kCarPosition, "").empty())
-    return;
+    return false;
   RestoreCarPosition(true /* otherCar */);
   if (m_active)
     ApplyManualLocation();
+  return true;
 }
 
 void Engine::OnBoxHeard(std::string const & id, std::string const & firmware)
@@ -859,10 +867,58 @@ void Engine::OnBoxHeard(std::string const & id, std::string const & firmware)
   if (id != before)
     m_inertial->SaveCalibration();
   m_cars.OnBoxHeard(id, firmware, m_clock.UnixNowMs());
-  if (m_cars.GetCurrentCar() == before)
+  if (m_cars.GetCurrentCar() != before)
+  {
+    LOG(LINFO, ("The car of the box", id, "was", before.empty() ? "-" : before));
+    OnCarChanged();
+  }
+  if (auto * box = m_inertial->GetEsp32(); box && box->CanStoreCarValues() && id == m_cars.GetCurrentCar())
+    m_boxCarValues.OnBoxHeard(*box, id);
+}
+
+void Engine::OnBoxCarValues(std::map<std::string, std::string> const & values)
+{
+  auto * box = m_inertial->GetEsp32();
+  CHECK(box, ());
+  auto const taken = m_boxCarValues.OnValues(*box, values);
+  // The user may have chosen another car meanwhile.
+  if (m_boxCarValues.GetCarId() != m_cars.GetCurrentCar())
     return;
-  LOG(LINFO, ("The car of the box", id, "was", before.empty() ? "-" : before));
-  OnCarChanged();
+  if (taken.m_calibration)
+    m_inertial->RestoreSpeedCalibration();
+  // The car shown elsewhere, e.g. marked by the user before the box has connected, is there: its place is newer.
+  if (taken.m_position && !MoveParkedCar())
+  {
+    m_savedCar.clear();
+    SaveCarPosition(true /* now */);
+  }
+}
+
+void Engine::OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error)
+{
+  m_boxCarValues.OnWritten(key, value, error);
+}
+
+void Engine::OnBoxStopping()
+{
+  SaveBoxCarValues(true /* now */);
+}
+
+void Engine::SaveBoxCarValues(bool now)
+{
+  auto * box = m_inertial ? m_inertial->GetEsp32() : nullptr;
+  // The box sleeps a minute after the engine is stopped: where the car is left is written before.
+  auto const car = box ? box->GetCarInfo() : std::nullopt;
+  bool const engineStopped = car && car->m_engineRunning == false;
+  now = now || (engineStopped && !m_boxEngineStopped);
+  m_boxEngineStopped = engineStopped;
+  m_boxCarValues.Save(box, now);
+}
+
+void Engine::RenameCar(std::string const & id, std::string const & name)
+{
+  m_cars.RenameCar(id, name);
+  SaveBoxCarValues(true /* now */);
 }
 
 void Engine::SelectCar(std::string const & id)
@@ -955,8 +1011,10 @@ void Engine::Calibrate()
 
 void Engine::ClearSpeedCalibration()
 {
-  if (m_inertial)
-    m_inertial->ClearSpeedCalibration();
+  if (!m_inertial)
+    return;
+  m_inertial->ClearSpeedCalibration();
+  SaveBoxCarValues(true /* now */);
 }
 
 void Engine::SetFirmwares(std::vector<Firmware> firmwares)
@@ -1642,6 +1700,7 @@ void Engine::LogTrip()
   CheckBoxCalibration();
   bool const changed = LogStateChanges();
   SaveCarPosition(false /* now */);
+  SaveBoxCarValues(false /* now */);
   int64_t const now = m_clock.NowMs();
   if (changed || IsCarMoving())
     m_tripEverySecondMs = now;

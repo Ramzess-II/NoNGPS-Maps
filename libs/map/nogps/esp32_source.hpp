@@ -14,6 +14,8 @@
 #include <set>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace nogps
 {
@@ -53,6 +55,8 @@ public:
   // doesn't know the question.
   static int constexpr kInfoRequestHellos = 3;
   static int constexpr kMaxInfoRequests = 3;
+  // The box answers a command at once, a lost reply ends the reading of the values of the car.
+  static int64_t constexpr kCarReplyTimeoutMs = 5000;
 
   /// A start of the box by a power-on: it was plugged into the car.
   struct PowerOn
@@ -109,6 +113,14 @@ public:
   void CancelUpdate() { m_update.Cancel(); }
   Esp32Update const & GetUpdate() const { return m_update; }
 
+  /// \returns true if the box is connected and keeps the values of its car, see BoxCarValues.
+  bool CanStoreCarValues() const;
+  /// Reads the values of the car one by one: the listener gets all of them, or nothing if the box refuses one or the
+  /// link drops.
+  void ReadCarValues(std::vector<std::string> keys);
+  /// Writes a value of the car, an empty one erases it. The listener gets the reply.
+  void WriteCarValue(std::string const & key, std::string const & value);
+
 private:
   // Esp32Update::Link overrides:
   int SendUpdateCommand(std::string const & command) override;
@@ -123,6 +135,9 @@ private:
   void OnInfo(esp32::Info const & info);
   void StoreBoxValues(esp32::Fields const & fields);
   void OnLastEventNumber(int64_t lastNumber);
+  void ReadNextCarValue();
+  bool OnCarReply(esp32::Reply const & reply);
+  void ForgetCarRequests();
   void RequestLostEvents(int64_t fromNumber);
   void ForgetJournal();
   bool IsConnected() const;
@@ -182,5 +197,17 @@ private:
   std::map<esp32::BoxValue, std::string> m_boxValues;
   int m_hellosWithoutInfo = 0;
   Esp32Update m_update;
+
+  struct CarRead
+  {
+    std::vector<std::string> m_keys;
+    std::map<std::string, std::string> m_values;
+    // The command waiting for its reply.
+    int m_id = 0;
+    int64_t m_sentMs = 0;
+  };
+  std::optional<CarRead> m_carRead;
+  // The writes of the values of the car waiting for their replies, by the command: the key and the value.
+  std::map<int, std::pair<std::string, std::string>> m_carWrites;
 };
 }  // namespace nogps

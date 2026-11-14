@@ -18,6 +18,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -80,6 +81,14 @@ public:
     virtual void OnMarkSwitched() = 0;
     /// The sensor box has told about itself, see MotionSource::Listener::OnBoxHeard().
     virtual void OnBoxHeard(std::string const & /* id */, std::string const & /* firmware */) {}
+    /// See MotionSource::Listener::OnBoxCarValues() and OnBoxCarWritten().
+    virtual void OnBoxCarValues(std::map<std::string, std::string> const & /* values */) {}
+    virtual void OnBoxCarWritten(std::string const & /* key */, std::string const & /* value */,
+                                 std::string const & /* error */)
+    {}
+    /// The link to the box closes when the navigation stops, the calibration is saved: the last moment to write to the
+    /// box.
+    virtual void OnBoxStopping() {}
   };
 
   // Without fresh speed the position can't be calculated.
@@ -393,6 +402,8 @@ public:
   /// car before and after, see CarStorage.
   void SaveCalibration();
   void RestoreCalibration();
+  /// Takes the speed calibration from the storage again: another phone has learned it, see BoxCarValues.
+  void RestoreSpeedCalibration();
   /// Moves the position without changing the heading, e.g. to the shown position while the inertial
   /// navigation doesn't work yet.
   /// \param distanceSinceFixM, accuracyM how far the car had driven since the last known place and how accurate the
@@ -509,6 +520,8 @@ private:
   void OnMotion(double yawDeltaDeg, double dtSec, int64_t timestampNs) override;
   void OnSourceAccel(std::array<double, 3> const & accel) override;
   void OnBoxHeard(std::string const & id, std::string const & firmware) override;
+  void OnBoxCarValues(std::map<std::string, std::string> const & values) override;
+  void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
 
   void CheckTurnSign(Fix const & gps);
   double GetSpeedScale(int speedKmh) const;
