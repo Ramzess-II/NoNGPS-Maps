@@ -40,11 +40,13 @@ final class NoGpsBoxSheet: MWMTableViewController {
   private var sections: [Section] = []
   private var status = NoGps.status()
   private var timer: Timer?
-  // No box was set up when the sheet opened: it is searched until it is heard, and forgotten if the sheet is closed
-  // before it is found.
+  /// No box was set up when the sheet opened: it is searched until it is heard, and forgotten if the sheet is closed
+  /// before it is found.
   private var searching = false
-  /// The user adds a car: its box is searched as above, the other cars stay.
+  /// The user adds a car: its box is searched as above, the other cars stay. The search ends when the list of the cars
+  /// grows: the box of a car is heard before, and a box sleeping after its link was dropped is taken as heard too.
   private var addingCar = false
+  private var carsBeforeAdd = 0
   private var cars: [NoGpsCar] = []
   private let searchView = BoxSearchView()
   private let header = StatusTilesView()
@@ -158,11 +160,13 @@ final class NoGpsBoxSheet: MWMTableViewController {
   /// Closed by the button or swiped down, from either page, before the box was heard, even if connected already: the
   /// phone stops looking for it.
   func stopSearchIfNotFound() {
-    guard searching, !Self.isBoxHeard(NoGps.status()) else { return }
+    guard searching else { return }
     // The box of a car being added: the boxes of the other cars are looked for again.
     if addingCar {
-      NoGps.searchNewBox(false)
-    } else {
+      if !isCarAdded {
+        NoGps.searchNewBox(false)
+      }
+    } else if !Self.isBoxHeard(NoGps.status()) {
       NoGps.setInertialNavigationEnabled(false)
     }
     NoGpsStatusBar.update(NoGps.status())
@@ -171,7 +175,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
   private func refresh() {
     status = NoGps.status()
     // The box connected while it was searched: the sheet shows it as any other.
-    if searching, Self.isBoxHeard(status) {
+    if searching, addingCar ? isCarAdded : Self.isBoxHeard(status) {
       searching = false
       addingCar = false
     }
@@ -487,7 +491,8 @@ final class NoGpsBoxSheet: MWMTableViewController {
 
   private func carStateText(_ car: NoGpsCar) -> String? {
     if car.carId == status.carId {
-      return Self.isBoxHeard(status) ? L("nogps_car_connected") : L("nogps_car_current")
+      let connected = Self.isBoxHeard(status) && status.bleState == .connected
+      return connected ? L("nogps_car_connected") : L("nogps_car_current")
     }
     guard let lastSeen = car.lastSeen else { return nil }
     return String(format: L("nogps_car_last_seen"), RelativeDateTimeFormatter().localizedString(for: lastSeen,
@@ -582,8 +587,14 @@ final class NoGpsBoxSheet: MWMTableViewController {
   private func addCar() {
     searching = true
     addingCar = true
+    carsBeforeAdd = NoGps.cars().count
     NoGps.searchNewBox(true)
     refresh()
+  }
+
+  /// The box of a new car, or of a forgotten one, has told about itself.
+  private var isCarAdded: Bool {
+    NoGps.cars().count > carsBeforeAdd
   }
 
   /// Bluetooth is allowed in the settings: once refused, iOS doesn't ask again. The box is searched again after a failed

@@ -72,6 +72,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private static final String SHOP_URL = "https://non-gps.com";
   private static final String STATE_SEARCHING = "searching";
   private static final String STATE_ADDING_CAR = "adding_car";
+  private static final String STATE_CARS_BEFORE_ADD = "cars_before_add";
   private static final String STATE_SPEED_TABLE = "speed_table";
   private static final String STATE_BOX_VALUES = "box_values";
   private static final String STATE_GPS = "gps";
@@ -104,8 +105,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   // No box was set up when the sheet opened: it is searched until it is heard, and forgotten if the sheet is closed
   // before it is found.
   private boolean mSearching;
-  // The user adds a car: its box is searched as above, the other cars stay.
+  // The user adds a car: its box is searched as above, the other cars stay. The search ends when the list of the cars
+  // grows: the box of a car is heard before, and a box sleeping after its link was dropped is taken as heard too.
   private boolean mAddingCar;
+  private int mCarsBeforeAdd;
   // The speed table is shown on its own page of the sheet, Back returns from it.
   private boolean mSpeedTableShown;
   // All the values the box sends are shown on a page of their own too.
@@ -189,6 +192,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     {
       mSearching = savedInstanceState.getBoolean(STATE_SEARCHING);
       mAddingCar = savedInstanceState.getBoolean(STATE_ADDING_CAR);
+      mCarsBeforeAdd = savedInstanceState.getInt(STATE_CARS_BEFORE_ADD);
       mSpeedTableShown = savedInstanceState.getBoolean(STATE_SPEED_TABLE);
       mValuesShown = savedInstanceState.getBoolean(STATE_BOX_VALUES);
       mGpsShown = savedInstanceState.getBoolean(STATE_GPS);
@@ -223,6 +227,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     super.onSaveInstanceState(outState);
     outState.putBoolean(STATE_SEARCHING, mSearching);
     outState.putBoolean(STATE_ADDING_CAR, mAddingCar);
+    outState.putInt(STATE_CARS_BEFORE_ADD, mCarsBeforeAdd);
     outState.putBoolean(STATE_SPEED_TABLE, mSpeedTableShown);
     outState.putBoolean(STATE_BOX_VALUES, mValuesShown);
     outState.putBoolean(STATE_GPS, mGpsShown);
@@ -372,7 +377,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     final NoGps.Status status = NoGps.getStatus();
     // The box connected while it was searched: the sheet shows it as any other.
-    if (mSearching && isBoxHeard(status))
+    if (mSearching && (mAddingCar ? isCarAdded() : isBoxHeard(status)))
     {
       mSearching = false;
       mAddingCar = false;
@@ -617,7 +622,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private String carStateText(@NonNull NoGps.Status status, @NonNull NoGps.Car car)
   {
     if (car.id.equals(status.carId))
-      return getString(isBoxHeard(status) ? R.string.nogps_car_connected : R.string.nogps_car_current);
+    {
+      final boolean connected = isBoxHeard(status) && status.getBleState() == NoGps.BleState.CONNECTED;
+      return getString(connected ? R.string.nogps_car_connected : R.string.nogps_car_current);
+    }
     if (car.lastSeenUnixMs <= 0)
       return "";
     final CharSequence when =
@@ -731,9 +739,18 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     mSearching = true;
     mAddingCar = true;
+    mCarsBeforeAdd = NoGps.nativeGetCars().length;
     MwmApplication.from(requireContext()).getLocationHelper().searchNewBox(true);
     update();
     getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
+  }
+
+  /**
+   * The box of a new car, or of a forgotten one, has told about itself.
+   */
+  private boolean isCarAdded()
+  {
+    return NoGps.nativeGetCars().length > mCarsBeforeAdd;
   }
 
   @NonNull
@@ -1176,12 +1193,14 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       return;
     // Closed before the box was heard, even if connected already: the phone stops looking for it. The box of a car
     // being added: the boxes of the other cars are looked for again.
-    if (mSearching && !isBoxHeard(NoGps.getStatus()))
+    if (mSearching && mAddingCar)
     {
-      if (mAddingCar)
+      if (!isCarAdded())
         MwmApplication.from(requireContext()).getLocationHelper().searchNewBox(false);
-      else
-        NoGps.nativeSetInertialNavigationEnabled(false);
+    }
+    else if (mSearching && !isBoxHeard(NoGps.getStatus()))
+    {
+      NoGps.nativeSetInertialNavigationEnabled(false);
     }
     // The bottom bar shows the box at once.
     getParentFragmentManager().setFragmentResult(SensorsBottomSheet.RESULT_CLOSED, Bundle.EMPTY);
