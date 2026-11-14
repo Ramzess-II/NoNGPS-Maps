@@ -56,6 +56,10 @@ typedef NS_ENUM(NSInteger, MWMNoGpsBleState) {
   MWMNoGpsBleStatePairing,
   // Subscribed to the lines of the box.
   MWMNoGpsBleStateConnected,
+  // A cancelled or wrong code: not tried again until the user asks.
+  MWMNoGpsBleStatePairingFailed,
+  // A paired box sends nothing: it has forgotten the phone. Not tried again until the user asks.
+  MWMNoGpsBleStateBondLost,
 } NS_SWIFT_NAME(NoGpsBleState);
 
 typedef NS_ENUM(NSInteger, MWMNoGpsCalibrationState) {

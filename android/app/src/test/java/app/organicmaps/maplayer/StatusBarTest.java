@@ -79,6 +79,19 @@ public class StatusBarTest
     assertEquals(0, look.badge);
   }
 
+  // A failed pairing or a box that forgot the phone stops the search until the user acts: no waves.
+  @Test
+  public void pairingFailedAsksTheUser()
+  {
+    for (BleState ble : new BleState[] {BleState.PAIRING_FAILED, BleState.BOND_LOST})
+    {
+      final StatusBar.Look look = StatusBar.getBoxLook(boxStatus(SourceState.CONNECTING, ble));
+      assertEquals(R.drawable.ic_nogps_box, look.icon);
+      assertFalse(look.pulsing);
+      assertEquals(R.drawable.ic_nogps_badge_alert, look.badge);
+    }
+  }
+
   // The OBD of a box that is heard sleeps: nothing is searched.
   @Test
   public void sleepingObdShowsTheMoon()

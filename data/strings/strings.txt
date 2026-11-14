@@ -46202,6 +46202,20 @@ en = connected by Bluetooth, waiting for the data
 ru = подключён по Bluetooth, жду данные
 uk = підключено через Bluetooth, чекаю на дані
 
+[nogps_box_bt_pairing_failed]
+comment = State of the sensor box, shown after its name: the user cancelled the pairing code or entered a wrong one. The phone stops trying until the user asks
+tags = android-app,apple-maps
+en = pairing failed: the code was cancelled or wrong
+ru = сопряжение не удалось: код отменён или неверный
+uk = спарювання не вдалося: код скасовано або він неправильний
+
+[nogps_box_bt_bond_lost]
+comment = State of the sensor box, shown after its name: a paired box connects but sends nothing, it has forgotten the phone
+tags = android-app,apple-maps
+en = the box has forgotten this phone. Remove it in the Bluetooth settings, then unplug the box and plug it back
+ru = блок забыл этот телефон. Удалите его в настройках Bluetooth, затем выньте блок из разъёма и вставьте обратно
+uk = блок забув цей телефон. Видаліть його в налаштуваннях Bluetooth, потім вийміть блок із роз'єму й вставте назад
+
 [nogps_sensors_calibrate_box]
 tags = android-app,apple-maps
 en = Calibrate

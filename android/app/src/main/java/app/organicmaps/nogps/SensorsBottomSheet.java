@@ -603,6 +603,8 @@ public class SensorsBottomSheet extends BottomSheetDialogFragment
       case CONNECTING -> R.string.nogps_box_bt_connecting;
       case PAIRING -> R.string.nogps_box_bt_pairing;
       case CONNECTED -> R.string.nogps_box_bt_waiting;
+      case PAIRING_FAILED -> R.string.nogps_box_bt_pairing_failed;
+      case BOND_LOST -> R.string.nogps_box_bt_bond_lost;
     };
   }
 

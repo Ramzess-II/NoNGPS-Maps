@@ -323,6 +323,31 @@ UNIT_TEST(NoGps_Esp32Source_CallsBoxWhileConnectedOnly)
   TEST_EQUAL(delegate.m_esp32BleSent.size(), 2, ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_FailedPairingIsNotLinked)
+{
+  // A failed pairing and a box that has forgotten the phone end the link: no HELLO, no calibration, the box is
+  // not taken for a sleeping one.
+  for (auto const state : {BleState::PairingFailed, BleState::BondLost})
+  {
+    TestClock clock;
+    TestDelegate delegate;
+    MotionRecorder listener;
+    Esp32Source source(delegate, clock, clock, listener);
+    source.Start();
+    source.OnBleState(BleState::Connected);
+    TEST_EQUAL(delegate.m_esp32BleSent.size(), 1, ());
+
+    source.OnBleState(state);
+    TEST_EQUAL(source.GetBleState(), state, ());
+    clock.Advance(Esp32Source::kHelloIntervalMs);
+    TEST_EQUAL(delegate.m_esp32BleSent.size(), 1, ());
+    source.Calibrate();
+    TEST_EQUAL(delegate.m_esp32BleSent.size(), 1, ());
+    TEST_EQUAL(source.GetCalibrationState(), CalibrationState::None, ());
+    TEST_EQUAL(source.GetState(), SourceState::Connecting, ());
+  }
+}
+
 UNIT_TEST(NoGps_Esp32Source_CountsDataLinesOfLastSecond)
 {
   TestClock clock;

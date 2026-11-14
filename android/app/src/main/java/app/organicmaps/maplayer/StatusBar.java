@@ -281,6 +281,10 @@ public class StatusBar
     {
       case CONNECTED -> new Look(R.drawable.ic_nogps_box, R.color.source_connecting, 0, 0, true);
       case OFF, NO_PERMISSION, DISABLED -> new Look(R.drawable.ic_nogps_bluetooth_off, R.color.source_sleeping);
+      // Not searched until the user acts.
+      case PAIRING_FAILED, BOND_LOST ->
+        new Look(R.drawable.ic_nogps_box, R.color.source_warning, R.drawable.ic_nogps_badge_alert,
+                 R.color.source_warning, false);
       default -> new Look(R.drawable.ic_nogps_bluetooth, R.color.source_connecting, 0, 0, true);
     };
   }

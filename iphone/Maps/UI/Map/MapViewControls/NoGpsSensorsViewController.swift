@@ -320,6 +320,8 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     case .connecting: return L("nogps_box_bt_connecting")
     case .pairing: return L("nogps_box_bt_pairing")
     case .connected: return L("nogps_box_bt_waiting")
+    case .pairingFailed: return L("nogps_box_bt_pairing_failed")
+    case .bondLost: return L("nogps_box_bt_bond_lost")
     @unknown default: return L("nogps_unknown")
     }
   }

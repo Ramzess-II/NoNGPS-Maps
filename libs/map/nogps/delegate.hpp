@@ -88,6 +88,11 @@ enum class BleState
   Pairing,
   // Connected and subscribed to the lines of the box.
   Connected,
+  // The user has cancelled the code or entered a wrong one: the box is not tried again until the user asks.
+  PairingFailed,
+  // A paired box connects but sends nothing again and again: it has forgotten the phone. The user should remove the
+  // box in the Bluetooth settings and power it again. Not tried again until the user asks.
+  BondLost,
 };
 
 std::string DebugPrint(Provider provider);

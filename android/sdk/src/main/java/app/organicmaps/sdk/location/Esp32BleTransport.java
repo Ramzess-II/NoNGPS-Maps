@@ -55,6 +55,8 @@ class Esp32BleTransport
   static final int STATE_CONNECTING = 5;
   static final int STATE_PAIRING = 6;
   static final int STATE_CONNECTED = 7;
+  static final int STATE_PAIRING_FAILED = 8;
+  static final int STATE_BOND_LOST = 9;
 
   private static final String TAG = Esp32BleTransport.class.getSimpleName();
   private static final UUID SERVICE = UUID.fromString("02CB0001-C0C3-40D0-819C-5A85998DCD99");

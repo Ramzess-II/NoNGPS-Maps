@@ -478,8 +478,9 @@ private:
     {
       std::string name;
       in >> name;
-      for (auto const state : {BleState::Off, BleState::NoPermission, BleState::Disabled, BleState::Searching,
-                               BleState::PairingClosed, BleState::Connecting, BleState::Pairing, BleState::Connected})
+      for (auto const state :
+           {BleState::Off, BleState::NoPermission, BleState::Disabled, BleState::Searching, BleState::PairingClosed,
+            BleState::Connecting, BleState::Pairing, BleState::Connected, BleState::PairingFailed, BleState::BondLost})
       {
         if (DebugPrint(state) == name)
           engine.OnEsp32BleState(state);

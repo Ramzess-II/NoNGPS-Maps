@@ -51,6 +51,8 @@ std::string DebugPrint(BleState state)
   case BleState::Connecting: return "CONNECTING";
   case BleState::Pairing: return "PAIRING";
   case BleState::Connected: return "CONNECTED";
+  case BleState::PairingFailed: return "PAIRING_FAILED";
+  case BleState::BondLost: return "BOND_LOST";
   }
   UNREACHABLE();
 }
