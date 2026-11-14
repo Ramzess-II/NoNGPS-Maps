@@ -3168,6 +3168,163 @@ UNIT_TEST(NoGps_Engine_CarStartingWithJerkBackDrivesForward)
   TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 3);
 }
 
+UNIT_TEST(NoGps_Engine_CarCrawlingBackAfterSmallRollIsFollowed)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  for (double pullAfterSec : {0.5, 2.0})
+  {
+    Env env(true /* inertial */, &roads);
+    MarkCar(env, -450);
+    BoxCar car(env, -450, true /* accelerometer */);
+    car.SpeedUpAndBrake();
+
+    // Shifted into reverse, the car rolls forward by 2 cm and reports 1 km/h at once, as on November 13 at 19:24:36.
+    car.m_minReportedKmh = 1;
+    car.Drive(0.2, 0.5, 0);
+    car.Drive(0.2, -0.5, 0);
+    car.Drive(pullAfterSec - 0.4, 0, 0);
+    TEST(env.m_engine.GetTripLine().find(" back=0") != std::string::npos, (pullAfterSec, env.m_engine.GetTripLine()));
+    // The brake is released later: it backs at 4 km/h, which it reports the lag late.
+    car.Drive(2.2, -0.5, 0);
+    car.Drive(0.6, 0, 0);
+    TEST(env.m_engine.GetTripLine().find(" back=1") != std::string::npos, (pullAfterSec, env.m_engine.GetTripLine()));
+    car.m_minReportedKmh = 0;
+    car.Drive(3, 0, 0);
+    car.Drive(2.2, 0.5, 0);
+    car.Drive(3, 0, 0);
+    TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 2);
+  }
+}
+
+UNIT_TEST(NoGps_Engine_CarSpeedingUpDownRampIsNotTurnedBack)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+
+  // The car starts forward to 8 km/h and drives down a ramp: the accelerometer feels a pull backward as strong as
+  // the speed of the car. It reports more than a crawl by then: the speed of the lag ago is compared.
+  car.Drive(1.5, 1.5, 0);
+  car.m_slopeMps2 = -3;
+  for (int i = 0; i < 30; ++i)
+  {
+    car.Drive(0.1, 0, 0);
+    TEST(env.m_engine.GetTripLine().find(" back=0") != std::string::npos, (i, env.m_engine.GetTripLine()));
+  }
+  car.m_slopeMps2 = 0;
+  car.Drive(5, 0, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 3);
+}
+
+UNIT_TEST(NoGps_Engine_CarCrawlingForwardStaysForward)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+
+  // The car creeps forward at 1 km/h, which it reports at once, onto a gentle slope down that is felt as a pull
+  // backward, and speeds up.
+  car.m_minReportedKmh = 1;
+  car.Drive(1, 0.3, 0);
+  car.m_slopeMps2 = -0.15;
+  for (int i = 0; i < 40; ++i)
+  {
+    car.Drive(0.1, i < 30 ? 0 : 0.5, 0);
+    TEST(env.m_engine.GetTripLine().find(" back=0") != std::string::npos, (i, env.m_engine.GetTripLine()));
+  }
+  car.m_slopeMps2 = 0;
+  car.m_minReportedKmh = 0;
+  car.Drive(5, 0, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 3);
+}
+
+UNIT_TEST(NoGps_Engine_CarStartingClearlyForwardAndBrakingStaysForward)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+
+  // The car jerks forward to 1 m/s and brakes to a crawl at once, the box pitching forward as it brakes, as on
+  // October 19 at 07:55:51: the start was felt clearly forward.
+  car.m_minReportedKmh = 1;
+  car.Drive(0.5, 2, 0);
+  car.Drive(0.5, -1.8, 0);
+  car.m_slopeMps2 = -1.5;
+  for (int i = 0; i < 30; ++i)
+  {
+    car.Drive(0.1, 0, 0);
+    TEST(env.m_engine.GetTripLine().find(" back=0") != std::string::npos, (i, env.m_engine.GetTripLine()));
+  }
+  car.m_slopeMps2 = 0;
+  car.m_minReportedKmh = 0;
+  car.Drive(3, 0, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 3);
+}
+
+UNIT_TEST(NoGps_Engine_CarCrawlingAfterShortStopStaysForward)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+
+  // The car drives 6 m and stops for 1.5 s, too short to feel it standing: the stand before is taken.
+  car.Drive(2, 1, 0);
+  car.Drive(1, 0, 0);
+  car.Drive(2, -1, 0);
+  car.Drive(1.5, 0, 0);
+  // It crawls forward at 1 km/h onto a slope down that the stand before didn't have, as on October 15 at 09:47:12.
+  car.m_minReportedKmh = 1;
+  car.Drive(0.6, 0.5, 0);
+  car.m_slopeMps2 = -0.6;
+  for (int i = 0; i < 34; ++i)
+  {
+    car.Drive(0.1, 0, 0);
+    TEST(env.m_engine.GetTripLine().find(" back=0") != std::string::npos, (i, env.m_engine.GetTripLine()));
+  }
+  car.m_slopeMps2 = 0;
+  car.m_minReportedKmh = 0;
+  car.Drive(3, 0, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 3);
+}
+
+UNIT_TEST(NoGps_Engine_CarCrawlingAfterSlowMomentStaysForward)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+
+  // The car drives forward at 5 km/h, slows down to 1 km/h for 2 s without a stop and speeds up to 3 km/h.
+  car.Drive(1.4, 1, 0);
+  car.Drive(3, 0, 0);
+  car.m_minReportedKmh = 1;
+  car.Drive(1.4, -1, 0);
+  car.Drive(2, 0, 0);
+  car.Drive(1, 0.5, 0);
+  car.Drive(2, 0, 0);
+  // 3 s after it sped up it drives onto a slope down felt as a pull backward: a rise after 1 km/h only ends driving
+  // backwards.
+  car.m_slopeMps2 = -1.5;
+  for (int i = 0; i < 20; ++i)
+  {
+    car.Drive(0.1, 0, 0);
+    TEST(env.m_engine.GetTripLine().find(" back=0") != std::string::npos, (i, env.m_engine.GetTripLine()));
+  }
+  car.m_slopeMps2 = 0;
+  car.m_minReportedKmh = 0;
+  car.Drive(5, 0, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 3);
+}
+
 UNIT_TEST(NoGps_Engine_CarDrivingBackAfterShortStopIsFollowed)
 {
   PieceRoads roads({{-2000, 0, 3000, 0}}, {});
