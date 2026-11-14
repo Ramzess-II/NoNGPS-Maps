@@ -11,6 +11,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -32,6 +33,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
@@ -47,6 +49,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 
@@ -63,6 +66,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private static final String SHOP_URL = "https://non-gps.com";
   private static final String STATE_SEARCHING = "searching";
   private static final String STATE_SPEED_TABLE = "speed_table";
+  private static final String STATE_BOX_VALUES = "box_values";
   private static final String STATE_GPS = "gps";
   private static final String STATE_SHARE_ASKED = "share_asked";
   private static final String BOX_NAME = "NonGPS-OBD";
@@ -95,6 +99,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private boolean mSearching;
   // The speed table is shown on its own page of the sheet, Back returns from it.
   private boolean mSpeedTableShown;
+  // All the values the box sends are shown on a page of their own too.
+  private boolean mValuesShown;
   // The GPS details are shown on a page of their own too. The search goes on while it is shown.
   private boolean mGpsShown;
   // The user has turned the share on before the app is picked as the mock location app.
@@ -105,6 +111,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     {
       if (mGpsShown)
         showGps(false);
+      else if (mValuesShown)
+        showValues(false);
       else
         showSpeedTable(false);
     }
@@ -142,6 +150,13 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private TextView mInstallFirmware;
   private View mSpeedTablePage;
   private LinearLayout mSpeedTableRows;
+  private View mValuesPage;
+  private LinearLayout mValuesRows;
+  // The values shown: the rows are made again when the box sends other fields.
+  private NoGps.BoxValue[] mValueIds = new NoGps.BoxValue[0];
+  private TextView[] mValueTexts = new TextView[0];
+  @Nullable
+  private TextView mVoltageMismatch;
   private View mSearch;
   private View mShop;
   private final ImageView[] mStepDots = new ImageView[4];
@@ -160,6 +175,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     {
       mSearching = savedInstanceState.getBoolean(STATE_SEARCHING);
       mSpeedTableShown = savedInstanceState.getBoolean(STATE_SPEED_TABLE);
+      mValuesShown = savedInstanceState.getBoolean(STATE_BOX_VALUES);
       mGpsShown = savedInstanceState.getBoolean(STATE_GPS);
       mShareAsked = savedInstanceState.getBoolean(STATE_SHARE_ASKED);
       return;
@@ -178,6 +194,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     super.onSaveInstanceState(outState);
     outState.putBoolean(STATE_SEARCHING, mSearching);
     outState.putBoolean(STATE_SPEED_TABLE, mSpeedTableShown);
+    outState.putBoolean(STATE_BOX_VALUES, mValuesShown);
     outState.putBoolean(STATE_GPS, mGpsShown);
     outState.putBoolean(STATE_SHARE_ASKED, mShareAsked);
   }
@@ -239,6 +256,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mInstallFirmware = view.findViewById(R.id.box_install_firmware);
     mSpeedTablePage = view.findViewById(R.id.box_speed_table_page);
     mSpeedTableRows = view.findViewById(R.id.box_speed_table_rows);
+    mValuesPage = view.findViewById(R.id.box_values_page);
+    mValuesRows = view.findViewById(R.id.box_values_rows);
     mSearch = view.findViewById(R.id.box_search);
     mShop = view.findViewById(R.id.box_shop);
     final int[] dots = {R.id.box_step0_dot, R.id.box_step1_dot, R.id.box_step2_dot, R.id.box_step3_dot};
@@ -260,6 +279,11 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     view.findViewById(R.id.box_clear_speed)
         .setOnClickListener(v -> SensorsBottomSheet.confirmClearSpeed(requireContext(), this::update));
     view.findViewById(R.id.box_speed_table_back).setOnClickListener(v -> showSpeedTable(false));
+    mName.setOnClickListener(v -> {
+      if (NoGps.getStatus().boxValues.length > 0)
+        showValues(true);
+    });
+    view.findViewById(R.id.box_values_back).setOnClickListener(v -> showValues(false));
     mCalibrate.setOnClickListener(v -> {
       // The row shows how the calibration goes.
       if (calibrateActionText(NoGps.getStatus()) == 0)
@@ -326,12 +350,14 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
         getBehavior().setState(BottomSheetBehavior.STATE_COLLAPSED);
     }
     final boolean speedTable = mSpeedTableShown && !mGpsShown && !mSearching && status.inertialEnabled;
-    final boolean page = speedTable || mGpsShown;
+    final boolean values = mValuesShown && !mGpsShown && !mSearching && status.inertialEnabled;
+    final boolean page = speedTable || values || mGpsShown;
     mBackFromPage.setEnabled(page);
     mTiles.setVisibility(page ? View.GONE : View.VISIBLE);
     mGpsGroup.setVisibility(page ? View.GONE : View.VISIBLE);
     mGpsPage.setVisibility(mGpsShown ? View.VISIBLE : View.GONE);
     mSpeedTablePage.setVisibility(speedTable ? View.VISIBLE : View.GONE);
+    mValuesPage.setVisibility(values ? View.VISIBLE : View.GONE);
     mSearch.setVisibility(mSearching && !page ? View.VISIBLE : View.GONE);
     mConnected.setVisibility(!mSearching && status.inertialEnabled && !page ? View.VISIBLE : View.GONE);
     // Forgotten in the sensors sheet, or being searched.
@@ -343,6 +369,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       updateSearch(status);
     else if (speedTable)
       updateSpeedTable(status);
+    else if (values)
+      updateValues(status);
     else
       updateBox(status);
   }
@@ -447,6 +475,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     if (bluetoothFailed)
       mBluetooth.setText(bluetoothActionText(status));
     mName.setText(getString(R.string.nogps_sensors_box, boxName(status)));
+    final boolean hasValues = status.boxValues.length > 0;
+    mName.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, hasValues ? R.drawable.ic_nogps_chevron : 0, 0);
+    mName.setClickable(hasValues);
     // The box tells the car data and its calibration: there is nothing to show while it is out of reach.
     final boolean connected = isBoxHeard(status) && status.getBleState() == NoGps.BleState.CONNECTED;
     mSpeed.setVisibility(connected ? View.VISIBLE : View.GONE);
@@ -513,6 +544,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     switchPage(shown, mSpeedTablePage);
   }
 
+  private void showValues(boolean shown)
+  {
+    mValuesShown = shown;
+    switchPage(shown, mValuesPage);
+  }
+
   private void showGps(boolean shown)
   {
     mGpsShown = shown;
@@ -571,6 +608,150 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       if (i < ranges)
         row.setText(SensorsBottomSheet.speedTableRowText(requireContext(), status, i));
     }
+  }
+
+  private void updateValues(@NonNull NoGps.Status status)
+  {
+    final NoGps.BoxValue[] ids = new NoGps.BoxValue[status.boxValues.length];
+    for (int i = 0; i < ids.length; ++i)
+      ids[i] = status.getBoxValueId(i);
+    if (!Arrays.equals(ids, mValueIds))
+      makeValueRows(ids);
+    for (int i = 0; i < ids.length; ++i)
+    {
+      final String value = status.boxValues[i];
+      mValueTexts[i].setText(boxValueText(requireContext(), status, ids[i], value));
+      if (ids[i] == NoGps.BoxValue.VOLTAGE_MISMATCH && mVoltageMismatch != null)
+        mVoltageMismatch.setVisibility(value.equals("1") ? View.VISIBLE : View.GONE);
+    }
+  }
+
+  private void makeValueRows(@NonNull NoGps.BoxValue[] ids)
+  {
+    final Context context = requireContext();
+    final LayoutInflater inflater = LayoutInflater.from(context);
+    mValuesRows.removeAllViews();
+    mValueIds = ids;
+    mValueTexts = new TextView[ids.length];
+    mVoltageMismatch = null;
+    // The values come in the order of the groups.
+    final int[] headers = {R.string.nogps_box_value_group_car, R.string.nogps_box_value_group_gyroscope,
+                           R.string.nogps_box_value_group_obd, R.string.nogps_box_value_group_box};
+    final NoGps.BoxValue[] groupStarts = {NoGps.BoxValue.ENGINE, NoGps.BoxValue.IMU_NAME, NoGps.BoxValue.OBD_STATE,
+                                          NoGps.BoxValue.FIRMWARE};
+    int group = -1;
+    for (int i = 0; i < ids.length; ++i)
+    {
+      int idGroup = 0;
+      while (idGroup + 1 < groupStarts.length && ids[i].ordinal() >= groupStarts[idGroup + 1].ordinal())
+        ++idGroup;
+      if (idGroup != group)
+      {
+        group = idGroup;
+        final TextView header = new TextView(context);
+        header.setText(headers[group]);
+        header.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+        header.setTypeface(Typeface.DEFAULT_BOLD);
+        header.setPadding(0, dp(12), 0, 0);
+        mValuesRows.addView(header);
+      }
+      final View row = inflater.inflate(R.layout.nogps_sheet_row, mValuesRows, false);
+      ((TextView) row.findViewById(R.id.row_label)).setText(boxValueLabel(ids[i]));
+      mValueTexts[i] = row.findViewById(R.id.row_value);
+      mValuesRows.addView(row);
+      if (ids[i] == NoGps.BoxValue.VOLTAGE_MISMATCH)
+      {
+        mVoltageMismatch = new TextView(context);
+        mVoltageMismatch.setText(R.string.nogps_voltage_mismatch);
+        mVoltageMismatch.setTextColor(ContextCompat.getColor(context, R.color.base_red));
+        mVoltageMismatch.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        mValuesRows.addView(mVoltageMismatch);
+      }
+    }
+  }
+
+  private int dp(int value)
+  {
+    return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, getResources().getDisplayMetrics());
+  }
+
+  @NonNull
+  private static String boxValueText(@NonNull Context context, @NonNull NoGps.Status status, @NonNull NoGps.BoxValue id,
+                                     @NonNull String value)
+  {
+    if (value.isEmpty())
+    {
+      // The box asks the car for them while it stands.
+      final boolean standingOnly =
+          id == NoGps.BoxValue.RPM || id == NoGps.BoxValue.ELM_VOLTAGE || id == NoGps.BoxValue.ECU_VOLTAGE;
+      return standingOnly && status.speedKmh > 0 ? context.getString(R.string.nogps_not_while_driving) : "—";
+    }
+    return switch (id)
+    {
+      case ENGINE ->
+        value.equals("RUN")   ? context.getString(R.string.nogps_engine_running)
+        : value.equals("OFF") ? context.getString(R.string.nogps_engine_stopped)
+                              : value;
+      case RPM -> rpmText(context, value);
+      case BOX_VOLTAGE, ELM_VOLTAGE, ECU_VOLTAGE -> context.getString(R.string.nogps_volts, value);
+      case VOLTAGE_MISMATCH -> context.getString(value.equals("1") ? R.string.yes : R.string.no);
+      case IMU_RATE -> context.getString(R.string.nogps_box_value_hz, value);
+      case IMU_TEMPERATURE -> context.getString(R.string.nogps_box_value_celsius, value);
+      case BIAS_AGE -> context.getString(R.string.nogps_box_value_seconds_ago, value);
+      case BIAS -> context.getString(R.string.nogps_box_value_degrees_per_second, value);
+      case FLASH_SIZE, MAX_IMAGE_SIZE -> context.getString(R.string.nogps_box_value_kilobytes, value);
+      default -> value;
+    };
+  }
+
+  @NonNull
+  private static String rpmText(@NonNull Context context, @NonNull String value)
+  {
+    try
+    {
+      return context.getString(R.string.nogps_rpm, Integer.parseInt(value));
+    }
+    catch (NumberFormatException e)
+    {
+      return value;
+    }
+  }
+
+  @StringRes
+  private static int boxValueLabel(@NonNull NoGps.BoxValue id)
+  {
+    return switch (id)
+    {
+      case ENGINE -> R.string.nogps_box_value_engine;
+      case RPM -> R.string.nogps_box_value_rpm;
+      case BOX_VOLTAGE -> R.string.nogps_box_value_box_voltage;
+      case ELM_VOLTAGE -> R.string.nogps_box_value_elm_voltage;
+      case ECU_VOLTAGE -> R.string.nogps_box_value_ecu_voltage;
+      case VOLTAGE_MISMATCH -> R.string.nogps_box_value_voltage_mismatch;
+      case IMU_NAME -> R.string.nogps_box_value_name;
+      case IMU_STATE, OBD_STATE -> R.string.nogps_box_value_state;
+      case IMU_CHIP_ID -> R.string.nogps_box_value_chip_id;
+      case IMU_RATE -> R.string.nogps_box_value_rate;
+      case IMU_TEMPERATURE -> R.string.nogps_box_value_temperature;
+      case IMU_ERRORS -> R.string.nogps_box_value_read_errors;
+      case BIAS_AGE -> R.string.nogps_box_value_bias_age;
+      case BIAS -> R.string.nogps_box_value_bias;
+      case OBD_PROTOCOL -> R.string.nogps_box_value_protocol;
+      case OBD_ERROR -> R.string.nogps_box_value_last_error;
+      case OBD_BAUD -> R.string.nogps_box_value_uart_baud;
+      case FIRMWARE -> R.string.nogps_box_value_firmware;
+      case BUILD_DATE -> R.string.nogps_box_value_build_date;
+      case CHIP -> R.string.nogps_box_value_chip;
+      case BOARD -> R.string.nogps_box_value_board;
+      case ID -> R.string.nogps_box_value_id;
+      case FLASH_SIZE -> R.string.nogps_box_value_flash_size;
+      case MAX_IMAGE_SIZE -> R.string.nogps_box_value_max_image_size;
+      case SLOT -> R.string.nogps_box_value_slot;
+      case SLOT_STATE -> R.string.nogps_box_value_slot_state;
+      case ABILITIES -> R.string.nogps_box_value_abilities;
+      case POWER_ONS -> R.string.nogps_box_value_power_ons;
+      case LAST_EVENT -> R.string.nogps_box_value_last_event;
+    };
   }
 
   /**
