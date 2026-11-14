@@ -267,6 +267,10 @@ public final class NoGps
     public boolean inertialEnabled;
     @Keep
     public boolean esp32Source;
+    // The box of the current car, see getCars(): empty before a box is heard.
+    @Keep
+    @NonNull
+    public String carId = "";
     // Empty if no adapter is chosen.
     @Keep
     public String elm327Address = "";
@@ -406,6 +410,33 @@ public final class NoGps
     public BoxValue getBoxValueId(int i)
     {
       return BoxValue.values()[boxValueIds[i]];
+    }
+  }
+
+  /**
+   * A car is known by the sensor box in it: what the navigation learns about a car is kept for each one.
+   */
+  @Keep
+  public static final class Car
+  {
+    // The four characters of the name of the box, NoGPS-XXXX.
+    @NonNull
+    public final String id;
+    // Empty until the user names the car.
+    @NonNull
+    public final String name;
+    @NonNull
+    public final String firmware;
+    // When the box told about itself the last time.
+    public final long lastSeenUnixMs;
+
+    @Keep
+    Car(@NonNull String id, @NonNull String name, @NonNull String firmware, long lastSeenUnixMs)
+    {
+      this.id = id;
+      this.name = name;
+      this.firmware = firmware;
+      this.lastSeenUnixMs = lastSeenUnixMs;
     }
   }
 
@@ -640,6 +671,27 @@ public final class NoGps
   public static native void nativeCancelFirmwareUpdate();
 
   public static native void nativeClearSpeedCalibration();
+
+  /**
+   * The cars of the user in the order they were added, a car for each box heard.
+   */
+  @NonNull
+  public static native Car[] nativeGetCars();
+
+  /**
+   * The user drives the car: its values are used, the box of the car is looked for.
+   */
+  public static native void nativeSelectCar(@NonNull String id);
+
+  /**
+   * An empty name gives the car its usual name back.
+   */
+  public static native void nativeRenameCar(@NonNull String id, @NonNull String name);
+
+  /**
+   * See LocationHelper.forgetCar(): the box is not connected again either.
+   */
+  static native void nativeForgetCar(@NonNull String id);
 
   private static native void nativeGetStatus(@NonNull Status status);
 }

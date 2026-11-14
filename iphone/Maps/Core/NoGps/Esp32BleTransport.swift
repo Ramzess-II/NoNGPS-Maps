@@ -24,6 +24,9 @@ final class Esp32BleTransport: NSObject {
     static let manufacturerId: [UInt8] = [0xFF, 0xFF]
     static let pairingOpenFlag: UInt8 = 1
     static let knownBoxesKey = "NoGpsKnownBoxes"
+    // The boxes of the cars the user has forgotten: still paired, they are not connected until the user adds the car.
+    static let forgottenBoxesKey = "NoGpsForgottenBoxes"
+    static let namePrefix = "NoGPS-"
     static let retryDelay: TimeInterval = 2
     // A box that is found but can't be connected and subscribed to is tried less and less often, e.g. the user has
     // refused to pair with it. One that was is tried again soon: after a parking, the first connections may stay
@@ -49,6 +52,9 @@ final class Esp32BleTransport: NSObject {
     static let minSilentLink: TimeInterval = 3
     // A new box waits this long for a paired one to be found: both may be near.
     static let newBoxDelay: TimeInterval = 3
+    // The box of another car waits this long for the box of the current car: both may be near, e.g. two cars in the
+    // yard with their engines just stopped.
+    static let otherCarDelay: TimeInterval = 3
     // A paired box answers HELLO at once over an encrypted connection. One that stays silent is connected again: the
     // connection has stayed unencrypted, and the box would drop it only after 60 s (October 13, three times in a row).
     static let silenceTimeout: TimeInterval = 5
@@ -93,6 +99,14 @@ final class Esp32BleTransport: NSObject {
   /// Nothing wakes the app up in the background while it waits to search again: it would stay suspended.
   private var backgroundWait = UIBackgroundTaskIdentifier.invalid
   private lazy var knownBoxes = Set(UserDefaults.standard.stringArray(forKey: Constants.knownBoxesKey) ?? [])
+  private lazy var forgottenBoxes = Set(UserDefaults.standard.stringArray(forKey: Constants.forgottenBoxesKey) ?? [])
+  /// The user adds a car: only a box that is not of a known car is connected.
+  private var newBoxOnly = false
+  /// The cars and the current one, as the search starts.
+  private var carIds = Set<String>()
+  private var currentCar = ""
+  /// The box connected, nil if its name is not known.
+  private var boxId: String?
 
   /// The system asks the user for the code of a new box, or is about to: the box asks for it 1.5 s after the
   /// connection. iOS doesn't tell it, and the core is told that the box is connected meanwhile, so it keeps sending
@@ -147,6 +161,27 @@ final class Esp32BleTransport: NSObject {
     retryDelay = Constants.retryDelay
     silentConnections = 0
     start()
+  }
+
+  /// The user adds a car: only a box that is not of a known car is connected, the box connected now is dropped. Ends
+  /// when the new box is heard, or with false.
+  @objc
+  func searchNewBox(_ newOnly: Bool) {
+    guard newBoxOnly != newOnly else { return }
+    LOG(.info, "New box only = \(newOnly)")
+    newBoxOnly = newOnly
+    guard isOpen else { return }
+    closeConnection()
+    retryDelay = Constants.retryDelay
+    silentConnections = 0
+    start()
+  }
+
+  /// The user has forgotten the car: its box, still paired, is not connected until the car is added again.
+  @objc
+  func forgetBox(_ carId: String) {
+    guard forgottenBoxes.insert(carId).inserted else { return }
+    UserDefaults.standard.set(Array(forgottenBoxes), forKey: Constants.forgottenBoxesKey)
   }
 
   /// The user has forgotten the box: a box found later is new, even this one after a reset.
@@ -210,6 +245,8 @@ final class Esp32BleTransport: NSObject {
     central.scanForPeripherals(withServices: [Constants.service],
                                options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
     scanStart = ProcessInfo.processInfo.systemUptime
+    carIds = Set(NoGps.cars().map(\.carId))
+    currentCar = NoGps.status().carId
     setState(.searching)
   }
 
@@ -220,10 +257,39 @@ final class Esp32BleTransport: NSObject {
       && bytes[3] & Constants.pairingOpenFlag != 0
   }
 
-  private func connect(_ peripheral: CBPeripheral, known: Bool, acceptsNewPhone: Bool) {
+  /// The four characters of the name of the box, NoGPS-XXXX, nil if the box doesn't tell it.
+  private static func boxId(_ peripheral: CBPeripheral, _ advertisementData: [String: Any]) -> String? {
+    let name = advertisementData[CBAdvertisementDataLocalNameKey] as? String ?? peripheral.name
+    guard let name, name.hasPrefix(Constants.namePrefix) else { return nil }
+    return String(name.dropFirst(Constants.namePrefix.count))
+  }
+
+  /// Returns false if the box is not to be connected now: of a known car while the user adds one, forgotten, or of
+  /// another car while the box of the current one may be found too.
+  private func isBoxWanted(_ id: String, known: Bool) -> Bool {
+    if newBoxOnly {
+      return !carIds.contains(id)
+    }
+    // Without cars the box is set up anew, as any box.
+    if !carIds.isEmpty, forgottenBoxes.contains(id) {
+      return false
+    }
+    return !known || currentCar.isEmpty || currentCar == id
+      || ProcessInfo.processInfo.systemUptime - scanStart >= Constants.otherCarDelay
+  }
+
+  /// The box sends data: a new one ends the search for it, a forgotten one is added again.
+  private func onBoxHeard() {
+    newBoxOnly = false
+    guard let boxId, forgottenBoxes.remove(boxId) != nil else { return }
+    UserDefaults.standard.set(Array(forgottenBoxes), forKey: Constants.forgottenBoxesKey)
+  }
+
+  private func connect(_ peripheral: CBPeripheral, id: String?, known: Bool, acceptsNewPhone: Bool) {
     central?.stopScan()
     cancelPairingClosedCheck()
     self.peripheral = peripheral
+    boxId = id
     isKnown = known
     self.acceptsNewPhone = acceptsNewPhone
     peripheral.delegate = self
@@ -282,6 +348,7 @@ final class Esp32BleTransport: NSObject {
       }
     }
     peripheral = nil
+    boxId = nil
     rx = nil
     ota = nil
     isReady = false
@@ -392,6 +459,10 @@ extension Esp32BleTransport: CBCentralManagerDelegate {
                       advertisementData: [String: Any], rssi RSSI: NSNumber) {
     guard isOpen, self.peripheral == nil else { return }
     let known = knownBoxes.contains(peripheral.identifier.uuidString)
+    let id = Self.boxId(peripheral, advertisementData)
+    if let id, !isBoxWanted(id, known: known) {
+      return
+    }
     let pairingOpen = isPairingOpen(advertisementData)
     if !known {
       // The box accepts a new phone for two minutes after it is powered, the system asks for its code.
@@ -401,12 +472,12 @@ extension Esp32BleTransport: CBCentralManagerDelegate {
       }
       // A box paired already is taken first if it is near: the new one may be somebody else's. Without it the new box
       // is a second or a replaced one of the user.
-      if !knownBoxes.isEmpty, ProcessInfo.processInfo.systemUptime - scanStart < Constants.newBoxDelay {
+      if !newBoxOnly, !knownBoxes.isEmpty, ProcessInfo.processInfo.systemUptime - scanStart < Constants.newBoxDelay {
         return
       }
     }
-    LOG(.info, "Found \(peripheral.identifier) rssi \(RSSI) known \(known) pairing open \(pairingOpen)")
-    connect(peripheral, known: known, acceptsNewPhone: pairingOpen)
+    LOG(.info, "Found \(peripheral.identifier) \(id ?? "-") rssi \(RSSI) known \(known) pairing open \(pairingOpen)")
+    connect(peripheral, id: id, known: known, acceptsNewPhone: pairingOpen)
   }
 
   func centralManager(_: CBCentralManager, didConnect peripheral: CBPeripheral) {
@@ -489,6 +560,7 @@ extension Esp32BleTransport: CBPeripheralDelegate {
       silentConnections = 0
       timer?.cancel()
       remember(peripheral)
+      onBoxHeard()
       // The lines waiting for a write with a response go without it now.
       writeNext()
     }

@@ -248,6 +248,27 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   /**
+   * The user adds a car: only a box that is not of a known car is connected, until it is heard or this is called
+   * with false.
+   */
+  @UiThread
+  public void searchNewBox(boolean newOnly)
+  {
+    mEsp32Ble.searchNewBox(newOnly);
+  }
+
+  /**
+   * Forgets the car with what is learned about it. Its box, still paired, is not connected until the car is added
+   * again. Without cars left the box is not looked for.
+   */
+  @UiThread
+  public void forgetCar(@NonNull String id)
+  {
+    mEsp32Ble.forgetBox(id);
+    NoGps.nativeForgetCar(id);
+  }
+
+  /**
    * @return MapObject.MY_POSITION, null if location is not yet determined or "My position" button is switched off.
    */
   @Nullable

@@ -10,7 +10,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
     static let extraSheetHeight = CGFloat(20)
   }
 
-  private enum Row {
+  private enum Row: Equatable {
     case gpsUse
     case bluetooth
     case search
@@ -23,9 +23,11 @@ final class NoGpsBoxSheet: MWMTableViewController {
     case firmware
     case calibrate
     case installFirmware
-    case forget
+    /// A car by the id of its box.
+    case car(String)
+    case addCar
     case buy
-    /// Another box, next to forgetting this one.
+    /// Another box, under the cars.
     case shop
   }
 
@@ -41,6 +43,9 @@ final class NoGpsBoxSheet: MWMTableViewController {
   // No box was set up when the sheet opened: it is searched until it is heard, and forgotten if the sheet is closed
   // before it is found.
   private var searching = false
+  /// The user adds a car: its box is searched as above, the other cars stay.
+  private var addingCar = false
+  private var cars: [NoGpsCar] = []
   private let searchView = BoxSearchView()
   private let header = StatusTilesView()
   private let gpsUse = UISwitch()
@@ -153,10 +158,14 @@ final class NoGpsBoxSheet: MWMTableViewController {
   /// Closed by the button or swiped down, from either page, before the box was heard, even if connected already: the
   /// phone stops looking for it.
   func stopSearchIfNotFound() {
-    if searching, !Self.isBoxHeard(NoGps.status()) {
+    guard searching, !Self.isBoxHeard(NoGps.status()) else { return }
+    // The box of a car being added: the boxes of the other cars are looked for again.
+    if addingCar {
+      NoGps.searchNewBox(false)
+    } else {
       NoGps.setInertialNavigationEnabled(false)
-      NoGpsStatusBar.update(NoGps.status())
     }
+    NoGpsStatusBar.update(NoGps.status())
   }
 
   private func refresh() {
@@ -164,6 +173,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
     // The box connected while it was searched: the sheet shows it as any other.
     if searching, Self.isBoxHeard(status) {
       searching = false
+      addingCar = false
     }
     var boxLook = NoGpsStatusBar.boxLook(status)
     // The waves of the search show it.
@@ -214,7 +224,9 @@ final class NoGpsBoxSheet: MWMTableViewController {
       if status.inertialStarted {
         sections.append(Section(rows: [.speedTable, .speedLag, .clearSpeed]))
       }
-      sections.append(Section(rows: [.shop, .forget]))
+      cars = NoGps.cars()
+      sections.append(Section(header: L("nogps_cars"), rows: cars.map { .car($0.carId) } + [.addCar]))
+      sections.append(Section(rows: [.shop]))
     } else {
       // Forgotten in the sensors screen.
       sections = [gps, Section(rows: [.buy], footer: L("nogps_box_buy_text"))]
@@ -378,9 +390,17 @@ final class NoGpsBoxSheet: MWMTableViewController {
       content.text = L("nogps_box_buy")
       content.textProperties.color = .linkBlue
       cell.selectionStyle = .default
-    case .forget:
-      content.text = L("nogps_box_forget")
-      content.textProperties.color = .buttonRed
+    case .car(let carId):
+      content = UIListContentConfiguration.subtitleCell()
+      if let car = cars.first(where: { $0.carId == carId }) {
+        content.text = Self.carName(car)
+        content.secondaryText = carStateText(car)
+      }
+      content.secondaryTextProperties.color = .secondaryLabel
+      cell.selectionStyle = .default
+    case .addCar:
+      content.text = L("nogps_car_add")
+      content.textProperties.color = .linkBlue
       cell.selectionStyle = .default
     case .buy:
       content.text = L("nogps_box_buy")
@@ -446,9 +466,12 @@ final class NoGpsBoxSheet: MWMTableViewController {
         NoGps.startFirmwareUpdate()
       }
       refresh()
-    case .forget:
-      NoGps.forgetBox()
-      dismiss(animated: true)
+    case .car(let carId):
+      if let car = cars.first(where: { $0.carId == carId }) {
+        showCarMenu(car, from: tableView.cellForRow(at: indexPath))
+      }
+    case .addCar:
+      addCar()
     default:
       break
     }
@@ -456,6 +479,20 @@ final class NoGpsBoxSheet: MWMTableViewController {
   }
 
   // MARK: - Texts
+
+  /// "Car C47D" until the user names it.
+  static func carName(_ car: NoGpsCar) -> String {
+    car.name.isEmpty ? String(format: L("nogps_car_default_name"), car.carId) : car.name
+  }
+
+  private func carStateText(_ car: NoGpsCar) -> String? {
+    if car.carId == status.carId {
+      return Self.isBoxHeard(status) ? L("nogps_car_connected") : L("nogps_car_current")
+    }
+    guard let lastSeen = car.lastSeen else { return nil }
+    return String(format: L("nogps_car_last_seen"), RelativeDateTimeFormatter().localizedString(for: lastSeen,
+                                                                                                relativeTo: Date()))
+  }
 
   /// How many ranges of the car speed GPS has measured. The rough table by the roads doesn't count: it is only a guess.
   private func speedTableText() -> String {
@@ -485,6 +522,69 @@ final class NoGpsBoxSheet: MWMTableViewController {
   }
 
   // MARK: - Actions
+
+  /// What the user does with a car: drives it, names it or forgets it.
+  private func showCarMenu(_ car: NoGpsCar, from cell: UITableViewCell?) {
+    let menu = UIAlertController(title: Self.carName(car), message: nil, preferredStyle: .actionSheet)
+    if car.carId != NoGps.status().carId {
+      menu.addAction(UIAlertAction(title: L("nogps_car_drive"), style: .default) { [weak self] _ in
+        NoGps.selectCar(car.carId)
+        self?.refresh()
+      })
+    }
+    menu.addAction(UIAlertAction(title: L("nogps_car_rename"), style: .default) { [weak self] _ in
+      self?.renameCar(car)
+    })
+    menu.addAction(UIAlertAction(title: L("nogps_car_forget"), style: .destructive) { [weak self] _ in
+      self?.confirmForgetCar(car)
+    })
+    menu.addAction(UIAlertAction(title: L("cancel"), style: .cancel))
+    if let popover = menu.popoverPresentationController, let cell {
+      popover.sourceView = cell
+      popover.sourceRect = cell.bounds
+    }
+    present(menu, animated: true)
+  }
+
+  private func renameCar(_ car: NoGpsCar) {
+    let alert = UIAlertController(title: L("nogps_car_name"), message: nil, preferredStyle: .alert)
+    alert.addTextField { field in
+      field.text = car.name
+      field.placeholder = String(format: L("nogps_car_default_name"), car.carId)
+      field.autocapitalizationType = .sentences
+      field.clearButtonMode = .whileEditing
+    }
+    alert.addAction(UIAlertAction(title: L("cancel"), style: .cancel))
+    alert.addAction(UIAlertAction(title: L("save"), style: .default) { [weak self, weak alert] _ in
+      NoGps.renameCar(car.carId, name: alert?.textFields?.first?.text ?? "")
+      self?.refresh()
+    })
+    present(alert, animated: true)
+  }
+
+  private func confirmForgetCar(_ car: NoGpsCar) {
+    let alert = UIAlertController(title: Self.carName(car), message: L("nogps_car_forget_text"), preferredStyle: .alert)
+    alert.addAction(UIAlertAction(title: L("cancel"), style: .cancel))
+    alert.addAction(UIAlertAction(title: L("nogps_car_forget"), style: .destructive) { [weak self] _ in
+      NoGps.forgetCar(car.carId)
+      NoGpsStatusBar.update(NoGps.status())
+      // The last car: the box is not looked for, the sheet offers to buy one.
+      if !NoGps.status().inertialEnabled {
+        self?.dismiss(animated: true)
+      } else {
+        self?.refresh()
+      }
+    })
+    present(alert, animated: true)
+  }
+
+  /// The box of the new car is searched step by step, as the first one: the box connected now is dropped.
+  private func addCar() {
+    searching = true
+    addingCar = true
+    NoGps.searchNewBox(true)
+    refresh()
+  }
 
   /// Bluetooth is allowed in the settings: once refused, iOS doesn't ask again. The box is searched again after a failed
   /// pairing or a lost bond.

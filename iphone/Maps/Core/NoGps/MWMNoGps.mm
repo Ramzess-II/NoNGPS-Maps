@@ -44,6 +44,8 @@ public:
 
   bool IsBoxPairing() const { return m_esp32.isPairing; }
   void ForgetBoxes() { [m_esp32 forgetKnownBoxes]; }
+  void ForgetBox(NSString * carId) { [m_esp32 forgetBox:carId]; }
+  void SearchNewBox(bool newOnly) { [m_esp32 searchNewBox:newOnly]; }
   void RetryBox() { [m_esp32 retry]; }
 
   void OnPosition(nogps::Fix const & fix) override
@@ -122,6 +124,30 @@ std::optional<double> NonNegative(double value)
 
 @end
 
+@interface MWMNoGpsCar ()
+
+- (instancetype)initWithCar:(nogps::Car const &)car;
+
+@end
+
+@implementation MWMNoGpsCar
+
+- (instancetype)initWithCar:(nogps::Car const &)car
+{
+  self = [super init];
+  if (self)
+  {
+    _carId = @(car.m_id.c_str());
+    _name = @(car.m_name.c_str());
+    _firmware = @(car.m_firmware.c_str());
+    if (car.m_lastSeenUnixMs > 0)
+      _lastSeen = [NSDate dateWithTimeIntervalSince1970:car.m_lastSeenUnixMs / 1000.0];
+  }
+  return self;
+}
+
+@end
+
 @interface MWMNoGpsStatus ()
 
 - (instancetype)initWithStatus:(nogps::Status const &)status;
@@ -149,6 +175,7 @@ std::optional<double> NonNegative(double value)
     _movedByHand = status.m_movedByHand;
     _speedLimitKmh = status.m_speedLimitKmh;
     _inertialEnabled = status.m_inertialEnabled;
+    _carId = @(status.m_carId.c_str());
     _inertialStarted = status.m_inertialStarted;
     _sourceState = static_cast<MWMNoGpsSourceState>(status.m_sourceState);
     _bleState = static_cast<MWMNoGpsBleState>(status.m_bleState);
@@ -297,6 +324,38 @@ static CLLocation * lastPlatformLocation;
 + (void)retryBox
 {
   Delegate().RetryBox();
+}
+
++ (NSArray<MWMNoGpsCar *> *)cars
+{
+  NSMutableArray<MWMNoGpsCar *> * cars = [NSMutableArray array];
+  for (auto const & car : Engine().GetCars())
+    [cars addObject:[[MWMNoGpsCar alloc] initWithCar:car]];
+  return cars;
+}
+
++ (void)selectCar:(NSString *)carId
+{
+  Engine().SelectCar(carId.UTF8String);
+}
+
++ (void)renameCar:(NSString *)carId name:(NSString *)name
+{
+  Engine().RenameCar(carId.UTF8String, name.UTF8String);
+}
+
++ (void)forgetCar:(NSString *)carId
+{
+  Delegate().ForgetBox(carId);
+  Engine().ForgetCar(carId.UTF8String);
+  // A box found later is new, even this one after a reset.
+  if (Engine().GetCars().empty())
+    Delegate().ForgetBoxes();
+}
+
++ (void)searchNewBox:(BOOL)newOnly
+{
+  Delegate().SearchNewBox(newOnly);
 }
 
 + (void)calibrate

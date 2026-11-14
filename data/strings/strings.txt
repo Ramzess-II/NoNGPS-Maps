@@ -46407,6 +46407,83 @@ en = Forget the box
 ru = Забыть блок
 uk = Забути блок
 
+[nogps_cars]
+comment = Header of the list of the cars on the box screen: each car has its own sensor box
+tags = android-app,apple-maps
+en = Cars
+ru = Машины
+uk = Машини
+
+[nogps_car_default_name]
+comment = Name of a car the user hasn't named, by the four characters of the name of its sensor box: "Car C47D"
+tags = android-app,apple-maps
+en = Car %1$@
+ru = Машина %1$@
+uk = Машина %1$@
+
+[nogps_car_connected]
+comment = State of a car in the list of the cars: its box is connected now
+tags = android-app,apple-maps
+en = Connected
+ru = Подключена
+uk = Підключена
+
+[nogps_car_current]
+comment = State of a car in the list of the cars: the app takes this car until a box connects
+tags = android-app,apple-maps
+en = Current car
+ru = Текущая машина
+uk = Поточна машина
+
+[nogps_car_last_seen]
+comment = State of a car in the list of the cars: when its box was connected the last time, e.g. "Last connected 2 hours ago"
+tags = android-app,apple-maps
+en = Last connected %1$@
+ru = Последнее подключение %1$@
+uk = Останнє підключення %1$@
+
+[nogps_car_drive]
+comment = Action for a car in the list of the cars: the app takes this car and connects to its box
+tags = android-app,apple-maps
+en = Switch to this car
+ru = Переключиться на эту машину
+uk = Перемкнутися на цю машину
+
+[nogps_car_rename]
+comment = Action for a car in the list of the cars
+tags = android-app,apple-maps
+en = Rename
+ru = Переименовать
+uk = Перейменувати
+
+[nogps_car_name]
+comment = Title of the dialog that renames a car
+tags = android-app,apple-maps
+en = Car name
+ru = Название машины
+uk = Назва машини
+
+[nogps_car_forget]
+comment = Action for a car in the list of the cars, and the button that confirms it
+tags = android-app,apple-maps
+en = Forget the car
+ru = Забыть машину
+uk = Забути машину
+
+[nogps_car_forget_text]
+comment = Asked before a car is forgotten
+tags = android-app,apple-maps
+en = What the app has learned about this car and where it was left will be lost. Its box is not connected until the car is added again.
+ru = То, что приложение узнало об этой машине, и место, где она осталась, будут потеряны. Её блок не будет подключаться, пока машину не добавят снова.
+uk = Те, що застосунок дізнався про цю машину, і місце, де вона залишилася, буде втрачено. Її блок не підключатиметься, доки машину не додадуть знову.
+
+[nogps_car_add]
+comment = Button under the list of the cars: search the sensor box of another car
+tags = android-app,apple-maps
+en = Add a car
+ru = Добавить машину
+uk = Додати машину
+
 [nogps_obd_stopped]
 tags = android-app
 en = No speed from the OBD adapter, the car stands still on the map. Check the adapter or mark yourself
