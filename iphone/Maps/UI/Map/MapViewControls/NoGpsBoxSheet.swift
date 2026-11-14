@@ -585,6 +585,11 @@ private final class BoxValuesViewController: MWMTableViewController {
 
   private func refresh() {
     status = NoGps.status()
+    // The box has disconnected: its values are gone.
+    if status.boxValues.isEmpty, navigationController?.topViewController === self {
+      navigationController?.popViewController(animated: true)
+      return
+    }
     // The values come in the order of the groups.
     let headers = [L("nogps_box_value_group_car"), L("nogps_box_value_group_gyroscope"), L("nogps_box_value_group_obd"),
                    L("nogps_box_value_group_box")]
