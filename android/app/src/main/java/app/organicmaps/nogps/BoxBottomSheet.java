@@ -349,6 +349,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       if (!mGpsShown)
         getBehavior().setState(BottomSheetBehavior.STATE_COLLAPSED);
     }
+    // The box has disconnected: its values are gone.
+    if (mValuesShown && status.boxValues.length == 0)
+    {
+      showValues(false);
+      return;
+    }
     final boolean speedTable = mSpeedTableShown && !mGpsShown && !mSearching && status.inertialEnabled;
     final boolean values = mValuesShown && !mGpsShown && !mSearching && status.inertialEnabled;
     final boolean page = speedTable || values || mGpsShown;
