@@ -1328,6 +1328,12 @@
 
 /* State of the sensor box, shown after its name */
 "nogps_box_bt_waiting" = "подключён по Bluetooth, жду данные";
+
+/* State of the sensor box, shown after its name: the user cancelled the pairing code or entered a wrong one. The phone stops trying until the user asks */
+"nogps_box_bt_pairing_failed" = "сопряжение не удалось: код отменён или неверный";
+
+/* State of the sensor box, shown after its name: a paired box connects but sends nothing, it has forgotten the phone */
+"nogps_box_bt_bond_lost" = "блок забыл этот телефон. Удалите его в настройках Bluetooth, затем выньте блок из разъёма и вставьте обратно";
 "nogps_sensors_calibrate_box" = "Калибровать";
 "nogps_gyro_mount_moved" = "блок сдвинули, откалибруйте";
 "nogps_sensors_hint_box" = "Закрепите блок неподвижно. Гироскоп он обнуляет сам на каждой остановке.";

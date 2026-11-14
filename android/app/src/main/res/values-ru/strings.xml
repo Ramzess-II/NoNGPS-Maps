@@ -1018,6 +1018,10 @@
     <string name="nogps_box_bt_pairing">введите код блока в окне сопряжения: 123456, если его не меняли</string>
     <!-- State of the sensor box, shown after its name -->
     <string name="nogps_box_bt_waiting">подключён по Bluetooth, жду данные</string>
+    <!-- State of the sensor box, shown after its name: the user cancelled the pairing code or entered a wrong one. The phone stops trying until the user asks -->
+    <string name="nogps_box_bt_pairing_failed">сопряжение не удалось: код отменён или неверный</string>
+    <!-- State of the sensor box, shown after its name: a paired box connects but sends nothing, it has forgotten the phone -->
+    <string name="nogps_box_bt_bond_lost">блок забыл этот телефон. Удалите его в настройках Bluetooth, затем выньте блок из разъёма и вставьте обратно</string>
     <string name="nogps_sensors_calibrate_box">Калибровать</string>
     <string name="nogps_gyro_mount_moved">блок сдвинули, откалибруйте</string>
     <string name="nogps_sensors_hint_box">Закрепите блок неподвижно. Гироскоп он обнуляет сам на каждой остановке.</string>
