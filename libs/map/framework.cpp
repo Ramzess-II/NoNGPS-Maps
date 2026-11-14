@@ -2748,7 +2748,7 @@ UserMark const * Framework::FindUserMarkInTapPosition(place_page::BuildInfo cons
     if (buildInfo.m_source != place_page::BuildInfo::Source::User)
       return df::TapInfo::GetPreciseTapRect(buildInfo.m_mercator, kEps);
 
-    if (type == UserMark::Type::BOOKMARK || type == UserMark::Type::TRACK_INFO)
+    if (type == UserMark::Type::BOOKMARK || type == UserMark::Type::TRACK_INFO || type == UserMark::Type::NOGPS_CAR)
       return df::TapInfo::GetBookmarkTapRect(buildInfo.m_mercator, m_currentModelView);
 
     if (type == UserMark::Type::ROUTING || type == UserMark::Type::ROAD_WARNING)

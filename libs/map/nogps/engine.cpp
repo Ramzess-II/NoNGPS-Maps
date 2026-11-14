@@ -883,7 +883,11 @@ void Engine::OnBoxHeard(std::string const & id, std::string const & firmware)
 {
   auto const before = m_cars.GetCurrentCar();
   if (id != before)
+  {
     m_inertial->SaveCalibration();
+    // The car before is left where it is shown, not where it was saved the last time while it drove.
+    SaveCarPosition(true /* now */);
+  }
   m_cars.OnBoxHeard(id, firmware, m_clock.UnixNowMs());
   if (m_cars.GetCurrentCar() != before)
   {
@@ -977,6 +981,7 @@ void Engine::SelectCar(std::string const & id)
     return;
   if (m_inertial)
     m_inertial->SaveCalibration();
+  SaveCarPosition(true /* now */);
   if (!m_cars.SelectCar(id))
     return;
   LOG(LINFO, ("The user drives the car", id, "was", before.empty() ? "-" : before));
