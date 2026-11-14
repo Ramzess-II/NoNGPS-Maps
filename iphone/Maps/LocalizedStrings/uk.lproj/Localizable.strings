@@ -1405,6 +1405,39 @@
 
 /* Button on the box screen: stop using the box */
 "nogps_box_forget" = "Забути блок";
+
+/* Header of the list of the cars on the box screen: each car has its own sensor box */
+"nogps_cars" = "Машини";
+
+/* Name of a car the user hasn't named, by the four characters of the name of its sensor box: "Car C47D" */
+"nogps_car_default_name" = "Машина %1$@";
+
+/* State of a car in the list of the cars: its box is connected now */
+"nogps_car_connected" = "Підключена";
+
+/* State of a car in the list of the cars: the app takes this car until a box connects */
+"nogps_car_current" = "Поточна машина";
+
+/* State of a car in the list of the cars: when its box was connected the last time, e.g. "Last connected 2 hours ago" */
+"nogps_car_last_seen" = "Останнє підключення %1$@";
+
+/* Action for a car in the list of the cars: the app takes this car and connects to its box */
+"nogps_car_drive" = "Перемкнутися на цю машину";
+
+/* Action for a car in the list of the cars */
+"nogps_car_rename" = "Перейменувати";
+
+/* Title of the dialog that renames a car */
+"nogps_car_name" = "Назва машини";
+
+/* Action for a car in the list of the cars, and the button that confirms it */
+"nogps_car_forget" = "Забути машину";
+
+/* Asked before a car is forgotten */
+"nogps_car_forget_text" = "Те, що застосунок дізнався про цю машину, і місце, де вона залишилася, буде втрачено. Її блок не підключатиметься, доки машину не додадуть знову.";
+
+/* Button under the list of the cars: search the sensor box of another car */
+"nogps_car_add" = "Додати машину";
 "nogps_box_stopped" = "Немає даних від блока датчиків, машина на мапі стоїть. Перевірте блок або позначте себе";
 
 /* Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration */

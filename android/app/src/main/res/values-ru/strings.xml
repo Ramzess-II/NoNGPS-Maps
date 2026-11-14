@@ -1073,6 +1073,28 @@
     <string name="nogps_box_connect">У меня есть блок: подключить</string>
     <!-- Button on the box screen: stop using the box -->
     <string name="nogps_box_forget">Забыть блок</string>
+    <!-- Header of the list of the cars on the box screen: each car has its own sensor box -->
+    <string name="nogps_cars">Машины</string>
+    <!-- Name of a car the user hasn't named, by the four characters of the name of its sensor box: "Car C47D" -->
+    <string name="nogps_car_default_name">Машина %1$s</string>
+    <!-- State of a car in the list of the cars: its box is connected now -->
+    <string name="nogps_car_connected">Подключена</string>
+    <!-- State of a car in the list of the cars: the app takes this car until a box connects -->
+    <string name="nogps_car_current">Текущая машина</string>
+    <!-- State of a car in the list of the cars: when its box was connected the last time, e.g. "Last connected 2 hours ago" -->
+    <string name="nogps_car_last_seen">Последнее подключение %1$s</string>
+    <!-- Action for a car in the list of the cars: the app takes this car and connects to its box -->
+    <string name="nogps_car_drive">Переключиться на эту машину</string>
+    <!-- Action for a car in the list of the cars -->
+    <string name="nogps_car_rename">Переименовать</string>
+    <!-- Title of the dialog that renames a car -->
+    <string name="nogps_car_name">Название машины</string>
+    <!-- Action for a car in the list of the cars, and the button that confirms it -->
+    <string name="nogps_car_forget">Забыть машину</string>
+    <!-- Asked before a car is forgotten -->
+    <string name="nogps_car_forget_text">То, что приложение узнало об этой машине, и место, где она осталась, будут потеряны. Её блок не будет подключаться, пока машину не добавят снова.</string>
+    <!-- Button under the list of the cars: search the sensor box of another car -->
+    <string name="nogps_car_add">Добавить машину</string>
     <string name="nogps_obd_stopped">Нет скорости от OBD-адаптера, машина на карте стоит. Проверьте адаптер или отметьте себя</string>
     <string name="nogps_box_stopped">Нет данных от блока датчиков, машина на карте стоит. Проверьте блок или отметьте себя</string>
     <!-- Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration -->
