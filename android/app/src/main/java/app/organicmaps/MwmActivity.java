@@ -962,10 +962,6 @@ public class MwmActivity extends BaseMwmFragmentActivity
   }
 
   /**
-   * The sensor box has been plugged in: asks the user to calibrate it, the car should stand on a level place.
-   * @return 0, there is no message of a fixed text.
-   */
-  /**
    * The box doesn't take this phone any more: its car is forgotten as by the user.
    */
   private int onThisPhoneRemoved()
@@ -976,6 +972,10 @@ public class MwmActivity extends BaseMwmFragmentActivity
     return R.string.nogps_phone_removed;
   }
 
+  /**
+   * The sensor box has been plugged in: asks the user to calibrate it, the car should stand on a level place.
+   * @return 0, there is no message of a fixed text.
+   */
   private int onBoxCalibrationAdvised()
   {
     if (isFinishing() || getSupportFragmentManager().isStateSaved())

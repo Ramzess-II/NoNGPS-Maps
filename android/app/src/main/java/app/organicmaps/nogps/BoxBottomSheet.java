@@ -389,6 +389,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     super.onStop();
     mHandler.removeCallbacks(mUpdater);
+    // The code is not shown without the sheet that updates it.
+    if (mAddPhoneDialog != null)
+      mAddPhoneDialog.dismiss();
     animateRings(false);
     mTile.pulse(false);
     mGpsTile.pulse(false);
@@ -850,6 +853,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       texts.add(phone.name.isEmpty() ? getString(R.string.nogps_phone_unnamed) : phone.name);
       texts.add(phoneStateText(phone));
     }
+    // The rows keep the phones they remove: two phones may look the same.
+    for (NoGps.Phone phone : status.boxPhones)
+      texts.add(phone.address);
     texts.add(String.valueOf(status.boxReadOnly));
     if (texts.equals(mPhoneTexts))
       return;

@@ -804,12 +804,23 @@ UNIT_TEST(NoGps_Esp32Source_ListsAndForgetsPhones)
   box.m_source.ForgetPhone("BC:D0:74:A9:71:92");
   box.Accept();
   TEST_EQUAL(box.m_listener.m_thisPhoneRemoved, 1, ());
-  // The link drops before the answer comes.
+  // The link drops before the answer comes: the phone may be still known to the box.
   box.List();
   box.m_source.ForgetPhone("BC:D0:74:A9:71:92");
   box.m_source.OnBleState(BleState::Searching);
-  TEST_EQUAL(box.m_listener.m_thisPhoneRemoved, 2, ());
+  TEST_EQUAL(box.m_listener.m_thisPhoneRemoved, 1, ());
   TEST(!box.m_source.GetPhones(), ());
+
+  // A lost reply doesn't stop the list from being asked again.
+  box.ConnectWithPhones();
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  size_t const asked = box.SentCount();
+  box.m_source.ListPhones();
+  TEST_EQUAL(box.SentCount(), asked, ());
+  box.m_clock.Advance(Esp32Source::kCarReplyTimeoutMs + Esp32Source::kHelloIntervalMs);
+  box.m_source.ListPhones();
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  TEST_GREATER(box.SentCount(), asked, ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_AddsPhoneWithCode)

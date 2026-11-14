@@ -253,11 +253,13 @@ private:
   std::optional<esp32::Phones> m_phones;
   // The list of the phones asked, 0 if none.
   int m_listId = 0;
+  int64_t m_listSentMs = 0;
   struct ForgetRequest
   {
     int m_id = 0;
     std::string m_address;
     bool m_thisPhone = false;
+    int64_t m_sentMs = 0;
   };
   std::optional<ForgetRequest> m_forget;
   // The box has answered BUSY: another phone came first. Until the list tells otherwise or the link is lost.

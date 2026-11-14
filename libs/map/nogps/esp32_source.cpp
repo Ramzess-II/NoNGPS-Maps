@@ -90,6 +90,17 @@ void Esp32Source::SendHello()
     LOG(LWARNING, ("No reply to the reading of", m_carRead->m_keys.front()));
     m_carRead.reset();
   }
+  // A lost reply doesn't keep the phones from being asked again.
+  if (m_listId != 0 && m_clock.NowMs() - m_listSentMs > kCarReplyTimeoutMs)
+  {
+    LOG(LWARNING, ("No reply to the list of the phones"));
+    m_listId = 0;
+  }
+  if (m_forget && m_clock.NowMs() - m_forget->m_sentMs > kCarReplyTimeoutMs)
+  {
+    LOG(LWARNING, ("No reply to the removal of", m_forget->m_address));
+    m_forget.reset();
+  }
   m_helloTimer.Start(kHelloIntervalMs, [this] { SendHello(); });
 }
 
@@ -200,6 +211,7 @@ void Esp32Source::ListPhones()
   if (!HasPhones() || m_listId != 0)
     return;
   m_listId = m_nextCommandId++;
+  m_listSentMs = m_clock.NowMs();
   Send("BT_LIST", m_listId);
 }
 
@@ -212,7 +224,7 @@ void Esp32Source::ForgetPhone(std::string const & address)
   if (it == phones.end())
     return;
   LOG(LINFO, ("Forget the phone", address, "this =", it->m_thisPhone));
-  m_forget = ForgetRequest{m_nextCommandId++, address, it->m_thisPhone};
+  m_forget = ForgetRequest{m_nextCommandId++, address, it->m_thisPhone, m_clock.NowMs()};
   Send("BT_FORGET," + address, m_forget->m_id);
 }
 
@@ -289,8 +301,7 @@ bool Esp32Source::OnPhonesReply(esp32::Reply const & reply)
 
 void Esp32Source::ForgetPhoneRequests()
 {
-  // The box drops the link of the phone it forgets, often before its reply comes.
-  bool const removed = m_forget && m_forget->m_thisPhone;
+  // Without the reply this phone is not known to be removed: the box drops the link after it.
   m_forget.reset();
   m_listId = 0;
   m_phones.reset();
@@ -298,8 +309,6 @@ void Esp32Source::ForgetPhoneRequests()
   // The box keeps the window open without the link, but this phone can't hear the new one pair.
   if (m_addPhone && m_addPhone->m_state == AddPhone::Opening)
     m_addPhone->m_state = AddPhone::Failed;
-  if (removed)
-    m_listener.OnThisPhoneRemoved();
 }
 
 void Esp32Source::OnInfo(esp32::Info const & info)
