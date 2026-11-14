@@ -51,6 +51,8 @@ void InitLocalizedStrings()
   f.AddString("core_exit", L(@"core_exit").UTF8String);
   f.AddString("core_my_places", L(@"core_my_places").UTF8String);
   f.AddString("core_my_position", L(@"core_my_position").UTF8String);
+  // The core puts the id of the box for %s.
+  f.AddString("nogps_car_default_name", [NSString stringWithFormat:L(@"nogps_car_default_name"), @"%s"].UTF8String);
   f.AddString("core_placepage_unknown_place", L(@"core_placepage_unknown_place").UTF8String);
   f.AddString("open_in_app", L(@"open_in_app").UTF8String);
   f.AddString("postal_code", L(@"postal_code").UTF8String);

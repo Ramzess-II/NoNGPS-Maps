@@ -654,7 +654,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   @NonNull
   static String carName(@NonNull Context context, @NonNull NoGps.Car car)
   {
-    return car.name.isEmpty() ? context.getString(R.string.nogps_car_default_name, car.id) : car.name;
+    return car.name.isEmpty() ? context.getString(app.organicmaps.sdk.R.string.nogps_car_default_name, car.id)
+                              : car.name;
   }
 
   @NonNull
@@ -740,7 +741,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     name.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
     name.setSingleLine();
     name.setText(car.name);
-    name.setHint(context.getString(R.string.nogps_car_default_name, car.id));
+    name.setHint(context.getString(app.organicmaps.sdk.R.string.nogps_car_default_name, car.id));
     name.setSelection(name.getText().length());
     final FrameLayout frame = new FrameLayout(context);
     frame.setPadding(dp(24), dp(8), dp(24), 0);

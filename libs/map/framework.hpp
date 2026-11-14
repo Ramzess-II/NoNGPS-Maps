@@ -422,6 +422,9 @@ public:
   bool PlaceNoGpsMark(m2::PointD const & mercator);
 
 private:
+  /// Draws where the other cars were left, see nogps::Engine::GetParkedCars().
+  void UpdateNoGpsCarMarks();
+
   void OnUserPositionChanged(m2::PointD const & position, bool hasPosition);
 
 public:

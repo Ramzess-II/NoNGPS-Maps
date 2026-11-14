@@ -843,7 +843,24 @@ void Engine::OnCarChanged()
 {
   if (m_inertial)
     m_inertial->RestoreCalibration();
+  // The place saved is of the car before: the mark left where it is, the new car gets it too.
+  m_savedCar.clear();
   MoveParkedCar();
+  OnParkedCarsChanged();
+}
+
+void Engine::OnParkedCarsChanged()
+{
+  if (m_parkedCarsListener)
+    m_parkedCarsListener();
+}
+
+std::vector<Car> Engine::GetParkedCars() const
+{
+  auto cars = m_cars.GetCars();
+  auto const current = m_cars.GetCurrentCar();
+  std::erase_if(cars, [&current](Car const & car) { return car.m_id == current || !car.m_parkedAt; });
+  return cars;
 }
 
 bool Engine::MoveParkedCar()
@@ -950,6 +967,7 @@ void Engine::RenameCar(std::string const & id, std::string const & name)
 {
   m_cars.RenameCar(id, name);
   SaveBoxCarValues(true /* now */);
+  OnParkedCarsChanged();
 }
 
 void Engine::SelectCar(std::string const & id)
@@ -976,10 +994,14 @@ void Engine::ForgetCar(std::string const & id)
     m_inertial->Stop();
   m_cars.ForgetCar(id);
   if (!current)
+  {
+    OnParkedCarsChanged();
     return;
+  }
   if (m_cars.GetCars().empty())
   {
     SetInertialNavigationEnabled(false);
+    OnParkedCarsChanged();
     return;
   }
   LOG(LINFO, ("The car forgotten, the car now is", m_cars.GetCurrentCar()));
@@ -1030,6 +1052,8 @@ void Engine::SetEsp32Source(bool esp32)
 {
   LOG(LINFO, ("esp32 =", esp32));
   m_storage.Set(Storage::kEsp32Source, esp32);
+  // The car of the adapter is not known: the car of the box is left.
+  OnParkedCarsChanged();
   if (IsInertialNavigationEnabled() && m_inertial)
     m_inertial->Start();
 }

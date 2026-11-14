@@ -46416,7 +46416,7 @@ uk = Машини
 
 [nogps_car_default_name]
 comment = Name of a car the user hasn't named, by the four characters of the name of its sensor box: "Car C47D"
-tags = android-app,apple-maps
+tags = android-sdk,apple-maps
 en = Car %1$@
 ru = Машина %1$@
 uk = Машина %1$@

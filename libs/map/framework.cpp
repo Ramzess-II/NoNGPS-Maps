@@ -261,7 +261,29 @@ nogps::Engine & Framework::CreateNoGps(nogps::Delegate & delegate)
     if (m_drapeEngine != nullptr)
       m_drapeEngine->SetCompassInfo(CompassInfo{math::DegToRad(bearingDeg)});
   });
+  m_noGps->GetEngine().SetParkedCarsListener([this] { UpdateNoGpsCarMarks(); });
+  UpdateNoGpsCarMarks();
   return m_noGps->GetEngine();
+}
+
+void Framework::UpdateNoGpsCarMarks()
+{
+  auto editSession = GetBookmarkManager().GetEditSession();
+  editSession.ClearGroup(UserMark::Type::NOGPS_CAR);
+  for (auto const & car : m_noGps->GetEngine().GetParkedCars())
+  {
+    auto * mark = editSession.CreateUserMark<NoGpsCarMark>(mercator::FromLatLon(*car.m_parkedAt));
+    if (!car.m_name.empty())
+    {
+      mark->SetName(car.m_name);
+      continue;
+    }
+    // "Car %s": the platforms put their format of "Car C47D" with %s for the id of the box.
+    auto name = m_stringsBundle.GetString("nogps_car_default_name");
+    if (auto const pos = name.find("%s"); pos != std::string::npos)
+      name.replace(pos, 2, car.m_id);
+    mark->SetName(name);
+  }
 }
 
 nogps::Engine * Framework::GetNoGps()
@@ -393,6 +415,7 @@ Framework::Framework(FrameworkParams const & params, bool loadMaps)
   m_stringsBundle.SetDefaultString("core_placepage_unknown_place", "Map Point");
   m_stringsBundle.SetDefaultString("core_my_places", "My Places");
   m_stringsBundle.SetDefaultString("core_my_position", "My Position");
+  m_stringsBundle.SetDefaultString("nogps_car_default_name", "Car %s");
   m_stringsBundle.SetDefaultString("open_in_app", "Open in Another App");
   m_stringsBundle.SetDefaultString("postal_code", "Postal Code");
   // Placeholder-free labels used by GetShareData; platforms override with localized values.
@@ -699,6 +722,10 @@ bool Framework::FillUserMarkInfo(UserMark const * mark, place_page::Info & outIn
   case UserMark::Type::SEARCH: FillSearchResultInfo(*static_cast<SearchMarkPoint const *>(mark), outInfo); break;
   case UserMark::Type::ROUTING: FillRouteMarkInfo(*static_cast<RouteMarkPoint const *>(mark), outInfo); break;
   case UserMark::Type::ROAD_WARNING: FillRoadTypeMarkInfo(*static_cast<RoadWarningMark const *>(mark), outInfo); break;
+  case UserMark::Type::NOGPS_CAR:
+    GetSelectionProcessor().FillPointInfo(outInfo, mark->GetPivot(),
+                                          static_cast<NoGpsCarMark const *>(mark)->GetName());
+    break;
   case UserMark::Type::TRACK_INFO:
   {
     auto const & infoMark = *static_cast<TrackInfoMark const *>(mark);

@@ -143,6 +143,15 @@ std::vector<Car> CarStorage::GetCars() const
     car.m_name = m_storage.Get<std::string>(GetCarKey(id, kCarName), "");
     car.m_firmware = m_storage.Get<std::string>(GetCarKey(id, kCarFirmware), "");
     car.m_lastSeenUnixMs = m_storage.Get<int64_t>(GetCarKey(id, kCarLastSeen), 0);
+    // lat,lon,bearing,... see Engine::SaveCarPosition().
+    auto const saved = m_storage.Get<std::string>(GetCarKey(id, kCarPosition), "");
+    auto const position = strings::Tokenize(saved, ",");
+    ms::LatLon parkedAt;
+    if (position.size() > 2 && strings::to_double(position[0], parkedAt.m_lat) &&
+        strings::to_double(position[1], parkedAt.m_lon))
+    {
+      car.m_parkedAt = parkedAt;
+    }
     cars.push_back(std::move(car));
   }
   return cars;

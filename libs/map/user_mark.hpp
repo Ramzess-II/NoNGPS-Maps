@@ -51,6 +51,7 @@ public:
     DEBUG_MARK,  // Plain "DEBUG" results in a name collision.
     COLORED,
     ROUTE_ALT,  // ETA balloon attached to a route variant (active or alternative).
+    NOGPS_CAR,  // Where another car of NonGPS Maps was left.
     USER_MARK_TYPES_COUNT,
     USER_MARK_TYPES_COUNT_MAX = 1000,
   };
@@ -154,6 +155,24 @@ public:
 
 private:
   ColoredSymbolZoomInfo m_coloredSymbols;
+};
+
+/// Where a car of the navigation without GPS was left, other than the car driven now: nogps::Engine::GetParkedCars().
+class NoGpsCarMark : public UserMark
+{
+public:
+  explicit NoGpsCarMark(m2::PointD const & ptOrg);
+
+  std::string const & GetName() const { return m_name; }
+  void SetName(std::string const & name);
+
+  dp::Anchor GetAnchor() const override { return dp::Bottom; }
+  drape_ptr<SymbolNameZoomInfo> GetSymbolNames() const override;
+  df::ColorConstant GetColorConstant() const override;
+  drape_ptr<TitlesInfo> GetTitleDeclEx(settings::Placement, dp::Color outlineColor) const override;
+
+private:
+  std::string m_name;
 };
 
 std::string DebugPrint(UserMark::Type type);
