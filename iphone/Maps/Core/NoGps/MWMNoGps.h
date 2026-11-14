@@ -81,6 +81,52 @@ typedef NS_ENUM(NSInteger, MWMNoGpsFirmwareUpdate) {
   MWMNoGpsFirmwareUpdateFailed,
 } NS_SWIFT_NAME(NoGpsFirmwareUpdate);
 
+/// A value the sensor box sends in its status and info lines, nogps::esp32::BoxValue: the Box values page shows them in
+/// this order.
+typedef NS_ENUM(NSInteger, MWMNoGpsBoxValue) {
+  // The car.
+  MWMNoGpsBoxValueEngine,
+  MWMNoGpsBoxValueRpm,
+  // Volts.
+  MWMNoGpsBoxValueBoxVoltage,
+  MWMNoGpsBoxValueElmVoltage,
+  MWMNoGpsBoxValueEcuVoltage,
+  // "1" if the voltage of the box differs from the car, "0" if not.
+  MWMNoGpsBoxValueVoltageMismatch,
+  // The gyroscope.
+  MWMNoGpsBoxValueImuName,
+  MWMNoGpsBoxValueImuState,
+  MWMNoGpsBoxValueImuChipId,
+  // Hz.
+  MWMNoGpsBoxValueImuRate,
+  // °C.
+  MWMNoGpsBoxValueImuTemperature,
+  MWMNoGpsBoxValueImuErrors,
+  // Seconds.
+  MWMNoGpsBoxValueBiasAge,
+  // °/s.
+  MWMNoGpsBoxValueBias,
+  // OBD.
+  MWMNoGpsBoxValueObdState,
+  MWMNoGpsBoxValueObdProtocol,
+  MWMNoGpsBoxValueObdError,
+  MWMNoGpsBoxValueObdBaud,
+  // The box.
+  MWMNoGpsBoxValueFirmware,
+  MWMNoGpsBoxValueBuildDate,
+  MWMNoGpsBoxValueChip,
+  MWMNoGpsBoxValueBoard,
+  MWMNoGpsBoxValueId,
+  // KB.
+  MWMNoGpsBoxValueFlashSize,
+  MWMNoGpsBoxValueMaxImageSize,
+  MWMNoGpsBoxValueSlot,
+  MWMNoGpsBoxValueSlotState,
+  MWMNoGpsBoxValueAbilities,
+  MWMNoGpsBoxValuePowerOns,
+  MWMNoGpsBoxValueLastEvent,
+} NS_SWIFT_NAME(NoGpsBoxValue);
+
 typedef NS_ENUM(NSInteger, MWMNoGpsEvent) {
   MWMNoGpsEventManualModeChanged,
   MWMNoGpsEventGpsBack,
@@ -101,6 +147,15 @@ typedef NS_ENUM(NSInteger, MWMNoGpsEvent) {
 /// Posted on the main queue, the MWMNoGpsEvent is in the userInfo by MWMNoGpsEventKey.
 extern NSNotificationName const MWMNoGpsEventNotification NS_SWIFT_NAME(NoGps.eventNotification);
 extern NSString * const MWMNoGpsEventKey NS_SWIFT_NAME(NoGps.eventKey);
+
+/// A value of the sensor box with its unit, empty if the box sends the field empty.
+NS_SWIFT_NAME(NoGpsBoxValueItem)
+@interface MWMNoGpsBoxValueItem : NSObject
+
+@property(nonatomic, readonly) MWMNoGpsBoxValue kind;
+@property(nonatomic, readonly) NSString * value;
+
+@end
 
 /// Everything the UI shows about the navigation without GPS, taken at once.
 NS_SWIFT_NAME(NoGpsStatus)
@@ -172,6 +227,8 @@ NS_SWIFT_NAME(NoGpsStatus)
 /// Why the update has failed: a code of the box (MOVING, LOW_VOLTAGE, SIGNATURE etc.) or of the app (LINK, CANCELED,
 /// ROLLBACK etc.).
 @property(nonatomic, readonly) NSString * firmwareUpdateError;
+/// All the sensor box has told in this connection, in the order of MWMNoGpsBoxValue.
+@property(nonatomic, readonly) NSArray<MWMNoGpsBoxValueItem *> * boxValues;
 
 @end
 

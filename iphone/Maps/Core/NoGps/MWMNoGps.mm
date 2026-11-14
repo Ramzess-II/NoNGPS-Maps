@@ -99,6 +99,27 @@ std::optional<double> NonNegative(double value)
 }
 }  // namespace
 
+@interface MWMNoGpsBoxValueItem ()
+
+- (instancetype)initWithKind:(MWMNoGpsBoxValue)kind value:(NSString *)value;
+
+@end
+
+@implementation MWMNoGpsBoxValueItem
+
+- (instancetype)initWithKind:(MWMNoGpsBoxValue)kind value:(NSString *)value
+{
+  self = [super init];
+  if (self)
+  {
+    _kind = kind;
+    _value = value;
+  }
+  return self;
+}
+
+@end
+
 @interface MWMNoGpsStatus ()
 
 - (instancetype)initWithStatus:(nogps::Status const &)status;
@@ -164,6 +185,11 @@ std::optional<double> NonNegative(double value)
     _firmwareUpdate = static_cast<MWMNoGpsFirmwareUpdate>(status.m_firmwareUpdate);
     _firmwareUpdateProgress = status.m_firmwareUpdateProgress;
     _firmwareUpdateError = @(status.m_firmwareUpdateError.c_str());
+    NSMutableArray<MWMNoGpsBoxValueItem *> * boxValues = [NSMutableArray arrayWithCapacity:status.m_boxValues.size()];
+    for (auto const & [kind, value] : status.m_boxValues)
+      [boxValues addObject:[[MWMNoGpsBoxValueItem alloc] initWithKind:static_cast<MWMNoGpsBoxValue>(kind)
+                                                                value:@(value.c_str())]];
+    _boxValues = boxValues;
   }
   return self;
 }

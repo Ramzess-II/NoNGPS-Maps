@@ -284,6 +284,10 @@ final class NoGpsBoxSheet: MWMTableViewController {
       cell.selectionStyle = .default
     case .name:
       content.text = String(format: L("nogps_sensors_box"), Self.boxName(status))
+      if !status.boxValues.isEmpty {
+        cell.accessoryType = .disclosureIndicator
+        cell.selectionStyle = .default
+      }
     case .speed:
       content.text = String(format: L("nogps_sensors_speed"), status.speedKmh >= 0
         ? String(format: L("nogps_speed_kmh"), status.speedKmh) : L("nogps_unknown"))
@@ -383,6 +387,9 @@ final class NoGpsBoxSheet: MWMTableViewController {
       NoGpsSensorsViewController.confirmClearSpeed(from: self) { [weak self] in self?.refresh() }
     case .speedTable:
       navigationController?.pushViewController(SpeedTableViewController(style: .insetGrouped), animated: true)
+    case .name:
+      guard !status.boxValues.isEmpty else { break }
+      navigationController?.pushViewController(BoxValuesViewController(style: .insetGrouped), animated: true)
     case .calibrate:
       // The row shows how the calibration goes.
       guard calibrationTexts().action != nil else { break }
@@ -535,6 +542,166 @@ private final class SpeedTableViewController: MWMTableViewController {
     cell.contentConfiguration = content
     cell.selectionStyle = .none
     return cell
+  }
+}
+
+/// All the box has told about itself and the car in this connection, by groups.
+private final class BoxValuesViewController: MWMTableViewController {
+  private enum Constants {
+    static let refreshInterval: TimeInterval = 0.5
+    static let cellId = "NoGpsBoxValueCell"
+    static let empty = "—"
+  }
+
+  private struct Group {
+    let header: String
+    var items: [NoGpsBoxValueItem]
+    var footer: String?
+  }
+
+  private var status = NoGps.status()
+  private var groups: [Group] = []
+  private var timer: Timer?
+
+  override func viewDidLoad() {
+    super.viewDidLoad()
+    title = L("nogps_box_value_title")
+    tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
+  }
+
+  override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+    refresh()
+    let timer = Timer(timeInterval: Constants.refreshInterval, repeats: true) { [weak self] _ in self?.refresh() }
+    RunLoop.main.add(timer, forMode: .common)
+    self.timer = timer
+  }
+
+  override func viewWillDisappear(_ animated: Bool) {
+    super.viewWillDisappear(animated)
+    timer?.invalidate()
+    timer = nil
+  }
+
+  private func refresh() {
+    status = NoGps.status()
+    // The values come in the order of the groups.
+    let headers = [L("nogps_box_value_group_car"), L("nogps_box_value_group_gyroscope"), L("nogps_box_value_group_obd"),
+                   L("nogps_box_value_group_box")]
+    let groupStarts: [NoGpsBoxValue] = [.engine, .imuName, .obdState, .firmware]
+    groups = []
+    for item in status.boxValues {
+      let index = groupStarts.lastIndex { $0.rawValue <= item.kind.rawValue } ?? 0
+      if groups.last?.header != headers[index] {
+        groups.append(Group(header: headers[index], items: []))
+      }
+      groups[groups.count - 1].items.append(item)
+      if item.kind == .voltageMismatch, item.value == "1" {
+        groups[groups.count - 1].footer = L("nogps_voltage_mismatch")
+      }
+    }
+    tableView.reloadData()
+  }
+
+  override func numberOfSections(in _: UITableView) -> Int {
+    groups.count
+  }
+
+  override func tableView(_: UITableView, numberOfRowsInSection section: Int) -> Int {
+    groups[section].items.count
+  }
+
+  override func tableView(_: UITableView, titleForHeaderInSection section: Int) -> String? {
+    groups[section].header
+  }
+
+  override func tableView(_: UITableView, titleForFooterInSection section: Int) -> String? {
+    groups[section].footer
+  }
+
+  override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
+    let item = groups[indexPath.section].items[indexPath.row]
+    var content = UIListContentConfiguration.valueCell()
+    content.text = Self.label(item.kind)
+    content.secondaryText = valueText(item)
+    content.textProperties.numberOfLines = 0
+    content.secondaryTextProperties.numberOfLines = 0
+    cell.contentConfiguration = content
+    cell.selectionStyle = .none
+    return cell
+  }
+
+  private func valueText(_ item: NoGpsBoxValueItem) -> String {
+    let value = item.value
+    if value.isEmpty {
+      // The box asks the car for them while it stands.
+      let standingOnly = item.kind == .rpm || item.kind == .elmVoltage || item.kind == .ecuVoltage
+      return standingOnly && status.speedKmh > 0 ? L("nogps_not_while_driving") : Constants.empty
+    }
+    switch item.kind {
+    case .engine:
+      if value == "RUN" {
+        return L("nogps_engine_running")
+      }
+      if value == "OFF" {
+        return L("nogps_engine_stopped")
+      }
+      return value
+    case .rpm:
+      return Int(value).map { String(format: L("nogps_rpm"), $0) } ?? value
+    case .boxVoltage, .elmVoltage, .ecuVoltage:
+      return String(format: L("nogps_volts"), value)
+    case .voltageMismatch:
+      return value == "1" ? L("yes") : L("no")
+    case .imuRate:
+      return String(format: L("nogps_box_value_hz"), value)
+    case .imuTemperature:
+      return String(format: L("nogps_box_value_celsius"), value)
+    case .biasAge:
+      return String(format: L("nogps_box_value_seconds_ago"), value)
+    case .bias:
+      return String(format: L("nogps_box_value_degrees_per_second"), value)
+    case .flashSize, .maxImageSize:
+      return String(format: L("nogps_box_value_kilobytes"), value)
+    default:
+      return value
+    }
+  }
+
+  private static func label(_ kind: NoGpsBoxValue) -> String {
+    switch kind {
+    case .engine: L("nogps_box_value_engine")
+    case .rpm: L("nogps_box_value_rpm")
+    case .boxVoltage: L("nogps_box_value_box_voltage")
+    case .elmVoltage: L("nogps_box_value_elm_voltage")
+    case .ecuVoltage: L("nogps_box_value_ecu_voltage")
+    case .voltageMismatch: L("nogps_box_value_voltage_mismatch")
+    case .imuName: L("nogps_box_value_name")
+    case .imuState, .obdState: L("nogps_box_value_state")
+    case .imuChipId: L("nogps_box_value_chip_id")
+    case .imuRate: L("nogps_box_value_rate")
+    case .imuTemperature: L("nogps_box_value_temperature")
+    case .imuErrors: L("nogps_box_value_read_errors")
+    case .biasAge: L("nogps_box_value_bias_age")
+    case .bias: L("nogps_box_value_bias")
+    case .obdProtocol: L("nogps_box_value_protocol")
+    case .obdError: L("nogps_box_value_last_error")
+    case .obdBaud: L("nogps_box_value_uart_baud")
+    case .firmware: L("nogps_box_value_firmware")
+    case .buildDate: L("nogps_box_value_build_date")
+    case .chip: L("nogps_box_value_chip")
+    case .board: L("nogps_box_value_board")
+    case .id: L("nogps_box_value_id")
+    case .flashSize: L("nogps_box_value_flash_size")
+    case .maxImageSize: L("nogps_box_value_max_image_size")
+    case .slot: L("nogps_box_value_slot")
+    case .slotState: L("nogps_box_value_slot_state")
+    case .abilities: L("nogps_box_value_abilities")
+    case .powerOns: L("nogps_box_value_power_ons")
+    case .lastEvent: L("nogps_box_value_last_event")
+    @unknown default: ""
+    }
   }
 }
 
