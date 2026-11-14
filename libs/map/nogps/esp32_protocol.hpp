@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace nogps
@@ -93,6 +94,56 @@ struct Info
   std::optional<int64_t> m_powerOns;
 };
 
+/// A value the box sends in its status and info lines, for the page that shows them all. The platforms show them in
+/// this order, by groups.
+enum class BoxValue
+{
+  // The car.
+  Engine,
+  Rpm,
+  // Volts.
+  BoxVoltage,
+  ElmVoltage,
+  EcuVoltage,
+  // 1 if the voltage of the box differs from the car, 0 if not.
+  VoltageMismatch,
+  // The gyroscope.
+  ImuName,
+  ImuState,
+  ImuChipId,
+  // Hz.
+  ImuRate,
+  // °C.
+  ImuTemperature,
+  ImuErrors,
+  // Seconds.
+  BiasAge,
+  // °/s.
+  Bias,
+  // OBD.
+  ObdState,
+  ObdProtocol,
+  ObdError,
+  ObdBaud,
+  // The box.
+  Firmware,
+  BuildDate,
+  Chip,
+  Board,
+  Id,
+  // KB.
+  FlashSize,
+  MaxImageSize,
+  Slot,
+  SlotState,
+  Abilities,
+  PowerOns,
+  LastEvent,
+};
+
+/// The values as the platforms show them with their units, empty if the box sends the field empty.
+using BoxValues = std::vector<std::pair<BoxValue, std::string>>;
+
 /// The firmware the box is receiving.
 struct UpdateProgress
 {
@@ -128,5 +179,9 @@ std::optional<std::string> ParseObdState(Fields const & fields);
 std::optional<std::string> ParseImuName(Fields const & fields);
 /// \returns what the box tells about the car in its status.
 std::optional<CarInfo> ParseCarInfo(Fields const & fields);
+/// \returns the values of an NGS or an NGI line that it has, except VoltageMismatch: the events of the box change it.
+BoxValues ParseBoxValues(Fields const & fields);
+
+std::string DebugPrint(BoxValue value);
 }  // namespace esp32
 }  // namespace nogps

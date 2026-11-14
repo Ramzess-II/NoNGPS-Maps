@@ -10,6 +10,7 @@
 #include <array>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -361,5 +362,17 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsField(env, out, "firmwareUpdateProgress", status.m_firmwareUpdateProgress);
   SetNoGpsString(env, out, "firmwareUpdateError", status.m_firmwareUpdateError);
   SetNoGpsField(env, out, "boxCalibrationAdvised", status.m_boxCalibrationAdvised);
+  std::vector<jint> boxValueIds;
+  std::vector<std::string> boxValues;
+  for (auto const & [id, value] : status.m_boxValues)
+  {
+    boxValueIds.push_back(static_cast<jint>(id));
+    boxValues.push_back(value);
+  }
+  jni::ScopedLocalRef<jintArray> ids(env, env->NewIntArray(static_cast<jsize>(boxValueIds.size())));
+  env->SetIntArrayRegion(ids.get(), 0, static_cast<jsize>(boxValueIds.size()), boxValueIds.data());
+  env->SetObjectField(out, env->GetFieldID(env->GetObjectClass(out), "boxValueIds", "[I"), ids.get());
+  jni::TScopedLocalObjectArrayRef values(env, jni::ToJavaStringArray(env, boxValues));
+  env->SetObjectField(out, env->GetFieldID(env->GetObjectClass(out), "boxValues", "[Ljava/lang/String;"), values.get());
 }
 }  // extern "C"

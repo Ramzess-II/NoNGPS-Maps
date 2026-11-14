@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <map>
 #include <optional>
 #include <set>
 #include <string>
@@ -98,6 +99,8 @@ public:
 
   /// What the box has told about itself, nothing until it does.
   std::optional<esp32::Info> const & GetInfo() const { return m_info; }
+  /// \returns the values of the last status and info lines of this connection, by esp32::BoxValue.
+  esp32::BoxValues GetBoxValues() const;
   /// \returns the flags of the last data line of the box, see esp32::kFlag*.
   int GetFlags() const { return m_flags; }
   /// \returns true if the box takes a firmware now: it is connected over Bluetooth and its firmware knows how.
@@ -118,6 +121,7 @@ private:
   void OnEvent(esp32::Event const & event);
   void OnReply(esp32::Reply const & reply);
   void OnInfo(esp32::Info const & info);
+  void StoreBoxValues(esp32::Fields const & fields);
   void OnLastEventNumber(int64_t lastNumber);
   void RequestLostEvents(int64_t fromNumber);
   void ForgetJournal();
@@ -174,6 +178,8 @@ private:
   std::optional<int64_t> m_calibratedMs;
 
   std::optional<esp32::Info> m_info;
+  // Forgotten with the info: another box may connect.
+  std::map<esp32::BoxValue, std::string> m_boxValues;
   int m_hellosWithoutInfo = 0;
   Esp32Update m_update;
 };

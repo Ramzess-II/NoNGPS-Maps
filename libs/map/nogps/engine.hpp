@@ -111,6 +111,8 @@ struct Status
 
   // The firmware of the ESP32 sensor box, empty until the box tells it.
   std::string m_boxFirmware;
+  // All the box has told in this connection, for the page of its values.
+  esp32::BoxValues m_boxValues;
   // The firmware for this box that comes with the application, if the box can take it now: it is connected
   // over Bluetooth. Empty otherwise.
   std::string m_bundledFirmware;

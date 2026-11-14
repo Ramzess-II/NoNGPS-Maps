@@ -47184,6 +47184,279 @@ en = Have a box? Power it on near the phone: it accepts a new phone for 2 minute
 ru = Есть блок? Включите его рядом с телефоном: 2 минуты он принимает новый телефон. Телефон может спросить код с блока.
 uk = Маєте блок? Увімкніть його поруч із телефоном: 2 хвилини він приймає новий телефон. Телефон може спитати код із блока.
 
+[nogps_box_value_title]
+comment = Title of the page with all values the sensor box sends, opened from the box row of the Box sheet
+tags = android-app,apple-maps
+en = Box values
+ru = Значения блока
+uk = Значення блока
+
+[nogps_box_value_group_car]
+comment = Section of the Box values page
+tags = android-app,apple-maps
+en = Car
+ru = Машина
+uk = Машина
+
+[nogps_box_value_group_gyroscope]
+comment = Section of the Box values page
+tags = android-app,apple-maps
+en = Gyroscope
+ru = Гироскоп
+uk = Гіроскоп
+
+[nogps_box_value_group_obd]
+comment = Section of the Box values page: the ELM327 adapter of the box
+tags = android-app,apple-maps
+en = OBD
+ru = OBD
+uk = OBD
+
+[nogps_box_value_group_box]
+comment = Section of the Box values page: the box itself
+tags = android-app,apple-maps
+en = Box
+ru = Блок
+uk = Блок
+
+[nogps_box_value_engine]
+comment = Row of the Box values page, the value is running or stopped
+tags = android-app,apple-maps
+en = Engine
+ru = Двигатель
+uk = Двигун
+
+[nogps_box_value_rpm]
+comment = Row of the Box values page
+tags = android-app,apple-maps
+en = Engine speed
+ru = Обороты
+uk = Оберти
+
+[nogps_box_value_box_voltage]
+comment = Row of the Box values page: the voltage of the car measured by the box itself
+tags = android-app,apple-maps
+en = Voltage, box ADC
+ru = Напряжение, АЦП блока
+uk = Напруга, АЦП блоку
+
+[nogps_box_value_elm_voltage]
+comment = Row of the Box values page: the voltage of the car told by the ELM327 adapter
+tags = android-app,apple-maps
+en = Voltage, ELM327
+ru = Напряжение, ELM327
+uk = Напруга, ELM327
+
+[nogps_box_value_ecu_voltage]
+comment = Row of the Box values page: the voltage of the car told by its control unit
+tags = android-app,apple-maps
+en = Voltage, car control unit
+ru = Напряжение, блок управления машины
+uk = Напруга, блок керування машини
+
+[nogps_box_value_voltage_mismatch]
+comment = Row of the Box values page, the value is Yes or No
+tags = android-app,apple-maps
+en = Voltages differ by over 10%
+ru = Напряжения расходятся больше чем на 10 %
+uk = Напруги розходяться більше ніж на 10 %
+
+[nogps_box_value_name]
+comment = Row of the Box values page: the name of the gyroscope
+tags = android-app,apple-maps
+en = Name
+ru = Название
+uk = Назва
+
+[nogps_box_value_state]
+comment = Row of the Box values page: the state of the gyroscope or of OBD, a code like OK
+tags = android-app,apple-maps
+en = State
+ru = Состояние
+uk = Стан
+
+[nogps_box_value_chip_id]
+comment = Row of the Box values page: the ID the gyroscope chip has answered, e.g. 0x47
+tags = android-app,apple-maps
+en = Chip ID
+ru = ID чипа
+uk = ID чипа
+
+[nogps_box_value_rate]
+comment = Row of the Box values page: how often the gyroscope is read
+tags = android-app,apple-maps
+en = Rate
+ru = Частота
+uk = Частота
+
+[nogps_box_value_temperature]
+comment = Row of the Box values page: of the gyroscope
+tags = android-app,apple-maps
+en = Temperature
+ru = Температура
+uk = Температура
+
+[nogps_box_value_read_errors]
+comment = Row of the Box values page: failed reads of the gyroscope since the box was powered on
+tags = android-app,apple-maps
+en = Read errors
+ru = Ошибки чтения
+uk = Помилки читання
+
+[nogps_box_value_bias_age]
+comment = Row of the Box values page: when the zero of the gyroscope was updated, e.g. 12 s ago
+tags = android-app,apple-maps
+en = Zero bias updated
+ru = Смещение нуля обновлено
+uk = Зміщення нуля оновлено
+
+[nogps_box_value_bias]
+comment = Row of the Box values page: the zero of the gyroscope
+tags = android-app,apple-maps
+en = Zero bias
+ru = Смещение нуля
+uk = Зміщення нуля
+
+[nogps_box_value_protocol]
+comment = Row of the Box values page: the OBD protocol of the car
+tags = android-app,apple-maps
+en = Protocol
+ru = Протокол
+uk = Протокол
+
+[nogps_box_value_last_error]
+comment = Row of the Box values page: the last error of OBD, a code like NONE
+tags = android-app,apple-maps
+en = Last error
+ru = Последняя ошибка
+uk = Остання помилка
+
+[nogps_box_value_uart_baud]
+comment = Row of the Box values page: the speed of the link between the box and its ELM327 adapter
+tags = android-app,apple-maps
+en = UART baud rate
+ru = Скорость UART, бод
+uk = Швидкість UART, бод
+
+[nogps_box_value_firmware]
+comment = Row of the Box values page
+tags = android-app,apple-maps
+en = Firmware
+ru = Прошивка
+uk = Прошивка
+
+[nogps_box_value_build_date]
+comment = Row of the Box values page: when the firmware was built
+tags = android-app,apple-maps
+en = Build date
+ru = Дата сборки
+uk = Дата збирання
+
+[nogps_box_value_chip]
+comment = Row of the Box values page: the chip of the box, e.g. esp32s3
+tags = android-app,apple-maps
+en = Chip
+ru = Чип
+uk = Чип
+
+[nogps_box_value_board]
+comment = Row of the Box values page: the board of the box, e.g. s3zero
+tags = android-app,apple-maps
+en = Board
+ru = Плата
+uk = Плата
+
+[nogps_box_value_id]
+comment = Row of the Box values page: the four characters of the box name
+tags = android-app,apple-maps
+en = ID
+ru = ID
+uk = ID
+
+[nogps_box_value_flash_size]
+comment = Row of the Box values page: the size of the flash memory of the box
+tags = android-app,apple-maps
+en = Flash memory
+ru = Флеш-память
+uk = Флеш-пам’ять
+
+[nogps_box_value_max_image_size]
+comment = Row of the Box values page: the largest firmware the box can take
+tags = android-app,apple-maps
+en = Largest firmware
+ru = Наибольшая прошивка
+uk = Найбільша прошивка
+
+[nogps_box_value_slot]
+comment = Row of the Box values page: the flash partition the firmware runs from, e.g. ota_0
+tags = android-app,apple-maps
+en = Running slot
+ru = Работающий раздел
+uk = Робочий розділ
+
+[nogps_box_value_slot_state]
+comment = Row of the Box values page: e.g. VALID, or PENDING for a new firmware not confirmed yet
+tags = android-app,apple-maps
+en = Slot state
+ru = Состояние раздела
+uk = Стан розділу
+
+[nogps_box_value_abilities]
+comment = Row of the Box values page: what the firmware can do, e.g. BLE OTA
+tags = android-app,apple-maps
+en = Abilities
+ru = Возможности
+uk = Можливості
+
+[nogps_box_value_power_ons]
+comment = Row of the Box values page: how many times the box was powered on
+tags = android-app,apple-maps
+en = Power-ons
+ru = Включений питанием
+uk = Увімкнень живленням
+
+[nogps_box_value_last_event]
+comment = Row of the Box values page: the number of the last event in the journal of the box
+tags = android-app,apple-maps
+en = Last event number
+ru = Номер последнего события
+uk = Номер останньої події
+
+[nogps_box_value_hz]
+comment = Value of the Box values page, e.g. 400 Hz
+tags = android-app,apple-maps
+en = %@ Hz
+ru = %@ Гц
+uk = %@ Гц
+
+[nogps_box_value_celsius]
+comment = Value of the Box values page, e.g. 41.2 °C
+tags = android-app,apple-maps
+en = %@ °C
+ru = %@ °C
+uk = %@ °C
+
+[nogps_box_value_seconds_ago]
+comment = Value of the Box values page, e.g. 12 s ago
+tags = android-app,apple-maps
+en = %@ s ago
+ru = %@ с назад
+uk = %@ с тому
+
+[nogps_box_value_degrees_per_second]
+comment = Value of the Box values page, e.g. -0.015 °/s
+tags = android-app,apple-maps
+en = %@ °/s
+ru = %@ °/с
+uk = %@ °/с
+
+[nogps_box_value_kilobytes]
+comment = Value of the Box values page, e.g. 4096 KB
+tags = android-app,apple-maps
+en = %@ KB
+ru = %@ КБ
+uk = %@ КБ
+
 [nogps_shared_no_place]
 comment = Toast after another app, e.g. Google Maps, shares a link to the app, but the link has no place: usually a short link while offline
 tags = android-app,apple-maps

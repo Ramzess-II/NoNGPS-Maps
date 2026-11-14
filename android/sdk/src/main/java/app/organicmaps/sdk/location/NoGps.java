@@ -118,6 +118,55 @@ public final class NoGps
     LINK_LOST,
   }
 
+  /**
+   * A value the sensor box sends in its status and info lines, esp32::BoxValue of the core: the Box values page shows
+   * them in this order.
+   */
+  public enum BoxValue
+  {
+    // The car.
+    ENGINE,
+    RPM,
+    // Volts.
+    BOX_VOLTAGE,
+    ELM_VOLTAGE,
+    ECU_VOLTAGE,
+    // "1" if the voltage of the box differs from the car, "0" if not.
+    VOLTAGE_MISMATCH,
+    // The gyroscope.
+    IMU_NAME,
+    IMU_STATE,
+    IMU_CHIP_ID,
+    // Hz.
+    IMU_RATE,
+    // °C.
+    IMU_TEMPERATURE,
+    IMU_ERRORS,
+    // Seconds.
+    BIAS_AGE,
+    // °/s.
+    BIAS,
+    // OBD.
+    OBD_STATE,
+    OBD_PROTOCOL,
+    OBD_ERROR,
+    OBD_BAUD,
+    // The box.
+    FIRMWARE,
+    BUILD_DATE,
+    CHIP,
+    BOARD,
+    ID,
+    // KB.
+    FLASH_SIZE,
+    MAX_IMAGE_SIZE,
+    SLOT,
+    SLOT_STATE,
+    ABILITIES,
+    POWER_ONS,
+    LAST_EVENT,
+  }
+
   public enum Event
   {
     MANUAL_MODE_CHANGED,
@@ -296,6 +345,13 @@ public final class NoGps
     // The sensor box has been powered on since the user calibrated it.
     @Keep
     public boolean boxCalibrationAdvised;
+    // All the sensor box has told in this connection, in the order of BoxValue: the values with their units, empty if
+    // the box sends the field empty. See getBoxValueId().
+    @Keep
+    int[] boxValueIds = new int[0];
+    @Keep
+    @NonNull
+    public String[] boxValues = new String[0];
 
     /**
      * The box or the adapter tells the speed of the car: the car is followed by it. Without the car data, e.g. on a
@@ -340,6 +396,12 @@ public final class NoGps
     public FirmwareUpdate getFirmwareUpdate()
     {
       return FirmwareUpdate.values()[firmwareUpdate];
+    }
+
+    @NonNull
+    public BoxValue getBoxValueId(int i)
+    {
+      return BoxValue.values()[boxValueIds[i]];
     }
   }
 
