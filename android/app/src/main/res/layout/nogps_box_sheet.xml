@@ -251,6 +251,14 @@
       android:minHeight="48dp"
       android:textSize="16sp" />
     <TextView
+      android:id="@+id/box_obd_hint"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginBottom="8dp"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp"
+      android:visibility="gone" />
+    <TextView
       android:id="@+id/box_speed"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
@@ -649,6 +657,13 @@
           android:text="@string/nogps_box_step_data"
           android:textSize="15sp" />
       </LinearLayout>
+        <TextView
+          android:id="@+id/box_step_hint"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="12dp"
+          android:textSize="14sp"
+          android:visibility="gone" />
         <Button
           android:id="@+id/box_step_action"
           style="@style/MwmWidget.Button.Accent"

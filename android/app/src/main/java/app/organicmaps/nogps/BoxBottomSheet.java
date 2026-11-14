@@ -40,6 +40,7 @@ import androidx.core.widget.ImageViewCompat;
 import androidx.transition.Slide;
 import androidx.transition.TransitionManager;
 import androidx.transition.TransitionSet;
+import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
 import app.organicmaps.maplayer.StatusBar;
 import app.organicmaps.sdk.location.MockLocationShare;
@@ -136,6 +137,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private ColorStateList mStateColors;
   private View mConnected;
   private TextView mName;
+  private TextView mObdHint;
   private TextView mSpeed;
   private TextView mRpm;
   private View mSpeedTable;
@@ -161,6 +163,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private View mShop;
   private final ImageView[] mStepDots = new ImageView[4];
   private final TextView[] mSteps = new TextView[4];
+  private TextView mStepHint;
   private TextView mStepAction;
   private TextView mBluetooth;
   private final View[] mRings = new View[3];
@@ -178,14 +181,24 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       mValuesShown = savedInstanceState.getBoolean(STATE_BOX_VALUES);
       mGpsShown = savedInstanceState.getBoolean(STATE_GPS);
       mShareAsked = savedInstanceState.getBoolean(STATE_SHARE_ASKED);
+      // The app was killed while the box was searched: the new core doesn't search it. Without the core the activity
+      // goes to the splash screen.
+      if (mSearching && MwmApplication.from(requireContext()).getOrganicMaps().arePlatformAndCoreInitialized()
+          && !NoGps.getStatus().inertialEnabled)
+        startSearch();
       return;
     }
     if (!NoGps.getStatus().inertialEnabled)
     {
       mSearching = true;
-      NoGps.nativeSetEsp32Source(true);
-      NoGps.nativeSetInertialNavigationEnabled(true);
+      startSearch();
     }
+  }
+
+  private static void startSearch()
+  {
+    NoGps.nativeSetEsp32Source(true);
+    NoGps.nativeSetInertialNavigationEnabled(true);
   }
 
   @Override
@@ -267,6 +280,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       mStepDots[i] = view.findViewById(dots[i]);
       mSteps[i] = view.findViewById(steps[i]);
     }
+    mStepHint = view.findViewById(R.id.box_step_hint);
+    mObdHint = view.findViewById(R.id.box_obd_hint);
     mStepAction = view.findViewById(R.id.box_step_action);
     mStepAction.setOnClickListener(v -> onStepAction());
     mBluetooth = view.findViewById(R.id.box_bluetooth);
@@ -451,6 +466,55 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     return ble == NoGps.BleState.OFF || ble == NoGps.BleState.DISABLED || ble == NoGps.BleState.NO_PERMISSION;
   }
 
+  /**
+   * What the user does for the phone to reach the box, 0 if nothing: the steps and their button tell the rest.
+   */
+  static int linkHintText(@NonNull NoGps.Status status)
+  {
+    return switch (status.getBleState())
+    {
+      case PAIRING_CLOSED -> R.string.nogps_box_bt_pairing_closed;
+      case PAIRING -> R.string.nogps_box_bt_pairing;
+      case PAIRING_FAILED -> R.string.nogps_box_bt_pairing_failed;
+      case BOND_LOST -> R.string.nogps_box_bt_bond_lost;
+      default -> 0;
+    };
+  }
+
+  /**
+   * What the user does for the box to get the car speed, 0 if nothing.
+   */
+  static int obdHintText(@NonNull NoGps.Status status)
+  {
+    if (!isBoxHeard(status) || status.getBleState() != NoGps.BleState.CONNECTED)
+      return 0;
+    return switch (status.getSourceState())
+    {
+      // The box retries the search of the car protocol while the car is silent: one text for both.
+      case NO_CAR_DATA, OBD_CONNECTING -> R.string.nogps_box_hint_no_car;
+      case NO_ADAPTER -> R.string.nogps_box_hint_no_adapter;
+      case OBD_ERROR -> R.string.nogps_box_hint_obd_error;
+      case OBD_DISABLED -> R.string.nogps_box_hint_obd_disabled;
+      default -> 0;
+    };
+  }
+
+  /**
+   * The button of the steps and of a box set up, 0 if none.
+   */
+  private int linkActionText(@NonNull NoGps.Status status)
+  {
+    if (isBluetoothFailed(status))
+      return bluetoothActionText(status);
+    return switch (status.getBleState())
+    {
+      case PAIRING_FAILED -> R.string.nogps_box_try_again;
+      // The search starts again when the pairing is removed there.
+      case BOND_LOST -> R.string.nogps_box_bluetooth_settings;
+      default -> 0;
+    };
+  }
+
   private boolean isLocationOff(@NonNull NoGps.Status status)
   {
     return NoGps.isLocationOffForBox(requireContext(), status);
@@ -476,10 +540,14 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
                                          : getString(R.string.nogps_box_buy_title));
     if (!status.inertialEnabled)
       return;
-    final boolean bluetoothFailed = isBluetoothFailed(status);
-    mBluetooth.setVisibility(bluetoothFailed ? View.VISIBLE : View.GONE);
-    if (bluetoothFailed)
-      mBluetooth.setText(bluetoothActionText(status));
+    final int linkAction = linkActionText(status);
+    mBluetooth.setVisibility(linkAction != 0 ? View.VISIBLE : View.GONE);
+    if (linkAction != 0)
+      mBluetooth.setText(linkAction);
+    final int obdHint = obdHintText(status);
+    mObdHint.setVisibility(obdHint != 0 ? View.VISIBLE : View.GONE);
+    if (obdHint != 0)
+      mObdHint.setText(obdHint);
     mName.setText(getString(R.string.nogps_sensors_box, boxName(status)));
     final boolean hasValues = status.boxValues.length > 0;
     mName.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, hasValues ? R.drawable.ic_nogps_chevron : 0, 0);
@@ -782,9 +850,15 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final boolean searched = ble == NoGps.BleState.SEARCHING || ble == NoGps.BleState.PAIRING_CLOSED;
     final boolean connecting = ble == NoGps.BleState.CONNECTING || ble == NoGps.BleState.PAIRING;
     final boolean connected = ble == NoGps.BleState.CONNECTED;
+    final boolean linkFailed = ble == NoGps.BleState.PAIRING_FAILED || ble == NoGps.BleState.BOND_LOST;
     showStep(0, bluetoothFailed ? StepState.FAILED : StepState.DONE);
-    showStep(1, connecting || connected ? StepState.DONE : searched ? StepState.CURRENT : StepState.WAITING);
-    showStep(2, connected ? StepState.DONE : connecting ? StepState.CURRENT : StepState.WAITING);
+    showStep(1, connecting || connected || linkFailed ? StepState.DONE
+                : searched                            ? StepState.CURRENT
+                                                      : StepState.WAITING);
+    showStep(2, connected    ? StepState.DONE
+                : linkFailed ? StepState.FAILED
+                : connecting ? StepState.CURRENT
+                             : StepState.WAITING);
     showStep(3, connected ? StepState.CURRENT : StepState.WAITING);
     mSteps[0].setText(ble == NoGps.BleState.NO_PERMISSION
                           ? (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ? R.string.nogps_box_step_nearby_denied
@@ -792,9 +866,16 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
                       : isLocationOff(status) ? R.string.nogps_box_step_location_off
                       : bluetoothFailed       ? R.string.nogps_box_step_bluetooth_off
                                               : R.string.nogps_box_step_bluetooth);
-    mStepAction.setVisibility(bluetoothFailed ? View.VISIBLE : View.GONE);
-    mStepAction.setText(bluetoothActionText(status));
-    animateRings(!bluetoothFailed);
+    final int hint = linkHintText(status);
+    mStepHint.setVisibility(hint != 0 ? View.VISIBLE : View.GONE);
+    if (hint != 0)
+      showState(mStepHint, new StatusBar.Look(0, 0), getString(hint));
+    final int action = linkActionText(status);
+    mStepAction.setVisibility(action != 0 ? View.VISIBLE : View.GONE);
+    if (action != 0)
+      mStepAction.setText(action);
+    // Nothing is searched after a failed pairing or a lost bond until the user acts.
+    animateRings(!bluetoothFailed && !linkFailed);
   }
 
   private void showBox(@NonNull StatusBar.Look look, @NonNull String text)
@@ -892,6 +973,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private void onStepAction()
   {
     final NoGps.Status status = NoGps.getStatus();
+    if (status.getBleState() == NoGps.BleState.PAIRING_FAILED)
+    {
+      MwmApplication.from(requireContext()).getLocationHelper().retryBox();
+      update();
+      return;
+    }
     if (isLocationOff(status))
     {
       startActivity(new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS));
@@ -938,8 +1025,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     super.onDismiss(dialog);
     if (requireActivity().isChangingConfigurations())
       return;
-    // Closed before a box was found: the phone stops looking for it.
-    if (mSearching && NoGps.getStatus().getBleState() != NoGps.BleState.CONNECTED)
+    // Closed before the box was heard, even if connected already: the phone stops looking for it.
+    if (mSearching && !isBoxHeard(NoGps.getStatus()))
       NoGps.nativeSetInertialNavigationEnabled(false);
     // The bottom bar shows the box at once.
     getParentFragmentManager().setFragmentResult(SensorsBottomSheet.RESULT_CLOSED, Bundle.EMPTY);

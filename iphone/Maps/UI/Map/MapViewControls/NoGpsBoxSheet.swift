@@ -53,6 +53,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
   }()
 
   private var shownRows: [[Row]] = []
+  private var shownFooters: [String?] = []
 
   /// The height of the rows the sheet was fitted to.
   private var fittedHeight = CGFloat(0)
@@ -98,7 +99,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
                                                         action: #selector(close))
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
     tableView.tableHeaderView = header
-    searchView.onAction = { [weak self] in self?.openSettings() }
+    searchView.onAction = { [weak self] in self?.onLinkAction() }
     header.gps.addTarget(self, action: #selector(openGps), for: .touchUpInside)
     gpsUse.accessibilityLabel = L("nogps_gps_use")
     gpsUse.addTarget(self, action: #selector(gpsUseChanged), for: .valueChanged)
@@ -149,9 +150,10 @@ final class NoGpsBoxSheet: MWMTableViewController {
     }
   }
 
-  /// Closed by the button or swiped down, from either page, before a box was found: the phone stops looking for it.
+  /// Closed by the button or swiped down, from either page, before the box was heard, even if connected already: the
+  /// phone stops looking for it.
   func stopSearchIfNotFound() {
-    if searching, NoGps.status().bleState != .connected {
+    if searching, !Self.isBoxHeard(NoGps.status()) {
       NoGps.setInertialNavigationEnabled(false)
       NoGpsStatusBar.update(NoGps.status())
     }
@@ -204,10 +206,10 @@ final class NoGpsBoxSheet: MWMTableViewController {
       if connected {
         info.append(.calibrate)
       }
-      if status.bleState == .noPermission {
+      if Self.linkActionText(status.bleState) != nil {
         info.insert(.bluetooth, at: 0)
       }
-      sections = [gps, Section(rows: info)]
+      sections = [gps, Section(rows: info, footer: Self.obdHintText(status))]
       // What the app has learned about the car speed.
       if status.inertialStarted {
         sections.append(Section(rows: [.speedTable, .speedLag, .clearSpeed]))
@@ -216,6 +218,12 @@ final class NoGpsBoxSheet: MWMTableViewController {
     } else {
       // Forgotten in the sensors screen.
       sections = [gps, Section(rows: [.buy], footer: L("nogps_box_buy_text"))]
+    }
+    // Footers are not updated in place.
+    let footers = sections.map(\.footer)
+    if footers != shownFooters {
+      shownFooters = footers
+      shownRows = []
     }
     tableView.reloadData(keepingRows: sections.map(\.rows), &shownRows)
   }
@@ -240,6 +248,43 @@ final class NoGpsBoxSheet: MWMTableViewController {
   /// The box sends its data: it is connected, whatever it tells.
   static func isBoxHeard(_ status: NoGpsStatus) -> Bool {
     status.inertialStarted && status.sourceState != .disconnected && status.sourceState != .connecting
+  }
+
+  /// What the user does for the phone to reach the box, nil if nothing: the steps and their button tell the rest.
+  static func linkHintText(_ ble: NoGpsBleState) -> String? {
+    let text: String
+    switch ble {
+    case .pairingClosed: text = L("nogps_box_bt_pairing_closed")
+    case .pairing: text = L("nogps_box_bt_pairing")
+    case .pairingFailed: text = L("nogps_box_bt_pairing_failed")
+    case .bondLost: text = L("nogps_box_bt_bond_lost")
+    default: return nil
+    }
+    // The states follow "Box: name ·" on the sensors screen, here they start the line.
+    return text.prefix(1).uppercased() + text.dropFirst()
+  }
+
+  /// The button of the steps and of a box set up, nil if none. Bluetooth is turned on by the user: iOS asks for it
+  /// itself and doesn't let an app open its settings.
+  static func linkActionText(_ ble: NoGpsBleState) -> String? {
+    switch ble {
+    case .noPermission: L("nogps_box_allow")
+    case .pairingFailed, .bondLost: L("nogps_box_try_again")
+    default: nil
+    }
+  }
+
+  /// What the user does for the box to get the car speed, nil if nothing.
+  static func obdHintText(_ status: NoGpsStatus) -> String? {
+    guard isBoxHeard(status), status.bleState == .connected else { return nil }
+    switch status.sourceState {
+    // The box retries the search of the car protocol while the car is silent: one text for both.
+    case .noCarData, .obdConnecting: return L("nogps_box_hint_no_car")
+    case .noAdapter: return L("nogps_box_hint_no_adapter")
+    case .obdError: return L("nogps_box_hint_obd_error")
+    case .obdDisabled: return L("nogps_box_hint_obd_disabled")
+    default: return nil
+    }
   }
 
   // MARK: - UITableViewDataSource
@@ -279,7 +324,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
     case .gpsUse:
       content.text = L("nogps_gps_use")
     case .bluetooth:
-      content.text = L("nogps_box_allow")
+      content.text = Self.linkActionText(status.bleState)
       content.textProperties.color = .linkBlue
       cell.selectionStyle = .default
     case .name:
@@ -380,7 +425,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
     tableView.deselectRow(at: indexPath, animated: true)
     switch sections[indexPath.section].rows[indexPath.row] {
     case .bluetooth:
-      openSettings()
+      onLinkAction()
     case .buy, .shop:
       UIApplication.shared.open(Constants.shopURL)
     case .clearSpeed:
@@ -441,8 +486,14 @@ final class NoGpsBoxSheet: MWMTableViewController {
 
   // MARK: - Actions
 
-  /// Bluetooth is allowed in the settings: once refused, iOS doesn't ask again.
-  private func openSettings() {
+  /// Bluetooth is allowed in the settings: once refused, iOS doesn't ask again. The box is searched again after a failed
+  /// pairing or a lost bond.
+  private func onLinkAction() {
+    guard NoGps.status().bleState == .noPermission else {
+      NoGps.retryBox()
+      refresh()
+      return
+    }
     if let url = URL(string: UIApplication.openSettingsURLString) {
       UIApplication.shared.open(url)
     }
@@ -734,6 +785,7 @@ private final class BoxSearchView: UIView {
   private var rings: [CAShapeLayer] = []
   private let steps = UIStackView()
   private var stepViews: [(dot: UIImageView, label: UILabel)] = []
+  private let hintLabel = UILabel()
   private let actionButton = UIButton(type: .system)
 
   init() {
@@ -792,7 +844,9 @@ private final class BoxSearchView: UIView {
       steps.addArrangedSubview(row)
       stepViews.append((dot, label))
     }
-    actionButton.setTitle(L("nogps_box_allow"), for: .normal)
+    hintLabel.font = .preferredFont(forTextStyle: .subheadline)
+    hintLabel.numberOfLines = 0
+    steps.addArrangedSubview(hintLabel)
     actionButton.titleLabel?.font = .preferredFont(forTextStyle: .subheadline)
     actionButton.contentHorizontalAlignment = .leading
     actionButton.addTarget(self, action: #selector(actionTapped), for: .touchUpInside)
@@ -821,11 +875,12 @@ private final class BoxSearchView: UIView {
   func update(_ status: NoGpsStatus) {
     let ble = status.bleState
     let bluetoothFailed = ble == .off || ble == .disabled || ble == .noPermission
+    let linkFailed = ble == .pairingFailed || ble == .bondLost
     let states: [StepState] = [
       bluetoothFailed ? .failed : .done,
-      [.connecting, .pairing, .connected].contains(ble) ? .done
+      [.connecting, .pairing, .connected, .pairingFailed, .bondLost].contains(ble) ? .done
         : [.searching, .pairingClosed].contains(ble) ? .current : .waiting,
-      ble == .connected ? .done : [.connecting, .pairing].contains(ble) ? .current : .waiting,
+      ble == .connected ? .done : linkFailed ? .failed : [.connecting, .pairing].contains(ble) ? .current : .waiting,
       ble == .connected ? .current : .waiting,
     ]
     for (state, view) in zip(states, stepViews) {
@@ -833,9 +888,14 @@ private final class BoxSearchView: UIView {
     }
     stepViews[0].label.text = L(ble == .noPermission ? "nogps_box_step_bluetooth_denied"
       : bluetoothFailed ? "nogps_box_step_bluetooth_off" : "nogps_box_step_bluetooth")
-    // Bluetooth is turned on by the user: iOS asks for it itself and doesn't let an app open its settings.
-    actionButton.isHidden = ble != .noPermission
-    animateRings(!bluetoothFailed)
+    let hint = NoGpsBoxSheet.linkHintText(ble)
+    hintLabel.text = hint
+    hintLabel.isHidden = hint == nil
+    let action = NoGpsBoxSheet.linkActionText(ble)
+    actionButton.setTitle(action, for: .normal)
+    actionButton.isHidden = action == nil
+    // Nothing is searched after a failed pairing or a lost bond until the user acts.
+    animateRings(!bluetoothFailed && !linkFailed)
   }
 
   private func show(_ state: StepState, dot: UIImageView, label: UILabel) {

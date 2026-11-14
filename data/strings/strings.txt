@@ -46216,6 +46216,48 @@ en = the box has forgotten this phone. Remove it in the Bluetooth settings, then
 ru = блок забыл этот телефон. Удалите его в настройках Bluetooth, затем выньте блок из разъёма и вставьте обратно
 uk = блок забув цей телефон. Видаліть його в налаштуваннях Bluetooth, потім вийміть блок із роз'єму й вставте назад
 
+[nogps_box_try_again]
+comment = Button on the Box screen: look for the sensor box again after a failed pairing
+tags = android-app,apple-maps
+en = Try again
+ru = Повторить
+uk = Спробувати ще раз
+
+[nogps_box_bluetooth_settings]
+comment = Button on the Box screen: opens the Bluetooth settings of the phone to remove the box that has forgotten the phone
+tags = android-app
+en = Bluetooth settings
+ru = Настройки Bluetooth
+uk = Налаштування Bluetooth
+
+[nogps_box_hint_no_car]
+comment = Hint on the Box screen: the box is connected, but the car doesn't tell its speed yet
+tags = android-app,apple-maps
+en = Turn the ignition on: the car speed comes within a minute
+ru = Включите зажигание: скорость машины придёт в течение минуты
+uk = Увімкніть запалювання: швидкість машини прийде протягом хвилини
+
+[nogps_box_hint_no_adapter]
+comment = Hint on the Box screen: the ELM327 OBD adapter of the box doesn't answer
+tags = android-app,apple-maps
+en = Check that the ELM327 adapter is plugged into the OBD socket and is on
+ru = Проверьте, что адаптер ELM327 вставлен в разъём OBD и включён
+uk = Перевірте, що адаптер ELM327 вставлено в роз'єм OBD і ввімкнено
+
+[nogps_box_hint_obd_error]
+comment = Hint on the Box screen: the box has an error talking to the car
+tags = android-app,apple-maps
+en = Unplug the box and plug it back: it starts again
+ru = Выньте блок из разъёма и вставьте обратно: он запустится заново
+uk = Вийміть блок із роз'єму й вставте назад: він запуститься знову
+
+[nogps_box_hint_obd_disabled]
+comment = Hint on the Box screen: OBD is turned off in the settings of the box, it doesn't read the car speed
+tags = android-app,apple-maps
+en = OBD is turned off in the box settings: turn it on to get the car speed
+ru = OBD выключен в настройках блока: включите его, чтобы получать скорость машины
+uk = OBD вимкнено в налаштуваннях блока: увімкніть його, щоб отримувати швидкість машини
+
 [nogps_sensors_calibrate_box]
 tags = android-app,apple-maps
 en = Calibrate
