@@ -848,6 +848,7 @@ void InertialNavigator::TrackDirection()
     m_startM = 0;
     m_startMarkM = 0;
     m_startFelt = false;
+    m_crawlCheck = false;
     m_otherWayMs.reset();
     // It stood for sure until the lag of its speed and a margin before it has reported that it moves.
     m_startStandToMs = now - lagMs - kStandMarginMs;
@@ -895,6 +896,7 @@ void InertialNavigator::TrackDirection()
         direction = feltMps >= kReverseStartSpeedMps ? 1 : direction;
       else
         direction = feltMps <= -kReverseStartSpeedMps && usable ? -1 : 1;
+      m_crawlCheck = !m_startAfterSlow && !kept && feltMps < kCrawlClearForwardMps;
       LOG(LINFO, ("The car has started", direction > 0 ? "forward" : "backward", "the accelerometer has felt", feltMps,
                   "m/s, standing", *m_standAccel, "starting", *start, "m/s2, it stood", stoodSec, "s",
                   m_startAfterSlow ? "after driving at 1 km/h, the stand before it is taken"
@@ -912,8 +914,10 @@ void InertialNavigator::TrackDirection()
   else if (m_startFelt && m_standAccel && now - *m_startMs <= kStartCheckMs)
   {
     // The car reports the speed it had the lag ago: what the accelerometer had felt by then is the same speed
-    // with its sign.
-    int64_t const tillMs = now - lagMs;
+    // with its sign. A crawling car told forward is checked by what was felt till now.
+    bool const crawl = m_crawlCheck && m_speedKmh <= kCrawlSpeedKmh && direction > 0;
+    int64_t const tillMs = crawl ? now : now - lagMs;
+    int64_t const checkBackMs = crawl ? kCrawlCheckBackMs : kStartCheckBackMs;
     auto const start = m_boxAccelSpeed.GetAccelAlong(m_startStandToMs, tillMs);
     double const feltMps = start ? m_startFromMps + (*start - *m_standAccel) * (tillMs - m_startStandToMs) / 1000.0 : 0;
     double const speedMps = m_speedKmh / 3.6;
@@ -921,7 +925,7 @@ void InertialNavigator::TrackDirection()
     bool const clear = std::fabs(feltMps) >= std::max(kReverseStartSpeedMps, kMinFeltSpeedRatio * speedMps) &&
                        std::fabs(feltMps) <= kMaxFeltSpeedRatio * speedMps + kMaxFeltSpeedExtraMps;
     if (!clear || felt == direction ||
-        (felt < 0 && (now - *m_startMs > kStartCheckBackMs || m_startAfterSlow || !m_boxAccelSpeed.IsUsable())))
+        (felt < 0 && (now - *m_startMs > checkBackMs || m_startAfterSlow || !m_boxAccelSpeed.IsUsable())))
     {
       m_otherWayMs.reset();
     }
@@ -935,7 +939,7 @@ void InertialNavigator::TrackDirection()
       direction = felt;
       LOG(LINFO, ("The car drives", direction > 0 ? "forward" : "backward", "by the accelerometer, it has felt",
                   feltMps, "m/s and the car reports", speedMps, "m/s,", now - *m_startMs, "ms after the start and",
-                  std::round(m_startM), "m"));
+                  std::round(m_startM), "m", crawl ? "crawling, felt till now" : ""));
     }
   }
   // Nobody drives that fast backwards.
@@ -1024,6 +1028,7 @@ void InertialNavigator::ResetDirection()
   m_standAccel.reset();
   m_otherWayMs.reset();
   m_startFelt = true;
+  m_crawlCheck = false;
   m_startM = 0;
   m_startMarkM = 0;
 }

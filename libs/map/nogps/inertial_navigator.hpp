@@ -321,6 +321,16 @@ public:
   static double constexpr kMinFeltSpeedRatio = 0.5;
   static double constexpr kMaxFeltSpeedRatio = 2;
   static double constexpr kMaxFeltSpeedExtraMps = 0.5;
+  // A crawling car reports its first 1 km/h without the lag, and may drive backwards only later: on November 13 at
+  // 19:24:36 it rolled forward a little when shifted into reverse, reported 1 km/h, and was felt backing only from
+  // 0.15 s after its start, at about 4 km/h. Till the lag ago 0.5 s of that pull was summed in the first 2 s, too
+  // little: the car was followed apart and its road was lost. While it reports up to this speed, a start backward
+  // is told by what was felt till now, for longer. Summed for that long, a jerk or a slope tells the wrong way more
+  // often: not after a start felt clearly forward (October 19 at 07:55:51, +1.4 m/s, then braking), nor with the stand
+  // taken from before (October 15 at 09:47:12, the car then drove 85 m forward).
+  static int constexpr kCrawlSpeedKmh = 5;
+  static int64_t constexpr kCrawlCheckBackMs = 4000;
+  static double constexpr kCrawlClearForwardMps = 0.5;
   // The accelerometer is compared with the last seconds of the car speed, which has no sign: it is not learned
   // from and doesn't tell how much faster the car is while the car drives backwards and for this time after it.
   // A start backward is not always told, so it is learned from at a speed nobody drives backwards at only: a
@@ -839,6 +849,8 @@ private:
   double m_startFromMps = 0;
   // The way of the start is told by the accelerometer already.
   bool m_startFelt = true;
+  // The start may be told backward by what was felt till now while the car crawls.
+  bool m_crawlCheck = false;
   // Until when the car stood for sure before that start.
   int64_t m_startStandToMs = 0;
   // What the accelerometer of the box has felt along the car standing, m/s2: at the last stand long enough to
