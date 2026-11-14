@@ -1065,8 +1065,6 @@
     <string name="nogps_box_forget">Forget the box</string>
     <!-- Header of the list of the cars on the box screen: each car has its own sensor box -->
     <string name="nogps_cars">Cars</string>
-    <!-- Name of a car the user hasn't named, by the four characters of the name of its sensor box: "Car C47D" -->
-    <string name="nogps_car_default_name">Car %1$s</string>
     <!-- State of a car in the list of the cars: its box is connected now -->
     <string name="nogps_car_connected">Connected</string>
     <!-- State of a car in the list of the cars: the app takes this car until a box connects -->
