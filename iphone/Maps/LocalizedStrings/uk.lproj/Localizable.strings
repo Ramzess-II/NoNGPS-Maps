@@ -1648,5 +1648,122 @@
 /* Hint while the box is searched */
 "nogps_box_power_hint" = "Маєте блок? Увімкніть його поруч із телефоном: 2 хвилини він приймає новий телефон. Телефон може спитати код із блока.";
 
+/* Title of the page with all values the sensor box sends, opened from the box row of the Box sheet */
+"nogps_box_value_title" = "Значення блока";
+
+/* Section of the Box values page */
+"nogps_box_value_group_car" = "Машина";
+
+/* Section of the Box values page */
+"nogps_box_value_group_gyroscope" = "Гіроскоп";
+
+/* Section of the Box values page: the ELM327 adapter of the box */
+"nogps_box_value_group_obd" = "OBD";
+
+/* Section of the Box values page: the box itself */
+"nogps_box_value_group_box" = "Блок";
+
+/* Row of the Box values page, the value is running or stopped */
+"nogps_box_value_engine" = "Двигун";
+
+/* Row of the Box values page */
+"nogps_box_value_rpm" = "Оберти";
+
+/* Row of the Box values page: the voltage of the car measured by the box itself */
+"nogps_box_value_box_voltage" = "Напруга, АЦП блоку";
+
+/* Row of the Box values page: the voltage of the car told by the ELM327 adapter */
+"nogps_box_value_elm_voltage" = "Напруга, ELM327";
+
+/* Row of the Box values page: the voltage of the car told by its control unit */
+"nogps_box_value_ecu_voltage" = "Напруга, блок керування машини";
+
+/* Row of the Box values page, the value is Yes or No */
+"nogps_box_value_voltage_mismatch" = "Напруги розходяться більше ніж на 10 %";
+
+/* Row of the Box values page: the name of the gyroscope */
+"nogps_box_value_name" = "Назва";
+
+/* Row of the Box values page: the state of the gyroscope or of OBD, a code like OK */
+"nogps_box_value_state" = "Стан";
+
+/* Row of the Box values page: the ID the gyroscope chip has answered, e.g. 0x47 */
+"nogps_box_value_chip_id" = "ID чипа";
+
+/* Row of the Box values page: how often the gyroscope is read */
+"nogps_box_value_rate" = "Частота";
+
+/* Row of the Box values page: of the gyroscope */
+"nogps_box_value_temperature" = "Температура";
+
+/* Row of the Box values page: failed reads of the gyroscope since the box was powered on */
+"nogps_box_value_read_errors" = "Помилки читання";
+
+/* Row of the Box values page: when the zero of the gyroscope was updated, e.g. 12 s ago */
+"nogps_box_value_bias_age" = "Зміщення нуля оновлено";
+
+/* Row of the Box values page: the zero of the gyroscope */
+"nogps_box_value_bias" = "Зміщення нуля";
+
+/* Row of the Box values page: the OBD protocol of the car */
+"nogps_box_value_protocol" = "Протокол";
+
+/* Row of the Box values page: the last error of OBD, a code like NONE */
+"nogps_box_value_last_error" = "Остання помилка";
+
+/* Row of the Box values page: the speed of the link between the box and its ELM327 adapter */
+"nogps_box_value_uart_baud" = "Швидкість UART, бод";
+
+/* Row of the Box values page */
+"nogps_box_value_firmware" = "Прошивка";
+
+/* Row of the Box values page: when the firmware was built */
+"nogps_box_value_build_date" = "Дата збирання";
+
+/* Row of the Box values page: the chip of the box, e.g. esp32s3 */
+"nogps_box_value_chip" = "Чип";
+
+/* Row of the Box values page: the board of the box, e.g. s3zero */
+"nogps_box_value_board" = "Плата";
+
+/* Row of the Box values page: the four characters of the box name */
+"nogps_box_value_id" = "ID";
+
+/* Row of the Box values page: the size of the flash memory of the box */
+"nogps_box_value_flash_size" = "Флеш-пам’ять";
+
+/* Row of the Box values page: the largest firmware the box can take */
+"nogps_box_value_max_image_size" = "Найбільша прошивка";
+
+/* Row of the Box values page: the flash partition the firmware runs from, e.g. ota_0 */
+"nogps_box_value_slot" = "Робочий розділ";
+
+/* Row of the Box values page: e.g. VALID, or PENDING for a new firmware not confirmed yet */
+"nogps_box_value_slot_state" = "Стан розділу";
+
+/* Row of the Box values page: what the firmware can do, e.g. BLE OTA */
+"nogps_box_value_abilities" = "Можливості";
+
+/* Row of the Box values page: how many times the box was powered on */
+"nogps_box_value_power_ons" = "Увімкнень живленням";
+
+/* Row of the Box values page: the number of the last event in the journal of the box */
+"nogps_box_value_last_event" = "Номер останньої події";
+
+/* Value of the Box values page, e.g. 400 Hz */
+"nogps_box_value_hz" = "%@ Гц";
+
+/* Value of the Box values page, e.g. 41.2 °C */
+"nogps_box_value_celsius" = "%@ °C";
+
+/* Value of the Box values page, e.g. 12 s ago */
+"nogps_box_value_seconds_ago" = "%@ с тому";
+
+/* Value of the Box values page, e.g. -0.015 °/s */
+"nogps_box_value_degrees_per_second" = "%@ °/с";
+
+/* Value of the Box values page, e.g. 4096 KB */
+"nogps_box_value_kilobytes" = "%@ КБ";
+
 /* Toast after another app, e.g. Google Maps, shares a link to the app, but the link has no place: usually a short link while offline */
 "nogps_shared_no_place" = "У посиланні немає місця. Підключіться до інтернету й поділіться ще раз.";

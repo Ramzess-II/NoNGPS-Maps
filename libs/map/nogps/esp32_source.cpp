@@ -62,6 +62,7 @@ void Esp32Source::Stop()
   m_lastDataMs.reset();
   m_wakingLinkMs.reset();
   m_info.reset();
+  m_boxValues.clear();
   m_hellosWithoutInfo = 0;
   m_update.Reset();
   ForgetJournal();
@@ -113,6 +114,21 @@ void Esp32Source::OnInfo(esp32::Info const & info)
   m_update.OnBoxFirmware(info.m_firmware);
 }
 
+void Esp32Source::StoreBoxValues(esp32::Fields const & fields)
+{
+  for (auto & [id, value] : esp32::ParseBoxValues(fields))
+    m_boxValues[id] = std::move(value);
+}
+
+esp32::BoxValues Esp32Source::GetBoxValues() const
+{
+  auto values = m_boxValues;
+  // The events of the box tell it too. The box tells about the car in the status of version 3 of the spec.
+  if (values.contains(esp32::BoxValue::Engine))
+    values[esp32::BoxValue::VoltageMismatch] = m_voltageMismatch ? "1" : "0";
+  return {values.begin(), values.end()};
+}
+
 void Esp32Source::Send(std::string_view command, int id)
 {
   if (m_bleState == BleState::Connected)
@@ -133,6 +149,7 @@ void Esp32Source::OnBleState(BleState state)
   {
     // Another box may be found, or this one with a new firmware.
     m_info.reset();
+    m_boxValues.clear();
     m_hellosWithoutInfo = 0;
     m_update.OnLinkLost();
     ForgetJournal();
@@ -216,6 +233,7 @@ void Esp32Source::OnLine(std::string_view text)
   if (auto const info = esp32::ParseInfo(*fields))
   {
     OnInfo(*info);
+    StoreBoxValues(*fields);
     return;
   }
   if (auto const progress = esp32::ParseUpdateProgress(*fields))
@@ -223,6 +241,7 @@ void Esp32Source::OnLine(std::string_view text)
     m_update.OnProgress(*progress);
     return;
   }
+  StoreBoxValues(*fields);
   if (auto const lastNumber = esp32::ParseLastEventNumber(*fields))
     OnLastEventNumber(*lastNumber);
   if (auto const imuName = esp32::ParseImuName(*fields))

@@ -1268,6 +1268,84 @@
     <string name="nogps_box_turn_on_location">Включить геолокацию</string>
     <!-- Hint while the box is searched -->
     <string name="nogps_box_power_hint">Есть блок? Включите его рядом с телефоном: 2 минуты он принимает новый телефон. Телефон может спросить код с блока.</string>
+    <!-- Title of the page with all values the sensor box sends, opened from the box row of the Box sheet -->
+    <string name="nogps_box_value_title">Значения блока</string>
+    <!-- Section of the Box values page -->
+    <string name="nogps_box_value_group_car">Машина</string>
+    <!-- Section of the Box values page -->
+    <string name="nogps_box_value_group_gyroscope">Гироскоп</string>
+    <!-- Section of the Box values page: the ELM327 adapter of the box -->
+    <string name="nogps_box_value_group_obd">OBD</string>
+    <!-- Section of the Box values page: the box itself -->
+    <string name="nogps_box_value_group_box">Блок</string>
+    <!-- Row of the Box values page, the value is running or stopped -->
+    <string name="nogps_box_value_engine">Двигатель</string>
+    <!-- Row of the Box values page -->
+    <string name="nogps_box_value_rpm">Обороты</string>
+    <!-- Row of the Box values page: the voltage of the car measured by the box itself -->
+    <string name="nogps_box_value_box_voltage">Напряжение, АЦП блока</string>
+    <!-- Row of the Box values page: the voltage of the car told by the ELM327 adapter -->
+    <string name="nogps_box_value_elm_voltage">Напряжение, ELM327</string>
+    <!-- Row of the Box values page: the voltage of the car told by its control unit -->
+    <string name="nogps_box_value_ecu_voltage">Напряжение, блок управления машины</string>
+    <!-- Row of the Box values page, the value is Yes or No -->
+    <string name="nogps_box_value_voltage_mismatch">Напряжения расходятся больше чем на 10 %</string>
+    <!-- Row of the Box values page: the name of the gyroscope -->
+    <string name="nogps_box_value_name">Название</string>
+    <!-- Row of the Box values page: the state of the gyroscope or of OBD, a code like OK -->
+    <string name="nogps_box_value_state">Состояние</string>
+    <!-- Row of the Box values page: the ID the gyroscope chip has answered, e.g. 0x47 -->
+    <string name="nogps_box_value_chip_id">ID чипа</string>
+    <!-- Row of the Box values page: how often the gyroscope is read -->
+    <string name="nogps_box_value_rate">Частота</string>
+    <!-- Row of the Box values page: of the gyroscope -->
+    <string name="nogps_box_value_temperature">Температура</string>
+    <!-- Row of the Box values page: failed reads of the gyroscope since the box was powered on -->
+    <string name="nogps_box_value_read_errors">Ошибки чтения</string>
+    <!-- Row of the Box values page: when the zero of the gyroscope was updated, e.g. 12 s ago -->
+    <string name="nogps_box_value_bias_age">Смещение нуля обновлено</string>
+    <!-- Row of the Box values page: the zero of the gyroscope -->
+    <string name="nogps_box_value_bias">Смещение нуля</string>
+    <!-- Row of the Box values page: the OBD protocol of the car -->
+    <string name="nogps_box_value_protocol">Протокол</string>
+    <!-- Row of the Box values page: the last error of OBD, a code like NONE -->
+    <string name="nogps_box_value_last_error">Последняя ошибка</string>
+    <!-- Row of the Box values page: the speed of the link between the box and its ELM327 adapter -->
+    <string name="nogps_box_value_uart_baud">Скорость UART, бод</string>
+    <!-- Row of the Box values page -->
+    <string name="nogps_box_value_firmware">Прошивка</string>
+    <!-- Row of the Box values page: when the firmware was built -->
+    <string name="nogps_box_value_build_date">Дата сборки</string>
+    <!-- Row of the Box values page: the chip of the box, e.g. esp32s3 -->
+    <string name="nogps_box_value_chip">Чип</string>
+    <!-- Row of the Box values page: the board of the box, e.g. s3zero -->
+    <string name="nogps_box_value_board">Плата</string>
+    <!-- Row of the Box values page: the four characters of the box name -->
+    <string name="nogps_box_value_id">ID</string>
+    <!-- Row of the Box values page: the size of the flash memory of the box -->
+    <string name="nogps_box_value_flash_size">Флеш-память</string>
+    <!-- Row of the Box values page: the largest firmware the box can take -->
+    <string name="nogps_box_value_max_image_size">Наибольшая прошивка</string>
+    <!-- Row of the Box values page: the flash partition the firmware runs from, e.g. ota_0 -->
+    <string name="nogps_box_value_slot">Работающий раздел</string>
+    <!-- Row of the Box values page: e.g. VALID, or PENDING for a new firmware not confirmed yet -->
+    <string name="nogps_box_value_slot_state">Состояние раздела</string>
+    <!-- Row of the Box values page: what the firmware can do, e.g. BLE OTA -->
+    <string name="nogps_box_value_abilities">Возможности</string>
+    <!-- Row of the Box values page: how many times the box was powered on -->
+    <string name="nogps_box_value_power_ons">Включений питанием</string>
+    <!-- Row of the Box values page: the number of the last event in the journal of the box -->
+    <string name="nogps_box_value_last_event">Номер последнего события</string>
+    <!-- Value of the Box values page, e.g. 400 Hz -->
+    <string name="nogps_box_value_hz">%s Гц</string>
+    <!-- Value of the Box values page, e.g. 41.2 °C -->
+    <string name="nogps_box_value_celsius">%s °C</string>
+    <!-- Value of the Box values page, e.g. 12 s ago -->
+    <string name="nogps_box_value_seconds_ago">%s с назад</string>
+    <!-- Value of the Box values page, e.g. -0.015 °/s -->
+    <string name="nogps_box_value_degrees_per_second">%s °/с</string>
+    <!-- Value of the Box values page, e.g. 4096 KB -->
+    <string name="nogps_box_value_kilobytes">%s КБ</string>
     <!-- Toast after another app, e.g. Google Maps, shares a link to the app, but the link has no place: usually a short link while offline -->
     <string name="nogps_shared_no_place">В ссылке нет места. Подключитесь к интернету и поделитесь ещё раз.</string>
 </resources>

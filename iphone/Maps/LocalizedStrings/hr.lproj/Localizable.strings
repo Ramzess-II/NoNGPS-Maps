@@ -1648,5 +1648,122 @@
 /* Hint while the box is searched */
 "nogps_box_power_hint" = "Have a box? Power it on near the phone: it accepts a new phone for 2 minutes. The phone may ask for the code from the box.";
 
+/* Title of the page with all values the sensor box sends, opened from the box row of the Box sheet */
+"nogps_box_value_title" = "Box values";
+
+/* Section of the Box values page */
+"nogps_box_value_group_car" = "Car";
+
+/* Section of the Box values page */
+"nogps_box_value_group_gyroscope" = "Gyroscope";
+
+/* Section of the Box values page: the ELM327 adapter of the box */
+"nogps_box_value_group_obd" = "OBD";
+
+/* Section of the Box values page: the box itself */
+"nogps_box_value_group_box" = "Box";
+
+/* Row of the Box values page, the value is running or stopped */
+"nogps_box_value_engine" = "Engine";
+
+/* Row of the Box values page */
+"nogps_box_value_rpm" = "Engine speed";
+
+/* Row of the Box values page: the voltage of the car measured by the box itself */
+"nogps_box_value_box_voltage" = "Voltage, box ADC";
+
+/* Row of the Box values page: the voltage of the car told by the ELM327 adapter */
+"nogps_box_value_elm_voltage" = "Voltage, ELM327";
+
+/* Row of the Box values page: the voltage of the car told by its control unit */
+"nogps_box_value_ecu_voltage" = "Voltage, car control unit";
+
+/* Row of the Box values page, the value is Yes or No */
+"nogps_box_value_voltage_mismatch" = "Voltages differ by over 10%";
+
+/* Row of the Box values page: the name of the gyroscope */
+"nogps_box_value_name" = "Name";
+
+/* Row of the Box values page: the state of the gyroscope or of OBD, a code like OK */
+"nogps_box_value_state" = "State";
+
+/* Row of the Box values page: the ID the gyroscope chip has answered, e.g. 0x47 */
+"nogps_box_value_chip_id" = "Chip ID";
+
+/* Row of the Box values page: how often the gyroscope is read */
+"nogps_box_value_rate" = "Rate";
+
+/* Row of the Box values page: of the gyroscope */
+"nogps_box_value_temperature" = "Temperature";
+
+/* Row of the Box values page: failed reads of the gyroscope since the box was powered on */
+"nogps_box_value_read_errors" = "Read errors";
+
+/* Row of the Box values page: when the zero of the gyroscope was updated, e.g. 12 s ago */
+"nogps_box_value_bias_age" = "Zero bias updated";
+
+/* Row of the Box values page: the zero of the gyroscope */
+"nogps_box_value_bias" = "Zero bias";
+
+/* Row of the Box values page: the OBD protocol of the car */
+"nogps_box_value_protocol" = "Protocol";
+
+/* Row of the Box values page: the last error of OBD, a code like NONE */
+"nogps_box_value_last_error" = "Last error";
+
+/* Row of the Box values page: the speed of the link between the box and its ELM327 adapter */
+"nogps_box_value_uart_baud" = "UART baud rate";
+
+/* Row of the Box values page */
+"nogps_box_value_firmware" = "Firmware";
+
+/* Row of the Box values page: when the firmware was built */
+"nogps_box_value_build_date" = "Build date";
+
+/* Row of the Box values page: the chip of the box, e.g. esp32s3 */
+"nogps_box_value_chip" = "Chip";
+
+/* Row of the Box values page: the board of the box, e.g. s3zero */
+"nogps_box_value_board" = "Board";
+
+/* Row of the Box values page: the four characters of the box name */
+"nogps_box_value_id" = "ID";
+
+/* Row of the Box values page: the size of the flash memory of the box */
+"nogps_box_value_flash_size" = "Flash memory";
+
+/* Row of the Box values page: the largest firmware the box can take */
+"nogps_box_value_max_image_size" = "Largest firmware";
+
+/* Row of the Box values page: the flash partition the firmware runs from, e.g. ota_0 */
+"nogps_box_value_slot" = "Running slot";
+
+/* Row of the Box values page: e.g. VALID, or PENDING for a new firmware not confirmed yet */
+"nogps_box_value_slot_state" = "Slot state";
+
+/* Row of the Box values page: what the firmware can do, e.g. BLE OTA */
+"nogps_box_value_abilities" = "Abilities";
+
+/* Row of the Box values page: how many times the box was powered on */
+"nogps_box_value_power_ons" = "Power-ons";
+
+/* Row of the Box values page: the number of the last event in the journal of the box */
+"nogps_box_value_last_event" = "Last event number";
+
+/* Value of the Box values page, e.g. 400 Hz */
+"nogps_box_value_hz" = "%@ Hz";
+
+/* Value of the Box values page, e.g. 41.2 °C */
+"nogps_box_value_celsius" = "%@ °C";
+
+/* Value of the Box values page, e.g. 12 s ago */
+"nogps_box_value_seconds_ago" = "%@ s ago";
+
+/* Value of the Box values page, e.g. -0.015 °/s */
+"nogps_box_value_degrees_per_second" = "%@ °/s";
+
+/* Value of the Box values page, e.g. 4096 KB */
+"nogps_box_value_kilobytes" = "%@ KB";
+
 /* Toast after another app, e.g. Google Maps, shares a link to the app, but the link has no place: usually a short link while offline */
 "nogps_shared_no_place" = "The shared link has no place. Connect to the internet and share it again.";

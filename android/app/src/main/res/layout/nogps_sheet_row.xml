@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A row of the GPS sheet: what and its value. -->
+<!-- A row of the GPS sheet and of the Box values page: what and its value. -->
 <LinearLayout
   xmlns:android="http://schemas.android.com/apk/res/android"
   android:layout_width="match_parent"
