@@ -103,6 +103,10 @@ public final class NoGps
     // The phone asks the user for the code of the box.
     PAIRING,
     CONNECTED,
+    // A cancelled or wrong code: not tried again until the user asks.
+    PAIRING_FAILED,
+    // A paired box sends nothing: it has forgotten the phone. Not tried again until the user asks.
+    BOND_LOST,
   }
 
   public enum CalibrationState

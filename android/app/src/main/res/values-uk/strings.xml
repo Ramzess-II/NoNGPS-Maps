@@ -1018,6 +1018,22 @@
     <string name="nogps_box_bt_pairing">введіть код блока у вікні спарювання: 123456, якщо його не змінювали</string>
     <!-- State of the sensor box, shown after its name -->
     <string name="nogps_box_bt_waiting">підключено через Bluetooth, чекаю на дані</string>
+    <!-- State of the sensor box, shown after its name: the user cancelled the pairing code or entered a wrong one. The phone stops trying until the user asks -->
+    <string name="nogps_box_bt_pairing_failed">спарювання не вдалося: код скасовано або він неправильний</string>
+    <!-- State of the sensor box, shown after its name: a paired box connects but sends nothing, it has forgotten the phone -->
+    <string name="nogps_box_bt_bond_lost">блок забув цей телефон. Видаліть його в налаштуваннях Bluetooth, потім вийміть блок із роз\'єму й вставте назад</string>
+    <!-- Button on the Box screen: look for the sensor box again after a failed pairing -->
+    <string name="nogps_box_try_again">Спробувати ще раз</string>
+    <!-- Button on the Box screen: opens the Bluetooth settings of the phone to remove the box that has forgotten the phone -->
+    <string name="nogps_box_bluetooth_settings">Налаштування Bluetooth</string>
+    <!-- Hint on the Box screen: the box is connected, but the car doesn't tell its speed yet -->
+    <string name="nogps_box_hint_no_car">Увімкніть запалювання: швидкість машини прийде протягом хвилини</string>
+    <!-- Hint on the Box screen: the ELM327 OBD adapter of the box doesn't answer -->
+    <string name="nogps_box_hint_no_adapter">Перевірте, що адаптер ELM327 вставлено в роз\'єм OBD і ввімкнено</string>
+    <!-- Hint on the Box screen: the box has an error talking to the car -->
+    <string name="nogps_box_hint_obd_error">Вийміть блок із роз\'єму й вставте назад: він запуститься знову</string>
+    <!-- Hint on the Box screen: OBD is turned off in the settings of the box, it doesn't read the car speed -->
+    <string name="nogps_box_hint_obd_disabled">OBD вимкнено в налаштуваннях блока: увімкніть його, щоб отримувати швидкість машини</string>
     <string name="nogps_sensors_calibrate_box">Калібрувати</string>
     <string name="nogps_gyro_mount_moved">блок зсунули, відкалібруйте</string>
     <string name="nogps_sensors_hint_box">Закріпіть блок нерухомо. Гіроскоп він обнуляє сам на кожній зупинці.</string>

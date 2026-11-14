@@ -56,6 +56,10 @@ typedef NS_ENUM(NSInteger, MWMNoGpsBleState) {
   MWMNoGpsBleStatePairing,
   // Subscribed to the lines of the box.
   MWMNoGpsBleStateConnected,
+  // A cancelled or wrong code: not tried again until the user asks.
+  MWMNoGpsBleStatePairingFailed,
+  // A paired box sends nothing: it has forgotten the phone. Not tried again until the user asks.
+  MWMNoGpsBleStateBondLost,
 } NS_SWIFT_NAME(NoGpsBleState);
 
 typedef NS_ENUM(NSInteger, MWMNoGpsCalibrationState) {
@@ -259,6 +263,10 @@ NS_SWIFT_NAME(NoGps)
 + (void)switchMark;
 + (void)setGpsDisabled:(BOOL)disabled;
 + (void)setInertialNavigationEnabled:(BOOL)enabled;
+/// Turns the navigation by the box off, and a box found later is taken for a new one.
++ (void)forgetBox;
+/// Looks for the box again after MWMNoGpsBleStatePairingFailed or MWMNoGpsBleStateBondLost.
++ (void)retryBox;
 + (void)calibrate;
 + (void)clearSpeedCalibration;
 /// Sends the firmware of MWMNoGpsStatus.bundledFirmware to the box.

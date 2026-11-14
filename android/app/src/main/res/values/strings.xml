@@ -1008,6 +1008,22 @@
     <string name="nogps_box_bt_pairing">enter the code of the box in the pairing window: 123456 unless it was changed</string>
     <!-- State of the sensor box, shown after its name -->
     <string name="nogps_box_bt_waiting">connected by Bluetooth, waiting for the data</string>
+    <!-- State of the sensor box, shown after its name: the user cancelled the pairing code or entered a wrong one. The phone stops trying until the user asks -->
+    <string name="nogps_box_bt_pairing_failed">pairing failed: the code was cancelled or wrong</string>
+    <!-- State of the sensor box, shown after its name: a paired box connects but sends nothing, it has forgotten the phone -->
+    <string name="nogps_box_bt_bond_lost">the box has forgotten this phone. Remove it in the Bluetooth settings, then unplug the box and plug it back</string>
+    <!-- Button on the Box screen: look for the sensor box again after a failed pairing -->
+    <string name="nogps_box_try_again">Try again</string>
+    <!-- Button on the Box screen: opens the Bluetooth settings of the phone to remove the box that has forgotten the phone -->
+    <string name="nogps_box_bluetooth_settings">Bluetooth settings</string>
+    <!-- Hint on the Box screen: the box is connected, but the car doesn't tell its speed yet -->
+    <string name="nogps_box_hint_no_car">Turn the ignition on: the car speed comes within a minute</string>
+    <!-- Hint on the Box screen: the ELM327 OBD adapter of the box doesn't answer -->
+    <string name="nogps_box_hint_no_adapter">Check that the ELM327 adapter is plugged into the OBD socket and is on</string>
+    <!-- Hint on the Box screen: the box has an error talking to the car -->
+    <string name="nogps_box_hint_obd_error">Unplug the box and plug it back: it starts again</string>
+    <!-- Hint on the Box screen: OBD is turned off in the settings of the box, it doesn't read the car speed -->
+    <string name="nogps_box_hint_obd_disabled">OBD is turned off in the box settings: turn it on to get the car speed</string>
     <string name="nogps_sensors_calibrate_box">Calibrate</string>
     <string name="nogps_gyro_mount_moved">the box has been moved, calibrate it</string>
     <string name="nogps_sensors_hint_box">Fix the box firmly. It zeroes the gyroscope on every stop by itself.</string>
