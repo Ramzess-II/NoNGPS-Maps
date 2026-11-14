@@ -304,6 +304,36 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeClearSpeedCalibrati
   NoGpsEngine().ClearSpeedCalibration();
 }
 
+JNIEXPORT jobjectArray Java_app_organicmaps_sdk_location_NoGps_nativeGetCars(JNIEnv * env, jclass)
+{
+  static jclass const carClass = jni::GetGlobalClassRef(env, "app/organicmaps/sdk/location/NoGps$Car");
+  static jmethodID const ctor =
+      jni::GetConstructorID(env, carClass, "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;J)V");
+  return jni::ToJavaArray(env, carClass, NoGpsEngine().GetCars(), [](JNIEnv * env, nogps::Car const & car)
+  {
+    jni::TScopedLocalRef id(env, jni::ToJavaString(env, car.m_id));
+    jni::TScopedLocalRef name(env, jni::ToJavaString(env, car.m_name));
+    jni::TScopedLocalRef firmware(env, jni::ToJavaString(env, car.m_firmware));
+    return env->NewObject(carClass, ctor, id.get(), name.get(), firmware.get(),
+                          static_cast<jlong>(car.m_lastSeenUnixMs));
+  });
+}
+
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeSelectCar(JNIEnv * env, jclass, jstring id)
+{
+  NoGpsEngine().SelectCar(jni::ToNativeString(env, id));
+}
+
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeRenameCar(JNIEnv * env, jclass, jstring id, jstring name)
+{
+  NoGpsEngine().RenameCar(jni::ToNativeString(env, id), jni::ToNativeString(env, name));
+}
+
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeForgetCar(JNIEnv * env, jclass, jstring id)
+{
+  NoGpsEngine().ForgetCar(jni::ToNativeString(env, id));
+}
+
 JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * env, jclass, jobject out)
 {
   auto const status = NoGpsEngine().GetStatus();
@@ -321,6 +351,7 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsField(env, out, "movedByHand", status.m_movedByHand);
   SetNoGpsField(env, out, "inertialEnabled", status.m_inertialEnabled);
   SetNoGpsField(env, out, "esp32Source", status.m_esp32Source);
+  SetNoGpsString(env, out, "carId", status.m_carId);
   SetNoGpsString(env, out, "elm327Address", status.m_elm327Address);
   SetNoGpsField(env, out, "inertialStarted", status.m_inertialStarted);
   SetNoGpsField(env, out, "sourceState", static_cast<int>(status.m_sourceState));

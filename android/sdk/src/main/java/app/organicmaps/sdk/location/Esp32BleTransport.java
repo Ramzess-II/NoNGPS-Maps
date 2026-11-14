@@ -22,6 +22,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.location.LocationManager;
 import android.os.Build;
@@ -36,6 +37,8 @@ import androidx.core.content.ContextCompat;
 import app.organicmaps.sdk.util.log.Logger;
 import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -80,6 +83,12 @@ class Esp32BleTransport
   private static final long RESCAN_INTERVAL_MS = 5 * 60 * 1000;
   // A new box waits this long for a paired one to be found: both may be near.
   private static final long NEW_BOX_DELAY_MS = 3000;
+  // The box of another car waits this long for the box of the current car: both may be near, e.g. two cars in the
+  // yard with their engines just stopped.
+  private static final long OTHER_CAR_DELAY_MS = 3000;
+  // The boxes of the cars the user has forgotten: still paired, they are not connected until the user adds the car.
+  private static final String PREFS = "nogps_box";
+  private static final String FORGOTTEN_BOXES = "forgotten_boxes";
   // From the connection to the first data: a step may wait for a callback that never comes.
   private static final long CONNECT_WATCHDOG_MS = 20_000;
   // The user enters the code meanwhile.
@@ -146,6 +155,15 @@ class Esp32BleTransport
   // The box that has forgotten the phone: the search starts again when its pairing is removed.
   @Nullable
   private BluetoothDevice mBondLostBox;
+  // The user adds a car: only a box that is not of a known car is connected.
+  private boolean mNewBoxOnly;
+  // The cars and the current one, as the search starts.
+  private final Set<String> mCarIds = new HashSet<>();
+  @NonNull
+  private String mCurrentCar = "";
+  // The box connected, null if its name is not known.
+  @Nullable
+  private String mBoxId;
 
   private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
     @Override
@@ -222,6 +240,36 @@ class Esp32BleTransport
     mRetryDelayMs = RETRY_DELAY_MS;
     mSilentConnections = 0;
     start();
+  }
+
+  /**
+   * The user adds a car: only a box that is not of a known car is connected, the box connected now is dropped. Ends
+   * when the new box is heard, or with false.
+   */
+  @UiThread
+  void searchNewBox(boolean newOnly)
+  {
+    if (mNewBoxOnly == newOnly)
+      return;
+    Logger.i(TAG, "new box only = " + newOnly);
+    mNewBoxOnly = newOnly;
+    if (!mOpen)
+      return;
+    closeGatt();
+    mRetryDelayMs = RETRY_DELAY_MS;
+    mSilentConnections = 0;
+    start();
+  }
+
+  /**
+   * The user has forgotten the car: its box, still paired, is not connected until the car is added again.
+   */
+  @UiThread
+  void forgetBox(@NonNull String id)
+  {
+    final Set<String> forgotten = getForgottenBoxes();
+    if (forgotten.add(id))
+      getPrefs().edit().putStringSet(FORGOTTEN_BOXES, forgotten).apply();
   }
 
   @UiThread
@@ -331,6 +379,10 @@ class Esp32BleTransport
     mScanner = scanner;
     mScanCallback = callback;
     mScanStartMs = SystemClock.elapsedRealtime();
+    mCarIds.clear();
+    for (NoGps.Car car : NoGps.nativeGetCars())
+      mCarIds.add(car.id);
+    mCurrentCar = NoGps.getStatus().carId;
     setState(STATE_SEARCHING);
     mMainHandler.postDelayed(mStarter, RESCAN_INTERVAL_MS);
   }
@@ -360,6 +412,10 @@ class Esp32BleTransport
   {
     final BluetoothDevice device = result.getDevice();
     final boolean bonded = device.getBondState() == BluetoothDevice.BOND_BONDED;
+    final String id = getBoxId(result);
+    // A paired box without its name may be of a car: not while a new one is added.
+    if (id != null ? !isBoxWanted(id, bonded) : mNewBoxOnly && bonded)
+      return;
     if (!bonded)
     {
       // The box accepts a new phone for two minutes after it is powered, the phone asks for its code.
@@ -375,10 +431,11 @@ class Esp32BleTransport
       }
       // A box paired already is taken first if it is near: the new one may be somebody else's. Without it the
       // new box is a second or a replaced one of the user.
-      if (hasPairedBox(adapter) && SystemClock.elapsedRealtime() - mScanStartMs < NEW_BOX_DELAY_MS)
+      if (!mNewBoxOnly && hasPairedBox(adapter) && SystemClock.elapsedRealtime() - mScanStartMs < NEW_BOX_DELAY_MS)
         return;
     }
-    Logger.i(TAG, "Found " + device.getAddress() + " rssi " + result.getRssi() + " bonded " + bonded);
+    Logger.i(TAG, "Found " + device.getAddress() + " " + id + " rssi " + result.getRssi() + " bonded " + bonded);
+    mBoxId = id;
     mMainHandler.removeCallbacks(mStarter);
     mMainHandler.removeCallbacks(mPairingClosedEnd);
     stopScan();
@@ -395,6 +452,47 @@ class Esp32BleTransport
       restartLater();
     else
       startWatchdog(CONNECT_WATCHDOG_MS);
+  }
+
+  /**
+   * @return false if the box is not to be connected now: of a known car while the user adds one, forgotten, or of
+   * another car while the box of the current one may be found too.
+   */
+  private boolean isBoxWanted(@NonNull String id, boolean bonded)
+  {
+    if (mNewBoxOnly)
+      return !mCarIds.contains(id);
+    // Without cars the box is set up anew, as any box.
+    if (!mCarIds.isEmpty() && getForgottenBoxes().contains(id))
+      return false;
+    return !bonded || mCurrentCar.isEmpty() || mCurrentCar.equals(id)
+ || SystemClock.elapsedRealtime() - mScanStartMs >= OTHER_CAR_DELAY_MS;
+  }
+
+  /**
+   * @return the four characters of the name of the box, NoGPS-XXXX, null if the box doesn't tell it.
+   */
+  @SuppressLint("MissingPermission")
+  @Nullable
+  private static String getBoxId(@NonNull ScanResult result)
+  {
+    final ScanRecord record = result.getScanRecord();
+    String name = record != null ? record.getDeviceName() : null;
+    if (name == null)
+      name = result.getDevice().getName();
+    return name != null && name.startsWith(NAME_PREFIX) ? name.substring(NAME_PREFIX.length()) : null;
+  }
+
+  @NonNull
+  private SharedPreferences getPrefs()
+  {
+    return mContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+  }
+
+  @NonNull
+  private Set<String> getForgottenBoxes()
+  {
+    return new HashSet<>(getPrefs().getStringSet(FORGOTTEN_BOXES, Collections.emptySet()));
   }
 
   private void startWatchdog(long delayMs)
@@ -440,6 +538,7 @@ class Esp32BleTransport
   {
     final BluetoothGatt gatt = mGatt;
     mGatt = null;
+    mBoxId = null;
     mRx = null;
     mOta = null;
     mReady = false;
@@ -626,9 +725,21 @@ class Esp32BleTransport
         mHeard = true;
         mSilentConnections = 0;
         mMainHandler.removeCallbacks(mWatchdog);
+        onBoxHeard();
       }
       NoGps.nativeOnEsp32BleBytes(value);
     });
+  }
+
+  /**
+   * The box sends data: a new one ends the search for it, a forgotten one is added again.
+   */
+  private void onBoxHeard()
+  {
+    mNewBoxOnly = false;
+    final Set<String> forgotten = getForgottenBoxes();
+    if (mBoxId != null && forgotten.remove(mBoxId))
+      getPrefs().edit().putStringSet(FORGOTTEN_BOXES, forgotten).apply();
   }
 
   @SuppressLint("MissingPermission")

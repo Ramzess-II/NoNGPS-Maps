@@ -27,12 +27,7 @@ InertialNavigator::InertialNavigator(Delegate & delegate, Scheduler & scheduler,
   , m_storage(storage)
   , m_roads(roads)
   , m_listener(listener)
-{
-  m_speedTable.Deserialize(m_storage.Get<std::string>(Storage::kSpeedTable, ""));
-  m_roughSpeedTable.Deserialize(m_storage.Get<std::string>(Storage::kRoughSpeedTable, ""));
-  m_speedFactor.Deserialize(m_storage.Get<std::string>(Storage::kSpeedFactor, ""));
-  m_speedLag.Deserialize(m_storage.Get<std::string>(Storage::kSpeedLag, ""));
-}
+{}
 
 InertialNavigator::~InertialNavigator()
 {
@@ -44,9 +39,6 @@ void InertialNavigator::Start()
   if (m_started)
     Stop();
   m_started = true;
-  // The speedometer error is the same on every trip.
-  m_speedScale.Set(m_storage.Get<double>(Storage::kSpeedScale, 1));
-  LogSpeedCalibration();
   // The source may have changed: a sensor box with another gyroscope or the phone.
   m_turnSignChecker = {};
   m_bendMatcher = {};
@@ -71,11 +63,8 @@ void InertialNavigator::Start()
   // The accelerometer goes to the trip log with any source.
   m_accelLog.Reset();
   m_gyroLog.Reset();
+  RestoreCalibration();
   // The phone may be put into the holder another way. The box stays in its place: what is learned about it goes on.
-  m_boxAccelSpeed.Reset();
-  m_boxAccelId.clear();
-  if (esp32)
-    RestoreBoxAccel();
   m_phoneAccelSpeed.Reset();
   ResetLag();
   ResetDirection();
@@ -397,6 +386,39 @@ void InertialNavigator::ClearSpeedCalibration()
   SaveSpeedTable();
   m_speedScale.Reset();
   m_storage.Set(Storage::kSpeedScale, 1.0);
+}
+
+void InertialNavigator::SaveCalibration()
+{
+  // Saved when it was stopped.
+  if (!m_started)
+    return;
+  SaveSpeedTable();
+  if (m_esp32)
+    SaveBoxAccel();
+}
+
+void InertialNavigator::RestoreCalibration()
+{
+  m_speedTable.Deserialize(m_storage.Get<std::string>(Storage::kSpeedTable, ""));
+  m_roughSpeedTable.Deserialize(m_storage.Get<std::string>(Storage::kRoughSpeedTable, ""));
+  m_speedFactor.Deserialize(m_storage.Get<std::string>(Storage::kSpeedFactor, ""));
+  m_speedLag.Deserialize(m_storage.Get<std::string>(Storage::kSpeedLag, ""));
+  // The speedometer error is the same on every trip.
+  m_speedScale.Set(m_storage.Get<double>(Storage::kSpeedScale, 1));
+  m_unsavedSpeedSamples = 0;
+  // Measured with the table of another car.
+  m_roughStretch.reset();
+  m_boxAccelSpeed.Reset();
+  m_boxAccelId.clear();
+  if (m_esp32)
+    RestoreBoxAccel();
+  LogSpeedCalibration();
+}
+
+void InertialNavigator::OnBoxHeard(std::string const & id, std::string const & firmware)
+{
+  m_listener.OnBoxHeard(id, firmware);
 }
 
 void InertialNavigator::SetPosition(ms::LatLon const & position, double distanceSinceFixM, double accuracyM)

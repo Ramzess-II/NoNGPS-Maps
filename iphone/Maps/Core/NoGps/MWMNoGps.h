@@ -161,6 +161,20 @@ NS_SWIFT_NAME(NoGpsBoxValueItem)
 
 @end
 
+/// A car is known by the sensor box in it: what the navigation learns about a car is kept for each one.
+NS_SWIFT_NAME(NoGpsCar)
+@interface MWMNoGpsCar : NSObject
+
+/// The four characters of the name of the box, NoGPS-XXXX.
+@property(nonatomic, readonly) NSString * carId;
+/// Empty until the user names the car.
+@property(nonatomic, readonly) NSString * name;
+@property(nonatomic, readonly) NSString * firmware;
+/// When the box told about itself the last time.
+@property(nonatomic, readonly, nullable) NSDate * lastSeen;
+
+@end
+
 /// Everything the UI shows about the navigation without GPS, taken at once.
 NS_SWIFT_NAME(NoGpsStatus)
 @interface MWMNoGpsStatus : NSObject
@@ -187,6 +201,8 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly) NSInteger speedLimitKmh;
 
 @property(nonatomic, readonly) BOOL inertialEnabled;
+/// The box of the current car, see cars: empty before a box is heard.
+@property(nonatomic, readonly) NSString * carId;
 // The rest is known while the inertial navigation works.
 @property(nonatomic, readonly) BOOL inertialStarted;
 @property(nonatomic, readonly) MWMNoGpsSourceState sourceState;
@@ -267,6 +283,18 @@ NS_SWIFT_NAME(NoGps)
 + (void)forgetBox;
 /// Looks for the box again after MWMNoGpsBleStatePairingFailed or MWMNoGpsBleStateBondLost.
 + (void)retryBox;
+/// The cars of the user in the order they were added, a car for each box heard.
++ (NSArray<MWMNoGpsCar *> *)cars;
+/// The user drives the car: its values are used, the box of the car is looked for.
++ (void)selectCar:(NSString *)carId;
+/// An empty name gives the car its usual name back.
++ (void)renameCar:(NSString *)carId name:(NSString *)name;
+/// Forgets the car with what is learned about it. Its box is not connected until the car is added again. Without cars
+/// left the box is not looked for.
++ (void)forgetCar:(NSString *)carId;
+/// The user adds a car: only a box that is not of a known car is connected, until it is heard or this is called with
+/// NO.
++ (void)searchNewBox:(BOOL)newOnly;
 + (void)calibrate;
 + (void)clearSpeedCalibration;
 /// Sends the firmware of MWMNoGpsStatus.bundledFirmware to the box.

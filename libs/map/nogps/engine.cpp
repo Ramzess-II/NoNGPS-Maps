@@ -94,7 +94,8 @@ bool SaveBoxPowerOns(Storage & storage, std::string const & id, int64_t powerOns
 Engine::Engine(Delegate & delegate, MapApi & map, Storage & storage, Clock const & clock, Scheduler & scheduler)
   : m_delegate(delegate)
   , m_map(map)
-  , m_storage(storage)
+  , m_cars(storage)
+  , m_storage(m_cars)
   , m_clock(clock)
   , m_scheduler(scheduler)
   , m_manualRepeatTimer(scheduler)
@@ -791,10 +792,10 @@ void Engine::SaveCarPosition(bool now)
   m_storage.Set(Storage::kCarPosition, m_savedCar + "," + std::to_string(m_clock.UnixNowMs()));
 }
 
-void Engine::RestoreCarPosition()
+void Engine::RestoreCarPosition(bool otherCar)
 {
   // The engine that has worked keeps the car itself, e.g. after the app was in the background.
-  if (m_savedLocation || m_manualMode)
+  if (!otherCar && (m_savedLocation || m_manualMode))
     return;
   auto const saved = m_storage.Get<std::string>(Storage::kCarPosition, "");
   auto const parts = strings::Tokenize(saved, ",");
@@ -832,8 +833,72 @@ void Engine::RestoreCarPosition()
   m_manualSetTimeMs = m_clock.NowMs() - std::max<int64_t>(0, m_clock.UnixNowMs() - unixTimeMs);
   m_lastPositionSource = PositionSource::Manual;
   m_savedCar = saved.substr(0, saved.rfind(','));
+  m_parkedAt = location.m_position;
   if (m_inertial)
     StartInertialAtMark(wayM, accuracyM);
+}
+
+void Engine::OnCarChanged()
+{
+  if (m_inertial)
+    m_inertial->RestoreCalibration();
+  // The mark has moved since the start: the car is there, whatever box it has.
+  if (!m_parkedAt || !m_manualMode || !m_manualLocation || m_manualLocation->m_position != *m_parkedAt)
+    return;
+  // A new car has no place yet: the user marks it.
+  if (m_storage.Get<std::string>(Storage::kCarPosition, "").empty())
+    return;
+  RestoreCarPosition(true /* otherCar */);
+  if (m_active)
+    ApplyManualLocation();
+}
+
+void Engine::OnBoxHeard(std::string const & id, std::string const & firmware)
+{
+  auto const before = m_cars.GetCurrentCar();
+  if (id != before)
+    m_inertial->SaveCalibration();
+  m_cars.OnBoxHeard(id, firmware, m_clock.UnixNowMs());
+  if (m_cars.GetCurrentCar() == before)
+    return;
+  LOG(LINFO, ("The car of the box", id, "was", before.empty() ? "-" : before));
+  OnCarChanged();
+}
+
+void Engine::SelectCar(std::string const & id)
+{
+  auto const before = m_cars.GetCurrentCar();
+  if (id == before)
+    return;
+  if (m_inertial)
+    m_inertial->SaveCalibration();
+  if (!m_cars.SelectCar(id))
+    return;
+  LOG(LINFO, ("The user drives the car", id, "was", before.empty() ? "-" : before));
+  OnCarChanged();
+  // The box connected is of the car before: the platform looks for the box of this one.
+  if (m_inertial && IsInertialNavigationEnabled())
+    m_inertial->Start();
+}
+
+void Engine::ForgetCar(std::string const & id)
+{
+  bool const current = id == m_cars.GetCurrentCar();
+  // What is learned is saved to the car before it is forgotten, not after.
+  if (current && m_inertial)
+    m_inertial->Stop();
+  m_cars.ForgetCar(id);
+  if (!current)
+    return;
+  if (m_cars.GetCars().empty())
+  {
+    SetInertialNavigationEnabled(false);
+    return;
+  }
+  LOG(LINFO, ("The car forgotten, the car now is", m_cars.GetCurrentCar()));
+  OnCarChanged();
+  if (m_inertial && IsInertialNavigationEnabled())
+    m_inertial->Start();
 }
 
 void Engine::StartInertialAtMark(double distanceSinceFixM, double accuracyM)
@@ -1505,6 +1570,7 @@ Status Engine::GetStatus()
 
   status.m_inertialEnabled = IsInertialNavigationEnabled();
   status.m_esp32Source = m_storage.IsEsp32Source();
+  status.m_carId = m_cars.GetCurrentCar();
   status.m_elm327Address = m_storage.Get<std::string>(Storage::kElm327Address, "");
   status.m_inertialStarted = status.m_inertialEnabled && m_inertial;
   if (status.m_inertialStarted)

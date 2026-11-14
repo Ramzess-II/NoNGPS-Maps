@@ -18,12 +18,16 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.text.InputType;
+import android.text.format.DateUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
+import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -49,6 +53,7 @@ import app.organicmaps.util.Utils;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -66,6 +71,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private static final long RING_DURATION_MS = 2400;
   private static final String SHOP_URL = "https://non-gps.com";
   private static final String STATE_SEARCHING = "searching";
+  private static final String STATE_ADDING_CAR = "adding_car";
+  private static final String STATE_CARS_BEFORE_ADD = "cars_before_add";
   private static final String STATE_SPEED_TABLE = "speed_table";
   private static final String STATE_BOX_VALUES = "box_values";
   private static final String STATE_GPS = "gps";
@@ -98,6 +105,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   // No box was set up when the sheet opened: it is searched until it is heard, and forgotten if the sheet is closed
   // before it is found.
   private boolean mSearching;
+  // The user adds a car: its box is searched as above, the other cars stay. The search ends when the list of the cars
+  // grows: the box of a car is heard before, and a box sleeping after its link was dropped is taken as heard too.
+  private boolean mAddingCar;
+  private int mCarsBeforeAdd;
   // The speed table is shown on its own page of the sheet, Back returns from it.
   private boolean mSpeedTableShown;
   // All the values the box sends are shown on a page of their own too.
@@ -150,6 +161,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private TextView mCalibration;
   private TextView mCalibrateAction;
   private TextView mInstallFirmware;
+  private LinearLayout mCars;
+  // The texts of the car rows shown: the rows are made again when they change.
+  private List<String> mCarTexts = new ArrayList<>();
   private View mSpeedTablePage;
   private LinearLayout mSpeedTableRows;
   private View mValuesPage;
@@ -177,15 +191,21 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     if (savedInstanceState != null)
     {
       mSearching = savedInstanceState.getBoolean(STATE_SEARCHING);
+      mAddingCar = savedInstanceState.getBoolean(STATE_ADDING_CAR);
+      mCarsBeforeAdd = savedInstanceState.getInt(STATE_CARS_BEFORE_ADD);
       mSpeedTableShown = savedInstanceState.getBoolean(STATE_SPEED_TABLE);
       mValuesShown = savedInstanceState.getBoolean(STATE_BOX_VALUES);
       mGpsShown = savedInstanceState.getBoolean(STATE_GPS);
       mShareAsked = savedInstanceState.getBoolean(STATE_SHARE_ASKED);
       // The app was killed while the box was searched: the new core doesn't search it. Without the core the activity
       // goes to the splash screen.
-      if (mSearching && MwmApplication.from(requireContext()).getOrganicMaps().arePlatformAndCoreInitialized()
-          && !NoGps.getStatus().inertialEnabled)
-        startSearch();
+      if (mSearching && MwmApplication.from(requireContext()).getOrganicMaps().arePlatformAndCoreInitialized())
+      {
+        if (mAddingCar)
+          MwmApplication.from(requireContext()).getLocationHelper().searchNewBox(true);
+        else if (!NoGps.getStatus().inertialEnabled)
+          startSearch();
+      }
       return;
     }
     if (!NoGps.getStatus().inertialEnabled)
@@ -206,6 +226,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     super.onSaveInstanceState(outState);
     outState.putBoolean(STATE_SEARCHING, mSearching);
+    outState.putBoolean(STATE_ADDING_CAR, mAddingCar);
+    outState.putInt(STATE_CARS_BEFORE_ADD, mCarsBeforeAdd);
     outState.putBoolean(STATE_SPEED_TABLE, mSpeedTableShown);
     outState.putBoolean(STATE_BOX_VALUES, mValuesShown);
     outState.putBoolean(STATE_GPS, mGpsShown);
@@ -312,10 +334,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
         NoGps.nativeStartFirmwareUpdate();
       update();
     });
-    view.findViewById(R.id.box_forget).setOnClickListener(v -> {
-      NoGps.nativeSetInertialNavigationEnabled(false);
-      dismiss();
-    });
+    mCars = view.findViewById(R.id.box_cars);
+    view.findViewById(R.id.box_add_car).setOnClickListener(v -> addCar());
     view.findViewById(R.id.box_buy).setOnClickListener(v -> Utils.openUrl(requireContext(), SHOP_URL));
     view.findViewById(R.id.box_buy_another).setOnClickListener(v -> Utils.openUrl(requireContext(), SHOP_URL));
     return view;
@@ -357,9 +377,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     final NoGps.Status status = NoGps.getStatus();
     // The box connected while it was searched: the sheet shows it as any other.
-    if (mSearching && isBoxHeard(status))
+    if (mSearching && (mAddingCar ? isCarAdded() : isBoxHeard(status)))
     {
       mSearching = false;
+      mAddingCar = false;
       // As with a box set up: the sheet goes down to its height, its rows go on below.
       if (!mGpsShown)
         getBehavior().setState(BottomSheetBehavior.STATE_COLLAPSED);
@@ -585,6 +606,151 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mInstallFirmware.setVisibility(install ? View.VISIBLE : View.GONE);
     if (install)
       mInstallFirmware.setText(getString(R.string.nogps_firmware_install, status.bundledFirmware));
+    updateCars(status);
+  }
+
+  /**
+   * "Car C47D" until the user names it.
+   */
+  @NonNull
+  static String carName(@NonNull Context context, @NonNull NoGps.Car car)
+  {
+    return car.name.isEmpty() ? context.getString(R.string.nogps_car_default_name, car.id) : car.name;
+  }
+
+  @NonNull
+  private String carStateText(@NonNull NoGps.Status status, @NonNull NoGps.Car car)
+  {
+    if (car.id.equals(status.carId))
+    {
+      final boolean connected = isBoxHeard(status) && status.getBleState() == NoGps.BleState.CONNECTED;
+      return getString(connected ? R.string.nogps_car_connected : R.string.nogps_car_current);
+    }
+    if (car.lastSeenUnixMs <= 0)
+      return "";
+    final CharSequence when =
+        DateUtils.getRelativeTimeSpanString(car.lastSeenUnixMs, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS);
+    return getString(R.string.nogps_car_last_seen, when);
+  }
+
+  private void updateCars(@NonNull NoGps.Status status)
+  {
+    final Context context = requireContext();
+    final NoGps.Car[] cars = NoGps.nativeGetCars();
+    final List<String> texts = new ArrayList<>();
+    for (NoGps.Car car : cars)
+    {
+      texts.add(carName(context, car));
+      texts.add(carStateText(status, car));
+    }
+    if (texts.equals(mCarTexts))
+      return;
+    mCarTexts = texts;
+    mCars.removeAllViews();
+    final LayoutInflater inflater = LayoutInflater.from(context);
+    for (int i = 0; i < cars.length; ++i)
+    {
+      final NoGps.Car car = cars[i];
+      final View row = inflater.inflate(R.layout.nogps_car_row, mCars, false);
+      ((TextView) row.findViewById(R.id.car_name)).setText(texts.get(2 * i));
+      final TextView state = row.findViewById(R.id.car_state);
+      state.setText(texts.get(2 * i + 1));
+      state.setVisibility(texts.get(2 * i + 1).isEmpty() ? View.GONE : View.VISIBLE);
+      row.setOnClickListener(v -> showCarMenu(car));
+      mCars.addView(row);
+    }
+  }
+
+  /**
+   * What the user does with a car: drives it, names it or forgets it.
+   */
+  private void showCarMenu(@NonNull NoGps.Car car)
+  {
+    final Context context = requireContext();
+    final boolean current = car.id.equals(NoGps.getStatus().carId);
+    final List<String> items = new ArrayList<>();
+    final List<Runnable> actions = new ArrayList<>();
+    if (!current)
+    {
+      items.add(getString(R.string.nogps_car_drive));
+      actions.add(() -> {
+        NoGps.nativeSelectCar(car.id);
+        update();
+      });
+    }
+    items.add(getString(R.string.nogps_car_rename));
+    actions.add(() -> renameCar(car));
+    items.add(getString(R.string.nogps_car_forget));
+    actions.add(() -> confirmForgetCar(car));
+    new MaterialAlertDialogBuilder(context)
+        .setTitle(carName(context, car))
+        .setItems(items.toArray(new String[0]), (dialog, which) -> actions.get(which).run())
+        .setNegativeButton(R.string.cancel, null)
+        .show();
+  }
+
+  private void renameCar(@NonNull NoGps.Car car)
+  {
+    final Context context = requireContext();
+    final EditText name = new EditText(context);
+    name.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+    name.setSingleLine();
+    name.setText(car.name);
+    name.setHint(context.getString(R.string.nogps_car_default_name, car.id));
+    name.setSelection(name.getText().length());
+    final FrameLayout frame = new FrameLayout(context);
+    frame.setPadding(dp(24), dp(8), dp(24), 0);
+    frame.addView(name);
+    new MaterialAlertDialogBuilder(context)
+        .setTitle(R.string.nogps_car_name)
+        .setView(frame)
+        .setPositiveButton(R.string.save,
+                           (dialog, which) -> {
+                             NoGps.nativeRenameCar(car.id, name.getText().toString());
+                             update();
+                           })
+        .setNegativeButton(R.string.cancel, null)
+        .show();
+  }
+
+  private void confirmForgetCar(@NonNull NoGps.Car car)
+  {
+    final Context context = requireContext();
+    new MaterialAlertDialogBuilder(context)
+        .setTitle(carName(context, car))
+        .setMessage(R.string.nogps_car_forget_text)
+        .setPositiveButton(R.string.nogps_car_forget,
+                           (dialog, which) -> {
+                             MwmApplication.from(context).getLocationHelper().forgetCar(car.id);
+                             // The last car: the box is not looked for, the sheet offers to buy one.
+                             if (!NoGps.getStatus().inertialEnabled)
+                               dismiss();
+                             else
+                               update();
+                           })
+        .setNegativeButton(R.string.cancel, null)
+        .show();
+  }
+
+  /**
+   * The box of the new car is searched step by step, as the first one: the box connected now is dropped.
+   */
+  private void addCar()
+  {
+    mSearching = true;
+    mAddingCar = true;
+    mCarsBeforeAdd = NoGps.nativeGetCars().length;
+    MwmApplication.from(requireContext()).getLocationHelper().searchNewBox(true);
+    update();
+    getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
+  }
+
+  /**
+   * The box of a new car, or of a forgotten one, has told about itself.
+   */
+  private boolean isCarAdded()
+  {
+    return NoGps.nativeGetCars().length > mCarsBeforeAdd;
   }
 
   @NonNull
@@ -1025,9 +1191,17 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     super.onDismiss(dialog);
     if (requireActivity().isChangingConfigurations())
       return;
-    // Closed before the box was heard, even if connected already: the phone stops looking for it.
-    if (mSearching && !isBoxHeard(NoGps.getStatus()))
+    // Closed before the box was heard, even if connected already: the phone stops looking for it. The box of a car
+    // being added: the boxes of the other cars are looked for again.
+    if (mSearching && mAddingCar)
+    {
+      if (!isCarAdded())
+        MwmApplication.from(requireContext()).getLocationHelper().searchNewBox(false);
+    }
+    else if (mSearching && !isBoxHeard(NoGps.getStatus()))
+    {
       NoGps.nativeSetInertialNavigationEnabled(false);
+    }
     // The bottom bar shows the box at once.
     getParentFragmentManager().setFragmentResult(SensorsBottomSheet.RESULT_CLOSED, Bundle.EMPTY);
   }

@@ -1405,6 +1405,39 @@
 
 /* Button on the box screen: stop using the box */
 "nogps_box_forget" = "Forget the box";
+
+/* Header of the list of the cars on the box screen: each car has its own sensor box */
+"nogps_cars" = "Cars";
+
+/* Name of a car the user hasn't named, by the four characters of the name of its sensor box: "Car C47D" */
+"nogps_car_default_name" = "Car %1$@";
+
+/* State of a car in the list of the cars: its box is connected now */
+"nogps_car_connected" = "Connected";
+
+/* State of a car in the list of the cars: the app takes this car until a box connects */
+"nogps_car_current" = "Current car";
+
+/* State of a car in the list of the cars: when its box was connected the last time, e.g. "Last connected 2 hours ago" */
+"nogps_car_last_seen" = "Last connected %1$@";
+
+/* Action for a car in the list of the cars: the app takes this car and connects to its box */
+"nogps_car_drive" = "Switch to this car";
+
+/* Action for a car in the list of the cars */
+"nogps_car_rename" = "Rename";
+
+/* Title of the dialog that renames a car */
+"nogps_car_name" = "Car name";
+
+/* Action for a car in the list of the cars, and the button that confirms it */
+"nogps_car_forget" = "Forget the car";
+
+/* Asked before a car is forgotten */
+"nogps_car_forget_text" = "What the app has learned about this car and where it was left will be lost. Its box is not connected until the car is added again.";
+
+/* Button under the list of the cars: search the sensor box of another car */
+"nogps_car_add" = "Add a car";
 "nogps_box_stopped" = "No data from the sensor box, the car stands still on the map. Check the box or mark yourself";
 
 /* Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration */

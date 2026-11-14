@@ -390,20 +390,31 @@
       android:layout_height="1dp"
       android:layout_marginTop="8dp"
       android:background="?android:listDivider" />
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:paddingTop="12dp"
+      android:text="@string/nogps_cars"
+      android:textSize="16sp"
+      android:textStyle="bold" />
+    <!-- A row for each car, see nogps_car_row. -->
+    <LinearLayout
+      android:id="@+id/box_cars"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical" />
+    <Button
+      android:id="@+id/box_add_car"
+      style="?borderlessButtonStyle"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/nogps_car_add" />
     <Button
       android:id="@+id/box_buy_another"
       style="?borderlessButtonStyle"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="8dp"
       android:text="@string/nogps_box_buy" />
-    <Button
-      android:id="@+id/box_forget"
-      style="?borderlessButtonStyle"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:text="@string/nogps_box_forget"
-      android:textColor="@color/base_red" />
   </LinearLayout>
 
   <LinearLayout
