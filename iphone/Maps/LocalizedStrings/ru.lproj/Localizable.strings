@@ -1334,6 +1334,21 @@
 
 /* State of the sensor box, shown after its name: a paired box connects but sends nothing, it has forgotten the phone */
 "nogps_box_bt_bond_lost" = "блок забыл этот телефон. Удалите его в настройках Bluetooth, затем выньте блок из разъёма и вставьте обратно";
+
+/* Button on the Box screen: look for the sensor box again after a failed pairing */
+"nogps_box_try_again" = "Повторить";
+
+/* Hint on the Box screen: the box is connected, but the car doesn't tell its speed yet */
+"nogps_box_hint_no_car" = "Включите зажигание: скорость машины придёт в течение минуты";
+
+/* Hint on the Box screen: the ELM327 OBD adapter of the box doesn't answer */
+"nogps_box_hint_no_adapter" = "Проверьте, что адаптер ELM327 вставлен в разъём OBD и включён";
+
+/* Hint on the Box screen: the box has an error talking to the car */
+"nogps_box_hint_obd_error" = "Выньте блок из разъёма и вставьте обратно: он запустится заново";
+
+/* Hint on the Box screen: OBD is turned off in the settings of the box, it doesn't read the car speed */
+"nogps_box_hint_obd_disabled" = "OBD выключен в настройках блока: включите его, чтобы получать скорость машины";
 "nogps_sensors_calibrate_box" = "Калибровать";
 "nogps_gyro_mount_moved" = "блок сдвинули, откалибруйте";
 "nogps_sensors_hint_box" = "Закрепите блок неподвижно. Гироскоп он обнуляет сам на каждой остановке.";

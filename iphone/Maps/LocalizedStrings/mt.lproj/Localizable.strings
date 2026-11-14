@@ -1334,6 +1334,21 @@
 
 /* State of the sensor box, shown after its name: a paired box connects but sends nothing, it has forgotten the phone */
 "nogps_box_bt_bond_lost" = "the box has forgotten this phone. Remove it in the Bluetooth settings, then unplug the box and plug it back";
+
+/* Button on the Box screen: look for the sensor box again after a failed pairing */
+"nogps_box_try_again" = "Try again";
+
+/* Hint on the Box screen: the box is connected, but the car doesn't tell its speed yet */
+"nogps_box_hint_no_car" = "Turn the ignition on: the car speed comes within a minute";
+
+/* Hint on the Box screen: the ELM327 OBD adapter of the box doesn't answer */
+"nogps_box_hint_no_adapter" = "Check that the ELM327 adapter is plugged into the OBD socket and is on";
+
+/* Hint on the Box screen: the box has an error talking to the car */
+"nogps_box_hint_obd_error" = "Unplug the box and plug it back: it starts again";
+
+/* Hint on the Box screen: OBD is turned off in the settings of the box, it doesn't read the car speed */
+"nogps_box_hint_obd_disabled" = "OBD is turned off in the box settings: turn it on to get the car speed";
 "nogps_sensors_calibrate_box" = "Calibrate";
 "nogps_gyro_mount_moved" = "the box has been moved, calibrate it";
 "nogps_sensors_hint_box" = "Fix the box firmly. It zeroes the gyroscope on every stop by itself.";
