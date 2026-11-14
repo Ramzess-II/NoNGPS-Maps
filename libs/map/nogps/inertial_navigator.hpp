@@ -78,6 +78,8 @@ public:
     virtual void OnTurnsReversed() = 0;
     /// The car is shown on another road it may be on, see kMaxMarks: the route goes from there now.
     virtual void OnMarkSwitched() = 0;
+    /// The sensor box has told about itself, see MotionSource::Listener::OnBoxHeard().
+    virtual void OnBoxHeard(std::string const & /* id */, std::string const & /* firmware */) {}
   };
 
   // Without fresh speed the position can't be calculated.
@@ -387,6 +389,10 @@ public:
   void OnSpeedTableGps(Fix const & gps);
   /// Forgets the car speed errors measured by GPS and corrected by the user, e.g. after new tyres.
   void ClearSpeedCalibration();
+  /// Saves what is learned about the car and its box, and takes it from the storage again: the storage is of another
+  /// car before and after, see CarStorage.
+  void SaveCalibration();
+  void RestoreCalibration();
   /// Moves the position without changing the heading, e.g. to the shown position while the inertial
   /// navigation doesn't work yet.
   /// \param distanceSinceFixM, accuracyM how far the car had driven since the last known place and how accurate the
@@ -502,6 +508,7 @@ private:
   void OnSpeed(int speedKmh, int64_t timeMs) override;
   void OnMotion(double yawDeltaDeg, double dtSec, int64_t timestampNs) override;
   void OnSourceAccel(std::array<double, 3> const & accel) override;
+  void OnBoxHeard(std::string const & id, std::string const & firmware) override;
 
   void CheckTurnSign(Fix const & gps);
   double GetSpeedScale(int speedKmh) const;

@@ -2269,7 +2269,9 @@ UNIT_TEST(NoGps_Engine_AdvisesToCalibrateBoxByItsPowerOns)
   info("C47D", 1);
   info("42FD", 7);
   TEST_EQUAL(count(), 2, ());
-  TEST_EQUAL(env.m_storage.Get<std::string>(Storage::kBoxPowerOns, ""), "C47D:1,42FD:7", ());
+  // Each by its car.
+  TEST_EQUAL(env.m_storage.Get<std::string>(CarStorage::GetCarKey("C47D", Storage::kBoxPowerOns), ""), "C47D:1", ());
+  TEST_EQUAL(env.m_storage.Get<std::string>(CarStorage::GetCarKey("42FD", Storage::kBoxPowerOns), ""), "42FD:7", ());
 
   // Plugged in again while the car drives: the user is told when it stops.
   env.m_engine.OnEsp32BleBytes(
@@ -2282,6 +2284,197 @@ UNIT_TEST(NoGps_Engine_AdvisesToCalibrateBoxByItsPowerOns)
   // The memory of the box was erased with its calibration: it counts from the start.
   info("42FD", 0);
   TEST_EQUAL(count(), 4, ());
+}
+
+// The box tells about itself, its id is the car.
+void HearBox(Env & env, std::string const & id)
+{
+  env.m_engine.OnEsp32BleBytes(
+      BoxLine("NGI,1,0.3.5,2026-10-10T11:00,esp32s3,s3zero," + id + ",4096,2031616,ota_0,VALID,WIFI BLE OTA"));
+  env.Drive(1000, 0, 0);
+}
+
+std::vector<std::string> CarIds(std::vector<Car> const & cars)
+{
+  std::vector<std::string> ids;
+  for (auto const & car : cars)
+    ids.push_back(car.m_id);
+  return ids;
+}
+
+UNIT_TEST(NoGps_Cars_LegacyValuesGoToCarOfLearnedAccelerometer)
+{
+  TestStorage storage;
+  // A user from before the cars with the navigation on by default.
+  storage.Set(Storage::kBoxAccel, std::string("C47D:1;2;3"));
+  storage.Set(Storage::kSpeedTable, std::string("table"));
+  storage.Set(Storage::kCarPosition, std::string("place"));
+  storage.Set(Storage::kWrongNetworkPoints, std::string("points"));
+  CarStorage cars(storage);
+  TEST(cars.GetCars().empty(), ());
+  TEST_EQUAL(cars.GetCurrentCar(), "", ());
+  // Before a box is heard, the values are where they were.
+  TEST_EQUAL(cars.Get<std::string>(Storage::kSpeedTable, ""), "table", ());
+
+  // Another box is heard first: it is a new car, the values are of the box the accelerometer was learned with.
+  cars.OnBoxHeard("42FD", "0.3.5", 1000);
+  TEST_EQUAL(CarIds(cars.GetCars()), std::vector<std::string>({"C47D", "42FD"}), ());
+  TEST_EQUAL(cars.GetCurrentCar(), "42FD", ());
+  TEST(!cars.GetString(Storage::kSpeedTable), ());
+  TEST(!cars.GetString(Storage::kCarPosition), ());
+  TEST(storage.Get<bool>(Storage::kInertialEnabled, false), ());
+  TEST(!storage.GetString(Storage::kSpeedTable), ());
+  TEST_EQUAL(storage.Get<std::string>(Storage::kWrongNetworkPoints, ""), "points", ());
+  TEST_EQUAL(cars.GetCars()[1].m_firmware, "0.3.5", ());
+  TEST_EQUAL(cars.GetCars()[1].m_lastSeenUnixMs, 1000, ());
+
+  TEST(cars.SelectCar("C47D"), ());
+  TEST_EQUAL(cars.Get<std::string>(Storage::kSpeedTable, ""), "table", ());
+  TEST_EQUAL(cars.Get<std::string>(Storage::kCarPosition, ""), "place", ());
+  TEST_EQUAL(cars.Get<std::string>(Storage::kBoxAccel, ""), "C47D:1;2;3", ());
+  TEST(!cars.SelectCar("0000"), ());
+  TEST_EQUAL(cars.GetCurrentCar(), "C47D", ());
+
+  // Without the accelerometer learned, the values go to the first box heard.
+  TestStorage other;
+  other.Set(Storage::kSpeedLag, std::string("lag"));
+  CarStorage otherCars(other);
+  otherCars.OnBoxHeard("42FD", "0.3.5", 1000);
+  TEST_EQUAL(CarIds(otherCars.GetCars()), std::vector<std::string>({"42FD"}), ());
+  TEST_EQUAL(otherCars.Get<std::string>(Storage::kSpeedLag, ""), "lag", ());
+}
+
+UNIT_TEST(NoGps_Cars_ForgetRemovesOnlyThatCar)
+{
+  TestStorage storage;
+  storage.Set(Storage::kInertialEnabled, true);
+  CarStorage cars(storage);
+  cars.OnBoxHeard("C47D", "0.3.5", 1000);
+  cars.Set(Storage::kSpeedTable, std::string("first"));
+  cars.OnBoxHeard("42FD", "0.3.5", 3000);
+  cars.Set(Storage::kSpeedTable, std::string("second"));
+  cars.OnBoxHeard("1234", "0.3.5", 2000);
+  cars.Set(Storage::kSpeedTable, std::string("third"));
+  // An identifier that is not of a box is not a car.
+  cars.OnBoxHeard("C4.7D", "0.3.5", 4000);
+  TEST_EQUAL(CarIds(cars.GetCars()), std::vector<std::string>({"C47D", "42FD", "1234"}), ());
+
+  cars.RenameCar("C47D", " My\ncar ");
+  TEST_EQUAL(cars.GetCars()[0].m_name, "My car", ());
+  cars.RenameCar("C47D", "");
+  TEST_EQUAL(cars.GetCars()[0].m_name, "", ());
+  cars.RenameCar("C47D", "Kia");
+
+  // The current car is forgotten: the one heard the last time is the current one.
+  cars.ForgetCar("1234");
+  TEST_EQUAL(CarIds(cars.GetCars()), std::vector<std::string>({"C47D", "42FD"}), ());
+  TEST_EQUAL(cars.GetCurrentCar(), "42FD", ());
+  TEST_EQUAL(cars.Get<std::string>(Storage::kSpeedTable, ""), "second", ());
+  TEST(!storage.GetString(CarStorage::GetCarKey("1234", Storage::kSpeedTable)), ());
+  TEST(!storage.GetString(CarStorage::GetCarKey("1234", "NoGpsFirmware")), ());
+
+  // Another car: the current one stays.
+  cars.ForgetCar("C47D");
+  TEST_EQUAL(CarIds(cars.GetCars()), std::vector<std::string>({"42FD"}), ());
+  TEST_EQUAL(cars.GetCurrentCar(), "42FD", ());
+  TEST(!storage.GetString(CarStorage::GetCarKey("C47D", "NoGpsName")), ());
+
+  // The last car: the values have no car, and a box heard again is a new car.
+  cars.ForgetCar("42FD");
+  TEST(cars.GetCars().empty(), ());
+  TEST_EQUAL(cars.GetCurrentCar(), "", ());
+  TEST(!cars.GetString(Storage::kSpeedTable), ());
+  cars.OnBoxHeard("C47D", "0.3.5", 5000);
+  TEST(!cars.GetString(Storage::kSpeedTable), ());
+}
+
+UNIT_TEST(NoGps_Engine_KeepsCalibrationForEachCar)
+{
+  // The roads have told the speedometer is 5% low at 30-40 km/h, before the cars.
+  SpeedTable rough;
+  rough.OnDistance(36, 1000, 1050);
+  Env env(true /* inertial */, nullptr,
+          [&rough](TestStorage & storage) { storage.Set(Storage::kRoughSpeedTable, rough.Serialize()); });
+  TEST_EQUAL(env.m_engine.GetStatus().m_carId, "", ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_roughSpeedTableRanges, 1, ());
+
+  // The first box heard takes them.
+  HearBox(env, "C47D");
+  TEST_EQUAL(env.m_engine.GetStatus().m_carId, "C47D", ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_roughSpeedTableRanges, 1, ());
+  TEST(!env.m_storage.GetString(Storage::kRoughSpeedTable), ());
+
+  // A new box is another car: it learns from zero.
+  HearBox(env, "42FD");
+  TEST_EQUAL(env.m_engine.GetStatus().m_carId, "42FD", ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_roughSpeedTableRanges, 0, ());
+  TEST_EQUAL(CarIds(env.m_engine.GetCars()), std::vector<std::string>({"C47D", "42FD"}), ());
+  // Cleared in this car only.
+  env.m_engine.ClearSpeedCalibration();
+  HearBox(env, "C47D");
+  TEST_EQUAL(env.m_engine.GetStatus().m_roughSpeedTableRanges, 1, ());
+
+  // The user chooses the other car: its values at once, the platform looks for its box.
+  env.m_engine.SelectCar("42FD");
+  TEST_EQUAL(env.m_engine.GetStatus().m_carId, "42FD", ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_roughSpeedTableRanges, 0, ());
+  TEST(env.m_delegate.m_esp32BleOpen, ());
+
+  // After a restart the car heard the last time is the current one until a box tells.
+  HearBox(env, "C47D");
+  Env after(true /* inertial */, nullptr, SavedBy(env));
+  TEST_EQUAL(after.m_engine.GetStatus().m_carId, "C47D", ());
+  TEST_EQUAL(after.m_engine.GetStatus().m_roughSpeedTableRanges, 1, ());
+
+  // Forgotten, the car is gone with its values. Without cars the box is not looked for.
+  after.m_engine.ForgetCar("C47D");
+  TEST_EQUAL(after.m_engine.GetStatus().m_carId, "42FD", ());
+  TEST_EQUAL(after.m_engine.GetStatus().m_roughSpeedTableRanges, 0, ());
+  TEST(after.m_engine.GetStatus().m_inertialEnabled, ());
+  after.m_engine.ForgetCar("42FD");
+  TEST(after.m_engine.GetCars().empty(), ());
+  TEST(!after.m_engine.GetStatus().m_inertialEnabled, ());
+  TEST(!after.m_delegate.m_esp32BleOpen, ());
+}
+
+UNIT_TEST(NoGps_Engine_CarOfBoxIsShownWhereItWasLeft)
+{
+  Env env(true /* inertial */);
+  HearBox(env, "C47D");
+  MarkCar(env, 50);
+  env.Drive(2000, 0, 0);
+  // The user walks to the other car with the phone: the mark set by the user stays.
+  HearBox(env, "42FD");
+  TestAlmostEqualAbs(East(env.Last().m_position), 50, 0.5);
+  TEST(env.m_engine.PlaceMarkByTap(At(150, 3)), ());
+  env.Drive(2000, 0, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 150, 0.5);
+  env.m_engine.Stop();
+
+  // The app starts in the car left the last time, at its place. The box of the other car connects: it is there.
+  Env after(true /* inertial */, nullptr, SavedBy(env));
+  after.Drive(500, 0, 0);
+  TestAlmostEqualAbs(East(after.Last().m_position), 150, 0.5);
+  HearBox(after, "C47D");
+  TestAlmostEqualAbs(East(after.Last().m_position), 50, 0.5);
+  after.m_engine.SelectCar("42FD");
+  after.Drive(500, 0, 0);
+  TestAlmostEqualAbs(East(after.Last().m_position), 150, 0.5);
+
+  // The car has driven from its place: it is where it has driven to, whatever box tells.
+  HearBox(after, "42FD");
+  after.Drive(3000, 36, 0);
+  double const drivenTo = East(after.Last().m_position);
+  TEST_GREATER(drivenTo, 160, ());
+  HearBox(after, "C47D");
+  // The speed of the car comes late: it rolls on a bit.
+  TestAlmostEqualAbs(East(after.Last().m_position), drivenTo, 3);
+
+  // A new box has no place: the car stays where it is shown.
+  Env fresh(true /* inertial */, nullptr, SavedBy(env));
+  fresh.Drive(500, 0, 0);
+  HearBox(fresh, "1234");
+  TestAlmostEqualAbs(East(fresh.Last().m_position), 150, 0.5);
 }
 
 UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)

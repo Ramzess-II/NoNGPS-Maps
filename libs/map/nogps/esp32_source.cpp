@@ -112,6 +112,7 @@ void Esp32Source::OnInfo(esp32::Info const & info)
         ("Box", info.m_id, "firmware =", info.m_firmware, info.m_chip, info.m_board, "updates =", info.m_canUpdate));
   m_info = info;
   m_update.OnBoxFirmware(info.m_firmware);
+  m_listener.OnBoxHeard(info.m_id, info.m_firmware);
 }
 
 void Esp32Source::StoreBoxValues(esp32::Fields const & fields)

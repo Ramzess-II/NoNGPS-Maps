@@ -120,15 +120,16 @@ private:
   std::vector<Pending> m_tasks;
 };
 
-// What the navigation has learned about the car is taken from the settings of the application, nothing is written
-// back to them. A trip driven again as the first one knows no speed errors yet: the lag of the speed and the
+// What the navigation has learned about the current car is taken from the settings of the application, nothing is
+// written back to them. A trip driven again as the first one knows no speed errors yet: the lag of the speed and the
 // accelerometer, learned apart from them, are still taken.
 class ReplayStorage : public Storage
 {
 public:
   explicit ReplayStorage(bool firstTrip)
   {
-    SettingsStorage const settings;
+    SettingsStorage app;
+    CarStorage const settings(app);
     for (auto const key : {kSpeedScale, kSpeedTable, kRoughSpeedTable, kSpeedLag, kBoxAccel})
     {
       if (firstTrip && (key == kSpeedScale || key == kSpeedTable || key == kRoughSpeedTable))
@@ -149,6 +150,7 @@ public:
   }
 
   void SetString(std::string_view key, std::string const & value) override { m_values[std::string(key)] = value; }
+  void Remove(std::string_view key) override { m_values.erase(std::string(key)); }
 
 private:
   std::map<std::string, std::string> m_values;
@@ -465,12 +467,14 @@ private:
       std::string bearing;
       int manual = 0;
       int64_t ageMs = 0;
-      if ((in >> lat >> lon >> bearing >> manual >> ageMs) && !m_storage.GetString(Storage::kCarPosition))
+      // Of the car the engine has heard, as the engine reads it.
+      CarStorage cars(m_storage);
+      if ((in >> lat >> lon >> bearing >> manual >> ageMs) && !cars.GetString(Storage::kCarPosition))
       {
         char buf[128];
         std::snprintf(buf, sizeof(buf), "%.7f,%.7f,%s,%d,%lld", lat, lon, bearing.c_str(), manual,
                       static_cast<long long>(m_clock.UnixNowMs() - ageMs));
-        m_storage.SetString(Storage::kCarPosition, buf);
+        cars.SetString(Storage::kCarPosition, buf);
       }
       break;
     }

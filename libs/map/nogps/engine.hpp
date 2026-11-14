@@ -8,6 +8,7 @@
 #include "map/nogps/inertial_navigator.hpp"
 #include "map/nogps/motion_source.hpp"
 #include "map/nogps/scheduler.hpp"
+#include "map/nogps/storage.hpp"
 
 #include "geometry/latlon.hpp"
 
@@ -25,7 +26,6 @@ namespace nogps
 {
 class Clock;
 class MapApi;
-class Storage;
 
 enum class PositionSource
 {
@@ -82,6 +82,8 @@ struct Status
 
   bool m_inertialEnabled = false;
   bool m_esp32Source = false;
+  // The box of the current car, see Engine::GetCars(): empty before a box is heard and with the ELM327 adapter.
+  std::string m_carId;
   std::string m_elm327Address;
   // The rest is known while the inertial navigation works.
   bool m_inertialStarted = false;
@@ -296,6 +298,16 @@ public:
   /// Forgets the car speed errors, e.g. after new tyres.
   void ClearSpeedCalibration();
 
+  /// The cars of the user, a car for each sensor box heard. What is learned about a car and where it was left is kept
+  /// for each one. The box that connects tells the car: until it does, the car heard the last time is the current one.
+  std::vector<Car> GetCars() const { return m_cars.GetCars(); }
+  /// The user drives the car, e.g. two boxes are near: the platform connects to its box if it is near too.
+  void SelectCar(std::string const & id);
+  /// An empty name gives the car its usual name back.
+  void RenameCar(std::string const & id, std::string const & name) { m_cars.RenameCar(id, name); }
+  /// Forgets the car and what is learned about it. Without cars left the box is not looked for.
+  void ForgetCar(std::string const & id);
+
   /// The firmwares of the ESP32 sensor box that come with the application: the box should work with the one
   /// for it, the application is tested with it.
   void SetFirmwares(std::vector<Firmware> firmwares);
@@ -317,6 +329,7 @@ private:
   void OnRoadLost() override;
   void OnTurnsReversed() override;
   void OnMarkSwitched() override;
+  void OnBoxHeard(std::string const & id, std::string const & firmware) override;
 
   static PositionSource SourceOf(Fix const & fix);
   int64_t AgeMs(Fix const & fix) const;
@@ -352,7 +365,10 @@ private:
   void SaveCarPosition(bool now);
   /// Shows the car where it was left before the app was closed: it is not known otherwise until GPS or the user
   /// tells it.
-  void RestoreCarPosition();
+  /// \param otherCar the car shown where it was left is not the car of the box, which was left elsewhere.
+  void RestoreCarPosition(bool otherCar = false);
+  /// The storage is of another car now: what is learned about the car and where it was left are of that car.
+  void OnCarChanged();
   /// \param distanceSinceFixM, accuracyM see InertialNavigator::SetPosition().
   void StartInertialAtMark(double distanceSinceFixM = 0, double accuracyM = DeadReckoning::kBaseAccuracyM);
   void StartInertialNavigation();
@@ -387,6 +403,8 @@ private:
 
   Delegate & m_delegate;
   MapApi & m_map;
+  // The storage of the application with the values of the current car: m_storage.
+  CarStorage m_cars;
   Storage & m_storage;
   Clock const & m_clock;
   Scheduler & m_scheduler;
@@ -441,6 +459,8 @@ private:
   // The place of the car last saved, without the time, and when; where the car was a second ago.
   std::string m_savedCar;
   std::optional<int64_t> m_carSavedMs;
+  // Where the car was shown at the start as it was left: another car connecting is shown where it was left instead.
+  std::optional<ms::LatLon> m_parkedAt;
   std::optional<ms::LatLon> m_carSecondAgo;
   // When the manual mode was left: GPS was ignored in it, so it is waited for anew.
   std::optional<int64_t> m_manualLeftMs;

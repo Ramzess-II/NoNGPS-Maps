@@ -80,6 +80,7 @@ public:
   }
 
   void SetString(std::string_view key, std::string const & value) override { m_values[std::string(key)] = value; }
+  void Remove(std::string_view key) override { m_values.erase(std::string(key)); }
 
 private:
   std::map<std::string, std::string> m_values;

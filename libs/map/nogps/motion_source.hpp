@@ -84,6 +84,9 @@ public:
     /// \param accel the acceleration of the source itself along its three fixed axes, m/s², if it has an
     /// accelerometer fixed in the car.
     virtual void OnSourceAccel(std::array<double, 3> const & /* accel */) {}
+
+    /// The sensor box has told about itself: its identifier is the car, see CarStorage.
+    virtual void OnBoxHeard(std::string const & /* id */, std::string const & /* firmware */) {}
   };
 
   virtual ~MotionSource() = default;
