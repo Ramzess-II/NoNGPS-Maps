@@ -478,7 +478,8 @@ extension Esp32BleTransport: CBCentralManagerDelegate {
       // A box accepts a new phone for two minutes after it is powered, if it has no phones, or after a paired phone has
       // let it. The system asks for the code.
       guard pairingOpen else {
-        onPairingClosed(advertisedFlags(advertisementData))
+        // The box of a forgotten car still knows this phone: powered on again, it takes it back.
+        onPairingClosed(id.map { forgottenBoxes.contains($0) } == true ? 0 : advertisedFlags(advertisementData))
         return
       }
       // A box paired already is taken first if it is near: the new one may be somebody else's. Without it the new box
