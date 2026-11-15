@@ -46041,13 +46041,6 @@ en = Needed once the box is installed and every time it was taken out or moved. 
 ru = Нужна после установки блока и каждый раз, когда его вынимали или сдвигали. Машина должна стоять на ровной поверхности без уклонов.
 uk = Потрібне після встановлення блока та щоразу, коли його виймали або зсували. Машина має стояти на рівній поверхні без ухилів.
 
-[nogps_sensors_box_sensors]
-comment = Row of the sensors screen: the state of the calibration of the sensor box
-tags = android-app
-en = Sensors: %@
-ru = Датчики: %@
-uk = Датчики: %@
-
 [nogps_box_not_calibrated]
 comment = State of the sensors of the box, shown after "Sensors:"
 tags = android-app,apple-maps
