@@ -250,6 +250,17 @@ final class Esp32BleTransport: NSObject {
     carIds = Set(NoGps.cars().map(\.carId))
     currentCar = NoGps.status().carId
     setState(.searching)
+    // The system keeps the link to a paired box after the application has gone, and doesn't report the box while it
+    // is linked. Holding one of its two links, the box may not advertise at all.
+    let linked = central.retrieveConnectedPeripherals(withServices: [Constants.service]).first { peripheral in
+      let id = Self.boxId(peripheral, [:])
+      return knownBoxes.contains(peripheral.identifier.uuidString)
+        && (id.map { isBoxWanted($0, known: true) } ?? !newBoxOnly)
+    }
+    if let linked {
+      LOG(.info, "Linked by the system \(linked.identifier) \(Self.boxId(linked, [:]) ?? "-")")
+      connect(linked, id: Self.boxId(linked, [:]), known: true, acceptsNewPhone: false)
+    }
   }
 
   private func isPairingOpen(_ advertisementData: [String: Any]) -> Bool {
