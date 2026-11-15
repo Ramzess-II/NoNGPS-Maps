@@ -46154,13 +46154,6 @@ en = Switch to this car
 ru = Переключиться на эту машину
 uk = Перемкнутися на це авто
 
-[nogps_car_rename]
-comment = Action for a car in the list of the cars
-tags = android-app,apple-maps
-en = Rename
-ru = Переименовать
-uk = Перейменувати
-
 [nogps_car_name]
 comment = Title of the dialog that renames a car
 tags = android-app,apple-maps
@@ -46182,6 +46175,13 @@ en = What the app has learned about this car and where it was left will be lost.
 ru = То, что приложение узнало об этой машине, и место, где она осталась, будут потеряны. Её блок не будет подключаться, пока машину не добавят снова.
 uk = Те, що застосунок дізнався про це авто, і місце, де воно залишилося, буде втрачено. Його блок не підключатиметься, доки авто не додадуть знову.
 
+[nogps_car_phones_unknown]
+comment = Under the heading Phones of the page of a car: its box is not connected to this phone now, so its phones are not known
+tags = android-app,apple-maps
+en = The phones of the box are shown while it is connected to this phone.
+ru = Телефоны блока видны, пока он подключён к этому телефону.
+uk = Телефони блока видно, поки він підключений до цього телефону.
+
 [nogps_car_add]
 comment = Button under the list of the cars: search the sensor box of another car
 tags = android-app,apple-maps
@@ -46192,16 +46192,16 @@ uk = Додати авто
 [nogps_box_bt_pairing_by_phone]
 comment = State of the sensor box, shown after its name: the box has phones, a new one is added on one of them
 tags = android-app,apple-maps
-en = found, but not paired with this phone. On a phone paired with the box, open Box, tap the car, then Phones and Add a phone, and enter the code here
-ru = найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на машину, затем «Телефоны» и «Добавить телефон» и введите код здесь
-uk = знайдено, але не спарено з цим телефоном. На телефоні, спареному з блоком, відкрийте «Блок», натисніть на авто, потім «Телефони» й «Додати телефон» і введіть код тут
+en = found, but not paired with this phone. On a phone paired with the box, open Box, tap the car name at the top, then the car and Add a phone, and enter the code here
+ru = найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на имя машины вверху, затем на машину и «Добавить телефон» и введите код здесь
+uk = знайдено, але не спарено з цим телефоном. На телефоні, спареному з блоком, відкрийте «Блок», натисніть на назву авто вгорі, потім на авто й «Додати телефон» і введіть код тут
 
 [nogps_box_bt_pairing_full]
 comment = State of the sensor box, shown after its name: the box has 4 phones and takes no new one
 tags = android-app,apple-maps
-en = found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car, Phones)
-ru = найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», машина, «Телефоны»)
-uk = знайдено, але не спарено з цим телефоном. Блок має 4 телефони: видаліть один на спареному телефоні («Блок», авто, «Телефони»)
+en = found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car name at the top, the car)
+ru = найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху, машина)
+uk = знайдено, але не спарено з цим телефоном. Блок має 4 телефони: видаліть один на спареному телефоні («Блок», назва авто вгорі, авто)
 
 [nogps_car_phones]
 comment = Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car
