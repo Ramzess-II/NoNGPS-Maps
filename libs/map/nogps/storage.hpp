@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -112,6 +113,12 @@ public:
       kSpeedScale, kSpeedTable,  kRoughSpeedTable, kSpeedFactor, kSpeedLag,
       kBoxAccel,   kCarPosition, kBoxPowerOnTime,  kBoxPowerOns, kBoxCalibrationAdvised,
   };
+  // The name the user has given the car, kept by the keys of the car as its values: NoGpsCar.C47D.Name.
+  static std::string_view constexpr kCarName = "NoGpsName";
+  // The values the box of the car keeps too, see BoxCarValues.
+  static std::array<std::string_view, 7> constexpr kValuesOnBox = {
+      kSpeedTable, kRoughSpeedTable, kSpeedFactor, kSpeedLag, kSpeedScale, kCarName, kCarPosition,
+  };
 
   explicit CarStorage(Storage & storage) : m_storage(storage) {}
 
@@ -135,6 +142,14 @@ public:
   void RenameCar(std::string const & id, std::string const & name);
   /// Forgets the car with all its values. Another car, the one heard last, becomes the current one.
   void ForgetCar(std::string const & id);
+
+  /// A value of the car, whether it is the current one or not.
+  std::optional<std::string> GetCarValue(std::string const & id, std::string_view key) const;
+  /// Empty removes the value.
+  void SetCarValue(std::string const & id, std::string_view key, std::string const & value);
+  /// What the box of the car kept when the phone saw it the last time, by the keys of the box, see BoxCarValues.
+  std::map<std::string, std::string> GetKnownBoxValues(std::string const & id) const;
+  void SetKnownBoxValues(std::string const & id, std::map<std::string, std::string> const & values);
 
 private:
   std::vector<std::string> GetIds() const;

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <map>
 #include <optional>
 #include <string>
 
@@ -87,6 +88,15 @@ public:
 
     /// The sensor box has told about itself: its identifier is the car, see CarStorage.
     virtual void OnBoxHeard(std::string const & /* id */, std::string const & /* firmware */) {}
+
+    /// The values of the car read from the sensor box by their keys, empty if the box doesn't have one, see
+    /// BoxCarValues.
+    virtual void OnBoxCarValues(std::map<std::string, std::string> const & /* values */) {}
+
+    /// The box has answered a write of a value of the car: |error| is empty if it keeps the value.
+    virtual void OnBoxCarWritten(std::string const & /* key */, std::string const & /* value */,
+                                 std::string const & /* error */)
+    {}
   };
 
   virtual ~MotionSource() = default;

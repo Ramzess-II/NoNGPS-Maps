@@ -88,6 +88,8 @@ struct Info
   std::string m_board;
   // The box takes a new firmware over Bluetooth.
   bool m_canUpdate = false;
+  // The box keeps the values of its car for every phone, see BoxCarValues.
+  bool m_canStoreCarValues = false;
   // The four characters of the name of the box, NoGPS-XXXX.
   std::string m_id;
   // How many times the box was powered on, nothing from a firmware that doesn't count it.

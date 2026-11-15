@@ -1,10 +1,13 @@
 #include "testing/testing.hpp"
 
+#include "map/nogps/box_car_values.hpp"
 #include "map/nogps/esp32_protocol.hpp"
+#include "map/nogps/storage.hpp"
 
 #include <algorithm>
 #include <cstdio>
 #include <string>
+#include <vector>
 
 namespace nogps_esp32_protocol_tests
 {
@@ -279,8 +282,15 @@ UNIT_TEST(NoGps_Esp32_ParsesLinesOfFirmware)
       *Parse("$NGI,1,0.3.5,2026-10-10T11:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,WIFI BLE OTA,12*94E1"));
   TEST(countingInfo, ());
   TEST(countingInfo->m_canUpdate, ());
+  TEST(!countingInfo->m_canStoreCarValues, ());
   TEST(countingInfo->m_powerOns, ());
   TEST_EQUAL(*countingInfo->m_powerOns, 12, ());
+  // A firmware that keeps the values of the car.
+  auto const carInfo = ParseInfo(
+      *Parse(WithCrc("NGI,1,0.4.1,2026-11-15T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR,3")));
+  TEST(carInfo, ());
+  TEST(carInfo->m_canUpdate, ());
+  TEST(carInfo->m_canStoreCarValues, ());
   // The first firmware with Bluetooth didn't take a firmware over it.
   auto const oldInfo =
       ParseInfo(*Parse("$NGI,1,0.3.0,2026-10-08T19:43,esp32s3,s3zero,1B00,4096,2031616,ota_0,VALID,WIFI BLE*BBC4"));
@@ -304,5 +314,83 @@ UNIT_TEST(NoGps_Esp32_ParsesLinesOfFirmware)
   TEST_EQUAL(event->m_level, "I", ());
   TEST_EQUAL(event->m_code, "CAL_AUTO", ());
   TEST_EQUAL(event->m_text, "-386", ());
+}
+
+UNIT_TEST(NoGps_Esp32_CarValueCommands)
+{
+  // The lines of the spec of the box.
+  TEST_EQUAL(Command(30, "CAR_GET,spd_scale"), "$NGC,30,CAR_GET,spd_scale*7EA1\r\n", ());
+  TEST_EQUAL(Command(31, "CAR_SET,spd_scale,1.0420"), "$NGC,31,CAR_SET,spd_scale,1.0420*F21A\r\n", ());
+  auto const value = ParseReply(*Parse("$NGA,32,OK,1.0420*DD5C"));
+  TEST(value && value->m_ok, ());
+  TEST_EQUAL(value->m_values, std::vector<std::string>({"1.0420"}), ());
+  auto const empty = ParseReply(*Parse("$NGA,30,OK*875D"));
+  TEST(empty && empty->m_ok && empty->m_values.empty(), ());
+  auto const error = ParseReply(*Parse("$NGA,33,ERR,KEY*78A1"));
+  TEST(error && !error->m_ok, ());
+  TEST_EQUAL(error->m_error, "KEY", ());
+}
+
+UNIT_TEST(NoGps_BoxCarValues_Encoding)
+{
+  auto const roundTrip = [](std::string_view key, std::string const & value)
+  {
+    BoxCarValues::Values box;
+    for (auto const & [boxKey, boxValue] : BoxCarValues::Encode(key, value))
+    {
+      TEST_LESS_OR_EQUAL(boxValue.size(), BoxCarValues::kMaxValueSize, (boxKey));
+      // Printable ASCII without the separators of the line.
+      for (char const c : boxValue)
+        TEST(c >= 0x20 && c <= 0x7E && c != ',' && c != '*' && c != '$', (boxKey, boxValue));
+      box[boxKey] = boxValue;
+    }
+    return BoxCarValues::Decode(key, box);
+  };
+
+  std::string const name = "Ауді 80, 100% моя*$";
+  auto const encodedName = BoxCarValues::Encode(CarStorage::kCarName, name);
+  TEST_EQUAL(encodedName.size(), 1, ());
+  TEST_EQUAL(encodedName[0].first, "car_name", ());
+  TEST_EQUAL(roundTrip(CarStorage::kCarName, name), name, ());
+  // A long name is cut between its characters.
+  std::string longName;
+  for (int i = 0; i < 40; ++i)
+    longName += "Ж";
+  auto const cut = roundTrip(CarStorage::kCarName, longName);
+  TEST(cut && longName.starts_with(*cut), (cut));
+  // Each letter takes 6 characters on the box.
+  TEST_EQUAL(cut->size(), 2 * (BoxCarValues::kMaxNameSize / 6), ());
+  auto const longestName = BoxCarValues::Encode(CarStorage::kCarName, std::string(300, 'a'))[0].second;
+  TEST_EQUAL(longestName.size(), BoxCarValues::kMaxNameSize, ());
+  TEST_LESS_OR_EQUAL(Command(99999, "CAR_SET,car_name," + longestName).size(), BoxCarValues::kMaxLineSize, ());
+
+  std::string const place = "50.4500000,30.5390470,90,0,1821,51,1700000258500";
+  TEST_EQUAL(BoxCarValues::Encode(Storage::kCarPosition, place)[0].second,
+             "50.4500000:30.5390470:90:0:1821:51:1700000258500", ());
+  TEST_EQUAL(roundTrip(Storage::kCarPosition, place), place, ());
+
+  // The longest table: a range of a speed table keeps up to 10 km of the car.
+  std::string table;
+  for (int i = 0; i < 14; ++i)
+    table += std::string(i > 0 ? ";" : "") + "10000:12500:7200";
+  auto const halves = BoxCarValues::Encode(Storage::kSpeedTable, table);
+  TEST_EQUAL(halves.size(), 2, ());
+  TEST_EQUAL(halves[0].first, "spd_table_lo", ());
+  TEST_EQUAL(halves[1].first, "spd_table_hi", ());
+  TEST_EQUAL(halves[0].second, halves[1].second, ());
+  TEST_EQUAL(roundTrip(Storage::kSpeedTable, table), table, ());
+  TEST_LESS_OR_EQUAL(Command(99999, "CAR_SET," + halves[0].first + "," + halves[0].second).size(),
+                     BoxCarValues::kMaxLineSize, ());
+  // A half without the other one is not a table.
+  TEST(!BoxCarValues::Decode(Storage::kSpeedTable, {{halves[0].first, halves[0].second}}), ());
+
+  // An empty value erases the keys of the box.
+  for (auto const key : CarStorage::kValuesOnBox)
+  {
+    for (auto const & [boxKey, boxValue] : BoxCarValues::Encode(key, ""))
+      TEST(boxValue.empty(), (key, boxKey));
+    TEST(!roundTrip(key, ""), (key));
+  }
+  TEST_EQUAL(roundTrip(Storage::kSpeedScale, "1.042"), "1.042", ());
 }
 }  // namespace nogps_esp32_protocol_tests

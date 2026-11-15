@@ -1,5 +1,6 @@
 #pragma once
 
+#include "map/nogps/box_car_values.hpp"
 #include "map/nogps/delegate.hpp"
 #include "map/nogps/esp32_update.hpp"
 #include "map/nogps/gps_return_detector.hpp"
@@ -16,6 +17,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -304,7 +306,7 @@ public:
   /// The user drives the car, e.g. two boxes are near: the platform connects to its box if it is near too.
   void SelectCar(std::string const & id);
   /// An empty name gives the car its usual name back.
-  void RenameCar(std::string const & id, std::string const & name) { m_cars.RenameCar(id, name); }
+  void RenameCar(std::string const & id, std::string const & name);
   /// Forgets the car and what is learned about it. Without cars left the box is not looked for.
   void ForgetCar(std::string const & id);
 
@@ -330,6 +332,9 @@ private:
   void OnTurnsReversed() override;
   void OnMarkSwitched() override;
   void OnBoxHeard(std::string const & id, std::string const & firmware) override;
+  void OnBoxCarValues(std::map<std::string, std::string> const & values) override;
+  void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
+  void OnBoxStopping() override;
 
   static PositionSource SourceOf(Fix const & fix);
   int64_t AgeMs(Fix const & fix) const;
@@ -369,6 +374,12 @@ private:
   void RestoreCarPosition(bool otherCar = false);
   /// The storage is of another car now: what is learned about the car and where it was left are of that car.
   void OnCarChanged();
+  /// Shows the car where its storage tells it was left, if it stands where the start has put it or is not shown yet.
+  /// \returns true if it is shown there.
+  bool MoveParkedCar();
+  /// Writes the values of the car the phone has changed to its box, see BoxCarValues.
+  /// \param now at once, else not more often than BoxCarValues::kSaveIntervalMs.
+  void SaveBoxCarValues(bool now);
   /// \param distanceSinceFixM, accuracyM see InertialNavigator::SetPosition().
   void StartInertialAtMark(double distanceSinceFixM = 0, double accuracyM = DeadReckoning::kBaseAccuracyM);
   void StartInertialNavigation();
@@ -447,6 +458,10 @@ private:
   std::optional<ms::LatLon> m_shiftStopForward;
   std::optional<ms::LatLon> m_shiftStopBack;
 
+  // The values of the car on its box. The navigator writes them when it stops: it is destroyed before them.
+  BoxCarValues m_boxCarValues{m_cars, m_clock};
+  // The box has told that the engine of the car is stopped: it sleeps in a minute.
+  bool m_boxEngineStopped = false;
   std::unique_ptr<InertialNavigator> m_inertial;
   std::optional<int64_t> m_lastTrustedGpsMs;
   // The last trusted GPS position by its own time, see Fix::m_timeMs: the inertial navigation continues from it.
