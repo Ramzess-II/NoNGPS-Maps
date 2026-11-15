@@ -102,22 +102,23 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     case .main:
       break
     case .box(let firmware):
-      if let boxPage = navigation.topViewController as? NoGpsBoxPage {
-        if firmware {
-          boxPage.unfold(.box)
-        }
-      } else {
-        navigation.setViewControllers([root, NoGpsBoxPage(unfolded: firmware ? [.box] : [])], animated: animated)
+      // The firmware update is followed on the page of the box itself.
+      let target: NoGpsBoxPage.Part? = firmware ? .box : nil
+      if let shown = navigation.topViewController as? NoGpsBoxPage, shown.part == target {
+        break
       }
+      navigation.setViewControllers([root, NoGpsBoxPage()] + (firmware ? [NoGpsBoxPage(part: .box)] : []),
+                                    animated: animated)
     case .calibration:
       if navigation.topViewController is NoGpsCalibrationPage {
         break
       }
-      // The Box page open already keeps its sections.
-      if navigation.topViewController is NoGpsBoxPage {
+      // Back from the calibration goes to the page of the IMU it is opened from.
+      if let shown = navigation.topViewController as? NoGpsBoxPage, shown.part == .imu {
         navigation.pushViewController(NoGpsCalibrationPage(), animated: animated)
       } else {
-        navigation.setViewControllers([root, NoGpsBoxPage(unfolded: [.imu]), NoGpsCalibrationPage()], animated: animated)
+        navigation.setViewControllers([root, NoGpsBoxPage(), NoGpsBoxPage(part: .imu), NoGpsCalibrationPage()],
+                                      animated: animated)
       }
     }
     root.selectDetent(for: navigation.topViewController)

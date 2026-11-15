@@ -1,5 +1,6 @@
-/// The sensor box, the car and how they are calibrated, by sections that unfold in place. Opened from the box tile of
-/// the Box sheet, from the road-lost pill and from the firmware offer.
+/// The sensor box, the car and how they are calibrated: whether the box can drive without GPS, then one item for each
+/// part, which opens a page of its own, this class too. Opened from the box tile of the Box sheet, from the road-lost
+/// pill and from the firmware offer.
 final class NoGpsBoxPage: MWMTableViewController {
   enum Part: CaseIterable {
     case box
@@ -24,7 +25,7 @@ final class NoGpsBoxPage: MWMTableViewController {
 
   private enum Row: Equatable {
     case readiness
-    case header(Part)
+    case item(Part)
     case readOnly
     case fixHint
     case firmware
@@ -47,13 +48,12 @@ final class NoGpsBoxPage: MWMTableViewController {
   private var sections: [Section] = []
   private var status = NoGps.status()
   private var timer: Timer?
-  private var unfolded: Set<Part>
+  /// The page of one part, nil for the items of all of them.
+  let part: Part?
   /// The values of the last connection: the box tells them only while it is connected.
-  private var lastValues: [NoGpsBoxValueItem] = []
+  private var lastValues: [NoGpsBoxValueItem]
   private var shownRows: [[Row]] = []
   private var shownFooters: [String?] = []
-  /// The same views every refresh: new ones fly in from the corner of the reconfigured cell.
-  private var chevrons: [Part: UIImageView] = [:]
   private let speedLagValue: UILabel = {
     let label = UILabel()
     label.font = .preferredFont(forTextStyle: .body)
@@ -61,8 +61,9 @@ final class NoGpsBoxPage: MWMTableViewController {
     return label
   }()
 
-  init(unfolded: Set<Part> = []) {
-    self.unfolded = unfolded
+  init(part: Part? = nil, lastValues: [NoGpsBoxValueItem] = []) {
+    self.part = part
+    self.lastValues = lastValues
     super.init(style: .insetGrouped)
   }
 
@@ -71,15 +72,8 @@ final class NoGpsBoxPage: MWMTableViewController {
     fatalError("init(coder:) has not been implemented")
   }
 
-  /// The firmware update is followed in the Box section.
-  func unfold(_ part: Part) {
-    unfolded.insert(part)
-    refresh()
-  }
-
   override func viewDidLoad() {
     super.viewDidLoad()
-    title = L("nogps_box_title")
     navigationItem.backButtonDisplayMode = .minimal
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
   }
@@ -110,32 +104,16 @@ final class NoGpsBoxPage: MWMTableViewController {
     if !status.boxValues.isEmpty {
       lastValues = status.boxValues
     }
-    sections = []
-    if status.inertialStarted {
-      sections.append(Section(rows: [.readiness]))
+    // The car may be renamed or switched meanwhile.
+    title = part.map { itemTitle($0) } ?? L("nogps_box_title")
+    if let part {
+      sections = [partSection(part)]
+    } else {
+      sections = status.inertialStarted ? [Section(rows: [.readiness])] : []
+      // The speed is learned while the box leads the car.
+      let parts: [Part] = status.inertialStarted ? [.box, .obd, .car, .speed, .imu] : [.box, .obd, .car, .imu]
+      sections.append(Section(rows: parts.map { .item($0) }))
     }
-    let connected = NoGpsBoxSheet.isBoxHeard(status) && status.bleState == .connected
-    var box: [Row] = []
-    if connected, status.boxReadOnly {
-      box.append(.readOnly)
-    }
-    box.append(.fixHint)
-    if !status.boxFirmware.isEmpty || Self.isFirmwareUpdating(status) {
-      box.append(.firmware)
-    }
-    if Self.canInstallFirmware(status) || Self.canCancelFirmware(status) {
-      box.append(.firmwareAction)
-    }
-    addSection(.box, box + valueRows(.firmware, .lastEvent))
-    addSection(.obd, valueRows(.obdState, .obdBaud))
-    let mismatch = status.boxValues.contains { $0.kind == .voltageMismatch && $0.value == "1" }
-    addSection(.car, [.speed] + valueRows(.engine, .voltageMismatch),
-               footer: mismatch ? L("nogps_voltage_mismatch") : nil)
-    if status.inertialStarted {
-      addSection(.speed, [.speedText, .scale, .speedLag, .clearSpeed]
-        + status.speedTableCarM.indices.map { .speedTableRange($0) })
-    }
-    addSection(.imu, [.calibration] + valueRows(.imuName, .bias))
     // Footers are not updated in place.
     let footers = sections.map(\.footer)
     if footers != shownFooters {
@@ -145,13 +123,35 @@ final class NoGpsBoxPage: MWMTableViewController {
     tableView.reloadData(keepingRows: sections.map(\.rows), &shownRows)
   }
 
-  private func isUnfolded(_ part: Part) -> Bool {
-    unfolded.contains(part)
-  }
-
-  private func addSection(_ part: Part, _ rows: [Row], footer: String? = nil) {
-    let open = isUnfolded(part)
-    sections.append(Section(rows: [.header(part)] + (open ? rows : []), footer: open ? footer : nil))
+  /// What the part shows on its page.
+  private func partSection(_ part: Part) -> Section {
+    switch part {
+    case .box:
+      let connected = NoGpsBoxSheet.isBoxHeard(status) && status.bleState == .connected
+      var rows: [Row] = []
+      if connected, status.boxReadOnly {
+        rows.append(.readOnly)
+      }
+      rows.append(.fixHint)
+      if !status.boxFirmware.isEmpty || Self.isFirmwareUpdating(status) {
+        rows.append(.firmware)
+      }
+      if Self.canInstallFirmware(status) || Self.canCancelFirmware(status) {
+        rows.append(.firmwareAction)
+      }
+      return Section(rows: rows + valueRows(.firmware, .lastEvent))
+    case .obd:
+      return Section(rows: valueRows(.obdState, .obdBaud))
+    case .car:
+      let mismatch = status.boxValues.contains { $0.kind == .voltageMismatch && $0.value == "1" }
+      return Section(rows: [.speed] + valueRows(.engine, .voltageMismatch),
+                     footer: mismatch ? L("nogps_voltage_mismatch") : nil)
+    case .speed:
+      return Section(rows: [.speedText, .scale, .speedLag, .clearSpeed]
+        + status.speedTableCarM.indices.map { .speedTableRange($0) })
+    case .imu:
+      return Section(rows: [.calibration] + valueRows(.imuName, .bias))
+    }
   }
 
   /// The values of a group, in the order of NoGpsBoxValue.
@@ -187,19 +187,14 @@ final class NoGpsBoxPage: MWMTableViewController {
         : String(format: L("nogps_sensors_not_ready"), missing.joined(separator: ", "))
       content.textProperties.color = missing.isEmpty ? .systemGreen : .systemRed
       content.textProperties.font = .preferredFont(forTextStyle: .headline)
-    case .header(let part):
+    case .item(let part):
       content = UIListContentConfiguration.subtitleCell()
-      content.text = headerTitle(part)
-      content.secondaryText = headerSubtitle(part)
+      content.text = itemTitle(part)
+      content.secondaryText = itemSubtitle(part)
       content.textProperties.font = .preferredFont(forTextStyle: .headline)
       content.secondaryTextProperties.color = .secondaryLabel
       content.secondaryTextProperties.numberOfLines = 0
-      let chevron = chevrons[part] ?? UIImageView()
-      chevrons[part] = chevron
-      chevron.image = UIImage(systemName: isUnfolded(part) ? "chevron.down" : "chevron.forward")
-      chevron.tintColor = .tertiaryLabel
-      chevron.sizeToFit()
-      cell.accessoryView = chevron
+      cell.accessoryType = .disclosureIndicator
       cell.selectionStyle = .default
     case .readOnly:
       content.text = L("nogps_box_read_only")
@@ -265,13 +260,8 @@ final class NoGpsBoxPage: MWMTableViewController {
   override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
     tableView.deselectRow(at: indexPath, animated: true)
     switch sections[indexPath.section].rows[indexPath.row] {
-    case .header(let part):
-      if unfolded.contains(part) {
-        unfolded.remove(part)
-      } else {
-        unfolded.insert(part)
-      }
-      refresh()
+    case .item(let part):
+      navigationController?.pushViewController(NoGpsBoxPage(part: part, lastValues: lastValues), animated: true)
     case .firmwareAction:
       // The row does what it shows, if the update still allows it: the box may have gone on since it was drawn.
       let cancel = Self.canCancelFirmware(status)
@@ -293,19 +283,19 @@ final class NoGpsBoxPage: MWMTableViewController {
 
   // MARK: - Texts
 
-  private func headerTitle(_ part: Part) -> String {
+  private func itemTitle(_ part: Part) -> String {
     switch part {
     case .box: return String(format: L("nogps_box_section"), Constants.boxModel)
     case .obd: return L("nogps_box_value_group_obd")
     case .car:
       let car = NoGps.cars().first { $0.carId == status.carId }
-      return car.map { NoGpsBoxSheet.carName($0) } ?? L("nogps_box_value_group_car")
+      return car.map { String(format: L("nogps_box_car"), NoGpsBoxSheet.carName($0)) } ?? L("nogps_box_value_group_car")
     case .speed: return L("nogps_speed_calibration")
-    case .imu: return L("nogps_box_value_group_gyroscope")
+    case .imu: return L("nogps_box_imu")
     }
   }
 
-  private func headerSubtitle(_ part: Part) -> String {
+  private func itemSubtitle(_ part: Part) -> String {
     switch part {
     case .box:
       // The update tells how it goes instead of the state.
