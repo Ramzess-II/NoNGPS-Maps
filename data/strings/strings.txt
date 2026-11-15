@@ -46817,6 +46817,20 @@ en = Box %1$@
 ru = Блок %1$@
 uk = Блок %1$@
 
+[nogps_box_car]
+comment = Item of the Box page and the title of its page: the car of the box with its name, e.g. "Car: Kia"
+tags = android-app,apple-maps
+en = Car: %1$@
+ru = Машина: %1$@
+uk = Машина: %1$@
+
+[nogps_box_imu]
+comment = Item of the Box page and the title of its page: the motion sensors of the box (gyroscope, accelerometer)
+tags = android-app,apple-maps
+en = Inertial Measurement Unit
+ru = Инерциальный измерительный блок
+uk = Інерціальний вимірювальний блок
+
 [nogps_box_version]
 comment = Start of the subtitle of the Box section of the Box page: the firmware version of the box, then its state
 tags = android-app,apple-maps
@@ -47208,13 +47222,6 @@ tags = android-app,apple-maps
 en = Car
 ru = Машина
 uk = Машина
-
-[nogps_box_value_group_gyroscope]
-comment = Section of the Box values page
-tags = android-app,apple-maps
-en = Gyroscope
-ru = Гироскоп
-uk = Гіроскоп
 
 [nogps_box_value_group_obd]
 comment = Section of the Box values page: the ELM327 adapter of the box
