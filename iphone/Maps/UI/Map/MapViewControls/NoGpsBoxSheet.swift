@@ -496,7 +496,7 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
   }
 }
 
-/// The cars of the user, one for each box: the user drives, names or forgets one, and adds a new one.
+/// The cars of the user, one for each box: each opens its page, the last row adds a new one.
 private final class CarsViewController: MWMTableViewController {
   private enum Constants {
     static let refreshInterval: TimeInterval = 0.5
@@ -572,7 +572,9 @@ private final class CarsViewController: MWMTableViewController {
         content.secondaryText = carStateText(car)
       }
       content.secondaryTextProperties.color = .secondaryLabel
+      cell.accessoryType = .disclosureIndicator
     case .add:
+      cell.accessoryType = .none
       content = UIListContentConfiguration.cell()
       content.text = L("nogps_car_add")
       content.textProperties.color = .linkBlue
@@ -585,9 +587,7 @@ private final class CarsViewController: MWMTableViewController {
     tableView.deselectRow(at: indexPath, animated: true)
     switch rows[indexPath.section][indexPath.row] {
     case .car(let carId):
-      if let car = cars.first(where: { $0.carId == carId }) {
-        showCarMenu(car, from: tableView.cellForRow(at: indexPath))
-      }
+      navigationController?.pushViewController(CarPageViewController(carId: carId), animated: true)
     case .add:
       navigationController?.pushViewController(AddCarViewController(style: .insetGrouped), animated: true)
     }
@@ -601,53 +601,6 @@ private final class CarsViewController: MWMTableViewController {
     guard let lastSeen = car.lastSeen else { return nil }
     return String(format: L("nogps_car_last_seen"), RelativeDateTimeFormatter().localizedString(for: lastSeen,
                                                                                                 relativeTo: Date()))
-  }
-
-  /// What the user does with a car: drives it, names it or forgets it.
-  private func showCarMenu(_ car: NoGpsCar, from cell: UITableViewCell?) {
-    let menu = UIAlertController(title: NoGpsBoxSheet.carName(car), message: nil, preferredStyle: .actionSheet)
-    if car.carId != NoGps.status().carId {
-      menu.addAction(UIAlertAction(title: L("nogps_car_drive"), style: .default) { [weak self] _ in
-        NoGps.selectCar(car.carId)
-        NoGpsStatusBar.update(NoGps.status())
-        self?.refresh()
-      })
-    }
-    if car.carId == NoGps.status().carId, NoGps.status().boxHasPhones {
-      menu.addAction(UIAlertAction(title: L("nogps_car_phones"), style: .default) { [weak self] _ in
-        NoGps.listBoxPhones()
-        self?.navigationController?.pushViewController(BoxPhonesViewController(style: .insetGrouped), animated: true)
-      })
-    }
-    menu.addAction(UIAlertAction(title: L("nogps_car_rename"), style: .default) { [weak self] _ in
-      NoGpsBoxSheet.renameCar(car, from: self) { self?.refresh() }
-    })
-    menu.addAction(UIAlertAction(title: L("nogps_car_forget"), style: .destructive) { [weak self] _ in
-      self?.confirmForgetCar(car)
-    })
-    menu.addAction(UIAlertAction(title: L("cancel"), style: .cancel))
-    if let popover = menu.popoverPresentationController, let cell {
-      popover.sourceView = cell
-      popover.sourceRect = cell.bounds
-    }
-    present(menu, animated: true)
-  }
-
-  private func confirmForgetCar(_ car: NoGpsCar) {
-    let alert = UIAlertController(title: NoGpsBoxSheet.carName(car), message: L("nogps_car_forget_text"),
-                                  preferredStyle: .alert)
-    alert.addAction(UIAlertAction(title: L("cancel"), style: .cancel))
-    alert.addAction(UIAlertAction(title: L("nogps_car_forget"), style: .destructive) { [weak self] _ in
-      NoGps.forgetCar(car.carId)
-      NoGpsStatusBar.update(NoGps.status())
-      // The last car: the box is not looked for, the sheet offers to buy one.
-      if !NoGps.status().inertialEnabled {
-        self?.navigationController?.dismiss(animated: true)
-      } else {
-        self?.refresh()
-      }
-    })
-    present(alert, animated: true)
   }
 }
 
@@ -737,21 +690,47 @@ private final class AddCarViewController: MWMTableViewController {
   }
 }
 
-/// The phones paired with the box of the car: a tap removes one, the last row adds a new one with a one-time code.
-final class BoxPhonesViewController: MWMTableViewController {
+/// A car: its name, switching to it and forgetting it, then the phones its box takes. The phones are known while the box
+/// of the car is connected: a tap removes one, the last row adds a new one with a one-time code.
+final class CarPageViewController: MWMTableViewController {
   private enum Constants {
     static let refreshInterval: TimeInterval = 0.5
-    static let cellId = "NoGpsBoxPhoneCell"
+    static let cellId = "NoGpsCarPageCell"
   }
 
+  private enum Row: Equatable {
+    case name
+    case drive
+    case forget
+    /// A phone by its Bluetooth address.
+    case phone(String)
+    case addPhone
+  }
+
+  private let carId: String
+  private var car: NoGpsCar?
   private var status = NoGps.status()
   private var timer: Timer?
+  private var rows: [[Row]] = []
+  private var shownRows: [[Row]] = []
+  private var shownFooters: [String?] = []
+  /// The phones are asked for once the box of the car can tell them.
+  private var phonesListed = false
   /// Shows the code for a new phone while the box takes it.
   private weak var addPhoneAlert: UIAlertController?
 
+  init(carId: String) {
+    self.carId = carId
+    super.init(style: .insetGrouped)
+  }
+
+  @available(*, unavailable)
+  required init?(coder _: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
   override func viewDidLoad() {
     super.viewDidLoad()
-    title = L("nogps_car_phones")
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
   }
 
@@ -769,44 +748,92 @@ final class BoxPhonesViewController: MWMTableViewController {
     timer = nil
   }
 
-  private var phones: [NoGpsPhone] { status.boxPhones ?? [] }
+  /// The box of this car is connected and knows its phones.
+  private var phonesKnown: Bool {
+    carId == status.carId && status.boxHasPhones
+  }
+
+  private var phones: [NoGpsPhone] { phonesKnown ? status.boxPhones ?? [] : [] }
 
   private func refresh() {
     status = NoGps.status()
-    // The box has disconnected: its phones are not known.
-    if !status.boxHasPhones, addPhoneAlert == nil, navigationController?.topViewController === self {
-      navigationController?.popViewController(animated: true)
+    car = NoGps.cars().first { $0.carId == carId }
+    // Forgotten, e.g. this phone was removed from its box.
+    guard let car else {
+      if navigationController?.topViewController === self {
+        navigationController?.popViewController(animated: true)
+      }
       return
     }
+    title = NoGpsBoxSheet.carName(car)
+    if phonesKnown, !phonesListed {
+      phonesListed = true
+      NoGps.listBoxPhones()
+    }
+    phonesListed = phonesListed && phonesKnown
+    rows = [
+      carId == status.carId ? [.name, .forget] : [.name, .drive, .forget],
+      phonesKnown ? phones.map { .phone($0.address) } + [.addPhone] : [],
+    ]
     addPhoneAlert?.message = addPhoneText()
-    tableView.reloadData()
+    // Footers are not updated in place.
+    let footers = [nil, phoneFooter()]
+    if footers != shownFooters {
+      shownFooters = footers
+      shownRows = []
+    }
+    tableView.reloadData(keepingRows: rows, &shownRows)
+  }
+
+  private func phoneFooter() -> String? {
+    guard phonesKnown else { return L("nogps_car_phones_unknown") }
+    return status.boxReadOnly ? L("nogps_box_read_only") : nil
   }
 
   override func numberOfSections(in _: UITableView) -> Int {
-    2
+    rows.count
   }
 
   override func tableView(_: UITableView, numberOfRowsInSection section: Int) -> Int {
-    section == 0 ? phones.count : 1
+    rows[section].count
+  }
+
+  override func tableView(_: UITableView, titleForHeaderInSection section: Int) -> String? {
+    section == 1 ? L("nogps_car_phones") : nil
   }
 
   override func tableView(_: UITableView, titleForFooterInSection section: Int) -> String? {
-    section == 0 && status.boxReadOnly ? L("nogps_box_read_only") : nil
+    shownFooters.indices.contains(section) ? shownFooters[section] : nil
   }
 
   override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
     let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
-    var content = UIListContentConfiguration.subtitleCell()
-    cell.selectionStyle = status.boxReadOnly ? .none : .default
-    if indexPath.section == 0 {
-      let phone = phones[indexPath.row]
-      content.text = Self.phoneName(phone)
-      content.secondaryText = phoneStateText(phone)
+    var content = UIListContentConfiguration.cell()
+    cell.selectionStyle = .default
+    cell.accessoryType = .none
+    switch rows[indexPath.section][indexPath.row] {
+    case .name:
+      content = UIListContentConfiguration.valueCell()
+      content.text = L("nogps_car_name")
+      content.secondaryText = car.map { NoGpsBoxSheet.carName($0) }
+    case .drive:
+      content.text = L("nogps_car_drive")
+      content.textProperties.color = .linkBlue
+    case .forget:
+      content.text = L("nogps_car_forget")
+      content.textProperties.color = .buttonRed
+    case .phone(let address):
+      content = UIListContentConfiguration.subtitleCell()
+      if let phone = phones.first(where: { $0.address == address }) {
+        content.text = Self.phoneName(phone)
+        content.secondaryText = phoneStateText(phone)
+      }
       content.secondaryTextProperties.color = .secondaryLabel
-    } else {
-      content = UIListContentConfiguration.cell()
+      cell.selectionStyle = status.boxReadOnly ? .none : .default
+    case .addPhone:
       content.text = L("nogps_phone_add")
       content.textProperties.color = status.boxReadOnly ? .secondaryLabel : .linkBlue
+      cell.selectionStyle = status.boxReadOnly ? .none : .default
     }
     cell.contentConfiguration = content
     return cell
@@ -814,12 +841,43 @@ final class BoxPhonesViewController: MWMTableViewController {
 
   override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
     tableView.deselectRow(at: indexPath, animated: true)
-    guard !status.boxReadOnly else { return }
-    if indexPath.section == 0 {
-      confirmRemove(phones[indexPath.row])
-    } else {
-      addPhone()
+    guard let car else { return }
+    switch rows[indexPath.section][indexPath.row] {
+    case .name:
+      NoGpsBoxSheet.renameCar(car, from: self) { [weak self] in self?.refresh() }
+    case .drive:
+      NoGps.selectCar(carId)
+      NoGpsStatusBar.update(NoGps.status())
+      refresh()
+    case .forget:
+      confirmForget(car)
+    case .phone(let address):
+      // Another phone changes the box.
+      if !status.boxReadOnly, let phone = phones.first(where: { $0.address == address }) {
+        confirmRemove(phone)
+      }
+    case .addPhone:
+      if !status.boxReadOnly {
+        addPhone()
+      }
     }
+  }
+
+  private func confirmForget(_ car: NoGpsCar) {
+    let alert = UIAlertController(title: NoGpsBoxSheet.carName(car), message: L("nogps_car_forget_text"),
+                                  preferredStyle: .alert)
+    alert.addAction(UIAlertAction(title: L("cancel"), style: .cancel))
+    alert.addAction(UIAlertAction(title: L("nogps_car_forget"), style: .destructive) { [weak self] _ in
+      NoGps.forgetCar(car.carId)
+      NoGpsStatusBar.update(NoGps.status())
+      // The last car: the box is not looked for, the sheet offers to buy one.
+      if !NoGps.status().inertialEnabled {
+        self?.navigationController?.dismiss(animated: true)
+      } else {
+        self?.navigationController?.popViewController(animated: true)
+      }
+    })
+    present(alert, animated: true)
   }
 
   private static func phoneName(_ phone: NoGpsPhone) -> String {

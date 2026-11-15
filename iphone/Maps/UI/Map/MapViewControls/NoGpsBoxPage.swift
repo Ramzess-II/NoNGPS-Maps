@@ -33,7 +33,6 @@ final class NoGpsBoxPage: MWMTableViewController {
     case value(NoGpsBoxValue)
     case speed
     case carName
-    case phones
     case speedText
     case speedLag
     case clearSpeed
@@ -146,13 +145,10 @@ final class NoGpsBoxPage: MWMTableViewController {
       return Section(rows: valueRows(.obdState, .obdBaud))
     case .car:
       let mismatch = status.boxValues.contains { $0.kind == .voltageMismatch && $0.value == "1" }
-      // What the menu of the car does, but forgetting: the Cars page does it.
+      // The name opens the page of the car: its name, its phones.
       var rows: [Row] = [.speed]
       if currentCar != nil {
         rows.append(.carName)
-        if status.boxHasPhones {
-          rows.append(.phones)
-        }
       }
       return Section(rows: rows + valueRows(.engine, .voltageMismatch),
                      footer: mismatch ? L("nogps_voltage_mismatch") : nil)
@@ -237,9 +233,6 @@ final class NoGpsBoxPage: MWMTableViewController {
       content = UIListContentConfiguration.valueCell()
       content.text = L("nogps_car_name")
       content.secondaryText = currentCar.map { NoGpsBoxSheet.carName($0) }
-      cell.selectionStyle = .default
-    case .phones:
-      content.text = L("nogps_car_phones")
       cell.accessoryType = .disclosureIndicator
       cell.selectionStyle = .default
     case .speedLag:
@@ -298,11 +291,8 @@ final class NoGpsBoxPage: MWMTableViewController {
       navigationController?.pushViewController(NoGpsCalibrationPage(), animated: true)
     case .carName:
       if let car = currentCar {
-        NoGpsBoxSheet.renameCar(car, from: self) { [weak self] in self?.refresh() }
+        navigationController?.pushViewController(CarPageViewController(carId: car.carId), animated: true)
       }
-    case .phones:
-      NoGps.listBoxPhones()
-      navigationController?.pushViewController(BoxPhonesViewController(style: .insetGrouped), animated: true)
     default:
       break
     }
