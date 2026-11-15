@@ -146,14 +146,13 @@ final class NavigationSearchWheel: UIView {
       addSubview(categoryButton)
       categoryButtons.append(categoryButton)
     }
-    // The shadow too.
+    // Masks the shadow too.
     sweep.frame = bounds
     sweep.path = Self.sweepPath(rtl: isRTL).cgPath
     sweep.fillColor = nil
     sweep.strokeColor = UIColor.black.cgColor
     sweep.lineWidth = Constants.sweepRadius
     sweep.strokeEnd = 0
-    layer.mask = sweep
     update(animated: false)
   }
 
@@ -209,13 +208,21 @@ final class NavigationSearchWheel: UIView {
       perform(#selector(closeOnTimer), with: nil, afterDelay: Constants.collapseTimeout)
       isHidden = false
     }
-    // A tap in the middle of the sweep turns it back from where it is.
-    let from = sweep.presentation()?.strokeEnd ?? sweep.strokeEnd
+    // A tap in the middle of the sweep turns it back from where it is. The open wheel has no mask: a mask over the blur
+    // renders it offscreen on every frame of the map.
+    let from = layer.mask == nil ? sweep.strokeEnd : sweep.presentation()?.strokeEnd ?? sweep.strokeEnd
     let to: CGFloat = state.isOpen ? 1 : 0
     sweep.removeAnimation(forKey: "sweep")
+    layer.mask = sweep
     CATransaction.begin()
     CATransaction.setDisableActions(true)
-    CATransaction.setCompletionBlock { self.isHidden = !self.state.isOpen }
+    CATransaction.setCompletionBlock {
+      self.isHidden = !self.state.isOpen
+      // A sweep started since then has its own completion.
+      if self.state.isOpen, self.sweep.animation(forKey: "sweep") == nil {
+        self.layer.mask = nil
+      }
+    }
     sweep.strokeEnd = to
     if animated, from != to {
       let animation = CABasicAnimation(keyPath: "strokeEnd")
