@@ -2797,6 +2797,45 @@ UNIT_TEST(NoGps_BoxCarValues_PhoneConnectedSecondDoesNotWrite)
   TEST_EQUAL(box.m_values["car_name"], "Lada", ());
 }
 
+UNIT_TEST(NoGps_BoxCarValues_PhoneConnectedSecondTakesNewName)
+{
+  CarBox box;
+  box.m_busy = true;
+  Env env(true /* inertial */);
+  box.Connect(env);
+  // The box refuses the name: another phone keeps it.
+  env.m_engine.RenameCar("C47D", "Kia");
+  box.Answer(env);
+  auto const drive = [&](int64_t ms)
+  {
+    for (int64_t driven = 0; driven < ms; driven += 1000)
+    {
+      env.Drive(1000, 0, 0);
+      box.Answer(env);
+    }
+  };
+  auto const name = [&env] { return env.m_engine.GetCars()[0].m_name; };
+
+  // The first phone renames the car: the box doesn't tell it, this phone reads the name in a minute.
+  box.m_values["car_name"] = "Opel";
+  drive(BoxCarValues::kReadNameIntervalMs / 2);
+  TEST_EQUAL(name(), "Kia", ());
+  drive(BoxCarValues::kReadNameIntervalMs);
+  TEST_EQUAL(name(), "Opel", ());
+
+  // The phone that changes the box knows its name.
+  box.m_busy = false;
+  box.Connect(env);
+  auto const countGets = [&env]
+  {
+    return std::count_if(env.m_delegate.m_esp32BleSent.begin(), env.m_delegate.m_esp32BleSent.end(),
+                         [](std::string const & line) { return line.find(",CAR_GET,") != std::string::npos; });
+  };
+  auto const gets = countGets();
+  drive(2 * BoxCarValues::kReadNameIntervalMs);
+  TEST_EQUAL(countGets(), gets, ());
+}
+
 UNIT_TEST(NoGps_BoxCarValues_OldFirmwareIsNotAsked)
 {
   Env env(true /* inertial */);

@@ -155,6 +155,7 @@ void BoxCarValues::OnBoxHeard(Esp32Source & box, std::string const & carId)
   m_carId = carId;
   m_boxValues.reset();
   m_busy = false;
+  m_readMs = m_clock.NowMs();
   std::vector<std::string> keys;
   for (auto const & k : kBoxKeys)
   {
@@ -167,34 +168,58 @@ void BoxCarValues::OnBoxHeard(Esp32Source & box, std::string const & carId)
 
 BoxCarValues::Taken BoxCarValues::OnValues(Esp32Source & box, Values const & values)
 {
-  auto const known = m_cars.GetKnownBoxValues(m_carId);
-  m_boxValues = values;
-  m_cars.SetKnownBoxValues(m_carId, values);
+  // The values not read now are as the phone has seen them.
+  auto known = m_cars.GetKnownBoxValues(m_carId);
+  if (!m_boxValues)
+    m_boxValues.emplace();
+  auto const before = known;
+  for (auto const & [key, value] : values)
+  {
+    (*m_boxValues)[key] = value;
+    known[key] = value;
+  }
+  m_cars.SetKnownBoxValues(m_carId, known);
+  auto const & read = *m_boxValues;
   Taken taken;
   std::vector<std::string> takenKeys;
   for (auto const key : CarStorage::kValuesOnBox)
   {
     // A box without the value has lost it or has not got it yet: Save() gives it the value of the phone.
-    auto const boxValue = Decode(key, values);
+    auto const boxValue = Decode(key, read);
     if (!boxValue)
       continue;
     // The box keeps what the phone saw there the last time: the value of the phone is newer, if it differs. Another
     // phone has written the box since: its value is newer.
     auto const & keys = FindBoxKeys(key);
-    bool const changed = GetValue(values, keys.m_box) != GetValue(known, keys.m_box) ||
-                         GetValue(values, keys.m_secondHalf) != GetValue(known, keys.m_secondHalf);
+    bool const changed = GetValue(read, keys.m_box) != GetValue(before, keys.m_box) ||
+                         GetValue(read, keys.m_secondHalf) != GetValue(before, keys.m_secondHalf);
     if (!changed || boxValue == m_cars.GetCarValue(m_carId, key))
       continue;
     m_cars.SetCarValue(m_carId, key, *boxValue);
     takenKeys.emplace_back(key);
     if (key == Storage::kCarPosition)
       taken.m_position = true;
-    else if (key != CarStorage::kCarName)
+    else if (key == CarStorage::kCarName)
+      taken.m_name = true;
+    else
       taken.m_calibration = true;
   }
-  LOG(LINFO, ("The values of the car", m_carId, "taken from its box:", takenKeys));
+  // The name read every minute is logged when it has changed.
+  if (values.size() > 1 || !takenKeys.empty())
+    LOG(LINFO, ("The values of the car", m_carId, "taken from its box:", takenKeys));
   Save(&box, true /* now */);
   return taken;
+}
+
+void BoxCarValues::ReadName(Esp32Source * box)
+{
+  if (!box || !box->CanStoreCarValues() || !m_boxValues || !(m_busy || box->IsReadOnly()) || box->IsReadingCarValues())
+    return;
+  int64_t const nowMs = m_clock.NowMs();
+  if (nowMs - m_readMs < kReadNameIntervalMs)
+    return;
+  m_readMs = nowMs;
+  box->ReadCarValues({std::string(FindBoxKeys(CarStorage::kCarName).m_box)});
 }
 
 void BoxCarValues::OnWritten(std::string const & key, std::string const & value, std::string const & error)
