@@ -11,7 +11,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
-import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -26,10 +25,12 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import androidx.activity.ComponentDialog;
 import androidx.activity.OnBackPressedCallback;
@@ -42,6 +43,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
+import androidx.fragment.app.FragmentManager;
 import androidx.transition.Slide;
 import androidx.transition.TransitionManager;
 import androidx.transition.TransitionSet;
@@ -61,24 +63,60 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * The sensor box: its state, the car speed, the firmware and what the user does with the box. Without a box it is
- * searched while the sheet is open, step by step, and the sheet offers to buy one. On the top the box and GPS are side
- * by side, GPS opens its page. Under them GPS is turned off for the car.
+ * The sensor box and GPS side by side, each opens its page, the current car opens the cars. Under them GPS is blocked
+ * for the car. Without a box it is searched while the sheet is open, step by step, and the sheet offers to buy one.
  */
 public class BoxBottomSheet extends BottomSheetDialogFragment
 {
   public static final String TAG = BoxBottomSheet.class.getSimpleName();
+  // The fragment result told when the user closes the sheet: the bottom bar shows the box and GPS at once.
+  public static final String RESULT_CLOSED = TAG + ".closed";
   private static final long UPDATE_INTERVAL_MS = 500;
   private static final long RING_DURATION_MS = 2400;
   private static final String SHOP_URL = "https://non-gps.com";
+  private static final String ARG_PAGE = "page";
+  private static final String ARG_UNFOLD_BOX = "unfold_box";
+  private static final String STATE_PAGE = "page";
   private static final String STATE_SEARCHING = "searching";
-  private static final String STATE_ADDING_CAR = "adding_car";
   private static final String STATE_CARS_BEFORE_ADD = "cars_before_add";
-  private static final String STATE_SPEED_TABLE = "speed_table";
-  private static final String STATE_BOX_VALUES = "box_values";
-  private static final String STATE_GPS = "gps";
+  private static final String STATE_UNFOLDED = "unfolded";
   private static final String STATE_SHARE_ASKED = "share_asked";
-  private static final String BOX_NAME = "NonGPS-OBD";
+
+  /**
+   * Each page is opened from its parent, Back returns there.
+   */
+  public enum Page
+  {
+    MAIN,
+    GPS,
+    CARS,
+    PHONES,
+    ADD_CAR,
+    BOX,
+    CALIBRATION;
+
+    @NonNull
+    Page parent()
+    {
+      return switch (this)
+      {
+        case MAIN, GPS, CARS, BOX -> MAIN;
+        case PHONES, ADD_CAR -> CARS;
+        case CALIBRATION -> BOX;
+      };
+    }
+
+    int depth()
+    {
+      return this == MAIN ? 0 : 1 + parent().depth();
+    }
+  }
+
+  // The sections of the Box page that fold.
+  private static final int SECTION_BOX = 0;
+  private static final int SECTION_CAR = 1;
+  private static final int SECTION_SPEED = 2;
+  private static final int SECTION_IMU = 3;
 
   private enum StepState
   {
@@ -86,6 +124,49 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     CURRENT,
     DONE,
     FAILED,
+  }
+
+  /**
+   * The header of a section of the Box page and what it folds.
+   */
+  private static final class Section
+  {
+    final View header;
+    final TextView title;
+    final TextView state;
+    final View chevron;
+    final View content;
+
+    Section(@NonNull View root, int headerId, int contentId)
+    {
+      header = root.findViewById(headerId);
+      title = header.findViewById(R.id.section_title);
+      state = header.findViewById(R.id.section_state);
+      chevron = header.findViewById(R.id.section_chevron);
+      content = root.findViewById(contentId);
+    }
+
+    void show(@NonNull String titleText, @NonNull String stateText)
+    {
+      title.setText(titleText);
+      state.setText(BoxTexts.capitalize(stateText));
+      state.setVisibility(stateText.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    void setVisible(boolean visible)
+    {
+      header.setVisibility(visible ? View.VISIBLE : View.GONE);
+      if (!visible)
+        content.setVisibility(View.GONE);
+    }
+
+    void setOpen(boolean open)
+    {
+      content.setVisibility(open ? View.VISIBLE : View.GONE);
+      // The chevron points down while the section is open.
+      final boolean rtl = header.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+      chevron.setRotation(open ? (rtl ? -90f : 90f) : 0f);
+    }
   }
 
   private final Handler mHandler = new Handler(Looper.getMainLooper());
@@ -103,21 +184,15 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   // The user has been asked while the sheet is shown: asked again, the system doesn't show anything.
   private boolean mBluetoothAsked;
 
+  @NonNull
+  private Page mPage = Page.MAIN;
   // No box was set up when the sheet opened: it is searched until it is heard, and forgotten if the sheet is closed
   // before it is found.
   private boolean mSearching;
-  // The user adds a car: its box is searched as above, the other cars stay. The search ends when the list of the cars
-  // grows: the box of a car is heard before, and a box sleeping after its link was dropped is taken as heard too.
-  private boolean mAddingCar;
+  // The box of a new car is searched on its page until the list of the cars grows: the box of a car is heard before,
+  // and a box sleeping after its link was dropped is taken as heard too.
   private int mCarsBeforeAdd;
-  // The speed table is shown on its own page of the sheet, Back returns from it.
-  private boolean mSpeedTableShown;
-  // All the values the box sends are shown on a page of their own too.
-  private boolean mValuesShown;
-  // The GPS details are shown on a page of their own too. The search goes on while it is shown.
-  private boolean mGpsShown;
-  // The phones of the box of the car are shown on a page of their own too, while the box is connected.
-  private boolean mPhonesShown;
+  private final boolean[] mUnfolded = new boolean[4];
   // The code for a new phone, shown while the box takes it.
   @Nullable
   private AlertDialog mAddPhoneDialog;
@@ -127,78 +202,123 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     @Override
     public void handleOnBackPressed()
     {
-      if (mGpsShown)
-        showGps(false);
-      else if (mPhonesShown)
-        showPhones(false);
-      else if (mValuesShown)
-        showValues(false);
-      else
-        showSpeedTable(false);
+      showPage(mPage.parent());
     }
   };
   private ViewGroup mRoot;
-  private View mTiles;
+  private View mMain;
+  private TextView mTitle;
   private View mBox;
   private View mBoxChevron;
   private StatusBar.Button mTile;
-  private View mGpsRow;
-  private View mGpsGroup;
-  private StatusBar.Button mGpsTile;
-  private TextView mGpsState;
-  private SwitchCompat mGpsUse;
-  private View mGpsUseHint;
-  private View mGpsUseNeedsBox;
-  private SwitchCompat mSharePosition;
-  private View mSharePositionNeedsMock;
-  private View mGpsPage;
-  private GpsSheetView mGpsView;
   private TextView mState;
   private ColorStateList mStateColors;
-  private View mConnected;
-  private TextView mName;
-  private TextView mObdHint;
-  private TextView mSpeed;
-  private TextView mRpm;
-  private View mSpeedTable;
-  private TextView mSpeedTableState;
-  private View mSpeedGroup;
-  private TextView mSpeedLagValue;
-  private TextView mSpeedLagSource;
-  private TextView mFirmware;
-  private View mCalibrate;
-  private TextView mCalibration;
-  private TextView mCalibrateAction;
-  private TextView mInstallFirmware;
+  private View mGpsRow;
+  private StatusBar.Button mGpsTile;
+  private TextView mGpsState;
+  private TextView mBluetooth;
+  private SwitchCompat mGpsBlock;
+  private View mGpsBlockHint;
+  private View mGpsBlockNeedsBox;
+  private SwitchCompat mSharePosition;
+  private View mSharePositionNeedsMock;
+  private View mShop;
+  private View mShopOffer;
+  private View mBuyAnother;
+  private View mSearch;
+  private final ImageView[] mStepDots = new ImageView[4];
+  private final TextView[] mSteps = new TextView[4];
+  private TextView mStepHint;
+  private TextView mStepAction;
+  private final View[] mRings = new View[3];
+  @Nullable
+  private AnimatorSet mRingsAnimator;
+
+  private View mGpsPage;
+  private GpsSheetView mGpsView;
+
+  private View mCarsPage;
   private LinearLayout mCars;
+  private View mAddCar;
   // The texts of the car rows shown: the rows are made again when they change.
   private List<String> mCarTexts = new ArrayList<>();
-  private View mSpeedTablePage;
-  private LinearLayout mSpeedTableRows;
-  private View mValuesPage;
-  private LinearLayout mValuesRows;
+  private View mAddCarPage;
+
   private View mPhonesPage;
   private LinearLayout mPhonesRows;
   private View mPhonesReadOnly;
   private View mAddPhone;
   // The texts of the phone rows shown: the rows are made again when they change.
   private List<String> mPhoneTexts = new ArrayList<>();
+
+  private View mBoxPage;
+  private TextView mReadiness;
+  private final Section[] mSections = new Section[4];
+  private Section mObdSection;
   private TextView mReadOnly;
-  // The values shown: the rows are made again when the box sends other fields.
+  private View mFirmwareRow;
+  private TextView mFirmware;
+  private Button mFirmwareAction;
+  private TextView mSpeed;
+  private View mVoltageMismatch;
+  private TextView mSpeedScale;
+  private TextView mRoughSpeed;
+  private TextView mSpeedLagValue;
+  private TextView mSpeedLagSource;
+  private LinearLayout mSpeedTableRows;
+  private TextView mCalibrationRow;
+  // The values of the box by groups, in the order the box sends them: car, gyroscope, OBD, box.
+  private final LinearLayout[] mValueGroups = new LinearLayout[4];
+  // The values shown, the last ones while the box is out of reach: the rows are made again when the box sends other
+  // fields.
   private NoGps.BoxValue[] mValueIds = new NoGps.BoxValue[0];
+  private String[] mValues = new String[0];
   private TextView[] mValueTexts = new TextView[0];
-  @Nullable
-  private TextView mVoltageMismatch;
-  private View mSearch;
-  private View mShop;
-  private final ImageView[] mStepDots = new ImageView[4];
-  private final TextView[] mSteps = new TextView[4];
-  private TextView mStepHint;
-  private TextView mStepAction;
-  private TextView mBluetooth;
-  private final View[] mRings = new View[3];
-  @Nullable
-  private AnimatorSet mRingsAnimator;
+
+  private View mCalibrationPage;
+  private TextView mCalibrationState;
+  private ProgressBar mCalibrationProgress;
+  private TextView mCalibrationResult;
+  private Button mCalibrate;
+  private TextView mCalibrateReason;
+
+  /**
+   * Shows the sheet at the page, or turns the sheet shown already to it.
+   * @param unfoldBox unfolds the Box section of the Box page, e.g. to show how the firmware is sent.
+   */
+  public static void show(@NonNull FragmentManager manager, @NonNull Page page, boolean unfoldBox)
+  {
+    if (manager.findFragmentByTag(TAG) instanceof BoxBottomSheet shown)
+    {
+      if (page != Page.MAIN && shown.getView() != null)
+        shown.open(page, unfoldBox);
+      return;
+    }
+    if (manager.isStateSaved())
+      return;
+    final BoxBottomSheet sheet = new BoxBottomSheet();
+    final Bundle args = new Bundle();
+    args.putInt(ARG_PAGE, page.ordinal());
+    args.putBoolean(ARG_UNFOLD_BOX, unfoldBox);
+    sheet.setArguments(args);
+    sheet.show(manager, TAG);
+  }
+
+  /**
+   * The box is connected and asks to be calibrated, or its calibration has failed: a bar on the map tells so until
+   * the user calibrates it. The phone that connected to the box first calibrates it.
+   */
+  public static boolean needsCalibration(@NonNull NoGps.Status status)
+  {
+    if (!isConnected(status) || status.boxReadOnly)
+      return false;
+    return switch (status.getCalibration())
+    {
+      case CALIBRATING -> false;
+      case DONE -> status.boxCalibrationAdvised;
+      case NONE, FAILED_MOVING, MOUNT_MOVED, LINK_LOST -> true;
+    };
+  }
 
   @Override
   public void onCreate(@Nullable Bundle savedInstanceState)
@@ -206,28 +326,36 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     super.onCreate(savedInstanceState);
     if (savedInstanceState != null)
     {
+      mPage = Page.values()[savedInstanceState.getInt(STATE_PAGE)];
       mSearching = savedInstanceState.getBoolean(STATE_SEARCHING);
-      mAddingCar = savedInstanceState.getBoolean(STATE_ADDING_CAR);
       mCarsBeforeAdd = savedInstanceState.getInt(STATE_CARS_BEFORE_ADD);
-      mSpeedTableShown = savedInstanceState.getBoolean(STATE_SPEED_TABLE);
-      mValuesShown = savedInstanceState.getBoolean(STATE_BOX_VALUES);
-      mGpsShown = savedInstanceState.getBoolean(STATE_GPS);
+      final boolean[] unfolded = savedInstanceState.getBooleanArray(STATE_UNFOLDED);
+      if (unfolded != null)
+        System.arraycopy(unfolded, 0, mUnfolded, 0, mUnfolded.length);
       mShareAsked = savedInstanceState.getBoolean(STATE_SHARE_ASKED);
       // The app was killed while the box was searched: the new core doesn't search it. Without the core the activity
       // goes to the splash screen.
-      if (mSearching && MwmApplication.from(requireContext()).getOrganicMaps().arePlatformAndCoreInitialized())
+      if (MwmApplication.from(requireContext()).getOrganicMaps().arePlatformAndCoreInitialized())
       {
-        if (mAddingCar)
+        if (mPage == Page.ADD_CAR)
           MwmApplication.from(requireContext()).getLocationHelper().searchNewBox(true);
-        else if (!NoGps.getStatus().inertialEnabled)
+        else if (mSearching && !NoGps.getStatus().inertialEnabled)
           startSearch();
       }
       return;
     }
     if (!NoGps.getStatus().inertialEnabled)
     {
+      // Only the main page tells about a box that is not set up.
       mSearching = true;
       startSearch();
+      return;
+    }
+    final Bundle args = getArguments();
+    if (args != null)
+    {
+      mPage = Page.values()[args.getInt(ARG_PAGE)];
+      mUnfolded[SECTION_BOX] = args.getBoolean(ARG_UNFOLD_BOX);
     }
   }
 
@@ -241,12 +369,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   public void onSaveInstanceState(@NonNull Bundle outState)
   {
     super.onSaveInstanceState(outState);
+    outState.putInt(STATE_PAGE, mPage.ordinal());
     outState.putBoolean(STATE_SEARCHING, mSearching);
-    outState.putBoolean(STATE_ADDING_CAR, mAddingCar);
     outState.putInt(STATE_CARS_BEFORE_ADD, mCarsBeforeAdd);
-    outState.putBoolean(STATE_SPEED_TABLE, mSpeedTableShown);
-    outState.putBoolean(STATE_BOX_VALUES, mValuesShown);
-    outState.putBoolean(STATE_GPS, mGpsShown);
+    outState.putBooleanArray(STATE_UNFOLDED, mUnfolded);
     outState.putBoolean(STATE_SHARE_ASKED, mShareAsked);
   }
 
@@ -257,26 +383,28 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     final View view = inflater.inflate(R.layout.nogps_box_sheet, container, false);
     mRoot = (ViewGroup) ((ViewGroup) view).getChildAt(0);
-    mTiles = view.findViewById(R.id.box_tiles);
+    mMain = view.findViewById(R.id.box_main);
+    mTitle = view.findViewById(R.id.box_title);
+    mTitle.setOnClickListener(v -> showPage(Page.CARS));
     mBox = view.findViewById(R.id.box_box);
     mBoxChevron = view.findViewById(R.id.box_chevron);
-    mBox.setOnClickListener(v -> openValues());
+    mBox.setOnClickListener(v -> showPage(Page.BOX));
     mTile = new StatusBar.Button(view.findViewById(R.id.box_tile), view.findViewById(R.id.box_icon),
                                  view.findViewById(R.id.box_badge));
-    mGpsGroup = view.findViewById(R.id.box_gps_group);
+    mState = view.findViewById(R.id.box_state);
+    mStateColors = mState.getTextColors();
+    mGpsRow = view.findViewById(R.id.box_gps_row);
+    mGpsRow.setOnClickListener(v -> showPage(Page.GPS));
     mGpsTile = new StatusBar.Button(view.findViewById(R.id.box_gps_tile), view.findViewById(R.id.box_gps_icon),
                                     view.findViewById(R.id.box_gps_badge));
     mGpsState = view.findViewById(R.id.box_gps_state);
-    mGpsUse = view.findViewById(R.id.box_gps_use);
-    mGpsUseHint = view.findViewById(R.id.box_gps_use_hint);
-    mGpsUseNeedsBox = view.findViewById(R.id.box_gps_use_needs_box);
-    mGpsPage = view.findViewById(R.id.box_gps_page);
-    mGpsView = view.findViewById(R.id.box_gps_view);
-    mGpsRow = view.findViewById(R.id.box_gps_row);
-    mGpsRow.setOnClickListener(v -> showGps(true));
-    view.findViewById(R.id.box_gps_back).setOnClickListener(v -> showGps(false));
-    mGpsUse.setOnClickListener(v -> {
-      NoGps.nativeSetGpsDisabled(!mGpsUse.isChecked());
+    mBluetooth = view.findViewById(R.id.box_bluetooth);
+    mBluetooth.setOnClickListener(v -> onStepAction());
+    mGpsBlock = view.findViewById(R.id.box_gps_block);
+    mGpsBlockHint = view.findViewById(R.id.box_gps_block_hint);
+    mGpsBlockNeedsBox = view.findViewById(R.id.box_gps_block_needs_box);
+    mGpsBlock.setOnClickListener(v -> {
+      NoGps.nativeSetGpsDisabled(mGpsBlock.isChecked());
       update();
     });
     mSharePosition = view.findViewById(R.id.box_share_position);
@@ -291,33 +419,13 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       update();
     });
     mSharePositionNeedsMock.setOnClickListener(v -> openDeveloperOptions());
-    mState = view.findViewById(R.id.box_state);
-    mStateColors = mState.getTextColors();
-    mConnected = view.findViewById(R.id.box_connected);
-    mName = view.findViewById(R.id.box_name);
-    mSpeed = view.findViewById(R.id.box_speed);
-    mRpm = view.findViewById(R.id.box_rpm);
-    mSpeedTable = view.findViewById(R.id.box_speed_table);
-    mSpeedTableState = view.findViewById(R.id.box_speed_table_state);
-    mSpeedGroup = view.findViewById(R.id.box_speed_group);
-    mSpeedLagValue = view.findViewById(R.id.box_speed_lag_value);
-    mSpeedLagSource = view.findViewById(R.id.box_speed_lag_source);
-    mFirmware = view.findViewById(R.id.box_firmware);
-    mCalibrate = view.findViewById(R.id.box_calibrate);
-    mCalibration = view.findViewById(R.id.box_calibration);
-    mCalibrateAction = view.findViewById(R.id.box_calibrate_action);
-    mInstallFirmware = view.findViewById(R.id.box_install_firmware);
-    mSpeedTablePage = view.findViewById(R.id.box_speed_table_page);
-    mSpeedTableRows = view.findViewById(R.id.box_speed_table_rows);
-    mValuesPage = view.findViewById(R.id.box_values_page);
-    mValuesRows = view.findViewById(R.id.box_values_rows);
-    mPhonesPage = view.findViewById(R.id.box_phones_page);
-    mPhonesRows = view.findViewById(R.id.box_phones_rows);
-    mPhonesReadOnly = view.findViewById(R.id.box_phones_read_only);
-    mAddPhone = view.findViewById(R.id.box_add_phone);
-    mReadOnly = view.findViewById(R.id.box_read_only);
-    mSearch = view.findViewById(R.id.box_search);
     mShop = view.findViewById(R.id.box_shop);
+    mShopOffer = view.findViewById(R.id.box_shop_offer);
+    mBuyAnother = view.findViewById(R.id.box_buy_another);
+    view.findViewById(R.id.box_buy).setOnClickListener(v -> Utils.openUrl(requireContext(), SHOP_URL));
+    mBuyAnother.setOnClickListener(v -> Utils.openUrl(requireContext(), SHOP_URL));
+
+    mSearch = view.findViewById(R.id.box_search);
     final int[] dots = {R.id.box_step0_dot, R.id.box_step1_dot, R.id.box_step2_dot, R.id.box_step3_dot};
     final int[] steps = {R.id.box_step0, R.id.box_step1, R.id.box_step2, R.id.box_step3};
     for (int i = 0; i < mSteps.length; i++)
@@ -326,41 +434,93 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       mSteps[i] = view.findViewById(steps[i]);
     }
     mStepHint = view.findViewById(R.id.box_step_hint);
-    mObdHint = view.findViewById(R.id.box_obd_hint);
     mStepAction = view.findViewById(R.id.box_step_action);
     mStepAction.setOnClickListener(v -> onStepAction());
-    mBluetooth = view.findViewById(R.id.box_bluetooth);
-    mBluetooth.setOnClickListener(v -> onStepAction());
     final int[] rings = {R.id.box_ring0, R.id.box_ring1, R.id.box_ring2};
     for (int i = 0; i < mRings.length; i++)
       mRings[i] = view.findViewById(rings[i]);
 
-    mSpeedTable.setOnClickListener(v -> showSpeedTable(true));
-    view.findViewById(R.id.box_clear_speed)
-        .setOnClickListener(v -> SensorsBottomSheet.confirmClearSpeed(requireContext(), this::update));
-    view.findViewById(R.id.box_speed_table_back).setOnClickListener(v -> showSpeedTable(false));
-    mName.setOnClickListener(v -> openValues());
-    view.findViewById(R.id.box_values_back).setOnClickListener(v -> showValues(false));
-    view.findViewById(R.id.box_phones_back).setOnClickListener(v -> showPhones(false));
-    mAddPhone.setOnClickListener(v -> addPhone());
-    mCalibrate.setOnClickListener(v -> {
-      // The row shows how the calibration goes.
-      if (calibrateActionText(NoGps.getStatus()) == 0)
-        return;
-      NoGps.nativeCalibrate();
-      update();
-    });
-    mInstallFirmware.setOnClickListener(v -> {
-      // The box may have gone on since the button was drawn.
-      if (SensorsBottomSheet.canInstallFirmware(NoGps.getStatus()))
-        NoGps.nativeStartFirmwareUpdate();
-      update();
-    });
+    mGpsPage = view.findViewById(R.id.box_gps_page);
+    mGpsView = view.findViewById(R.id.box_gps_view);
+    setUpHeader(view, R.id.box_gps_header, R.string.nogps_status_gps);
+
+    mCarsPage = view.findViewById(R.id.box_cars_page);
+    setUpHeader(view, R.id.box_cars_header, R.string.nogps_cars);
     mCars = view.findViewById(R.id.box_cars);
-    view.findViewById(R.id.box_add_car).setOnClickListener(v -> addCar());
-    view.findViewById(R.id.box_buy).setOnClickListener(v -> Utils.openUrl(requireContext(), SHOP_URL));
-    view.findViewById(R.id.box_buy_another).setOnClickListener(v -> Utils.openUrl(requireContext(), SHOP_URL));
+    mAddCar = view.findViewById(R.id.box_add_car);
+    mAddCar.setOnClickListener(v -> showPage(Page.ADD_CAR));
+    mAddCarPage = view.findViewById(R.id.box_add_car_page);
+    setUpHeader(view, R.id.box_add_car_header, R.string.nogps_car_add);
+
+    mPhonesPage = view.findViewById(R.id.box_phones_page);
+    setUpHeader(view, R.id.box_phones_header, R.string.nogps_car_phones);
+    mPhonesRows = view.findViewById(R.id.box_phones_rows);
+    mPhonesReadOnly = view.findViewById(R.id.box_phones_read_only);
+    mAddPhone = view.findViewById(R.id.box_add_phone);
+    mAddPhone.setOnClickListener(v -> addPhone());
+
+    mBoxPage = view.findViewById(R.id.box_box_page);
+    setUpHeader(view, R.id.box_box_header, R.string.nogps_box_title);
+    mReadiness = view.findViewById(R.id.box_readiness);
+    mSections[SECTION_BOX] = new Section(view, R.id.box_section_box, R.id.box_section_box_content);
+    mSections[SECTION_CAR] = new Section(view, R.id.box_section_car, R.id.box_section_car_content);
+    mSections[SECTION_SPEED] = new Section(view, R.id.box_section_speed, R.id.box_section_speed_content);
+    mSections[SECTION_IMU] = new Section(view, R.id.box_section_imu, R.id.box_section_imu_content);
+    for (int i = 0; i < mSections.length; ++i)
+    {
+      final int section = i;
+      mSections[i].header.setOnClickListener(v -> {
+        mUnfolded[section] = !mUnfolded[section];
+        TransitionManager.beginDelayedTransition(mRoot);
+        update();
+      });
+    }
+    // Always open: it tells why the car gives no speed.
+    mObdSection = new Section(view, R.id.box_section_obd, R.id.box_values_obd);
+    mObdSection.chevron.setVisibility(View.GONE);
+    mObdSection.header.setClickable(false);
+    mObdSection.header.setBackground(null);
+    mReadOnly = view.findViewById(R.id.box_read_only);
+    mFirmwareRow = view.findViewById(R.id.box_firmware_row);
+    mFirmware = view.findViewById(R.id.box_firmware);
+    mFirmwareAction = view.findViewById(R.id.box_firmware_action);
+    mFirmwareAction.setOnClickListener(v -> onFirmwareAction());
+    mSpeed = view.findViewById(R.id.box_speed);
+    mVoltageMismatch = view.findViewById(R.id.box_voltage_mismatch);
+    mSpeedScale = view.findViewById(R.id.box_speed_scale);
+    mRoughSpeed = view.findViewById(R.id.box_rough_speed);
+    mSpeedLagValue = view.findViewById(R.id.box_speed_lag_value);
+    mSpeedLagSource = view.findViewById(R.id.box_speed_lag_source);
+    mSpeedTableRows = view.findViewById(R.id.box_speed_table_rows);
+    view.findViewById(R.id.box_clear_speed).setOnClickListener(v -> confirmClearSpeed());
+    mCalibrationRow = view.findViewById(R.id.box_calibration_row);
+    mCalibrationRow.setOnClickListener(v -> showPage(Page.CALIBRATION));
+    mValueGroups[0] = view.findViewById(R.id.box_values_car);
+    mValueGroups[1] = view.findViewById(R.id.box_values_imu);
+    mValueGroups[2] = view.findViewById(R.id.box_values_obd);
+    mValueGroups[3] = view.findViewById(R.id.box_values_box);
+
+    mCalibrationPage = view.findViewById(R.id.box_calibration_page);
+    setUpHeader(view, R.id.box_calibration_header, R.string.nogps_box_calibration);
+    mCalibrationState = view.findViewById(R.id.box_calibration_state);
+    mCalibrationProgress = view.findViewById(R.id.box_calibration_progress);
+    mCalibrationResult = view.findViewById(R.id.box_calibration_result);
+    mCalibrate = view.findViewById(R.id.box_calibrate);
+    mCalibrate.setOnClickListener(v -> {
+      // The box may have gone out of reach since the button was drawn.
+      if (calibrateDisabledReason(NoGps.getStatus()) == 0)
+        NoGps.nativeCalibrate();
+      update();
+    });
+    mCalibrateReason = view.findViewById(R.id.box_calibrate_reason);
     return view;
+  }
+
+  private void setUpHeader(@NonNull View root, int id, @StringRes int title)
+  {
+    final View header = root.findViewById(id);
+    ((TextView) header.findViewById(R.id.page_title)).setText(title);
+    header.findViewById(R.id.page_back).setOnClickListener(v -> showPage(mPage.parent()));
   }
 
   @Override
@@ -370,8 +530,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     ((ComponentDialog) requireDialog())
         .getOnBackPressedDispatcher()
         .addCallback(getViewLifecycleOwner(), mBackFromPage);
-    if (fitsRows() && !mGpsShown)
-      getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
+    // Each page is as high as its rows, a long one scrolls. Pulled down, the sheet closes.
+    final BottomSheetBehavior<?> behavior = getBehavior();
+    behavior.setSkipCollapsed(true);
+    behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
   }
 
   @Override
@@ -398,62 +560,143 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mGpsView.stop();
   }
 
+  /**
+   * Called on the sheet shown already, e.g. by the firmware offer.
+   */
+  private void open(@NonNull Page page, boolean unfoldBox)
+  {
+    if (unfoldBox)
+      mUnfolded[SECTION_BOX] = true;
+    showPage(page);
+  }
+
+  /**
+   * The page opened comes from the end as a new screen does, and goes back there.
+   */
+  private void showPage(@NonNull Page page)
+  {
+    final Page from = mPage;
+    if (page == from)
+    {
+      update();
+      return;
+    }
+    if (from == Page.ADD_CAR)
+      stopAddingCar();
+    mPage = page;
+    if (page == Page.ADD_CAR)
+      startAddingCar();
+    else if (page == Page.PHONES)
+      NoGps.nativeListBoxPhones();
+    final boolean deeper = page.depth() > from.depth();
+    final Slide in = new Slide(deeper ? Gravity.END : Gravity.START);
+    final Slide out = new Slide(deeper ? Gravity.START : Gravity.END);
+    for (View view : pageViews(page))
+      in.addTarget(view);
+    for (View view : pageViews(from))
+      out.addTarget(view);
+    TransitionManager.beginDelayedTransition(mRoot, new TransitionSet().addTransition(in).addTransition(out));
+    update();
+    getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
+  }
+
+  @NonNull
+  private View[] pageViews(@NonNull Page page)
+  {
+    return switch (page)
+    {
+      case MAIN -> new View[] {mMain, mSearch, mShop};
+      case GPS -> new View[] {mGpsPage};
+      case CARS -> new View[] {mCarsPage};
+      case PHONES -> new View[] {mPhonesPage};
+      case ADD_CAR -> new View[] {mAddCarPage, mSearch};
+      case BOX -> new View[] {mBoxPage};
+      case CALIBRATION -> new View[] {mCalibrationPage};
+    };
+  }
+
   private void update()
   {
     final NoGps.Status status = NoGps.getStatus();
     // The box connected while it was searched: the sheet shows it as any other.
-    if (mSearching && (mAddingCar ? isCarAdded() : isBoxHeard(status)))
-    {
+    if (mSearching && isBoxHeard(status))
       mSearching = false;
-      mAddingCar = false;
-      // As with a box set up: the sheet goes down to its height, its rows go on below.
-      if (!mGpsShown)
-        getBehavior().setState(BottomSheetBehavior.STATE_COLLAPSED);
-    }
-    // The box has disconnected: its values are gone.
-    if (mValuesShown && status.boxValues.length == 0)
+    if (mPage == Page.ADD_CAR && isCarAdded())
     {
-      showValues(false);
+      showPage(Page.CARS);
       return;
     }
-    if (mPhonesShown && !status.boxHasPhones)
+    // The box has disconnected: its phones are not known.
+    if (mPage == Page.PHONES && !status.boxHasPhones)
     {
-      showPhones(false);
+      showPage(Page.CARS);
+      return;
+    }
+    // The pages of a box set up, e.g. after the box has removed this phone.
+    if (mPage != Page.MAIN && mPage != Page.GPS && (mSearching || !status.inertialEnabled))
+    {
+      showPage(Page.MAIN);
       return;
     }
     updateAddPhone(status);
-    final boolean speedTable = mSpeedTableShown && !mGpsShown && !mSearching && status.inertialEnabled;
-    final boolean values = mValuesShown && !mGpsShown && !mSearching && status.inertialEnabled;
-    final boolean phones = mPhonesShown && !mGpsShown && !mSearching && status.inertialEnabled;
-    final boolean page = speedTable || values || phones || mGpsShown;
-    mBackFromPage.setEnabled(page);
-    mTiles.setVisibility(page ? View.GONE : View.VISIBLE);
-    mGpsGroup.setVisibility(page ? View.GONE : View.VISIBLE);
-    mGpsPage.setVisibility(mGpsShown ? View.VISIBLE : View.GONE);
-    mSpeedTablePage.setVisibility(speedTable ? View.VISIBLE : View.GONE);
-    mValuesPage.setVisibility(values ? View.VISIBLE : View.GONE);
-    mPhonesPage.setVisibility(phones ? View.VISIBLE : View.GONE);
-    mSearch.setVisibility(mSearching && !page ? View.VISIBLE : View.GONE);
-    mConnected.setVisibility(!mSearching && status.inertialEnabled && !page ? View.VISIBLE : View.GONE);
-    // Forgotten in the sensors sheet, or being searched.
-    mShop.setVisibility((mSearching || !status.inertialEnabled) && !page ? View.VISIBLE : View.GONE);
-    updateGps(status);
-    // The box tile shows the values while the box is connected, as its name row does.
-    final boolean hasValues = status.boxValues.length > 0;
-    mBox.setClickable(hasValues);
-    mBoxChevron.setVisibility(hasValues ? View.VISIBLE : View.GONE);
-    if (mGpsShown)
-      mGpsView.update(status);
-    else if (mSearching)
+    mBackFromPage.setEnabled(mPage != Page.MAIN);
+    for (Page page : Page.values())
+    {
+      if (page != mPage)
+        for (View view : pageViews(page))
+          view.setVisibility(View.GONE);
+    }
+    mMain.setVisibility(mPage == Page.MAIN ? View.VISIBLE : View.GONE);
+    mShop.setVisibility(mPage == Page.MAIN ? View.VISIBLE : View.GONE);
+    mSearch.setVisibility((mPage == Page.MAIN && mSearching) || mPage == Page.ADD_CAR ? View.VISIBLE : View.GONE);
+    for (View view : pageViews(mPage))
+    {
+      if (view != mSearch && view != mShop)
+        view.setVisibility(View.VISIBLE);
+    }
+    if (mPage != Page.ADD_CAR && !(mPage == Page.MAIN && mSearching))
+      animateRings(false);
+    switch (mPage)
+    {
+    case MAIN -> updateMain(status);
+    case GPS -> mGpsView.update(status);
+    case CARS -> updateCars(status);
+    case PHONES -> updatePhones(status);
+    case ADD_CAR -> updateSearch(status);
+    case BOX -> updateBoxPage(status);
+    case CALIBRATION -> updateCalibration(status);
+    }
+  }
+
+  private void updateMain(@NonNull NoGps.Status status)
+  {
+    final Context context = requireContext();
+    final boolean boxSetUp = status.inertialEnabled && !mSearching;
+    final NoGps.Car[] cars = boxSetUp ? NoGps.nativeGetCars() : new NoGps.Car[0];
+    NoGps.Car current = null;
+    for (NoGps.Car car : cars)
+    {
+      if (car.id.equals(status.carId))
+        current = car;
+    }
+    mTitle.setText(current != null ? BoxTexts.carName(context, current) : getString(R.string.nogps_box_title));
+    mTitle.setClickable(cars.length > 0);
+    mTitle.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, cars.length > 0 ? R.drawable.ic_nogps_chevron : 0, 0);
+    mBox.setClickable(boxSetUp);
+    mBoxChevron.setVisibility(boxSetUp ? View.VISIBLE : View.GONE);
+    if (mSearching)
       updateSearch(status);
-    else if (speedTable)
-      updateSpeedTable(status);
-    else if (values)
-      updateValues(status);
-    else if (phones)
-      updatePhones(status);
     else
-      updateBox(status);
+      showBox(StatusBar.getBoxLook(status), status.inertialEnabled ? BoxTexts.boxStateText(context, status)
+                                                                   : getString(R.string.nogps_box_buy_title));
+    final int linkAction = boxSetUp ? linkActionText(status) : 0;
+    mBluetooth.setVisibility(linkAction != 0 ? View.VISIBLE : View.GONE);
+    if (linkAction != 0)
+      mBluetooth.setText(linkAction);
+    updateGps(status);
+    // Without a box the offer stands out.
+    mShopOffer.setVisibility(boxSetUp ? View.GONE : View.VISIBLE);
+    mBuyAnother.setVisibility(boxSetUp ? View.VISIBLE : View.GONE);
   }
 
   private void updateGps(@NonNull NoGps.Status status)
@@ -464,13 +707,13 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final String state = StatusBar.getGpsStateText(context, status);
     showState(mGpsState, look, state);
     mGpsRow.setContentDescription(getString(R.string.nogps_status_gps) + ": " + state);
-    // GPS is turned off for the car only while the box can drive it: nothing would move the mark otherwise.
+    // GPS is blocked for the car only while the box can drive it: nothing would move the mark otherwise.
     final boolean canSwitch = status.gpsDisabled || isBoxHeard(status);
-    mGpsUse.setEnabled(canSwitch);
-    if (!mGpsUse.isPressed())
-      mGpsUse.setChecked(!status.gpsDisabled);
-    mGpsUseHint.setVisibility(canSwitch ? View.VISIBLE : View.INVISIBLE);
-    mGpsUseNeedsBox.setVisibility(canSwitch ? View.INVISIBLE : View.VISIBLE);
+    mGpsBlock.setEnabled(canSwitch);
+    if (!mGpsBlock.isPressed())
+      mGpsBlock.setChecked(status.gpsDisabled);
+    mGpsBlockHint.setVisibility(canSwitch ? View.VISIBLE : View.INVISIBLE);
+    mGpsBlockNeedsBox.setVisibility(canSwitch ? View.INVISIBLE : View.VISIBLE);
 
     // Off until the app is picked as the mock location app, the hint tells where.
     final boolean shareAllowed = MockLocationShare.isAllowed(context);
@@ -500,21 +743,20 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   }
 
   /**
-   * Before the box tells its sensor.
-   */
-  @NonNull
-  static String boxName(@NonNull NoGps.Status status)
-  {
-    return status.inertialStarted && !status.deviceName.isEmpty() ? status.deviceName : BOX_NAME;
-  }
-
-  /**
    * The box sends its data: it is connected, whatever it tells.
    */
   static boolean isBoxHeard(@NonNull NoGps.Status status)
   {
     final NoGps.SourceState state = status.getSourceState();
     return status.inertialStarted && state != NoGps.SourceState.DISCONNECTED && state != NoGps.SourceState.CONNECTING;
+  }
+
+  /**
+   * The box tells the car data and its calibration only while it is in reach.
+   */
+  private static boolean isConnected(@NonNull NoGps.Status status)
+  {
+    return isBoxHeard(status) && status.getBleState() == NoGps.BleState.CONNECTED;
   }
 
   /**
@@ -548,7 +790,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
    */
   static int obdHintText(@NonNull NoGps.Status status)
   {
-    if (!isBoxHeard(status) || status.getBleState() != NoGps.BleState.CONNECTED)
+    if (!isConnected(status))
       return 0;
     return switch (status.getSourceState())
     {
@@ -593,83 +835,11 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
                                                           : R.string.nogps_box_allow_location;
   }
 
-  private void updateBox(@NonNull NoGps.Status status)
-  {
-    final Context context = requireContext();
-    animateRings(false);
-    final StatusBar.Look look = StatusBar.getBoxLook(status);
-    showBox(look, status.inertialEnabled ? SensorsBottomSheet.boxStateText(context, status)
-                                         : getString(R.string.nogps_box_buy_title));
-    if (!status.inertialEnabled)
-      return;
-    final int linkAction = linkActionText(status);
-    mBluetooth.setVisibility(linkAction != 0 ? View.VISIBLE : View.GONE);
-    if (linkAction != 0)
-      mBluetooth.setText(linkAction);
-    final int obdHint = obdHintText(status);
-    mObdHint.setVisibility(obdHint != 0 ? View.VISIBLE : View.GONE);
-    if (obdHint != 0)
-      mObdHint.setText(obdHint);
-    mName.setText(getString(R.string.nogps_sensors_box, boxName(status)));
-    final boolean hasValues = status.boxValues.length > 0;
-    mName.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, hasValues ? R.drawable.ic_nogps_chevron : 0, 0);
-    mName.setClickable(hasValues);
-    // The box tells the car data and its calibration: there is nothing to show while it is out of reach.
-    final boolean connected = isBoxHeard(status) && status.getBleState() == NoGps.BleState.CONNECTED;
-    mSpeed.setVisibility(connected ? View.VISIBLE : View.GONE);
-    mSpeed.setText(getString(R.string.nogps_sensors_speed, status.speedKmh >= 0
-                                                               ? getString(R.string.nogps_speed_kmh, status.speedKmh)
-                                                               : getString(R.string.nogps_unknown)));
-    final boolean rpm = connected && status.rpm >= 0;
-    mRpm.setVisibility(rpm ? View.VISIBLE : View.GONE);
-    if (rpm)
-      mRpm.setText(getString(R.string.nogps_box_rpm, getString(R.string.nogps_rpm, status.rpm)));
-    mSpeedGroup.setVisibility(status.inertialStarted ? View.VISIBLE : View.GONE);
-    mSpeedTableState.setText(speedTableText(context, status));
-    mSpeedLagValue.setText(
-        getString(R.string.nogps_speed_lag_value, String.format(Locale.US, "%.1f", status.speedLagSec)));
-    mSpeedLagSource.setText(status.speedLagMeasured ? R.string.nogps_speed_lag_measured
-                                                    : R.string.nogps_speed_lag_usual);
-    final boolean firmware = !status.boxFirmware.isEmpty() || status.getFirmwareUpdate() != NoGps.FirmwareUpdate.NONE;
-    mFirmware.setVisibility(firmware ? View.VISIBLE : View.GONE);
-    mFirmware.setText(getString(R.string.nogps_sensors_firmware, SensorsBottomSheet.firmwareText(context, status)));
-    // Another phone calibrates and updates the box.
-    mReadOnly.setVisibility(connected && status.boxReadOnly ? View.VISIBLE : View.GONE);
-    mCalibrate.setVisibility(connected && !status.boxReadOnly ? View.VISIBLE : View.GONE);
-    if (connected)
-    {
-      final int action = calibrateActionText(status);
-      mCalibration.setText(calibrationText(context, status));
-      mCalibrateAction.setVisibility(action != 0 ? View.VISIBLE : View.GONE);
-      if (action != 0)
-        mCalibrateAction.setText(action);
-      mCalibrate.setClickable(action != 0);
-    }
-    final boolean install = SensorsBottomSheet.canInstallFirmware(status);
-    mInstallFirmware.setVisibility(install ? View.VISIBLE : View.GONE);
-    if (install)
-      mInstallFirmware.setText(getString(R.string.nogps_firmware_install, status.bundledFirmware));
-    updateCars(status);
-  }
-
-  /**
-   * "Car C47D" until the user names it.
-   */
-  @NonNull
-  static String carName(@NonNull Context context, @NonNull NoGps.Car car)
-  {
-    return car.name.isEmpty() ? context.getString(app.organicmaps.sdk.R.string.nogps_car_default_name, car.id)
-                              : car.name;
-  }
-
   @NonNull
   private String carStateText(@NonNull NoGps.Status status, @NonNull NoGps.Car car)
   {
     if (car.id.equals(status.carId))
-    {
-      final boolean connected = isBoxHeard(status) && status.getBleState() == NoGps.BleState.CONNECTED;
-      return getString(connected ? R.string.nogps_car_connected : R.string.nogps_car_current);
-    }
+      return getString(isConnected(status) ? R.string.nogps_car_connected : R.string.nogps_car_current);
     if (car.lastSeenUnixMs <= 0)
       return "";
     final CharSequence when =
@@ -681,10 +851,11 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     final Context context = requireContext();
     final NoGps.Car[] cars = NoGps.nativeGetCars();
+    mAddCar.setVisibility(cars.length < NoGps.nativeGetMaxCars() ? View.VISIBLE : View.GONE);
     final List<String> texts = new ArrayList<>();
     for (NoGps.Car car : cars)
     {
-      texts.add(carName(context, car));
+      texts.add(BoxTexts.carName(context, car));
       texts.add(carStateText(status, car));
     }
     if (texts.equals(mCarTexts))
@@ -725,14 +896,14 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     if (current && NoGps.getStatus().boxHasPhones)
     {
       items.add(getString(R.string.nogps_car_phones));
-      actions.add(() -> showPhones(true));
+      actions.add(() -> showPage(Page.PHONES));
     }
     items.add(getString(R.string.nogps_car_rename));
     actions.add(() -> renameCar(car));
     items.add(getString(R.string.nogps_car_forget));
     actions.add(() -> confirmForgetCar(car));
     new MaterialAlertDialogBuilder(context)
-        .setTitle(carName(context, car))
+        .setTitle(BoxTexts.carName(context, car))
         .setItems(items.toArray(new String[0]), (dialog, which) -> actions.get(which).run())
         .setNegativeButton(R.string.cancel, null)
         .show();
@@ -766,7 +937,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     final Context context = requireContext();
     new MaterialAlertDialogBuilder(context)
-        .setTitle(carName(context, car))
+        .setTitle(BoxTexts.carName(context, car))
         .setMessage(R.string.nogps_car_forget_text)
         .setPositiveButton(R.string.nogps_car_forget,
                            (dialog, which) -> {
@@ -784,14 +955,19 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   /**
    * The box of the new car is searched step by step, as the first one: the box connected now is dropped.
    */
-  private void addCar()
+  private void startAddingCar()
   {
-    mSearching = true;
-    mAddingCar = true;
     mCarsBeforeAdd = NoGps.nativeGetCars().length;
     MwmApplication.from(requireContext()).getLocationHelper().searchNewBox(true);
-    update();
-    getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
+  }
+
+  /**
+   * Left before the box of the new car was heard: the boxes of the other cars are looked for again.
+   */
+  private void stopAddingCar()
+  {
+    if (!isCarAdded())
+      MwmApplication.from(requireContext()).getLocationHelper().searchNewBox(false);
   }
 
   /**
@@ -800,60 +976,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private boolean isCarAdded()
   {
     return NoGps.nativeGetCars().length > mCarsBeforeAdd;
-  }
-
-  @NonNull
-  private static String calibrationText(@NonNull Context context, @NonNull NoGps.Status status)
-  {
-    final NoGps.CalibrationState calibration = status.getCalibration();
-    if (calibration == NoGps.CalibrationState.NONE)
-      return context.getString(R.string.nogps_box_sensors_not_calibrated);
-    if (calibration == NoGps.CalibrationState.DONE && !status.boxCalibrationAdvised)
-      return context.getString(R.string.nogps_box_sensors_calibrated);
-    return context.getString(R.string.nogps_sensors_box_sensors,
-                             SensorsBottomSheet.boxCalibrationText(context, status, calibration));
-  }
-
-  /**
-   * @return 0 while the box calibrates: the user has nothing to do.
-   */
-  private static int calibrateActionText(@NonNull NoGps.Status status)
-  {
-    return switch (status.getCalibration())
-    {
-      case CALIBRATING -> 0;
-      case DONE -> status.boxCalibrationAdvised ? R.string.nogps_sensors_calibrate_box : R.string.nogps_box_recalibrate;
-      case NONE, FAILED_MOVING, MOUNT_MOVED, LINK_LOST -> R.string.nogps_sensors_calibrate_box;
-    };
-  }
-
-  private void showSpeedTable(boolean shown)
-  {
-    mSpeedTableShown = shown;
-    switchPage(shown, mSpeedTablePage);
-  }
-
-  /**
-   * The values come while the box is connected.
-   */
-  private void openValues()
-  {
-    if (NoGps.getStatus().boxValues.length > 0)
-      showValues(true);
-  }
-
-  private void showValues(boolean shown)
-  {
-    mValuesShown = shown;
-    switchPage(shown, mValuesPage);
-  }
-
-  private void showPhones(boolean shown)
-  {
-    mPhonesShown = shown;
-    if (shown)
-      NoGps.nativeListBoxPhones();
-    switchPage(shown, mPhonesPage);
   }
 
   private void updatePhones(@NonNull NoGps.Status status)
@@ -955,54 +1077,183 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mAddPhoneDialog.setMessage(text);
   }
 
-  private void showGps(boolean shown)
+  private void updateBoxPage(@NonNull NoGps.Status status)
   {
-    mGpsShown = shown;
-    switchPage(shown, mGpsPage);
+    final Context context = requireContext();
+    final boolean connected = isConnected(status);
+    updateReadiness(status);
+    updateValues(status);
+
+    final String firmware = BoxTexts.firmwareText(context, status);
+    final String boxState = BoxTexts.boxStateText(context, status);
+    mSections[SECTION_BOX].show(getString(R.string.nogps_box_value_group_box),
+                                firmware.isEmpty() ? boxState : boxState + " · " + firmware);
+    // Another phone calibrates and updates the box.
+    mReadOnly.setVisibility(connected && status.boxReadOnly ? View.VISIBLE : View.GONE);
+    final NoGps.FirmwareUpdate update = status.getFirmwareUpdate();
+    final boolean updating = BoxTexts.isUpdating(update);
+    mFirmwareRow.setVisibility(updating || !status.boxFirmware.isEmpty() ? View.VISIBLE : View.GONE);
+    mFirmware.setText(getString(R.string.nogps_sensors_firmware, firmware));
+    // A box that has taken the firmware restarts by itself.
+    final boolean cancel = updating && update != NoGps.FirmwareUpdate.RESTARTING;
+    final boolean install = BoxTexts.canInstallFirmware(status);
+    mFirmwareAction.setVisibility(cancel || install ? View.VISIBLE : View.GONE);
+    if (cancel)
+      mFirmwareAction.setText(R.string.cancel);
+    else if (install)
+      mFirmwareAction.setText(getString(R.string.nogps_firmware_install, status.bundledFirmware));
+
+    final int obdHint = obdHintText(status);
+    mObdSection.show(getString(R.string.nogps_box_value_group_obd), obdHint != 0 ? getString(obdHint) : boxState);
+
+    final NoGps.Car car = currentCar(status);
+    mSections[SECTION_CAR].show(
+        car != null ? BoxTexts.carName(context, car) : getString(R.string.nogps_box_value_group_car),
+        getString(status.engineRunning < 0   ? R.string.nogps_unknown
+                  : status.engineRunning > 0 ? R.string.nogps_engine_running
+                                             : R.string.nogps_engine_stopped));
+    mSpeed.setText(getString(R.string.nogps_sensors_speed, connected && status.speedKmh >= 0
+                                                               ? getString(R.string.nogps_speed_kmh, status.speedKmh)
+                                                               : getString(R.string.nogps_unknown)));
+
+    mSections[SECTION_SPEED].show(getString(R.string.nogps_speed_calibration),
+                                  BoxTexts.speedTableText(context, status));
+    mSpeedScale.setText(getString(R.string.nogps_sensors_scale, String.format(Locale.US, "×%.2f", status.speedScale),
+                                  status.speedTableRanges));
+    // Until GPS measures the speed, e.g. on the first trip, it is corrected roughly by the roads.
+    mRoughSpeed.setVisibility(status.speedTableRanges == 0 ? View.VISIBLE : View.GONE);
+    mRoughSpeed.setText(status.roughSpeedTableRanges > 0
+                            ? getString(R.string.nogps_sensors_rough_speed, status.roughSpeedTableRanges)
+                            : getString(R.string.nogps_sensors_rough_speed_learning));
+    mSpeedLagValue.setText(
+        getString(R.string.nogps_speed_lag_value, String.format(Locale.US, "%.1f", status.speedLagSec)));
+    mSpeedLagSource.setText(status.speedLagMeasured ? R.string.nogps_speed_lag_measured
+                                                    : R.string.nogps_speed_lag_usual);
+    updateSpeedTable(status);
+
+    final List<String> imu = new ArrayList<>();
+    for (int i = 0; i < mValueIds.length; ++i)
+    {
+      final NoGps.BoxValue id = mValueIds[i];
+      if ((id == NoGps.BoxValue.IMU_STATE || id == NoGps.BoxValue.IMU_TEMPERATURE) && connected
+          && !mValues[i].isEmpty())
+        imu.add(BoxTexts.boxValueText(context, status, id, mValues[i]));
+    }
+    mSections[SECTION_IMU].show(getString(R.string.nogps_box_value_group_gyroscope),
+                                imu.isEmpty() ? getString(R.string.nogps_unknown) : String.join(" · ", imu));
+    mCalibrationRow.setText(getString(R.string.nogps_sensors_box_sensors,
+                                      BoxTexts.boxCalibrationText(context, status, calibration(status))));
+
+    for (int i = 0; i < mSections.length; ++i)
+    {
+      // The speed is learned while the box leads the car.
+      final boolean visible = i != SECTION_SPEED || status.inertialStarted;
+      mSections[i].setVisible(visible);
+      if (visible)
+        mSections[i].setOpen(mUnfolded[i]);
+    }
   }
 
-  // Without a box the sheet is at the height of its rows, as on iOS: the search and the offer to buy one.
-  private boolean fitsRows()
+  @Nullable
+  private static NoGps.Car currentCar(@NonNull NoGps.Status status)
   {
-    return mSearching || !NoGps.getStatus().inertialEnabled;
+    for (NoGps.Car car : NoGps.nativeGetCars())
+    {
+      if (car.id.equals(status.carId))
+        return car;
+    }
+    return null;
   }
 
   @NonNull
-  private BottomSheetBehavior<?> getBehavior()
+  private static NoGps.CalibrationState calibration(@NonNull NoGps.Status status)
   {
-    return ((BottomSheetDialog) requireDialog()).getBehavior();
+    return status.inertialStarted ? status.getCalibration() : NoGps.CalibrationState.NONE;
   }
 
-  private void switchPage(boolean shown, @NonNull View page)
+  /**
+   * What the box still needs to lead the car, while it does.
+   */
+  private void updateReadiness(@NonNull NoGps.Status status)
   {
-    // The page opens at the height of the sheet, as on iOS, and is swiped up to see all of it.
-    final BottomSheetBehavior<?> behavior = getBehavior();
-    behavior.setPeekHeight(shown ? ((View) requireView().getParent()).getHeight()
-                                 : BottomSheetBehavior.PEEK_HEIGHT_AUTO);
-    behavior.setState(!shown && fitsRows() ? BottomSheetBehavior.STATE_EXPANDED : BottomSheetBehavior.STATE_COLLAPSED);
-    // The page comes from the end as a new screen does, and goes back there.
-    final TransitionSet transition = new TransitionSet()
-                                         .addTransition(new Slide(Gravity.END).addTarget(page))
-                                         .addTransition(new Slide(Gravity.START)
-                                                            .addTarget(mTiles)
-                                                            .addTarget(mGpsGroup)
-                                                            .addTarget(mConnected)
-                                                            .addTarget(mSearch)
-                                                            .addTarget(mShop));
-    TransitionManager.beginDelayedTransition(mRoot, transition);
-    update();
+    mReadiness.setVisibility(status.inertialStarted ? View.VISIBLE : View.GONE);
+    if (!status.inertialStarted)
+      return;
+    final List<String> missing = new ArrayList<>();
+    if (status.speedKmh < 0)
+      missing.add(getString(R.string.nogps_missing_speed));
+    if (status.getCalibration() != NoGps.CalibrationState.DONE)
+      missing.add(getString(R.string.nogps_missing_box_calibration));
+    if (!status.hasInertialPosition)
+      missing.add(getString(R.string.nogps_missing_position));
+    mReadiness.setText(missing.isEmpty() ? getString(R.string.nogps_sensors_ready)
+                                         : getString(R.string.nogps_sensors_not_ready, String.join(", ", missing)));
+    mReadiness.setTextColor(ContextCompat.getColor(
+        requireContext(), missing.isEmpty() ? R.color.nogps_status_gps : R.color.nogps_status_none));
+  }
+
+  /**
+   * The values the box sends while it is connected. Out of reach, the last ones are shown without their values.
+   */
+  private void updateValues(@NonNull NoGps.Status status)
+  {
+    final boolean live = status.boxValues.length > 0;
+    if (live)
+    {
+      final NoGps.BoxValue[] ids = new NoGps.BoxValue[status.boxValues.length];
+      for (int i = 0; i < ids.length; ++i)
+        ids[i] = status.getBoxValueId(i);
+      if (!Arrays.equals(ids, mValueIds))
+        makeValueRows(ids);
+      mValues = status.boxValues.clone();
+    }
+    else
+    {
+      Arrays.fill(mValues, "");
+    }
+    boolean mismatch = false;
+    for (int i = 0; i < mValueIds.length; ++i)
+    {
+      mValueTexts[i].setText(live ? BoxTexts.boxValueText(requireContext(), status, mValueIds[i], mValues[i])
+                                  : getString(R.string.nogps_unknown));
+      if (mValueIds[i] == NoGps.BoxValue.VOLTAGE_MISMATCH && mValues[i].equals("1"))
+        mismatch = true;
+    }
+    mVoltageMismatch.setVisibility(mismatch ? View.VISIBLE : View.GONE);
+  }
+
+  private void makeValueRows(@NonNull NoGps.BoxValue[] ids)
+  {
+    final LayoutInflater inflater = LayoutInflater.from(requireContext());
+    for (LinearLayout group : mValueGroups)
+      group.removeAllViews();
+    mValueIds = ids;
+    mValues = new String[ids.length];
+    mValueTexts = new TextView[ids.length];
+    // The values come in the order of the groups.
+    final NoGps.BoxValue[] groupStarts = {NoGps.BoxValue.ENGINE, NoGps.BoxValue.IMU_NAME, NoGps.BoxValue.OBD_STATE,
+                                          NoGps.BoxValue.FIRMWARE};
+    for (int i = 0; i < ids.length; ++i)
+    {
+      int group = 0;
+      while (group + 1 < groupStarts.length && ids[i].ordinal() >= groupStarts[group + 1].ordinal())
+        ++group;
+      final View row = inflater.inflate(R.layout.nogps_sheet_row, mValueGroups[group], false);
+      ((TextView) row.findViewById(R.id.row_label)).setText(BoxTexts.boxValueLabel(ids[i]));
+      mValueTexts[i] = row.findViewById(R.id.row_value);
+      mValueGroups[group].addView(row);
+    }
   }
 
   private void updateSpeedTable(@NonNull NoGps.Status status)
   {
-    final int ranges = status.inertialStarted ? status.speedTableCarM.length : 0;
+    final int ranges = status.speedTableCarM.length;
     while (mSpeedTableRows.getChildCount() < ranges)
     {
       final TextView row = new TextView(requireContext());
       row.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
       row.setFontFeatureSettings("tnum");
-      row.setMinHeight(
-          (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 28, getResources().getDisplayMetrics()));
+      row.setMinHeight(dp(28));
       row.setGravity(Gravity.CENTER_VERTICAL);
       mSpeedTableRows.addView(row);
     }
@@ -1011,166 +1262,84 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       final TextView row = (TextView) mSpeedTableRows.getChildAt(i);
       row.setVisibility(i < ranges ? View.VISIBLE : View.GONE);
       if (i < ranges)
-        row.setText(SensorsBottomSheet.speedTableRowText(requireContext(), status, i));
+        row.setText(BoxTexts.speedTableRowText(requireContext(), status, i));
     }
   }
 
-  private void updateValues(@NonNull NoGps.Status status)
+  /**
+   * The row does what it shows, if the update still allows it: the box may have gone on since it was drawn.
+   */
+  private void onFirmwareAction()
   {
-    final NoGps.BoxValue[] ids = new NoGps.BoxValue[status.boxValues.length];
-    for (int i = 0; i < ids.length; ++i)
-      ids[i] = status.getBoxValueId(i);
-    if (!Arrays.equals(ids, mValueIds))
-      makeValueRows(ids);
-    for (int i = 0; i < ids.length; ++i)
-    {
-      final String value = status.boxValues[i];
-      mValueTexts[i].setText(boxValueText(requireContext(), status, ids[i], value));
-      if (ids[i] == NoGps.BoxValue.VOLTAGE_MISMATCH && mVoltageMismatch != null)
-        mVoltageMismatch.setVisibility(value.equals("1") ? View.VISIBLE : View.GONE);
-    }
+    final NoGps.Status status = NoGps.getStatus();
+    final NoGps.FirmwareUpdate update = status.getFirmwareUpdate();
+    if (BoxTexts.isUpdating(update) && update != NoGps.FirmwareUpdate.RESTARTING)
+      NoGps.nativeCancelFirmwareUpdate();
+    else if (BoxTexts.canInstallFirmware(status))
+      NoGps.nativeStartFirmwareUpdate();
+    update();
   }
 
-  private void makeValueRows(@NonNull NoGps.BoxValue[] ids)
+  private void confirmClearSpeed()
   {
-    final Context context = requireContext();
-    final LayoutInflater inflater = LayoutInflater.from(context);
-    mValuesRows.removeAllViews();
-    mValueIds = ids;
-    mValueTexts = new TextView[ids.length];
-    mVoltageMismatch = null;
-    // The values come in the order of the groups.
-    final int[] headers = {R.string.nogps_box_value_group_car, R.string.nogps_box_value_group_gyroscope,
-                           R.string.nogps_box_value_group_obd, R.string.nogps_box_value_group_box};
-    final NoGps.BoxValue[] groupStarts = {NoGps.BoxValue.ENGINE, NoGps.BoxValue.IMU_NAME, NoGps.BoxValue.OBD_STATE,
-                                          NoGps.BoxValue.FIRMWARE};
-    int group = -1;
-    for (int i = 0; i < ids.length; ++i)
+    new MaterialAlertDialogBuilder(requireContext())
+        .setTitle(R.string.nogps_clear_speed_title)
+        .setMessage(R.string.nogps_clear_speed_message)
+        .setPositiveButton(R.string.nogps_clear_speed,
+                           (dialog, which) -> {
+                             NoGps.nativeClearSpeedCalibration();
+                             update();
+                           })
+        .setNegativeButton(R.string.cancel, null)
+        .show();
+  }
+
+  private void updateCalibration(@NonNull NoGps.Status status)
+  {
+    final NoGps.CalibrationState calibration = calibration(status);
+    mCalibrationState.setText(getString(R.string.nogps_sensors_box_sensors,
+                                        BoxTexts.boxCalibrationText(requireContext(), status, calibration)));
+    final boolean calibrating = calibration == NoGps.CalibrationState.CALIBRATING;
+    mCalibrationProgress.setVisibility(calibrating ? View.VISIBLE : View.GONE);
+    mCalibrationProgress.setProgress(status.calibrationProgress);
+    // What the user does after a failure.
+    final int result = switch (calibration)
     {
-      int idGroup = 0;
-      while (idGroup + 1 < groupStarts.length && ids[i].ordinal() >= groupStarts[idGroup + 1].ordinal())
-        ++idGroup;
-      if (idGroup != group)
-      {
-        group = idGroup;
-        final TextView header = new TextView(context);
-        header.setText(headers[group]);
-        header.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        header.setTypeface(Typeface.DEFAULT_BOLD);
-        header.setPadding(0, dp(12), 0, 0);
-        mValuesRows.addView(header);
-      }
-      final View row = inflater.inflate(R.layout.nogps_sheet_row, mValuesRows, false);
-      ((TextView) row.findViewById(R.id.row_label)).setText(boxValueLabel(ids[i]));
-      mValueTexts[i] = row.findViewById(R.id.row_value);
-      mValuesRows.addView(row);
-      if (ids[i] == NoGps.BoxValue.VOLTAGE_MISMATCH)
-      {
-        mVoltageMismatch = new TextView(context);
-        mVoltageMismatch.setText(R.string.nogps_voltage_mismatch);
-        mVoltageMismatch.setTextColor(ContextCompat.getColor(context, R.color.base_red));
-        mVoltageMismatch.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-        mValuesRows.addView(mVoltageMismatch);
-      }
-    }
+      case FAILED_MOVING -> R.string.nogps_calibration_failed_moving;
+      case MOUNT_MOVED -> R.string.nogps_calibration_failed_mount;
+      case LINK_LOST -> R.string.nogps_calibration_failed_link;
+      default -> 0;
+    };
+    mCalibrationResult.setVisibility(result != 0 ? View.VISIBLE : View.GONE);
+    if (result != 0)
+      mCalibrationResult.setText(result);
+    mCalibrate.setVisibility(calibrating ? View.GONE : View.VISIBLE);
+    mCalibrate.setText(calibration == NoGps.CalibrationState.DONE && !status.boxCalibrationAdvised
+                           ? R.string.nogps_box_recalibrate
+                           : R.string.nogps_sensors_calibrate_box);
+    final int reason = calibrateDisabledReason(status);
+    mCalibrate.setEnabled(reason == 0);
+    mCalibrateReason.setVisibility(reason != 0 && !calibrating ? View.VISIBLE : View.GONE);
+    if (reason != 0)
+      mCalibrateReason.setText(reason);
+  }
+
+  /**
+   * The box calibrates itself: there is nobody to calibrate while it is out of reach, and the phone that connected to
+   * it first calibrates it.
+   * @return 0 if the box can be calibrated now.
+   */
+  @StringRes
+  private static int calibrateDisabledReason(@NonNull NoGps.Status status)
+  {
+    if (!isConnected(status))
+      return R.string.nogps_calibration_needs_box;
+    return status.boxReadOnly ? R.string.nogps_box_read_only : 0;
   }
 
   private int dp(int value)
   {
     return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, getResources().getDisplayMetrics());
-  }
-
-  @NonNull
-  private static String boxValueText(@NonNull Context context, @NonNull NoGps.Status status, @NonNull NoGps.BoxValue id,
-                                     @NonNull String value)
-  {
-    if (value.isEmpty())
-    {
-      // The box asks the car for them while it stands.
-      final boolean standingOnly =
-          id == NoGps.BoxValue.RPM || id == NoGps.BoxValue.ELM_VOLTAGE || id == NoGps.BoxValue.ECU_VOLTAGE;
-      return standingOnly && status.speedKmh > 0 ? context.getString(R.string.nogps_not_while_driving) : "—";
-    }
-    return switch (id)
-    {
-      case ENGINE ->
-        value.equals("RUN")   ? context.getString(R.string.nogps_engine_running)
-        : value.equals("OFF") ? context.getString(R.string.nogps_engine_stopped)
-                              : value;
-      case RPM -> rpmText(context, value);
-      case BOX_VOLTAGE, ELM_VOLTAGE, ECU_VOLTAGE -> context.getString(R.string.nogps_volts, value);
-      case VOLTAGE_MISMATCH -> context.getString(value.equals("1") ? R.string.yes : R.string.no);
-      case IMU_RATE -> context.getString(R.string.nogps_box_value_hz, value);
-      case IMU_TEMPERATURE -> context.getString(R.string.nogps_box_value_celsius, value);
-      case BIAS_AGE -> context.getString(R.string.nogps_box_value_seconds_ago, value);
-      case BIAS -> context.getString(R.string.nogps_box_value_degrees_per_second, value);
-      case FLASH_SIZE, MAX_IMAGE_SIZE -> context.getString(R.string.nogps_box_value_kilobytes, value);
-      default -> value;
-    };
-  }
-
-  @NonNull
-  private static String rpmText(@NonNull Context context, @NonNull String value)
-  {
-    try
-    {
-      return context.getString(R.string.nogps_rpm, Integer.parseInt(value));
-    }
-    catch (NumberFormatException e)
-    {
-      return value;
-    }
-  }
-
-  @StringRes
-  private static int boxValueLabel(@NonNull NoGps.BoxValue id)
-  {
-    return switch (id)
-    {
-      case ENGINE -> R.string.nogps_box_value_engine;
-      case RPM -> R.string.nogps_box_value_rpm;
-      case BOX_VOLTAGE -> R.string.nogps_box_value_box_voltage;
-      case ELM_VOLTAGE -> R.string.nogps_box_value_elm_voltage;
-      case ECU_VOLTAGE -> R.string.nogps_box_value_ecu_voltage;
-      case VOLTAGE_MISMATCH -> R.string.nogps_box_value_voltage_mismatch;
-      case IMU_NAME -> R.string.nogps_box_value_name;
-      case IMU_STATE, OBD_STATE -> R.string.nogps_box_value_state;
-      case IMU_CHIP_ID -> R.string.nogps_box_value_chip_id;
-      case IMU_RATE -> R.string.nogps_box_value_rate;
-      case IMU_TEMPERATURE -> R.string.nogps_box_value_temperature;
-      case IMU_ERRORS -> R.string.nogps_box_value_read_errors;
-      case BIAS_AGE -> R.string.nogps_box_value_bias_age;
-      case BIAS -> R.string.nogps_box_value_bias;
-      case OBD_PROTOCOL -> R.string.nogps_box_value_protocol;
-      case OBD_ERROR -> R.string.nogps_box_value_last_error;
-      case OBD_BAUD -> R.string.nogps_box_value_uart_baud;
-      case FIRMWARE -> R.string.nogps_box_value_firmware;
-      case BUILD_DATE -> R.string.nogps_box_value_build_date;
-      case CHIP -> R.string.nogps_box_value_chip;
-      case BOARD -> R.string.nogps_box_value_board;
-      case ID -> R.string.nogps_box_value_id;
-      case FLASH_SIZE -> R.string.nogps_box_value_flash_size;
-      case MAX_IMAGE_SIZE -> R.string.nogps_box_value_max_image_size;
-      case SLOT -> R.string.nogps_box_value_slot;
-      case SLOT_STATE -> R.string.nogps_box_value_slot_state;
-      case ABILITIES -> R.string.nogps_box_value_abilities;
-      case POWER_ONS -> R.string.nogps_box_value_power_ons;
-      case LAST_EVENT -> R.string.nogps_box_value_last_event;
-    };
-  }
-
-  /**
-   * How many ranges of the car speed GPS has measured. The rough table by the roads doesn't count: it is only a guess.
-   */
-  @NonNull
-  private static String speedTableText(@NonNull Context context, @NonNull NoGps.Status status)
-  {
-    final int all = status.speedTableCarM.length;
-    if (status.speedTableRanges == 0)
-      return context.getString(R.string.nogps_speed_table_not_calibrated);
-    if (status.speedTableRanges >= all)
-      return context.getString(R.string.nogps_speed_table_calibrated);
-    return context.getString(R.string.nogps_speed_table_calibrating, status.speedTableRanges, all);
   }
 
   private void updateSearch(@NonNull NoGps.Status status)
@@ -1219,8 +1388,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
 
   private void showState(@NonNull TextView state, @NonNull StatusBar.Look look, @NonNull String text)
   {
-    // The states follow "Box: name ·" on the sensors screen, here they start the line.
-    state.setText(text.isEmpty() ? text : text.substring(0, 1).toUpperCase(Locale.getDefault()) + text.substring(1));
+    state.setText(BoxTexts.capitalize(text));
     // A grey state is read as disabled: it is shown in the color of the text.
     if (look.color == 0 || look.color == R.color.source_sleeping)
       state.setTextColor(mStateColors);
@@ -1351,6 +1519,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     }
   }
 
+  @NonNull
+  private BottomSheetBehavior<?> getBehavior()
+  {
+    return ((BottomSheetDialog) requireDialog()).getBehavior();
+  }
+
   @Override
   public void onDismiss(@NonNull DialogInterface dialog)
   {
@@ -1359,16 +1533,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       return;
     // Closed before the box was heard, even if connected already: the phone stops looking for it. The box of a car
     // being added: the boxes of the other cars are looked for again.
-    if (mSearching && mAddingCar)
-    {
-      if (!isCarAdded())
-        MwmApplication.from(requireContext()).getLocationHelper().searchNewBox(false);
-    }
+    if (mPage == Page.ADD_CAR)
+      stopAddingCar();
     else if (mSearching && !isBoxHeard(NoGps.getStatus()))
-    {
       NoGps.nativeSetInertialNavigationEnabled(false);
-    }
-    // The bottom bar shows the box at once.
-    getParentFragmentManager().setFragmentResult(SensorsBottomSheet.RESULT_CLOSED, Bundle.EMPTY);
+    getParentFragmentManager().setFragmentResult(RESULT_CLOSED, Bundle.EMPTY);
   }
 }

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The sensor box, its GPS row and page, its speed table, or its search when none is set up, see BoxBottomSheet. Scrolls on small
-     screens. -->
+<!-- The sensor box and GPS, or the search of the box when none is set up, and the pages they open, see BoxBottomSheet.
+     Scrolls on small screens. -->
 <androidx.core.widget.NestedScrollView
   xmlns:android="http://schemas.android.com/apk/res/android"
   xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -15,99 +15,38 @@
   android:paddingTop="16dp"
   android:paddingBottom="24dp">
 
-  <!-- The box and GPS side by side, GPS opens its page. The states keep their height: the sheet doesn't jump as they
-       change, a longer state is cut. -->
   <LinearLayout
-    android:id="@+id/box_tiles"
+    android:id="@+id/box_main"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal">
+    android:orientation="vertical">
+    <!-- The current car, opens the Cars page. -->
+    <TextView
+      android:id="@+id/box_title"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginBottom="8dp"
+      android:background="?selectableItemBackground"
+      android:gravity="center_vertical"
+      android:minHeight="48dp"
+      android:textAppearance="?android:textAppearanceLarge"
+      android:textStyle="bold" />
+
+    <!-- The box and GPS side by side, both open their pages. The states keep their height: the sheet doesn't jump as
+         they change, a longer state is cut. -->
     <LinearLayout
-      android:id="@+id/box_box"
-      android:layout_width="0dp"
+      android:id="@+id/box_tiles"
+      android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_weight="1"
-      android:background="@drawable/bg_nogps_group"
-      android:focusable="true"
-      android:foreground="?selectableItemBackground"
-      android:gravity="center_horizontal"
-      android:orientation="vertical"
-      android:padding="12dp">
-      <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:ellipsize="end"
-        android:gravity="center_horizontal"
-        android:importantForAccessibility="no"
-        android:maxLines="1"
-        android:text="@string/nogps_box_title"
-        android:textColor="?android:textColorSecondary"
-        android:textSize="12sp" />
-      <FrameLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-        <FrameLayout
-          android:id="@+id/box_tile"
-          android:layout_width="@dimen/map_button_size"
-          android:layout_height="@dimen/map_button_size"
-          android:layout_gravity="center_horizontal"
-          android:background="@drawable/bg_status_button">
-          <FrameLayout
-            android:layout_width="26dp"
-            android:layout_height="26dp"
-            android:layout_gravity="center">
-            <ImageView
-              android:id="@+id/box_icon"
-              android:layout_width="24dp"
-              android:layout_height="24dp"
-              android:layout_gravity="center"
-              android:importantForAccessibility="no" />
-            <ImageView
-              android:id="@+id/box_badge"
-              android:layout_width="11dp"
-              android:layout_height="11dp"
-              android:layout_gravity="top|end"
-              android:background="@drawable/bg_source_badge"
-              android:importantForAccessibility="no"
-              android:padding="1dp"
-              android:visibility="gone" />
-          </FrameLayout>
-        </FrameLayout>
-        <!-- Shown while the tile opens the box values. -->
-        <ImageView
-          android:id="@+id/box_chevron"
-          android:layout_width="24dp"
-          android:layout_height="24dp"
-          android:layout_gravity="center_vertical|end"
-          android:importantForAccessibility="no"
-          android:visibility="gone"
-          app:srcCompat="@drawable/ic_nogps_chevron" />
-      </FrameLayout>
-      <TextView
-        android:id="@+id/box_state"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:ellipsize="end"
-        android:gravity="center_horizontal|top"
-        android:lines="3"
-        android:textSize="13sp"
-        android:textStyle="bold" />
-    </LinearLayout>
-    <FrameLayout
-      android:id="@+id/box_gps_row"
-      android:layout_width="0dp"
-      android:layout_height="wrap_content"
-      android:layout_marginStart="12dp"
-      android:layout_weight="1"
-      android:background="@drawable/bg_nogps_group"
-      android:clickable="true"
-      android:focusable="true"
-      android:foreground="?selectableItemBackground">
+      android:orientation="horizontal">
       <LinearLayout
-        android:layout_width="match_parent"
+        android:id="@+id/box_box"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:background="@drawable/bg_nogps_group"
+        android:focusable="true"
+        android:foreground="?selectableItemBackground"
         android:gravity="center_horizontal"
         android:orientation="vertical"
         android:padding="12dp">
@@ -119,14 +58,14 @@
           android:gravity="center_horizontal"
           android:importantForAccessibility="no"
           android:maxLines="1"
-          android:text="@string/nogps_status_gps"
+          android:text="@string/nogps_box_title"
           android:textColor="?android:textColorSecondary"
           android:textSize="12sp" />
         <FrameLayout
           android:layout_width="match_parent"
           android:layout_height="wrap_content">
           <FrameLayout
-            android:id="@+id/box_gps_tile"
+            android:id="@+id/box_tile"
             android:layout_width="@dimen/map_button_size"
             android:layout_height="@dimen/map_button_size"
             android:layout_gravity="center_horizontal"
@@ -136,13 +75,13 @@
               android:layout_height="26dp"
               android:layout_gravity="center">
               <ImageView
-                android:id="@+id/box_gps_icon"
+                android:id="@+id/box_icon"
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:layout_gravity="center"
                 android:importantForAccessibility="no" />
               <ImageView
-                android:id="@+id/box_gps_badge"
+                android:id="@+id/box_badge"
                 android:layout_width="11dp"
                 android:layout_height="11dp"
                 android:layout_gravity="top|end"
@@ -152,15 +91,18 @@
                 android:visibility="gone" />
             </FrameLayout>
           </FrameLayout>
+          <!-- Shown while the tile opens the Box page. -->
           <ImageView
+            android:id="@+id/box_chevron"
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:layout_gravity="center_vertical|end"
             android:importantForAccessibility="no"
+            android:visibility="gone"
             app:srcCompat="@drawable/ic_nogps_chevron" />
         </FrameLayout>
         <TextView
-          android:id="@+id/box_gps_state"
+          android:id="@+id/box_state"
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:layout_marginTop="8dp"
@@ -170,24 +112,103 @@
           android:textSize="13sp"
           android:textStyle="bold" />
       </LinearLayout>
-    </FrameLayout>
-  </LinearLayout>
+      <FrameLayout
+        android:id="@+id/box_gps_row"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:background="@drawable/bg_nogps_group"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?selectableItemBackground">
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:gravity="center_horizontal"
+          android:orientation="vertical"
+          android:padding="12dp">
+          <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:ellipsize="end"
+            android:gravity="center_horizontal"
+            android:importantForAccessibility="no"
+            android:maxLines="1"
+            android:text="@string/nogps_status_gps"
+            android:textColor="?android:textColorSecondary"
+            android:textSize="12sp" />
+          <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+            <FrameLayout
+              android:id="@+id/box_gps_tile"
+              android:layout_width="@dimen/map_button_size"
+              android:layout_height="@dimen/map_button_size"
+              android:layout_gravity="center_horizontal"
+              android:background="@drawable/bg_status_button">
+              <FrameLayout
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_gravity="center">
+                <ImageView
+                  android:id="@+id/box_gps_icon"
+                  android:layout_width="24dp"
+                  android:layout_height="24dp"
+                  android:layout_gravity="center"
+                  android:importantForAccessibility="no" />
+                <ImageView
+                  android:id="@+id/box_gps_badge"
+                  android:layout_width="11dp"
+                  android:layout_height="11dp"
+                  android:layout_gravity="top|end"
+                  android:background="@drawable/bg_source_badge"
+                  android:importantForAccessibility="no"
+                  android:padding="1dp"
+                  android:visibility="gone" />
+              </FrameLayout>
+            </FrameLayout>
+            <ImageView
+              android:layout_width="24dp"
+              android:layout_height="24dp"
+              android:layout_gravity="center_vertical|end"
+              android:importantForAccessibility="no"
+              app:srcCompat="@drawable/ic_nogps_chevron" />
+          </FrameLayout>
+          <TextView
+            android:id="@+id/box_gps_state"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:ellipsize="end"
+            android:gravity="center_horizontal|top"
+            android:lines="3"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+        </LinearLayout>
+      </FrameLayout>
+    </LinearLayout>
 
-  <!-- If the car follows GPS. -->
-  <LinearLayout
-    android:id="@+id/box_gps_group"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="12dp"
-    android:orientation="vertical">
-    <androidx.appcompat.widget.SwitchCompat
-      android:id="@+id/box_gps_use"
+    <!-- What the user does for the phone to reach the box set up. -->
+    <Button
+      android:id="@+id/box_bluetooth"
+      style="@style/MwmWidget.Button.Accent"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
+      android:layout_marginTop="12dp"
+      android:visibility="gone" />
+
+    <!-- If the car follows GPS. -->
+    <androidx.appcompat.widget.SwitchCompat
+      android:id="@+id/box_gps_block"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="12dp"
       android:background="@drawable/bg_nogps_group"
       android:minHeight="56dp"
       android:paddingHorizontal="16dp"
-      android:text="@string/nogps_gps_use"
+      android:text="@string/nogps_gps_block"
       android:textSize="16sp" />
     <!-- Both texts take their place: the sheet doesn't jump as the box comes and goes. -->
     <FrameLayout
@@ -196,17 +217,17 @@
       android:layout_marginHorizontal="4dp"
       android:layout_marginTop="6dp">
       <TextView
-        android:id="@+id/box_gps_use_hint"
+        android:id="@+id/box_gps_block_hint"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/nogps_gps_use_hint"
+        android:text="@string/nogps_gps_block_hint"
         android:textColor="?android:textColorSecondary"
         android:textSize="13sp" />
       <TextView
-        android:id="@+id/box_gps_use_needs_box"
+        android:id="@+id/box_gps_block_needs_box"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/nogps_gps_use_needs_box"
+        android:text="@string/nogps_gps_block_needs_box"
         android:textColor="?android:textColorSecondary"
         android:textSize="13sp" />
     </FrameLayout>
@@ -244,133 +265,419 @@
       android:textSize="13sp" />
   </LinearLayout>
 
+  <!-- The search of the box of a new car, over the search itself. -->
   <LinearLayout
-    android:id="@+id/box_connected"
+    android:id="@+id/box_add_car_page"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginTop="8dp"
-    android:orientation="vertical">
-    <Button
-      android:id="@+id/box_bluetooth"
-      style="@style/MwmWidget.Button.Accent"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:layout_marginVertical="8dp"
-      android:visibility="gone" />
+    android:orientation="vertical"
+    android:visibility="gone">
+    <include
+      android:id="@+id/box_add_car_header"
+      layout="@layout/nogps_box_page_header" />
     <TextView
-      android:id="@+id/box_name"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:background="?selectableItemBackground"
+      android:layout_marginTop="4dp"
+      android:text="@string/nogps_car_add_text"
+      android:textSize="15sp" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:id="@+id/box_search"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="16dp"
+    android:orientation="vertical"
+    android:visibility="gone">
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
       android:gravity="center_vertical"
-      android:minHeight="48dp"
-      android:textSize="16sp" />
+      android:orientation="horizontal">
+      <FrameLayout
+        android:layout_width="96dp"
+        android:layout_height="96dp"
+        android:contentDescription="@string/nogps_box_bt_searching">
+        <View
+          android:id="@+id/box_ring0"
+          android:layout_width="match_parent"
+          android:layout_height="match_parent"
+          android:alpha="0"
+          android:background="@drawable/bg_nogps_ring" />
+        <View
+          android:id="@+id/box_ring1"
+          android:layout_width="match_parent"
+          android:layout_height="match_parent"
+          android:alpha="0"
+          android:background="@drawable/bg_nogps_ring" />
+        <View
+          android:id="@+id/box_ring2"
+          android:layout_width="match_parent"
+          android:layout_height="match_parent"
+          android:alpha="0"
+          android:background="@drawable/bg_nogps_ring" />
+        <ImageView
+          android:layout_width="44dp"
+          android:layout_height="44dp"
+          android:layout_gravity="center"
+          android:background="@drawable/bg_nogps_radar_core"
+          android:importantForAccessibility="no"
+          android:padding="10dp"
+          app:srcCompat="@drawable/ic_nogps_bluetooth"
+          app:tint="@android:color/white" />
+      </FrameLayout>
+      <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:gravity="center_vertical"
+          android:orientation="horizontal">
+          <ImageView
+            android:id="@+id/box_step0_dot"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:importantForAccessibility="no" />
+          <TextView
+            android:id="@+id/box_step0"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:text="@string/nogps_box_step_bluetooth"
+            android:textSize="15sp" />
+        </LinearLayout>
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="10dp"
+          android:gravity="center_vertical"
+          android:orientation="horizontal">
+          <ImageView
+            android:id="@+id/box_step1_dot"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:importantForAccessibility="no" />
+          <TextView
+            android:id="@+id/box_step1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:text="@string/nogps_box_step_search"
+            android:textSize="15sp" />
+        </LinearLayout>
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="10dp"
+          android:gravity="center_vertical"
+          android:orientation="horizontal">
+          <ImageView
+            android:id="@+id/box_step2_dot"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:importantForAccessibility="no" />
+          <TextView
+            android:id="@+id/box_step2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:text="@string/nogps_box_step_connect"
+            android:textSize="15sp" />
+        </LinearLayout>
+        <LinearLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="10dp"
+          android:gravity="center_vertical"
+          android:orientation="horizontal">
+          <ImageView
+            android:id="@+id/box_step3_dot"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:importantForAccessibility="no" />
+          <TextView
+            android:id="@+id/box_step3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:text="@string/nogps_box_step_data"
+            android:textSize="15sp" />
+        </LinearLayout>
+        <TextView
+          android:id="@+id/box_step_hint"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="12dp"
+          android:textSize="14sp"
+          android:visibility="gone" />
+        <Button
+          android:id="@+id/box_step_action"
+          style="@style/MwmWidget.Button.Accent"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="12dp"
+          android:paddingHorizontal="@dimen/margin_base"
+          android:paddingVertical="10dp"
+          android:visibility="gone" />
+      </LinearLayout>
+    </LinearLayout>
     <TextView
-      android:id="@+id/box_obd_hint"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginBottom="8dp"
+      android:layout_marginTop="16dp"
+      android:text="@string/nogps_box_power_hint"
       android:textColor="?android:textColorSecondary"
-      android:textSize="14sp"
-      android:visibility="gone" />
-    <TextView
-      android:id="@+id/box_speed"
+      android:textSize="14sp" />
+  </LinearLayout>
+
+  <!-- The last rows of the main page. -->
+  <LinearLayout
+    android:id="@+id/box_shop"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+    <!-- Without a box, the offer stands out. -->
+    <LinearLayout
+      android:id="@+id/box_shop_offer"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:gravity="center_vertical"
-      android:minHeight="48dp"
-      android:textSize="16sp" />
-    <TextView
-      android:id="@+id/box_rpm"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:gravity="center_vertical"
-      android:minHeight="48dp"
-      android:textSize="16sp" />
-    <TextView
-      android:id="@+id/box_firmware"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:gravity="center_vertical"
-      android:minHeight="48dp"
-      android:textSize="16sp" />
+      android:orientation="vertical">
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="@string/nogps_box_buy_text"
+        android:textSize="15sp" />
+      <Button
+        android:id="@+id/box_buy"
+        style="@style/MwmWidget.Button.Accent"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/nogps_box_buy" />
+    </LinearLayout>
     <Button
-      android:id="@+id/box_install_firmware"
+      android:id="@+id/box_buy_another"
       style="?borderlessButtonStyle"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content" />
-    <!-- Another phone has connected to the box first: it calibrates and updates the box. -->
-    <TextView
-      android:id="@+id/box_read_only"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="8dp"
+      android:text="@string/nogps_box_buy" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:id="@+id/box_cars_page"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone">
+    <include
+      android:id="@+id/box_cars_header"
+      layout="@layout/nogps_box_page_header" />
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:layout_marginBottom="8dp"
+      android:text="@string/nogps_cars_text"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp" />
+    <!-- A row for each car, see nogps_car_row. -->
+    <LinearLayout
+      android:id="@+id/box_cars"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical" />
+    <Button
+      android:id="@+id/box_add_car"
+      style="?borderlessButtonStyle"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/nogps_car_add" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:id="@+id/box_phones_page"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone">
+    <include
+      android:id="@+id/box_phones_header"
+      layout="@layout/nogps_box_page_header" />
+    <TextView
+      android:id="@+id/box_phones_read_only"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginBottom="8dp"
       android:text="@string/nogps_box_read_only"
       android:textColor="?android:textColorSecondary"
       android:textSize="14sp"
       android:visibility="gone" />
+    <!-- A row for each phone of the box, see nogps_car_row: a tap removes it. -->
     <LinearLayout
-      android:id="@+id/box_calibrate"
+      android:id="@+id/box_phones_rows"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="8dp"
-      android:background="?selectableItemBackground"
-      android:gravity="center_vertical"
-      android:minHeight="48dp"
-      android:orientation="horizontal">
-      <TextView
-        android:id="@+id/box_calibration"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:textSize="16sp" />
-      <TextView
-        android:id="@+id/box_calibrate_action"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
-        android:gravity="center_vertical"
-        android:textColor="?colorAccent"
-        android:textSize="16sp"
-        app:drawableEndCompat="@drawable/ic_nogps_chevron" />
-    </LinearLayout>
-    <!-- What the app has learned about the car speed. -->
+      android:orientation="vertical" />
+    <Button
+      android:id="@+id/box_add_phone"
+      style="?borderlessButtonStyle"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/nogps_phone_add" />
+  </LinearLayout>
+
+  <!-- The box, the car and what is learned about them, by sections that fold. -->
+  <LinearLayout
+    android:id="@+id/box_box_page"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone">
+    <include
+      android:id="@+id/box_box_header"
+      layout="@layout/nogps_box_page_header" />
+    <TextView
+      android:id="@+id/box_readiness"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:textSize="16sp"
+      android:textStyle="bold" />
+
+    <include
+      android:id="@+id/box_section_box"
+      layout="@layout/nogps_box_section" />
     <LinearLayout
-      android:id="@+id/box_speed_group"
+      android:id="@+id/box_section_box_content"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:orientation="vertical">
-      <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginVertical="8dp"
-        android:background="?android:listDivider" />
-      <LinearLayout
-        android:id="@+id/box_speed_table"
+      <!-- Another phone has connected to the box first: it calibrates and updates the box. -->
+      <TextView
+        android:id="@+id/box_read_only"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?selectableItemBackground"
+        android:layout_marginBottom="8dp"
+        android:text="@string/nogps_box_read_only"
+        android:textColor="?android:textColorSecondary"
+        android:textSize="14sp" />
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/nogps_sensors_hint_box"
+        android:textColor="?android:textColorSecondary"
+        android:textSize="14sp" />
+      <LinearLayout
+        android:id="@+id/box_firmware_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:minHeight="48dp"
         android:orientation="horizontal">
         <TextView
-          android:layout_width="wrap_content"
-          android:layout_height="wrap_content"
-          android:layout_marginEnd="12dp"
-          android:text="@string/nogps_speed_table_title"
-          android:textSize="16sp" />
-        <TextView
-          android:id="@+id/box_speed_table_state"
+          android:id="@+id/box_firmware"
           android:layout_width="0dp"
           android:layout_height="wrap_content"
           android:layout_weight="1"
-          android:gravity="end|center_vertical"
-          android:textColor="?android:textColorSecondary"
-          android:textSize="16sp"
-          app:drawableEndCompat="@drawable/ic_nogps_chevron" />
+          android:textSize="16sp" />
+        <!-- Install, or Cancel while it is sent. -->
+        <Button
+          android:id="@+id/box_firmware_action"
+          style="?borderlessButtonStyle"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content" />
       </LinearLayout>
       <LinearLayout
-        android:id="@+id/box_speed_lag"
+        android:id="@+id/box_values_box"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+    </LinearLayout>
+
+    <include
+      android:id="@+id/box_section_obd"
+      layout="@layout/nogps_box_section" />
+    <LinearLayout
+      android:id="@+id/box_values_obd"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical" />
+
+    <include
+      android:id="@+id/box_section_car"
+      layout="@layout/nogps_box_section" />
+    <LinearLayout
+      android:id="@+id/box_section_car_content"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical">
+      <TextView
+        android:id="@+id/box_speed"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:minHeight="44dp"
+        android:textSize="16sp" />
+      <LinearLayout
+        android:id="@+id/box_values_car"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+      <TextView
+        android:id="@+id/box_voltage_mismatch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/nogps_voltage_mismatch"
+        android:textColor="@color/base_red"
+        android:textSize="14sp"
+        android:visibility="gone" />
+    </LinearLayout>
+
+    <include
+      android:id="@+id/box_section_speed"
+      layout="@layout/nogps_box_section" />
+    <LinearLayout
+      android:id="@+id/box_section_speed_content"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical">
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/nogps_speed_table_hint"
+        android:textColor="?android:textColorSecondary"
+        android:textSize="15sp" />
+      <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="@string/nogps_speed_table_action"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+      <TextView
+        android:id="@+id/box_speed_scale"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textSize="16sp" />
+      <TextView
+        android:id="@+id/box_rough_speed"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="?android:textColorSecondary"
+        android:textSize="14sp" />
+      <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
@@ -409,174 +716,95 @@
         android:layout_height="wrap_content"
         android:text="@string/nogps_box_clear_speed"
         android:textColor="@color/source_warning" />
+      <LinearLayout
+        android:id="@+id/box_speed_table_rows"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
     </LinearLayout>
-    <View
-      android:layout_width="match_parent"
-      android:layout_height="1dp"
-      android:layout_marginTop="8dp"
-      android:background="?android:listDivider" />
-    <TextView
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:paddingTop="12dp"
-      android:text="@string/nogps_cars"
-      android:textSize="16sp"
-      android:textStyle="bold" />
-    <!-- A row for each car, see nogps_car_row. -->
+
+    <include
+      android:id="@+id/box_section_imu"
+      layout="@layout/nogps_box_section" />
     <LinearLayout
-      android:id="@+id/box_cars"
+      android:id="@+id/box_section_imu_content"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:orientation="vertical" />
-    <Button
-      android:id="@+id/box_add_car"
-      style="?borderlessButtonStyle"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:text="@string/nogps_car_add" />
-    <Button
-      android:id="@+id/box_buy_another"
-      style="?borderlessButtonStyle"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:text="@string/nogps_box_buy" />
+      android:orientation="vertical">
+      <!-- Opens the Calibration page. -->
+      <TextView
+        android:id="@+id/box_calibration_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:textSize="16sp"
+        app:drawableEndCompat="@drawable/ic_nogps_chevron" />
+      <LinearLayout
+        android:id="@+id/box_values_imu"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+    </LinearLayout>
   </LinearLayout>
 
   <LinearLayout
-    android:id="@+id/box_speed_table_page"
+    android:id="@+id/box_calibration_page"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:visibility="gone">
-    <LinearLayout
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:gravity="center_vertical"
-      android:orientation="horizontal">
-      <ImageView
-        android:id="@+id/box_speed_table_back"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="-12dp"
-        android:background="?selectableItemBackgroundBorderless"
-        android:contentDescription="@string/back"
-        android:scaleType="center"
-        app:srcCompat="?homeAsUpIndicator" />
-      <TextView
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="@string/nogps_speed_table_title"
-        android:textAppearance="?android:textAppearanceLarge"
-        android:textStyle="bold" />
-    </LinearLayout>
+    <include
+      android:id="@+id/box_calibration_header"
+      layout="@layout/nogps_box_page_header" />
     <TextView
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="4dp"
-      android:text="@string/nogps_speed_table_hint"
-      android:textColor="?android:textColorSecondary"
+      android:text="@string/nogps_box_calibration_hint"
       android:textSize="15sp" />
     <TextView
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="6dp"
-      android:text="@string/nogps_speed_table_action"
+      android:layout_marginTop="8dp"
+      android:text="@string/nogps_calibration_steps"
       android:textSize="15sp"
       android:textStyle="bold" />
-    <LinearLayout
-      android:id="@+id/box_speed_table_rows"
+    <TextView
+      android:id="@+id/box_calibration_state"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="16dp"
+      android:textSize="16sp" />
+    <ProgressBar
+      android:id="@+id/box_calibration_progress"
+      style="?android:progressBarStyleHorizontal"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="8dp"
-      android:orientation="vertical" />
-  </LinearLayout>
-
-  <LinearLayout
-    android:id="@+id/box_values_page"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:visibility="gone">
-    <LinearLayout
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:gravity="center_vertical"
-      android:orientation="horizontal">
-      <ImageView
-        android:id="@+id/box_values_back"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="-12dp"
-        android:background="?selectableItemBackgroundBorderless"
-        android:contentDescription="@string/back"
-        android:scaleType="center"
-        app:srcCompat="?homeAsUpIndicator" />
-      <TextView
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="@string/nogps_box_value_title"
-        android:textAppearance="?android:textAppearanceLarge"
-        android:textStyle="bold" />
-    </LinearLayout>
-    <!-- Filled by the code: a header for each group and its rows. -->
-    <LinearLayout
-      android:id="@+id/box_values_rows"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:orientation="vertical" />
-  </LinearLayout>
-
-  <LinearLayout
-    android:id="@+id/box_phones_page"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:visibility="gone">
-    <LinearLayout
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:gravity="center_vertical"
-      android:orientation="horizontal">
-      <ImageView
-        android:id="@+id/box_phones_back"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="-12dp"
-        android:background="?selectableItemBackgroundBorderless"
-        android:contentDescription="@string/back"
-        android:scaleType="center"
-        app:srcCompat="?homeAsUpIndicator" />
-      <TextView
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="@string/nogps_car_phones"
-        android:textAppearance="?android:textAppearanceLarge"
-        android:textStyle="bold" />
-    </LinearLayout>
+      android:max="100" />
     <TextView
-      android:id="@+id/box_phones_read_only"
+      android:id="@+id/box_calibration_result"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginBottom="8dp"
-      android:text="@string/nogps_box_read_only"
-      android:textColor="?android:textColorSecondary"
-      android:textSize="14sp"
-      android:visibility="gone" />
-    <!-- A row for each phone of the box, see nogps_car_row: a tap removes it. -->
-    <LinearLayout
-      android:id="@+id/box_phones_rows"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:orientation="vertical" />
+      android:layout_marginTop="8dp"
+      android:textColor="@color/base_red"
+      android:textSize="15sp" />
     <Button
-      android:id="@+id/box_add_phone"
-      style="?borderlessButtonStyle"
+      android:id="@+id/box_calibrate"
+      style="@style/MwmWidget.Button.Accent"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:text="@string/nogps_phone_add" />
+      android:layout_marginTop="16dp" />
+    <!-- Why the box can't be calibrated now. -->
+    <TextView
+      android:id="@+id/box_calibrate_reason"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="6dp"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp" />
   </LinearLayout>
 
   <LinearLayout
@@ -585,211 +813,14 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:visibility="gone">
-    <LinearLayout
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:gravity="center_vertical"
-      android:orientation="horizontal">
-      <ImageView
-        android:id="@+id/box_gps_back"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginStart="-12dp"
-        android:background="?selectableItemBackgroundBorderless"
-        android:contentDescription="@string/back"
-        android:scaleType="center"
-        app:srcCompat="?homeAsUpIndicator" />
-      <TextView
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:text="@string/nogps_status_gps"
-        android:textAppearance="?android:textAppearanceLarge"
-        android:textStyle="bold" />
-    </LinearLayout>
+    <include
+      android:id="@+id/box_gps_header"
+      layout="@layout/nogps_box_page_header" />
     <app.organicmaps.nogps.GpsSheetView
       android:id="@+id/box_gps_view"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="8dp" />
-  </LinearLayout>
-
-  <LinearLayout
-    android:id="@+id/box_search"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:layout_marginTop="16dp"
-    android:orientation="vertical"
-    android:visibility="gone">
-    <LinearLayout
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:gravity="center_vertical"
-      android:orientation="horizontal">
-      <FrameLayout
-        android:layout_width="96dp"
-        android:layout_height="96dp"
-        android:contentDescription="@string/nogps_box_bt_searching">
-      <View
-        android:id="@+id/box_ring0"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:alpha="0"
-        android:background="@drawable/bg_nogps_ring" />
-      <View
-        android:id="@+id/box_ring1"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:alpha="0"
-        android:background="@drawable/bg_nogps_ring" />
-      <View
-        android:id="@+id/box_ring2"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:alpha="0"
-        android:background="@drawable/bg_nogps_ring" />
-        <ImageView
-          android:layout_width="44dp"
-          android:layout_height="44dp"
-          android:layout_gravity="center"
-          android:background="@drawable/bg_nogps_radar_core"
-          android:importantForAccessibility="no"
-          android:padding="10dp"
-          app:srcCompat="@drawable/ic_nogps_bluetooth"
-          app:tint="@android:color/white" />
-      </FrameLayout>
-      <LinearLayout
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_weight="1"
-        android:orientation="vertical">
-      <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="0dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-        <ImageView
-          android:id="@+id/box_step0_dot"
-          android:layout_width="22dp"
-          android:layout_height="22dp"
-          android:importantForAccessibility="no" />
-        <TextView
-          android:id="@+id/box_step0"
-          android:layout_width="0dp"
-          android:layout_height="wrap_content"
-          android:layout_marginStart="10dp"
-          android:layout_weight="1"
-          android:text="@string/nogps_box_step_bluetooth"
-          android:textSize="15sp" />
-      </LinearLayout>
-      <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-        <ImageView
-          android:id="@+id/box_step1_dot"
-          android:layout_width="22dp"
-          android:layout_height="22dp"
-          android:importantForAccessibility="no" />
-        <TextView
-          android:id="@+id/box_step1"
-          android:layout_width="0dp"
-          android:layout_height="wrap_content"
-          android:layout_marginStart="10dp"
-          android:layout_weight="1"
-          android:text="@string/nogps_box_step_search"
-          android:textSize="15sp" />
-      </LinearLayout>
-      <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-        <ImageView
-          android:id="@+id/box_step2_dot"
-          android:layout_width="22dp"
-          android:layout_height="22dp"
-          android:importantForAccessibility="no" />
-        <TextView
-          android:id="@+id/box_step2"
-          android:layout_width="0dp"
-          android:layout_height="wrap_content"
-          android:layout_marginStart="10dp"
-          android:layout_weight="1"
-          android:text="@string/nogps_box_step_connect"
-          android:textSize="15sp" />
-      </LinearLayout>
-      <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-        <ImageView
-          android:id="@+id/box_step3_dot"
-          android:layout_width="22dp"
-          android:layout_height="22dp"
-          android:importantForAccessibility="no" />
-        <TextView
-          android:id="@+id/box_step3"
-          android:layout_width="0dp"
-          android:layout_height="wrap_content"
-          android:layout_marginStart="10dp"
-          android:layout_weight="1"
-          android:text="@string/nogps_box_step_data"
-          android:textSize="15sp" />
-      </LinearLayout>
-        <TextView
-          android:id="@+id/box_step_hint"
-          android:layout_width="match_parent"
-          android:layout_height="wrap_content"
-          android:layout_marginTop="12dp"
-          android:textSize="14sp"
-          android:visibility="gone" />
-        <Button
-          android:id="@+id/box_step_action"
-          style="@style/MwmWidget.Button.Accent"
-          android:layout_width="wrap_content"
-          android:layout_height="wrap_content"
-          android:layout_marginTop="12dp"
-          android:paddingHorizontal="@dimen/margin_base"
-          android:paddingVertical="10dp"
-          android:visibility="gone" />
-      </LinearLayout>
-    </LinearLayout>
-    <TextView
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:layout_marginTop="16dp"
-      android:text="@string/nogps_box_power_hint"
-      android:textColor="?android:textColorSecondary"
-      android:textSize="14sp" />
-  </LinearLayout>
-
-  <LinearLayout
-    android:id="@+id/box_shop"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:visibility="gone">
-    <TextView
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:layout_marginTop="16dp"
-      android:text="@string/nogps_box_buy_text"
-      android:textSize="15sp" />
-    <Button
-      android:id="@+id/box_buy"
-      style="@style/MwmWidget.Button.Accent"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:layout_marginTop="12dp"
-      android:text="@string/nogps_box_buy" />
   </LinearLayout>
 </LinearLayout>
 </androidx.core.widget.NestedScrollView>

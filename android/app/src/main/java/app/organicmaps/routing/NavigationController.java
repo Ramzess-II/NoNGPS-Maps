@@ -356,8 +356,7 @@ public class NavigationController implements TrafficManager.TrafficCallback, Nav
   @Override
   public void onSourceClicked()
   {
-    if (mFragmentManager.findFragmentByTag(BoxBottomSheet.TAG) == null)
-      new BoxBottomSheet().show(mFragmentManager, BoxBottomSheet.TAG);
+    BoxBottomSheet.show(mFragmentManager, BoxBottomSheet.Page.MAIN, false);
   }
 
   private void updateSpeedLimit(@NonNull final RoutingInfo info)

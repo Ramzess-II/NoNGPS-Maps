@@ -45,7 +45,6 @@ import app.organicmaps.R;
 import app.organicmaps.nogps.BoxBottomSheet;
 import app.organicmaps.nogps.NoGpsFlagRecorder;
 import app.organicmaps.nogps.NoGpsFlags;
-import app.organicmaps.nogps.SensorsBottomSheet;
 import app.organicmaps.routing.RoutingPlanViewModel;
 import app.organicmaps.sdk.Framework;
 import app.organicmaps.sdk.downloader.MapManager;
@@ -69,7 +68,6 @@ import app.organicmaps.widget.placepage.PlacePageViewModel;
 import com.google.android.material.badge.BadgeDrawable;
 import com.google.android.material.badge.BadgeUtils;
 import com.google.android.material.badge.ExperimentalBadgeUtils;
-import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import java.util.Date;
 import java.util.HashMap;
@@ -133,6 +131,8 @@ public class MapButtonsController extends Fragment
   private View mSwitchMarkButton;
   @Nullable
   private TextView mPositionStatus;
+  @Nullable
+  private View mCalibrationStatus;
   private static final long POSITION_STATUS_UPDATE_INTERVAL_MS = 1000;
   private final Handler mHandler = new Handler(Looper.getMainLooper());
   private final Runnable mPositionStatusUpdater = new Runnable() {
@@ -149,6 +149,8 @@ public class MapButtonsController extends Fragment
   // The status of the position blinks while the user must do something about it.
   @Nullable
   private ObjectAnimator mStatusBlinkingAnimator;
+  @Nullable
+  private ObjectAnimator mCalibrationBlinkingAnimator;
   private float mContentHeight;
   private float mContentWidth;
   // In the navigation only.
@@ -229,7 +231,10 @@ public class MapButtonsController extends Fragment
     mPositionStatus.setOnClickListener((v) -> mMapButtonClickListener.onMapButtonClick(MapButtons.positionStatus));
     final View statusBar = mFrame.findViewById(R.id.status_nav);
     if (statusBar != null)
-      mStatusBar = new StatusBar(statusBar, () -> showSheet(new BoxBottomSheet(), BoxBottomSheet.TAG));
+      mStatusBar = new StatusBar(statusBar, () -> showBoxSheet(BoxBottomSheet.Page.MAIN));
+    mCalibrationStatus = mFrame.findViewById(R.id.calibration_status);
+    if (mCalibrationStatus != null)
+      mCalibrationStatus.setOnClickListener(v -> showBoxSheet(BoxBottomSheet.Page.CALIBRATION));
     final View speedView = mFrame.findViewById(R.id.speed_view);
     if (speedView != null)
       mSpeedView = new SpeedView(speedView);
@@ -376,7 +381,14 @@ public class MapButtonsController extends Fragment
                          Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         mPositionStatus.setText(withHint);
       }
-      blinkPositionStatus(status.roadLost);
+      mStatusBlinkingAnimator = blink(mPositionStatus, status.roadLost, mStatusBlinkingAnimator);
+    }
+    // Until the user calibrates the box: an alert would be easy to miss or to put off.
+    if (mCalibrationStatus != null)
+    {
+      final boolean calibrate = BoxBottomSheet.needsCalibration(status);
+      UiUtils.showIf(calibrate, mCalibrationStatus);
+      mCalibrationBlinkingAnimator = blink(mCalibrationStatus, calibrate, mCalibrationBlinkingAnimator);
     }
 
     if (mStatusBar != null)
@@ -560,11 +572,9 @@ public class MapButtonsController extends Fragment
     });
   }
 
-  private void showSheet(@NonNull BottomSheetDialogFragment sheet, @NonNull String tag)
+  private void showBoxSheet(@NonNull BoxBottomSheet.Page page)
   {
-    final var manager = requireActivity().getSupportFragmentManager();
-    if (manager.findFragmentByTag(tag) == null)
-      sheet.show(manager, tag);
+    BoxBottomSheet.show(requireActivity().getSupportFragmentManager(), page, false);
   }
 
   /**
@@ -595,22 +605,26 @@ public class MapButtonsController extends Fragment
     panel.setPadding(left, verticalPadding, right, verticalPadding + bottom);
   }
 
-  private void blinkPositionStatus(boolean blink)
+  /**
+   * @return the animator of the view while it blinks, null otherwise.
+   */
+  @Nullable
+  private static ObjectAnimator blink(@NonNull View view, boolean blink, @Nullable ObjectAnimator animator)
   {
-    if (mPositionStatus == null || blink == (mStatusBlinkingAnimator != null))
-      return;
-    if (mStatusBlinkingAnimator != null)
+    if (blink == (animator != null))
+      return animator;
+    if (animator != null)
     {
-      mStatusBlinkingAnimator.cancel();
-      mStatusBlinkingAnimator = null;
-      mPositionStatus.setAlpha(1f);
-      return;
+      animator.cancel();
+      view.setAlpha(1f);
+      return null;
     }
-    mStatusBlinkingAnimator = ObjectAnimator.ofFloat(mPositionStatus, View.ALPHA, 1f, 0.2f);
-    mStatusBlinkingAnimator.setDuration(400);
-    mStatusBlinkingAnimator.setRepeatCount(ObjectAnimator.INFINITE);
-    mStatusBlinkingAnimator.setRepeatMode(ObjectAnimator.REVERSE);
-    mStatusBlinkingAnimator.start();
+    animator = ObjectAnimator.ofFloat(view, View.ALPHA, 1f, 0.2f);
+    animator.setDuration(400);
+    animator.setRepeatCount(ObjectAnimator.INFINITE);
+    animator.setRepeatMode(ObjectAnimator.REVERSE);
+    animator.start();
+    return animator;
   }
 
   void animateIconBlinking(boolean show, @NonNull FloatingActionButton button)
@@ -901,7 +915,7 @@ public class MapButtonsController extends Fragment
     });
     // The sheets change what the bar shows: GPS used or not, the box forgotten.
     requireActivity().getSupportFragmentManager().setFragmentResultListener(
-        SensorsBottomSheet.RESULT_CLOSED, getViewLifecycleOwner(), (key, result) -> updatePositionStatus());
+        BoxBottomSheet.RESULT_CLOSED, getViewLifecycleOwner(), (key, result) -> updatePositionStatus());
   }
 
   @Override
@@ -937,7 +951,10 @@ public class MapButtonsController extends Fragment
   {
     super.onStop();
     mHandler.removeCallbacks(mPositionStatusUpdater);
-    blinkPositionStatus(false);
+    if (mPositionStatus != null)
+      mStatusBlinkingAnimator = blink(mPositionStatus, false, mStatusBlinkingAnimator);
+    if (mCalibrationStatus != null)
+      mCalibrationBlinkingAnimator = blink(mCalibrationStatus, false, mCalibrationBlinkingAnimator);
     if (mStatusBar != null)
       mStatusBar.stop();
     if (mSearchWheel != null)

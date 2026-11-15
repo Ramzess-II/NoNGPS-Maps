@@ -15,7 +15,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
 import androidx.core.widget.ImageViewCompat;
 import app.organicmaps.R;
-import app.organicmaps.nogps.SensorsBottomSheet;
+import app.organicmaps.nogps.BoxTexts;
 import app.organicmaps.sdk.location.LocationUtils;
 import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.util.ThemeUtils;
@@ -123,8 +123,8 @@ public class StatusBar
   {
     final boolean box = navShowsBox(status.getSource(), status.inertialEnabled);
     final String title = context.getString(box ? R.string.nogps_box_title : R.string.nogps_status_gps);
-    final String state = box ? status.inertialEnabled ? SensorsBottomSheet.boxStateText(context, status) : ""
-                             : getGpsStateText(context, status);
+    final String state =
+        box ? status.inertialEnabled ? BoxTexts.boxStateText(context, status) : "" : getGpsStateText(context, status);
     final String accuracy = getAccuracyText(context, status);
     final StringBuilder text = new StringBuilder(title);
     if (!state.isEmpty())
