@@ -555,8 +555,8 @@ extension Esp32BleTransport: CBPeripheralDelegate {
     // The core sends HELLO now.
     setState(.connected)
     // A box accepting a new phone may wait for the user to enter its code, even a paired one: the phone may have
-    // forgotten it.
-    if knownBoxes.contains(peripheral.identifier.uuidString), !acceptsNewPhone {
+    // forgotten it. The data may come before this callback: the box keeps the subscription of a paired phone.
+    if !isHeard, knownBoxes.contains(peripheral.identifier.uuidString), !acceptsNewPhone {
       schedule(after: Constants.silenceTimeout) { [weak self] in
         LOG(.warning, "No data from the box")
         self?.restartLater()
