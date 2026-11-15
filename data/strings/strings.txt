@@ -46119,6 +46119,13 @@ en = Cars
 ru = Машины
 uk = Авто
 
+[nogps_cars_subtitle]
+comment = Under the current car's name at the top of the box screen: tapping the name opens the list of the cars, where the user switches, renames or forgets them
+tags = android-app,apple-maps
+en = Switch or manage cars
+ru = Сменить или настроить машины
+uk = Змінити або налаштувати авто
+
 [nogps_car_default_name]
 comment = Name of a car the user hasn't named, by the four characters of the name of its sensor box: "Car C47D"
 tags = android-sdk,apple-maps
