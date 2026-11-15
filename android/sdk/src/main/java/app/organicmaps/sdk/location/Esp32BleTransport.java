@@ -431,7 +431,9 @@ class Esp32BleTransport
       final int flags = data != null && data.length >= 2 ? data[1] : 0;
       if ((flags & FLAG_PAIRING_OPEN) == 0)
       {
-        setState((flags & FLAG_FULL) != 0         ? STATE_PAIRING_FULL
+        // The box of a forgotten car still knows this phone: powered on again, it takes it back.
+        setState(forgotten                        ? STATE_PAIRING_CLOSED
+                 : (flags & FLAG_FULL) != 0       ? STATE_PAIRING_FULL
                  : (flags & FLAG_HAS_PHONES) != 0 ? STATE_PAIRING_BY_PHONE
                                                   : STATE_PAIRING_CLOSED);
         mMainHandler.removeCallbacks(mPairingClosedEnd);
