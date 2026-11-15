@@ -1408,9 +1408,6 @@
 /* Action for a car in the list of the cars: the app takes this car and connects to its box */
 "nogps_car_drive" = "Switch to this car";
 
-/* Action for a car in the list of the cars */
-"nogps_car_rename" = "Rename";
-
 /* Title of the dialog that renames a car */
 "nogps_car_name" = "Car name";
 
@@ -1420,14 +1417,17 @@
 /* Asked before a car is forgotten */
 "nogps_car_forget_text" = "What the app has learned about this car and where it was left will be lost. Its box is not connected until the car is added again.";
 
+/* Under the heading Phones of the page of a car: its box is not connected to this phone now, so its phones are not known */
+"nogps_car_phones_unknown" = "The phones of the box are shown while it is connected to this phone.";
+
 /* Button under the list of the cars: search the sensor box of another car */
 "nogps_car_add" = "Add a car";
 
 /* State of the sensor box, shown after its name: the box has phones, a new one is added on one of them */
-"nogps_box_bt_pairing_by_phone" = "found, but not paired with this phone. On a phone paired with the box, open Box, tap the car, then Phones and Add a phone, and enter the code here";
+"nogps_box_bt_pairing_by_phone" = "found, but not paired with this phone. On a phone paired with the box, open Box, tap the car name at the top, then the car and Add a phone, and enter the code here";
 
 /* State of the sensor box, shown after its name: the box has 4 phones and takes no new one */
-"nogps_box_bt_pairing_full" = "found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car, Phones)";
+"nogps_box_bt_pairing_full" = "found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car name at the top, the car)";
 
 /* Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car */
 "nogps_car_phones" = "Phones";

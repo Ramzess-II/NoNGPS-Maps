@@ -1039,20 +1039,20 @@
     <string name="nogps_car_last_seen">Last connected %1$s</string>
     <!-- Action for a car in the list of the cars: the app takes this car and connects to its box -->
     <string name="nogps_car_drive">Switch to this car</string>
-    <!-- Action for a car in the list of the cars -->
-    <string name="nogps_car_rename">Rename</string>
     <!-- Title of the dialog that renames a car -->
     <string name="nogps_car_name">Car name</string>
     <!-- Action for a car in the list of the cars, and the button that confirms it -->
     <string name="nogps_car_forget">Forget the car</string>
     <!-- Asked before a car is forgotten -->
     <string name="nogps_car_forget_text">What the app has learned about this car and where it was left will be lost. Its box is not connected until the car is added again.</string>
+    <!-- Under the heading Phones of the page of a car: its box is not connected to this phone now, so its phones are not known -->
+    <string name="nogps_car_phones_unknown">The phones of the box are shown while it is connected to this phone.</string>
     <!-- Button under the list of the cars: search the sensor box of another car -->
     <string name="nogps_car_add">Add a car</string>
     <!-- State of the sensor box, shown after its name: the box has phones, a new one is added on one of them -->
-    <string name="nogps_box_bt_pairing_by_phone">found, but not paired with this phone. On a phone paired with the box, open Box, tap the car, then Phones and Add a phone, and enter the code here</string>
+    <string name="nogps_box_bt_pairing_by_phone">found, but not paired with this phone. On a phone paired with the box, open Box, tap the car name at the top, then the car and Add a phone, and enter the code here</string>
     <!-- State of the sensor box, shown after its name: the box has 4 phones and takes no new one -->
-    <string name="nogps_box_bt_pairing_full">found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car, Phones)</string>
+    <string name="nogps_box_bt_pairing_full">found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car name at the top, the car)</string>
     <!-- Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car -->
     <string name="nogps_car_phones">Phones</string>
     <!-- Under a phone in the list of the phones of the sensor box: it is the phone the user holds -->

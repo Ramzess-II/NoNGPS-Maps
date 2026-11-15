@@ -1049,20 +1049,20 @@
     <string name="nogps_car_last_seen">Последнее подключение %1$s</string>
     <!-- Action for a car in the list of the cars: the app takes this car and connects to its box -->
     <string name="nogps_car_drive">Переключиться на эту машину</string>
-    <!-- Action for a car in the list of the cars -->
-    <string name="nogps_car_rename">Переименовать</string>
     <!-- Title of the dialog that renames a car -->
     <string name="nogps_car_name">Название машины</string>
     <!-- Action for a car in the list of the cars, and the button that confirms it -->
     <string name="nogps_car_forget">Забыть машину</string>
     <!-- Asked before a car is forgotten -->
     <string name="nogps_car_forget_text">То, что приложение узнало об этой машине, и место, где она осталась, будут потеряны. Её блок не будет подключаться, пока машину не добавят снова.</string>
+    <!-- Under the heading Phones of the page of a car: its box is not connected to this phone now, so its phones are not known -->
+    <string name="nogps_car_phones_unknown">Телефоны блока видны, пока он подключён к этому телефону.</string>
     <!-- Button under the list of the cars: search the sensor box of another car -->
     <string name="nogps_car_add">Добавить машину</string>
     <!-- State of the sensor box, shown after its name: the box has phones, a new one is added on one of them -->
-    <string name="nogps_box_bt_pairing_by_phone">найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на машину, затем «Телефоны» и «Добавить телефон» и введите код здесь</string>
+    <string name="nogps_box_bt_pairing_by_phone">найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на имя машины вверху, затем на машину и «Добавить телефон» и введите код здесь</string>
     <!-- State of the sensor box, shown after its name: the box has 4 phones and takes no new one -->
-    <string name="nogps_box_bt_pairing_full">найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», машина, «Телефоны»)</string>
+    <string name="nogps_box_bt_pairing_full">найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху, машина)</string>
     <!-- Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car -->
     <string name="nogps_car_phones">Телефоны</string>
     <!-- Under a phone in the list of the phones of the sensor box: it is the phone the user holds -->

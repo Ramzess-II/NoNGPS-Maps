@@ -1408,9 +1408,6 @@
 /* Action for a car in the list of the cars: the app takes this car and connects to its box */
 "nogps_car_drive" = "Переключиться на эту машину";
 
-/* Action for a car in the list of the cars */
-"nogps_car_rename" = "Переименовать";
-
 /* Title of the dialog that renames a car */
 "nogps_car_name" = "Название машины";
 
@@ -1420,14 +1417,17 @@
 /* Asked before a car is forgotten */
 "nogps_car_forget_text" = "То, что приложение узнало об этой машине, и место, где она осталась, будут потеряны. Её блок не будет подключаться, пока машину не добавят снова.";
 
+/* Under the heading Phones of the page of a car: its box is not connected to this phone now, so its phones are not known */
+"nogps_car_phones_unknown" = "Телефоны блока видны, пока он подключён к этому телефону.";
+
 /* Button under the list of the cars: search the sensor box of another car */
 "nogps_car_add" = "Добавить машину";
 
 /* State of the sensor box, shown after its name: the box has phones, a new one is added on one of them */
-"nogps_box_bt_pairing_by_phone" = "найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на машину, затем «Телефоны» и «Добавить телефон» и введите код здесь";
+"nogps_box_bt_pairing_by_phone" = "найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на имя машины вверху, затем на машину и «Добавить телефон» и введите код здесь";
 
 /* State of the sensor box, shown after its name: the box has 4 phones and takes no new one */
-"nogps_box_bt_pairing_full" = "найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», машина, «Телефоны»)";
+"nogps_box_bt_pairing_full" = "найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху, машина)";
 
 /* Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car */
 "nogps_car_phones" = "Телефоны";
