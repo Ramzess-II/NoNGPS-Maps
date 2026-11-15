@@ -47,4 +47,33 @@ final class NavigationSearchWheelTests: XCTestCase {
     XCTAssertEqual(first.x, last.x, accuracy: 0.001)
     XCTAssertEqual(first.y, -last.y, accuracy: 0.001)
   }
+
+  func testSweepStartsAtTopAndTurnsThroughMapSide() throws {
+    for rtl in [false, true] {
+      let path = Wheel.sweepPath(rtl: rtl)
+      var start: CGPoint?
+      path.cgPath.applyWithBlock { element in
+        if start == nil, element.pointee.type == .moveToPoint {
+          start = element.pointee.points[0]
+        }
+      }
+      let flatSideX = rtl ? 0 : Wheel.Constants.radius
+      let middle = CGPoint(x: flatSideX, y: Wheel.Constants.radius)
+      let r = Wheel.Constants.sweepRadius / 2
+      let top = try XCTUnwrap(start)
+      XCTAssertEqual(top.x, middle.x, accuracy: 0.001)
+      XCTAssertEqual(top.y, middle.y - r, accuracy: 0.001)
+      XCTAssertEqual(path.currentPoint.x, middle.x, accuracy: 0.001)
+      XCTAssertEqual(path.currentPoint.y, middle.y + r, accuracy: 0.001)
+      // Through the map: the west, or the east in RTL.
+      let bounds = path.bounds
+      if rtl {
+        XCTAssertEqual(bounds.minX, middle.x, accuracy: 0.001)
+        XCTAssertEqual(bounds.maxX, middle.x + r, accuracy: 0.001)
+      } else {
+        XCTAssertEqual(bounds.minX, middle.x - r, accuracy: 0.001)
+        XCTAssertEqual(bounds.maxX, middle.x, accuracy: 0.001)
+      }
+    }
+  }
 }
