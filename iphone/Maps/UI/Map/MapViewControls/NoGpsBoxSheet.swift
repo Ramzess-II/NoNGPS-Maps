@@ -763,6 +763,9 @@ final class CarPageViewController: MWMTableViewController {
 
   private var phones: [NoGpsPhone] { phonesKnown ? status.boxPhones ?? [] : [] }
 
+  /// The box takes the name from the phone connected first only, the note under the phones tells it.
+  private var canRename: Bool { carId != status.carId || !status.boxReadOnly }
+
   private func refresh() {
     status = NoGps.status()
     car = NoGps.cars().first { $0.carId == carId }
@@ -824,6 +827,8 @@ final class CarPageViewController: MWMTableViewController {
       content = UIListContentConfiguration.valueCell()
       content.text = L("nogps_car_name")
       content.secondaryText = car.map { NoGpsBoxSheet.carName($0) }
+      content.textProperties.color = canRename ? .label : .secondaryLabel
+      cell.selectionStyle = canRename ? .default : .none
     case .drive:
       content.text = L("nogps_car_drive")
       content.textProperties.color = .linkBlue
@@ -852,7 +857,9 @@ final class CarPageViewController: MWMTableViewController {
     guard let car else { return }
     switch rows[indexPath.section][indexPath.row] {
     case .name:
-      NoGpsBoxSheet.renameCar(car, from: self) { [weak self] in self?.refresh() }
+      if canRename {
+        NoGpsBoxSheet.renameCar(car, from: self) { [weak self] in self?.refresh() }
+      }
     case .drive:
       NoGps.selectCar(carId)
       NoGpsStatusBar.update(NoGps.status())
