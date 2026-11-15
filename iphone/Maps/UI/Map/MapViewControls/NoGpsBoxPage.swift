@@ -12,6 +12,7 @@ final class NoGpsBoxPage: MWMTableViewController {
   private enum Constants {
     static let refreshInterval: TimeInterval = 0.5
     static let cellId = "NoGpsBoxPageCell"
+    static let boxModel = "NonGPS-OBD"
     // The speed table ranges, as in SpeedTable of the core.
     static let speedTableRangeKmh = 10
     static let speedTableMinKmh = 5
@@ -79,6 +80,7 @@ final class NoGpsBoxPage: MWMTableViewController {
   override func viewDidLoad() {
     super.viewDidLoad()
     title = L("nogps_box_title")
+    navigationItem.backButtonDisplayMode = .minimal
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
   }
 
@@ -143,9 +145,8 @@ final class NoGpsBoxPage: MWMTableViewController {
     tableView.reloadData(keepingRows: sections.map(\.rows), &shownRows)
   }
 
-  /// OBD is always open: it tells why the car speed is missing.
   private func isUnfolded(_ part: Part) -> Bool {
-    part == .obd || unfolded.contains(part)
+    unfolded.contains(part)
   }
 
   private func addSection(_ part: Part, _ rows: [Row], footer: String? = nil) {
@@ -193,15 +194,13 @@ final class NoGpsBoxPage: MWMTableViewController {
       content.textProperties.font = .preferredFont(forTextStyle: .headline)
       content.secondaryTextProperties.color = .secondaryLabel
       content.secondaryTextProperties.numberOfLines = 0
-      if part != .obd {
-        let chevron = chevrons[part] ?? UIImageView()
-        chevrons[part] = chevron
-        chevron.image = UIImage(systemName: isUnfolded(part) ? "chevron.down" : "chevron.forward")
-        chevron.tintColor = .tertiaryLabel
-        chevron.sizeToFit()
-        cell.accessoryView = chevron
-        cell.selectionStyle = .default
-      }
+      let chevron = chevrons[part] ?? UIImageView()
+      chevrons[part] = chevron
+      chevron.image = UIImage(systemName: isUnfolded(part) ? "chevron.down" : "chevron.forward")
+      chevron.tintColor = .tertiaryLabel
+      chevron.sizeToFit()
+      cell.accessoryView = chevron
+      cell.selectionStyle = .default
     case .readOnly:
       content.text = L("nogps_box_read_only")
       content.textProperties.color = .secondaryLabel
@@ -266,7 +265,7 @@ final class NoGpsBoxPage: MWMTableViewController {
   override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
     tableView.deselectRow(at: indexPath, animated: true)
     switch sections[indexPath.section].rows[indexPath.row] {
-    case .header(let part) where part != .obd:
+    case .header(let part):
       if unfolded.contains(part) {
         unfolded.remove(part)
       } else {
@@ -296,7 +295,7 @@ final class NoGpsBoxPage: MWMTableViewController {
 
   private func headerTitle(_ part: Part) -> String {
     switch part {
-    case .box: return L("nogps_box_value_group_box")
+    case .box: return String(format: L("nogps_box_section"), Constants.boxModel)
     case .obd: return L("nogps_box_value_group_obd")
     case .car:
       let car = NoGps.cars().first { $0.carId == status.carId }
@@ -309,9 +308,10 @@ final class NoGpsBoxPage: MWMTableViewController {
   private func headerSubtitle(_ part: Part) -> String {
     switch part {
     case .box:
-      let state = NoGpsBoxPage.sentenceCase(Self.boxStateText(status))
-      let firmware = Self.firmwareText(status)
-      return firmware.isEmpty ? state : state + " · " + firmware
+      // The update tells how it goes instead of the state.
+      let state = Self.isFirmwareUpdating(status) ? Self.firmwareText(status) : Self.boxStateText(status)
+      let version = status.boxFirmware.isEmpty ? nil : String(format: L("nogps_box_version"), status.boxFirmware)
+      return [version, NoGpsBoxPage.sentenceCase(state)].compactMap { $0 }.joined(separator: ", ")
     case .obd:
       return NoGpsBoxSheet.obdHintText(status) ?? NoGpsBoxPage.sentenceCase(Self.boxStateText(status))
     case .car:

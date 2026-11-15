@@ -146,7 +146,8 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
 
   override func viewDidLoad() {
     super.viewDidLoad()
-    navigationItem.backButtonTitle = L("nogps_box_title")
+    // The page opened tells its own title: the back button doesn't repeat it.
+    navigationItem.backButtonDisplayMode = .minimal
     navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .close, target: self,
                                                         action: #selector(close))
     titleButton.addTarget(self, action: #selector(openCars), for: .touchUpInside)
@@ -486,6 +487,7 @@ private final class CarsViewController: MWMTableViewController {
   override func viewDidLoad() {
     super.viewDidLoad()
     title = L("nogps_cars")
+    navigationItem.backButtonDisplayMode = .minimal
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
   }
 
