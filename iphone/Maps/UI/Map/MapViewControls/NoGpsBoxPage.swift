@@ -642,6 +642,12 @@ final class NoGpsCalibrationPage: MWMTableViewController {
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
   }
 
+  /// The sheet fits this page: the progress and the result come and go.
+  override func viewDidLayoutSubviews() {
+    super.viewDidLayoutSubviews()
+    (navigationController?.viewControllers.first as? NoGpsBoxSheet)?.refit()
+  }
+
   override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
     refresh()

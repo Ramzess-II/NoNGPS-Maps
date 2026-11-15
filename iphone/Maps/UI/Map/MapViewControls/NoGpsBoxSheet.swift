@@ -124,15 +124,21 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     root.selectDetent(for: navigation.topViewController)
   }
 
-  /// The sheet fits the tiles and the few rows under them, the pages take the whole height.
+  /// The sheet fits the tiles and the few rows under them, and the calibration. The other pages take the whole
+  /// height.
   private var sheetHeight: CGFloat {
-    Self.barBottom + tableView.contentSize.height
+    let page = navigationController?.topViewController as? UITableViewController ?? self
+    return Self.barBottom + page.tableView.contentSize.height
+  }
+
+  private static func fitsContent(_ controller: UIViewController?) -> Bool {
+    controller is NoGpsBoxSheet || controller is NoGpsCalibrationPage
   }
 
   private func selectDetent(for controller: UIViewController?) {
     guard let sheet = navigationController?.sheetPresentationController else { return }
     var detent = UISheetPresentationController.Detent.Identifier.large
-    if controller === self {
+    if Self.fitsContent(controller) {
       if #available(iOS 16.0, *) {
         detent = .init(Constants.fitDetent)
       } else {
@@ -194,7 +200,12 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
   override func viewDidLayoutSubviews() {
     super.viewDidLayoutSubviews()
     layoutHeader()
-    // Rows come and go, the box is found: the sheet follows. Not for the fractions of a point the layout differs by.
+    refit()
+  }
+
+  /// Rows come and go, the box is found: the sheet follows. Not for the fractions of a point the layout differs by.
+  /// Also called by the calibration page.
+  func refit() {
     let height = sheetHeight
     if #available(iOS 16.0, *), let sheet = navigationController?.sheetPresentationController,
        abs(height - fittedHeight) >= 1 {

@@ -16,6 +16,9 @@ final class NoGpsControls: NSObject {
     static let blinkKey = "blink"
     static let blinkDuration: CFTimeInterval = 0.4
     static let blinkOpacity = Float(0.2)
+    // The calibration waits for a stop: its bar flashes slower and softer than the lost road.
+    static let calibrationBlinkDuration: CFTimeInterval = 1.2
+    static let calibrationBlinkOpacity = Float(0.5)
     static let noneColor = UIColor(red: 0xD3 / 255, green: 0x2F / 255, blue: 0x2F / 255, alpha: 1)
     static let panelPlaceKey = "NoGpsLeftPanelY"
     // Of the speed from the corner of the free area, and from the panel above it.
@@ -326,7 +329,8 @@ final class NoGpsControls: NSObject {
     // It replaces the offer to calibrate: an alert is easy to dismiss and forget.
     let needsCalibration = NoGpsBoxPage.needsCalibration(status)
     calibrationButton.isHidden = !needsCalibration
-    Self.blink(calibrationButton, needsCalibration)
+    Self.blink(calibrationButton, needsCalibration, duration: Constants.calibrationBlinkDuration,
+               opacity: Constants.calibrationBlinkOpacity)
 
     // The car is marked by hand only while the position is not from GPS. The button is blue while the next tap on the
     // map shows where the car is, the tap is taken back when GPS is used again.
@@ -351,7 +355,8 @@ final class NoGpsControls: NSObject {
     NoGpsStatusBar.update(status)
   }
 
-  private static func blink(_ button: UIButton, _ blink: Bool) {
+  private static func blink(_ button: UIButton, _ blink: Bool, duration: CFTimeInterval = Constants.blinkDuration,
+                            opacity: Float = Constants.blinkOpacity) {
     // The system removes the animation in the background, the next refresh adds it again.
     let layer = button.layer
     guard blink != (layer.animation(forKey: Constants.blinkKey) != nil) else { return }
@@ -361,8 +366,8 @@ final class NoGpsControls: NSObject {
     }
     let animation = CABasicAnimation(keyPath: "opacity")
     animation.fromValue = 1
-    animation.toValue = Constants.blinkOpacity
-    animation.duration = Constants.blinkDuration
+    animation.toValue = opacity
+    animation.duration = duration
     animation.autoreverses = true
     animation.repeatCount = .infinity
     layer.add(animation, forKey: Constants.blinkKey)
