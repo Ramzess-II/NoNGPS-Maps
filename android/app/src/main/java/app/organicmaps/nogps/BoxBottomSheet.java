@@ -225,8 +225,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private SwitchCompat mSharePosition;
   private View mSharePositionNeedsMock;
   private View mShop;
-  private View mShopOffer;
-  private View mBuyAnother;
+  private View mBuyText;
+  private View mSearchBuyText;
   private View mSearch;
   private final ImageView[] mStepDots = new ImageView[4];
   private final TextView[] mSteps = new TextView[4];
@@ -257,17 +257,15 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private TextView mReadiness;
   private final Section[] mSections = new Section[5];
   private TextView mReadOnly;
-  private View mFirmwareRow;
   private TextView mFirmware;
-  private Button mFirmwareAction;
+  private TextView mFirmwareAction;
   private TextView mSpeed;
   private View mVoltageMismatch;
   private TextView mSpeedScale;
-  private TextView mRoughSpeed;
   private TextView mSpeedLagValue;
   private TextView mSpeedLagSource;
   private LinearLayout mSpeedTableRows;
-  private TextView mCalibrationRow;
+  private TextView mCalibrationValue;
   // The values of the box by groups, in the order the box sends them: car, gyroscope, OBD, box.
   private final LinearLayout[] mValueGroups = new LinearLayout[4];
   // The values shown, the last ones while the box is out of reach: the rows are made again when the box sends other
@@ -357,6 +355,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     {
       mPage = Page.values()[args.getInt(ARG_PAGE)];
       mUnfolded[SECTION_BOX] = args.getBoolean(ARG_UNFOLD_BOX);
+      // Back from the calibration shows where it is on the Box page.
+      mUnfolded[SECTION_IMU] = mPage == Page.CALIBRATION;
     }
   }
 
@@ -421,10 +421,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     });
     mSharePositionNeedsMock.setOnClickListener(v -> openDeveloperOptions());
     mShop = view.findViewById(R.id.box_shop);
-    mShopOffer = view.findViewById(R.id.box_shop_offer);
-    mBuyAnother = view.findViewById(R.id.box_buy_another);
+    mBuyText = view.findViewById(R.id.box_buy_text);
+    mSearchBuyText = view.findViewById(R.id.box_search_buy_text);
     view.findViewById(R.id.box_buy).setOnClickListener(v -> Utils.openUrl(requireContext(), SHOP_URL));
-    mBuyAnother.setOnClickListener(v -> Utils.openUrl(requireContext(), SHOP_URL));
 
     mSearch = view.findViewById(R.id.box_search);
     final int[] dots = {R.id.box_step0_dot, R.id.box_step1_dot, R.id.box_step2_dot, R.id.box_step3_dot};
@@ -478,20 +477,18 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       });
     }
     mReadOnly = view.findViewById(R.id.box_read_only);
-    mFirmwareRow = view.findViewById(R.id.box_firmware_row);
     mFirmware = view.findViewById(R.id.box_firmware);
     mFirmwareAction = view.findViewById(R.id.box_firmware_action);
     mFirmwareAction.setOnClickListener(v -> onFirmwareAction());
     mSpeed = view.findViewById(R.id.box_speed);
     mVoltageMismatch = view.findViewById(R.id.box_voltage_mismatch);
     mSpeedScale = view.findViewById(R.id.box_speed_scale);
-    mRoughSpeed = view.findViewById(R.id.box_rough_speed);
     mSpeedLagValue = view.findViewById(R.id.box_speed_lag_value);
     mSpeedLagSource = view.findViewById(R.id.box_speed_lag_source);
     mSpeedTableRows = view.findViewById(R.id.box_speed_table_rows);
     view.findViewById(R.id.box_clear_speed).setOnClickListener(v -> confirmClearSpeed());
-    mCalibrationRow = view.findViewById(R.id.box_calibration_row);
-    mCalibrationRow.setOnClickListener(v -> showPage(Page.CALIBRATION));
+    view.findViewById(R.id.box_calibration_row).setOnClickListener(v -> showPage(Page.CALIBRATION));
+    mCalibrationValue = view.findViewById(R.id.box_calibration_value);
     mValueGroups[0] = view.findViewById(R.id.box_values_car);
     mValueGroups[1] = view.findViewById(R.id.box_values_imu);
     mValueGroups[2] = view.findViewById(R.id.box_values_obd);
@@ -499,6 +496,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
 
     mCalibrationPage = view.findViewById(R.id.box_calibration_page);
     setUpHeader(view, R.id.box_calibration_header, R.string.nogps_box_calibration);
+    ((TextView) view.findViewById(R.id.box_calibration_text))
+        .setText(getString(R.string.nogps_box_calibration_hint) + "\n\n" + getString(R.string.nogps_calibration_steps));
     mCalibrationState = view.findViewById(R.id.box_calibration_state);
     mCalibrationProgress = view.findViewById(R.id.box_calibration_progress);
     mCalibrationResult = view.findViewById(R.id.box_calibration_result);
@@ -564,6 +563,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     if (unfoldBox)
       mUnfolded[SECTION_BOX] = true;
+    // The Box page open already keeps its sections.
+    if (page == Page.CALIBRATION && mPage != Page.BOX)
+      mUnfolded[SECTION_IMU] = true;
     showPage(page);
   }
 
@@ -646,6 +648,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mMain.setVisibility(mPage == Page.MAIN ? View.VISIBLE : View.GONE);
     mShop.setVisibility(mPage == Page.MAIN ? View.VISIBLE : View.GONE);
     mSearch.setVisibility((mPage == Page.MAIN && mSearching) || mPage == Page.ADD_CAR ? View.VISIBLE : View.GONE);
+    // The box of a new car is not bought here.
+    mSearchBuyText.setVisibility(mPage == Page.MAIN ? View.VISIBLE : View.GONE);
     for (View view : pageViews(mPage))
     {
       if (view != mSearch && view != mShop)
@@ -669,16 +673,13 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     final Context context = requireContext();
     final boolean boxSetUp = status.inertialEnabled && !mSearching;
-    final NoGps.Car[] cars = boxSetUp ? NoGps.nativeGetCars() : new NoGps.Car[0];
-    NoGps.Car current = null;
-    for (NoGps.Car car : cars)
-    {
-      if (car.id.equals(status.carId))
-        current = car;
-    }
-    mTitle.setText(current != null ? BoxTexts.carName(context, current) : getString(R.string.nogps_box_title));
-    mTitle.setClickable(cars.length > 0);
-    mTitle.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, cars.length > 0 ? R.drawable.ic_nogps_chevron : 0, 0);
+    // The car driven now opens the cars. Without a box set up there are none.
+    final NoGps.Car current = boxSetUp ? currentCar(status) : null;
+    mTitle.setText(!boxSetUp         ? getString(R.string.nogps_box_title)
+                   : current != null ? BoxTexts.carName(context, current)
+                                     : getString(R.string.nogps_cars));
+    mTitle.setClickable(boxSetUp);
+    mTitle.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, boxSetUp ? R.drawable.ic_nogps_chevron : 0, 0);
     mBox.setClickable(boxSetUp);
     mBoxChevron.setVisibility(boxSetUp ? View.VISIBLE : View.GONE);
     if (mSearching)
@@ -691,9 +692,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     if (linkAction != 0)
       mBluetooth.setText(linkAction);
     updateGps(status);
-    // Without a box the offer stands out.
-    mShopOffer.setVisibility(boxSetUp ? View.GONE : View.VISIBLE);
-    mBuyAnother.setVisibility(boxSetUp ? View.VISIBLE : View.GONE);
+    // Without a box: what it is for, under the search while it goes.
+    mBuyText.setVisibility(!status.inertialEnabled && !mSearching ? View.VISIBLE : View.GONE);
   }
 
   private void updateGps(@NonNull NoGps.Status status)
@@ -1093,7 +1093,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mReadOnly.setVisibility(connected && status.boxReadOnly ? View.VISIBLE : View.GONE);
     final NoGps.FirmwareUpdate update = status.getFirmwareUpdate();
     final boolean updating = BoxTexts.isUpdating(update);
-    mFirmwareRow.setVisibility(updating || !status.boxFirmware.isEmpty() ? View.VISIBLE : View.GONE);
+    mFirmware.setVisibility(updating || !status.boxFirmware.isEmpty() ? View.VISIBLE : View.GONE);
     mFirmware.setText(getString(R.string.nogps_sensors_firmware, firmware));
     // A box that has taken the firmware restarts by itself.
     final boolean cancel = updating && update != NoGps.FirmwareUpdate.RESTARTING;
@@ -1111,22 +1111,24 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final NoGps.Car car = currentCar(status);
     mSections[SECTION_CAR].show(
         car != null ? BoxTexts.carName(context, car) : getString(R.string.nogps_box_value_group_car),
-        getString(status.engineRunning < 0   ? R.string.nogps_unknown
-                  : status.engineRunning > 0 ? R.string.nogps_engine_running
-                                             : R.string.nogps_engine_stopped));
-    mSpeed.setText(getString(R.string.nogps_sensors_speed, connected && status.speedKmh >= 0
+        getString(!isBoxHeard(status) || status.engineRunning < 0 ? R.string.nogps_unknown
+                  : status.engineRunning > 0                      ? R.string.nogps_engine_running
+                                                                  : R.string.nogps_engine_stopped));
+    mSpeed.setText(getString(R.string.nogps_sensors_speed, status.inertialStarted && status.speedKmh >= 0
                                                                ? getString(R.string.nogps_speed_kmh, status.speedKmh)
                                                                : getString(R.string.nogps_unknown)));
 
     mSections[SECTION_SPEED].show(getString(R.string.nogps_speed_calibration),
                                   BoxTexts.speedTableText(context, status));
-    mSpeedScale.setText(getString(R.string.nogps_sensors_scale, String.format(Locale.US, "×%.2f", status.speedScale),
-                                  status.speedTableRanges));
+    String scale = getString(R.string.nogps_sensors_scale, String.format(Locale.US, "\u00D7%.2f", status.speedScale),
+                             status.speedTableRanges);
     // Until GPS measures the speed, e.g. on the first trip, it is corrected roughly by the roads.
-    mRoughSpeed.setVisibility(status.speedTableRanges == 0 ? View.VISIBLE : View.GONE);
-    mRoughSpeed.setText(status.roughSpeedTableRanges > 0
-                            ? getString(R.string.nogps_sensors_rough_speed, status.roughSpeedTableRanges)
-                            : getString(R.string.nogps_sensors_rough_speed_learning));
+    if (status.speedTableRanges == 0)
+      scale += "\n"
+             + (status.roughSpeedTableRanges > 0
+                    ? getString(R.string.nogps_sensors_rough_speed, status.roughSpeedTableRanges)
+                    : getString(R.string.nogps_sensors_rough_speed_learning));
+    mSpeedScale.setText(scale);
     mSpeedLagValue.setText(
         getString(R.string.nogps_speed_lag_value, String.format(Locale.US, "%.1f", status.speedLagSec)));
     mSpeedLagSource.setText(status.speedLagMeasured ? R.string.nogps_speed_lag_measured
@@ -1137,14 +1139,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     for (int i = 0; i < mValueIds.length; ++i)
     {
       final NoGps.BoxValue id = mValueIds[i];
-      if ((id == NoGps.BoxValue.IMU_STATE || id == NoGps.BoxValue.IMU_TEMPERATURE) && connected
-          && !mValues[i].isEmpty())
+      if ((id == NoGps.BoxValue.IMU_STATE || id == NoGps.BoxValue.IMU_TEMPERATURE) && status.boxValues.length > 0)
         imu.add(BoxTexts.boxValueText(context, status, id, mValues[i]));
     }
     mSections[SECTION_IMU].show(getString(R.string.nogps_box_value_group_gyroscope),
                                 imu.isEmpty() ? getString(R.string.nogps_unknown) : String.join(" · ", imu));
-    mCalibrationRow.setText(getString(R.string.nogps_sensors_box_sensors,
-                                      BoxTexts.boxCalibrationText(context, status, calibration(status))));
+    mCalibrationValue.setText(BoxTexts.capitalize(BoxTexts.boxCalibrationText(context, status, calibration(status))));
 
     for (int i = 0; i < mSections.length; ++i)
     {
@@ -1299,8 +1299,18 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private void updateCalibration(@NonNull NoGps.Status status)
   {
     final NoGps.CalibrationState calibration = calibration(status);
-    mCalibrationState.setText(getString(R.string.nogps_sensors_box_sensors,
-                                        BoxTexts.boxCalibrationText(requireContext(), status, calibration)));
+    mCalibrationState.setText(BoxTexts.capitalize(BoxTexts.boxCalibrationText(requireContext(), status, calibration)));
+    // Green once calibrated, red after a failure.
+    final int stateColor = switch (calibration)
+    {
+      case DONE -> status.boxCalibrationAdvised ? 0 : R.color.nogps_status_gps;
+      case FAILED_MOVING, MOUNT_MOVED, LINK_LOST -> R.color.nogps_status_none;
+      default -> 0;
+    };
+    if (stateColor != 0)
+      mCalibrationState.setTextColor(ContextCompat.getColor(requireContext(), stateColor));
+    else
+      mCalibrationState.setTextColor(mStateColors);
     final boolean calibrating = calibration == NoGps.CalibrationState.CALIBRATING;
     mCalibrationProgress.setVisibility(calibrating ? View.VISIBLE : View.GONE);
     mCalibrationProgress.setProgress(status.calibrationProgress);

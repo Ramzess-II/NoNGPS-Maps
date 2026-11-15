@@ -280,7 +280,8 @@
       android:layout_height="wrap_content"
       android:layout_marginTop="4dp"
       android:text="@string/nogps_car_add_text"
-      android:textSize="15sp" />
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp" />
   </LinearLayout>
 
   <LinearLayout
@@ -437,6 +438,15 @@
       android:text="@string/nogps_box_power_hint"
       android:textColor="?android:textColorSecondary"
       android:textSize="14sp" />
+    <!-- On the main page only: the box of a new car is not bought here. -->
+    <TextView
+      android:id="@+id/box_search_buy_text"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="12dp"
+      android:text="@string/nogps_box_buy_text"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp" />
   </LinearLayout>
 
   <!-- The last rows of the main page. -->
@@ -445,33 +455,23 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical">
-    <!-- Without a box, the offer stands out. -->
-    <LinearLayout
-      android:id="@+id/box_shop_offer"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:orientation="vertical">
-      <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="@string/nogps_box_buy_text"
-        android:textSize="15sp" />
-      <Button
-        android:id="@+id/box_buy"
-        style="@style/MwmWidget.Button.Accent"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="@string/nogps_box_buy" />
-    </LinearLayout>
     <Button
-      android:id="@+id/box_buy_another"
+      android:id="@+id/box_buy"
       style="?borderlessButtonStyle"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="8dp"
-      android:text="@string/nogps_box_buy" />
+      android:text="@string/nogps_box_buy"
+      android:textStyle="bold" />
+    <!-- Without a box set up: what the box is for. -->
+    <TextView
+      android:id="@+id/box_buy_text"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginHorizontal="4dp"
+      android:text="@string/nogps_box_buy_text"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="13sp" />
   </LinearLayout>
 
   <LinearLayout
@@ -502,6 +502,7 @@
       style="?borderlessButtonStyle"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
+      android:gravity="start|center_vertical"
       android:text="@string/nogps_car_add" />
   </LinearLayout>
 
@@ -514,26 +515,27 @@
     <include
       android:id="@+id/box_phones_header"
       layout="@layout/nogps_box_page_header" />
-    <TextView
-      android:id="@+id/box_phones_read_only"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:layout_marginBottom="8dp"
-      android:text="@string/nogps_box_read_only"
-      android:textColor="?android:textColorSecondary"
-      android:textSize="14sp"
-      android:visibility="gone" />
     <!-- A row for each phone of the box, see nogps_car_row: a tap removes it. -->
     <LinearLayout
       android:id="@+id/box_phones_rows"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:orientation="vertical" />
+    <TextView
+      android:id="@+id/box_phones_read_only"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="4dp"
+      android:text="@string/nogps_box_read_only"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp"
+      android:visibility="gone" />
     <Button
       android:id="@+id/box_add_phone"
       style="?borderlessButtonStyle"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
+      android:gravity="start|center_vertical"
       android:text="@string/nogps_phone_add" />
   </LinearLayout>
 
@@ -552,7 +554,7 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="4dp"
-      android:textSize="16sp"
+      android:textSize="17sp"
       android:textStyle="bold" />
 
     <include
@@ -578,26 +580,23 @@
         android:text="@string/nogps_sensors_hint_box"
         android:textColor="?android:textColorSecondary"
         android:textSize="14sp" />
-      <LinearLayout
-        android:id="@+id/box_firmware_row"
+      <TextView
+        android:id="@+id/box_firmware"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:minHeight="48dp"
-        android:orientation="horizontal">
-        <TextView
-          android:id="@+id/box_firmware"
-          android:layout_width="0dp"
-          android:layout_height="wrap_content"
-          android:layout_weight="1"
-          android:textSize="16sp" />
-        <!-- Install, or Cancel while it is sent. -->
-        <Button
-          android:id="@+id/box_firmware_action"
-          style="?borderlessButtonStyle"
-          android:layout_width="wrap_content"
-          android:layout_height="wrap_content" />
-      </LinearLayout>
+        android:textSize="16sp" />
+      <!-- Install, or Cancel while it is sent. -->
+      <TextView
+        android:id="@+id/box_firmware_action"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:textColor="?colorAccent"
+        android:textSize="16sp" />
       <LinearLayout
         android:id="@+id/box_values_box"
         android:layout_width="match_parent"
@@ -671,12 +670,6 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:textSize="16sp" />
-      <TextView
-        android:id="@+id/box_rough_speed"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textColor="?android:textColorSecondary"
-        android:textSize="14sp" />
       <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -732,15 +725,30 @@
       android:layout_height="wrap_content"
       android:orientation="vertical">
       <!-- Opens the Calibration page. -->
-      <TextView
+      <LinearLayout
         android:id="@+id/box_calibration_row"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?selectableItemBackground"
         android:gravity="center_vertical"
         android:minHeight="48dp"
-        android:textSize="16sp"
-        app:drawableEndCompat="@drawable/ic_nogps_chevron" />
+        android:orientation="horizontal">
+        <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="12dp"
+          android:text="@string/nogps_box_calibration"
+          android:textSize="16sp" />
+        <TextView
+          android:id="@+id/box_calibration_value"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:gravity="end|center_vertical"
+          android:textColor="?android:textColorSecondary"
+          android:textSize="16sp"
+          app:drawableEndCompat="@drawable/ic_nogps_chevron" />
+      </LinearLayout>
       <LinearLayout
         android:id="@+id/box_values_imu"
         android:layout_width="match_parent"
@@ -758,25 +766,21 @@
     <include
       android:id="@+id/box_calibration_header"
       layout="@layout/nogps_box_page_header" />
+    <!-- When and how, see BoxBottomSheet. -->
     <TextView
+      android:id="@+id/box_calibration_text"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="4dp"
-      android:text="@string/nogps_box_calibration_hint"
-      android:textSize="15sp" />
-    <TextView
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:layout_marginTop="8dp"
-      android:text="@string/nogps_calibration_steps"
-      android:textSize="15sp"
-      android:textStyle="bold" />
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp" />
     <TextView
       android:id="@+id/box_calibration_state"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="16dp"
-      android:textSize="16sp" />
+      android:textSize="17sp"
+      android:textStyle="bold" />
     <ProgressBar
       android:id="@+id/box_calibration_progress"
       style="?android:progressBarStyleHorizontal"
@@ -784,25 +788,26 @@
       android:layout_height="wrap_content"
       android:layout_marginTop="8dp"
       android:max="100" />
+    <!-- What went wrong and what the user does next. -->
     <TextView
       android:id="@+id/box_calibration_result"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="8dp"
-      android:textColor="@color/base_red"
-      android:textSize="15sp" />
+      android:layout_marginTop="6dp"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp" />
     <Button
       android:id="@+id/box_calibrate"
-      style="@style/MwmWidget.Button.Accent"
+      style="?borderlessButtonStyle"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="16dp" />
+      android:layout_marginTop="12dp"
+      android:textStyle="bold" />
     <!-- Why the box can't be calibrated now. -->
     <TextView
       android:id="@+id/box_calibrate_reason"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="6dp"
       android:textColor="?android:textColorSecondary"
       android:textSize="14sp" />
   </LinearLayout>
