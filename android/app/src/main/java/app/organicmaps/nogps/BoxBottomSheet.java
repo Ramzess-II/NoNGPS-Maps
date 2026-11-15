@@ -432,6 +432,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     setUpHeader(view, R.id.box_gps_header, R.string.nogps_status_gps);
 
     mCarsPage = view.findViewById(R.id.box_cars_page);
+    // A few cars would leave the page low on the screen: it takes at least half of it, the sheet grows with more rows.
+    mCarsPage.setMinimumHeight(getResources().getDisplayMetrics().heightPixels / 2 - mRoot.getPaddingTop()
+                               - mRoot.getPaddingBottom());
     setUpHeader(view, R.id.box_cars_header, R.string.nogps_cars);
     mCars = view.findViewById(R.id.box_cars);
     mAddCar = view.findViewById(R.id.box_add_car);
