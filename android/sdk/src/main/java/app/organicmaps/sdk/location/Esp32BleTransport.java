@@ -33,6 +33,7 @@ import android.os.SystemClock;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.UiThread;
+import androidx.annotation.VisibleForTesting;
 import androidx.core.content.ContextCompat;
 import app.organicmaps.sdk.util.log.Logger;
 import java.util.ArrayDeque;
@@ -420,7 +421,8 @@ class Esp32BleTransport
     // A paired box without its name may be of a car: not while a new one is added.
     if (id != null ? !isBoxWanted(id, bonded) : mNewBoxOnly && bonded)
       return;
-    if (!bonded)
+    final boolean forgotten = id != null && getForgottenBoxes().contains(id);
+    if (needsPairingWindow(bonded, forgotten, mNewBoxOnly))
     {
       // A box accepts a new phone for two minutes after it is powered, if it has no phones, or after a paired phone
       // has let it. The phone asks for the code.
@@ -438,7 +440,8 @@ class Esp32BleTransport
       }
       // A box paired already is taken first if it is near: the new one may be somebody else's. Without it the
       // new box is a second or a replaced one of the user.
-      if (!mNewBoxOnly && hasPairedBox(adapter) && SystemClock.elapsedRealtime() - mScanStartMs < NEW_BOX_DELAY_MS)
+      if (!mNewBoxOnly && !forgotten && hasPairedBox(adapter)
+          && SystemClock.elapsedRealtime() - mScanStartMs < NEW_BOX_DELAY_MS)
         return;
     }
     Logger.i(TAG, "Found " + device.getAddress() + " " + id + " rssi " + result.getRssi() + " bonded " + bonded);
@@ -459,6 +462,17 @@ class Esp32BleTransport
       restartLater();
     else
       startWatchdog(CONNECT_WATCHDOG_MS);
+  }
+
+  /**
+   * A box that is not paired is connected only while it accepts a new phone. A forgotten one, still paired, too: the
+   * user forgot its car, and only setting the box up again brings the car back, as on iOS. Adding a car takes it at
+   * once.
+   */
+  @VisibleForTesting
+  static boolean needsPairingWindow(boolean bonded, boolean forgotten, boolean newBoxOnly)
+  {
+    return !bonded || (forgotten && !newBoxOnly);
   }
 
   /**
