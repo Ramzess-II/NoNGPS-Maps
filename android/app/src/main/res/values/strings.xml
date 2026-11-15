@@ -945,10 +945,14 @@
     <string name="nogps_sensors_speed">Speed: %s</string>
     <string name="nogps_speed_kmh">%d km/h</string>
     <string name="nogps_unknown">—</string>
-    <string name="nogps_sensors_ready">Ready</string>
-    <string name="nogps_sensors_not_ready">Not ready: %s</string>
-    <string name="nogps_missing_speed">no speed</string>
-    <string name="nogps_missing_position">no start position</string>
+    <!-- Top of the Box page: the box gives all the navigation without GPS needs -->
+    <string name="nogps_sensors_ready">Ready to drive without GPS</string>
+    <!-- Top of the Box page: what the navigation without GPS still needs, a list of nogps_missing_* joined by commas -->
+    <string name="nogps_sensors_not_ready">Not ready to drive without GPS: %s</string>
+    <!-- After "Not ready to drive without GPS:": the box gives no car speed from the OBD socket -->
+    <string name="nogps_missing_speed">no car speed from OBD</string>
+    <!-- After "Not ready to drive without GPS:": the car has no place on the map to start from -->
+    <string name="nogps_missing_position">no start position, mark the car on the map</string>
     <string name="nogps_sensors_scale">Speed correction: %1$s · measured ranges: %2$d</string>
     <string name="nogps_sensors_rough_speed">≈ Rough correction from the roads · ranges: %d · GPS will refine it</string>
     <string name="nogps_sensors_rough_speed_learning">≈ The correction is learned from the roads until GPS measures the speed</string>
@@ -1018,7 +1022,7 @@
     <string name="nogps_box_calibration_link_lost">stopped, the box is out of reach</string>
     <!-- State of the sensors of the box, shown after "Sensors:": the box has been powered on since its calibration -->
     <string name="nogps_box_calibration_advised">the box has been plugged in, calibrate it</string>
-    <!-- What is missing for the navigation without GPS, shown after "Not ready:" -->
+    <!-- After "Not ready to drive without GPS:" -->
     <string name="nogps_missing_box_calibration">calibrate the box</string>
     <string name="nogps_turns_reversed">The gyroscope turns the car the other way than GPS. Check the axes of the sensor driver: without GPS the car would turn wrong</string>
     <string name="nogps_road_lost">The road is lost, the car is stopped. Mark yourself on the map</string>
@@ -1208,6 +1212,10 @@
     <string name="nogps_calibration_failed_link">The connection to the box was lost. Stay near the car and calibrate again.</string>
     <!-- On the Calibration page of the sensor box, under the disabled Calibrate button -->
     <string name="nogps_calibration_needs_box">The box is out of reach: power it on and stay near the car.</string>
+    <!-- Title of the Box section of the Box page: the model of the sensor box, e.g. "Box NonGPS-OBD" -->
+    <string name="nogps_box_section">Box %1$s</string>
+    <!-- Start of the subtitle of the Box section of the Box page: the firmware version of the box, then its state -->
+    <string name="nogps_box_version">Ver %1$s</string>
     <!-- Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page -->
     <string name="nogps_calibration_snackbar">Calibrate the sensor box</string>
     <!-- Switch in the Box sheet under Use GPS for the car: the app is the mock location app for other apps -->
@@ -1310,8 +1318,6 @@
     <string name="nogps_box_value_group_gyroscope">Gyroscope</string>
     <!-- Section of the Box values page: the ELM327 adapter of the box -->
     <string name="nogps_box_value_group_obd">OBD</string>
-    <!-- Section of the Box values page: the box itself -->
-    <string name="nogps_box_value_group_box">Box</string>
     <!-- Row of the Box values page, the value is running or stopped -->
     <string name="nogps_box_value_engine">Engine</string>
     <!-- Row of the Box values page -->

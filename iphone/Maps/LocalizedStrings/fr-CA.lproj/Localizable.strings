@@ -1275,10 +1275,18 @@
 "nogps_sensors_speed" = "Speed: %@";
 "nogps_speed_kmh" = "%d km/h";
 "nogps_unknown" = "—";
-"nogps_sensors_ready" = "Ready";
-"nogps_sensors_not_ready" = "Not ready: %@";
-"nogps_missing_speed" = "no speed";
-"nogps_missing_position" = "no start position";
+
+/* Top of the Box page: the box gives all the navigation without GPS needs */
+"nogps_sensors_ready" = "Ready to drive without GPS";
+
+/* Top of the Box page: what the navigation without GPS still needs, a list of nogps_missing_* joined by commas */
+"nogps_sensors_not_ready" = "Not ready to drive without GPS: %@";
+
+/* After "Not ready to drive without GPS:": the box gives no car speed from the OBD socket */
+"nogps_missing_speed" = "no car speed from OBD";
+
+/* After "Not ready to drive without GPS:": the car has no place on the map to start from */
+"nogps_missing_position" = "no start position, mark the car on the map";
 "nogps_sensors_scale" = "Speed correction: %1$@ · measured ranges: %2$d";
 "nogps_sensors_rough_speed" = "≈ Rough correction from the roads · ranges: %d · GPS will refine it";
 "nogps_sensors_rough_speed_learning" = "≈ The correction is learned from the roads until GPS measures the speed";
@@ -1368,7 +1376,7 @@
 /* State of the sensors of the box, shown after "Sensors:": the box has been powered on since its calibration */
 "nogps_box_calibration_advised" = "the box has been plugged in, calibrate it";
 
-/* What is missing for the navigation without GPS, shown after "Not ready:" */
+/* After "Not ready to drive without GPS:" */
 "nogps_missing_box_calibration" = "calibrate the box";
 "nogps_turns_reversed" = "The gyroscope turns the car the other way than GPS. Check the axes of the sensor driver: without GPS the car would turn wrong";
 "nogps_road_lost" = "The road is lost, the car is stopped. Mark yourself on the map";
@@ -1629,6 +1637,12 @@
 /* On the Calibration page of the sensor box, under the disabled Calibrate button */
 "nogps_calibration_needs_box" = "The box is out of reach: power it on and stay near the car.";
 
+/* Title of the Box section of the Box page: the model of the sensor box, e.g. "Box NonGPS-OBD" */
+"nogps_box_section" = "Box %1$@";
+
+/* Start of the subtitle of the Box section of the Box page: the firmware version of the box, then its state */
+"nogps_box_version" = "Ver %1$@";
+
 /* Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page */
 "nogps_calibration_snackbar" = "Calibrate the sensor box";
 
@@ -1754,9 +1768,6 @@
 
 /* Section of the Box values page: the ELM327 adapter of the box */
 "nogps_box_value_group_obd" = "OBD";
-
-/* Section of the Box values page: the box itself */
-"nogps_box_value_group_box" = "Box";
 
 /* Row of the Box values page, the value is running or stopped */
 "nogps_box_value_engine" = "Engine";

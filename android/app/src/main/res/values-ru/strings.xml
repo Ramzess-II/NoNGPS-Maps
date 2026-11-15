@@ -955,10 +955,14 @@
     <string name="nogps_sensors_speed">Скорость: %s</string>
     <string name="nogps_speed_kmh">%d км/ч</string>
     <string name="nogps_unknown">—</string>
-    <string name="nogps_sensors_ready">Готово к работе</string>
-    <string name="nogps_sensors_not_ready">Не готово: %s</string>
-    <string name="nogps_missing_speed">нет скорости</string>
-    <string name="nogps_missing_position">нет стартовой точки</string>
+    <!-- Top of the Box page: the box gives all the navigation without GPS needs -->
+    <string name="nogps_sensors_ready">Готово к езде без GPS</string>
+    <!-- Top of the Box page: what the navigation without GPS still needs, a list of nogps_missing_* joined by commas -->
+    <string name="nogps_sensors_not_ready">Не готово к езде без GPS: %s</string>
+    <!-- After "Not ready to drive without GPS:": the box gives no car speed from the OBD socket -->
+    <string name="nogps_missing_speed">нет скорости машины по OBD</string>
+    <!-- After "Not ready to drive without GPS:": the car has no place on the map to start from -->
+    <string name="nogps_missing_position">нет стартовой точки, отметьте машину на карте</string>
     <string name="nogps_sensors_scale">Поправка скорости: %1$s · диапазонов измерено: %2$d</string>
     <string name="nogps_sensors_rough_speed">≈ Черновая поправка по дорогам · диапазонов: %d · GPS её уточнит</string>
     <string name="nogps_sensors_rough_speed_learning">≈ Поправка учится по дорогам, пока скорость не измерит GPS</string>
@@ -1028,7 +1032,7 @@
     <string name="nogps_box_calibration_link_lost">прервана, блок вне связи</string>
     <!-- State of the sensors of the box, shown after "Sensors:": the box has been powered on since its calibration -->
     <string name="nogps_box_calibration_advised">блок подключали заново, откалибруйте</string>
-    <!-- What is missing for the navigation without GPS, shown after "Not ready:" -->
+    <!-- After "Not ready to drive without GPS:" -->
     <string name="nogps_missing_box_calibration">откалибруйте блок</string>
     <string name="nogps_turns_reversed">Гироскоп поворачивает машину не в ту сторону, что GPS. Проверьте оси в драйвере датчика: без GPS машина будет поворачивать неправильно</string>
     <string name="nogps_road_lost">Дорога потеряна, машина остановлена. Отметьте себя на карте</string>
@@ -1218,6 +1222,10 @@
     <string name="nogps_calibration_failed_link">Связь с блоком потеряна. Оставайтесь рядом с машиной и откалибруйте снова.</string>
     <!-- On the Calibration page of the sensor box, under the disabled Calibrate button -->
     <string name="nogps_calibration_needs_box">Блок вне досягаемости: включите его и оставайтесь рядом с машиной.</string>
+    <!-- Title of the Box section of the Box page: the model of the sensor box, e.g. "Box NonGPS-OBD" -->
+    <string name="nogps_box_section">Блок %1$s</string>
+    <!-- Start of the subtitle of the Box section of the Box page: the firmware version of the box, then its state -->
+    <string name="nogps_box_version">Версия %1$s</string>
     <!-- Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page -->
     <string name="nogps_calibration_snackbar">Откалибруйте блок датчиков</string>
     <!-- Switch in the Box sheet under Use GPS for the car: the app is the mock location app for other apps -->
@@ -1320,8 +1328,6 @@
     <string name="nogps_box_value_group_gyroscope">Гироскоп</string>
     <!-- Section of the Box values page: the ELM327 adapter of the box -->
     <string name="nogps_box_value_group_obd">OBD</string>
-    <!-- Section of the Box values page: the box itself -->
-    <string name="nogps_box_value_group_box">Блок</string>
     <!-- Row of the Box values page, the value is running or stopped -->
     <string name="nogps_box_value_engine">Двигатель</string>
     <!-- Row of the Box values page -->
