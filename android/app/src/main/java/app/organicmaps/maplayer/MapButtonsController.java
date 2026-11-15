@@ -574,7 +574,7 @@ public class MapButtonsController extends Fragment
 
   private void showBoxSheet(@NonNull BoxBottomSheet.Page page)
   {
-    BoxBottomSheet.show(requireActivity().getSupportFragmentManager(), page, false);
+    BoxBottomSheet.show(requireActivity().getSupportFragmentManager(), page);
   }
 
   /**

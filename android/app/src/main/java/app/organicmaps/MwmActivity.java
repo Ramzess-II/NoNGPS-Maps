@@ -884,7 +884,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     case help -> showHelp();
     case trackRecordingStatus -> toggleTrackRecordingPP();
     case manualPosition -> toggleMarkByTap();
-    case positionStatus -> showBoxSheet(false);
+    case positionStatus -> showBoxSheet(BoxBottomSheet.Page.BOX);
     case reverseDirection -> NoGps.nativeReverseDirection();
     case switchMark -> NoGps.nativeSwitchMark();
     }
@@ -954,7 +954,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
                              (dialog, which) -> {
                                NoGps.nativeStartFirmwareUpdate();
                                // It shows how the update goes.
-                               showBoxSheet(true);
+                               showBoxSheet(BoxBottomSheet.Page.ITEM_BOX);
                              })
           .setNegativeButton(R.string.later, null)
           .show();
@@ -973,12 +973,9 @@ public class MwmActivity extends BaseMwmFragmentActivity
     return R.string.nogps_phone_removed;
   }
 
-  /**
-   * @param unfoldBox shows the box itself, e.g. how its firmware is sent.
-   */
-  private void showBoxSheet(boolean unfoldBox)
+  private void showBoxSheet(@NonNull BoxBottomSheet.Page page)
   {
-    BoxBottomSheet.show(getSupportFragmentManager(), BoxBottomSheet.Page.BOX, unfoldBox);
+    BoxBottomSheet.show(getSupportFragmentManager(), page);
   }
 
   @NonNull

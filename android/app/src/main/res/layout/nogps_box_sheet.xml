@@ -557,9 +557,40 @@
       android:textSize="17sp"
       android:textStyle="bold" />
 
+    <!-- One group: each item opens its page. -->
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="12dp"
+      android:background="@drawable/bg_nogps_group"
+      android:orientation="vertical">
+      <include
+        android:id="@+id/box_item_box"
+        layout="@layout/nogps_box_section" />
+      <include
+        android:id="@+id/box_item_obd"
+        layout="@layout/nogps_box_section" />
+      <include
+        android:id="@+id/box_item_car"
+        layout="@layout/nogps_box_section" />
+      <include
+        android:id="@+id/box_item_speed"
+        layout="@layout/nogps_box_section" />
+      <include
+        android:id="@+id/box_item_imu"
+        layout="@layout/nogps_box_section" />
+    </LinearLayout>
+  </LinearLayout>
+
+  <LinearLayout
+    android:id="@+id/box_box_item_page"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone">
     <include
-      android:id="@+id/box_section_box"
-      layout="@layout/nogps_box_section" />
+      android:id="@+id/box_box_item_header"
+      layout="@layout/nogps_box_page_header" />
     <LinearLayout
       android:id="@+id/box_section_box_content"
       android:layout_width="match_parent"
@@ -603,19 +634,33 @@
         android:layout_height="wrap_content"
         android:orientation="vertical" />
     </LinearLayout>
+  </LinearLayout>
 
+  <LinearLayout
+    android:id="@+id/box_obd_item_page"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone">
     <include
-      android:id="@+id/box_section_obd"
-      layout="@layout/nogps_box_section" />
+      android:id="@+id/box_obd_item_header"
+      layout="@layout/nogps_box_page_header" />
     <LinearLayout
       android:id="@+id/box_values_obd"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:orientation="vertical" />
+  </LinearLayout>
 
+  <LinearLayout
+    android:id="@+id/box_car_item_page"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone">
     <include
-      android:id="@+id/box_section_car"
-      layout="@layout/nogps_box_section" />
+      android:id="@+id/box_car_item_header"
+      layout="@layout/nogps_box_page_header" />
     <LinearLayout
       android:id="@+id/box_section_car_content"
       android:layout_width="match_parent"
@@ -642,10 +687,17 @@
         android:textSize="14sp"
         android:visibility="gone" />
     </LinearLayout>
+  </LinearLayout>
 
+  <LinearLayout
+    android:id="@+id/box_speed_item_page"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone">
     <include
-      android:id="@+id/box_section_speed"
-      layout="@layout/nogps_box_section" />
+      android:id="@+id/box_speed_item_header"
+      layout="@layout/nogps_box_page_header" />
     <LinearLayout
       android:id="@+id/box_section_speed_content"
       android:layout_width="match_parent"
@@ -715,10 +767,17 @@
         android:layout_height="wrap_content"
         android:orientation="vertical" />
     </LinearLayout>
+  </LinearLayout>
 
+  <LinearLayout
+    android:id="@+id/box_imu_item_page"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone">
     <include
-      android:id="@+id/box_section_imu"
-      layout="@layout/nogps_box_section" />
+      android:id="@+id/box_imu_item_header"
+      layout="@layout/nogps_box_page_header" />
     <LinearLayout
       android:id="@+id/box_section_imu_content"
       android:layout_width="match_parent"
