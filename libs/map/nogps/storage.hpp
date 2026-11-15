@@ -2,6 +2,8 @@
 
 #include "platform/settings.hpp"
 
+#include "geometry/latlon.hpp"
+
 #include <array>
 #include <cstdint>
 #include <map>
@@ -98,6 +100,8 @@ struct Car
   std::string m_firmware;
   // When the box told about itself the last time, milliseconds since the Unix epoch.
   int64_t m_lastSeenUnixMs = 0;
+  // Where the car was left the last time it was the current one, see Storage::kCarPosition.
+  std::optional<ms::LatLon> m_parkedAt;
 };
 
 std::string DebugPrint(Car const & car);

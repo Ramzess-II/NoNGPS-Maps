@@ -2479,6 +2479,64 @@ UNIT_TEST(NoGps_Engine_CarOfBoxIsShownWhereItWasLeft)
   TestAlmostEqualAbs(East(fresh.Last().m_position), 150, 0.5);
 }
 
+UNIT_TEST(NoGps_Engine_ParkedCarsAreOtherCarsWithPlace)
+{
+  Env env(true /* inertial */);
+  int changes = 0;
+  env.m_engine.SetParkedCarsListener([&changes] { ++changes; });
+  HearBox(env, "C47D");
+  MarkCar(env, 50);
+  env.Drive(2000, 0, 0);
+  // The current car is where the position is.
+  TEST(env.m_engine.GetParkedCars().empty(), ());
+  // The first car has become the current one.
+  TEST_EQUAL(changes, 1, ());
+  changes = 0;
+
+  // The user walks to the other car with the phone and marks it.
+  HearBox(env, "42FD");
+  TEST_EQUAL(changes, 1, ());
+  auto parked = env.m_engine.GetParkedCars();
+  TEST_EQUAL(parked.size(), 1, ());
+  TEST_EQUAL(parked[0].m_id, "C47D", ());
+  TestAlmostEqualAbs(East(*parked[0].m_parkedAt), 50, 0.5);
+  env.Drive(2000, 0, 0);
+
+  env.m_engine.RenameCar("C47D", "Van");
+  TEST_EQUAL(changes, 2, ());
+  TEST_EQUAL(env.m_engine.GetParkedCars()[0].m_name, "Van", ());
+
+  // The mark the other car got has stayed where the user marked the first one: the other car is there.
+  env.m_engine.SelectCar("C47D");
+  TEST_EQUAL(changes, 3, ());
+  parked = env.m_engine.GetParkedCars();
+  TEST_EQUAL(parked.size(), 1, ());
+  TEST_EQUAL(parked[0].m_id, "42FD", ());
+  TestAlmostEqualAbs(East(*parked[0].m_parkedAt), 50, 0.5);
+
+  env.m_engine.ForgetCar("42FD");
+  TEST_EQUAL(changes, 4, ());
+  TEST(env.m_engine.GetParkedCars().empty(), ());
+}
+
+UNIT_TEST(NoGps_Engine_CarDrivenIsLeftWhereItIsShown)
+{
+  Env env(true /* inertial */);
+  HearBox(env, "C47D");
+  HearBox(env, "42FD");
+  env.m_engine.SelectCar("C47D");
+  MarkCar(env, 50);
+  env.Drive(5000, 36, 0);
+  double const shownAt = East(env.Last().m_position);
+  TEST_GREATER(shownAt, 80, ());
+  // While it drives, its place is saved seldom.
+  env.m_engine.SelectCar("42FD");
+  auto const parked = env.m_engine.GetParkedCars();
+  TEST_EQUAL(parked.size(), 1, ());
+  TEST_EQUAL(parked[0].m_id, "C47D", ());
+  TestAlmostEqualAbs(East(*parked[0].m_parkedAt), shownAt, 1);
+}
+
 /// The box of a firmware that keeps the values of its car: it answers the phone connected to it.
 class CarBox
 {

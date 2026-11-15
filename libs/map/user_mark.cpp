@@ -84,6 +84,42 @@ drape_ptr<df::UserPointMark::ColoredSymbolZoomInfo> ColoredMarkPoint::GetColored
   return make_unique_dp<ColoredSymbolZoomInfo>(m_coloredSymbols);
 }
 
+NoGpsCarMark::NoGpsCarMark(m2::PointD const & ptOrg) : UserMark(ptOrg, UserMark::Type::NOGPS_CAR) {}
+
+void NoGpsCarMark::SetName(std::string const & name)
+{
+  SetDirty();
+  m_name = name;
+}
+
+drape_ptr<df::UserPointMark::SymbolNameZoomInfo> NoGpsCarMark::GetSymbolNames() const
+{
+  // As a bookmark with the parking icon.
+  auto symbol = make_unique_dp<SymbolNameZoomInfo>();
+  symbol->insert(std::make_pair(1 /* zoomLevel */, "bookmark-default-xs"));
+  symbol->insert(std::make_pair(8 /* zoomLevel */, "bookmark-default-s"));
+  symbol->insert(std::make_pair(14 /* zoomLevel */, "bookmark-parking-m"));
+  return symbol;
+}
+
+df::ColorConstant NoGpsCarMark::GetColorConstant() const
+{
+  return "BookmarkBlueGray";
+}
+
+drape_ptr<df::UserPointMark::TitlesInfo> NoGpsCarMark::GetTitleDeclEx(settings::Placement, dp::Color outlineColor) const
+{
+  dp::TitleDecl title;
+  title.m_anchor = dp::Top;
+  title.m_primaryTextFont.m_color = df::GetColorConstant(GetColorConstant());
+  title.m_primaryTextFont.m_outlineColor = outlineColor;
+  title.m_primaryTextFont.m_size = 11;
+  title.m_primaryText = m_name;
+  auto titles = make_unique_dp<TitlesInfo>();
+  titles->push_back(std::move(title));
+  return titles;
+}
+
 std::string DebugPrint(UserMark::Type type)
 {
   switch (type)
@@ -101,6 +137,7 @@ std::string DebugPrint(UserMark::Type type)
   case UserMark::Type::TRACK_SELECTION: return "TRACK_SELECTION";
   case UserMark::Type::COLORED: return "COLORED";
   case UserMark::Type::ROUTE_ALT: return "ROUTE_ALT";
+  case UserMark::Type::NOGPS_CAR: return "NOGPS_CAR";
   case UserMark::Type::USER_MARK_TYPES_COUNT: return "USER_MARK_TYPES_COUNT";
   case UserMark::Type::USER_MARK_TYPES_COUNT_MAX: return "USER_MARK_TYPES_COUNT_MAX";
   }

@@ -17,6 +17,7 @@
 #include "base/thread_checker.hpp"
 
 #include <cstdint>
+#include <functional>
 #include <limits>
 #include <map>
 #include <memory>
@@ -322,6 +323,10 @@ public:
   void RenameCar(std::string const & id, std::string const & name);
   /// Forgets the car and what is learned about it. Without cars left the box is not looked for.
   void ForgetCar(std::string const & id);
+  /// The cars left somewhere, other than the current one: its place is where the position is.
+  std::vector<Car> GetParkedCars() const;
+  /// Called when GetParkedCars() may have changed, e.g. to draw them on the map.
+  void SetParkedCarsListener(std::function<void()> listener) { m_parkedCarsListener = std::move(listener); }
 
   /// The firmwares of the ESP32 sensor box that come with the application: the box should work with the one
   /// for it, the application is tested with it.
@@ -400,6 +405,7 @@ private:
   /// Shows the car where its storage tells it was left, if it stands where the start has put it or is not shown yet.
   /// \returns true if it is shown there.
   bool MoveParkedCar();
+  void OnParkedCarsChanged();
   /// Writes the values of the car the phone has changed to its box, see BoxCarValues.
   /// \param now at once, else not more often than BoxCarValues::kSaveIntervalMs.
   void SaveBoxCarValues(bool now);
@@ -437,6 +443,7 @@ private:
 
   Delegate & m_delegate;
   MapApi & m_map;
+  std::function<void()> m_parkedCarsListener;
   // The storage of the application with the values of the current car: m_storage.
   CarStorage m_cars;
   Storage & m_storage;
