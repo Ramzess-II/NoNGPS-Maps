@@ -1212,6 +1212,10 @@
     <string name="nogps_calibration_needs_box">The box is out of reach: power it on and stay near the car.</string>
     <!-- Title of the Box section of the Box page: the model of the sensor box, e.g. "Box NonGPS-OBD" -->
     <string name="nogps_box_section">Box %1$s</string>
+    <!-- Item of the Box page and the title of its page: the car of the box with its name, e.g. "Car: Kia" -->
+    <string name="nogps_box_car">Car: %1$s</string>
+    <!-- Item of the Box page and the title of its page: the motion sensors of the box (gyroscope, accelerometer) -->
+    <string name="nogps_box_imu">Inertial Measurement Unit</string>
     <!-- Start of the subtitle of the Box section of the Box page: the firmware version of the box, then its state -->
     <string name="nogps_box_version">Ver %1$s</string>
     <!-- Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page -->
@@ -1312,8 +1316,6 @@
     <string name="nogps_box_power_hint">Have a box? Power it on near the phone: it accepts a new phone for 2 minutes. The phone may ask for the code from the box.</string>
     <!-- Section of the Box values page -->
     <string name="nogps_box_value_group_car">Car</string>
-    <!-- Section of the Box values page -->
-    <string name="nogps_box_value_group_gyroscope">Gyroscope</string>
     <!-- Section of the Box values page: the ELM327 adapter of the box -->
     <string name="nogps_box_value_group_obd">OBD</string>
     <!-- Row of the Box values page, the value is running or stopped -->

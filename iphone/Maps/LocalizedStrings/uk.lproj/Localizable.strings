@@ -1640,6 +1640,12 @@
 /* Title of the Box section of the Box page: the model of the sensor box, e.g. "Box NonGPS-OBD" */
 "nogps_box_section" = "Блок %1$@";
 
+/* Item of the Box page and the title of its page: the car of the box with its name, e.g. "Car: Kia" */
+"nogps_box_car" = "Машина: %1$@";
+
+/* Item of the Box page and the title of its page: the motion sensors of the box (gyroscope, accelerometer) */
+"nogps_box_imu" = "Інерціальний вимірювальний блок";
+
 /* Start of the subtitle of the Box section of the Box page: the firmware version of the box, then its state */
 "nogps_box_version" = "Версія %1$@";
 
@@ -1762,9 +1768,6 @@
 
 /* Section of the Box values page */
 "nogps_box_value_group_car" = "Машина";
-
-/* Section of the Box values page */
-"nogps_box_value_group_gyroscope" = "Гіроскоп";
 
 /* Section of the Box values page: the ELM327 adapter of the box */
 "nogps_box_value_group_obd" = "OBD";
