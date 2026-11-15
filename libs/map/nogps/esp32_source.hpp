@@ -210,6 +210,8 @@ private:
   std::optional<std::string> m_obdState;
   // The box hasn't found its ELM327: while it searches it again, the adapter is still missing.
   bool m_obdAdapterMissing = false;
+  // The car hasn't answered (NO_CAR, NO_DATA) since the link was made: the next protocol search changes nothing.
+  bool m_carSilent = false;
   // The engine, its speed and the voltage of the car from the status of the box.
   std::optional<CarInfo> m_carInfo;
   // The box has told that its voltage and the one of ELM327 differ. Kept until they come close again.
