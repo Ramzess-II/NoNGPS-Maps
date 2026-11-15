@@ -321,7 +321,8 @@ final class NoGpsBoxPage: MWMTableViewController {
       return Self.speedTableText(status)
     case .imu:
       let parts = [NoGpsBoxValue.imuState, .imuTemperature].compactMap { kind -> String? in
-        guard lastValues.contains(where: { $0.kind == kind }) else { return nil }
+        // Out of reach the values of the last connection are only "—".
+        guard status.boxValues.contains(where: { $0.kind == kind }) else { return nil }
         return valueText(kind)
       }
       return parts.isEmpty ? L("nogps_unknown") : parts.joined(separator: " · ")
