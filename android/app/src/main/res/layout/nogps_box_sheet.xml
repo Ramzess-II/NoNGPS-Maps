@@ -21,16 +21,29 @@
     android:layout_height="wrap_content"
     android:orientation="vertical">
     <!-- The current car, opens the Cars page. -->
-    <TextView
-      android:id="@+id/box_title"
+    <LinearLayout
+      android:id="@+id/box_title_row"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginBottom="8dp"
       android:background="?selectableItemBackground"
       android:gravity="center_vertical"
       android:minHeight="48dp"
-      android:textAppearance="?android:textAppearanceLarge"
-      android:textStyle="bold" />
+      android:orientation="vertical">
+      <TextView
+        android:id="@+id/box_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:textAppearanceLarge"
+        android:textStyle="bold" />
+      <TextView
+        android:id="@+id/box_title_subtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/nogps_cars_subtitle"
+        android:textColor="?android:textColorSecondary"
+        android:textSize="12sp" />
+    </LinearLayout>
 
     <!-- The box and GPS side by side, both open their pages. The states keep their height: the sheet doesn't jump as
          they change, a longer state is cut. -->

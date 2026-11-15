@@ -196,7 +196,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   };
   private ViewGroup mRoot;
   private View mMain;
+  private View mTitleRow;
   private TextView mTitle;
+  private View mTitleSubtitle;
   private View mBox;
   private View mBoxChevron;
   private StatusBar.Button mTile;
@@ -383,8 +385,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final View view = inflater.inflate(R.layout.nogps_box_sheet, container, false);
     mRoot = (ViewGroup) ((ViewGroup) view).getChildAt(0);
     mMain = view.findViewById(R.id.box_main);
+    mTitleRow = view.findViewById(R.id.box_title_row);
+    mTitleRow.setOnClickListener(v -> showPage(Page.CARS));
     mTitle = view.findViewById(R.id.box_title);
-    mTitle.setOnClickListener(v -> showPage(Page.CARS));
+    mTitleSubtitle = view.findViewById(R.id.box_title_subtitle);
     mBox = view.findViewById(R.id.box_box);
     mBoxChevron = view.findViewById(R.id.box_chevron);
     mBox.setOnClickListener(v -> showPage(Page.BOX));
@@ -749,7 +753,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mTitle.setText(!boxSetUp         ? getString(R.string.nogps_box_title)
                    : current != null ? BoxTexts.carName(context, current)
                                      : getString(R.string.nogps_cars));
-    mTitle.setClickable(boxSetUp);
+    mTitleRow.setClickable(boxSetUp);
+    mTitleSubtitle.setVisibility(boxSetUp ? View.VISIBLE : View.GONE);
     mTitle.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, boxSetUp ? R.drawable.ic_nogps_chevron : 0, 0);
     mBox.setClickable(boxSetUp);
     mBoxChevron.setVisibility(boxSetUp ? View.VISIBLE : View.GONE);
