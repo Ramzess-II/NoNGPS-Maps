@@ -1069,6 +1069,8 @@
     <string name="nogps_car_phones">Телефоны</string>
     <!-- Under a phone in the list of the phones of the sensor box: it is the phone the user holds -->
     <string name="nogps_phone_this">этот телефон</string>
+    <!-- Under a phone in the list of the phones of the sensor box: the box takes the calibration, the firmware, the car name and the phones from this phone, it connected first -->
+    <string name="nogps_phone_changes_box">управляет блоком</string>
     <!-- A phone in the list of the phones of the sensor box that has not told its model -->
     <string name="nogps_phone_unnamed">Телефон</string>
     <!-- Button: remove a phone from the sensor box -->

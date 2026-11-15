@@ -1438,6 +1438,9 @@
 /* Under a phone in the list of the phones of the sensor box: it is the phone the user holds */
 "nogps_phone_this" = "цей телефон";
 
+/* Under a phone in the list of the phones of the sensor box: the box takes the calibration, the firmware, the car name and the phones from this phone, it connected first */
+"nogps_phone_changes_box" = "керує блоком";
+
 /* A phone in the list of the phones of the sensor box that has not told its model */
 "nogps_phone_unnamed" = "Телефон";
 
