@@ -334,11 +334,20 @@ void Esp32Source::StoreBoxValues(esp32::Fields const & fields)
 
 esp32::BoxValues Esp32Source::GetBoxValues() const
 {
-  auto values = m_boxValues;
-  // The events of the box tell it too. The box tells about the car in the status of version 3 of the spec.
-  if (values.contains(esp32::BoxValue::Engine))
-    values[esp32::BoxValue::VoltageMismatch] = m_voltageMismatch ? "1" : "0";
-  return {values.begin(), values.end()};
+  if (m_bleState != BleState::Connected)
+    return {};
+  esp32::BoxValues values;
+  for (int i = 0; i <= static_cast<int>(esp32::BoxValue::LastEvent); ++i)
+  {
+    auto const id = static_cast<esp32::BoxValue>(i);
+    auto const it = m_boxValues.find(id);
+    std::string value = it == m_boxValues.end() ? std::string() : it->second;
+    // The events of the box tell it too. The box tells about the car in the status of version 3 of the spec.
+    if (id == esp32::BoxValue::VoltageMismatch && m_boxValues.contains(esp32::BoxValue::Engine))
+      value = m_voltageMismatch ? "1" : "0";
+    values.emplace_back(id, std::move(value));
+  }
+  return values;
 }
 
 void Esp32Source::Send(std::string_view command, int id)

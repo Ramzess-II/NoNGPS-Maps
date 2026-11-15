@@ -1183,25 +1183,42 @@ UNIT_TEST(NoGps_Esp32Source_TellsItsName)
   TEST_EQUAL(source.GetDeviceName(), "NonGPS-OBD · ICM20602", ());
 }
 
-UNIT_TEST(NoGps_Esp32Source_BoxValuesClearedOnDisconnect)
+UNIT_TEST(NoGps_Esp32Source_BoxValuesWhileConnected)
 {
   using V = esp32::BoxValue;
+  size_t constexpr kAll = static_cast<size_t>(V::LastEvent) + 1;
+  auto const value = [](esp32::BoxValues const & values, V id) { return values[static_cast<size_t>(id)]; };
   TestClock clock;
   TestDelegate delegate;
   MotionRecorder listener;
   Esp32Source source(delegate, clock, clock, listener);
   source.Start();
-  source.OnBleState(BleState::Connected);
+  TEST(source.GetBoxValues().empty(), ());
+  source.OnBleState(BleState::Pairing);
   TEST(source.GetBoxValues().empty(), ());
 
-  source.OnBleBytes(BoxLine("NGI,1,0.3.5,2026-10-10T10:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA,7"));
+  // Every value in the order of the page, empty until the box sends it.
+  source.OnBleState(BleState::Connected);
+  auto values = source.GetBoxValues();
+  TEST_EQUAL(values.size(), kAll, ());
+  for (size_t i = 0; i < kAll; ++i)
+    TEST_EQUAL(values[i], esp32::BoxValues::value_type(static_cast<V>(i), ""), ());
+
   source.OnBleBytes(BoxLine("NGS,1,0.3.5,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,9,RUN,812,17200,12400,"));
-  auto const values = source.GetBoxValues();
-  // The values of both lines in the order of the page, and the voltage mismatch told by the box.
-  TEST_EQUAL(values.size(), 30, ());
-  TEST_EQUAL(values.front(), esp32::BoxValues::value_type(V::Engine, "RUN"), ());
-  TEST_EQUAL(values[5], esp32::BoxValues::value_type(V::VoltageMismatch, "1"), ());
-  TEST_EQUAL(values.back(), esp32::BoxValues::value_type(V::LastEvent, "9"), ());
+  values = source.GetBoxValues();
+  TEST_EQUAL(values.size(), kAll, ());
+  TEST_EQUAL(value(values, V::Engine), esp32::BoxValues::value_type(V::Engine, "RUN"), ());
+  // The voltage mismatch told by the box.
+  TEST_EQUAL(value(values, V::VoltageMismatch), esp32::BoxValues::value_type(V::VoltageMismatch, "1"), ());
+  TEST_EQUAL(value(values, V::LastEvent), esp32::BoxValues::value_type(V::LastEvent, "9"), ());
+  TEST_EQUAL(value(values, V::Id), esp32::BoxValues::value_type(V::Id, ""), ());
+
+  source.OnBleBytes(BoxLine("NGI,1,0.3.5,2026-10-10T10:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA,7"));
+  values = source.GetBoxValues();
+  TEST_EQUAL(values.size(), kAll, ());
+  TEST_EQUAL(value(values, V::Id), esp32::BoxValues::value_type(V::Id, "C47D"), ());
+  TEST_EQUAL(value(values, V::PowerOns), esp32::BoxValues::value_type(V::PowerOns, "7"), ());
+  TEST_EQUAL(value(values, V::Engine), esp32::BoxValues::value_type(V::Engine, "RUN"), ());
 
   source.OnBleState(BleState::Searching);
   TEST(source.GetBoxValues().empty(), ());
@@ -1209,7 +1226,11 @@ UNIT_TEST(NoGps_Esp32Source_BoxValuesClearedOnDisconnect)
   // A status of an older firmware tells nothing about the car.
   source.OnBleState(BleState::Connected);
   source.OnBleBytes(BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,12"));
-  TEST_EQUAL(source.GetBoxValues().size(), 14, ());
+  values = source.GetBoxValues();
+  TEST_EQUAL(values.size(), kAll, ());
+  TEST_EQUAL(value(values, V::ImuName), esp32::BoxValues::value_type(V::ImuName, "ICM20602"), ());
+  TEST_EQUAL(value(values, V::Engine), esp32::BoxValues::value_type(V::Engine, ""), ());
+  TEST_EQUAL(value(values, V::VoltageMismatch), esp32::BoxValues::value_type(V::VoltageMismatch, ""), ());
   source.Stop();
   TEST(source.GetBoxValues().empty(), ());
 }
