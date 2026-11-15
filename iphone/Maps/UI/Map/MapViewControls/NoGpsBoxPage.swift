@@ -213,7 +213,10 @@ final class NoGpsBoxPage: MWMTableViewController {
       content.text = L("nogps_sensors_hint_box")
       content.textProperties.color = .secondaryLabel
     case .firmware:
-      content.text = String(format: L("nogps_sensors_firmware"), Self.firmwareText(status))
+      // As the values under it: the version, or how its update goes.
+      content = UIListContentConfiguration.valueCell()
+      content.text = L("nogps_box_value_firmware")
+      content.secondaryText = Self.firmwareText(status)
     case .firmwareAction:
       content.text = Self.canCancelFirmware(status) ? L("cancel")
         : String(format: L("nogps_firmware_install"), status.bundledFirmware)
