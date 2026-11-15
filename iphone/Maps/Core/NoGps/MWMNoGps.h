@@ -207,6 +207,8 @@ NS_SWIFT_NAME(NoGpsPhone)
 /// When it connected the last time.
 @property(nonatomic, readonly, nullable) NSDate * lastSeen;
 @property(nonatomic, readonly) BOOL thisPhone;
+/// The box takes the commands that change it from this phone, false if not known.
+@property(nonatomic, readonly) BOOL changesBox;
 
 @end
 

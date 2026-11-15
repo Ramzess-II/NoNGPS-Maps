@@ -901,7 +901,11 @@ final class CarPageViewController: MWMTableViewController {
 
   private func phoneStateText(_ phone: NoGpsPhone) -> String? {
     if phone.thisPhone {
-      return L("nogps_phone_this")
+      return phone.changesBox ? L("nogps_phone_this") + " · " + L("nogps_phone_changes_box") : L("nogps_phone_this")
+    }
+    // Connected now.
+    if phone.changesBox {
+      return L("nogps_phone_changes_box")
     }
     guard let lastSeen = phone.lastSeen else { return nil }
     return String(format: L("nogps_car_last_seen"), RelativeDateTimeFormatter().localizedString(for: lastSeen,
