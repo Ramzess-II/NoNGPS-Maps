@@ -963,9 +963,6 @@
     <string name="nogps_missing_speed">нет скорости машины по OBD</string>
     <!-- After "Not ready to drive without GPS:": the car has no place on the map to start from -->
     <string name="nogps_missing_position">нет стартовой точки, отметьте машину на карте</string>
-    <string name="nogps_sensors_scale">Поправка скорости: %1$s · диапазонов измерено: %2$d</string>
-    <string name="nogps_sensors_rough_speed">≈ Черновая поправка по дорогам · диапазонов: %d · GPS её уточнит</string>
-    <string name="nogps_sensors_rough_speed_learning">≈ Поправка учится по дорогам, пока скорость не измерит GPS</string>
     <string name="nogps_speed_table_row">%1$d–%2$d км/ч  %3$s</string>
     <string name="nogps_speed_table_left">ещё %d м</string>
     <string name="nogps_status_gps_off">GPS выключен в настройках системы</string>
@@ -1199,11 +1196,11 @@
     <!-- Why, under the state of GPS -->
     <string name="nogps_gps_why_none">Нет позиций GPS 5 секунд.</string>
     <!-- Switch in the Box sheet: on, GPS is not used for the car -->
-    <string name="nogps_gps_block">Блокировать GPS</string>
-    <!-- Under the switch Block GPS in the Box sheet -->
+    <string name="nogps_gps_block">Не использовать GPS для навигации</string>
+    <!-- Under the switch Don't use GPS for navigation in the Box sheet -->
     <string name="nogps_gps_block_hint">Включено: GPS не используется, машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.</string>
-    <!-- Under the disabled switch Block GPS in the Box sheet: no box is heard -->
-    <string name="nogps_gps_block_needs_box">GPS можно заблокировать, только когда подключён блок: иначе машину ничто не поведёт.</string>
+    <!-- Under the disabled switch Don't use GPS for navigation in the Box sheet: no box is heard -->
+    <string name="nogps_gps_block_needs_box">GPS можно отключить, только когда подключён блок: иначе машину ничто не поведёт.</string>
     <!-- At the top of the Cars page of the Box sheet -->
     <string name="nogps_cars_text">Каждый блок — это одна машина со своей калибровкой и местом парковки. Нажмите на машину, чтобы ехать на ней, переименовать или забыть её.</string>
     <!-- On the Add a car page while the box of the new car is searched -->

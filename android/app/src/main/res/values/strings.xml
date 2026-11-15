@@ -953,9 +953,6 @@
     <string name="nogps_missing_speed">no car speed from OBD</string>
     <!-- After "Not ready to drive without GPS:": the car has no place on the map to start from -->
     <string name="nogps_missing_position">no start position, mark the car on the map</string>
-    <string name="nogps_sensors_scale">Speed correction: %1$s · measured ranges: %2$d</string>
-    <string name="nogps_sensors_rough_speed">≈ Rough correction from the roads · ranges: %d · GPS will refine it</string>
-    <string name="nogps_sensors_rough_speed_learning">≈ The correction is learned from the roads until GPS measures the speed</string>
     <string name="nogps_speed_table_row">%1$d–%2$d km/h  %3$s</string>
     <string name="nogps_speed_table_left">%d m to go</string>
     <string name="nogps_status_gps_off">GPS is off in the system settings</string>
@@ -1189,11 +1186,11 @@
     <!-- Why, under the state of GPS -->
     <string name="nogps_gps_why_none">No position from GPS for 5 seconds.</string>
     <!-- Switch in the Box sheet: on, GPS is not used for the car -->
-    <string name="nogps_gps_block">Block GPS</string>
-    <!-- Under the switch Block GPS in the Box sheet -->
+    <string name="nogps_gps_block">Don\'t use GPS for navigation</string>
+    <!-- Under the switch Don't use GPS for navigation in the Box sheet -->
     <string name="nogps_gps_block_hint">On: GPS is ignored, the box and your marks place the car. For places where GPS is spoofed but the app doesn\'t see it.</string>
-    <!-- Under the disabled switch Block GPS in the Box sheet: no box is heard -->
-    <string name="nogps_gps_block_needs_box">GPS can be blocked only while a box is connected: nothing else would move the car.</string>
+    <!-- Under the disabled switch Don't use GPS for navigation in the Box sheet: no box is heard -->
+    <string name="nogps_gps_block_needs_box">GPS can be turned off only while a box is connected: nothing else would move the car.</string>
     <!-- At the top of the Cars page of the Box sheet -->
     <string name="nogps_cars_text">Each box is one car with its own calibration and parking spot. Tap a car to drive it, rename it or forget it.</string>
     <!-- On the Add a car page while the box of the new car is searched -->

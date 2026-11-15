@@ -1244,7 +1244,7 @@
 "nogps_flags_send" = "Надіслати";
 
 /* The list of the flags of test drives is empty: what a flag is, how to make one with the flag button or the microphone button under it on the map, and how to send flags from this list */
-"nogps_flags_empty" = "Прапорці позначають моменти поїздки, коли машину показано не там. Кожен прапорець зберігає час, місце на мапі та знімок екрана.\n\nЩоб поставити прапорець, натисніть кнопку з прапорцем на мапі під час поїздки. Кнопка з мікрофоном під нею ще й записує голосову нотатку на 15 с: скажіть, що не так.\n\nПотім позначте прапорці тут і натисніть «Надіслати». Вони підуть розробникам поштою разом із журналами своїх днів. Прапорці зберігаються 7 днів.";
+"nogps_flags_empty" = "Прапорці позначають моменти поїздки, коли авто показано не там. Кожен прапорець зберігає час, місце на мапі та знімок екрана.\n\nЩоб поставити прапорець, натисніть кнопку з прапорцем на мапі під час поїздки. Кнопка з мікрофоном під нею ще й записує голосову нотатку на 15 с: скажіть, що не так.\n\nПотім позначте прапорці тут і натисніть «Надіслати». Вони підуть розробникам поштою разом із журналами своїх днів. Прапорці зберігаються 7 днів.";
 
 /* In the list of the flags of test drives: the length of the voice note of a flag, in seconds */
 "nogps_flag_voice" = "Голосова нотатка %d с";
@@ -1256,7 +1256,7 @@
 "nogps_flags_too_big" = "Файли займають %1$@, лист понад %2$d МБ може не дійти. Усе одно надіслати?";
 
 /* The user has pressed the button to show on the map where the car is */
-"nogps_mark_by_tap" = "Торкніться дороги, де зараз машина";
+"nogps_mark_by_tap" = "Торкніться дороги, де зараз авто";
 
 /* The button of the place page: the car is here, put the mark on the nearest road */
 "nogps_mark_here" = "Я тут";
@@ -1270,7 +1270,7 @@
 "nogps_box_obd_disabled" = "OBD вимкнено в блоці";
 "nogps_box_obd_connecting" = "OBD підключається…";
 "nogps_elm_error" = "помилка OBD";
-"nogps_elm_no_car" = "машина не відповідає";
+"nogps_elm_no_car" = "авто не відповідає";
 "nogps_elm_connected" = "підключено";
 "nogps_sensors_speed" = "Швидкість: %@";
 "nogps_speed_kmh" = "%d км/год";
@@ -1283,21 +1283,18 @@
 "nogps_sensors_not_ready" = "Не готово до їзди без GPS: %@";
 
 /* After "Not ready to drive without GPS:": the box gives no car speed from the OBD socket */
-"nogps_missing_speed" = "немає швидкості машини з OBD";
+"nogps_missing_speed" = "немає швидкості авто з OBD";
 
 /* After "Not ready to drive without GPS:": the car has no place on the map to start from */
-"nogps_missing_position" = "немає стартової точки, позначте машину на мапі";
-"nogps_sensors_scale" = "Поправка швидкості: %1$@ · діапазонів виміряно: %2$d";
-"nogps_sensors_rough_speed" = "≈ Чорнова поправка за дорогами · діапазонів: %d · GPS її уточнить";
-"nogps_sensors_rough_speed_learning" = "≈ Поправка вчиться за дорогами, поки швидкість не виміряє GPS";
+"nogps_missing_position" = "немає стартової точки, позначте авто на мапі";
 "nogps_speed_table_row" = "%1$d–%2$d км/год  %3$@";
 "nogps_speed_table_left" = "ще %d м";
 "nogps_status_gps_off" = "GPS вимкнено в налаштуваннях системи";
 "nogps_gps_back_auto" = "GPS знову надійний, ручний режим вимкнено";
-"nogps_reverse_direction" = "Розвернути машину на дорозі";
+"nogps_reverse_direction" = "Розвернути авто на дорозі";
 
 /* The button shown after a turn that fits several roads: it moves the mark of the car to the next of them. */
-"nogps_switch_mark" = "Показати машину на іншій можливій дорозі";
+"nogps_switch_mark" = "Показати авто на іншій можливій дорозі";
 "nogps_mark_no_road" = "Тут немає дороги, поставте мітку на дорогу";
 "nogps_gps_lost_auto" = "GPS зник або збився, увімкнено ручний режим";
 
@@ -1338,7 +1335,7 @@
 "nogps_box_try_again" = "Спробувати ще раз";
 
 /* Hint on the Box screen: the box is connected, but the car doesn't tell its speed yet */
-"nogps_box_hint_no_car" = "Увімкніть запалювання: швидкість машини прийде протягом хвилини";
+"nogps_box_hint_no_car" = "Увімкніть запалювання: швидкість авто прийде протягом хвилини";
 
 /* Hint on the Box screen: the ELM327 OBD adapter of the box doesn't answer */
 "nogps_box_hint_no_adapter" = "Перевірте, що адаптер ELM327 вставлено в роз'єм OBD і ввімкнено";
@@ -1347,7 +1344,7 @@
 "nogps_box_hint_obd_error" = "Вийміть блок із роз'єму й вставте назад: він запуститься знову";
 
 /* Hint on the Box screen: OBD is turned off in the settings of the box, it doesn't read the car speed */
-"nogps_box_hint_obd_disabled" = "OBD вимкнено в налаштуваннях блока: увімкніть його, щоб отримувати швидкість машини";
+"nogps_box_hint_obd_disabled" = "OBD вимкнено в налаштуваннях блока: увімкніть його, щоб отримувати швидкість авто";
 "nogps_sensors_calibrate_box" = "Калібрувати";
 "nogps_gyro_mount_moved" = "блок зсунули, відкалібруйте";
 "nogps_sensors_hint_box" = "Закріпіть блок нерухомо. Гіроскоп він обнуляє сам на кожній зупинці.";
@@ -1356,7 +1353,7 @@
 "nogps_box_calibration" = "Калібрування блока датчиків";
 
 /* Under the heading "Sensor box calibration": when and how the box is calibrated */
-"nogps_box_calibration_hint" = "Потрібне після встановлення блока та щоразу, коли його виймали або зсували. Машина має стояти на рівній поверхні без ухилів.";
+"nogps_box_calibration_hint" = "Потрібне після встановлення блока та щоразу, коли його виймали або зсували. Авто має стояти на рівній поверхні без ухилів.";
 
 /* State of the sensors of the box, shown after "Sensors:" */
 "nogps_box_not_calibrated" = "не відкалібровано";
@@ -1368,7 +1365,7 @@
 "nogps_box_calibrated" = "відкалібровано";
 
 /* State of the sensors of the box, shown after "Sensors:" */
-"nogps_box_calibration_failed" = "не вийшло, машина рухалася";
+"nogps_box_calibration_failed" = "не вийшло, авто рухалося";
 
 /* State of the sensors of the box, shown after "Sensors:": the Bluetooth link to the box was lost during the calibration */
 "nogps_box_calibration_link_lost" = "перервано, блок поза зв'язком";
@@ -1378,8 +1375,8 @@
 
 /* After "Not ready to drive without GPS:" */
 "nogps_missing_box_calibration" = "відкалібруйте блок";
-"nogps_turns_reversed" = "Гіроскоп повертає машину не в той бік, що GPS. Перевірте осі в драйвері датчика: без GPS машина повертатиме неправильно";
-"nogps_road_lost" = "Дорогу втрачено, машину зупинено. Позначте себе на мапі";
+"nogps_turns_reversed" = "Гіроскоп повертає авто не в той бік, що GPS. Перевірте осі в драйвері датчика: без GPS авто повертатиме неправильно";
+"nogps_road_lost" = "Дорогу втрачено, авто зупинено. Позначте себе на мапі";
 
 /* A route is asked for while there is no GPS and no mark of the user */
 "nogps_no_position_for_route" = "Немає позиції: маршрут будувати нізвідки. Натисніть кнопку з пальцем і торкніться дороги, де ви знаходитеся";
@@ -1388,49 +1385,49 @@
 "nogps_box_buy_title" = "Ще немає блока?";
 
 /* Card on the box screen under "No box yet?" */
-"nogps_box_buy_text" = "Блок NonGPS із датчиками руху тримає машину на мапі там, де GPS глушать або він зник.";
+"nogps_box_buy_text" = "Блок NonGPS із датчиками руху тримає авто на мапі там, де GPS глушать або він зник.";
 
 /* Button opening the page of the shop */
 "nogps_box_buy" = "Купити блок";
 
 /* Header of the list of the cars on the box screen: each car has its own sensor box */
-"nogps_cars" = "Машини";
+"nogps_cars" = "Авто";
 
 /* Name of a car the user hasn't named, by the four characters of the name of its sensor box: "Car C47D" */
-"nogps_car_default_name" = "Машина %1$@";
+"nogps_car_default_name" = "Авто %1$@";
 
 /* State of a car in the list of the cars: its box is connected now */
 "nogps_car_connected" = "Підключена";
 
 /* State of a car in the list of the cars: the app takes this car until a box connects */
-"nogps_car_current" = "Поточна машина";
+"nogps_car_current" = "Поточне авто";
 
 /* State of a car in the list of the cars: when its box was connected the last time, e.g. "Last connected 2 hours ago" */
 "nogps_car_last_seen" = "Останнє підключення %1$@";
 
 /* Action for a car in the list of the cars: the app takes this car and connects to its box */
-"nogps_car_drive" = "Перемкнутися на цю машину";
+"nogps_car_drive" = "Перемкнутися на це авто";
 
 /* Action for a car in the list of the cars */
 "nogps_car_rename" = "Перейменувати";
 
 /* Title of the dialog that renames a car */
-"nogps_car_name" = "Назва машини";
+"nogps_car_name" = "Назва авто";
 
 /* Action for a car in the list of the cars, and the button that confirms it */
-"nogps_car_forget" = "Забути машину";
+"nogps_car_forget" = "Забути авто";
 
 /* Asked before a car is forgotten */
-"nogps_car_forget_text" = "Те, що застосунок дізнався про цю машину, і місце, де вона залишилася, буде втрачено. Її блок не підключатиметься, доки машину не додадуть знову.";
+"nogps_car_forget_text" = "Те, що застосунок дізнався про це авто, і місце, де воно залишилося, буде втрачено. Його блок не підключатиметься, доки авто не додадуть знову.";
 
 /* Button under the list of the cars: search the sensor box of another car */
-"nogps_car_add" = "Додати машину";
+"nogps_car_add" = "Додати авто";
 
 /* State of the sensor box, shown after its name: the box has phones, a new one is added on one of them */
-"nogps_box_bt_pairing_by_phone" = "знайдено, але не спарено з цим телефоном. На телефоні, спареному з блоком, відкрийте «Блок», натисніть на машину, потім «Телефони» й «Додати телефон» і введіть код тут";
+"nogps_box_bt_pairing_by_phone" = "знайдено, але не спарено з цим телефоном. На телефоні, спареному з блоком, відкрийте «Блок», натисніть на авто, потім «Телефони» й «Додати телефон» і введіть код тут";
 
 /* State of the sensor box, shown after its name: the box has 4 phones and takes no new one */
-"nogps_box_bt_pairing_full" = "знайдено, але не спарено з цим телефоном. Блок має 4 телефони: видаліть один на спареному телефоні («Блок», машина, «Телефони»)";
+"nogps_box_bt_pairing_full" = "знайдено, але не спарено з цим телефоном. Блок має 4 телефони: видаліть один на спареному телефоні («Блок», авто, «Телефони»)";
 
 /* Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car */
 "nogps_car_phones" = "Телефони";
@@ -1448,10 +1445,10 @@
 "nogps_phone_remove_text" = "Той телефон більше не підключатиметься до блока. Щоб знову ним користуватися, додайте його знову.";
 
 /* Asked before this phone is removed from the sensor box */
-"nogps_phone_remove_this_text" = "Цей телефон більше не підключатиметься до блока, а машину на ньому буде забуто.";
+"nogps_phone_remove_this_text" = "Цей телефон більше не підключатиметься до блока, а авто на ньому буде забуто.";
 
 /* Message: this phone has been removed from the sensor box on its own request */
-"nogps_phone_removed" = "Цей телефон видалено з блока, машину забуто";
+"nogps_phone_removed" = "Цей телефон видалено з блока, авто забуто";
 
 /* Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code */
 "nogps_phone_add" = "Додати телефон";
@@ -1476,13 +1473,13 @@
 
 /* Shown in the Box sheet when another phone has connected to the sensor box first: this phone gets the data only */
 "nogps_box_read_only" = "Інший телефон підключився до блока першим: калібрування, прошивку й телефони блока змінюють на ньому";
-"nogps_box_stopped" = "Немає даних від блока датчиків, машина на мапі стоїть. Перевірте блок або позначте себе";
+"nogps_box_stopped" = "Немає даних від блока датчиків, авто на мапі стоїть. Перевірте блок або позначте себе";
 
 /* Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration */
-"nogps_box_moved_stopped" = "Блок датчиків зсунули, машина на мапі стоїть. Зупиніться й відкалібруйте блок";
+"nogps_box_moved_stopped" = "Блок датчиків зсунули, авто на мапі стоїть. Зупиніться й відкалібруйте блок";
 
 /* Warning shown while driving without GPS: the sensor box is not calibrated */
-"nogps_box_uncalibrated_stopped" = "Блок датчиків не відкалібровано, машина на мапі стоїть. Зупиніться й відкалібруйте блок";
+"nogps_box_uncalibrated_stopped" = "Блок датчиків не відкалібровано, авто на мапі стоїть. Зупиніться й відкалібруйте блок";
 
 /* State of the sensor box, shown after its name while it takes a new firmware */
 "nogps_box_updating" = "приймає нову прошивку";
@@ -1539,7 +1536,7 @@
 "nogps_firmware_error_code" = "помилка %1$@";
 "nogps_clear_speed" = "Скинути";
 "nogps_clear_speed_title" = "Скинути калібрування швидкості?";
-"nogps_clear_speed_message" = "Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або машини. Поки працює GPS, вони вимірюються наново.";
+"nogps_clear_speed_message" = "Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або авто. Поки працює GPS, вони вимірюються наново.";
 "nogps_about_title" = "Про NonGPS Maps";
 
 /* NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) */
@@ -1554,7 +1551,7 @@
 "nogps_rpm" = "%d об/хв";
 "nogps_volts" = "%@ В";
 "nogps_not_while_driving" = "під час руху не запитується";
-"nogps_voltage_mismatch" = "Напруга з АЦП блоку розходиться з машиною більше ніж на 10 %: перевірте дільник напруги блоку";
+"nogps_voltage_mismatch" = "Напруга з АЦП блоку розходиться з авто більше ніж на 10 %: перевірте дільник напруги блоку";
 
 /* Source word in the bottom bar: the car is placed by the sensor box */
 "nogps_bar_inertial" = "Інерціально";
@@ -1581,16 +1578,16 @@
 "nogps_gps_state_none" = "Немає сигналу";
 
 /* Why, under the state of GPS */
-"nogps_gps_why_used" = "Машина йде за GPS.";
+"nogps_gps_why_used" = "Авто йде за GPS.";
 
 /* Why, under the state of GPS: the user has turned GPS off for the car */
-"nogps_gps_why_ignored" = "Не використовується: машину ведуть блок і ваші мітки.";
+"nogps_gps_why_ignored" = "Не використовується: авто ведуть блок і ваші мітки.";
 
 /* Why, under the state of GPS */
 "nogps_gps_why_searching" = "Шукаю супутники після запуску.";
 
 /* Why, under the state of GPS */
-"nogps_gps_why_checking" = "Знову добрий. Буде використаний, коли 15 секунд збігатиметься з машиною.";
+"nogps_gps_why_checking" = "Знову добрий. Буде використаний, коли 15 секунд збігатиметься з авто.";
 
 /* Why, under the state of GPS */
 "nogps_gps_why_coarse" = "Точність гірша за 30 м: не використовується.";
@@ -1605,43 +1602,43 @@
 "nogps_gps_why_none" = "Немає позицій GPS 5 секунд.";
 
 /* Switch in the Box sheet: on, GPS is not used for the car */
-"nogps_gps_block" = "Блокувати GPS";
+"nogps_gps_block" = "Не використовувати GPS для навігації";
 
-/* Under the switch Block GPS in the Box sheet */
-"nogps_gps_block_hint" = "Увімкнено: GPS не використовується, машину ведуть блок і ваші мітки. Для місць, де GPS підмінений, а застосунок цього не бачить.";
+/* Under the switch Don't use GPS for navigation in the Box sheet */
+"nogps_gps_block_hint" = "Увімкнено: GPS не використовується, авто ведуть блок і ваші мітки. Для місць, де GPS підмінений, а застосунок цього не бачить.";
 
-/* Under the disabled switch Block GPS in the Box sheet: no box is heard */
-"nogps_gps_block_needs_box" = "GPS можна заблокувати, лише коли блок підключений: інакше машину ніщо не поведе.";
+/* Under the disabled switch Don't use GPS for navigation in the Box sheet: no box is heard */
+"nogps_gps_block_needs_box" = "GPS можна вимкнути, лише коли блок підключений: інакше авто ніщо не поведе.";
 
 /* At the top of the Cars page of the Box sheet */
-"nogps_cars_text" = "Кожен блок — це одна машина зі своїм калібруванням і місцем паркування. Натисніть на машину, щоб їхати нею, перейменувати чи забути її.";
+"nogps_cars_text" = "Кожен блок — це одне авто зі своїм калібруванням і місцем паркування. Натисніть на авто, щоб їхати ним, перейменувати чи забути його.";
 
 /* On the Add a car page while the box of the new car is searched */
-"nogps_car_add_text" = "Увімкніть блок нової машини поруч із телефоном: машина додасться разом із блоком у ній.";
+"nogps_car_add_text" = "Увімкніть блок нового авто поруч із телефоном: авто додасться разом із блоком у ньому.";
 
 /* Section of the Box page: how the car speed is corrected */
 "nogps_speed_calibration" = "Калібрування швидкості";
 
 /* On the Calibration page of the sensor box, under when it is needed: how to do it */
-"nogps_calibration_steps" = "Зупиніть машину на рівній поверхні. Поки калібрування триває, ніхто не сідає й не виходить і не торкається блока.";
+"nogps_calibration_steps" = "Зупиніть авто на рівній поверхні. Поки калібрування триває, ніхто не сідає й не виходить і не торкається блока.";
 
 /* Result on the Calibration page of the sensor box */
-"nogps_calibration_failed_moving" = "Не відкалібровано: машина рухалася. Хай вона стоїть нерухомо, і відкалібруйте знову.";
+"nogps_calibration_failed_moving" = "Не відкалібровано: авто рухалося. Хай воно стоїть нерухомо, і відкалібруйте знову.";
 
 /* Result on the Calibration page of the sensor box */
 "nogps_calibration_failed_mount" = "Блок зсунувся в кріпленні. Закріпіть його надійно і відкалібруйте знову.";
 
 /* Result on the Calibration page of the sensor box */
-"nogps_calibration_failed_link" = "Зв'язок із блоком втрачено. Залишайтеся поруч із машиною і відкалібруйте знову.";
+"nogps_calibration_failed_link" = "Зв'язок із блоком втрачено. Залишайтеся поруч з авто і відкалібруйте знову.";
 
 /* On the Calibration page of the sensor box, under the disabled Calibrate button */
-"nogps_calibration_needs_box" = "Блок поза досяжністю: увімкніть його і залишайтеся поруч із машиною.";
+"nogps_calibration_needs_box" = "Блок поза досяжністю: увімкніть його і залишайтеся поруч з авто.";
 
 /* Title of the Box section of the Box page: the model of the sensor box, e.g. "Box NonGPS-OBD" */
 "nogps_box_section" = "Блок %1$@";
 
 /* Item of the Box page and the title of its page: the car of the box with its name, e.g. "Car: Kia" */
-"nogps_box_car" = "Машина: %1$@";
+"nogps_box_car" = "Авто: %1$@";
 
 /* Item of the Box page and the title of its page: the motion sensors of the box (gyroscope, accelerometer) */
 "nogps_box_imu" = "Інерціальний вимірювальний блок";
@@ -1716,7 +1713,7 @@
 "nogps_speed_table_calibrating" = "Калібрується: %1$d з %2$d";
 
 /* Explanation on the speed table screen: why it is needed */
-"nogps_speed_table_hint" = "Машина повідомляє швидкість трохи неточно через шини. Застосунок виправляє її, щоб рахувати шлях без GPS.";
+"nogps_speed_table_hint" = "Авто повідомляє швидкість трохи неточно через шини. Застосунок виправляє її, щоб рахувати шлях без GPS.";
 
 /* What the user does to calibrate the speed table, shown below nogps_speed_table_hint */
 "nogps_speed_table_action" = "Для калібрування проїдьте з добрим GPS близько 300 м у кожному діапазоні.";
@@ -1758,7 +1755,7 @@
 "nogps_box_step_connect" = "Підключення";
 
 /* Step of connecting the box: the box tells the car speed */
-"nogps_box_step_data" = "Дані машини";
+"nogps_box_step_data" = "Дані авто";
 
 /* Button: allow Bluetooth to the app */
 "nogps_box_allow" = "Дозволити Bluetooth";
@@ -1767,7 +1764,7 @@
 "nogps_box_power_hint" = "Маєте блок? Увімкніть його поруч із телефоном: 2 хвилини він приймає новий телефон. Телефон може спитати код із блока.";
 
 /* Section of the Box values page */
-"nogps_box_value_group_car" = "Машина";
+"nogps_box_value_group_car" = "Авто";
 
 /* Section of the Box values page: the ELM327 adapter of the box */
 "nogps_box_value_group_obd" = "OBD";
@@ -1785,7 +1782,7 @@
 "nogps_box_value_elm_voltage" = "Напруга, ELM327";
 
 /* Row of the Box values page: the voltage of the car told by its control unit */
-"nogps_box_value_ecu_voltage" = "Напруга, блок керування машини";
+"nogps_box_value_ecu_voltage" = "Напруга, блок керування авто";
 
 /* Row of the Box values page, the value is Yes or No */
 "nogps_box_value_voltage_mismatch" = "Напруги розходяться більше ніж на 10 %";

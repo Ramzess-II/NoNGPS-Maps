@@ -31,7 +31,7 @@
 "NSLocationWhenInUseUsageDescription" = "Ваше місцезнаходження використовується для навігації та запису пройденого шляху.";
 
 /* Needed to explain why we require access to Bluetooth: the sensor box of the car is reached over Bluetooth LE. */
-"NSBluetoothAlwaysUsageDescription" = "Блок датчиків у машині передає повороти та швидкість машини через Bluetooth.";
+"NSBluetoothAlwaysUsageDescription" = "Блок датчиків в авто передає повороти та швидкість авто через Bluetooth.";
 
 /* Needed to explain why we require access to the microphone: a tester records a voice note to a flag of a test drive. */
 "NSMicrophoneUsageDescription" = "Тестувальник натискає голосовий прапорець на мапі, щоб записати голосову нотатку про тестову поїздку.";
