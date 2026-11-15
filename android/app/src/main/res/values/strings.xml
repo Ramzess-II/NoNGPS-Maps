@@ -1008,8 +1008,6 @@
     <string name="nogps_box_calibration">Sensor box calibration</string>
     <!-- Under the heading "Sensor box calibration": when and how the box is calibrated -->
     <string name="nogps_box_calibration_hint">Needed once the box is installed and every time it was taken out or moved. The car must stand on a level surface, not on a slope.</string>
-    <!-- Row of the sensors screen: the state of the calibration of the sensor box -->
-    <string name="nogps_sensors_box_sensors">Sensors: %s</string>
     <!-- State of the sensors of the box, shown after "Sensors:" -->
     <string name="nogps_box_not_calibrated">not calibrated</string>
     <!-- State of the sensors of the box, shown after "Sensors:", with the percent done -->

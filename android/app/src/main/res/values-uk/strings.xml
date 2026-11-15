@@ -1018,8 +1018,6 @@
     <string name="nogps_box_calibration">Калібрування блока датчиків</string>
     <!-- Under the heading "Sensor box calibration": when and how the box is calibrated -->
     <string name="nogps_box_calibration_hint">Потрібне після встановлення блока та щоразу, коли його виймали або зсували. Машина має стояти на рівній поверхні без ухилів.</string>
-    <!-- Row of the sensors screen: the state of the calibration of the sensor box -->
-    <string name="nogps_sensors_box_sensors">Датчики: %s</string>
     <!-- State of the sensors of the box, shown after "Sensors:" -->
     <string name="nogps_box_not_calibrated">не відкалібровано</string>
     <!-- State of the sensors of the box, shown after "Sensors:", with the percent done -->
