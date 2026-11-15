@@ -124,15 +124,17 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     root.selectDetent(for: navigation.topViewController)
   }
 
-  /// The sheet fits the tiles and the few rows under them, and the calibration. The other pages take the whole
-  /// height.
+  /// The sheet fits the tiles and the few rows under them, the calibration, and the cars: at least half the window, it
+  /// is a list. The other pages take the whole height.
   private var sheetHeight: CGFloat {
     let page = navigationController?.topViewController as? UITableViewController ?? self
-    return Self.barBottom + page.tableView.contentSize.height
+    let content = Self.barBottom + page.tableView.contentSize.height
+    guard page is CarsViewController else { return content }
+    return max(content, (view.window?.bounds.height ?? UIScreen.main.bounds.height) / 2)
   }
 
   private static func fitsContent(_ controller: UIViewController?) -> Bool {
-    controller is NoGpsBoxSheet || controller is NoGpsCalibrationPage
+    controller is NoGpsBoxSheet || controller is NoGpsCalibrationPage || controller is CarsViewController
   }
 
   private func selectDetent(for controller: UIViewController?) {
@@ -204,7 +206,7 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
   }
 
   /// Rows come and go, the box is found: the sheet follows. Not for the fractions of a point the layout differs by.
-  /// Also called by the calibration page.
+  /// Also called by the pages it fits.
   func refit() {
     let height = sheetHeight
     if #available(iOS 16.0, *), let sheet = navigationController?.sheetPresentationController,
@@ -518,6 +520,12 @@ private final class CarsViewController: MWMTableViewController {
     title = L("nogps_cars")
     navigationItem.backButtonDisplayMode = .minimal
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
+  }
+
+  /// The sheet follows the cars: one is added or forgotten.
+  override func viewDidLayoutSubviews() {
+    super.viewDidLayoutSubviews()
+    (navigationController?.viewControllers.first as? NoGpsBoxSheet)?.refit()
   }
 
   override func viewWillAppear(_ animated: Bool) {
