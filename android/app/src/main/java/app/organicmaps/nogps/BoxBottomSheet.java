@@ -676,7 +676,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       case GPS -> new View[] {mGpsPage};
       case CARS -> new View[] {mCarsPage};
       case CAR -> new View[] {mCarPage};
-      case ADD_CAR -> new View[] {mAddCarPage, mSearch};
+      case ADD_CAR -> new View[] {mAddCarPage, mSearch, mShop};
       case BOX -> new View[] {mBoxPage};
       case ITEM_BOX -> new View[] {mBoxItemPage};
       case ITEM_OBD -> new View[] {mObdItemPage};
@@ -725,10 +725,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
           view.setVisibility(View.GONE);
     }
     mMain.setVisibility(mPage == Page.MAIN ? View.VISIBLE : View.GONE);
-    mShop.setVisibility(mPage == Page.MAIN ? View.VISIBLE : View.GONE);
+    mShop.setVisibility(mPage == Page.MAIN || mPage == Page.ADD_CAR ? View.VISIBLE : View.GONE);
     mSearch.setVisibility((mPage == Page.MAIN && mSearching) || mPage == Page.ADD_CAR ? View.VISIBLE : View.GONE);
-    // The box of a new car is not bought here.
+    // The user adding a car knows what the box is for.
     mSearchBuyText.setVisibility(mPage == Page.MAIN ? View.VISIBLE : View.GONE);
+    if (mPage == Page.ADD_CAR)
+      mBuyText.setVisibility(View.GONE);
     for (View view : pageViews(mPage))
     {
       if (view != mSearch && view != mShop)
