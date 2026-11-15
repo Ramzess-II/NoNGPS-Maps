@@ -45782,28 +45782,32 @@ ru = —
 uk = —
 
 [nogps_sensors_ready]
+comment = Top of the Box page: the box gives all the navigation without GPS needs
 tags = android-app,apple-maps
-en = Ready
-ru = Готово к работе
-uk = Готово до роботи
+en = Ready to drive without GPS
+ru = Готово к езде без GPS
+uk = Готово до їзди без GPS
 
 [nogps_sensors_not_ready]
+comment = Top of the Box page: what the navigation without GPS still needs, a list of nogps_missing_* joined by commas
 tags = android-app,apple-maps
-en = Not ready: %@
-ru = Не готово: %@
-uk = Не готово: %@
+en = Not ready to drive without GPS: %@
+ru = Не готово к езде без GPS: %@
+uk = Не готово до їзди без GPS: %@
 
 [nogps_missing_speed]
+comment = After "Not ready to drive without GPS:": the box gives no car speed from the OBD socket
 tags = android-app,apple-maps
-en = no speed
-ru = нет скорости
-uk = немає швидкості
+en = no car speed from OBD
+ru = нет скорости машины по OBD
+uk = немає швидкості машини з OBD
 
 [nogps_missing_position]
+comment = After "Not ready to drive without GPS:": the car has no place on the map to start from
 tags = android-app,apple-maps
-en = no start position
-ru = нет стартовой точки
-uk = немає стартової точки
+en = no start position, mark the car on the map
+ru = нет стартовой точки, отметьте машину на карте
+uk = немає стартової точки, позначте машину на мапі
 
 [nogps_sensors_scale]
 tags = android-app,apple-maps
@@ -46087,7 +46091,7 @@ ru = блок подключали заново, откалибруйте
 uk = блок підключали заново, відкалібруйте
 
 [nogps_missing_box_calibration]
-comment = What is missing for the navigation without GPS, shown after "Not ready:"
+comment = After "Not ready to drive without GPS:"
 tags = android-app,apple-maps
 en = calibrate the box
 ru = откалибруйте блок
@@ -46813,6 +46817,20 @@ en = The box is out of reach: power it on and stay near the car.
 ru = Блок вне досягаемости: включите его и оставайтесь рядом с машиной.
 uk = Блок поза досяжністю: увімкніть його і залишайтеся поруч із машиною.
 
+[nogps_box_section]
+comment = Title of the Box section of the Box page: the model of the sensor box, e.g. "Box NonGPS-OBD"
+tags = android-app,apple-maps
+en = Box %1$@
+ru = Блок %1$@
+uk = Блок %1$@
+
+[nogps_box_version]
+comment = Start of the subtitle of the Box section of the Box page: the firmware version of the box, then its state
+tags = android-app,apple-maps
+en = Ver %1$@
+ru = Версия %1$@
+uk = Версія %1$@
+
 [nogps_calibration_snackbar]
 comment = Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page
 tags = android-app,apple-maps
@@ -47211,13 +47229,6 @@ tags = android-app,apple-maps
 en = OBD
 ru = OBD
 uk = OBD
-
-[nogps_box_value_group_box]
-comment = Section of the Box values page: the box itself
-tags = android-app,apple-maps
-en = Box
-ru = Блок
-uk = Блок
 
 [nogps_box_value_engine]
 comment = Row of the Box values page, the value is running or stopped
