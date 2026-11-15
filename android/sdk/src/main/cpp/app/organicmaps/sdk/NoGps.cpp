@@ -328,6 +328,11 @@ JNIEXPORT jobjectArray Java_app_organicmaps_sdk_location_NoGps_nativeGetCars(JNI
   });
 }
 
+JNIEXPORT jint Java_app_organicmaps_sdk_location_NoGps_nativeGetMaxCars(JNIEnv *, jclass)
+{
+  return static_cast<jint>(nogps::CarStorage::kMaxCars);
+}
+
 JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeSelectCar(JNIEnv * env, jclass, jstring id)
 {
   NoGpsEngine().SelectCar(jni::ToNativeString(env, id));

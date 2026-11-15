@@ -371,6 +371,11 @@ static CLLocation * lastPlatformLocation;
   return cars;
 }
 
++ (NSInteger)maxCars
+{
+  return nogps::CarStorage::kMaxCars;
+}
+
 + (void)selectCar:(NSString *)carId
 {
   Engine().SelectCar(carId.UTF8String);

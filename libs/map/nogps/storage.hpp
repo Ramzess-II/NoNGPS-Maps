@@ -119,6 +119,8 @@ public:
   };
   // The name the user has given the car, kept by the keys of the car as its values: NoGpsCar.C47D.Name.
   static std::string_view constexpr kCarName = "NoGpsName";
+  // A box heard when the user has this many cars is not added. Cars already over it are kept.
+  static size_t constexpr kMaxCars = 4;
   // The values the box of the car keeps too, see BoxCarValues.
   static std::array<std::string_view, 7> constexpr kValuesOnBox = {
       kSpeedTable, kRoughSpeedTable, kSpeedFactor, kSpeedLag, kSpeedScale, kCarName, kCarPosition,
@@ -137,8 +139,9 @@ public:
   std::vector<Car> GetCars() const;
   /// Empty without a car.
   std::string GetCurrentCar() const;
-  /// The box has told about itself: its car is the current one, a box not heard before is a new car. The values kept
-  /// before the cars go to the first car: of the box the accelerometer was learned with, else of this one.
+  /// The box has told about itself: its car is the current one, a box not heard before is a new car, unless there are
+  /// kMaxCars already. The values kept before the cars go to the first car: of the box the accelerometer was learned
+  /// with, else of this one.
   void OnBoxHeard(std::string const & id, std::string const & firmware, int64_t unixMs);
   /// \returns false if there is no such car.
   bool SelectCar(std::string const & id);

@@ -762,6 +762,11 @@ public final class NoGps
   public static native Car[] nativeGetCars();
 
   /**
+   * No car is added over this many: the user can't add one.
+   */
+  public static native int nativeGetMaxCars();
+
+  /**
    * The user drives the car: its values are used, the box of the car is looked for.
    */
   public static native void nativeSelectCar(@NonNull String id);

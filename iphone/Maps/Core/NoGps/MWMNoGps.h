@@ -330,6 +330,8 @@ NS_SWIFT_NAME(NoGps)
 + (void)retryBox;
 /// The cars of the user in the order they were added, a car for each box heard.
 + (NSArray<MWMNoGpsCar *> *)cars;
+/// No car is added over this many: the user can't add one.
++ (NSInteger)maxCars;
 /// The user drives the car: its values are used, the box of the car is looked for.
 + (void)selectCar:(NSString *)carId;
 /// An empty name gives the car its usual name back.

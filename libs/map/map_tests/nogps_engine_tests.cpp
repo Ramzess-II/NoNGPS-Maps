@@ -2390,6 +2390,35 @@ UNIT_TEST(NoGps_Cars_ForgetRemovesOnlyThatCar)
   TEST(!cars.GetString(Storage::kSpeedTable), ());
 }
 
+UNIT_TEST(NoGps_MaxCars)
+{
+  TestStorage storage;
+  storage.Set(Storage::kInertialEnabled, true);
+  CarStorage cars(storage);
+  for (auto const id : {"C47D", "42FD", "1234", "ABCD"})
+    cars.OnBoxHeard(id, "0.3.5", 1000);
+  TEST_EQUAL(cars.GetCars().size(), CarStorage::kMaxCars, ());
+
+  // The 5th box is not a car: the current car stays.
+  cars.OnBoxHeard("5678", "0.3.5", 2000);
+  TEST_EQUAL(CarIds(cars.GetCars()), std::vector<std::string>({"C47D", "42FD", "1234", "ABCD"}), ());
+  TEST_EQUAL(cars.GetCurrentCar(), "ABCD", ());
+  // A box of a car is still heard.
+  cars.OnBoxHeard("C47D", "0.3.6", 3000);
+  TEST_EQUAL(cars.GetCurrentCar(), "C47D", ());
+  TEST_EQUAL(cars.GetCars()[0].m_firmware, "0.3.6", ());
+
+  // Cars over the limit, kept from before it, stay.
+  storage.Set(Storage::kCars, std::string("C47D,42FD,1234,ABCD,5678"));
+  TEST_EQUAL(cars.GetCars().size(), 5, ());
+  cars.OnBoxHeard("5678", "0.3.5", 4000);
+  TEST_EQUAL(cars.GetCurrentCar(), "5678", ());
+  cars.OnBoxHeard("9ABC", "0.3.5", 5000);
+  TEST_EQUAL(cars.GetCars().size(), 5, ());
+  cars.ForgetCar("5678");
+  TEST_EQUAL(cars.GetCars().size(), CarStorage::kMaxCars, ());
+}
+
 UNIT_TEST(NoGps_Engine_KeepsCalibrationForEachCar)
 {
   // The roads have told the speedometer is 5% low at 30-40 km/h, before the cars.
