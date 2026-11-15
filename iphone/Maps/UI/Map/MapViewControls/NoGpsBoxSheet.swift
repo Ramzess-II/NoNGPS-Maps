@@ -401,6 +401,10 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
 
   /// Bluetooth is allowed in the settings: once refused, iOS doesn't ask again. The box is searched again after a failed
   /// pairing or a lost bond.
+  static func openShop() {
+    UIApplication.shared.open(Constants.shopURL)
+  }
+
   static func onLinkAction() {
     guard NoGps.status().bleState == .noPermission else {
       NoGps.retryBox()
@@ -467,7 +471,7 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
       Self.onLinkAction()
       refresh()
     case .buy:
-      UIApplication.shared.open(Constants.shopURL)
+      Self.openShop()
     default:
       break
     }
@@ -619,6 +623,7 @@ private final class AddCarViewController: MWMTableViewController {
   private enum Constants {
     static let refreshInterval: TimeInterval = 0.5
     static let cellId = "NoGpsAddCarCell"
+    static let buyCellId = "NoGpsAddCarBuyCell"
   }
 
   private let searchView = BoxSearchView()
@@ -633,6 +638,7 @@ private final class AddCarViewController: MWMTableViewController {
     super.viewDidLoad()
     title = L("nogps_car_add")
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
+    tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.buyCellId)
     searchView.onAction = { [weak self] in
       NoGpsBoxSheet.onLinkAction()
       self?.refresh()
@@ -674,27 +680,46 @@ private final class AddCarViewController: MWMTableViewController {
     searchView.update(NoGps.status())
   }
 
+  /// The search, then buying a box.
   override func numberOfSections(in _: UITableView) -> Int {
-    1
+    2
   }
 
   override func tableView(_: UITableView, numberOfRowsInSection _: Int) -> Int {
     1
   }
 
-  override func tableView(_: UITableView, viewForHeaderInSection _: Int) -> UIView? {
-    NoGpsBoxPage.textHeader(L("nogps_car_add_text"))
+  override func tableView(_: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+    section == 0 ? NoGpsBoxPage.textHeader(L("nogps_car_add_text")) : nil
   }
 
-  override func tableView(_: UITableView, titleForFooterInSection _: Int) -> String? {
-    L("nogps_box_power_hint")
+  override func tableView(_: UITableView, titleForFooterInSection section: Int) -> String? {
+    section == 0 ? L("nogps_box_power_hint") : nil
   }
 
   override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-    let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
-    cell.selectionStyle = .none
-    BoxSearchView.embed(searchView, in: cell)
+    guard indexPath.section == 1 else {
+      let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
+      cell.selectionStyle = .none
+      BoxSearchView.embed(searchView, in: cell)
+      return cell
+    }
+    let cell = tableView.dequeueReusableCell(withIdentifier: Constants.buyCellId, for: indexPath)
+    var content = UIListContentConfiguration.cell()
+    content.text = L("nogps_box_buy")
+    content.textProperties.color = .linkBlue
+    content.textProperties.font = .preferredFont(forTextStyle: .headline)
+    content.textProperties.alignment = .center
+    cell.contentConfiguration = content
+    cell.selectionStyle = .default
     return cell
+  }
+
+  override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    tableView.deselectRow(at: indexPath, animated: true)
+    if indexPath.section == 1 {
+      NoGpsBoxSheet.openShop()
+    }
   }
 }
 
