@@ -539,6 +539,7 @@
       android:minHeight="48dp"
       android:orientation="horizontal">
       <TextView
+        android:id="@+id/box_car_page_name_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="12dp"

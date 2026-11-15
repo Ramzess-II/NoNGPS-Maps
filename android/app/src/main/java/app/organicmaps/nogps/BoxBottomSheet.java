@@ -237,6 +237,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
 
   private View mCarPage;
   private TextView mCarPageTitle;
+  private View mCarPageNameRow;
+  private View mCarPageNameLabel;
   private TextView mCarPageName;
   private View mCarDrive;
   private View mPhones;
@@ -460,7 +462,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mCarPage = view.findViewById(R.id.box_car_page);
     mCarPageTitle = setUpHeader(view, R.id.box_car_header, 0);
     mCarPageName = view.findViewById(R.id.box_car_page_name);
-    view.findViewById(R.id.box_car_page_name_row).setOnClickListener(v -> {
+    mCarPageNameLabel = view.findViewById(R.id.box_car_page_name_label);
+    mCarPageNameRow = view.findViewById(R.id.box_car_page_name_row);
+    mCarPageNameRow.setOnClickListener(v -> {
       final NoGps.Car car = pageCar();
       if (car != null)
         renameCar(car);
@@ -1031,6 +1035,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mCarPageTitle.setText(name);
     mCarPageName.setText(name);
     final boolean current = car.id.equals(status.carId);
+    // The box takes the name from the phone connected first only, the note under the phones tells it.
+    final boolean canRename = !current || !status.boxReadOnly;
+    mCarPageNameRow.setEnabled(canRename);
+    mCarPageNameLabel.setEnabled(canRename);
     mCarDrive.setVisibility(current ? View.GONE : View.VISIBLE);
     final boolean phones = current && status.boxHasPhones;
     mPhones.setVisibility(phones ? View.VISIBLE : View.GONE);
