@@ -284,6 +284,16 @@
       style="?borderlessButtonStyle"
       android:layout_width="match_parent"
       android:layout_height="wrap_content" />
+    <!-- Another phone has connected to the box first: it calibrates and updates the box. -->
+    <TextView
+      android:id="@+id/box_read_only"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="8dp"
+      android:text="@string/nogps_box_read_only"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp"
+      android:visibility="gone" />
     <LinearLayout
       android:id="@+id/box_calibrate"
       android:layout_width="match_parent"
@@ -501,6 +511,57 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:orientation="vertical" />
+  </LinearLayout>
+
+  <LinearLayout
+    android:id="@+id/box_phones_page"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone">
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:gravity="center_vertical"
+      android:orientation="horizontal">
+      <ImageView
+        android:id="@+id/box_phones_back"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="-12dp"
+        android:background="?selectableItemBackgroundBorderless"
+        android:contentDescription="@string/back"
+        android:scaleType="center"
+        app:srcCompat="?homeAsUpIndicator" />
+      <TextView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="@string/nogps_car_phones"
+        android:textAppearance="?android:textAppearanceLarge"
+        android:textStyle="bold" />
+    </LinearLayout>
+    <TextView
+      android:id="@+id/box_phones_read_only"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginBottom="8dp"
+      android:text="@string/nogps_box_read_only"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp"
+      android:visibility="gone" />
+    <!-- A row for each phone of the box, see nogps_car_row: a tap removes it. -->
+    <LinearLayout
+      android:id="@+id/box_phones_rows"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical" />
+    <Button
+      android:id="@+id/box_add_phone"
+      style="?borderlessButtonStyle"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/nogps_phone_add" />
   </LinearLayout>
 
   <LinearLayout

@@ -60,6 +60,8 @@ class Esp32BleTransport
   static final int STATE_CONNECTED = 7;
   static final int STATE_PAIRING_FAILED = 8;
   static final int STATE_BOND_LOST = 9;
+  static final int STATE_PAIRING_BY_PHONE = 10;
+  static final int STATE_PAIRING_FULL = 11;
 
   private static final String TAG = Esp32BleTransport.class.getSimpleName();
   private static final UUID SERVICE = UUID.fromString("02CB0001-C0C3-40D0-819C-5A85998DCD99");
@@ -74,6 +76,8 @@ class Esp32BleTransport
   // The box tells in its advertisement if it accepts a new phone now: company, format version 1, flags.
   private static final int MANUFACTURER_ID = 0xFFFF;
   private static final int FLAG_PAIRING_OPEN = 1;
+  private static final int FLAG_FULL = 1 << 1;
+  private static final int FLAG_HAS_PHONES = 1 << 2;
   // A line of the box fits a notification with it, the default of 23 has no room even for a command.
   private static final int MTU = 247;
   private static final long RETRY_DELAY_MS = 2000;
@@ -140,7 +144,7 @@ class Esp32BleTransport
   private final Runnable mWatchdog = this::onWatchdog;
   private final Runnable mPairingClosedEnd = () ->
   {
-    if (mState == STATE_PAIRING_CLOSED)
+    if (mState == STATE_PAIRING_CLOSED || mState == STATE_PAIRING_BY_PHONE || mState == STATE_PAIRING_FULL)
       setState(STATE_SEARCHING);
   };
   // The box was paired when it was found.
@@ -418,13 +422,16 @@ class Esp32BleTransport
       return;
     if (!bonded)
     {
-      // The box accepts a new phone for two minutes after it is powered, the phone asks for its code.
+      // A box accepts a new phone for two minutes after it is powered, if it has no phones, or after a paired phone
+      // has let it. The phone asks for the code.
       final ScanRecord record = result.getScanRecord();
       final byte[] data = record != null ? record.getManufacturerSpecificData(MANUFACTURER_ID) : null;
-      final boolean pairingOpen = data != null && data.length >= 2 && (data[1] & FLAG_PAIRING_OPEN) != 0;
-      if (!pairingOpen)
+      final int flags = data != null && data.length >= 2 ? data[1] : 0;
+      if ((flags & FLAG_PAIRING_OPEN) == 0)
       {
-        setState(STATE_PAIRING_CLOSED);
+        setState((flags & FLAG_FULL) != 0         ? STATE_PAIRING_FULL
+                 : (flags & FLAG_HAS_PHONES) != 0 ? STATE_PAIRING_BY_PHONE
+                                                  : STATE_PAIRING_CLOSED);
         mMainHandler.removeCallbacks(mPairingClosedEnd);
         mMainHandler.postDelayed(mPairingClosedEnd, PAIRING_CLOSED_TIMEOUT_MS);
         return;

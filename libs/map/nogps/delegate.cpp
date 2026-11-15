@@ -35,6 +35,7 @@ std::string DebugPrint(Event event)
   case Event::FirmwareUpdateDone: return "FirmwareUpdateDone";
   case Event::FirmwareUpdateFailed: return "FirmwareUpdateFailed";
   case Event::BoxCalibrationAdvised: return "BoxCalibrationAdvised";
+  case Event::ThisPhoneRemoved: return "ThisPhoneRemoved";
   }
   UNREACHABLE();
 }
@@ -53,6 +54,8 @@ std::string DebugPrint(BleState state)
   case BleState::Connected: return "CONNECTED";
   case BleState::PairingFailed: return "PAIRING_FAILED";
   case BleState::BondLost: return "BOND_LOST";
+  case BleState::PairingByPhone: return "PAIRING_BY_PHONE";
+  case BleState::PairingFull: return "PAIRING_FULL";
   }
   UNREACHABLE();
 }

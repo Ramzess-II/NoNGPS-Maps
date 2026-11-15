@@ -40,11 +40,14 @@ public:
     ++m_motions;
   }
 
+  void OnThisPhoneRemoved() override { ++m_thisPhoneRemoved; }
+
   std::vector<int> m_speeds;
   double m_yawDeg = 0;
   double m_dtSec = 0;
   double m_maxDtSec = 0;
   int m_motions = 0;
+  int m_thisPhoneRemoved = 0;
 };
 
 // Answers the initialization of the adapter.
@@ -738,6 +741,175 @@ public:
   // The firmware as the box has got it.
   std::string m_written;
 };
+
+// The box of a firmware that knows its phones.
+class PhonesBox : public UpdatedBox
+{
+public:
+  PhonesBox()
+  {
+    m_source.OnBleState(BleState::Searching);
+    ConnectWithPhones();
+  }
+
+  void ConnectWithPhones()
+  {
+    m_source.OnBleState(BleState::Connected);
+    Line("NGI,1,0.4.2,2026-11-14T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES MULTI,3");
+  }
+
+  /// The box lists two phones, this one and an old one, and tells if this one changes the box.
+  void List(bool changesBox = true)
+  {
+    TEST_EQUAL(LastCommand().second, "BT_LIST", ());
+    Accept(",BC:D0:74:A9:71:92|SM-G970F|1794685760|1;D0:56:FB:11:00:88|||0," + std::string(changesBox ? "1" : "0"));
+  }
+
+  size_t SentCount() const { return m_delegate.m_esp32BleSent.size(); }
+};
+
+UNIT_TEST(NoGps_Esp32Source_ListsAndForgetsPhones)
+{
+  // A box of an older firmware is not asked.
+  UpdatedBox old;
+  TEST(!old.m_source.HasPhones(), ());
+  old.m_source.ListPhones();
+  TEST_NOT_EQUAL(old.LastCommand().second, "BT_LIST", ());
+
+  // The box is asked for its phones when it tells it knows them.
+  PhonesBox box;
+  TEST(box.m_source.HasPhones(), ());
+  TEST(!box.m_source.GetPhones(), ());
+  box.List();
+  auto const & phones = box.m_source.GetPhones()->m_phones;
+  TEST_EQUAL(phones.size(), 2, ());
+  TEST_EQUAL(phones[0].m_name, "SM-G970F", ());
+  TEST(phones[0].m_thisPhone, ());
+  TEST(!box.m_source.IsReadOnly(), ());
+
+  // Another phone is removed, the list is asked again.
+  box.m_source.ForgetPhone("D0:56:FB:11:00:88");
+  TEST_EQUAL(box.LastCommand().second, "BT_FORGET,D0:56:FB:11:00:88", ());
+  box.Accept();
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  TEST_EQUAL(box.m_listener.m_thisPhoneRemoved, 0, ());
+  box.List();
+
+  // A phone the box hasn't listed is not removed.
+  size_t const sent = box.SentCount();
+  box.m_source.ForgetPhone("11:22:33:44:55:66");
+  TEST_EQUAL(box.SentCount(), sent, ());
+
+  // This phone is removed: the box answers and drops the link.
+  box.m_source.ForgetPhone("BC:D0:74:A9:71:92");
+  box.Accept();
+  TEST_EQUAL(box.m_listener.m_thisPhoneRemoved, 1, ());
+  // The link drops before the answer comes: the phone may be still known to the box.
+  box.List();
+  box.m_source.ForgetPhone("BC:D0:74:A9:71:92");
+  box.m_source.OnBleState(BleState::Searching);
+  TEST_EQUAL(box.m_listener.m_thisPhoneRemoved, 1, ());
+  TEST(!box.m_source.GetPhones(), ());
+
+  // A lost reply doesn't stop the list from being asked again.
+  box.ConnectWithPhones();
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  size_t const asked = box.SentCount();
+  box.m_source.ListPhones();
+  TEST_EQUAL(box.SentCount(), asked, ());
+  box.m_clock.Advance(Esp32Source::kCarReplyTimeoutMs + Esp32Source::kHelloIntervalMs);
+  box.m_source.ListPhones();
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  TEST_GREATER(box.SentCount(), asked, ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_AddsPhoneWithCode)
+{
+  PhonesBox box;
+  box.List();
+  box.m_source.StartAddPhone();
+  TEST_EQUAL(box.m_source.GetAddPhoneState(), Esp32Source::AddPhone::Opening, ());
+  auto const code = box.m_source.GetAddPhoneCode();
+  TEST_EQUAL(code.size(), esp32::kPairingCodeDigits, ());
+  TEST(std::all_of(code.begin(), code.end(), [](char c) { return c >= '0' && c <= '9'; }), (code));
+  TEST_EQUAL(box.LastCommand().second, "BT_PAIR," + code, ());
+
+  // The box takes the code for two minutes. A phone paired before is not the new one.
+  box.Accept();
+  TEST_EQUAL(box.m_source.GetAddPhoneState(), Esp32Source::AddPhone::Open, ());
+  TEST_EQUAL(box.m_source.GetAddPhoneMsLeft(), esp32::kPairingWindowMs, ());
+  box.m_clock.Advance(60'000);
+  TEST_EQUAL(box.m_source.GetAddPhoneMsLeft(), 60'000, ());
+  box.Line("NGE,1,0,1000,I,BT_PAIRED,AA:BB:CC:DD:EE:FF bonds 2");
+  box.Line("NGE,1,1,2000,I,BT_PAIR_OPEN,120 s code");
+  TEST_EQUAL(box.m_source.GetAddPhoneState(), Esp32Source::AddPhone::Open, ());
+  box.Line("NGE,1,2,61000,I,BT_PAIRED,00:FA:21:19:26:A0 bonds 3");
+  TEST_EQUAL(box.m_source.GetAddPhoneState(), Esp32Source::AddPhone::Added, ());
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  box.m_source.EndAddPhone();
+  TEST_EQUAL(box.m_source.GetAddPhoneState(), Esp32Source::AddPhone::None, ());
+  TEST(box.m_source.GetAddPhoneCode().empty(), ());
+
+  // Every code is new. Nobody pairs in time.
+  box.List();
+  box.m_source.StartAddPhone();
+  TEST_NOT_EQUAL(box.m_source.GetAddPhoneCode(), code, ());
+  box.Accept();
+  box.m_clock.Advance(esp32::kPairingWindowMs);
+  TEST_EQUAL(box.m_source.GetAddPhoneState(), Esp32Source::AddPhone::Expired, ());
+
+  // The box has no room.
+  box.m_source.StartAddPhone();
+  box.Refuse("FULL");
+  TEST_EQUAL(box.m_source.GetAddPhoneState(), Esp32Source::AddPhone::Full, ());
+  // The link is lost before the box answers.
+  box.m_source.StartAddPhone();
+  box.m_source.OnBleState(BleState::Searching);
+  TEST_EQUAL(box.m_source.GetAddPhoneState(), Esp32Source::AddPhone::Failed, ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_SecondPhoneOnlyGetsData)
+{
+  PhonesBox box;
+  box.List(false /* changesBox */);
+  TEST(box.m_source.IsReadOnly(), ());
+  TEST(!box.m_source.CanUpdate(), ());
+  // The commands that change the box are not sent: the other phone changes it.
+  size_t const sent = box.SentCount();
+  box.m_source.Calibrate();
+  box.m_source.StartAddPhone();
+  box.m_source.ForgetPhone("D0:56:FB:11:00:88");
+  TEST_EQUAL(box.SentCount(), sent, ());
+  TEST_EQUAL(box.m_source.GetAddPhoneState(), Esp32Source::AddPhone::None, ());
+
+  // The first phone has gone: this one changes the box now.
+  box.Line("NGE,1,0,9000,I,PHONE_LOST,ble");
+  box.List(true);
+  TEST(!box.m_source.IsReadOnly(), ());
+  TEST(box.m_source.CanUpdate(), ());
+
+  // The box refuses a command: another phone has come first after all.
+  box.m_source.Calibrate();
+  box.Refuse("BUSY");
+  TEST(box.m_source.IsReadOnly(), ());
+  // Another link, another order of the phones.
+  box.m_source.OnBleState(BleState::Searching);
+  box.ConnectWithPhones();
+  TEST(!box.m_source.IsReadOnly(), ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_HelloTellsNameOfPhone)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  delegate.m_phoneName = "Pixel 8";
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  TEST_EQUAL(delegate.m_esp32BleSent.back(), esp32::Command(2, esp32::Hello("Pixel 8", clock.UnixNowMs())), ());
+  TEST(delegate.m_esp32BleSent.back().starts_with("$NGC,2,HELLO,Pixel 8,"), (delegate.m_esp32BleSent.back()));
+}
 
 UNIT_TEST(NoGps_Esp32Update_SendsFirmwareInPieces)
 {

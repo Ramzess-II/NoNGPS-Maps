@@ -103,6 +103,7 @@ public:
   void Esp32BleSend(std::string const & line) override { m_esp32BleSent.push_back(line); }
   void Esp32BleSendFirmware(std::string const & piece) override { m_firmwarePieces.push_back(piece); }
   void Esp32BleClose() override { m_esp32BleOpen = false; }
+  std::string GetPhoneName() override { return m_phoneName; }
   void OnPosition(nogps::Fix const & fix) override { m_positions.push_back(fix); }
   void OnEvent(nogps::Event event) override { m_events.push_back(event); }
 
@@ -119,6 +120,7 @@ public:
   bool m_esp32BleOpen = false;
   std::vector<std::string> m_esp32BleSent;
   std::vector<std::string> m_firmwarePieces;
+  std::string m_phoneName;
   std::vector<nogps::Fix> m_positions;
   std::vector<nogps::Event> m_events;
 };

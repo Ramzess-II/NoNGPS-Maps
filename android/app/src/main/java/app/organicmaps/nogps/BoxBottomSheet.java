@@ -38,6 +38,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
@@ -115,6 +116,11 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private boolean mValuesShown;
   // The GPS details are shown on a page of their own too. The search goes on while it is shown.
   private boolean mGpsShown;
+  // The phones of the box of the car are shown on a page of their own too, while the box is connected.
+  private boolean mPhonesShown;
+  // The code for a new phone, shown while the box takes it.
+  @Nullable
+  private AlertDialog mAddPhoneDialog;
   // The user has turned the share on before the app is picked as the mock location app.
   private boolean mShareAsked;
   private final OnBackPressedCallback mBackFromPage = new OnBackPressedCallback(false) {
@@ -123,6 +129,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     {
       if (mGpsShown)
         showGps(false);
+      else if (mPhonesShown)
+        showPhones(false);
       else if (mValuesShown)
         showValues(false);
       else
@@ -168,6 +176,13 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private LinearLayout mSpeedTableRows;
   private View mValuesPage;
   private LinearLayout mValuesRows;
+  private View mPhonesPage;
+  private LinearLayout mPhonesRows;
+  private View mPhonesReadOnly;
+  private View mAddPhone;
+  // The texts of the phone rows shown: the rows are made again when they change.
+  private List<String> mPhoneTexts = new ArrayList<>();
+  private TextView mReadOnly;
   // The values shown: the rows are made again when the box sends other fields.
   private NoGps.BoxValue[] mValueIds = new NoGps.BoxValue[0];
   private TextView[] mValueTexts = new TextView[0];
@@ -293,6 +308,11 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mSpeedTableRows = view.findViewById(R.id.box_speed_table_rows);
     mValuesPage = view.findViewById(R.id.box_values_page);
     mValuesRows = view.findViewById(R.id.box_values_rows);
+    mPhonesPage = view.findViewById(R.id.box_phones_page);
+    mPhonesRows = view.findViewById(R.id.box_phones_rows);
+    mPhonesReadOnly = view.findViewById(R.id.box_phones_read_only);
+    mAddPhone = view.findViewById(R.id.box_add_phone);
+    mReadOnly = view.findViewById(R.id.box_read_only);
     mSearch = view.findViewById(R.id.box_search);
     mShop = view.findViewById(R.id.box_shop);
     final int[] dots = {R.id.box_step0_dot, R.id.box_step1_dot, R.id.box_step2_dot, R.id.box_step3_dot};
@@ -321,6 +341,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
         showValues(true);
     });
     view.findViewById(R.id.box_values_back).setOnClickListener(v -> showValues(false));
+    view.findViewById(R.id.box_phones_back).setOnClickListener(v -> showPhones(false));
+    mAddPhone.setOnClickListener(v -> addPhone());
     mCalibrate.setOnClickListener(v -> {
       // The row shows how the calibration goes.
       if (calibrateActionText(NoGps.getStatus()) == 0)
@@ -367,6 +389,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     super.onStop();
     mHandler.removeCallbacks(mUpdater);
+    // The code is not shown without the sheet that updates it.
+    if (mAddPhoneDialog != null)
+      mAddPhoneDialog.dismiss();
     animateRings(false);
     mTile.pulse(false);
     mGpsTile.pulse(false);
@@ -391,15 +416,23 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       showValues(false);
       return;
     }
+    if (mPhonesShown && !status.boxHasPhones)
+    {
+      showPhones(false);
+      return;
+    }
+    updateAddPhone(status);
     final boolean speedTable = mSpeedTableShown && !mGpsShown && !mSearching && status.inertialEnabled;
     final boolean values = mValuesShown && !mGpsShown && !mSearching && status.inertialEnabled;
-    final boolean page = speedTable || values || mGpsShown;
+    final boolean phones = mPhonesShown && !mGpsShown && !mSearching && status.inertialEnabled;
+    final boolean page = speedTable || values || phones || mGpsShown;
     mBackFromPage.setEnabled(page);
     mTiles.setVisibility(page ? View.GONE : View.VISIBLE);
     mGpsGroup.setVisibility(page ? View.GONE : View.VISIBLE);
     mGpsPage.setVisibility(mGpsShown ? View.VISIBLE : View.GONE);
     mSpeedTablePage.setVisibility(speedTable ? View.VISIBLE : View.GONE);
     mValuesPage.setVisibility(values ? View.VISIBLE : View.GONE);
+    mPhonesPage.setVisibility(phones ? View.VISIBLE : View.GONE);
     mSearch.setVisibility(mSearching && !page ? View.VISIBLE : View.GONE);
     mConnected.setVisibility(!mSearching && status.inertialEnabled && !page ? View.VISIBLE : View.GONE);
     // Forgotten in the sensors sheet, or being searched.
@@ -413,6 +446,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       updateSpeedTable(status);
     else if (values)
       updateValues(status);
+    else if (phones)
+      updatePhones(status);
     else
       updateBox(status);
   }
@@ -495,6 +530,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     return switch (status.getBleState())
     {
       case PAIRING_CLOSED -> R.string.nogps_box_bt_pairing_closed;
+      case PAIRING_BY_PHONE -> R.string.nogps_box_bt_pairing_by_phone;
+      case PAIRING_FULL -> R.string.nogps_box_bt_pairing_full;
       case PAIRING -> R.string.nogps_box_bt_pairing;
       case PAIRING_FAILED -> R.string.nogps_box_bt_pairing_failed;
       case BOND_LOST -> R.string.nogps_box_bt_bond_lost;
@@ -592,7 +629,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final boolean firmware = !status.boxFirmware.isEmpty() || status.getFirmwareUpdate() != NoGps.FirmwareUpdate.NONE;
     mFirmware.setVisibility(firmware ? View.VISIBLE : View.GONE);
     mFirmware.setText(getString(R.string.nogps_sensors_firmware, SensorsBottomSheet.firmwareText(context, status)));
-    mCalibrate.setVisibility(connected ? View.VISIBLE : View.GONE);
+    // Another phone calibrates and updates the box.
+    mReadOnly.setVisibility(connected && status.boxReadOnly ? View.VISIBLE : View.GONE);
+    mCalibrate.setVisibility(connected && !status.boxReadOnly ? View.VISIBLE : View.GONE);
     if (connected)
     {
       final int action = calibrateActionText(status);
@@ -677,6 +716,11 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
         NoGps.nativeSelectCar(car.id);
         update();
       });
+    }
+    if (current && NoGps.getStatus().boxHasPhones)
+    {
+      items.add(getString(R.string.nogps_car_phones));
+      actions.add(() -> showPhones(true));
     }
     items.add(getString(R.string.nogps_car_rename));
     actions.add(() -> renameCar(car));
@@ -788,6 +832,113 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     mValuesShown = shown;
     switchPage(shown, mValuesPage);
+  }
+
+  private void showPhones(boolean shown)
+  {
+    mPhonesShown = shown;
+    if (shown)
+      NoGps.nativeListBoxPhones();
+    switchPage(shown, mPhonesPage);
+  }
+
+  private void updatePhones(@NonNull NoGps.Status status)
+  {
+    mPhonesReadOnly.setVisibility(status.boxReadOnly ? View.VISIBLE : View.GONE);
+    mAddPhone.setEnabled(!status.boxReadOnly);
+    final Context context = requireContext();
+    final List<String> texts = new ArrayList<>();
+    for (NoGps.Phone phone : status.boxPhones)
+    {
+      texts.add(phone.name.isEmpty() ? getString(R.string.nogps_phone_unnamed) : phone.name);
+      texts.add(phoneStateText(phone));
+    }
+    // The rows keep the phones they remove: two phones may look the same.
+    for (NoGps.Phone phone : status.boxPhones)
+      texts.add(phone.address);
+    texts.add(String.valueOf(status.boxReadOnly));
+    if (texts.equals(mPhoneTexts))
+      return;
+    mPhoneTexts = texts;
+    mPhonesRows.removeAllViews();
+    final LayoutInflater inflater = LayoutInflater.from(context);
+    for (int i = 0; i < status.boxPhones.length; ++i)
+    {
+      final NoGps.Phone phone = status.boxPhones[i];
+      final String name = texts.get(2 * i);
+      final View row = inflater.inflate(R.layout.nogps_car_row, mPhonesRows, false);
+      ((TextView) row.findViewById(R.id.car_name)).setText(name);
+      final TextView state = row.findViewById(R.id.car_state);
+      state.setText(texts.get(2 * i + 1));
+      state.setVisibility(texts.get(2 * i + 1).isEmpty() ? View.GONE : View.VISIBLE);
+      if (!status.boxReadOnly)
+        row.setOnClickListener(v -> confirmRemovePhone(phone, name));
+      else
+        row.setClickable(false);
+      mPhonesRows.addView(row);
+    }
+  }
+
+  @NonNull
+  private String phoneStateText(@NonNull NoGps.Phone phone)
+  {
+    if (phone.thisPhone)
+      return getString(R.string.nogps_phone_this);
+    if (phone.seenUnixS <= 0)
+      return "";
+    final CharSequence when = DateUtils.getRelativeTimeSpanString(phone.seenUnixS * 1000, System.currentTimeMillis(),
+                                                                  DateUtils.MINUTE_IN_MILLIS);
+    return getString(R.string.nogps_car_last_seen, when);
+  }
+
+  private void confirmRemovePhone(@NonNull NoGps.Phone phone, @NonNull String name)
+  {
+    new MaterialAlertDialogBuilder(requireContext())
+        .setTitle(name)
+        .setMessage(phone.thisPhone ? R.string.nogps_phone_remove_this_text : R.string.nogps_phone_remove_text)
+        .setPositiveButton(R.string.nogps_phone_remove,
+                           (dialog, which) -> {
+                             NoGps.nativeForgetBoxPhone(phone.address);
+                             update();
+                           })
+        .setNegativeButton(R.string.cancel, null)
+        .show();
+  }
+
+  /**
+   * The box takes a new phone with a code shown here: the user enters it on the new phone.
+   */
+  private void addPhone()
+  {
+    NoGps.nativeStartAddPhone();
+    mAddPhoneDialog = new MaterialAlertDialogBuilder(requireContext())
+                          .setTitle(R.string.nogps_phone_add)
+                          .setMessage(R.string.nogps_phone_add_opening)
+                          .setPositiveButton(R.string.close, null)
+                          .setOnDismissListener(dialog -> {
+                            mAddPhoneDialog = null;
+                            NoGps.nativeEndAddPhone();
+                          })
+                          .show();
+    update();
+  }
+
+  private void updateAddPhone(@NonNull NoGps.Status status)
+  {
+    if (mAddPhoneDialog == null)
+      return;
+    final String text = switch (status.getAddPhone())
+    {
+      case NONE, OPENING -> getString(R.string.nogps_phone_add_opening);
+      case OPEN ->
+        status.addPhoneCode + "\n\n"
+            + getString(R.string.nogps_phone_add_code, DateUtils.formatElapsedTime(status.addPhoneSecondsLeft));
+      case ADDED -> getString(R.string.nogps_phone_added);
+      case EXPIRED -> getString(R.string.nogps_phone_add_expired);
+      case FULL -> getString(R.string.nogps_phone_add_full);
+      case FAILED -> getString(R.string.nogps_phone_add_failed);
+    };
+    mAddPhoneDialog.setMessage(text);
   }
 
   private void showGps(boolean shown)
@@ -1013,7 +1164,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final NoGps.BleState ble = status.getBleState();
     final boolean bluetoothFailed = isBluetoothFailed(status);
     showBox(new StatusBar.Look(R.drawable.ic_nogps_box, 0), getString(R.string.nogps_box_searching));
-    final boolean searched = ble == NoGps.BleState.SEARCHING || ble == NoGps.BleState.PAIRING_CLOSED;
+    final boolean searched = ble == NoGps.BleState.SEARCHING || ble == NoGps.BleState.PAIRING_CLOSED
+                          || ble == NoGps.BleState.PAIRING_BY_PHONE || ble == NoGps.BleState.PAIRING_FULL;
     final boolean connecting = ble == NoGps.BleState.CONNECTING || ble == NoGps.BleState.PAIRING;
     final boolean connected = ble == NoGps.BleState.CONNECTED;
     final boolean linkFailed = ble == NoGps.BleState.PAIRING_FAILED || ble == NoGps.BleState.BOND_LOST;

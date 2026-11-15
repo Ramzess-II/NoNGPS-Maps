@@ -60,7 +60,26 @@ typedef NS_ENUM(NSInteger, MWMNoGpsBleState) {
   MWMNoGpsBleStatePairingFailed,
   // A paired box sends nothing: it has forgotten the phone. Not tried again until the user asks.
   MWMNoGpsBleStateBondLost,
+  // A box that doesn't know the phone and has phones: a new one is added on one of them.
+  MWMNoGpsBleStatePairingByPhone,
+  // The same, and the box has no room: a phone is removed on one of them first.
+  MWMNoGpsBleStatePairingFull,
 } NS_SWIFT_NAME(NoGpsBleState);
+
+/// What the box does about a new phone, see startAddPhone.
+typedef NS_ENUM(NSInteger, MWMNoGpsAddPhone) {
+  MWMNoGpsAddPhoneNone,
+  // The code is sent to the box.
+  MWMNoGpsAddPhoneOpening,
+  // The box takes a new phone with the code for addPhoneSecondsLeft.
+  MWMNoGpsAddPhoneOpen,
+  MWMNoGpsAddPhoneAdded,
+  // No phone has paired in time.
+  MWMNoGpsAddPhoneExpired,
+  // The box has 4 phones.
+  MWMNoGpsAddPhoneFull,
+  MWMNoGpsAddPhoneFailed,
+} NS_SWIFT_NAME(NoGpsAddPhone);
 
 typedef NS_ENUM(NSInteger, MWMNoGpsCalibrationState) {
   MWMNoGpsCalibrationStateNone,
@@ -146,6 +165,8 @@ typedef NS_ENUM(NSInteger, MWMNoGpsEvent) {
   MWMNoGpsEventFirmwareUpdateDone,
   MWMNoGpsEventFirmwareUpdateFailed,
   MWMNoGpsEventBoxCalibrationAdvised,
+  // The box has removed this phone on the request of the user: the car of the box is forgotten.
+  MWMNoGpsEventThisPhoneRemoved,
 } NS_SWIFT_NAME(NoGpsEvent);
 
 /// Posted on the main queue, the MWMNoGpsEvent is in the userInfo by MWMNoGpsEventKey.
@@ -172,6 +193,20 @@ NS_SWIFT_NAME(NoGpsCar)
 @property(nonatomic, readonly) NSString * firmware;
 /// When the box told about itself the last time.
 @property(nonatomic, readonly, nullable) NSDate * lastSeen;
+
+@end
+
+/// A phone paired with the sensor box.
+NS_SWIFT_NAME(NoGpsPhone)
+@interface MWMNoGpsPhone : NSObject
+
+/// The Bluetooth address the box knows the phone by: forgetBoxPhone takes it.
+@property(nonatomic, readonly) NSString * address;
+/// The model the phone has told the box, empty if none.
+@property(nonatomic, readonly) NSString * name;
+/// When it connected the last time.
+@property(nonatomic, readonly, nullable) NSDate * lastSeen;
+@property(nonatomic, readonly) BOOL thisPhone;
 
 @end
 
@@ -249,6 +284,16 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly) NSString * firmwareUpdateError;
 /// All the sensor box has told in this connection, in the order of MWMNoGpsBoxValue.
 @property(nonatomic, readonly) NSArray<MWMNoGpsBoxValueItem *> * boxValues;
+/// The box is connected and knows its phones: they are listed, removed and added.
+@property(nonatomic, readonly) BOOL boxHasPhones;
+/// The phones of the box, nil until it lists them.
+@property(nonatomic, readonly, nullable) NSArray<MWMNoGpsPhone *> * boxPhones;
+/// Another phone has connected to the box first and changes it: this one gets the data only.
+@property(nonatomic, readonly) BOOL boxReadOnly;
+@property(nonatomic, readonly) MWMNoGpsAddPhone addPhone;
+/// The code to enter on the new phone while addPhone is Open.
+@property(nonatomic, readonly) NSString * addPhoneCode;
+@property(nonatomic, readonly) NSInteger addPhoneSecondsLeft;
 
 @end
 
@@ -300,6 +345,14 @@ NS_SWIFT_NAME(NoGps)
 /// Sends the firmware of MWMNoGpsStatus.bundledFirmware to the box.
 + (void)startFirmwareUpdate;
 + (void)cancelFirmwareUpdate;
+/// Asks the box of the car for its phones again, see MWMNoGpsStatus.boxPhones.
++ (void)listBoxPhones;
+/// Removes the phone from the box. Removing this phone ends with MWMNoGpsEventThisPhoneRemoved.
++ (void)forgetBoxPhone:(NSString *)address;
+/// Lets the box take a new phone with a new code for two minutes, see MWMNoGpsStatus.addPhone.
++ (void)startAddPhone;
+/// The code is not shown any more.
++ (void)endAddPhone;
 
 /// The bytes of the ESP32 sensor box and the state of the connection to it.
 + (void)onEsp32BleBytes:(NSData *)data;

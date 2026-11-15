@@ -49,6 +49,15 @@ public:
 
   void Esp32BleClose() override { CallVoid("esp32BleClose"); }
 
+  std::string GetPhoneName() override
+  {
+    JNIEnv * env = jni::GetEnv();
+    jni::TScopedLocalRef name(env,
+                              env->CallObjectMethod(*m_delegate, Method(env, "getPhoneName", "()Ljava/lang/String;")));
+    jni::HandleJavaException(env);
+    return name.get() ? jni::ToNativeString(env, static_cast<jstring>(name.get())) : std::string();
+  }
+
   void OnPosition(nogps::Fix const & fix) override
   {
     JNIEnv * env = jni::GetEnv();
@@ -334,6 +343,26 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeForgetCar(JNIEnv * 
   NoGpsEngine().ForgetCar(jni::ToNativeString(env, id));
 }
 
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeListBoxPhones(JNIEnv *, jclass)
+{
+  NoGpsEngine().ListBoxPhones();
+}
+
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeForgetBoxPhone(JNIEnv * env, jclass, jstring address)
+{
+  NoGpsEngine().ForgetBoxPhone(jni::ToNativeString(env, address));
+}
+
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeStartAddPhone(JNIEnv *, jclass)
+{
+  NoGpsEngine().StartAddPhone();
+}
+
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeEndAddPhone(JNIEnv *, jclass)
+{
+  NoGpsEngine().EndAddPhone();
+}
+
 JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * env, jclass, jobject out)
 {
   auto const status = NoGpsEngine().GetStatus();
@@ -393,6 +422,28 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsField(env, out, "firmwareUpdateProgress", status.m_firmwareUpdateProgress);
   SetNoGpsString(env, out, "firmwareUpdateError", status.m_firmwareUpdateError);
   SetNoGpsField(env, out, "boxCalibrationAdvised", status.m_boxCalibrationAdvised);
+  SetNoGpsField(env, out, "boxHasPhones", status.m_boxHasPhones);
+  SetNoGpsField(env, out, "boxPhonesListed", status.m_boxPhones.has_value());
+  if (status.m_boxPhones)
+  {
+    static jclass const phoneClass = jni::GetGlobalClassRef(env, "app/organicmaps/sdk/location/NoGps$Phone");
+    static jmethodID const ctor = jni::GetConstructorID(env, phoneClass, "(Ljava/lang/String;Ljava/lang/String;JZ)V");
+    jni::TScopedLocalObjectArrayRef phones(
+        env, jni::ToJavaArray(env, phoneClass, *status.m_boxPhones, [](JNIEnv * env, nogps::esp32::Phone const & phone)
+    {
+      jni::TScopedLocalRef address(env, jni::ToJavaString(env, phone.m_address));
+      jni::TScopedLocalRef name(env, jni::ToJavaString(env, phone.m_name));
+      return env->NewObject(phoneClass, ctor, address.get(), name.get(), static_cast<jlong>(phone.m_seenUnixS),
+                            static_cast<jboolean>(phone.m_thisPhone));
+    }));
+    env->SetObjectField(
+        out, env->GetFieldID(env->GetObjectClass(out), "boxPhones", "[Lapp/organicmaps/sdk/location/NoGps$Phone;"),
+        phones.get());
+  }
+  SetNoGpsField(env, out, "boxReadOnly", status.m_boxReadOnly);
+  SetNoGpsField(env, out, "addPhone", static_cast<int>(status.m_addPhone));
+  SetNoGpsString(env, out, "addPhoneCode", status.m_addPhoneCode);
+  SetNoGpsField(env, out, "addPhoneSecondsLeft", status.m_addPhoneSecondsLeft);
   std::vector<jint> boxValueIds;
   std::vector<std::string> boxValues;
   for (auto const & [id, value] : status.m_boxValues)

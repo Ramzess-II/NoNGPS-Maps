@@ -217,13 +217,16 @@ final class NoGpsBoxSheet: MWMTableViewController {
       if NoGpsSensorsViewController.canInstallFirmware(status) {
         info.append(.installFirmware)
       }
-      if connected {
+      // Another phone calibrates and updates the box.
+      let readOnly = connected && status.boxReadOnly
+      if connected, !readOnly {
         info.append(.calibrate)
       }
       if Self.linkActionText(status.bleState) != nil {
         info.insert(.bluetooth, at: 0)
       }
-      sections = [gps, Section(rows: info, footer: Self.obdHintText(status))]
+      let footer = [Self.obdHintText(status), readOnly ? L("nogps_box_read_only") : nil].compactMap { $0 }
+      sections = [gps, Section(rows: info, footer: footer.isEmpty ? nil : footer.joined(separator: "\n\n"))]
       // What the app has learned about the car speed.
       if status.inertialStarted {
         sections.append(Section(rows: [.speedTable, .speedLag, .clearSpeed]))
@@ -271,6 +274,8 @@ final class NoGpsBoxSheet: MWMTableViewController {
     let text: String
     switch ble {
     case .pairingClosed: text = L("nogps_box_bt_pairing_closed")
+    case .pairingByPhone: text = L("nogps_box_bt_pairing_by_phone")
+    case .pairingFull: text = L("nogps_box_bt_pairing_full")
     case .pairing: text = L("nogps_box_bt_pairing")
     case .pairingFailed: text = L("nogps_box_bt_pairing_failed")
     case .bondLost: text = L("nogps_box_bt_bond_lost")
@@ -537,6 +542,12 @@ final class NoGpsBoxSheet: MWMTableViewController {
         self?.refresh()
       })
     }
+    if car.carId == NoGps.status().carId, NoGps.status().boxHasPhones {
+      menu.addAction(UIAlertAction(title: L("nogps_car_phones"), style: .default) { [weak self] _ in
+        NoGps.listBoxPhones()
+        self?.navigationController?.pushViewController(BoxPhonesViewController(style: .insetGrouped), animated: true)
+      })
+    }
     menu.addAction(UIAlertAction(title: L("nogps_car_rename"), style: .default) { [weak self] _ in
       self?.renameCar(car)
     })
@@ -704,6 +715,140 @@ private final class SpeedTableViewController: MWMTableViewController {
     cell.contentConfiguration = content
     cell.selectionStyle = .none
     return cell
+  }
+}
+
+/// The phones paired with the box of the car: a tap removes one, the last row adds a new one with a one-time code.
+private final class BoxPhonesViewController: MWMTableViewController {
+  private enum Constants {
+    static let refreshInterval: TimeInterval = 0.5
+    static let cellId = "NoGpsBoxPhoneCell"
+  }
+
+  private var status = NoGps.status()
+  private var timer: Timer?
+  /// Shows the code for a new phone while the box takes it.
+  private weak var addPhoneAlert: UIAlertController?
+
+  override func viewDidLoad() {
+    super.viewDidLoad()
+    title = L("nogps_car_phones")
+    tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
+  }
+
+  override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+    refresh()
+    let timer = Timer(timeInterval: Constants.refreshInterval, repeats: true) { [weak self] _ in self?.refresh() }
+    RunLoop.main.add(timer, forMode: .common)
+    self.timer = timer
+  }
+
+  override func viewWillDisappear(_ animated: Bool) {
+    super.viewWillDisappear(animated)
+    timer?.invalidate()
+    timer = nil
+  }
+
+  private var phones: [NoGpsPhone] { status.boxPhones ?? [] }
+
+  private func refresh() {
+    status = NoGps.status()
+    // The box has disconnected: its phones are not known.
+    if !status.boxHasPhones, addPhoneAlert == nil, navigationController?.topViewController === self {
+      navigationController?.popViewController(animated: true)
+      return
+    }
+    addPhoneAlert?.message = addPhoneText()
+    tableView.reloadData()
+  }
+
+  override func numberOfSections(in _: UITableView) -> Int {
+    2
+  }
+
+  override func tableView(_: UITableView, numberOfRowsInSection section: Int) -> Int {
+    section == 0 ? phones.count : 1
+  }
+
+  override func tableView(_: UITableView, titleForFooterInSection section: Int) -> String? {
+    section == 0 && status.boxReadOnly ? L("nogps_box_read_only") : nil
+  }
+
+  override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
+    var content = UIListContentConfiguration.subtitleCell()
+    cell.selectionStyle = status.boxReadOnly ? .none : .default
+    if indexPath.section == 0 {
+      let phone = phones[indexPath.row]
+      content.text = Self.phoneName(phone)
+      content.secondaryText = phoneStateText(phone)
+      content.secondaryTextProperties.color = .secondaryLabel
+    } else {
+      content = UIListContentConfiguration.cell()
+      content.text = L("nogps_phone_add")
+      content.textProperties.color = status.boxReadOnly ? .secondaryLabel : .linkBlue
+    }
+    cell.contentConfiguration = content
+    return cell
+  }
+
+  override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    tableView.deselectRow(at: indexPath, animated: true)
+    guard !status.boxReadOnly else { return }
+    if indexPath.section == 0 {
+      confirmRemove(phones[indexPath.row])
+    } else {
+      addPhone()
+    }
+  }
+
+  private static func phoneName(_ phone: NoGpsPhone) -> String {
+    phone.name.isEmpty ? L("nogps_phone_unnamed") : phone.name
+  }
+
+  private func phoneStateText(_ phone: NoGpsPhone) -> String? {
+    if phone.thisPhone {
+      return L("nogps_phone_this")
+    }
+    guard let lastSeen = phone.lastSeen else { return nil }
+    return String(format: L("nogps_car_last_seen"), RelativeDateTimeFormatter().localizedString(for: lastSeen,
+                                                                                                relativeTo: Date()))
+  }
+
+  private func confirmRemove(_ phone: NoGpsPhone) {
+    let alert = UIAlertController(title: Self.phoneName(phone),
+                                  message: phone.thisPhone ? L("nogps_phone_remove_this_text") : L("nogps_phone_remove_text"),
+                                  preferredStyle: .alert)
+    alert.addAction(UIAlertAction(title: L("cancel"), style: .cancel))
+    alert.addAction(UIAlertAction(title: L("nogps_phone_remove"), style: .destructive) { [weak self] _ in
+      NoGps.forgetBoxPhone(phone.address)
+      self?.refresh()
+    })
+    present(alert, animated: true)
+  }
+
+  /// The box takes a new phone with a code shown here: the user enters it on the new phone.
+  private func addPhone() {
+    NoGps.startAddPhone()
+    status = NoGps.status()
+    let alert = UIAlertController(title: L("nogps_phone_add"), message: addPhoneText(), preferredStyle: .alert)
+    alert.addAction(UIAlertAction(title: L("close"), style: .cancel) { _ in NoGps.endAddPhone() })
+    addPhoneAlert = alert
+    present(alert, animated: true)
+  }
+
+  private func addPhoneText() -> String {
+    switch status.addPhone {
+    case .open:
+      let left = String(format: "%d:%02d", status.addPhoneSecondsLeft / 60, status.addPhoneSecondsLeft % 60)
+      return status.addPhoneCode + "\n\n" + String(format: L("nogps_phone_add_code"), left)
+    case .added: return L("nogps_phone_added")
+    case .expired: return L("nogps_phone_add_expired")
+    case .full: return L("nogps_phone_add_full")
+    case .failed: return L("nogps_phone_add_failed")
+    default: return L("nogps_phone_add_opening")
+    }
   }
 }
 
@@ -990,7 +1135,7 @@ private final class BoxSearchView: UIView {
     let states: [StepState] = [
       bluetoothFailed ? .failed : .done,
       [.connecting, .pairing, .connected, .pairingFailed, .bondLost].contains(ble) ? .done
-        : [.searching, .pairingClosed].contains(ble) ? .current : .waiting,
+        : [.searching, .pairingClosed, .pairingByPhone, .pairingFull].contains(ble) ? .current : .waiting,
       ble == .connected ? .done : linkFailed ? .failed : [.connecting, .pairing].contains(ble) ? .current : .waiting,
       ble == .connected ? .current : .waiting,
     ]

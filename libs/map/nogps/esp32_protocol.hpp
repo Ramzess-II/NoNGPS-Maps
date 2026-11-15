@@ -90,6 +90,10 @@ struct Info
   bool m_canUpdate = false;
   // The box keeps the values of its car for every phone, see BoxCarValues.
   bool m_canStoreCarValues = false;
+  // The box lists its phones, forgets one of them and takes a new one with a code of the app.
+  bool m_hasPhones = false;
+  // Two phones get the data at once, the one connected first changes the box.
+  bool m_twoPhones = false;
   // The four characters of the name of the box, NoGPS-XXXX.
   std::string m_id;
   // How many times the box was powered on, nothing from a firmware that doesn't count it.
@@ -143,6 +147,35 @@ enum class BoxValue
   LastEvent,
 };
 
+/// A phone paired with the box.
+struct Phone
+{
+  // The Bluetooth address the box knows the phone by, "AA:BB:CC:DD:EE:FF".
+  std::string m_address;
+  // What the phone has sent in its hello, empty if nothing.
+  std::string m_name;
+  // When it has connected the last time by its own clock, 0 if unknown.
+  int64_t m_seenUnixS = 0;
+  // The phone that has asked.
+  bool m_thisPhone = false;
+
+  bool operator==(Phone const &) const = default;
+};
+
+/// The reply to the list of the phones.
+struct Phones
+{
+  std::vector<Phone> m_phones;
+  // The box takes the commands that change it from this phone: no other phone has connected before it.
+  bool m_changesBox = true;
+};
+
+int constexpr kMaxPhones = 4;
+size_t constexpr kMaxPhoneNameSize = 20;
+// A new phone pairs with a code of this many digits, the box takes it this long.
+int constexpr kPairingCodeDigits = 6;
+int64_t constexpr kPairingWindowMs = 120'000;
+
 /// The values as the platforms show them with their units, empty if the box sends the field empty.
 using BoxValues = std::vector<std::pair<BoxValue, std::string>>;
 
@@ -159,6 +192,11 @@ uint16_t Crc16(std::string_view text);
 
 /// \returns the command line to send to the box.
 std::string Command(int id, std::string_view command);
+/// \returns the hello with the name of the phone and its time, a plain one without the name.
+std::string Hello(std::string_view phoneName, int64_t unixMs);
+/// \returns the name of the phone the way the box takes it: printable ASCII without the separators of the lines and
+/// of the list of the phones, kMaxPhoneNameSize characters at most.
+std::string PhoneName(std::string_view name);
 
 /// \returns the fields of a line with a valid checksum, the first one is the line type.
 std::optional<Fields> Parse(std::string_view line);
@@ -171,6 +209,8 @@ std::optional<Reply> ParseReply(Fields const & fields);
 std::optional<Event> ParseEvent(Fields const & fields);
 /// \returns what an NGI line tells about the box.
 std::optional<Info> ParseInfo(Fields const & fields);
+/// \returns the phones from the reply to BT_LIST.
+std::optional<Phones> ParsePhones(Reply const & reply);
 /// \returns the progress of a firmware update from an NGO line.
 std::optional<UpdateProgress> ParseUpdateProgress(Fields const & fields);
 /// \returns the number of the last event of the box from an NGS line, if the box tells it.
@@ -185,5 +225,6 @@ std::optional<CarInfo> ParseCarInfo(Fields const & fields);
 BoxValues ParseBoxValues(Fields const & fields);
 
 std::string DebugPrint(BoxValue value);
+std::string DebugPrint(Phone const & phone);
 }  // namespace esp32
 }  // namespace nogps

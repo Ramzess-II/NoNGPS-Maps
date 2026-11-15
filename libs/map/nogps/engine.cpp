@@ -100,6 +100,7 @@ Engine::Engine(Delegate & delegate, MapApi & map, Storage & storage, Clock const
   , m_scheduler(scheduler)
   , m_manualRepeatTimer(scheduler)
   , m_tripLogTimer(scheduler)
+  , m_phoneRemovedTimer(scheduler)
 {}
 
 Engine::~Engine() = default;
@@ -899,6 +900,36 @@ void Engine::OnBoxCarWritten(std::string const & key, std::string const & value,
   m_boxCarValues.OnWritten(key, value, error);
 }
 
+void Engine::OnThisPhoneRemoved()
+{
+  LOG(LINFO, ("This phone is removed from the box of the car", m_cars.GetCurrentCar()));
+  m_phoneRemovedTimer.Start(0, [this] { m_delegate.OnEvent(Event::ThisPhoneRemoved); });
+}
+
+void Engine::ListBoxPhones()
+{
+  if (auto * box = m_inertial ? m_inertial->GetEsp32() : nullptr)
+    box->ListPhones();
+}
+
+void Engine::ForgetBoxPhone(std::string const & address)
+{
+  if (auto * box = m_inertial ? m_inertial->GetEsp32() : nullptr)
+    box->ForgetPhone(address);
+}
+
+void Engine::StartAddPhone()
+{
+  if (auto * box = m_inertial ? m_inertial->GetEsp32() : nullptr)
+    box->StartAddPhone();
+}
+
+void Engine::EndAddPhone()
+{
+  if (auto * box = m_inertial ? m_inertial->GetEsp32() : nullptr)
+    box->EndAddPhone();
+}
+
 void Engine::OnBoxStopping()
 {
   SaveBoxCarValues(true /* now */);
@@ -1660,6 +1691,13 @@ Status Engine::GetStatus()
       status.m_firmwareUpdateProgress = box->GetUpdate().GetProgressPercent();
       status.m_firmwareUpdateError = box->GetUpdate().GetError();
       status.m_boxCalibrationAdvised = m_storage.Get<bool>(Storage::kBoxCalibrationAdvised, false);
+      status.m_boxHasPhones = box->HasPhones();
+      if (box->GetPhones())
+        status.m_boxPhones = box->GetPhones()->m_phones;
+      status.m_boxReadOnly = box->IsReadOnly();
+      status.m_addPhone = box->GetAddPhoneState();
+      status.m_addPhoneCode = box->GetAddPhoneCode();
+      status.m_addPhoneSecondsLeft = static_cast<int>((box->GetAddPhoneMsLeft() + 999) / 1000);
     }
   }
   return status;

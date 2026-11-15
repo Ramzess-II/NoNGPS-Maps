@@ -2,6 +2,7 @@
 
 #include "map/nogps/box_car_values.hpp"
 #include "map/nogps/delegate.hpp"
+#include "map/nogps/esp32_source.hpp"
 #include "map/nogps/esp32_update.hpp"
 #include "map/nogps/gps_return_detector.hpp"
 #include "map/nogps/gps_spoofing_detector.hpp"
@@ -126,6 +127,18 @@ struct Status
   std::string m_firmwareUpdateError;
   // The sensor box has been powered on since the user calibrated it: it may stand in another way now.
   bool m_boxCalibrationAdvised = false;
+
+  // The box is connected and knows its phones: they are listed, removed and added, see Engine::StartAddPhone().
+  bool m_boxHasPhones = false;
+  // The phones of the box, nothing until it lists them.
+  std::optional<std::vector<esp32::Phone>> m_boxPhones;
+  // Another phone has connected to the box first and changes it: the calibration, the firmware update and the phones
+  // are for that phone, this one gets the data only.
+  bool m_boxReadOnly = false;
+  Esp32Source::AddPhone m_addPhone = Esp32Source::AddPhone::None;
+  // The code to enter on the new phone while m_addPhone is Open, and how long the box takes it.
+  std::string m_addPhoneCode;
+  int m_addPhoneSecondsLeft = 0;
 };
 
 /// Navigation without GPS: it chooses the position to show from GPS, cell towers, the marks of the user and the
@@ -313,6 +326,15 @@ public:
   /// The firmwares of the ESP32 sensor box that come with the application: the box should work with the one
   /// for it, the application is tested with it.
   void SetFirmwares(std::vector<Firmware> firmwares);
+
+  /// Asks the box of the car for its phones again, see Status::m_boxPhones.
+  void ListBoxPhones();
+  /// Removes the phone from the box. Removing this phone ends with Event::ThisPhoneRemoved.
+  void ForgetBoxPhone(std::string const & address);
+  /// Lets the box take a new phone with a new code for two minutes, see Status::m_addPhone.
+  void StartAddPhone();
+  /// The code is not shown any more. The box takes it until its time ends.
+  void EndAddPhone();
   /// Sends the firmware of Status::m_bundledFirmware to the box.
   void StartFirmwareUpdate();
   void CancelFirmwareUpdate();
@@ -334,6 +356,7 @@ private:
   void OnBoxHeard(std::string const & id, std::string const & firmware) override;
   void OnBoxCarValues(std::map<std::string, std::string> const & values) override;
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
+  void OnThisPhoneRemoved() override;
   void OnBoxStopping() override;
 
   static PositionSource SourceOf(Fix const & fix);
@@ -541,6 +564,8 @@ private:
 
   Timer m_manualRepeatTimer;
   Timer m_tripLogTimer;
+  // The platform forgets the car on Event::ThisPhoneRemoved: not while the box is being read.
+  Timer m_phoneRemovedTimer;
 
   ThreadChecker m_threadChecker;
 };

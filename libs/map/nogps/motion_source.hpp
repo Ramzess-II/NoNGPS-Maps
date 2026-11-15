@@ -97,6 +97,9 @@ public:
     virtual void OnBoxCarWritten(std::string const & /* key */, std::string const & /* value */,
                                  std::string const & /* error */)
     {}
+
+    /// The box has removed this phone on its request: it doesn't connect to the box any more.
+    virtual void OnThisPhoneRemoved() {}
   };
 
   virtual ~MotionSource() = default;

@@ -331,6 +331,42 @@ UNIT_TEST(NoGps_Esp32_CarValueCommands)
   TEST_EQUAL(error->m_error, "KEY", ());
 }
 
+UNIT_TEST(NoGps_Esp32_ParsesPhones)
+{
+  auto const info = ParseInfo(*Parse(
+      WithCrc("NGI,1,0.4.2,2026-11-14T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE CAR PHONES MULTI,3")));
+  TEST(info && info->m_hasPhones && info->m_twoPhones && info->m_canStoreCarValues && !info->m_canUpdate, ());
+  auto const old = ParseInfo(
+      *Parse(WithCrc("NGI,1,0.4.1,2026-11-14T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR,3")));
+  TEST(old && !old->m_hasPhones && !old->m_twoPhones, ());
+
+  auto const reply = [](std::string const & body) { return *ParseReply(*Parse(WithCrc("NGA,4," + body))); };
+  auto const phones = ParsePhones(reply("OK,BC:D0:74:A9:71:92|Mac mini|1794685760|1;D0:56:FB:11:00:88|||0,0"));
+  TEST(phones, ());
+  TEST_EQUAL(phones->m_phones.size(), 2, ());
+  TEST_EQUAL(phones->m_phones[0], (Phone{"BC:D0:74:A9:71:92", "Mac mini", 1794685760, true}), ());
+  TEST_EQUAL(phones->m_phones[1], (Phone{"D0:56:FB:11:00:88", "", 0, false}), ());
+  TEST(!phones->m_changesBox, ());
+
+  // A box without phones. The reply without the last field comes from nobody, it would change the box.
+  auto const none = ParsePhones(reply("OK,,1"));
+  TEST(none && none->m_phones.empty() && none->m_changesBox, ());
+  TEST(ParsePhones(reply("OK,D0:56:FB:11:00:88|||0"))->m_changesBox, ());
+  TEST(!ParsePhones(reply("ERR,BT")), ());
+  TEST(!ParsePhones(reply("OK,D0:56:FB:11:00:88|x|soon|0,1")), ());
+  TEST(!ParsePhones(reply("OK,D0:56:FB:11:00:88|x,1")), ());
+}
+
+UNIT_TEST(NoGps_Esp32_HelloWithNameOfPhone)
+{
+  TEST_EQUAL(Hello("", 1794685760123), "HELLO", ());
+  TEST_EQUAL(Hello("Pixel 8", 1794685760123), "HELLO,Pixel 8,1794685760", ());
+  TEST_EQUAL(PhoneName("  iPhone 15 Pro  "), "iPhone 15 Pro", ());
+  // The separators of the lines and of the list of the phones, and what is not ASCII, are replaced.
+  TEST_EQUAL(PhoneName("a,b*c$d|e;f\tЖ"), "a_b_c_d_e_f___", ());
+  TEST_EQUAL(PhoneName("Samsung Galaxy S24 Ultra 5G"), "Samsung Galaxy S24 U", ());
+}
+
 UNIT_TEST(NoGps_BoxCarValues_Encoding)
 {
   auto const roundTrip = [](std::string_view key, std::string const & value)

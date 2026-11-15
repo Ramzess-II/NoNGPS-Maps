@@ -317,6 +317,8 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     case .off, .disabled: return L("nogps_box_bt_disabled")
     case .searching: return L("nogps_box_bt_searching")
     case .pairingClosed: return L("nogps_box_bt_pairing_closed")
+    case .pairingByPhone: return L("nogps_box_bt_pairing_by_phone")
+    case .pairingFull: return L("nogps_box_bt_pairing_full")
     case .connecting: return L("nogps_box_bt_connecting")
     case .pairing: return L("nogps_box_bt_pairing")
     case .connected: return L("nogps_box_bt_waiting")

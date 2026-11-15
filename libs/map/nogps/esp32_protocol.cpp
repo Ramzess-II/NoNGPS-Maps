@@ -131,6 +131,26 @@ std::string Command(int id, std::string_view command)
   return "$" + body + "*" + crc + "\r\n";
 }
 
+std::string Hello(std::string_view phoneName, int64_t unixMs)
+{
+  if (phoneName.empty())
+    return "HELLO";
+  return "HELLO," + std::string(phoneName) + "," + std::to_string(unixMs / 1000);
+}
+
+std::string PhoneName(std::string_view name)
+{
+  strings::Trim(name);
+  std::string result;
+  for (char const c : name.substr(0, kMaxPhoneNameSize))
+  {
+    bool const bad = c < 0x20 || c > 0x7E || std::string_view(",*$|;").find(c) != std::string_view::npos;
+    result += bad ? '_' : c;
+  }
+  strings::Trim(result);
+  return result;
+}
+
 std::optional<Fields> Parse(std::string_view line)
 {
   auto const trimmed = TrimLine(line);
@@ -235,12 +255,51 @@ std::optional<Info> ParseInfo(Fields const & fields)
         info.m_canUpdate = true;
       else if (ability == "CAR")
         info.m_canStoreCarValues = true;
+      else if (ability == "PHONES")
+        info.m_hasPhones = true;
+      else if (ability == "MULTI")
+        info.m_twoPhones = true;
   }
   if (fields.size() > 6)
     info.m_id = fields[6];
   if (int64_t powerOns; fields.size() > 12 && strings::to_int(fields[12], powerOns))
     info.m_powerOns = powerOns;
   return info;
+}
+
+std::optional<Phones> ParsePhones(Reply const & reply)
+{
+  // OK,<address>|<name>|<seen, Unix s>|<1 if this phone>;...,<1 if this phone changes the box>
+  if (!reply.m_ok || reply.m_values.empty())
+    return {};
+  Phones phones;
+  if (reply.m_values.size() > 1)
+    phones.m_changesBox = reply.m_values[1] != "0";
+  if (reply.m_values[0].empty())
+    return phones;
+  for (auto const item : strings::Tokenize(reply.m_values[0], ";"))
+  {
+    // Tokenize skips the empty parts, a phone without a name has them.
+    std::vector<std::string_view> parts;
+    for (size_t start = 0;;)
+    {
+      size_t const bar = item.find('|', start);
+      parts.push_back(item.substr(start, bar == std::string_view::npos ? std::string_view::npos : bar - start));
+      if (bar == std::string_view::npos)
+        break;
+      start = bar + 1;
+    }
+    if (parts.size() < 4 || parts[0].empty())
+      return {};
+    Phone phone;
+    phone.m_address = parts[0];
+    phone.m_name = parts[1];
+    if (!parts[2].empty() && !strings::to_int(parts[2], phone.m_seenUnixS))
+      return {};
+    phone.m_thisPhone = parts[3] == "1";
+    phones.m_phones.push_back(std::move(phone));
+  }
+  return phones;
 }
 
 std::optional<UpdateProgress> ParseUpdateProgress(Fields const & fields)
@@ -314,6 +373,12 @@ BoxValues ParseBoxValues(Fields const & fields)
 std::string DebugPrint(BoxValue value)
 {
   return std::to_string(static_cast<int>(value));
+}
+
+std::string DebugPrint(Phone const & phone)
+{
+  return phone.m_address + " " + phone.m_name + " seen " + std::to_string(phone.m_seenUnixS) +
+         (phone.m_thisPhone ? " this" : "");
 }
 }  // namespace esp32
 }  // namespace nogps

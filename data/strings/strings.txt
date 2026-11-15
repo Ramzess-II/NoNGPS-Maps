@@ -46212,9 +46212,9 @@ uk = спарювання не вдалося: код скасовано або 
 [nogps_box_bt_bond_lost]
 comment = State of the sensor box, shown after its name: a paired box connects but sends nothing, it has forgotten the phone
 tags = android-app,apple-maps
-en = the box has forgotten this phone. Remove it in the Bluetooth settings, then unplug the box and plug it back
-ru = блок забыл этот телефон. Удалите его в настройках Bluetooth, затем выньте блок из разъёма и вставьте обратно
-uk = блок забув цей телефон. Видаліть його в налаштуваннях Bluetooth, потім вийміть блок із роз'єму й вставте назад
+en = the box has forgotten this phone. Remove it in the Bluetooth settings, then add this phone on a paired one. A box without phones takes it after you unplug the box and plug it back
+ru = блок забыл этот телефон. Удалите его в настройках Bluetooth, затем добавьте этот телефон на сопряжённом. Блок без телефонов примет его, если вынуть блок из разъёма и вставить обратно
+uk = блок забув цей телефон. Видаліть його в налаштуваннях Bluetooth, потім додайте цей телефон на спареному. Блок без телефонів прийме його, якщо вийняти блок із роз'єму й вставити назад
 
 [nogps_box_try_again]
 comment = Button on the Box screen: look for the sensor box again after a failed pairing
@@ -46483,6 +46483,125 @@ tags = android-app,apple-maps
 en = Add a car
 ru = Добавить машину
 uk = Додати машину
+
+[nogps_box_bt_pairing_by_phone]
+comment = State of the sensor box, shown after its name: the box has phones, a new one is added on one of them
+tags = android-app,apple-maps
+en = found, but not paired with this phone. On a phone paired with the box, open Box, tap the car, then Phones and Add a phone, and enter the code here
+ru = найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на машину, затем «Телефоны» и «Добавить телефон» и введите код здесь
+uk = знайдено, але не спарено з цим телефоном. На телефоні, спареному з блоком, відкрийте «Блок», натисніть на машину, потім «Телефони» й «Додати телефон» і введіть код тут
+
+[nogps_box_bt_pairing_full]
+comment = State of the sensor box, shown after its name: the box has 4 phones and takes no new one
+tags = android-app,apple-maps
+en = found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car, Phones)
+ru = найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», машина, «Телефоны»)
+uk = знайдено, але не спарено з цим телефоном. Блок має 4 телефони: видаліть один на спареному телефоні («Блок», машина, «Телефони»)
+
+[nogps_car_phones]
+comment = Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car
+tags = android-app,apple-maps
+en = Phones
+ru = Телефоны
+uk = Телефони
+
+[nogps_phone_this]
+comment = Under a phone in the list of the phones of the sensor box: it is the phone the user holds
+tags = android-app,apple-maps
+en = this phone
+ru = этот телефон
+uk = цей телефон
+
+[nogps_phone_unnamed]
+comment = A phone in the list of the phones of the sensor box that has not told its model
+tags = android-app,apple-maps
+en = Phone
+ru = Телефон
+uk = Телефон
+
+[nogps_phone_remove]
+comment = Button: remove a phone from the sensor box
+tags = android-app,apple-maps
+en = Remove
+ru = Удалить
+uk = Видалити
+
+[nogps_phone_remove_text]
+comment = Asked before another phone is removed from the sensor box
+tags = android-app,apple-maps
+en = That phone will not connect to the box any more. To use it again, add it again.
+ru = Тот телефон больше не будет подключаться к блоку. Чтобы снова им пользоваться, добавьте его заново.
+uk = Той телефон більше не підключатиметься до блока. Щоб знову ним користуватися, додайте його знову.
+
+[nogps_phone_remove_this_text]
+comment = Asked before this phone is removed from the sensor box
+tags = android-app,apple-maps
+en = This phone will not connect to the box any more, and the car will be forgotten on it.
+ru = Этот телефон больше не будет подключаться к блоку, а машина на нём будет забыта.
+uk = Цей телефон більше не підключатиметься до блока, а машину на ньому буде забуто.
+
+[nogps_phone_removed]
+comment = Message: this phone has been removed from the sensor box on its own request
+tags = android-app,apple-maps
+en = This phone is removed from the box, the car is forgotten
+ru = Этот телефон удалён из блока, машина забыта
+uk = Цей телефон видалено з блока, машину забуто
+
+[nogps_phone_add]
+comment = Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code
+tags = android-app,apple-maps
+en = Add a phone
+ru = Добавить телефон
+uk = Додати телефон
+
+[nogps_phone_add_code]
+comment = Shown with a one-time pairing code on the paired phone. %1$@ is the time left, e.g. 1:45
+tags = android-app,apple-maps
+en = On the new phone, open Box in NonGPS Maps. When the phone asks for the code, enter this one. It works once, for %1$@.
+ru = На новом телефоне откройте «Блок» в NonGPS Maps. Когда телефон спросит код, введите этот. Он действует один раз, ещё %1$@.
+uk = На новому телефоні відкрийте «Блок» у NonGPS Maps. Коли телефон спитає код, введіть цей. Він діє один раз, ще %1$@.
+
+[nogps_phone_add_opening]
+comment = Shown while the one-time pairing code is sent to the sensor box
+tags = android-app,apple-maps
+en = Sending the code to the box…
+ru = Код отправляется в блок…
+uk = Код надсилається в блок…
+
+[nogps_phone_added]
+comment = Shown when a new phone has paired with the sensor box by the one-time code
+tags = android-app,apple-maps
+en = The new phone is added
+ru = Новый телефон добавлен
+uk = Новий телефон додано
+
+[nogps_phone_add_expired]
+comment = Shown when no phone has paired with the one-time code in time
+tags = android-app,apple-maps
+en = The code has expired. Add the phone again.
+ru = Код больше не действует. Добавьте телефон снова.
+uk = Код більше не діє. Додайте телефон знову.
+
+[nogps_phone_add_full]
+comment = Shown when the sensor box has no room for a new phone
+tags = android-app,apple-maps
+en = The box has 4 phones. Remove one first.
+ru = У блока 4 телефона. Сначала удалите один.
+uk = Блок має 4 телефони. Спершу видаліть один.
+
+[nogps_phone_add_failed]
+comment = Shown when the sensor box has not taken the one-time pairing code
+tags = android-app,apple-maps
+en = The box has not taken the code. Try again.
+ru = Блок не принял код. Попробуйте ещё раз.
+uk = Блок не прийняв код. Спробуйте ще раз.
+
+[nogps_box_read_only]
+comment = Shown in the Box sheet when another phone has connected to the sensor box first: this phone gets the data only
+tags = android-app,apple-maps
+en = Another phone connected to the box first: the calibration, the firmware and the phones of the box are changed on it
+ru = Другой телефон подключился к блоку первым: калибровку, прошивку и телефоны блока меняют на нём
+uk = Інший телефон підключився до блока першим: калібрування, прошивку й телефони блока змінюють на ньому
 
 [nogps_obd_stopped]
 tags = android-app
