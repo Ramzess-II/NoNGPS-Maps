@@ -134,6 +134,12 @@ public class MapButtonsController extends Fragment
   @Nullable
   private View mCalibrationStatus;
   private static final long POSITION_STATUS_UPDATE_INTERVAL_MS = 1000;
+  // The lost road stops the car on the map: it calls for the user at once.
+  private static final long ROAD_LOST_BLINK_MS = 400;
+  private static final float ROAD_LOST_BLINK_ALPHA = 0.2f;
+  // The calibration can wait for a stop: it reminds gently.
+  private static final long CALIBRATION_BLINK_MS = 1200;
+  private static final float CALIBRATION_BLINK_ALPHA = 0.5f;
   private final Handler mHandler = new Handler(Looper.getMainLooper());
   private final Runnable mPositionStatusUpdater = new Runnable() {
     @Override
@@ -381,14 +387,16 @@ public class MapButtonsController extends Fragment
                          Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         mPositionStatus.setText(withHint);
       }
-      mStatusBlinkingAnimator = blink(mPositionStatus, status.roadLost, mStatusBlinkingAnimator);
+      mStatusBlinkingAnimator =
+          blink(mPositionStatus, status.roadLost, mStatusBlinkingAnimator, ROAD_LOST_BLINK_MS, ROAD_LOST_BLINK_ALPHA);
     }
     // Until the user calibrates the box: an alert would be easy to miss or to put off.
     if (mCalibrationStatus != null)
     {
       final boolean calibrate = BoxBottomSheet.needsCalibration(status);
       UiUtils.showIf(calibrate, mCalibrationStatus);
-      mCalibrationBlinkingAnimator = blink(mCalibrationStatus, calibrate, mCalibrationBlinkingAnimator);
+      mCalibrationBlinkingAnimator = blink(mCalibrationStatus, calibrate, mCalibrationBlinkingAnimator,
+                                           CALIBRATION_BLINK_MS, CALIBRATION_BLINK_ALPHA);
     }
 
     if (mStatusBar != null)
@@ -606,10 +614,12 @@ public class MapButtonsController extends Fragment
   }
 
   /**
+   * @param durationMs of a fade out, the fade in takes as long.
    * @return the animator of the view while it blinks, null otherwise.
    */
   @Nullable
-  private static ObjectAnimator blink(@NonNull View view, boolean blink, @Nullable ObjectAnimator animator)
+  private static ObjectAnimator blink(@NonNull View view, boolean blink, @Nullable ObjectAnimator animator,
+                                      long durationMs, float minAlpha)
   {
     if (blink == (animator != null))
       return animator;
@@ -619,8 +629,8 @@ public class MapButtonsController extends Fragment
       view.setAlpha(1f);
       return null;
     }
-    animator = ObjectAnimator.ofFloat(view, View.ALPHA, 1f, 0.2f);
-    animator.setDuration(400);
+    animator = ObjectAnimator.ofFloat(view, View.ALPHA, 1f, minAlpha);
+    animator.setDuration(durationMs);
     animator.setRepeatCount(ObjectAnimator.INFINITE);
     animator.setRepeatMode(ObjectAnimator.REVERSE);
     animator.start();
@@ -952,9 +962,11 @@ public class MapButtonsController extends Fragment
     super.onStop();
     mHandler.removeCallbacks(mPositionStatusUpdater);
     if (mPositionStatus != null)
-      mStatusBlinkingAnimator = blink(mPositionStatus, false, mStatusBlinkingAnimator);
+      mStatusBlinkingAnimator =
+          blink(mPositionStatus, false, mStatusBlinkingAnimator, ROAD_LOST_BLINK_MS, ROAD_LOST_BLINK_ALPHA);
     if (mCalibrationStatus != null)
-      mCalibrationBlinkingAnimator = blink(mCalibrationStatus, false, mCalibrationBlinkingAnimator);
+      mCalibrationBlinkingAnimator =
+          blink(mCalibrationStatus, false, mCalibrationBlinkingAnimator, CALIBRATION_BLINK_MS, CALIBRATION_BLINK_ALPHA);
     if (mStatusBar != null)
       mStatusBar.stop();
     if (mSearchWheel != null)
