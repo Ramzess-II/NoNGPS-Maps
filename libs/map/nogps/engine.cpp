@@ -896,6 +896,8 @@ void Engine::OnBoxHeard(std::string const & id, std::string const & firmware)
   }
   if (auto * box = m_inertial->GetEsp32(); box && box->CanStoreCarValues() && id == m_cars.GetCurrentCar())
     m_boxCarValues.OnBoxHeard(*box, id);
+  else
+    m_boxCarValues.Forget();
 }
 
 void Engine::OnBoxCarValues(std::map<std::string, std::string> const & values)

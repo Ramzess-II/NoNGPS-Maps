@@ -55,6 +55,9 @@ public:
 
   /// The box of the car has connected and told about itself: its values are read.
   void OnBoxHeard(Esp32Source & box, std::string const & carId);
+  /// A box that is not of the car has connected, e.g. a 5th one: the values read before are not written to it or
+  /// read from it.
+  void Forget() { m_boxValues.reset(); }
   /// The phone takes the values another phone has written to the box, and writes its own ones that differ.
   /// \param values all the values of the box or some of them.
   Taken OnValues(Esp32Source & box, Values const & values);

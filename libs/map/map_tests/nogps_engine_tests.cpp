@@ -2836,6 +2836,28 @@ UNIT_TEST(NoGps_BoxCarValues_PhoneConnectedSecondTakesNewName)
   TEST_EQUAL(countGets(), gets, ());
 }
 
+UNIT_TEST(NoGps_BoxCarValues_BoxOverCarLimitIsNotWritten)
+{
+  Env env(true /* inertial */);
+  for (auto const id : {"42FD", "1234", "ABCD"})
+    HearBox(env, id);
+  CarBox box;
+  box.Connect(env);
+  env.m_engine.RenameCar("C47D", "Kia");
+  box.Answer(env);
+  TEST_EQUAL(box.m_values["car_name"], "Kia", ());
+
+  // The 5th box is not a car: it doesn't get the values of the current one.
+  CarBox fifth;
+  fifth.Connect(env, "5678");
+  TEST_EQUAL(env.m_engine.GetCars().size(), CarStorage::kMaxCars, ());
+  env.m_engine.RenameCar("C47D", "Lada");
+  fifth.Answer(env);
+  env.Drive(BoxCarValues::kSaveIntervalMs, 0, 0);
+  fifth.Answer(env);
+  TEST(fifth.m_written.empty(), (fifth.m_written));
+}
+
 UNIT_TEST(NoGps_BoxCarValues_OldFirmwareIsNotAsked)
 {
   Env env(true /* inertial */);
