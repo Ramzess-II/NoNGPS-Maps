@@ -213,9 +213,6 @@
 "prefs_group_network" = "Sieć";
 "prefs_group_route" = "Nawigacja";
 
-/* Setting name which enables or disables zoom buttons on the map screen. */
-"pref_zoom_title" = "Przyciski „+” i „-” na mapie";
-
 /* Generic «Off» string */
 "off" = "Wyłączony";
 

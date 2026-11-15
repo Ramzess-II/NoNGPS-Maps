@@ -213,9 +213,6 @@
 "prefs_group_network" = "Võrgustik";
 "prefs_group_route" = "Tee juhatamine";
 
-/* Setting name which enables or disables zoom buttons on the map screen. */
-"pref_zoom_title" = "Nupud „+” ja „-” kaardil";
-
 /* Generic «Off» string */
 "off" = "Väljas";
 

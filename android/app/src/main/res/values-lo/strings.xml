@@ -142,9 +142,6 @@
     <!-- Settings information group in settings screen -->
     <string name="prefs_group_information">ຂໍ້ມູນ</string>
     <string name="prefs_group_route">ການນຳທາງ</string>
-    <!-- Setting name which enables or disables zoom buttons on the map screen. -->
-    <string name="pref_zoom_title">ປຸ່ມ “+” ແລະ “-” ໃນແຜນທີ່</string>
-    <string name="pref_zoom_summary">ສະແດງໃນແຜນທີ່</string>
     <string name="pref_auto_night_in_navigation_title">ຮູບແບບກາງຄືນເມື່ອນຳທາງໃນບ່ອນມືດ</string>
     <!-- Settings «Map» category: «Night style» title -->
     <string name="pref_map_style_title">ໂໝດກາງຄືນ</string>

@@ -188,9 +188,6 @@
     <!-- Settings information group in settings screen -->
     <string name="prefs_group_information">Informació</string>
     <string name="prefs_group_route">Navegació</string>
-    <!-- Setting name which enables or disables zoom buttons on the map screen. -->
-    <string name="pref_zoom_title">Botons «+» i «-» al mapa</string>
-    <string name="pref_zoom_summary">Mostra\'ls al mapa</string>
     <string name="pref_auto_night_in_navigation_title">Estil nocturn quan es navega en la foscor</string>
     <!-- Settings «Map» category: «Night style» title -->
     <string name="pref_map_style_title">Mode nocturn</string>

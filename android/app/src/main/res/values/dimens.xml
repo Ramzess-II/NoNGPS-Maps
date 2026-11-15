@@ -156,8 +156,6 @@
   <dimen name="speed_limit_size">30dp</dimen>
   <dimen name="nav_search_wheel_radius">96dp</dimen>
   <dimen name="nav_search_wheel_diameter">192dp</dimen>
-  <!-- From the top of the right panel to the middle of its search button. -->
-  <dimen name="nav_search_wheel_shift">28dp</dimen>
   <dimen name="nav_menu_height">80sp</dimen>
   <dimen name="nav_menu_content_height">64dp</dimen>
   <dimen name="nav_menu_landscape_width">360dp</dimen>

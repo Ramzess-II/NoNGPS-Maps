@@ -117,9 +117,6 @@
     <string name="share_my_location">Compartilhar a minha localização</string>
     <!-- Settings information group in settings screen -->
     <string name="prefs_group_information">Informações</string>
-    <!-- Setting name which enables or disables zoom buttons on the map screen. -->
-    <string name="pref_zoom_title">Botões \"+\" e \"-\" no mapa</string>
-    <string name="pref_zoom_summary">Mostrar na tela</string>
     <string name="pref_auto_night_in_navigation_title">Estilo noturno ao navegar no escuro</string>
     <!-- Settings «Map» category: «Night style» title -->
     <string name="pref_map_style_title">Modo Noturno</string>

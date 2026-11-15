@@ -25,9 +25,6 @@ NS_SWIFT_NAME(Settings)
 + (MWMUnits)measurementUnits;
 + (void)setMeasurementUnits:(MWMUnits)measurementUnits;
 
-+ (BOOL)zoomButtonsEnabled;
-+ (void)setZoomButtonsEnabled:(BOOL)zoomButtonsEnabled;
-
 + (MWMPlacement)bookmarksTextPlacement;
 + (void)setBookmarksTextPlacement:(MWMPlacement)placement;
 

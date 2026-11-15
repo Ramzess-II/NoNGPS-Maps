@@ -213,9 +213,6 @@
 "prefs_group_network" = "ເຄືອຂ່າຍ";
 "prefs_group_route" = "ການນຳທາງ";
 
-/* Setting name which enables or disables zoom buttons on the map screen. */
-"pref_zoom_title" = "ປຸ່ມ “+” ແລະ “-” ໃນແຜນທີ່";
-
 /* Generic «Off» string */
 "off" = "ປິດ";
 

@@ -115,7 +115,6 @@ final class RootSettingsInteractor {
   private func loadState() -> RootSettingsState {
     RootSettingsState(osmUserName: settings.osmUserName() ?? "",
                       measurementUnits: settings.measurementUnits(),
-                      zoomButtonsEnabled: settings.zoomButtonsEnabled(),
                       buildings3DEnabled: settings.map3dBuildingsEnabled(),
                       buildings3DEditable: isBuildings3DEditable,
                       autoDownloadEnabled: settings.autoDownloadEnabled(),
@@ -142,8 +141,6 @@ final class RootSettingsInteractor {
 
   private func setSetting(_ setting: RootSettings, enabled: Bool) {
     switch setting {
-    case .zoomButtons:
-      settings.setZoomButtonsEnabled(enabled)
     case .buildings3D:
       settings.setMap3dBuildingsEnabled(enabled)
     case .autoDownload:

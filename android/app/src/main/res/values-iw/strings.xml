@@ -188,9 +188,6 @@
     <!-- Settings information group in settings screen -->
     <string name="prefs_group_information">מידע</string>
     <string name="prefs_group_route">ניווט</string>
-    <!-- Setting name which enables or disables zoom buttons on the map screen. -->
-    <string name="pref_zoom_title">כפתורי + ו- על המפה</string>
-    <string name="pref_zoom_summary">הצג על המסך</string>
     <string name="pref_auto_night_in_navigation_title">סגנון לילה בעת ניווט בחושך</string>
     <!-- Settings «Map» category: «Night style» title -->
     <string name="pref_map_style_title">מצב לילה</string>

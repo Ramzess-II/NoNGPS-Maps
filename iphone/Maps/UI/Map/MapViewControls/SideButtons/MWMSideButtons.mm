@@ -2,8 +2,6 @@
 #import "MWMButton.h"
 #import "MWMLocationManager.h"
 #import "MWMMapViewControlsManager.h"
-#import "MWMRouter.h"
-#import "MWMSettings.h"
 #import "MWMSideButtonsView.h"
 #import "SwiftBridge.h"
 
@@ -159,10 +157,7 @@ NSString * const kUDDidShowLongTapToShowSideButtonsToast = @"kUDDidShowLongTapTo
 }
 - (void)setZoomHidden:(BOOL)zoomHidden
 {
-  if ([MWMRouter isRoutingActive])
-    self.sideView.zoomHidden = NO;
-  else
-    self.sideView.zoomHidden = [MWMSettings zoomButtonsEnabled] ? zoomHidden : YES;
+  self.sideView.zoomHidden = zoomHidden;
 }
 
 - (BOOL)searchShown

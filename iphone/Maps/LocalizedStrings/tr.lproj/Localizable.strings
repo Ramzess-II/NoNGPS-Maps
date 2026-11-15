@@ -213,9 +213,6 @@
 "prefs_group_network" = "Ağ";
 "prefs_group_route" = "Navigasyon";
 
-/* Setting name which enables or disables zoom buttons on the map screen. */
-"pref_zoom_title" = "Haritadaki + ve - düğmeleri";
-
 /* Generic «Off» string */
 "off" = "Kapalı";
 

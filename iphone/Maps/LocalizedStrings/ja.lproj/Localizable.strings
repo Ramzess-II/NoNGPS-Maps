@@ -213,9 +213,6 @@
 "prefs_group_network" = "ネットワーク";
 "prefs_group_route" = "ナビゲーション";
 
-/* Setting name which enables or disables zoom buttons on the map screen. */
-"pref_zoom_title" = "地図上の「+」と「-」ボタン";
-
 /* Generic «Off» string */
 "off" = "オフ";
 

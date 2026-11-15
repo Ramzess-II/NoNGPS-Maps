@@ -213,9 +213,6 @@
 "prefs_group_network" = "Mạng";
 "prefs_group_route" = "Điều hướng";
 
-/* Setting name which enables or disables zoom buttons on the map screen. */
-"pref_zoom_title" = "Nút + và - trên bản đồ";
-
 /* Generic «Off» string */
 "off" = "Tắt";
 

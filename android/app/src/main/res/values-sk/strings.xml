@@ -188,9 +188,6 @@
     <!-- Settings information group in settings screen -->
     <string name="prefs_group_information">Informácie</string>
     <string name="prefs_group_route">Navigácia</string>
-    <!-- Setting name which enables or disables zoom buttons on the map screen. -->
-    <string name="pref_zoom_title">Tlačidlá „+“ a „-“ na mape</string>
-    <string name="pref_zoom_summary">Zobraziť na obrazovke</string>
     <string name="pref_auto_night_in_navigation_title">Nočný štýl pri navigácii v tme</string>
     <!-- Settings «Map» category: «Night style» title -->
     <string name="pref_map_style_title">Nočný režim</string>

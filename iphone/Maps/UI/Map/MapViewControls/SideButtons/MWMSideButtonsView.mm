@@ -71,9 +71,9 @@ NSString * const kPanelPlaceKey = @"NoGpsRightPanelY";
   if (self.zoomHidden)
     self.height = self.location.height;
   self.location.maxY = self.height;
-  // Beside the panel, toward the middle of the map, its flat side at the panel.
+  // Beside the panel, toward the middle of the map, its flat side at the panel, both with one vertical center.
   self.searchWheel.frame = {
-      {self.isRTL ? self.width : -self.searchWheel.width, search.midY - self.searchWheel.height / 2},
+      {self.isRTL ? self.width : -self.searchWheel.width, (self.panelTop + self.height - self.searchWheel.height) / 2},
       self.searchWheel.size};
 
   [self animate];
@@ -91,11 +91,17 @@ NSString * const kPanelPlaceKey = @"NoGpsRightPanelY";
   return !self.zoomHidden && self.location.maxY <= self.availableHeight;
 }
 
+// Without the zoom buttons the panel is around the location button only.
+- (CGFloat)panelTop
+{
+  return self.isZoomShown ? 0 : self.location.minY;
+}
+
 // The panel goes on to the edge of the screen, under the safe area too.
 - (void)layoutPanel
 {
   BOOL const zoomShown = self.isZoomShown;
-  CGFloat const top = zoomShown ? 0 : self.location.minY;
+  CGFloat const top = self.panelTop;
   CGFloat const edgeGap =
       self.isRTL ? self.availableArea.origin.x : self.superview.width - CGRectGetMaxX(self.availableArea);
   CGRect const frame = {{self.isRTL ? -edgeGap : 0, top}, {self.width + edgeGap, self.height - top}};

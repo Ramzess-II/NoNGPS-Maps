@@ -1,6 +1,6 @@
 /// The quick search of the navigation: the categories on a half circle beside the right map panel, its flat side at the
-/// panel. A category is searched on the map, the button of the panel then shows it and clears it. The wheel closes by
-/// itself after a while.
+/// panel. A radius sweeps it open from the top down, and closed back up. A category is searched on the map, the
+/// button of the panel then shows it and clears it. The wheel closes by itself after a while.
 @objc
 final class NavigationSearchWheel: UIView {
   enum Category: Int, CaseIterable {
@@ -71,6 +71,8 @@ final class NavigationSearchWheel: UIView {
     static let buttonsRadius = CGFloat(68)
     static let buttonSize = CGFloat(40)
     static let collapseTimeout: TimeInterval = 5
+    /// Of the sector shown: the half circle and its shadow.
+    static let sweepRadius = radius + 12
   }
 
   /// The center of the button of a category from the middle of the flat side: x away from the panel, y down. The
@@ -79,6 +81,15 @@ final class NavigationSearchWheel: UIView {
     let step = CGFloat.pi / CGFloat(Category.allCases.count)
     let angle = step / 2 + step * CGFloat(category.rawValue)
     return CGPoint(x: Constants.buttonsRadius * sin(angle), y: -Constants.buttonsRadius * cos(angle))
+  }
+
+  /// The line the radius sweeps the wheel open along: from the top through the map side to the bottom, about the
+  /// middle of the flat side. Stroked as wide as its double radius, its start shows the sector swept so far.
+  static func sweepPath(rtl: Bool) -> UIBezierPath {
+    let center = CGPoint(x: rtl ? 0 : Constants.radius, y: Constants.radius)
+    // Clockwise as on the screen: from the top through the east.
+    return UIBezierPath(arcCenter: center, radius: Constants.sweepRadius / 2, startAngle: -.pi / 2,
+                        endAngle: rtl ? .pi / 2 : -3 * .pi / 2, clockwise: rtl)
   }
 
   /// In the panel.
@@ -97,6 +108,7 @@ final class NavigationSearchWheel: UIView {
   private let isRTL = UIApplication.shared.userInterfaceLayoutDirection == .rightToLeft
   private let material = UIVisualEffectView(effect: UIBlurEffect(style: .systemThickMaterial))
   private let border = CAShapeLayer()
+  private let sweep = CAShapeLayer()
   private var categoryButtons = [MWMButton]()
 
   @objc init() {
@@ -134,6 +146,13 @@ final class NavigationSearchWheel: UIView {
       addSubview(categoryButton)
       categoryButtons.append(categoryButton)
     }
+    // Masks the shadow too.
+    sweep.frame = bounds
+    sweep.path = Self.sweepPath(rtl: isRTL).cgPath
+    sweep.fillColor = nil
+    sweep.strokeColor = UIColor.black.cgColor
+    sweep.lineWidth = Constants.sweepRadius
+    sweep.strokeEnd = 0
     update(animated: false)
   }
 
@@ -189,9 +208,31 @@ final class NavigationSearchWheel: UIView {
       perform(#selector(closeOnTimer), with: nil, afterDelay: Constants.collapseTimeout)
       isHidden = false
     }
-    UIView.animate(withDuration: animated ? AppConstants.defaultAnimationDuration : 0,
-                   animations: { self.alpha = self.state.isOpen ? 1 : 0 },
-                   completion: { _ in self.isHidden = !self.state.isOpen })
+    // A tap in the middle of the sweep turns it back from where it is. The open wheel has no mask: a mask over the blur
+    // renders it offscreen on every frame of the map.
+    let from = layer.mask == nil ? sweep.strokeEnd : sweep.presentation()?.strokeEnd ?? sweep.strokeEnd
+    let to: CGFloat = state.isOpen ? 1 : 0
+    sweep.removeAnimation(forKey: "sweep")
+    layer.mask = sweep
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    CATransaction.setCompletionBlock {
+      self.isHidden = !self.state.isOpen
+      // A sweep started since then has its own completion.
+      if self.state.isOpen, self.sweep.animation(forKey: "sweep") == nil {
+        self.layer.mask = nil
+      }
+    }
+    sweep.strokeEnd = to
+    if animated, from != to {
+      let animation = CABasicAnimation(keyPath: "strokeEnd")
+      animation.fromValue = from
+      animation.toValue = to
+      animation.duration = AppConstants.defaultAnimationDuration * abs(to - from)
+      animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+      sweep.add(animation, forKey: "sweep")
+    }
+    CATransaction.commit()
     onChange?()
   }
 

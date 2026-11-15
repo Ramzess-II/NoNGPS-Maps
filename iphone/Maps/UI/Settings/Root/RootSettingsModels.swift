@@ -10,7 +10,6 @@ enum RootSettingsSection: String, CaseIterable, Hashable {
 enum RootSettings: String, Hashable {
   case profile
   case units
-  case zoomButtons
   case buildings3D
   case autoDownload
   case showDownloadedRegions
@@ -56,7 +55,6 @@ extension RootSettings {
     switch self {
     case .profile: return L("profile")
     case .units: return L("measurement_units")
-    case .zoomButtons: return L("pref_zoom_title")
     case .buildings3D: return L("pref_map_3d_buildings_title")
     case .autoDownload: return L("autodownload")
     case .showDownloadedRegions: return L("show_downloaded_regions")
@@ -92,7 +90,6 @@ extension RootSettings {
     case .mapTiles: return .mapTiles
     case .noGpsFlags: return .noGpsFlags
     case .routingOptions,
-         .zoomButtons,
          .buildings3D,
          .autoDownload,
          .showDownloadedRegions,
@@ -173,7 +170,6 @@ extension SettingsSectionViewModel where Section == RootSettingsSection, Item ==
 struct RootSettingsState {
   let osmUserName: String
   let measurementUnits: Units
-  let zoomButtonsEnabled: Bool
   let buildings3DEnabled: Bool
   let buildings3DEditable: Bool
   let autoDownloadEnabled: Bool

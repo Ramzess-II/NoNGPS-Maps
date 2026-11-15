@@ -213,9 +213,6 @@
 "prefs_group_network" = "Δίκτυο";
 "prefs_group_route" = "Πλοήγηση";
 
-/* Setting name which enables or disables zoom buttons on the map screen. */
-"pref_zoom_title" = "Πλήκτρα «+» και «-» στον χάρτη";
-
 /* Generic «Off» string */
 "off" = "Απενεργ.";
 
