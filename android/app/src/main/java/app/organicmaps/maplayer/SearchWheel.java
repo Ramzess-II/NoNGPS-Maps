@@ -1,7 +1,7 @@
 package app.organicmaps.maplayer;
 
 import android.animation.Animator;
-import android.animation.AnimatorInflater;
+import android.animation.ValueAnimator;
 import android.content.res.ColorStateList;
 import android.view.View;
 import android.widget.ImageView;
@@ -78,7 +78,7 @@ public class SearchWheel implements View.OnClickListener
   }
 
   @NonNull
-  private final View mSearchLayout;
+  private final SearchWheelFrame mSearchLayout;
   @NonNull
   private final ImageView mSearchButton;
   @Nullable
@@ -89,7 +89,7 @@ public class SearchWheel implements View.OnClickListener
   private final MapButtonsViewModel mMapButtonsViewModel;
   private boolean mIsExpanded;
   @Nullable
-  private Animator mAnimator;
+  private ValueAnimator mAnimator;
   private final Runnable mCloseRunnable = () ->
   {
     if (mIsExpanded)
@@ -127,32 +127,28 @@ public class SearchWheel implements View.OnClickListener
     mIsExpanded = false;
     if (mAnimator != null)
       mAnimator.cancel();
+    mSearchLayout.setSweep(0);
     UiUtils.hide(mSearchLayout);
   }
 
+  /**
+   * A radius sweeps the wheel open from the top down, and closed back up. A tap in the middle turns it back from
+   * where it is.
+   */
   private void toggleSearchLayout()
   {
     // Its end shows the wheel as it is now.
     if (mAnimator != null)
       mAnimator.cancel();
-    final int animRes;
-    if (mIsExpanded)
-    {
-      animRes = R.animator.show_zoom_out_alpha;
-    }
-    else
-    {
-      animRes = R.animator.show_zoom_in_alpha;
-      UiUtils.show(mSearchLayout);
-    }
     mIsExpanded = !mIsExpanded;
-    // Grows from the middle of the flat side.
-    final boolean rtl = mSearchLayout.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
-    mSearchLayout.setPivotX(rtl ? 0 : mSearchLayout.getWidth());
-    mSearchLayout.setPivotY(mSearchLayout.getHeight() / 2f);
-    final Animator animator = AnimatorInflater.loadAnimator(mSearchLayout.getContext(), animRes);
+    UiUtils.show(mSearchLayout);
+    final float from = mSearchLayout.getSweep();
+    final float to = mIsExpanded ? SearchWheelFrame.FULL_SWEEP : 0;
+    final ValueAnimator animator = ValueAnimator.ofFloat(from, to);
     mAnimator = animator;
-    animator.setTarget(mSearchLayout);
+    final int duration = mSearchLayout.getResources().getInteger(R.integer.anim_menu);
+    animator.setDuration((long) (duration * Math.abs(to - from) / SearchWheelFrame.FULL_SWEEP));
+    animator.addUpdateListener(animation -> mSearchLayout.setSweep((float) animation.getAnimatedValue()));
     animator.addListener(new UiUtils.SimpleAnimatorListener() {
       @Override
       public void onAnimationEnd(Animator animation)
