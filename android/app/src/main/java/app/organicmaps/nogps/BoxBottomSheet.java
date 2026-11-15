@@ -74,6 +74,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private static final long UPDATE_INTERVAL_MS = 500;
   private static final long RING_DURATION_MS = 2400;
   private static final String SHOP_URL = "https://non-gps.com";
+  private static final String BOX_NAME = "NonGPS-OBD";
   private static final String ARG_PAGE = "page";
   private static final String ARG_UNFOLD_BOX = "unfold_box";
   private static final String STATE_PAGE = "page";
@@ -117,6 +118,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private static final int SECTION_CAR = 1;
   private static final int SECTION_SPEED = 2;
   private static final int SECTION_IMU = 3;
+  private static final int SECTION_OBD = 4;
 
   private enum StepState
   {
@@ -192,7 +194,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   // The box of a new car is searched on its page until the list of the cars grows: the box of a car is heard before,
   // and a box sleeping after its link was dropped is taken as heard too.
   private int mCarsBeforeAdd;
-  private final boolean[] mUnfolded = new boolean[4];
+  private final boolean[] mUnfolded = new boolean[5];
   // The code for a new phone, shown while the box takes it.
   @Nullable
   private AlertDialog mAddPhoneDialog;
@@ -253,8 +255,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
 
   private View mBoxPage;
   private TextView mReadiness;
-  private final Section[] mSections = new Section[4];
-  private Section mObdSection;
+  private final Section[] mSections = new Section[5];
   private TextView mReadOnly;
   private View mFirmwareRow;
   private TextView mFirmware;
@@ -331,7 +332,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       mCarsBeforeAdd = savedInstanceState.getInt(STATE_CARS_BEFORE_ADD);
       final boolean[] unfolded = savedInstanceState.getBooleanArray(STATE_UNFOLDED);
       if (unfolded != null)
-        System.arraycopy(unfolded, 0, mUnfolded, 0, mUnfolded.length);
+        System.arraycopy(unfolded, 0, mUnfolded, 0, Math.min(unfolded.length, mUnfolded.length));
       mShareAsked = savedInstanceState.getBoolean(STATE_SHARE_ASKED);
       // The app was killed while the box was searched: the new core doesn't search it. Without the core the activity
       // goes to the splash screen.
@@ -466,6 +467,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mSections[SECTION_CAR] = new Section(view, R.id.box_section_car, R.id.box_section_car_content);
     mSections[SECTION_SPEED] = new Section(view, R.id.box_section_speed, R.id.box_section_speed_content);
     mSections[SECTION_IMU] = new Section(view, R.id.box_section_imu, R.id.box_section_imu_content);
+    mSections[SECTION_OBD] = new Section(view, R.id.box_section_obd, R.id.box_values_obd);
     for (int i = 0; i < mSections.length; ++i)
     {
       final int section = i;
@@ -475,11 +477,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
         update();
       });
     }
-    // Always open: it tells why the car gives no speed.
-    mObdSection = new Section(view, R.id.box_section_obd, R.id.box_values_obd);
-    mObdSection.chevron.setVisibility(View.GONE);
-    mObdSection.header.setClickable(false);
-    mObdSection.header.setBackground(null);
     mReadOnly = view.findViewById(R.id.box_read_only);
     mFirmwareRow = view.findViewById(R.id.box_firmware_row);
     mFirmware = view.findViewById(R.id.box_firmware);
@@ -1086,8 +1083,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
 
     final String firmware = BoxTexts.firmwareText(context, status);
     final String boxState = BoxTexts.boxStateText(context, status);
-    mSections[SECTION_BOX].show(getString(R.string.nogps_box_value_group_box),
-                                firmware.isEmpty() ? boxState : boxState + " · " + firmware);
+    // How the firmware is sent stands for the state of the box while it goes.
+    final String state = BoxTexts.isUpdating(status.getFirmwareUpdate()) ? firmware : boxState;
+    mSections[SECTION_BOX].show(getString(R.string.nogps_box_section, BOX_NAME),
+                                status.boxFirmware.isEmpty() ? state
+                                                             : getString(R.string.nogps_box_version, status.boxFirmware)
+                                                                   + ", " + BoxTexts.capitalize(state));
     // Another phone calibrates and updates the box.
     mReadOnly.setVisibility(connected && status.boxReadOnly ? View.VISIBLE : View.GONE);
     final NoGps.FirmwareUpdate update = status.getFirmwareUpdate();
@@ -1104,7 +1105,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       mFirmwareAction.setText(getString(R.string.nogps_firmware_install, status.bundledFirmware));
 
     final int obdHint = obdHintText(status);
-    mObdSection.show(getString(R.string.nogps_box_value_group_obd), obdHint != 0 ? getString(obdHint) : boxState);
+    mSections[SECTION_OBD].show(getString(R.string.nogps_box_value_group_obd),
+                                obdHint != 0 ? getString(obdHint) : boxState);
 
     final NoGps.Car car = currentCar(status);
     mSections[SECTION_CAR].show(
