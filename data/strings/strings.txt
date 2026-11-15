@@ -46224,6 +46224,13 @@ en = this phone
 ru = этот телефон
 uk = цей телефон
 
+[nogps_phone_changes_box]
+comment = Under a phone in the list of the phones of the sensor box: the box takes the calibration, the firmware, the car name and the phones from this phone, it connected first
+tags = android-app,apple-maps
+en = controls the box
+ru = управляет блоком
+uk = керує блоком
+
 [nogps_phone_unnamed]
 comment = A phone in the list of the phones of the sensor box that has not told its model
 tags = android-app,apple-maps
