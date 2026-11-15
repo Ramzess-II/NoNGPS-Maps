@@ -303,6 +303,14 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
       return attributes
     }
     if opensCars {
+      config.subtitle = L("nogps_cars_subtitle")
+      config.subtitleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+        var attributes = attributes
+        attributes.font = .preferredFont(forTextStyle: .caption1)
+        attributes.foregroundColor = .secondaryLabel
+        return attributes
+      }
+      config.titleAlignment = .center
       config.image = UIImage(systemName: "chevron.forward",
                              withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold))
       config.imagePlacement = .trailing
