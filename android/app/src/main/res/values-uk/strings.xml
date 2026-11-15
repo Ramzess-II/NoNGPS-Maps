@@ -1103,8 +1103,6 @@
     <string name="nogps_gyro_stopped">Гіроскоп не обнулено, авто на мапі стоїть. Зупиніться й обнуліть його</string>
     <!-- State of the sensor box, shown after its name while it takes a new firmware -->
     <string name="nogps_box_updating">приймає нову прошивку</string>
-    <!-- Row of the sensors screen: the version of the firmware of the sensor box or what its update does now -->
-    <string name="nogps_sensors_firmware">Прошивка блока: %1$s</string>
     <!-- Button: sends the firmware that comes with the app to the sensor box, with its version -->
     <string name="nogps_firmware_install">Встановити %1$s</string>
     <!-- Title of the question about the firmware of the sensor box -->

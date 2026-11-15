@@ -1093,8 +1093,6 @@
     <string name="nogps_gyro_stopped">The gyroscope is not zeroed, the car stands still on the map. Stop and zero it</string>
     <!-- State of the sensor box, shown after its name while it takes a new firmware -->
     <string name="nogps_box_updating">takes a new firmware</string>
-    <!-- Row of the sensors screen: the version of the firmware of the sensor box or what its update does now -->
-    <string name="nogps_sensors_firmware">Box firmware: %1$s</string>
     <!-- Button: sends the firmware that comes with the app to the sensor box, with its version -->
     <string name="nogps_firmware_install">Install %1$s</string>
     <!-- Title of the question about the firmware of the sensor box -->

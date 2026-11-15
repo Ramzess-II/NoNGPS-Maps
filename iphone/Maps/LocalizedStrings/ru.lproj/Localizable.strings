@@ -1484,9 +1484,6 @@
 /* State of the sensor box, shown after its name while it takes a new firmware */
 "nogps_box_updating" = "принимает новую прошивку";
 
-/* Row of the sensors screen: the version of the firmware of the sensor box or what its update does now */
-"nogps_sensors_firmware" = "Прошивка блока: %1$@";
-
 /* Button: sends the firmware that comes with the app to the sensor box, with its version */
 "nogps_firmware_install" = "Установить %1$@";
 
