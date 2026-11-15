@@ -29,6 +29,7 @@
       android:layout_weight="1"
       android:background="@drawable/bg_nogps_group"
       android:focusable="true"
+      android:foreground="?selectableItemBackground"
       android:gravity="center_horizontal"
       android:orientation="vertical"
       android:padding="12dp">
@@ -44,30 +45,44 @@
         android:textColor="?android:textColorSecondary"
         android:textSize="12sp" />
       <FrameLayout
-        android:id="@+id/box_tile"
-        android:layout_width="@dimen/map_button_size"
-        android:layout_height="@dimen/map_button_size"
-        android:background="@drawable/bg_status_button">
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
         <FrameLayout
-          android:layout_width="26dp"
-          android:layout_height="26dp"
-          android:layout_gravity="center">
-          <ImageView
-            android:id="@+id/box_icon"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_gravity="center"
-            android:importantForAccessibility="no" />
-          <ImageView
-            android:id="@+id/box_badge"
-            android:layout_width="11dp"
-            android:layout_height="11dp"
-            android:layout_gravity="top|end"
-            android:background="@drawable/bg_source_badge"
-            android:importantForAccessibility="no"
-            android:padding="1dp"
-            android:visibility="gone" />
+          android:id="@+id/box_tile"
+          android:layout_width="@dimen/map_button_size"
+          android:layout_height="@dimen/map_button_size"
+          android:layout_gravity="center_horizontal"
+          android:background="@drawable/bg_status_button">
+          <FrameLayout
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_gravity="center">
+            <ImageView
+              android:id="@+id/box_icon"
+              android:layout_width="24dp"
+              android:layout_height="24dp"
+              android:layout_gravity="center"
+              android:importantForAccessibility="no" />
+            <ImageView
+              android:id="@+id/box_badge"
+              android:layout_width="11dp"
+              android:layout_height="11dp"
+              android:layout_gravity="top|end"
+              android:background="@drawable/bg_source_badge"
+              android:importantForAccessibility="no"
+              android:padding="1dp"
+              android:visibility="gone" />
+          </FrameLayout>
         </FrameLayout>
+        <!-- Shown while the tile opens the box values. -->
+        <ImageView
+          android:id="@+id/box_chevron"
+          android:layout_width="24dp"
+          android:layout_height="24dp"
+          android:layout_gravity="center_vertical|end"
+          android:importantForAccessibility="no"
+          android:visibility="gone"
+          app:srcCompat="@drawable/ic_nogps_chevron" />
       </FrameLayout>
       <TextView
         android:id="@+id/box_state"

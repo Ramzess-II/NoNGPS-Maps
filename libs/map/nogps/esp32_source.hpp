@@ -121,7 +121,8 @@ public:
 
   /// What the box has told about itself, nothing until it does.
   std::optional<esp32::Info> const & GetInfo() const { return m_info; }
-  /// \returns the values of the last status and info lines of this connection, by esp32::BoxValue.
+  /// \returns every esp32::BoxValue while connected, with the values of the last status and info lines of this
+  /// connection, empty for those not heard yet. Nothing while not connected.
   esp32::BoxValues GetBoxValues() const;
   /// \returns the flags of the last data line of the box, see esp32::kFlag*.
   int GetFlags() const { return m_flags; }

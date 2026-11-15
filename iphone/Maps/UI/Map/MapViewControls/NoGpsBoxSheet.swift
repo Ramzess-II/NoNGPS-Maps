@@ -107,6 +107,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
     tableView.tableHeaderView = header
     searchView.onAction = { [weak self] in self?.onLinkAction() }
+    header.box.addTarget(self, action: #selector(openValues), for: .touchUpInside)
     header.gps.addTarget(self, action: #selector(openGps), for: .touchUpInside)
     gpsUse.accessibilityLabel = L("nogps_gps_use")
     gpsUse.addTarget(self, action: #selector(gpsUseChanged), for: .valueChanged)
@@ -184,6 +185,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
     boxLook.pulsing = boxLook.pulsing && !searching
     header.box.show(boxLook, state: searching ? L("nogps_box_searching")
       : status.inertialEnabled ? NoGpsSensorsViewController.boxStateText(status) : L("nogps_box_buy_title"))
+    header.box.opensPage = !status.boxValues.isEmpty
     header.gps.show(NoGpsStatusBar.gpsLook(status), state: NoGpsStatusBar.gpsStateText(status))
     layoutHeader()
     // GPS is turned off for the car only while the box can drive it: nothing would move the mark otherwise.
@@ -462,8 +464,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
     case .speedTable:
       navigationController?.pushViewController(SpeedTableViewController(style: .insetGrouped), animated: true)
     case .name:
-      guard !status.boxValues.isEmpty else { break }
-      navigationController?.pushViewController(BoxValuesViewController(style: .insetGrouped), animated: true)
+      openValues()
     case .calibrate:
       // The row shows how the calibration goes.
       guard calibrationTexts().action != nil else { break }
@@ -624,6 +625,13 @@ final class NoGpsBoxSheet: MWMTableViewController {
   @objc
   private func openGps() {
     navigationController?.pushViewController(NoGpsGpsSheet(style: .insetGrouped), animated: true)
+  }
+
+  /// The values come while the box is connected.
+  @objc
+  private func openValues() {
+    guard !status.boxValues.isEmpty else { return }
+    navigationController?.pushViewController(BoxValuesViewController(style: .insetGrouped), animated: true)
   }
 
   @objc
@@ -1201,7 +1209,7 @@ private final class BoxSearchView: UIView {
   }
 }
 
-/// The top of the Box sheet: the box and GPS side by side. GPS opens its page.
+/// The top of the Box sheet: the box and GPS side by side. GPS opens its page, the box opens its values while connected.
 private final class StatusTilesView: UIView {
   let box = StatusTileView(title: L("nogps_box_title"), opensPage: false)
   let gps = StatusTileView(title: L("nogps_status_gps"), opensPage: true)
@@ -1241,18 +1249,27 @@ private final class StatusTileView: UIControl {
   private let titleLabel = UILabel()
   private let tile = UIImageView()
   private let stateLabel = UILabel()
+  private let chevron = UIImageView(image: UIImage(systemName: "chevron.forward",
+                                                   withConfiguration: UIImage.SymbolConfiguration(pointSize: 13,
+                                                                                                  weight: .semibold)))
   private var stateHeight: NSLayoutConstraint!
   private var look: NoGpsStatusBar.Look?
 
+  var opensPage: Bool {
+    didSet {
+      guard opensPage != oldValue else { return }
+      updateOpensPage()
+    }
+  }
+
   init(title: String, opensPage: Bool) {
+    self.opensPage = opensPage
     super.init(frame: .zero)
     backgroundColor = .secondarySystemGroupedBackground
     layer.cornerRadius = Constants.cornerRadius
     layer.cornerCurve = .continuous
     isAccessibilityElement = true
     accessibilityLabel = title
-    accessibilityTraits = opensPage ? .button : .none
-    isUserInteractionEnabled = opensPage
     titleLabel.text = title
     titleLabel.font = .preferredFont(forTextStyle: .caption1)
     titleLabel.adjustsFontForContentSizeCategory = true
@@ -1289,10 +1306,6 @@ private final class StatusTileView: UIControl {
       content.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -12),
     ])
     updateStateHeight()
-    guard opensPage else { return }
-    let chevron = UIImageView(image: UIImage(systemName: "chevron.forward",
-                                             withConfiguration: UIImage.SymbolConfiguration(pointSize: 13,
-                                                                                            weight: .semibold)))
     chevron.tintColor = .tertiaryLabel
     chevron.translatesAutoresizingMaskIntoConstraints = false
     addSubview(chevron)
@@ -1302,6 +1315,15 @@ private final class StatusTileView: UIControl {
     ])
     addTarget(self, action: #selector(pressed), for: [.touchDown, .touchDragEnter])
     addTarget(self, action: #selector(released), for: [.touchUpInside, .touchUpOutside, .touchCancel, .touchDragExit])
+    updateOpensPage()
+  }
+
+  private func updateOpensPage() {
+    accessibilityTraits = opensPage ? .button : .none
+    isUserInteractionEnabled = opensPage
+    chevron.isHidden = !opensPage
+    // The press is dropped if the tile stops opening the page under a finger.
+    backgroundColor = .secondarySystemGroupedBackground
   }
 
   @available(*, unavailable)

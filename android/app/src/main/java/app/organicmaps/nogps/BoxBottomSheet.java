@@ -140,6 +140,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private ViewGroup mRoot;
   private View mTiles;
   private View mBox;
+  private View mBoxChevron;
   private StatusBar.Button mTile;
   private View mGpsRow;
   private View mGpsGroup;
@@ -258,6 +259,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mRoot = (ViewGroup) ((ViewGroup) view).getChildAt(0);
     mTiles = view.findViewById(R.id.box_tiles);
     mBox = view.findViewById(R.id.box_box);
+    mBoxChevron = view.findViewById(R.id.box_chevron);
+    mBox.setOnClickListener(v -> openValues());
     mTile = new StatusBar.Button(view.findViewById(R.id.box_tile), view.findViewById(R.id.box_icon),
                                  view.findViewById(R.id.box_badge));
     mGpsGroup = view.findViewById(R.id.box_gps_group);
@@ -336,10 +339,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     view.findViewById(R.id.box_clear_speed)
         .setOnClickListener(v -> SensorsBottomSheet.confirmClearSpeed(requireContext(), this::update));
     view.findViewById(R.id.box_speed_table_back).setOnClickListener(v -> showSpeedTable(false));
-    mName.setOnClickListener(v -> {
-      if (NoGps.getStatus().boxValues.length > 0)
-        showValues(true);
-    });
+    mName.setOnClickListener(v -> openValues());
     view.findViewById(R.id.box_values_back).setOnClickListener(v -> showValues(false));
     view.findViewById(R.id.box_phones_back).setOnClickListener(v -> showPhones(false));
     mAddPhone.setOnClickListener(v -> addPhone());
@@ -438,6 +438,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     // Forgotten in the sensors sheet, or being searched.
     mShop.setVisibility((mSearching || !status.inertialEnabled) && !page ? View.VISIBLE : View.GONE);
     updateGps(status);
+    // The box tile shows the values while the box is connected, as its name row does.
+    final boolean hasValues = status.boxValues.length > 0;
+    mBox.setClickable(hasValues);
+    mBoxChevron.setVisibility(hasValues ? View.VISIBLE : View.GONE);
     if (mGpsShown)
       mGpsView.update(status);
     else if (mSearching)
@@ -827,6 +831,15 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     mSpeedTableShown = shown;
     switchPage(shown, mSpeedTablePage);
+  }
+
+  /**
+   * The values come while the box is connected.
+   */
+  private void openValues()
+  {
+    if (NoGps.getStatus().boxValues.length > 0)
+      showValues(true);
   }
 
   private void showValues(boolean shown)
