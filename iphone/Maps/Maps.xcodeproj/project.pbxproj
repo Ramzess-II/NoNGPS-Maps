@@ -9,7 +9,7 @@
 /* Begin PBXBuildFile section */
 		00A2630ADA97EB2C42945272 /* NavigationDashboardViewControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE938673CC3D8E7866C20B8 /* NavigationDashboardViewControllerTests.swift */; };
 		0F13484A0000000000000002 /* UITableViewCell+SeparatorInset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F13484A0000000000000001 /* UITableViewCell+SeparatorInset.swift */; };
-		11E2F6F34E5F12298C3E2AC0 /* NoGpsSensorsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB3EB65C13D5083F5AFA02C8 /* NoGpsSensorsViewController.swift */; };
+		11E2F6F34E5F12298C3E2AC0 /* NoGpsBoxPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB3EB65C13D5083F5AFA02C8 /* NoGpsBoxPage.swift */; };
 		15CCDA1EC17F04F7D89CA086 /* ActionBarViewControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8C536FD39F5842BE26742A9 /* ActionBarViewControllerTests.swift */; };
 		165953742CB1D85500CFED7C /* fonts in Resources */ = {isa = PBXBuildFile; fileRef = 165953732CB1D83700CFED7C /* fonts */; };
 		165953942CB44B5600CFED7C /* symbols in Resources */ = {isa = PBXBuildFile; fileRef = 165953932CB44B3B00CFED7C /* symbols */; };
@@ -1926,7 +1926,7 @@
 		FAF9A8A82CE0CEC000F6604D /* lv */ = {isa = PBXFileReference; lastKnownFileType = text.plist.stringsdict; name = lv; path = lv.lproj/Localizable.stringsdict; sourceTree = "<group>"; };
 		FAF9DDA22A86DC54000D7037 /* libharfbuzz.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libharfbuzz.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		FAFF42291347F101009BBB14 /* World.mwm */ = {isa = PBXFileReference; lastKnownFileType = file; name = World.mwm; path = ../../data/World.mwm; sourceTree = "<group>"; };
-		FB3EB65C13D5083F5AFA02C8 /* NoGpsSensorsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsSensorsViewController.swift; sourceTree = "<group>"; };
+		FB3EB65C13D5083F5AFA02C8 /* NoGpsBoxPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsBoxPage.swift; sourceTree = "<group>"; };
 		FEE938673CC3D8E7866C20B8 /* NavigationDashboardViewControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationDashboardViewControllerTests.swift; sourceTree = "<group>"; };
 		FFB5C171F353C1B71FCA8FC8 /* gl */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = gl; path = gl.lproj/LocalizableTypes.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -2918,7 +2918,7 @@
 				62E636AA5BD2F1F8C191EDC0 /* NoGpsFlagsViewController.swift */,
 				CCBA000623F3162F1ACE63ED /* MapPanelDragger.swift */,
 				ED1D4A8C14925D512AD764B8 /* MapControlsPanel.swift */,
-				FB3EB65C13D5083F5AFA02C8 /* NoGpsSensorsViewController.swift */,
+				FB3EB65C13D5083F5AFA02C8 /* NoGpsBoxPage.swift */,
 				3A0A2E482F0BC3FF3F47D237 /* NoGpsGpsSheet.swift */,
 				3A5BEE0D7C1A4F2B9E6D8C02 /* NoGpsSpeedView.swift */,
 				EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */,
@@ -4802,7 +4802,7 @@
 				287D14FA31636BEE6C00212D /* MapPanelDragger.swift in Sources */,
 				80922D600D3BF8807B842D7F /* NavigationSearchWheel.swift in Sources */,
 				606D0D5C89006E2B70BC9470 /* MapControlsPanel.swift in Sources */,
-				11E2F6F34E5F12298C3E2AC0 /* NoGpsSensorsViewController.swift in Sources */,
+				11E2F6F34E5F12298C3E2AC0 /* NoGpsBoxPage.swift in Sources */,
 				3ADD6F28B1682842E86CAD7C /* NoGpsGpsSheet.swift in Sources */,
 				3A5BEE0D7C1A4F2B9E6D8C01 /* NoGpsSpeedView.swift in Sources */,
 				333A4718BABBBFC6A412D69B /* NoGpsBoxSheet.swift in Sources */,

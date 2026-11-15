@@ -35,6 +35,8 @@ final class NoGpsControls: NSObject {
   private static var turnsBottom = CGFloat(0)
 
   private let statusButton = UIButton(type: .custom)
+  /// At the bottom of the map until the box is calibrated.
+  private let calibrationButton = UIButton(type: .custom)
   // The side buttons are on the left in right-to-left languages.
   private static let isRTL = UIApplication.shared.userInterfaceLayoutDirection == .rightToLeft
   private let panel = MapControlsPanel(edge: NoGpsControls.isRTL ? .right : .left)
@@ -55,12 +57,14 @@ final class NoGpsControls: NSObject {
   private var buttonsEdge = NSLayoutConstraint()
   private var buttonsCenterY = NSLayoutConstraint()
   private var timer: Timer?
-  private weak var calibrationAlert: UIAlertController?
   private weak var firmwareAlert: UIAlertController?
   private let flagRecorder = NoGpsFlagRecorder()
   private let speedView = NoGpsSpeedView()
   private var speedEdge = NSLayoutConstraint()
   private var speedBottom = NSLayoutConstraint()
+  private var calibrationBottom = NSLayoutConstraint()
+  private var calibrationCenterX = NSLayoutConstraint()
+  private var calibrationMaxWidth = NSLayoutConstraint()
 
   @objc
   init(owner: MapViewController) {
@@ -111,18 +115,30 @@ final class NoGpsControls: NSObject {
     return button
   }
 
+  private static func stylePill(_ button: UIButton) {
+    button.translatesAutoresizingMaskIntoConstraints = false
+    button.layer.cornerRadius = Constants.statusMinHeight / 2
+    button.layer.shadowColor = UIColor.black.cgColor
+    button.layer.shadowOpacity = 0.25
+    button.layer.shadowOffset = CGSize(width: 0, height: 1)
+    button.contentEdgeInsets = UIEdgeInsets(top: 3, left: 14, bottom: 3, right: 14)
+    button.titleLabel?.numberOfLines = 3
+    button.titleLabel?.textAlignment = .center
+    button.titleLabel?.lineBreakMode = .byTruncatingTail
+  }
+
   private func setupViews(in superview: UIView) {
-    statusButton.translatesAutoresizingMaskIntoConstraints = false
-    statusButton.layer.cornerRadius = Constants.statusMinHeight / 2
-    statusButton.layer.shadowColor = UIColor.black.cgColor
-    statusButton.layer.shadowOpacity = 0.25
-    statusButton.layer.shadowOffset = CGSize(width: 0, height: 1)
-    statusButton.contentEdgeInsets = UIEdgeInsets(top: 3, left: 14, bottom: 3, right: 14)
-    statusButton.titleLabel?.numberOfLines = 3
-    statusButton.titleLabel?.textAlignment = .center
-    statusButton.titleLabel?.lineBreakMode = .byTruncatingTail
+    Self.stylePill(statusButton)
     statusButton.addTarget(self, action: #selector(statusTapped), for: .touchUpInside)
     superview.addSubview(statusButton)
+    Self.stylePill(calibrationButton)
+    calibrationButton.backgroundColor = .systemOrange
+    calibrationButton.setAttributedTitle(NSAttributedString(string: L("nogps_calibration_snackbar"), attributes: [
+      .font: UIFont.boldSystemFont(ofSize: 15), .foregroundColor: UIColor.white,
+    ]), for: .normal)
+    calibrationButton.isHidden = true
+    calibrationButton.addTarget(self, action: #selector(calibrationTapped), for: .touchUpInside)
+    superview.addSubview(calibrationButton)
 
     reverseButton.addTarget(self, action: #selector(reverseDirection), for: .touchUpInside)
     switchMarkButton.addTarget(self, action: #selector(switchMark), for: .touchUpInside)
@@ -168,8 +184,13 @@ final class NoGpsControls: NSObject {
     buttonsEdge = Self.isRTL ? buttons.rightAnchor.constraint(equalTo: superview.leftAnchor)
       : buttons.leftAnchor.constraint(equalTo: superview.leftAnchor)
     buttonsCenterY = buttons.centerYAnchor.constraint(equalTo: superview.topAnchor)
+    calibrationBottom = calibrationButton.bottomAnchor.constraint(equalTo: superview.topAnchor)
+    calibrationCenterX = calibrationButton.centerXAnchor.constraint(equalTo: superview.leftAnchor)
+    calibrationMaxWidth = calibrationButton.widthAnchor.constraint(lessThanOrEqualToConstant: Constants.statusMaxWidth)
     NSLayoutConstraint.activate([
       statusTop, statusCenterX, buttonsEdge, buttonsCenterY, speedEdge, speedBottom,
+      calibrationBottom, calibrationCenterX, calibrationMaxWidth,
+      calibrationButton.heightAnchor.constraint(greaterThanOrEqualToConstant: Constants.statusMinHeight),
       // The panel goes on to the edge of the screen, under the safe area too.
       Self.isRTL ? panel.rightAnchor.constraint(equalTo: superview.rightAnchor)
         : panel.leftAnchor.constraint(equalTo: superview.leftAnchor),
@@ -203,6 +224,11 @@ final class NoGpsControls: NSObject {
       self.buttonsCenterY.constant = panelTop + height / 2 + fraction * max(0, panelArea - height)
       self.speedEdge.constant = Self.isRTL ? area.maxX - Constants.speedMargin : area.minX + Constants.speedMargin
       self.speedBottom.constant = area.maxY - Constants.speedMargin
+      // In the middle at the bottom, clear of the speed in the corner.
+      let speedWidth = self.speedView.isHidden ? 0 : NoGpsSpeedView.side + 2 * Constants.speedMargin
+      self.calibrationBottom.constant = area.maxY - Constants.speedMargin
+      self.calibrationCenterX.constant = area.midX
+      self.calibrationMaxWidth.constant = min(Constants.statusMaxWidth, max(0, area.width - 2 * speedWidth))
     }
     if animated, let superview = buttons.superview {
       superview.animateConstraints(animations: place)
@@ -296,7 +322,11 @@ final class NoGpsControls: NSObject {
                                                  .foregroundColor: UIColor.white]))
     statusButton.setAttributedTitle(title, for: .normal)
     statusButton.backgroundColor = Constants.noneColor
-    blinkStatus(status.roadLost)
+    Self.blink(statusButton, status.roadLost)
+    // It replaces the offer to calibrate: an alert is easy to dismiss and forget.
+    let needsCalibration = NoGpsBoxPage.needsCalibration(status)
+    calibrationButton.isHidden = !needsCalibration
+    Self.blink(calibrationButton, needsCalibration)
 
     // The car is marked by hand only while the position is not from GPS. The button is blue while the next tap on the
     // map shows where the car is, the tap is taken back when GPS is used again.
@@ -321,9 +351,9 @@ final class NoGpsControls: NSObject {
     NoGpsStatusBar.update(status)
   }
 
-  private func blinkStatus(_ blink: Bool) {
+  private static func blink(_ button: UIButton, _ blink: Bool) {
     // The system removes the animation in the background, the next refresh adds it again.
-    let layer = statusButton.layer
+    let layer = button.layer
     guard blink != (layer.animation(forKey: Constants.blinkKey) != nil) else { return }
     guard blink else {
       layer.removeAnimation(forKey: Constants.blinkKey)
@@ -349,51 +379,18 @@ final class NoGpsControls: NSObject {
 
   @objc
   private func statusTapped() {
-    Self.showSensors()
+    NoGpsBoxSheet.show(.box(firmware: false))
   }
 
-  /// \param onClose is called when the screen is closed.
-  static func showSensors(onClose: (() -> Void)? = nil) {
-    // The calibration alert may come while the screen is open, under another alert too.
-    let top = UIViewController.topViewController()
-    var shown: UIViewController? = top
-    while let controller = shown {
-      if let sensors = (controller as? UINavigationController)?.viewControllers.first as? NoGpsSensorsViewController {
-        // Shown already, e.g. under the calibration alert: its closing is told as well.
-        if let onClose {
-          sensors.onClose = onClose
-        }
-        return
-      }
-      shown = controller.presentingViewController
-    }
-    let sensors = NoGpsSensorsViewController()
-    sensors.onClose = onClose
-    top.present(UINavigationController(rootViewController: sensors), animated: true)
-  }
-
-  /// The sensor box has been plugged in: asks the user to calibrate it, the car should stand on a level place.
-  private func offerBoxCalibration() {
-    // As on Android, not asked in the background: the car may be driving when the user comes back. The sensors
-    // screen still tells to calibrate the box. The box may be powered on again before the user answers.
-    guard UIApplication.shared.applicationState == .active, calibrationAlert == nil else { return }
-    let alert = UIAlertController(title: L("nogps_box_calibration"),
-                                  message: L("nogps_box_calibration_offer"),
-                                  preferredStyle: .alert)
-    alert.addAction(UIAlertAction(title: L("later"), style: .cancel))
-    alert.addAction(UIAlertAction(title: L("nogps_sensors_calibrate_box"), style: .default) { _ in
-      NoGps.calibrate()
-      // It shows how the calibration goes.
-      Self.showSensors()
-    })
-    UIViewController.topViewController().present(alert, animated: true)
-    calibrationAlert = alert
+  @objc
+  private func calibrationTapped() {
+    NoGpsBoxSheet.show(.calibration)
   }
 
   /// The box works with another firmware than the app is tested with: asks the user to install the one of the app.
   private func offerFirmwareUpdate() {
-    // As the calibration, not asked in the background: the car may be driving when the user comes back. The sensors
-    // screen still offers the firmware.
+    // Not asked in the background: the car may be driving when the user comes back. The Box page still offers the
+    // firmware.
     let status = NoGps.status()
     guard UIApplication.shared.applicationState == .active, firmwareAlert == nil, !status.bundledFirmware.isEmpty
     else { return }
@@ -406,7 +403,7 @@ final class NoGpsControls: NSObject {
                                   style: .default) { _ in
         NoGps.startFirmwareUpdate()
         // It shows how the update goes.
-        Self.showSensors()
+        NoGpsBoxSheet.show(.box(firmware: true))
       })
     UIViewController.topViewController().present(alert, animated: true)
     firmwareAlert = alert
@@ -532,9 +529,8 @@ final class NoGpsControls: NSObject {
       } else {
         text = L("nogps_box_uncalibrated_stopped")
       }
-    case .boxCalibrationAdvised:
-      offerBoxCalibration()
-      text = nil
+    // The bar at the bottom of the map asks for it.
+    case .boxCalibrationAdvised: text = nil
     case .firmwareUpdateAvailable:
       offerFirmwareUpdate()
       text = nil

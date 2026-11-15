@@ -1,38 +1,30 @@
-/// The sensor box: its state, the car speed, the firmware and what the user does with the box. Without a box it is
-/// searched while the sheet is open, step by step, and the sheet offers to buy one. On the top the box and GPS are side
-/// by side, GPS opens its page. The first row turns GPS off for the car.
-final class NoGpsBoxSheet: MWMTableViewController {
+/// The sensor box and GPS of the car side by side: each tile opens its page, the title opens the cars. GPS is blocked
+/// for the car here. Without a box it is searched while the sheet is open, step by step, and the sheet offers to buy
+/// one.
+final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegate {
+  /// Where the sheet opens: the map leads the user to the Box page or to the calibration.
+  enum Page: Equatable {
+    case main
+    /// \param firmware unfolds the Box section to show how the update goes.
+    case box(firmware: Bool)
+    case calibration
+  }
+
   private enum Constants {
     static let refreshInterval: TimeInterval = 0.5
     static let cellId = "NoGpsBoxCell"
     static let shopURL = URL(string: "https://non-gps.com")!
-    static let boxName = "NonGPS-OBD"
-    static let extraSheetHeight = CGFloat(20)
+    static let fitDetent = "fit"
   }
 
   private enum Row: Equatable {
-    case gpsUse
-    case bluetooth
+    case linkAction
+    case gpsBlock
     case search
-    case name
-    case speed
-    case rpm
-    case speedTable
-    case speedLag
-    case clearSpeed
-    case firmware
-    case calibrate
-    case installFirmware
-    /// A car by the id of its box.
-    case car(String)
-    case addCar
     case buy
-    /// Another box, under the cars.
-    case shop
   }
 
   private struct Section {
-    var header: String?
     let rows: [Row]
     var footer: String?
   }
@@ -43,21 +35,12 @@ final class NoGpsBoxSheet: MWMTableViewController {
   /// No box was set up when the sheet opened: it is searched until it is heard, and forgotten if the sheet is closed
   /// before it is found.
   private var searching = false
-  /// The user adds a car: its box is searched as above, the other cars stay. The search ends when the list of the cars
-  /// grows: the box of a car is heard before, and a box sleeping after its link was dropped is taken as heard too.
-  private var addingCar = false
-  private var carsBeforeAdd = 0
-  private var cars: [NoGpsCar] = []
   private let searchView = BoxSearchView()
   private let header = StatusTilesView()
-  private let gpsUse = UISwitch()
-  private let gpsUseFooter = GpsUseFooterView()
-  private let speedLagValue: UILabel = {
-    let label = UILabel()
-    label.font = .preferredFont(forTextStyle: .body)
-    label.textColor = .secondaryLabel
-    return label
-  }()
+  private let titleButton = UIButton(type: .system)
+  private var shownTitle: String?
+  private let gpsBlock = UISwitch()
+  private let gpsBlockFooter = GpsBlockFooterView()
 
   private var shownRows: [[Row]] = []
   private var shownFooters: [String?] = []
@@ -72,13 +55,24 @@ final class NoGpsBoxSheet: MWMTableViewController {
     56
   }
 
-  static func show() {
+  static func show(_ page: Page = .main) {
+    // The pages of the box tell nothing once it is forgotten.
+    let page = NoGps.status().inertialEnabled ? page : .main
+    if let navigation = shownSheet() {
+      // An alert over the sheet, e.g. the firmware offer it was opened from.
+      if let presented = navigation.presentedViewController, !presented.isBeingDismissed {
+        presented.dismiss(animated: true)
+      }
+      open(page, in: navigation, animated: true)
+      return
+    }
     let root = NoGpsBoxSheet(style: .insetGrouped)
     let navigation = UINavigationController(rootViewController: root)
+    navigation.delegate = root
     if let sheet = navigation.sheetPresentationController {
       sheet.detents = [.medium(), .large()]
       if #available(iOS 16.0, *) {
-        sheet.detents = [.custom { [weak root] context in
+        sheet.detents = [.custom(identifier: .init(Constants.fitDetent)) { [weak root] context in
           root.map { min($0.sheetHeight, context.maximumDetentValue) }
         }, .large()]
         // The rows are laid out before the sheet is: it opens at their height, not at the bar only.
@@ -87,30 +81,80 @@ final class NoGpsBoxSheet: MWMTableViewController {
       }
       sheet.prefersGrabberVisible = true
     }
+    open(page, in: navigation, animated: false)
     UIViewController.topViewController().present(navigation, animated: true)
   }
 
-  /// Without a box the sheet fits its rows: the search and the offer to buy one. With a box it opens at half the
-  /// window, with the buy row under the box rows, and more of them are seen when it is pulled up.
+  private static func shownSheet() -> UINavigationController? {
+    var shown: UIViewController? = UIViewController.topViewController()
+    while let controller = shown {
+      if let navigation = controller as? UINavigationController, navigation.viewControllers.first is NoGpsBoxSheet {
+        return navigation
+      }
+      shown = controller.presentingViewController
+    }
+    return nil
+  }
+
+  private static func open(_ page: Page, in navigation: UINavigationController, animated: Bool) {
+    guard let root = navigation.viewControllers.first as? NoGpsBoxSheet else { return }
+    switch page {
+    case .main:
+      break
+    case .box(let firmware):
+      if let boxPage = navigation.topViewController as? NoGpsBoxPage {
+        if firmware {
+          boxPage.unfold(.box)
+        }
+      } else {
+        navigation.setViewControllers([root, NoGpsBoxPage(unfolded: firmware ? [.box] : [])], animated: animated)
+      }
+    case .calibration:
+      if !(navigation.topViewController is NoGpsCalibrationPage) {
+        navigation.setViewControllers([root, NoGpsBoxPage(unfolded: [.imu]), NoGpsCalibrationPage()], animated: animated)
+      }
+    }
+    root.selectDetent(for: navigation.topViewController)
+  }
+
+  /// The sheet fits the tiles and the few rows under them, the pages take the whole height.
   private var sheetHeight: CGFloat {
-    let window = view.window?.bounds.height ?? UIScreen.main.bounds.height
-    guard searching || !status.inertialEnabled else { return window / 2 + Constants.extraSheetHeight }
-    return Self.barBottom + tableView.contentSize.height
+    Self.barBottom + tableView.contentSize.height
+  }
+
+  private func selectDetent(for controller: UIViewController?) {
+    guard let sheet = navigationController?.sheetPresentationController else { return }
+    var detent = UISheetPresentationController.Detent.Identifier.large
+    if controller === self {
+      if #available(iOS 16.0, *) {
+        detent = .init(Constants.fitDetent)
+      } else {
+        detent = .medium
+      }
+    }
+    // Nothing selected is the first detent, the fitted one.
+    let selected = sheet.selectedDetentIdentifier
+    guard selected != detent, selected != nil || detent == .large else { return }
+    sheet.animateChanges { sheet.selectedDetentIdentifier = detent }
   }
 
   override func viewDidLoad() {
     super.viewDidLoad()
-    // The sheet has no title: the box tile tells what it is about.
     navigationItem.backButtonTitle = L("nogps_box_title")
     navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .close, target: self,
                                                         action: #selector(close))
+    titleButton.addTarget(self, action: #selector(openCars), for: .touchUpInside)
+    navigationItem.titleView = titleButton
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
     tableView.tableHeaderView = header
-    searchView.onAction = { [weak self] in self?.onLinkAction() }
-    header.box.addTarget(self, action: #selector(openValues), for: .touchUpInside)
+    searchView.onAction = { [weak self] in
+      Self.onLinkAction()
+      self?.refresh()
+    }
+    header.box.addTarget(self, action: #selector(openBox), for: .touchUpInside)
     header.gps.addTarget(self, action: #selector(openGps), for: .touchUpInside)
-    gpsUse.accessibilityLabel = L("nogps_gps_use")
-    gpsUse.addTarget(self, action: #selector(gpsUseChanged), for: .valueChanged)
+    gpsBlock.accessibilityLabel = L("nogps_gps_block")
+    gpsBlock.addTarget(self, action: #selector(gpsBlockChanged), for: .valueChanged)
     if !status.inertialEnabled {
       searching = true
       NoGps.setInertialNavigationEnabled(true)
@@ -120,6 +164,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
 
   override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
+    refresh()
     let timer = Timer(timeInterval: Constants.refreshInterval, repeats: true) { [weak self] _ in self?.refresh() }
     RunLoop.main.add(timer, forMode: .common)
     self.timer = timer
@@ -152,22 +197,23 @@ final class NoGpsBoxSheet: MWMTableViewController {
 
   override func viewDidDisappear(_ animated: Bool) {
     super.viewDidDisappear(animated)
-    // Not when the GPS page is opened over it.
+    // Not when a page is opened over it.
     if navigationController?.isBeingDismissed ?? isBeingDismissed {
       stopSearchIfNotFound()
     }
+  }
+
+  // MARK: - UINavigationControllerDelegate
+
+  func navigationController(_: UINavigationController, willShow viewController: UIViewController, animated _: Bool) {
+    selectDetent(for: viewController)
   }
 
   /// Closed by the button or swiped down, from either page, before the box was heard, even if connected already: the
   /// phone stops looking for it.
   func stopSearchIfNotFound() {
     guard searching else { return }
-    // The box of a car being added: the boxes of the other cars are looked for again.
-    if addingCar {
-      if !isCarAdded {
-        NoGps.searchNewBox(false)
-      }
-    } else if !Self.isBoxHeard(NoGps.status()) {
+    if !Self.isBoxHeard(NoGps.status()) {
       NoGps.setInertialNavigationEnabled(false)
     }
     NoGpsStatusBar.update(NoGps.status())
@@ -176,26 +222,26 @@ final class NoGpsBoxSheet: MWMTableViewController {
   private func refresh() {
     status = NoGps.status()
     // The box connected while it was searched: the sheet shows it as any other.
-    if searching, addingCar ? isCarAdded : Self.isBoxHeard(status) {
+    if searching, Self.isBoxHeard(status) {
       searching = false
-      addingCar = false
     }
     var boxLook = NoGpsStatusBar.boxLook(status)
     // The waves of the search show it.
     boxLook.pulsing = boxLook.pulsing && !searching
     header.box.show(boxLook, state: searching ? L("nogps_box_searching")
-      : status.inertialEnabled ? NoGpsSensorsViewController.boxStateText(status) : L("nogps_box_buy_title"))
-    header.box.opensPage = !status.boxValues.isEmpty
+      : status.inertialEnabled ? NoGpsBoxPage.boxStateText(status) : L("nogps_box_buy_title"))
+    header.box.opensPage = status.inertialEnabled && !searching
     header.gps.show(NoGpsStatusBar.gpsLook(status), state: NoGpsStatusBar.gpsStateText(status))
     layoutHeader()
-    // GPS is turned off for the car only while the box can drive it: nothing would move the mark otherwise.
-    let canChangeGpsUse = status.gpsDisabled || Self.isBoxHeard(status)
-    gpsUse.isEnabled = canChangeGpsUse
-    if !gpsUse.isTracking {
-      gpsUse.isOn = !status.gpsDisabled
+    updateTitle()
+    // GPS is blocked for the car only while the box can drive it: nothing would move the mark otherwise.
+    let canChangeGpsBlock = status.gpsDisabled || Self.isBoxHeard(status)
+    gpsBlock.isEnabled = canChangeGpsBlock
+    if !gpsBlock.isTracking {
+      gpsBlock.isOn = status.gpsDisabled
     }
-    gpsUseFooter.update(canChangeUse: canChangeGpsUse)
-    let gps = Section(rows: [.gpsUse])
+    gpsBlockFooter.update(canChange: canChangeGpsBlock)
+    let gps = Section(rows: [.gpsBlock])
     if searching {
       searchView.update(status)
       sections = [
@@ -204,40 +250,11 @@ final class NoGpsBoxSheet: MWMTableViewController {
         Section(rows: [.buy]),
       ]
     } else if status.inertialEnabled {
-      // The box tells the car data and its calibration: there is nothing to show while it is out of reach.
-      let connected = Self.isBoxHeard(status) && status.bleState == .connected
-      var info: [Row] = [.name]
-      if connected {
-        info.append(.speed)
-      }
-      if connected, status.rpm >= 0 {
-        info.append(.rpm)
-      }
-      if !status.boxFirmware.isEmpty || status.firmwareUpdate != .none {
-        info.append(.firmware)
-      }
-      if NoGpsSensorsViewController.canInstallFirmware(status) {
-        info.append(.installFirmware)
-      }
-      // Another phone calibrates and updates the box.
-      let readOnly = connected && status.boxReadOnly
-      if connected, !readOnly {
-        info.append(.calibrate)
-      }
-      if Self.linkActionText(status.bleState) != nil {
-        info.insert(.bluetooth, at: 0)
-      }
-      let footer = [Self.obdHintText(status), readOnly ? L("nogps_box_read_only") : nil].compactMap { $0 }
-      sections = [gps, Section(rows: info, footer: footer.isEmpty ? nil : footer.joined(separator: "\n\n"))]
-      // What the app has learned about the car speed.
-      if status.inertialStarted {
-        sections.append(Section(rows: [.speedTable, .speedLag, .clearSpeed]))
-      }
-      cars = NoGps.cars()
-      sections.append(Section(header: L("nogps_cars"), rows: cars.map { .car($0.carId) } + [.addCar]))
-      sections.append(Section(rows: [.shop]))
+      // The steps of the search have their own button.
+      sections = Self.linkActionText(status.bleState) == nil ? [] : [Section(rows: [.linkAction])]
+      sections += [gps, Section(rows: [.buy])]
     } else {
-      // Forgotten in the sensors screen.
+      // The last car is forgotten.
       sections = [gps, Section(rows: [.buy], footer: L("nogps_box_buy_text"))]
     }
     // Footers are not updated in place.
@@ -247,6 +264,33 @@ final class NoGpsBoxSheet: MWMTableViewController {
       shownRows = []
     }
     tableView.reloadData(keepingRows: sections.map(\.rows), &shownRows)
+  }
+
+  /// The car driven now opens the cars. Without a box set up there are none.
+  private func updateTitle() {
+    let opensCars = status.inertialEnabled && !searching
+    let car = opensCars ? NoGps.cars().first { $0.carId == status.carId } : nil
+    let title = !opensCars ? L("nogps_box_title") : car.map { Self.carName($0) } ?? L("nogps_cars")
+    guard title != shownTitle || titleButton.isUserInteractionEnabled != opensCars else { return }
+    shownTitle = title
+    var config = UIButton.Configuration.plain()
+    config.title = title
+    config.baseForegroundColor = .label
+    config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+      var attributes = attributes
+      attributes.font = .preferredFont(forTextStyle: .headline)
+      return attributes
+    }
+    if opensCars {
+      config.image = UIImage(systemName: "chevron.forward",
+                             withConfiguration: UIImage.SymbolConfiguration(pointSize: 13, weight: .semibold))
+      config.imagePlacement = .trailing
+      config.imagePadding = 4
+    }
+    titleButton.configuration = config
+    titleButton.isUserInteractionEnabled = opensCars
+    titleButton.accessibilityTraits = opensCars ? .button : .header
+    titleButton.sizeToFit()
   }
 
   /// The header of a table keeps the height it had when it was set.
@@ -259,11 +303,6 @@ final class NoGpsBoxSheet: MWMTableViewController {
     guard header.frame.width != width || header.frame.height != height else { return }
     header.frame = CGRect(x: 0, y: 0, width: width, height: height)
     tableView.tableHeaderView = header
-  }
-
-  /// Before the box tells its sensor.
-  static func boxName(_ status: NoGpsStatus) -> String {
-    status.inertialStarted && !status.deviceName.isEmpty ? status.deviceName : Constants.boxName
   }
 
   /// The box sends its data: it is connected, whatever it tells.
@@ -283,8 +322,7 @@ final class NoGpsBoxSheet: MWMTableViewController {
     case .bondLost: text = L("nogps_box_bt_bond_lost")
     default: return nil
     }
-    // The states follow "Box: name ·" on the sensors screen, here they start the line.
-    return text.prefix(1).uppercased() + text.dropFirst()
+    return NoGpsBoxPage.sentenceCase(text)
   }
 
   /// The button of the steps and of a box set up, nil if none. Bluetooth is turned on by the user: iOS asks for it
@@ -310,6 +348,23 @@ final class NoGpsBoxSheet: MWMTableViewController {
     }
   }
 
+  /// "Car C47D" until the user names it.
+  static func carName(_ car: NoGpsCar) -> String {
+    car.name.isEmpty ? String(format: L("nogps_car_default_name"), car.carId) : car.name
+  }
+
+  /// Bluetooth is allowed in the settings: once refused, iOS doesn't ask again. The box is searched again after a failed
+  /// pairing or a lost bond.
+  static func onLinkAction() {
+    guard NoGps.status().bleState == .noPermission else {
+      NoGps.retryBox()
+      return
+    }
+    if let url = URL(string: UIApplication.openSettingsURLString) {
+      UIApplication.shared.open(url)
+    }
+  }
+
   // MARK: - UITableViewDataSource
 
   override func numberOfSections(in _: UITableView) -> Int {
@@ -320,97 +375,30 @@ final class NoGpsBoxSheet: MWMTableViewController {
     sections[section].rows.count
   }
 
-  override func tableView(_: UITableView, titleForHeaderInSection section: Int) -> String? {
-    sections[section].header
-  }
-
   override func tableView(_: UITableView, titleForFooterInSection section: Int) -> String? {
     sections[section].footer
   }
 
   override func tableView(_: UITableView, viewForFooterInSection section: Int) -> UIView? {
-    sections[section].rows == [.gpsUse] ? gpsUseFooter : nil
+    sections[section].rows == [.gpsBlock] ? gpsBlockFooter : nil
   }
 
   override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
     let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
     var content = UIListContentConfiguration.cell()
     content.textProperties.numberOfLines = 0
-    cell.accessoryType = .none
     cell.selectionStyle = .none
     let row = sections[indexPath.section].rows[indexPath.row]
-    cell.accessoryView = accessoryView(row)
+    // The same switch every refresh: it is not reset while it is turned.
+    cell.accessoryView = row == .gpsBlock ? gpsBlock : nil
     switch row {
     case .search:
-      embed(searchView, in: cell)
+      BoxSearchView.embed(searchView, in: cell)
       return cell
-    case .gpsUse:
-      content.text = L("nogps_gps_use")
-    case .bluetooth:
+    case .gpsBlock:
+      content.text = L("nogps_gps_block")
+    case .linkAction:
       content.text = Self.linkActionText(status.bleState)
-      content.textProperties.color = .linkBlue
-      cell.selectionStyle = .default
-    case .name:
-      content.text = String(format: L("nogps_sensors_box"), Self.boxName(status))
-      if !status.boxValues.isEmpty {
-        cell.accessoryType = .disclosureIndicator
-        cell.selectionStyle = .default
-      }
-    case .speed:
-      content.text = String(format: L("nogps_sensors_speed"), status.speedKmh >= 0
-        ? String(format: L("nogps_speed_kmh"), status.speedKmh) : L("nogps_unknown"))
-    case .rpm:
-      content.text = String(format: L("nogps_box_rpm"), String(format: L("nogps_rpm"), status.rpm))
-    case .speedTable:
-      content = UIListContentConfiguration.valueCell()
-      content.text = L("nogps_speed_table_title")
-      content.secondaryText = speedTableText()
-      cell.accessoryType = .disclosureIndicator
-      cell.selectionStyle = .default
-    case .speedLag:
-      content = UIListContentConfiguration.subtitleCell()
-      content.text = L("nogps_speed_lag")
-      content.secondaryText = L(status.speedLagMeasured ? "nogps_speed_lag_measured" : "nogps_speed_lag_usual")
-      content.secondaryTextProperties.color = .secondaryLabel
-      // On the right in the middle of both lines, as the values of the other rows.
-      speedLagValue.text = String(format: L("nogps_speed_lag_value"), String(format: "%.1f", status.speedLagSec))
-      speedLagValue.sizeToFit()
-    case .clearSpeed:
-      content.text = L("nogps_box_clear_speed")
-      // Not as red as forgetting the box: the table is learned again on the next trips.
-      content.textProperties.color = .systemOrange
-      cell.selectionStyle = .default
-    case .firmware:
-      content.text = String(format: L("nogps_sensors_firmware"), NoGpsSensorsViewController.firmwareText(status))
-    case .calibrate:
-      content = UIListContentConfiguration.valueCell()
-      content.textProperties.numberOfLines = 0
-      let (text, action) = calibrationTexts()
-      content.text = text
-      content.secondaryText = action
-      content.secondaryTextProperties.color = .linkBlue
-      if action != nil {
-        cell.accessoryType = .disclosureIndicator
-        cell.selectionStyle = .default
-      }
-    case .installFirmware:
-      content.text = String(format: L("nogps_firmware_install"), status.bundledFirmware)
-      content.textProperties.color = .linkBlue
-      cell.selectionStyle = .default
-    case .shop:
-      content.text = L("nogps_box_buy")
-      content.textProperties.color = .linkBlue
-      cell.selectionStyle = .default
-    case .car(let carId):
-      content = UIListContentConfiguration.subtitleCell()
-      if let car = cars.first(where: { $0.carId == carId }) {
-        content.text = Self.carName(car)
-        content.secondaryText = carStateText(car)
-      }
-      content.secondaryTextProperties.color = .secondaryLabel
-      cell.selectionStyle = .default
-    case .addCar:
-      content.text = L("nogps_car_add")
       content.textProperties.color = .linkBlue
       cell.selectionStyle = .default
     case .buy:
@@ -424,80 +412,145 @@ final class NoGpsBoxSheet: MWMTableViewController {
     return cell
   }
 
-  /// The same views each refresh: new ones fly in from the corner of the reconfigured cell.
-  private func accessoryView(_ row: Row) -> UIView? {
-    switch row {
-    case .speedLag: return speedLagValue
-    // A switch is not reset while it is turned.
-    case .gpsUse: return gpsUse
-    default: return nil
-    }
-  }
-
-  /// A row of its own view, the same one every refresh: its animation goes on.
-  private func embed(_ view: UIView, in cell: UITableViewCell) {
-    cell.contentConfiguration = nil
-    guard view.superview !== cell.contentView else { return }
-    view.removeFromSuperview()
-    view.translatesAutoresizingMaskIntoConstraints = false
-    cell.contentView.addSubview(view)
-    let guide = cell.contentView.layoutMarginsGuide
-    NSLayoutConstraint.activate([
-      view.leadingAnchor.constraint(equalTo: guide.leadingAnchor),
-      view.trailingAnchor.constraint(equalTo: guide.trailingAnchor),
-      view.topAnchor.constraint(equalTo: guide.topAnchor),
-      view.bottomAnchor.constraint(equalTo: guide.bottomAnchor),
-    ])
-  }
-
   // MARK: - UITableViewDelegate
 
   override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
     tableView.deselectRow(at: indexPath, animated: true)
     switch sections[indexPath.section].rows[indexPath.row] {
-    case .bluetooth:
-      onLinkAction()
-    case .buy, .shop:
+    case .linkAction:
+      Self.onLinkAction()
+      refresh()
+    case .buy:
       UIApplication.shared.open(Constants.shopURL)
-    case .clearSpeed:
-      NoGpsSensorsViewController.confirmClearSpeed(from: self) { [weak self] in self?.refresh() }
-    case .speedTable:
-      navigationController?.pushViewController(SpeedTableViewController(style: .insetGrouped), animated: true)
-    case .name:
-      openValues()
-    case .calibrate:
-      // The row shows how the calibration goes.
-      guard calibrationTexts().action != nil else { break }
-      NoGps.calibrate()
-      refresh()
-    case .installFirmware:
-      // The box may have gone on since the row was drawn.
-      if NoGpsSensorsViewController.canInstallFirmware(NoGps.status()) {
-        NoGps.startFirmwareUpdate()
-      }
-      refresh()
-    case .car(let carId):
-      if let car = cars.first(where: { $0.carId == carId }) {
-        showCarMenu(car, from: tableView.cellForRow(at: indexPath))
-      }
-    case .addCar:
-      addCar()
     default:
       break
     }
     NoGpsStatusBar.update(NoGps.status())
   }
 
-  // MARK: - Texts
+  // MARK: - Actions
 
-  /// "Car C47D" until the user names it.
-  static func carName(_ car: NoGpsCar) -> String {
-    car.name.isEmpty ? String(format: L("nogps_car_default_name"), car.carId) : car.name
+  @objc
+  private func openGps() {
+    navigationController?.pushViewController(NoGpsGpsSheet(style: .insetGrouped), animated: true)
+  }
+
+  @objc
+  private func openBox() {
+    navigationController?.pushViewController(NoGpsBoxPage(), animated: true)
+  }
+
+  @objc
+  private func openCars() {
+    navigationController?.pushViewController(CarsViewController(style: .insetGrouped), animated: true)
+  }
+
+  @objc
+  private func gpsBlockChanged() {
+    NoGps.setGpsDisabled(gpsBlock.isOn)
+    refresh()
+    NoGpsStatusBar.update(NoGps.status())
+  }
+
+  @objc
+  private func close() {
+    dismiss(animated: true)
+  }
+}
+
+/// The cars of the user, one for each box: the user drives, names or forgets one, and adds a new one.
+private final class CarsViewController: MWMTableViewController {
+  private enum Constants {
+    static let refreshInterval: TimeInterval = 0.5
+    static let cellId = "NoGpsCarCell"
+  }
+
+  private enum Row: Equatable {
+    /// A car by the id of its box.
+    case car(String)
+    case add
+  }
+
+  private var status = NoGps.status()
+  private var cars: [NoGpsCar] = []
+  private var rows: [[Row]] = []
+  private var shownRows: [[Row]] = []
+  private var timer: Timer?
+
+  override func viewDidLoad() {
+    super.viewDidLoad()
+    title = L("nogps_cars")
+    tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
+  }
+
+  override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+    refresh()
+    let timer = Timer(timeInterval: Constants.refreshInterval, repeats: true) { [weak self] _ in self?.refresh() }
+    RunLoop.main.add(timer, forMode: .common)
+    self.timer = timer
+  }
+
+  override func viewWillDisappear(_ animated: Bool) {
+    super.viewWillDisappear(animated)
+    timer?.invalidate()
+    timer = nil
+  }
+
+  private func refresh() {
+    status = NoGps.status()
+    cars = NoGps.cars()
+    rows = [cars.map { .car($0.carId) }, cars.count < NoGps.maxCars() ? [.add] : []]
+    tableView.reloadData(keepingRows: rows, &shownRows)
+  }
+
+  override func numberOfSections(in _: UITableView) -> Int {
+    rows.count
+  }
+
+  override func tableView(_: UITableView, numberOfRowsInSection section: Int) -> Int {
+    rows[section].count
+  }
+
+  override func tableView(_: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+    section == 0 ? NoGpsBoxPage.textHeader(L("nogps_cars_text")) : nil
+  }
+
+  override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
+    var content = UIListContentConfiguration.subtitleCell()
+    cell.selectionStyle = .default
+    switch rows[indexPath.section][indexPath.row] {
+    case .car(let carId):
+      if let car = cars.first(where: { $0.carId == carId }) {
+        content.text = NoGpsBoxSheet.carName(car)
+        content.secondaryText = carStateText(car)
+      }
+      content.secondaryTextProperties.color = .secondaryLabel
+    case .add:
+      content = UIListContentConfiguration.cell()
+      content.text = L("nogps_car_add")
+      content.textProperties.color = .linkBlue
+    }
+    cell.contentConfiguration = content
+    return cell
+  }
+
+  override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    tableView.deselectRow(at: indexPath, animated: true)
+    switch rows[indexPath.section][indexPath.row] {
+    case .car(let carId):
+      if let car = cars.first(where: { $0.carId == carId }) {
+        showCarMenu(car, from: tableView.cellForRow(at: indexPath))
+      }
+    case .add:
+      navigationController?.pushViewController(AddCarViewController(style: .insetGrouped), animated: true)
+    }
   }
 
   private func carStateText(_ car: NoGpsCar) -> String? {
     if car.carId == status.carId {
-      let connected = Self.isBoxHeard(status) && status.bleState == .connected
+      let connected = NoGpsBoxSheet.isBoxHeard(status) && status.bleState == .connected
       return connected ? L("nogps_car_connected") : L("nogps_car_current")
     }
     guard let lastSeen = car.lastSeen else { return nil }
@@ -505,41 +558,13 @@ final class NoGpsBoxSheet: MWMTableViewController {
                                                                                                 relativeTo: Date()))
   }
 
-  /// How many ranges of the car speed GPS has measured. The rough table by the roads doesn't count: it is only a guess.
-  private func speedTableText() -> String {
-    let all = status.speedTableCarM.count
-    if status.speedTableRanges == 0 {
-      return L("nogps_speed_table_not_calibrated")
-    }
-    if status.speedTableRanges >= all {
-      return L("nogps_speed_table_calibrated")
-    }
-    return String(format: L("nogps_speed_table_calibrating"), status.speedTableRanges, all)
-  }
-
-  /// The state of the calibration and what the user can do: nothing while it goes.
-  private func calibrationTexts() -> (text: String, action: String?) {
-    switch status.calibration {
-    case .none:
-      return (L("nogps_box_sensors_not_calibrated"), L("nogps_sensors_calibrate_box"))
-    case .done where !status.boxCalibrationAdvised:
-      return (L("nogps_box_sensors_calibrated"), L("nogps_box_recalibrate"))
-    case .calibrating:
-      return (String(format: L("nogps_sensors_box_sensors"), NoGpsSensorsViewController.boxCalibrationText(status)), nil)
-    default:
-      return (String(format: L("nogps_sensors_box_sensors"), NoGpsSensorsViewController.boxCalibrationText(status)),
-              L("nogps_sensors_calibrate_box"))
-    }
-  }
-
-  // MARK: - Actions
-
   /// What the user does with a car: drives it, names it or forgets it.
   private func showCarMenu(_ car: NoGpsCar, from cell: UITableViewCell?) {
-    let menu = UIAlertController(title: Self.carName(car), message: nil, preferredStyle: .actionSheet)
+    let menu = UIAlertController(title: NoGpsBoxSheet.carName(car), message: nil, preferredStyle: .actionSheet)
     if car.carId != NoGps.status().carId {
       menu.addAction(UIAlertAction(title: L("nogps_car_drive"), style: .default) { [weak self] _ in
         NoGps.selectCar(car.carId)
+        NoGpsStatusBar.update(NoGps.status())
         self?.refresh()
       })
     }
@@ -580,92 +605,50 @@ final class NoGpsBoxSheet: MWMTableViewController {
   }
 
   private func confirmForgetCar(_ car: NoGpsCar) {
-    let alert = UIAlertController(title: Self.carName(car), message: L("nogps_car_forget_text"), preferredStyle: .alert)
+    let alert = UIAlertController(title: NoGpsBoxSheet.carName(car), message: L("nogps_car_forget_text"),
+                                  preferredStyle: .alert)
     alert.addAction(UIAlertAction(title: L("cancel"), style: .cancel))
     alert.addAction(UIAlertAction(title: L("nogps_car_forget"), style: .destructive) { [weak self] _ in
       NoGps.forgetCar(car.carId)
       NoGpsStatusBar.update(NoGps.status())
       // The last car: the box is not looked for, the sheet offers to buy one.
       if !NoGps.status().inertialEnabled {
-        self?.dismiss(animated: true)
+        self?.navigationController?.dismiss(animated: true)
       } else {
         self?.refresh()
       }
     })
     present(alert, animated: true)
   }
-
-  /// The box of the new car is searched step by step, as the first one: the box connected now is dropped.
-  private func addCar() {
-    searching = true
-    addingCar = true
-    carsBeforeAdd = NoGps.cars().count
-    NoGps.searchNewBox(true)
-    refresh()
-  }
-
-  /// The box of a new car, or of a forgotten one, has told about itself.
-  private var isCarAdded: Bool {
-    NoGps.cars().count > carsBeforeAdd
-  }
-
-  /// Bluetooth is allowed in the settings: once refused, iOS doesn't ask again. The box is searched again after a failed
-  /// pairing or a lost bond.
-  private func onLinkAction() {
-    guard NoGps.status().bleState == .noPermission else {
-      NoGps.retryBox()
-      refresh()
-      return
-    }
-    if let url = URL(string: UIApplication.openSettingsURLString) {
-      UIApplication.shared.open(url)
-    }
-  }
-
-  @objc
-  private func openGps() {
-    navigationController?.pushViewController(NoGpsGpsSheet(style: .insetGrouped), animated: true)
-  }
-
-  /// The values come while the box is connected.
-  @objc
-  private func openValues() {
-    guard !status.boxValues.isEmpty else { return }
-    navigationController?.pushViewController(BoxValuesViewController(style: .insetGrouped), animated: true)
-  }
-
-  @objc
-  private func gpsUseChanged() {
-    NoGps.setGpsDisabled(!gpsUse.isOn)
-    refresh()
-    NoGpsStatusBar.update(NoGps.status())
-  }
-
-  @objc
-  private func close() {
-    dismiss(animated: true)
-  }
 }
 
-/// The ranges of the car speed and how each is corrected: by GPS, roughly by the roads, or not yet.
-private final class SpeedTableViewController: MWMTableViewController {
+/// The box of a new car is searched step by step, as the first one: the box connected now is dropped, the other cars
+/// stay. The search ends when the list of the cars grows: the box of a car is heard before, and a box sleeping after
+/// its link was dropped is taken as heard too.
+private final class AddCarViewController: MWMTableViewController {
   private enum Constants {
     static let refreshInterval: TimeInterval = 0.5
-    static let cellId = "NoGpsSpeedTableCell"
-    static let headerId = "NoGpsSpeedTableHeader"
-    // Dense: all the ranges fit on the screen.
-    static let rowHeight = CGFloat(32)
-    static let rowMargin = CGFloat(4)
+    static let cellId = "NoGpsAddCarCell"
   }
 
-  private var status = NoGps.status()
+  private let searchView = BoxSearchView()
+  private let carsBefore = NoGps.cars().count
   private var timer: Timer?
+
+  private var isCarAdded: Bool {
+    NoGps.cars().count > carsBefore
+  }
 
   override func viewDidLoad() {
     super.viewDidLoad()
-    title = L("nogps_speed_table_title")
+    title = L("nogps_car_add")
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
-    tableView.register(UITableViewHeaderFooterView.self, forHeaderFooterViewReuseIdentifier: Constants.headerId)
+    searchView.onAction = { [weak self] in
+      NoGpsBoxSheet.onLinkAction()
+      self?.refresh()
+    }
+    NoGps.searchNewBox(true)
+    NoGpsStatusBar.update(NoGps.status())
   }
 
   override func viewWillAppear(_ animated: Bool) {
@@ -682,46 +665,45 @@ private final class SpeedTableViewController: MWMTableViewController {
     timer = nil
   }
 
+  override func viewDidDisappear(_ animated: Bool) {
+    super.viewDidDisappear(animated)
+    // Back or the sheet closed before the new box was heard: the boxes of the other cars are looked for again.
+    if isMovingFromParent || navigationController?.isBeingDismissed == true, !isCarAdded {
+      NoGps.searchNewBox(false)
+      NoGpsStatusBar.update(NoGps.status())
+    }
+  }
+
   private func refresh() {
-    status = NoGps.status()
-    // Follows the text size, also changed while the screen is open.
-    tableView.rowHeight = UIFontMetrics.default.scaledValue(for: Constants.rowHeight)
-    tableView.reloadData()
+    guard !isCarAdded else {
+      if navigationController?.topViewController === self {
+        navigationController?.popViewController(animated: true)
+      }
+      return
+    }
+    searchView.update(NoGps.status())
+  }
+
+  override func numberOfSections(in _: UITableView) -> Int {
+    1
   }
 
   override func tableView(_: UITableView, numberOfRowsInSection _: Int) -> Int {
-    status.inertialStarted ? status.speedTableCarM.count : 0
+    1
   }
 
-  /// Above the ranges and larger than a usual header: it is read before the table. What the user does stands out.
-  override func tableView(_ tableView: UITableView, viewForHeaderInSection _: Int) -> UIView? {
-    let header = tableView.dequeueReusableHeaderFooterView(withIdentifier: Constants.headerId)
-    var content = UIListContentConfiguration.groupedHeader()
-    let font = UIFont.preferredFont(forTextStyle: .subheadline)
-    let text = NSMutableAttributedString(string: L("nogps_speed_table_hint") + "\n",
-                                         attributes: [.font: font, .foregroundColor: UIColor.secondaryLabel])
-    let bold = font.fontDescriptor.withSymbolicTraits(.traitBold).map { UIFont(descriptor: $0, size: 0) } ?? font
-    text.append(NSAttributedString(string: L("nogps_speed_table_action"),
-                                   attributes: [.font: bold, .foregroundColor: UIColor.label]))
-    let paragraph = NSMutableParagraphStyle()
-    paragraph.paragraphSpacing = 6
-    text.addAttribute(.paragraphStyle, value: paragraph, range: NSRange(location: 0, length: text.length))
-    content.attributedText = text
-    content.textProperties.transform = .none
-    header?.contentConfiguration = content
-    return header
+  override func tableView(_: UITableView, viewForHeaderInSection _: Int) -> UIView? {
+    NoGpsBoxPage.textHeader(L("nogps_car_add_text"))
+  }
+
+  override func tableView(_: UITableView, titleForFooterInSection _: Int) -> String? {
+    L("nogps_box_power_hint")
   }
 
   override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
     let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
-    var content = UIListContentConfiguration.cell()
-    content.text = NoGpsSensorsViewController.speedTableRowText(status, indexPath.row)
-    content.directionalLayoutMargins.top = Constants.rowMargin
-    content.directionalLayoutMargins.bottom = Constants.rowMargin
-    content.textProperties.font = .monospacedDigitSystemFont(ofSize: UIFont.preferredFont(forTextStyle: .body).pointSize,
-                                                             weight: .regular)
-    cell.contentConfiguration = content
     cell.selectionStyle = .none
+    BoxSearchView.embed(searchView, in: cell)
     return cell
   }
 }
@@ -856,171 +838,6 @@ private final class BoxPhonesViewController: MWMTableViewController {
     case .full: return L("nogps_phone_add_full")
     case .failed: return L("nogps_phone_add_failed")
     default: return L("nogps_phone_add_opening")
-    }
-  }
-}
-
-/// All the box has told about itself and the car in this connection, by groups.
-private final class BoxValuesViewController: MWMTableViewController {
-  private enum Constants {
-    static let refreshInterval: TimeInterval = 0.5
-    static let cellId = "NoGpsBoxValueCell"
-    static let empty = "—"
-  }
-
-  private struct Group {
-    let header: String
-    var items: [NoGpsBoxValueItem]
-    var footer: String?
-  }
-
-  private var status = NoGps.status()
-  private var groups: [Group] = []
-  private var timer: Timer?
-
-  override func viewDidLoad() {
-    super.viewDidLoad()
-    title = L("nogps_box_value_title")
-    tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
-  }
-
-  override func viewWillAppear(_ animated: Bool) {
-    super.viewWillAppear(animated)
-    refresh()
-    let timer = Timer(timeInterval: Constants.refreshInterval, repeats: true) { [weak self] _ in self?.refresh() }
-    RunLoop.main.add(timer, forMode: .common)
-    self.timer = timer
-  }
-
-  override func viewWillDisappear(_ animated: Bool) {
-    super.viewWillDisappear(animated)
-    timer?.invalidate()
-    timer = nil
-  }
-
-  private func refresh() {
-    status = NoGps.status()
-    // The box has disconnected: its values are gone.
-    if status.boxValues.isEmpty, navigationController?.topViewController === self {
-      navigationController?.popViewController(animated: true)
-      return
-    }
-    // The values come in the order of the groups.
-    let headers = [L("nogps_box_value_group_car"), L("nogps_box_value_group_gyroscope"), L("nogps_box_value_group_obd"),
-                   L("nogps_box_value_group_box")]
-    let groupStarts: [NoGpsBoxValue] = [.engine, .imuName, .obdState, .firmware]
-    groups = []
-    for item in status.boxValues {
-      let index = groupStarts.lastIndex { $0.rawValue <= item.kind.rawValue } ?? 0
-      if groups.last?.header != headers[index] {
-        groups.append(Group(header: headers[index], items: []))
-      }
-      groups[groups.count - 1].items.append(item)
-      if item.kind == .voltageMismatch, item.value == "1" {
-        groups[groups.count - 1].footer = L("nogps_voltage_mismatch")
-      }
-    }
-    tableView.reloadData()
-  }
-
-  override func numberOfSections(in _: UITableView) -> Int {
-    groups.count
-  }
-
-  override func tableView(_: UITableView, numberOfRowsInSection section: Int) -> Int {
-    groups[section].items.count
-  }
-
-  override func tableView(_: UITableView, titleForHeaderInSection section: Int) -> String? {
-    groups[section].header
-  }
-
-  override func tableView(_: UITableView, titleForFooterInSection section: Int) -> String? {
-    groups[section].footer
-  }
-
-  override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-    let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
-    let item = groups[indexPath.section].items[indexPath.row]
-    var content = UIListContentConfiguration.valueCell()
-    content.text = Self.label(item.kind)
-    content.secondaryText = valueText(item)
-    content.textProperties.numberOfLines = 0
-    content.secondaryTextProperties.numberOfLines = 0
-    cell.contentConfiguration = content
-    cell.selectionStyle = .none
-    return cell
-  }
-
-  private func valueText(_ item: NoGpsBoxValueItem) -> String {
-    let value = item.value
-    if value.isEmpty {
-      // The box asks the car for them while it stands.
-      let standingOnly = item.kind == .rpm || item.kind == .elmVoltage || item.kind == .ecuVoltage
-      return standingOnly && status.speedKmh > 0 ? L("nogps_not_while_driving") : Constants.empty
-    }
-    switch item.kind {
-    case .engine:
-      if value == "RUN" {
-        return L("nogps_engine_running")
-      }
-      if value == "OFF" {
-        return L("nogps_engine_stopped")
-      }
-      return value
-    case .rpm:
-      return Int(value).map { String(format: L("nogps_rpm"), $0) } ?? value
-    case .boxVoltage, .elmVoltage, .ecuVoltage:
-      return String(format: L("nogps_volts"), value)
-    case .voltageMismatch:
-      return value == "1" ? L("yes") : L("no")
-    case .imuRate:
-      return String(format: L("nogps_box_value_hz"), value)
-    case .imuTemperature:
-      return String(format: L("nogps_box_value_celsius"), value)
-    case .biasAge:
-      return String(format: L("nogps_box_value_seconds_ago"), value)
-    case .bias:
-      return String(format: L("nogps_box_value_degrees_per_second"), value)
-    case .flashSize, .maxImageSize:
-      return String(format: L("nogps_box_value_kilobytes"), value)
-    default:
-      return value
-    }
-  }
-
-  private static func label(_ kind: NoGpsBoxValue) -> String {
-    switch kind {
-    case .engine: L("nogps_box_value_engine")
-    case .rpm: L("nogps_box_value_rpm")
-    case .boxVoltage: L("nogps_box_value_box_voltage")
-    case .elmVoltage: L("nogps_box_value_elm_voltage")
-    case .ecuVoltage: L("nogps_box_value_ecu_voltage")
-    case .voltageMismatch: L("nogps_box_value_voltage_mismatch")
-    case .imuName: L("nogps_box_value_name")
-    case .imuState, .obdState: L("nogps_box_value_state")
-    case .imuChipId: L("nogps_box_value_chip_id")
-    case .imuRate: L("nogps_box_value_rate")
-    case .imuTemperature: L("nogps_box_value_temperature")
-    case .imuErrors: L("nogps_box_value_read_errors")
-    case .biasAge: L("nogps_box_value_bias_age")
-    case .bias: L("nogps_box_value_bias")
-    case .obdProtocol: L("nogps_box_value_protocol")
-    case .obdError: L("nogps_box_value_last_error")
-    case .obdBaud: L("nogps_box_value_uart_baud")
-    case .firmware: L("nogps_box_value_firmware")
-    case .buildDate: L("nogps_box_value_build_date")
-    case .chip: L("nogps_box_value_chip")
-    case .board: L("nogps_box_value_board")
-    case .id: L("nogps_box_value_id")
-    case .flashSize: L("nogps_box_value_flash_size")
-    case .maxImageSize: L("nogps_box_value_max_image_size")
-    case .slot: L("nogps_box_value_slot")
-    case .slotState: L("nogps_box_value_slot_state")
-    case .abilities: L("nogps_box_value_abilities")
-    case .powerOns: L("nogps_box_value_power_ons")
-    case .lastEvent: L("nogps_box_value_last_event")
-    @unknown default: ""
     }
   }
 }
@@ -1207,9 +1024,25 @@ private final class BoxSearchView: UIView {
   private func actionTapped() {
     onAction?()
   }
+
+  /// A row of the search, the same view every refresh: its animation goes on.
+  static func embed(_ view: BoxSearchView, in cell: UITableViewCell) {
+    cell.contentConfiguration = nil
+    guard view.superview !== cell.contentView else { return }
+    view.removeFromSuperview()
+    view.translatesAutoresizingMaskIntoConstraints = false
+    cell.contentView.addSubview(view)
+    let guide = cell.contentView.layoutMarginsGuide
+    NSLayoutConstraint.activate([
+      view.leadingAnchor.constraint(equalTo: guide.leadingAnchor),
+      view.trailingAnchor.constraint(equalTo: guide.trailingAnchor),
+      view.topAnchor.constraint(equalTo: guide.topAnchor),
+      view.bottomAnchor.constraint(equalTo: guide.bottomAnchor),
+    ])
+  }
 }
 
-/// The top of the Box sheet: the box and GPS side by side. GPS opens its page, the box opens its values while connected.
+/// The top of the Box sheet: the box and GPS side by side, each opens its page.
 private final class StatusTilesView: UIView {
   let box = StatusTileView(title: L("nogps_box_title"), opensPage: false)
   let gps = StatusTileView(title: L("nogps_status_gps"), opensPage: true)
@@ -1341,8 +1174,7 @@ private final class StatusTileView: UIControl {
     self.look = look
     drawTile()
     NavButton.pulse(tile.layer, look.pulsing)
-    // The states follow "Box: name ·" on the sensors screen, here they start the line.
-    stateLabel.text = text.prefix(1).uppercased(with: .current) + text.dropFirst()
+    stateLabel.text = NoGpsBoxPage.sentenceCase(text)
     // A grey state is read as disabled.
     stateLabel.textColor = look.color == .secondaryLabel ? .label : look.color
     accessibilityValue = stateLabel.text
@@ -1371,16 +1203,16 @@ private final class StatusTileView: UIControl {
   }
 }
 
-/// Why GPS can be turned off for the car, or why not. Both texts take their place: the sheet doesn't jump as the box
-/// comes and goes.
-private final class GpsUseFooterView: UITableViewHeaderFooterView {
+/// Why GPS can be blocked for the car, or why not. Both texts take their place: the sheet doesn't jump as the box comes
+/// and goes.
+private final class GpsBlockFooterView: UITableViewHeaderFooterView {
   private let hint = UILabel()
   private let needsBox = UILabel()
 
   init() {
     super.init(reuseIdentifier: nil)
-    hint.text = L("nogps_gps_use_hint")
-    needsBox.text = L("nogps_gps_use_needs_box")
+    hint.text = L("nogps_gps_block_hint")
+    needsBox.text = L("nogps_gps_block_needs_box")
     for label in [hint, needsBox] {
       label.font = .preferredFont(forTextStyle: .footnote)
       label.adjustsFontForContentSizeCategory = true
@@ -1402,10 +1234,10 @@ private final class GpsUseFooterView: UITableViewHeaderFooterView {
     fatalError("init(coder:) has not been implemented")
   }
 
-  func update(canChangeUse: Bool) {
-    hint.alpha = canChangeUse ? 1 : 0
-    needsBox.alpha = canChangeUse ? 0 : 1
-    hint.accessibilityElementsHidden = !canChangeUse
-    needsBox.accessibilityElementsHidden = canChangeUse
+  func update(canChange: Bool) {
+    hint.alpha = canChange ? 1 : 0
+    needsBox.alpha = canChange ? 0 : 1
+    hint.accessibilityElementsHidden = !canChange
+    needsBox.accessibilityElementsHidden = canChange
   }
 }

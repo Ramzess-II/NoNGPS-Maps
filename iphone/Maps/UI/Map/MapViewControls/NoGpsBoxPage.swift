@@ -1,52 +1,68 @@
-/// The state of the inertial navigation by the NonGPS-OBD sensor box: the box, the speed and its calibration. Without
-/// the box it offers to buy or to connect one.
-final class NoGpsSensorsViewController: MWMTableViewController {
+/// The sensor box, the car and how they are calibrated, by sections that unfold in place. Opened from the box tile of
+/// the Box sheet, from the road-lost pill and from the firmware offer.
+final class NoGpsBoxPage: MWMTableViewController {
+  enum Part: CaseIterable {
+    case box
+    case obd
+    case car
+    case speed
+    case imu
+  }
+
   private enum Constants {
     static let refreshInterval: TimeInterval = 0.5
-    static let cellId = "NoGpsSensorsCell"
-    static let shopURL = URL(string: "https://non-gps.com")!
+    static let cellId = "NoGpsBoxPageCell"
     // The speed table ranges, as in SpeedTable of the core.
     static let speedTableRangeKmh = 10
     static let speedTableMinKmh = 5
     // A range is measured after this distance.
     static let speedTableMinDistanceM = 300
+    // Dense: all the ranges of the speed table fit on the screen.
+    static let tableRowMargin = CGFloat(4)
   }
 
-  private enum Row {
-    case buy
-    case connect
-    case box
+  private enum Row: Equatable {
+    case readiness
+    case header(Part)
+    case readOnly
+    case fixHint
     case firmware
     case firmwareAction
-    case calibrate
-    case boxSensors
+    case value(NoGpsBoxValue)
     case speed
-    case car
-    case voltageMismatch
-    case readiness
+    case speedText
     case scale
+    case speedLag
     case clearSpeed
-    case speedTableToggle
     case speedTableRange(Int)
-    case forget
+    case calibration
   }
 
   private struct Section {
-    var header: String?
     let rows: [Row]
-    let footer: String?
+    var footer: String?
   }
 
   private var sections: [Section] = []
   private var status = NoGps.status()
   private var timer: Timer?
-  /// Not saved: the screen opens with the table folded.
-  private var speedTableShown = false
-  /// Called once the screen is closed.
-  var onClose: (() -> Void)?
+  private var unfolded: Set<Part>
+  /// The values of the last connection: the box tells them only while it is connected.
+  private var lastValues: [NoGpsBoxValueItem] = []
+  private var shownRows: [[Row]] = []
+  private var shownFooters: [String?] = []
+  /// The same views every refresh: new ones fly in from the corner of the reconfigured cell.
+  private var chevrons: [Part: UIImageView] = [:]
+  private let speedLagValue: UILabel = {
+    let label = UILabel()
+    label.font = .preferredFont(forTextStyle: .body)
+    label.textColor = .secondaryLabel
+    return label
+  }()
 
-  init() {
-    super.init(style: .grouped)
+  init(unfolded: Set<Part> = []) {
+    self.unfolded = unfolded
+    super.init(style: .insetGrouped)
   }
 
   @available(*, unavailable)
@@ -54,18 +70,21 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     fatalError("init(coder:) has not been implemented")
   }
 
+  /// The firmware update is followed in the Box section.
+  func unfold(_ part: Part) {
+    unfolded.insert(part)
+    refresh()
+  }
+
   override func viewDidLoad() {
     super.viewDidLoad()
-    title = L("nogps_sensors_title")
-    navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(close))
+    title = L("nogps_box_title")
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
-    tableView.rowHeight = UITableView.automaticDimension
-    tableView.estimatedRowHeight = 44
-    refresh()
   }
 
   override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
+    refresh()
     let timer = Timer(timeInterval: Constants.refreshInterval, repeats: true) { [weak self] _ in self?.refresh() }
     RunLoop.main.add(timer, forMode: .common)
     self.timer = timer
@@ -77,52 +96,66 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     timer = nil
   }
 
-  override func viewDidDisappear(_ animated: Bool) {
-    super.viewDidDisappear(animated)
-    // Closed by the button or swiped down.
-    if navigationController?.isBeingDismissed ?? isBeingDismissed {
-      onClose?()
-      onClose = nil
-    }
-  }
-
   private func refresh() {
     status = NoGps.status()
+    // The last car is forgotten: there is no box to show.
     guard status.inertialEnabled else {
-      sections = [
-        Section(header: L("nogps_box_buy_title"), rows: [.buy], footer: L("nogps_box_buy_text")),
-        Section(rows: [.connect], footer: nil),
-      ]
-      tableView.reloadData()
+      if navigationController?.topViewController === self {
+        navigationController?.popToRootViewController(animated: true)
+      }
       return
     }
-    var stateRows: [Row] = [.box]
-    // The install row comes where a text was, not a button: a tap made as the box connects doesn't start an update.
-    if isFirmwareUpdating() || !status.boxFirmware.isEmpty {
-      stateRows.append(.firmware)
-      if canInstallFirmware() || canCancelFirmware() {
-        stateRows.append(.firmwareAction)
-      }
+    if !status.boxValues.isEmpty {
+      lastValues = status.boxValues
     }
-    stateRows.append(.speed)
-    if status.inertialStarted, status.hasCarInfo {
-      stateRows.append(.car)
-      if status.voltageMismatch {
-        stateRows.append(.voltageMismatch)
-      }
-    }
+    sections = []
     if status.inertialStarted {
-      stateRows.append(.readiness)
+      sections.append(Section(rows: [.readiness]))
     }
-    sections = [
-      Section(rows: stateRows, footer: L("nogps_sensors_hint_box")),
-      // The user calibrates the box when it is put into the car.
-      Section(header: L("nogps_box_calibration"), rows: [.boxSensors, .calibrate],
-              footer: L("nogps_box_calibration_hint")),
-      Section(rows: speedRows(), footer: nil),
-      Section(rows: [.forget], footer: nil),
-    ]
-    tableView.reloadData()
+    let connected = NoGpsBoxSheet.isBoxHeard(status) && status.bleState == .connected
+    var box: [Row] = []
+    if connected, status.boxReadOnly {
+      box.append(.readOnly)
+    }
+    box.append(.fixHint)
+    if !status.boxFirmware.isEmpty || Self.isFirmwareUpdating(status) {
+      box.append(.firmware)
+    }
+    if Self.canInstallFirmware(status) || Self.canCancelFirmware(status) {
+      box.append(.firmwareAction)
+    }
+    addSection(.box, box + valueRows(.firmware, .lastEvent))
+    addSection(.obd, valueRows(.obdState, .obdBaud))
+    let mismatch = status.boxValues.contains { $0.kind == .voltageMismatch && $0.value == "1" }
+    addSection(.car, [.speed] + valueRows(.engine, .voltageMismatch),
+               footer: mismatch ? L("nogps_voltage_mismatch") : nil)
+    if status.inertialStarted {
+      addSection(.speed, [.speedText, .scale, .speedLag, .clearSpeed]
+        + status.speedTableCarM.indices.map { .speedTableRange($0) })
+    }
+    addSection(.imu, [.calibration] + valueRows(.imuName, .bias))
+    // Footers are not updated in place.
+    let footers = sections.map(\.footer)
+    if footers != shownFooters {
+      shownFooters = footers
+      shownRows = []
+    }
+    tableView.reloadData(keepingRows: sections.map(\.rows), &shownRows)
+  }
+
+  /// OBD is always open: it tells why the car speed is missing.
+  private func isUnfolded(_ part: Part) -> Bool {
+    part == .obd || unfolded.contains(part)
+  }
+
+  private func addSection(_ part: Part, _ rows: [Row], footer: String? = nil) {
+    let open = isUnfolded(part)
+    sections.append(Section(rows: [.header(part)] + (open ? rows : []), footer: open ? footer : nil))
+  }
+
+  /// The values of a group, in the order of NoGpsBoxValue.
+  private func valueRows(_ first: NoGpsBoxValue, _ last: NoGpsBoxValue) -> [Row] {
+    lastValues.filter { (first.rawValue ... last.rawValue).contains($0.kind.rawValue) }.map { .value($0.kind) }
   }
 
   // MARK: - UITableViewDataSource
@@ -135,88 +168,94 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     sections[section].rows.count
   }
 
-  override func tableView(_: UITableView, titleForHeaderInSection section: Int) -> String? {
-    sections[section].header
-  }
-
   override func tableView(_: UITableView, titleForFooterInSection section: Int) -> String? {
     sections[section].footer
   }
 
   override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
     let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
-    var content = cell.defaultContentConfiguration()
+    var content = UIListContentConfiguration.cell()
     content.textProperties.numberOfLines = 0
+    cell.accessoryType = .none
     cell.accessoryView = nil
     cell.selectionStyle = .none
-    let row = sections[indexPath.section].rows[indexPath.row]
-    switch row {
-    case .buy:
-      content.text = L("nogps_box_buy")
-      content.textProperties.color = .linkBlue
-      cell.selectionStyle = .default
-    case .connect:
-      content.text = L("nogps_box_connect")
-      content.textProperties.color = .linkBlue
-      cell.selectionStyle = .default
-    case .forget:
-      content.text = L("nogps_box_forget")
-      content.textProperties.color = .buttonRed
-      cell.selectionStyle = .default
-    case .box:
-      let name = NoGpsBoxSheet.boxName(status)
-      let box = status.inertialStarted ? name + " · " + Self.boxStateText(status) : name
-      content.text = String(format: L("nogps_sensors_box"), box)
-    case .firmware:
-      content.text = String(format: L("nogps_sensors_firmware"), firmwareText())
-    case .firmwareAction:
-      content.text = canCancelFirmware() ? L("cancel") : String(format: L("nogps_firmware_install"), status.bundledFirmware)
-      content.textProperties.color = .linkBlue
-      cell.selectionStyle = .default
-    case .calibrate:
-      content.text = L("nogps_sensors_calibrate_box")
-      content.textProperties.color = boxReachable() ? .linkBlue : .blackHintText
-      cell.selectionStyle = boxReachable() ? .default : .none
-    case .boxSensors:
-      content.text = String(format: L("nogps_sensors_box_sensors"), Self.boxCalibrationText(status))
-    case .speed:
-      let speed = status.inertialStarted ? status.speedKmh : -1
-      content.text = String(format: L("nogps_sensors_speed"),
-                            speed >= 0 ? String(format: L("nogps_speed_kmh"), speed) : L("nogps_unknown"))
-    case .car:
-      content.text = carText()
-    case .voltageMismatch:
-      content.text = L("nogps_voltage_mismatch")
-      content.textProperties.color = .buttonRed
+    switch sections[indexPath.section].rows[indexPath.row] {
     case .readiness:
       let missing = missingParts()
       content.text = missing.isEmpty ? L("nogps_sensors_ready")
         : String(format: L("nogps_sensors_not_ready"), missing.joined(separator: ", "))
-      content.textProperties.color = missing.isEmpty ? .linkBlue : .buttonRed
-    case .scale:
-      let scale = status.inertialStarted ? String(format: "×%.2f", status.speedScale) : L("nogps_unknown")
-      var text = String(format: L("nogps_sensors_scale"), scale, status.inertialStarted ? status.speedTableRanges : 0)
-      if status.inertialStarted {
-        // Until GPS measures the speed, e.g. on the first trip, it is corrected roughly by the roads.
-        if status.speedTableRanges == 0 {
-          text += "\n" + (status.roughSpeedTableRanges > 0
-            ? String(format: L("nogps_sensors_rough_speed"), status.roughSpeedTableRanges)
-            : L("nogps_sensors_rough_speed_learning"))
-        }
-        let lag = L(status.speedLagMeasured ? "nogps_sensors_lag_measured" : "nogps_sensors_lag_usual")
-        text += "\n" + String(format: lag, String(format: "%.1f", status.speedLagSec))
+      content.textProperties.color = missing.isEmpty ? .systemGreen : .systemRed
+      content.textProperties.font = .preferredFont(forTextStyle: .headline)
+    case .header(let part):
+      content = UIListContentConfiguration.subtitleCell()
+      content.text = headerTitle(part)
+      content.secondaryText = headerSubtitle(part)
+      content.textProperties.font = .preferredFont(forTextStyle: .headline)
+      content.secondaryTextProperties.color = .secondaryLabel
+      content.secondaryTextProperties.numberOfLines = 0
+      if part != .obd {
+        let chevron = chevrons[part] ?? UIImageView()
+        chevrons[part] = chevron
+        chevron.image = UIImage(systemName: isUnfolded(part) ? "chevron.down" : "chevron.forward")
+        chevron.tintColor = .tertiaryLabel
+        chevron.sizeToFit()
+        cell.accessoryView = chevron
+        cell.selectionStyle = .default
       }
-      content.text = text
-    case .clearSpeed:
-      content.text = L("nogps_clear_speed")
+    case .readOnly:
+      content.text = L("nogps_box_read_only")
+      content.textProperties.color = .secondaryLabel
+    case .fixHint:
+      content.text = L("nogps_sensors_hint_box")
+      content.textProperties.color = .secondaryLabel
+    case .firmware:
+      content.text = String(format: L("nogps_sensors_firmware"), Self.firmwareText(status))
+    case .firmwareAction:
+      content.text = Self.canCancelFirmware(status) ? L("cancel")
+        : String(format: L("nogps_firmware_install"), status.bundledFirmware)
       content.textProperties.color = .linkBlue
       cell.selectionStyle = .default
-    case .speedTableToggle:
-      content.text = L(speedTableShown ? "nogps_speed_table_hide" : "nogps_speed_table_show")
-      content.textProperties.color = .linkBlue
+    case .value(let kind):
+      content = UIListContentConfiguration.valueCell()
+      content.text = Self.label(kind)
+      content.secondaryText = valueText(kind)
+      content.textProperties.numberOfLines = 0
+      content.secondaryTextProperties.numberOfLines = 0
+    case .speed:
+      content.text = String(format: L("nogps_sensors_speed"), status.inertialStarted && status.speedKmh >= 0
+        ? String(format: L("nogps_speed_kmh"), status.speedKmh) : L("nogps_unknown"))
+    case .speedText:
+      content.attributedText = speedHintText()
+    case .scale:
+      content.text = scaleText()
+    case .speedLag:
+      content = UIListContentConfiguration.subtitleCell()
+      content.text = L("nogps_speed_lag")
+      content.secondaryText = L(status.speedLagMeasured ? "nogps_speed_lag_measured" : "nogps_speed_lag_usual")
+      content.secondaryTextProperties.color = .secondaryLabel
+      // On the right in the middle of both lines, as the values of the other rows.
+      speedLagValue.text = String(format: L("nogps_speed_lag_value"), String(format: "%.1f", status.speedLagSec))
+      speedLagValue.sizeToFit()
+      cell.accessoryView = speedLagValue
+    case .clearSpeed:
+      content.text = L("nogps_box_clear_speed")
+      // Not as red as forgetting the car: the table is learned again on the next trips.
+      content.textProperties.color = .systemOrange
       cell.selectionStyle = .default
     case .speedTableRange(let i):
       content.text = Self.speedTableRowText(status, i)
+      content.directionalLayoutMargins.top = Constants.tableRowMargin
+      content.directionalLayoutMargins.bottom = Constants.tableRowMargin
+      content.textProperties.font = .monospacedDigitSystemFont(ofSize: UIFont.preferredFont(forTextStyle: .body).pointSize,
+                                                               weight: .regular)
+    case .calibration:
+      content = UIListContentConfiguration.valueCell()
+      content.text = L("nogps_box_calibration")
+      content.secondaryText = Self.boxCalibrationText(status)
+      content.textProperties.numberOfLines = 0
+      content.secondaryTextProperties.numberOfLines = 0
+      cell.accessoryType = .disclosureIndicator
+      cell.selectionStyle = .default
     }
     cell.contentConfiguration = content
     return cell
@@ -227,34 +266,27 @@ final class NoGpsSensorsViewController: MWMTableViewController {
   override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
     tableView.deselectRow(at: indexPath, animated: true)
     switch sections[indexPath.section].rows[indexPath.row] {
-    case .buy:
-      UIApplication.shared.open(Constants.shopURL)
-    case .connect:
-      NoGps.setInertialNavigationEnabled(true)
-      refresh()
-    case .forget:
-      NoGps.forgetBox()
+    case .header(let part) where part != .obd:
+      if unfolded.contains(part) {
+        unfolded.remove(part)
+      } else {
+        unfolded.insert(part)
+      }
       refresh()
     case .firmwareAction:
       // The row does what it shows, if the update still allows it: the box may have gone on since it was drawn.
-      let cancel = canCancelFirmware()
+      let cancel = Self.canCancelFirmware(status)
       status = NoGps.status()
-      if cancel, canCancelFirmware() {
+      if cancel, Self.canCancelFirmware(status) {
         NoGps.cancelFirmwareUpdate()
-      } else if !cancel, canInstallFirmware() {
+      } else if !cancel, Self.canInstallFirmware(status) {
         NoGps.startFirmwareUpdate()
       }
       refresh()
-    case .calibrate:
-      // The box calibrates itself: there is nobody to calibrate while it is out of reach.
-      guard boxReachable() else { break }
-      NoGps.calibrate()
-      refresh()
     case .clearSpeed:
       Self.confirmClearSpeed(from: self) { [weak self] in self?.refresh() }
-    case .speedTableToggle:
-      speedTableShown.toggle()
-      refresh()
+    case .calibration:
+      navigationController?.pushViewController(NoGpsCalibrationPage(), animated: true)
     default:
       break
     }
@@ -262,17 +294,165 @@ final class NoGpsSensorsViewController: MWMTableViewController {
 
   // MARK: - Texts
 
-  private func speedRows() -> [Row] {
-    var rows: [Row] = [.scale, .clearSpeed]
-    guard status.inertialStarted else { return rows }
-    rows.append(.speedTableToggle)
-    if speedTableShown {
-      rows += status.speedTableCarM.indices.map { .speedTableRange($0) }
+  private func headerTitle(_ part: Part) -> String {
+    switch part {
+    case .box: return L("nogps_box_value_group_box")
+    case .obd: return L("nogps_box_value_group_obd")
+    case .car:
+      let car = NoGps.cars().first { $0.carId == status.carId }
+      return car.map { NoGpsBoxSheet.carName($0) } ?? L("nogps_box_value_group_car")
+    case .speed: return L("nogps_speed_calibration")
+    case .imu: return L("nogps_box_value_group_gyroscope")
     }
-    return rows
   }
 
-  /// Also shown by the speed table of the Box sheet.
+  private func headerSubtitle(_ part: Part) -> String {
+    switch part {
+    case .box:
+      let state = NoGpsBoxPage.sentenceCase(Self.boxStateText(status))
+      let firmware = Self.firmwareText(status)
+      return firmware.isEmpty ? state : state + " · " + firmware
+    case .obd:
+      return NoGpsBoxSheet.obdHintText(status) ?? NoGpsBoxPage.sentenceCase(Self.boxStateText(status))
+    case .car:
+      guard NoGpsBoxSheet.isBoxHeard(status), status.engineRunning >= 0 else { return L("nogps_unknown") }
+      return NoGpsBoxPage.sentenceCase(L(status.engineRunning > 0 ? "nogps_engine_running" : "nogps_engine_stopped"))
+    case .speed:
+      return Self.speedTableText(status)
+    case .imu:
+      let parts = [NoGpsBoxValue.imuState, .imuTemperature].compactMap { kind -> String? in
+        guard lastValues.contains(where: { $0.kind == kind }) else { return nil }
+        return valueText(kind)
+      }
+      return parts.isEmpty ? L("nogps_unknown") : parts.joined(separator: " · ")
+    }
+  }
+
+  /// The tyres make the car speed wrong: what is learned and what the user does for it.
+  private func speedHintText() -> NSAttributedString {
+    let font = UIFont.preferredFont(forTextStyle: .subheadline)
+    let text = NSMutableAttributedString(string: L("nogps_speed_table_hint") + "\n",
+                                         attributes: [.font: font, .foregroundColor: UIColor.secondaryLabel])
+    let bold = font.fontDescriptor.withSymbolicTraits(.traitBold).map { UIFont(descriptor: $0, size: 0) } ?? font
+    text.append(NSAttributedString(string: L("nogps_speed_table_action"),
+                                   attributes: [.font: bold, .foregroundColor: UIColor.label]))
+    return text
+  }
+
+  private func scaleText() -> String {
+    var text = String(format: L("nogps_sensors_scale"), String(format: "×%.2f", status.speedScale),
+                      status.speedTableRanges)
+    // Until GPS measures the speed, e.g. on the first trip, it is corrected roughly by the roads.
+    if status.speedTableRanges == 0 {
+      text += "\n" + (status.roughSpeedTableRanges > 0
+        ? String(format: L("nogps_sensors_rough_speed"), status.roughSpeedTableRanges)
+        : L("nogps_sensors_rough_speed_learning"))
+    }
+    return text
+  }
+
+  private func missingParts() -> [String] {
+    var missing: [String] = []
+    if status.speedKmh < 0 {
+      missing.append(L("nogps_missing_speed"))
+    }
+    if status.calibration != .done {
+      missing.append(L("nogps_missing_box_calibration"))
+    }
+    if !status.hasInertialPosition {
+      missing.append(L("nogps_missing_position"))
+    }
+    return missing
+  }
+
+  /// "—" while the box is out of reach: the values are of the last connection.
+  private func valueText(_ kind: NoGpsBoxValue) -> String {
+    guard !status.boxValues.isEmpty, let value = status.boxValues.first(where: { $0.kind == kind })?.value
+    else { return L("nogps_unknown") }
+    if value.isEmpty {
+      // The box asks the car for them while it stands.
+      let standingOnly = kind == .rpm || kind == .elmVoltage || kind == .ecuVoltage
+      return standingOnly && status.speedKmh > 0 ? L("nogps_not_while_driving") : L("nogps_unknown")
+    }
+    switch kind {
+    case .engine:
+      if value == "RUN" {
+        return L("nogps_engine_running")
+      }
+      if value == "OFF" {
+        return L("nogps_engine_stopped")
+      }
+      return value
+    case .rpm:
+      return Int(value).map { String(format: L("nogps_rpm"), $0) } ?? value
+    case .boxVoltage, .elmVoltage, .ecuVoltage:
+      return String(format: L("nogps_volts"), value)
+    case .voltageMismatch:
+      return value == "1" ? L("yes") : L("no")
+    case .imuRate:
+      return String(format: L("nogps_box_value_hz"), value)
+    case .imuTemperature:
+      return String(format: L("nogps_box_value_celsius"), value)
+    case .biasAge:
+      return String(format: L("nogps_box_value_seconds_ago"), value)
+    case .bias:
+      return String(format: L("nogps_box_value_degrees_per_second"), value)
+    case .flashSize, .maxImageSize:
+      return String(format: L("nogps_box_value_kilobytes"), value)
+    default:
+      return value
+    }
+  }
+
+  private static func label(_ kind: NoGpsBoxValue) -> String {
+    switch kind {
+    case .engine: L("nogps_box_value_engine")
+    case .rpm: L("nogps_box_value_rpm")
+    case .boxVoltage: L("nogps_box_value_box_voltage")
+    case .elmVoltage: L("nogps_box_value_elm_voltage")
+    case .ecuVoltage: L("nogps_box_value_ecu_voltage")
+    case .voltageMismatch: L("nogps_box_value_voltage_mismatch")
+    case .imuName: L("nogps_box_value_name")
+    case .imuState, .obdState: L("nogps_box_value_state")
+    case .imuChipId: L("nogps_box_value_chip_id")
+    case .imuRate: L("nogps_box_value_rate")
+    case .imuTemperature: L("nogps_box_value_temperature")
+    case .imuErrors: L("nogps_box_value_read_errors")
+    case .biasAge: L("nogps_box_value_bias_age")
+    case .bias: L("nogps_box_value_bias")
+    case .obdProtocol: L("nogps_box_value_protocol")
+    case .obdError: L("nogps_box_value_last_error")
+    case .obdBaud: L("nogps_box_value_uart_baud")
+    case .firmware: L("nogps_box_value_firmware")
+    case .buildDate: L("nogps_box_value_build_date")
+    case .chip: L("nogps_box_value_chip")
+    case .board: L("nogps_box_value_board")
+    case .id: L("nogps_box_value_id")
+    case .flashSize: L("nogps_box_value_flash_size")
+    case .maxImageSize: L("nogps_box_value_max_image_size")
+    case .slot: L("nogps_box_value_slot")
+    case .slotState: L("nogps_box_value_slot_state")
+    case .abilities: L("nogps_box_value_abilities")
+    case .powerOns: L("nogps_box_value_power_ons")
+    case .lastEvent: L("nogps_box_value_last_event")
+    @unknown default: ""
+    }
+  }
+
+  // MARK: - Shared texts
+
+  /// How many ranges of the car speed GPS has measured. The rough table by the roads doesn't count: it is only a guess.
+  static func speedTableText(_ status: NoGpsStatus) -> String {
+    let all = status.speedTableCarM.count
+    if status.speedTableRanges == 0 {
+      return L("nogps_speed_table_not_calibrated")
+    }
+    if status.speedTableRanges >= all {
+      return L("nogps_speed_table_calibrated")
+    }
+    return String(format: L("nogps_speed_table_calibrating"), status.speedTableRanges, all)
+  }
+
   static func speedTableRowText(_ status: NoGpsStatus, _ i: Int) -> String {
     let carM = status.speedTableCarM[i].doubleValue
     let scale = status.speedTableScale[i].doubleValue
@@ -328,25 +508,32 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     }
   }
 
-  /// Also shown by the Box sheet.
   static func boxCalibrationText(_ status: NoGpsStatus) -> String {
+    let text: String
     switch status.inertialStarted ? status.calibration : .none {
-    case .none: return L("nogps_box_not_calibrated")
-    case .calibrating: return String(format: L("nogps_box_calibrating"), status.calibrationProgress)
+    case .none: text = L("nogps_box_not_calibrated")
+    case .calibrating: text = String(format: L("nogps_box_calibrating"), status.calibrationProgress)
     // The box keeps its calibration, but it may stand in another way since it was plugged in.
-    case .done: return L(status.boxCalibrationAdvised ? "nogps_box_calibration_advised" : "nogps_box_calibrated")
-    case .failedMoving: return L("nogps_box_calibration_failed")
-    case .mountMoved: return L("nogps_gyro_mount_moved")
-    case .linkLost: return L("nogps_box_calibration_link_lost")
-    @unknown default: return L("nogps_unknown")
+    case .done: text = L(status.boxCalibrationAdvised ? "nogps_box_calibration_advised" : "nogps_box_calibrated")
+    case .failedMoving: text = L("nogps_box_calibration_failed")
+    case .mountMoved: text = L("nogps_gyro_mount_moved")
+    case .linkLost: text = L("nogps_box_calibration_link_lost")
+    @unknown default: text = L("nogps_unknown")
+    }
+    return NoGpsBoxPage.sentenceCase(text)
+  }
+
+  /// The box should be calibrated and this phone can do it now: the map shows a bar until it is done.
+  static func needsCalibration(_ status: NoGpsStatus) -> Bool {
+    guard NoGpsBoxSheet.isBoxHeard(status), status.bleState == .connected, !status.boxReadOnly else { return false }
+    switch status.calibration {
+    case .none, .failedMoving, .mountMoved, .linkLost: return true
+    case .done: return status.boxCalibrationAdvised
+    default: return false
     }
   }
 
-  private func firmwareText() -> String {
-    Self.firmwareText(status)
-  }
-
-  /// The firmware of the box, or how its update goes. Also shown by the Box sheet.
+  /// The firmware of the box, or how its update goes.
   static func firmwareText(_ status: NoGpsStatus) -> String {
     switch status.firmwareUpdate {
     case .starting: return L("nogps_firmware_starting")
@@ -358,20 +545,8 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     }
   }
 
-  private func boxReachable() -> Bool {
-    status.bleState == .connected
-  }
-
-  private func isFirmwareUpdating() -> Bool {
-    Self.isFirmwareUpdating(status)
-  }
-
   private static func isFirmwareUpdating(_ status: NoGpsStatus) -> Bool {
     [.starting, .sending, .verifying, .restarting].contains(status.firmwareUpdate)
-  }
-
-  private func canInstallFirmware() -> Bool {
-    Self.canInstallFirmware(status)
   }
 
   /// The box works with the firmware the app is tested with: there is nothing to install. A debug build sends it again
@@ -386,45 +561,31 @@ final class NoGpsSensorsViewController: MWMTableViewController {
   }
 
   /// A box that has taken the firmware restarts by itself.
-  private func canCancelFirmware() -> Bool {
-    isFirmwareUpdating() && status.firmwareUpdate != .restarting
+  private static func canCancelFirmware(_ status: NoGpsStatus) -> Bool {
+    isFirmwareUpdating(status) && status.firmwareUpdate != .restarting
   }
 
-  /// What the box tells about the car: the engine and the voltage measured by the box and by its OBD chip.
-  private func carText() -> String {
-    // The box measures its own voltage all the time and asks the car for the rest only while it stands, not to delay
-    // the speed.
-    let unknown = L(status.speedKmh > 0 ? "nogps_not_while_driving" : "nogps_unknown")
-    let engine = status.engineRunning < 0 ? L("nogps_unknown")
-      : L(status.engineRunning > 0 ? "nogps_engine_running" : "nogps_engine_stopped")
-    let rpm = status.rpm >= 0 ? String(format: L("nogps_rpm"), status.rpm) : unknown
-    let box = status.boxMillivolts >= 0 ? volts(status.boxMillivolts) : L("nogps_unknown")
-    let elm = status.elmMillivolts >= 0 ? volts(status.elmMillivolts) : unknown
-    let ecu = status.ecuMillivolts >= 0 ? volts(status.ecuMillivolts) : unknown
-    return String(format: L("nogps_sensors_car"), engine, rpm, box, elm, ecu)
+  /// The states follow a label elsewhere ("Box: name ·"), here they start the line.
+  static func sentenceCase(_ text: String) -> String {
+    text.prefix(1).uppercased(with: .current) + text.dropFirst()
   }
 
-  private func volts(_ millivolts: Int) -> String {
-    String(format: L("nogps_volts"), String(format: "%.1f", Double(millivolts) / 1000))
+  /// A text above a group of rows, read before them: not in capitals as a usual header.
+  static func textHeader(_ text: NSAttributedString) -> UIView {
+    let header = UITableViewHeaderFooterView(reuseIdentifier: nil)
+    var content = UIListContentConfiguration.groupedHeader()
+    content.attributedText = text
+    content.textProperties.transform = .none
+    header.contentConfiguration = content
+    return header
   }
 
-  private func missingParts() -> [String] {
-    var missing: [String] = []
-    if status.speedKmh < 0 {
-      missing.append(L("nogps_missing_speed"))
-    }
-    if status.calibration != .done {
-      missing.append(L("nogps_missing_box_calibration"))
-    }
-    if !status.hasInertialPosition {
-      missing.append(L("nogps_missing_position"))
-    }
-    return missing
+  static func textHeader(_ text: String) -> UIView {
+    textHeader(NSAttributedString(string: text, attributes: [
+      .font: UIFont.preferredFont(forTextStyle: .subheadline), .foregroundColor: UIColor.secondaryLabel,
+    ]))
   }
 
-  // MARK: - Actions
-
-  /// Also asked by the Box sheet.
   static func confirmClearSpeed(from controller: UIViewController, onCleared: @escaping () -> Void) {
     let alert = UIAlertController(title: L("nogps_clear_speed_title"),
                                   message: L("nogps_clear_speed_message"),
@@ -436,9 +597,168 @@ final class NoGpsSensorsViewController: MWMTableViewController {
     })
     controller.present(alert, animated: true)
   }
+}
 
-  @objc
-  private func close() {
-    dismiss(animated: true)
+/// How and when the box is calibrated, its state and the button to start. Opened from the IMU section of the Box page
+/// and from the bar on the map.
+final class NoGpsCalibrationPage: MWMTableViewController {
+  private enum Constants {
+    static let refreshInterval: TimeInterval = 0.5
+    static let cellId = "NoGpsCalibrationCell"
+  }
+
+  private enum Row: Equatable {
+    case state
+    case progress
+    case start
+  }
+
+  private var status = NoGps.status()
+  private var timer: Timer?
+  private var rows: [[Row]] = []
+  private var shownRows: [[Row]] = []
+  private var footers: [String?] = []
+  private var shownFooters: [String?] = []
+  private let progress = UIProgressView(progressViewStyle: .default)
+
+  init() {
+    super.init(style: .insetGrouped)
+  }
+
+  @available(*, unavailable)
+  required init?(coder _: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
+  override func viewDidLoad() {
+    super.viewDidLoad()
+    title = L("nogps_box_calibration")
+    tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
+  }
+
+  override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+    refresh()
+    let timer = Timer(timeInterval: Constants.refreshInterval, repeats: true) { [weak self] _ in self?.refresh() }
+    RunLoop.main.add(timer, forMode: .common)
+    self.timer = timer
+  }
+
+  override func viewWillDisappear(_ animated: Bool) {
+    super.viewWillDisappear(animated)
+    timer?.invalidate()
+    timer = nil
+  }
+
+  private func refresh() {
+    status = NoGps.status()
+    let calibrating = status.calibration == .calibrating
+    rows = [calibrating ? [.state, .progress] : [.state], calibrating ? [] : [.start]]
+    footers = [resultText(), calibrating ? nil : startDisabledText()]
+    progress.setProgress(Float(status.calibrationProgress) / 100, animated: true)
+    // Footers are not updated in place.
+    if footers != shownFooters {
+      shownFooters = footers
+      shownRows = []
+    }
+    tableView.reloadData(keepingRows: rows, &shownRows)
+  }
+
+  /// The box can calibrate only while it is connected and not to another phone.
+  private var canStart: Bool {
+    NoGpsBoxSheet.isBoxHeard(status) && status.bleState == .connected && !status.boxReadOnly
+  }
+
+  private func startDisabledText() -> String? {
+    if !NoGpsBoxSheet.isBoxHeard(status) || status.bleState != .connected {
+      return L("nogps_calibration_needs_box")
+    }
+    return status.boxReadOnly ? L("nogps_box_read_only") : nil
+  }
+
+  /// What went wrong and what the user does next.
+  private func resultText() -> String? {
+    switch status.calibration {
+    case .failedMoving: L("nogps_calibration_failed_moving")
+    case .mountMoved: L("nogps_calibration_failed_mount")
+    case .linkLost: L("nogps_calibration_failed_link")
+    default: nil
+    }
+  }
+
+  // MARK: - UITableViewDataSource
+
+  override func numberOfSections(in _: UITableView) -> Int {
+    rows.count
+  }
+
+  override func tableView(_: UITableView, numberOfRowsInSection section: Int) -> Int {
+    rows[section].count
+  }
+
+  override func tableView(_: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+    section == 0 ? NoGpsBoxPage.textHeader(L("nogps_box_calibration_hint") + "\n\n"
+      + L("nogps_calibration_steps")) : nil
+  }
+
+  override func tableView(_: UITableView, titleForFooterInSection section: Int) -> String? {
+    footers[section]
+  }
+
+  override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
+    var content = UIListContentConfiguration.cell()
+    content.textProperties.numberOfLines = 0
+    cell.selectionStyle = .none
+    switch rows[indexPath.section][indexPath.row] {
+    case .state:
+      content.text = NoGpsBoxPage.boxCalibrationText(status)
+      content.textProperties.font = .preferredFont(forTextStyle: .headline)
+      switch status.calibration {
+      case .done where !status.boxCalibrationAdvised: content.textProperties.color = .systemGreen
+      case .failedMoving, .mountMoved, .linkLost: content.textProperties.color = .systemRed
+      default: break
+      }
+    case .progress:
+      embed(progress, in: cell)
+      return cell
+    case .start:
+      let again = status.calibration == .done && !status.boxCalibrationAdvised
+      content.text = L(again ? "nogps_box_recalibrate" : "nogps_sensors_calibrate_box")
+      content.textProperties.color = canStart ? .linkBlue : .secondaryLabel
+      content.textProperties.font = .preferredFont(forTextStyle: .headline)
+      content.textProperties.alignment = .center
+      cell.selectionStyle = canStart ? .default : .none
+    }
+    cell.contentConfiguration = content
+    return cell
+  }
+
+  /// The same view every refresh: its animation goes on.
+  private func embed(_ view: UIView, in cell: UITableViewCell) {
+    cell.contentConfiguration = nil
+    guard view.superview !== cell.contentView else { return }
+    view.removeFromSuperview()
+    view.translatesAutoresizingMaskIntoConstraints = false
+    cell.contentView.addSubview(view)
+    let guide = cell.contentView.layoutMarginsGuide
+    NSLayoutConstraint.activate([
+      view.leadingAnchor.constraint(equalTo: guide.leadingAnchor),
+      view.trailingAnchor.constraint(equalTo: guide.trailingAnchor),
+      view.centerYAnchor.constraint(equalTo: guide.centerYAnchor),
+      cell.contentView.heightAnchor.constraint(greaterThanOrEqualToConstant: 32),
+    ])
+  }
+
+  // MARK: - UITableViewDelegate
+
+  override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    tableView.deselectRow(at: indexPath, animated: true)
+    guard rows[indexPath.section][indexPath.row] == .start else { return }
+    // The box may have gone out of reach since the row was drawn.
+    status = NoGps.status()
+    guard canStart else { return }
+    NoGps.calibrate()
+    refresh()
   }
 }
