@@ -1265,7 +1265,6 @@
 "nogps_status_gps" = "GPS";
 "nogps_meters" = "%d м";
 "nogps_kilometers" = "%.1f км";
-"nogps_sensors_title" = "Инерциальная навигация";
 "nogps_elm_disconnected" = "нет связи";
 "nogps_elm_no_adapter" = "OBD не отвечает";
 "nogps_box_obd_disabled" = "OBD выключен в блоке";
@@ -1281,12 +1280,8 @@
 "nogps_missing_speed" = "нет скорости";
 "nogps_missing_position" = "нет стартовой точки";
 "nogps_sensors_scale" = "Поправка скорости: %1$@ · диапазонов измерено: %2$d";
-"nogps_sensors_lag_measured" = "Опоздание скорости: %@ с (измерено по GPS)";
-"nogps_sensors_lag_usual" = "Опоздание скорости: %@ с (обычное, GPS ещё не измерил)";
 "nogps_sensors_rough_speed" = "≈ Черновая поправка по дорогам · диапазонов: %d · GPS её уточнит";
 "nogps_sensors_rough_speed_learning" = "≈ Поправка учится по дорогам, пока скорость не измерит GPS";
-"nogps_speed_table_show" = "Показать таблицу";
-"nogps_speed_table_hide" = "Скрыть таблицу";
 "nogps_speed_table_row" = "%1$d–%2$d км/ч  %3$@";
 "nogps_speed_table_left" = "ещё %d м";
 "nogps_status_gps_off" = "GPS выключен в настройках системы";
@@ -1303,7 +1298,6 @@
 
 /* Second line of the status "Road lost" */
 "nogps_status_road_lost_hint" = "нажмите кнопку с пальцем и коснитесь дороги, где вы";
-"nogps_sensors_box" = "Блок: %1$@";
 
 /* State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth" */
 "nogps_box_bt_searching" = "ищу блок по Bluetooth";
@@ -1356,12 +1350,6 @@
 /* Under the heading "Sensor box calibration": when and how the box is calibrated */
 "nogps_box_calibration_hint" = "Нужна после установки блока и каждый раз, когда его вынимали или сдвигали. Машина должна стоять на ровной поверхности без уклонов.";
 
-/* Question shown when the sensor box has been powered on: it is new in the car or was taken out. The buttons are "Calibrate" and "Later" */
-"nogps_box_calibration_offer" = "Блок датчиков подключали заново. Откалибруйте датчики: машина должна стоять на ровной поверхности без уклонов.";
-
-/* Row of the sensors screen: the state of the calibration of the sensor box */
-"nogps_sensors_box_sensors" = "Датчики: %@";
-
 /* State of the sensors of the box, shown after "Sensors:" */
 "nogps_box_not_calibrated" = "не откалиброваны";
 
@@ -1396,12 +1384,6 @@
 
 /* Button opening the page of the shop */
 "nogps_box_buy" = "Купить блок";
-
-/* Button on the box screen: look for the box over Bluetooth and use it */
-"nogps_box_connect" = "У меня есть блок: подключить";
-
-/* Button on the box screen: stop using the box */
-"nogps_box_forget" = "Забыть блок";
 
 /* Header of the list of the cars on the box screen: each car has its own sensor box */
 "nogps_cars" = "Машины";
@@ -1559,7 +1541,6 @@
 "nogps_based_on" = "На основе Organic Maps %@";
 "nogps_box_sleeping" = "спит: двигатель заглушен";
 "nogps_box_obd_sleeping" = "OBD спит: двигатель заглушен";
-"nogps_sensors_car" = "Двигатель: %1$@\nОбороты: %2$@\nНапряжение, АЦП блока: %3$@\nНапряжение, OBD: %4$@\nНапряжение, блок управления машины: %5$@";
 "nogps_engine_running" = "работает";
 "nogps_engine_stopped" = "заглушен";
 "nogps_rpm" = "%d об/мин";
@@ -1615,14 +1596,41 @@
 /* Why, under the state of GPS */
 "nogps_gps_why_none" = "Нет позиций GPS 5 секунд.";
 
-/* Switch in the GPS sheet */
-"nogps_gps_use" = "Вести машину по GPS";
+/* Switch in the Box sheet: on, GPS is not used for the car */
+"nogps_gps_block" = "Блокировать GPS";
 
-/* Under the switch in the GPS sheet */
-"nogps_gps_use_hint" = "Выключено: GPS не используется, машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.";
+/* Under the switch Block GPS in the Box sheet */
+"nogps_gps_block_hint" = "Включено: GPS не используется, машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.";
 
-/* Under the disabled switch Use GPS for the car in the Box sheet: no box is heard */
-"nogps_gps_use_needs_box" = "GPS можно выключить, только когда подключён блок: иначе машину ничто не поведёт.";
+/* Under the disabled switch Block GPS in the Box sheet: no box is heard */
+"nogps_gps_block_needs_box" = "GPS можно заблокировать, только когда подключён блок: иначе машину ничто не поведёт.";
+
+/* At the top of the Cars page of the Box sheet */
+"nogps_cars_text" = "Каждый блок — это одна машина со своей калибровкой и местом парковки. Нажмите на машину, чтобы ехать на ней, переименовать или забыть её.";
+
+/* On the Add a car page while the box of the new car is searched */
+"nogps_car_add_text" = "Включите блок новой машины рядом с телефоном: машина добавится вместе с блоком в ней.";
+
+/* Section of the Box page: how the car speed is corrected */
+"nogps_speed_calibration" = "Калибровка скорости";
+
+/* On the Calibration page of the sensor box, under when it is needed: how to do it */
+"nogps_calibration_steps" = "Остановите машину на ровной поверхности. Пока калибровка идёт, никто не садится и не выходит и не трогает блок.";
+
+/* Result on the Calibration page of the sensor box */
+"nogps_calibration_failed_moving" = "Не откалиброван: машина двигалась. Пусть она стоит неподвижно, и откалибруйте снова.";
+
+/* Result on the Calibration page of the sensor box */
+"nogps_calibration_failed_mount" = "Блок сдвинулся в креплении. Закрепите его надёжно и откалибруйте снова.";
+
+/* Result on the Calibration page of the sensor box */
+"nogps_calibration_failed_link" = "Связь с блоком потеряна. Оставайтесь рядом с машиной и откалибруйте снова.";
+
+/* On the Calibration page of the sensor box, under the disabled Calibrate button */
+"nogps_calibration_needs_box" = "Блок вне досягаемости: включите его и оставайтесь рядом с машиной.";
+
+/* Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page */
+"nogps_calibration_snackbar" = "Откалибруйте блок датчиков";
 
 /* Under the distance left in navigation: the distance driven since navigation started, e.g. 12.4 km covered */
 "nogps_nav_covered" = "пройдено %@";
@@ -1678,9 +1686,6 @@
 /* Title of the Box sheet */
 "nogps_box_title" = "Блок датчиков";
 
-/* Title of the screen with the speed table of the sensor box */
-"nogps_speed_table_title" = "Таблица скорости";
-
 /* State of the speed table on the Box sheet: GPS has measured all its ranges */
 "nogps_speed_table_calibrated" = "Откалибрована";
 
@@ -1711,15 +1716,6 @@
 /* Second line of the speed delay row of the Box sheet */
 "nogps_speed_lag_usual" = "Обычное, GPS ещё не измерил";
 
-/* Row of the Box sheet below the speed: the engine revs, e.g. "850 rpm" */
-"nogps_box_rpm" = "Обороты: %@";
-
-/* Row of the Box sheet, next to the "Calibrate" action */
-"nogps_box_sensors_not_calibrated" = "Датчики не откалиброваны";
-
-/* Row of the Box sheet, next to the "Recalibrate" action */
-"nogps_box_sensors_calibrated" = "Датчики откалиброваны";
-
 /* Action of the Box sheet: calibrate the sensors of the box again */
 "nogps_box_recalibrate" = "Откалибровать заново";
 
@@ -1749,9 +1745,6 @@
 
 /* Hint while the box is searched */
 "nogps_box_power_hint" = "Есть блок? Включите его рядом с телефоном: 2 минуты он принимает новый телефон. Телефон может спросить код с блока.";
-
-/* Title of the page with all values the sensor box sends, opened from the box row of the Box sheet */
-"nogps_box_value_title" = "Значения блока";
 
 /* Section of the Box values page */
 "nogps_box_value_group_car" = "Машина";
