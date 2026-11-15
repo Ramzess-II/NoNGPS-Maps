@@ -213,9 +213,6 @@
 "prefs_group_network" = "네트워크";
 "prefs_group_route" = "내비게이션";
 
-/* Setting name which enables or disables zoom buttons on the map screen. */
-"pref_zoom_title" = "지도에서 + 및 - 버튼";
-
 /* Generic «Off» string */
 "off" = "끄기";
 

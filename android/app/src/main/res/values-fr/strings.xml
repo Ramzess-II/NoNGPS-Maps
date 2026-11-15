@@ -188,9 +188,6 @@
     <!-- Settings information group in settings screen -->
     <string name="prefs_group_information">Information</string>
     <string name="prefs_group_route">Navigation</string>
-    <!-- Setting name which enables or disables zoom buttons on the map screen. -->
-    <string name="pref_zoom_title">Boutons « + » et « - » sur la carte</string>
-    <string name="pref_zoom_summary">Afficher à l\'écran</string>
     <string name="pref_auto_night_in_navigation_title">Style nocturne lorsque vous naviguez dans l\'obscurité</string>
     <!-- Settings «Map» category: «Night style» title -->
     <string name="pref_map_style_title">Mode nuit</string>

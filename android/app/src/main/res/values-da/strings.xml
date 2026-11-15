@@ -188,9 +188,6 @@
     <!-- Settings information group in settings screen -->
     <string name="prefs_group_information">Information</string>
     <string name="prefs_group_route">Navigation</string>
-    <!-- Setting name which enables or disables zoom buttons on the map screen. -->
-    <string name="pref_zoom_title">Knapperne + og - på kortet</string>
-    <string name="pref_zoom_summary">Vis på skærmen</string>
     <string name="pref_auto_night_in_navigation_title">Nat-stil, når du navigerer i mørke</string>
     <!-- Settings «Map» category: «Night style» title -->
     <string name="pref_map_style_title">Nattilstand</string>

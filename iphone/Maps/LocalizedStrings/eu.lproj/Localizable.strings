@@ -213,9 +213,6 @@
 "prefs_group_network" = "Sarea";
 "prefs_group_route" = "Nabigazioa";
 
-/* Setting name which enables or disables zoom buttons on the map screen. */
-"pref_zoom_title" = "Mapako “+” eta “-” botoiak";
-
 /* Generic «Off» string */
 "off" = "Desgaituta";
 

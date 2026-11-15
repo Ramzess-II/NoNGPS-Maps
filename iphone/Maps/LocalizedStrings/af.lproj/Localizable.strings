@@ -213,9 +213,6 @@
 "prefs_group_network" = "Netwerk";
 "prefs_group_route" = "Navigasie";
 
-/* Setting name which enables or disables zoom buttons on the map screen. */
-"pref_zoom_title" = "Knoppies + en - op die kaart";
-
 /* Generic «Off» string */
 "off" = "Af";
 

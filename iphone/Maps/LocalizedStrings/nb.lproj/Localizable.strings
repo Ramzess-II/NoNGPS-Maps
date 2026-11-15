@@ -213,9 +213,6 @@
 "prefs_group_network" = "Nettverk";
 "prefs_group_route" = "Navigasjon";
 
-/* Setting name which enables or disables zoom buttons on the map screen. */
-"pref_zoom_title" = "Knappene + og - på kartet";
-
 /* Generic «Off» string */
 "off" = "Av";
 

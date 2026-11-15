@@ -213,9 +213,6 @@
 "prefs_group_network" = "Ցանց";
 "prefs_group_route" = "Նավիգացիա";
 
-/* Setting name which enables or disables zoom buttons on the map screen. */
-"pref_zoom_title" = "«+» և «-» կոճակները քարտեզի վրա";
-
 /* Generic «Off» string */
 "off" = "Անջատված";
 

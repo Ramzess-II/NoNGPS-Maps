@@ -213,9 +213,6 @@
 "prefs_group_network" = "Rhwydwaith";
 "prefs_group_route" = "Llywio";
 
-/* Setting name which enables or disables zoom buttons on the map screen. */
-"pref_zoom_title" = "Botymau “+” a “-” ar y map";
-
 /* Generic «Off» string */
 "off" = "Diffodd";
 
