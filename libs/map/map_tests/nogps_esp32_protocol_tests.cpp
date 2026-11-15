@@ -344,9 +344,22 @@ UNIT_TEST(NoGps_Esp32_ParsesPhones)
   auto const phones = ParsePhones(reply("OK,BC:D0:74:A9:71:92|Mac mini|1794685760|1;D0:56:FB:11:00:88|||0,0"));
   TEST(phones, ());
   TEST_EQUAL(phones->m_phones.size(), 2, ());
-  TEST_EQUAL(phones->m_phones[0], (Phone{"BC:D0:74:A9:71:92", "Mac mini", 1794685760, true}), ());
-  TEST_EQUAL(phones->m_phones[1], (Phone{"D0:56:FB:11:00:88", "", 0, false}), ());
+  TEST_EQUAL(phones->m_phones[0], (Phone{"BC:D0:74:A9:71:92", "Mac mini", 1794685760, true, false}), ());
+  // This phone doesn't change the box: the only other one does.
+  TEST_EQUAL(phones->m_phones[1], (Phone{"D0:56:FB:11:00:88", "", 0, false, true}), ());
   TEST(!phones->m_changesBox, ());
+  auto const changes = [](std::optional<Phones> const & phones)
+  {
+    std::vector<bool> result;
+    for (auto const & phone : phones->m_phones)
+      result.push_back(phone.m_changesBox);
+    return result;
+  };
+  TEST_EQUAL(changes(ParsePhones(reply("OK,BC:D0:74:A9:71:92|a||1;D0:56:FB:11:00:88|b||0,1"))),
+             (std::vector<bool>{true, false}), ());
+  // Which of the other phones changes the box is not known.
+  TEST_EQUAL(changes(ParsePhones(reply("OK,BC:D0:74:A9:71:92|a||1;D0:56:FB:11:00:88|b||0;D0:56:FB:11:00:89|c||0,0"))),
+             (std::vector<bool>{false, false, false}), ());
 
   // A box without phones. The reply without the last field comes from nobody, it would change the box.
   auto const none = ParsePhones(reply("OK,,1"));
