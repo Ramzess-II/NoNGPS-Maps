@@ -110,7 +110,13 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
         navigation.setViewControllers([root, NoGpsBoxPage(unfolded: firmware ? [.box] : [])], animated: animated)
       }
     case .calibration:
-      if !(navigation.topViewController is NoGpsCalibrationPage) {
+      if navigation.topViewController is NoGpsCalibrationPage {
+        break
+      }
+      // The Box page open already keeps its sections.
+      if navigation.topViewController is NoGpsBoxPage {
+        navigation.pushViewController(NoGpsCalibrationPage(), animated: animated)
+      } else {
         navigation.setViewControllers([root, NoGpsBoxPage(unfolded: [.imu]), NoGpsCalibrationPage()], animated: animated)
       }
     }
