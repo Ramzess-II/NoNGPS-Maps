@@ -248,6 +248,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private View mSpeedItemPage;
   private View mImuItemPage;
   private TextView mReadOnly;
+  private View mFirmwareRow;
   private TextView mFirmware;
   private TextView mFirmwareAction;
   private TextView mSpeed;
@@ -459,7 +460,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mSpeedItemPage = view.findViewById(R.id.box_speed_item_page);
     mImuItemPage = view.findViewById(R.id.box_imu_item_page);
     mReadOnly = view.findViewById(R.id.box_read_only);
-    mFirmware = view.findViewById(R.id.box_firmware);
+    mFirmwareRow = view.findViewById(R.id.box_firmware_row);
+    ((TextView) mFirmwareRow.findViewById(R.id.row_label)).setText(R.string.nogps_box_value_firmware);
+    mFirmware = mFirmwareRow.findViewById(R.id.row_value);
     mFirmwareAction = view.findViewById(R.id.box_firmware_action);
     mFirmwareAction.setOnClickListener(v -> onFirmwareAction());
     mSpeed = view.findViewById(R.id.box_speed);
@@ -1116,8 +1119,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mReadOnly.setVisibility(connected && status.boxReadOnly ? View.VISIBLE : View.GONE);
     final NoGps.FirmwareUpdate update = status.getFirmwareUpdate();
     final boolean updating = BoxTexts.isUpdating(update);
-    mFirmware.setVisibility(updating || !status.boxFirmware.isEmpty() ? View.VISIBLE : View.GONE);
-    mFirmware.setText(getString(R.string.nogps_sensors_firmware, firmware));
+    mFirmwareRow.setVisibility(updating || !status.boxFirmware.isEmpty() ? View.VISIBLE : View.GONE);
+    mFirmware.setText(firmware);
     // A box that has taken the firmware restarts by itself.
     final boolean cancel = updating && update != NoGps.FirmwareUpdate.RESTARTING;
     final boolean install = BoxTexts.canInstallFirmware(status);

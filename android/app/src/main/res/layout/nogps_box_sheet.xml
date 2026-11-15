@@ -611,13 +611,10 @@
         android:text="@string/nogps_sensors_hint_box"
         android:textColor="?android:textColorSecondary"
         android:textSize="14sp" />
-      <TextView
-        android:id="@+id/box_firmware"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:minHeight="48dp"
-        android:textSize="16sp" />
+      <!-- As the box values under it: the version, or how the update goes. -->
+      <include
+        android:id="@+id/box_firmware_row"
+        layout="@layout/nogps_sheet_row" />
       <!-- Install, or Cancel while it is sent. -->
       <TextView
         android:id="@+id/box_firmware_action"
