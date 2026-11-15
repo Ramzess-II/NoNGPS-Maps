@@ -506,37 +506,105 @@
       android:text="@string/nogps_car_add" />
   </LinearLayout>
 
+  <!-- A car of the user: its name, what the user does with it and the phones of its box. -->
   <LinearLayout
-    android:id="@+id/box_phones_page"
+    android:id="@+id/box_car_page"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:visibility="gone">
     <include
-      android:id="@+id/box_phones_header"
+      android:id="@+id/box_car_header"
       layout="@layout/nogps_box_page_header" />
-    <!-- A row for each phone of the box, see nogps_car_row: a tap removes it. -->
+    <!-- A tap renames the car. -->
     <LinearLayout
-      android:id="@+id/box_phones_rows"
+      android:id="@+id/box_car_page_name_row"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:orientation="vertical" />
+      android:background="?selectableItemBackground"
+      android:gravity="center_vertical"
+      android:minHeight="48dp"
+      android:orientation="horizontal">
+      <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="12dp"
+        android:text="@string/nogps_car_name"
+        android:textSize="16sp" />
+      <TextView
+        android:id="@+id/box_car_page_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:gravity="end|center_vertical"
+        android:textColor="?android:textColorSecondary"
+        android:textSize="16sp" />
+    </LinearLayout>
+    <!-- Not for the car driven now. -->
     <TextView
-      android:id="@+id/box_phones_read_only"
+      android:id="@+id/box_car_drive"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:background="?selectableItemBackground"
+      android:gravity="center_vertical"
+      android:minHeight="48dp"
+      android:text="@string/nogps_car_drive"
+      android:textColor="?colorAccent"
+      android:textSize="16sp" />
+    <TextView
+      android:id="@+id/box_car_forget"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:background="?selectableItemBackground"
+      android:gravity="center_vertical"
+      android:minHeight="48dp"
+      android:text="@string/nogps_car_forget"
+      android:textColor="@color/base_red"
+      android:textSize="16sp" />
+
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="16dp"
+      android:text="@string/nogps_car_phones"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp"
+      android:textStyle="bold" />
+    <!-- While the box of the car is connected: a row for each of its phones, see nogps_car_row, a tap removes it. -->
+    <LinearLayout
+      android:id="@+id/box_phones"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical">
+      <LinearLayout
+        android:id="@+id/box_phones_rows"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+      <Button
+        android:id="@+id/box_add_phone"
+        style="?borderlessButtonStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="start|center_vertical"
+        android:text="@string/nogps_phone_add" />
+      <TextView
+        android:id="@+id/box_phones_read_only"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/nogps_box_read_only"
+        android:textColor="?android:textColorSecondary"
+        android:textSize="14sp" />
+    </LinearLayout>
+    <TextView
+      android:id="@+id/box_phones_unknown"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="4dp"
-      android:text="@string/nogps_box_read_only"
+      android:text="@string/nogps_car_phones_unknown"
       android:textColor="?android:textColorSecondary"
-      android:textSize="14sp"
-      android:visibility="gone" />
-    <Button
-      android:id="@+id/box_add_phone"
-      style="?borderlessButtonStyle"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:gravity="start|center_vertical"
-      android:text="@string/nogps_phone_add" />
+      android:textSize="14sp" />
   </LinearLayout>
 
   <!-- The box, the car and what is learned about them, by sections that fold. -->
@@ -670,7 +738,7 @@
         android:gravity="center_vertical"
         android:minHeight="44dp"
         android:textSize="16sp" />
-      <!-- The car current now, as in its menu on the Cars page: a tap renames it. -->
+      <!-- The car current now: opens its page. -->
       <LinearLayout
         android:id="@+id/box_car_name_row"
         android:layout_width="match_parent"
@@ -692,19 +760,9 @@
           android:layout_weight="1"
           android:gravity="end|center_vertical"
           android:textColor="?android:textColorSecondary"
-          android:textSize="16sp" />
+          android:textSize="16sp"
+          app:drawableEndCompat="@drawable/ic_nogps_chevron" />
       </LinearLayout>
-      <!-- While the box is connected: it tells its phones. -->
-      <TextView
-        android:id="@+id/box_car_phones"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="?selectableItemBackground"
-        android:gravity="center_vertical"
-        android:minHeight="48dp"
-        android:text="@string/nogps_car_phones"
-        android:textSize="16sp"
-        app:drawableEndCompat="@drawable/ic_nogps_chevron" />
       <LinearLayout
         android:id="@+id/box_values_car"
         android:layout_width="match_parent"

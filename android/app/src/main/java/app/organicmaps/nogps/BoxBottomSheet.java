@@ -80,7 +80,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private static final String STATE_SEARCHING = "searching";
   private static final String STATE_CARS_BEFORE_ADD = "cars_before_add";
   private static final String STATE_SHARE_ASKED = "share_asked";
-  private static final String STATE_PHONES_FROM_CAR = "phones_from_car";
+  private static final String STATE_CAR_ID = "car_id";
+  private static final String STATE_CAR_FROM_ITEM = "car_from_item";
 
   /**
    * Each page is opened from its parent, Back returns there.
@@ -90,7 +91,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     MAIN,
     GPS,
     CARS,
-    PHONES,
+    CAR,
     ADD_CAR,
     BOX,
     // The items of the Box page.
@@ -102,7 +103,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     CALIBRATION;
 
     /**
-     * The Phones page has two parents, see BoxBottomSheet.parentOf().
+     * The Car page has two parents, see BoxBottomSheet.parentOf().
      */
     @NonNull
     Page parent()
@@ -110,7 +111,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       return switch (this)
       {
         case MAIN, GPS, CARS, BOX -> MAIN;
-        case PHONES, ADD_CAR -> CARS;
+        case CAR, ADD_CAR -> CARS;
         case ITEM_BOX, ITEM_OBD, ITEM_CAR, ITEM_SPEED, ITEM_IMU -> BOX;
         case CALIBRATION -> ITEM_IMU;
       };
@@ -180,8 +181,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private AlertDialog mAddPhoneDialog;
   // The user has turned the share on before the app is picked as the mock location app.
   private boolean mShareAsked;
-  // The Phones page was opened from the Car page, not from the menu of a car.
-  private boolean mPhonesFromCar;
+  // The car of the Car page, and if the page was opened from the Car item of the Box page, not from the cars.
+  @NonNull
+  private String mCarId = "";
+  private boolean mCarFromItem;
+  // The phones of the box are asked for once while the box tells them.
+  private boolean mPhonesListed;
   private final OnBackPressedCallback mBackFromPage = new OnBackPressedCallback(false) {
     @Override
     public void handleOnBackPressed()
@@ -228,7 +233,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private List<String> mCarTexts = new ArrayList<>();
   private View mAddCarPage;
 
-  private View mPhonesPage;
+  private View mCarPage;
+  private TextView mCarPageTitle;
+  private TextView mCarPageName;
+  private View mCarDrive;
+  private View mPhones;
+  private View mPhonesUnknown;
   private LinearLayout mPhonesRows;
   private View mPhonesReadOnly;
   private View mAddPhone;
@@ -254,7 +264,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private TextView mSpeed;
   private View mCarNameRow;
   private TextView mCarName;
-  private View mCarPhones;
   private View mVoltageMismatch;
   private TextView mSpeedLagValue;
   private TextView mSpeedLagSource;
@@ -321,7 +330,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       mSearching = savedInstanceState.getBoolean(STATE_SEARCHING);
       mCarsBeforeAdd = savedInstanceState.getInt(STATE_CARS_BEFORE_ADD);
       mShareAsked = savedInstanceState.getBoolean(STATE_SHARE_ASKED);
-      mPhonesFromCar = savedInstanceState.getBoolean(STATE_PHONES_FROM_CAR);
+      mCarId = savedInstanceState.getString(STATE_CAR_ID, "");
+      mCarFromItem = savedInstanceState.getBoolean(STATE_CAR_FROM_ITEM);
       // The app was killed while the box was searched: the new core doesn't search it. Without the core the activity
       // goes to the splash screen.
       if (MwmApplication.from(requireContext()).getOrganicMaps().arePlatformAndCoreInitialized())
@@ -361,7 +371,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     outState.putBoolean(STATE_SEARCHING, mSearching);
     outState.putInt(STATE_CARS_BEFORE_ADD, mCarsBeforeAdd);
     outState.putBoolean(STATE_SHARE_ASKED, mShareAsked);
-    outState.putBoolean(STATE_PHONES_FROM_CAR, mPhonesFromCar);
+    outState.putString(STATE_CAR_ID, mCarId);
+    outState.putBoolean(STATE_CAR_FROM_ITEM, mCarFromItem);
   }
 
   @Nullable
@@ -442,8 +453,26 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mAddCarPage = view.findViewById(R.id.box_add_car_page);
     setUpHeader(view, R.id.box_add_car_header, R.string.nogps_car_add);
 
-    mPhonesPage = view.findViewById(R.id.box_phones_page);
-    setUpHeader(view, R.id.box_phones_header, R.string.nogps_car_phones);
+    mCarPage = view.findViewById(R.id.box_car_page);
+    mCarPageTitle = setUpHeader(view, R.id.box_car_header, 0);
+    mCarPageName = view.findViewById(R.id.box_car_page_name);
+    view.findViewById(R.id.box_car_page_name_row).setOnClickListener(v -> {
+      final NoGps.Car car = pageCar();
+      if (car != null)
+        renameCar(car);
+    });
+    mCarDrive = view.findViewById(R.id.box_car_drive);
+    mCarDrive.setOnClickListener(v -> {
+      NoGps.nativeSelectCar(mCarId);
+      update();
+    });
+    view.findViewById(R.id.box_car_forget).setOnClickListener(v -> {
+      final NoGps.Car car = pageCar();
+      if (car != null)
+        confirmForgetCar(car);
+    });
+    mPhones = view.findViewById(R.id.box_phones);
+    mPhonesUnknown = view.findViewById(R.id.box_phones_unknown);
     mPhonesRows = view.findViewById(R.id.box_phones_rows);
     mPhonesReadOnly = view.findViewById(R.id.box_phones_read_only);
     mAddPhone = view.findViewById(R.id.box_add_phone);
@@ -473,11 +502,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mCarNameRow.setOnClickListener(v -> {
       final NoGps.Car car = currentCar(NoGps.getStatus());
       if (car != null)
-        renameCar(car);
+        showCar(car.id, true);
     });
     mCarName = view.findViewById(R.id.box_car_name);
-    mCarPhones = view.findViewById(R.id.box_car_phones);
-    mCarPhones.setOnClickListener(v -> showPhones(true));
     mVoltageMismatch = view.findViewById(R.id.box_voltage_mismatch);
     mSpeedLagValue = view.findViewById(R.id.box_speed_lag_value);
     mSpeedLagSource = view.findViewById(R.id.box_speed_lag_source);
@@ -583,8 +610,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mPage = page;
     if (page == Page.ADD_CAR)
       startAddingCar();
-    else if (page == Page.PHONES)
-      NoGps.nativeListBoxPhones();
+    else if (page == Page.CAR)
+      mPhonesListed = false;
     final boolean deeper = depthOf(page) > depthOf(from);
     final Slide in = new Slide(deeper ? Gravity.END : Gravity.START);
     final Slide out = new Slide(deeper ? Gravity.START : Gravity.END);
@@ -598,12 +625,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   }
 
   /**
-   * The Phones page goes back where it was opened from: the Cars page or the Car page.
+   * The Car page goes back where it was opened from: the Cars page or the Car item of the Box page.
    */
   @NonNull
   private Page parentOf(@NonNull Page page)
   {
-    return page == Page.PHONES && mPhonesFromCar ? Page.ITEM_CAR : page.parent();
+    return page == Page.CAR && mCarFromItem ? Page.ITEM_CAR : page.parent();
   }
 
   private int depthOf(@NonNull Page page)
@@ -611,10 +638,25 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     return page == Page.MAIN ? 0 : 1 + depthOf(parentOf(page));
   }
 
-  private void showPhones(boolean fromCar)
+  private void showCar(@NonNull String carId, boolean fromItem)
   {
-    mPhonesFromCar = fromCar;
-    showPage(Page.PHONES);
+    mCarId = carId;
+    mCarFromItem = fromItem;
+    showPage(Page.CAR);
+  }
+
+  /**
+   * The car of the Car page, null once it is forgotten.
+   */
+  @Nullable
+  private NoGps.Car pageCar()
+  {
+    for (NoGps.Car car : NoGps.nativeGetCars())
+    {
+      if (car.id.equals(mCarId))
+        return car;
+    }
+    return null;
   }
 
   @NonNull
@@ -625,7 +667,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       case MAIN -> new View[] {mMain, mSearch, mShop};
       case GPS -> new View[] {mGpsPage};
       case CARS -> new View[] {mCarsPage};
-      case PHONES -> new View[] {mPhonesPage};
+      case CAR -> new View[] {mCarPage};
       case ADD_CAR -> new View[] {mAddCarPage, mSearch};
       case BOX -> new View[] {mBoxPage};
       case ITEM_BOX -> new View[] {mBoxItemPage};
@@ -648,10 +690,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       showPage(Page.CARS);
       return;
     }
-    // The box has disconnected: its phones are not known.
-    if (mPage == Page.PHONES && !status.boxHasPhones)
+    // The car is forgotten, e.g. after its box has removed this phone.
+    if (mPage == Page.CAR && pageCar() == null)
     {
-      showPage(parentOf(Page.PHONES));
+      showPage(Page.CARS);
       return;
     }
     // The pages of a box set up, e.g. after the box has removed this phone.
@@ -691,7 +733,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     case MAIN -> updateMain(status);
     case GPS -> mGpsView.update(status);
     case CARS -> updateCars(status);
-    case PHONES -> updatePhones(status);
+    case CAR -> updateCarPage(status);
     case ADD_CAR -> updateSearch(status);
     case BOX, ITEM_BOX, ITEM_OBD, ITEM_CAR, ITEM_SPEED, ITEM_IMU -> updateBoxPage(status);
     case CALIBRATION -> updateCalibration(status);
@@ -897,42 +939,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       final TextView state = row.findViewById(R.id.car_state);
       state.setText(texts.get(2 * i + 1));
       state.setVisibility(texts.get(2 * i + 1).isEmpty() ? View.GONE : View.VISIBLE);
-      row.setOnClickListener(v -> showCarMenu(car));
+      row.findViewById(R.id.car_chevron).setVisibility(View.VISIBLE);
+      row.setOnClickListener(v -> showCar(car.id, false));
       mCars.addView(row);
     }
-  }
-
-  /**
-   * What the user does with a car: drives it, names it or forgets it.
-   */
-  private void showCarMenu(@NonNull NoGps.Car car)
-  {
-    final Context context = requireContext();
-    final boolean current = car.id.equals(NoGps.getStatus().carId);
-    final List<String> items = new ArrayList<>();
-    final List<Runnable> actions = new ArrayList<>();
-    if (!current)
-    {
-      items.add(getString(R.string.nogps_car_drive));
-      actions.add(() -> {
-        NoGps.nativeSelectCar(car.id);
-        update();
-      });
-    }
-    if (current && NoGps.getStatus().boxHasPhones)
-    {
-      items.add(getString(R.string.nogps_car_phones));
-      actions.add(() -> showPhones(false));
-    }
-    items.add(getString(R.string.nogps_car_rename));
-    actions.add(() -> renameCar(car));
-    items.add(getString(R.string.nogps_car_forget));
-    actions.add(() -> confirmForgetCar(car));
-    new MaterialAlertDialogBuilder(context)
-        .setTitle(BoxTexts.carName(context, car))
-        .setItems(items.toArray(new String[0]), (dialog, which) -> actions.get(which).run())
-        .setNegativeButton(R.string.cancel, null)
-        .show();
   }
 
   private void renameCar(@NonNull NoGps.Car car)
@@ -1002,6 +1012,29 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private boolean isCarAdded()
   {
     return NoGps.nativeGetCars().length > mCarsBeforeAdd;
+  }
+
+  /**
+   * The car and what the user does with it. Its box tells its phones while it is connected.
+   */
+  private void updateCarPage(@NonNull NoGps.Status status)
+  {
+    final NoGps.Car car = pageCar();
+    if (car == null)
+      return;
+    final String name = BoxTexts.carName(requireContext(), car);
+    mCarPageTitle.setText(name);
+    mCarPageName.setText(name);
+    final boolean current = car.id.equals(status.carId);
+    mCarDrive.setVisibility(current ? View.GONE : View.VISIBLE);
+    final boolean phones = current && status.boxHasPhones;
+    mPhones.setVisibility(phones ? View.VISIBLE : View.GONE);
+    mPhonesUnknown.setVisibility(phones ? View.GONE : View.VISIBLE);
+    if (phones && !mPhonesListed)
+      NoGps.nativeListBoxPhones();
+    mPhonesListed = phones;
+    if (phones)
+      updatePhones(status);
   }
 
   private void updatePhones(@NonNull NoGps.Status status)
@@ -1146,11 +1179,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
                                                                ? getString(R.string.nogps_speed_kmh, status.speedKmh)
                                                                : getString(R.string.nogps_unknown)));
 
-    // As in the menu of the car.
+    // Opens the page of the car.
     mCarNameRow.setVisibility(car != null ? View.VISIBLE : View.GONE);
     if (car != null)
       mCarName.setText(BoxTexts.carName(context, car));
-    mCarPhones.setVisibility(car != null && status.boxHasPhones ? View.VISIBLE : View.GONE);
 
     mItemSpeed.show(getString(R.string.nogps_speed_calibration), BoxTexts.speedTableText(context, status));
     mSpeedLagValue.setText(
