@@ -356,6 +356,23 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     }
   }
 
+  /// Also asked by the car page of the Box page.
+  static func renameCar(_ car: NoGpsCar, from controller: UIViewController?, onRenamed: @escaping () -> Void) {
+    let alert = UIAlertController(title: L("nogps_car_name"), message: nil, preferredStyle: .alert)
+    alert.addTextField { field in
+      field.text = car.name
+      field.placeholder = String(format: L("nogps_car_default_name"), car.carId)
+      field.autocapitalizationType = .sentences
+      field.clearButtonMode = .whileEditing
+    }
+    alert.addAction(UIAlertAction(title: L("cancel"), style: .cancel))
+    alert.addAction(UIAlertAction(title: L("save"), style: .default) { [weak alert] _ in
+      NoGps.renameCar(car.carId, name: alert?.textFields?.first?.text ?? "")
+      onRenamed()
+    })
+    controller?.present(alert, animated: true)
+  }
+
   /// "Car C47D" until the user names it.
   static func carName(_ car: NoGpsCar) -> String {
     car.name.isEmpty ? String(format: L("nogps_car_default_name"), car.carId) : car.name
@@ -584,7 +601,7 @@ private final class CarsViewController: MWMTableViewController {
       })
     }
     menu.addAction(UIAlertAction(title: L("nogps_car_rename"), style: .default) { [weak self] _ in
-      self?.renameCar(car)
+      NoGpsBoxSheet.renameCar(car, from: self) { self?.refresh() }
     })
     menu.addAction(UIAlertAction(title: L("nogps_car_forget"), style: .destructive) { [weak self] _ in
       self?.confirmForgetCar(car)
@@ -595,22 +612,6 @@ private final class CarsViewController: MWMTableViewController {
       popover.sourceRect = cell.bounds
     }
     present(menu, animated: true)
-  }
-
-  private func renameCar(_ car: NoGpsCar) {
-    let alert = UIAlertController(title: L("nogps_car_name"), message: nil, preferredStyle: .alert)
-    alert.addTextField { field in
-      field.text = car.name
-      field.placeholder = String(format: L("nogps_car_default_name"), car.carId)
-      field.autocapitalizationType = .sentences
-      field.clearButtonMode = .whileEditing
-    }
-    alert.addAction(UIAlertAction(title: L("cancel"), style: .cancel))
-    alert.addAction(UIAlertAction(title: L("save"), style: .default) { [weak self, weak alert] _ in
-      NoGps.renameCar(car.carId, name: alert?.textFields?.first?.text ?? "")
-      self?.refresh()
-    })
-    present(alert, animated: true)
   }
 
   private func confirmForgetCar(_ car: NoGpsCar) {
@@ -718,7 +719,7 @@ private final class AddCarViewController: MWMTableViewController {
 }
 
 /// The phones paired with the box of the car: a tap removes one, the last row adds a new one with a one-time code.
-private final class BoxPhonesViewController: MWMTableViewController {
+final class BoxPhonesViewController: MWMTableViewController {
   private enum Constants {
     static let refreshInterval: TimeInterval = 0.5
     static let cellId = "NoGpsBoxPhoneCell"

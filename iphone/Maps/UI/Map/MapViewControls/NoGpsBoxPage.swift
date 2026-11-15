@@ -32,8 +32,9 @@ final class NoGpsBoxPage: MWMTableViewController {
     case firmwareAction
     case value(NoGpsBoxValue)
     case speed
+    case carName
+    case phones
     case speedText
-    case scale
     case speedLag
     case clearSpeed
     case speedTableRange(Int)
@@ -139,15 +140,24 @@ final class NoGpsBoxPage: MWMTableViewController {
       if Self.canInstallFirmware(status) || Self.canCancelFirmware(status) {
         rows.append(.firmwareAction)
       }
-      return Section(rows: rows + valueRows(.firmware, .lastEvent))
+      // The firmware row above tells the version.
+      return Section(rows: rows + valueRows(.buildDate, .lastEvent))
     case .obd:
       return Section(rows: valueRows(.obdState, .obdBaud))
     case .car:
       let mismatch = status.boxValues.contains { $0.kind == .voltageMismatch && $0.value == "1" }
-      return Section(rows: [.speed] + valueRows(.engine, .voltageMismatch),
+      // What the menu of the car does, but forgetting: the Cars page does it.
+      var rows: [Row] = [.speed]
+      if currentCar != nil {
+        rows.append(.carName)
+        if status.boxHasPhones {
+          rows.append(.phones)
+        }
+      }
+      return Section(rows: rows + valueRows(.engine, .voltageMismatch),
                      footer: mismatch ? L("nogps_voltage_mismatch") : nil)
     case .speed:
-      return Section(rows: [.speedText, .scale, .speedLag, .clearSpeed]
+      return Section(rows: [.speedText, .speedLag, .clearSpeed]
         + status.speedTableCarM.indices.map { .speedTableRange($0) })
     case .imu:
       return Section(rows: [.calibration] + valueRows(.imuName, .bias))
@@ -220,8 +230,15 @@ final class NoGpsBoxPage: MWMTableViewController {
         ? String(format: L("nogps_speed_kmh"), status.speedKmh) : L("nogps_unknown"))
     case .speedText:
       content.attributedText = speedHintText()
-    case .scale:
-      content.text = scaleText()
+    case .carName:
+      content = UIListContentConfiguration.valueCell()
+      content.text = L("nogps_car_name")
+      content.secondaryText = currentCar.map { NoGpsBoxSheet.carName($0) }
+      cell.selectionStyle = .default
+    case .phones:
+      content.text = L("nogps_car_phones")
+      cell.accessoryType = .disclosureIndicator
+      cell.selectionStyle = .default
     case .speedLag:
       content = UIListContentConfiguration.subtitleCell()
       content.text = L("nogps_speed_lag")
@@ -276,6 +293,13 @@ final class NoGpsBoxPage: MWMTableViewController {
       Self.confirmClearSpeed(from: self) { [weak self] in self?.refresh() }
     case .calibration:
       navigationController?.pushViewController(NoGpsCalibrationPage(), animated: true)
+    case .carName:
+      if let car = currentCar {
+        NoGpsBoxSheet.renameCar(car, from: self) { [weak self] in self?.refresh() }
+      }
+    case .phones:
+      NoGps.listBoxPhones()
+      navigationController?.pushViewController(BoxPhonesViewController(style: .insetGrouped), animated: true)
     default:
       break
     }
@@ -288,8 +312,7 @@ final class NoGpsBoxPage: MWMTableViewController {
     case .box: return String(format: L("nogps_box_section"), Constants.boxModel)
     case .obd: return L("nogps_box_value_group_obd")
     case .car:
-      let car = NoGps.cars().first { $0.carId == status.carId }
-      return car.map { String(format: L("nogps_box_car"), NoGpsBoxSheet.carName($0)) } ?? L("nogps_box_value_group_car")
+      return currentCar.map { String(format: L("nogps_box_car"), NoGpsBoxSheet.carName($0)) } ?? L("nogps_box_value_group_car")
     case .speed: return L("nogps_speed_calibration")
     case .imu: return L("nogps_box_imu")
     }
@@ -330,16 +353,8 @@ final class NoGpsBoxPage: MWMTableViewController {
     return text
   }
 
-  private func scaleText() -> String {
-    var text = String(format: L("nogps_sensors_scale"), String(format: "×%.2f", status.speedScale),
-                      status.speedTableRanges)
-    // Until GPS measures the speed, e.g. on the first trip, it is corrected roughly by the roads.
-    if status.speedTableRanges == 0 {
-      text += "\n" + (status.roughSpeedTableRanges > 0
-        ? String(format: L("nogps_sensors_rough_speed"), status.roughSpeedTableRanges)
-        : L("nogps_sensors_rough_speed_learning"))
-    }
-    return text
+  private var currentCar: NoGpsCar? {
+    NoGps.cars().first { $0.carId == status.carId }
   }
 
   private func missingParts() -> [String] {
