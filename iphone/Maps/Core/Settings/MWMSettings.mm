@@ -1,7 +1,6 @@
 #import "MWMSettings.h"
 #import "MWMAuthorizationCommon.h"
 #import "MWMCoreUnits.h"
-#import "MWMMapViewControlsManager.h"
 #import "SwiftBridge.h"
 
 #include <CoreApi/Framework.h>
@@ -12,7 +11,6 @@
 namespace
 {
 char const * kAutoDownloadEnabledKey = "AutoDownloadEnabled";
-char const * kZoomButtonsEnabledKey = "ZoomButtonsEnabled";
 char const * kRoutingDisclaimerApprovedKey = "IsDisclaimerApproved";
 char const * kSearchHistoryEnabledKey = "SearchHistoryEnabled";
 
@@ -55,19 +53,6 @@ NSString * const kUDDidShowICloudSynchronizationEnablingAlert = @"kUDDidShowIClo
 {
   settings::Set(settings::kMeasurementUnits, coreUnits(measurementUnits));
   GetFramework().SetupMeasurementSystem();
-}
-
-+ (BOOL)zoomButtonsEnabled
-{
-  bool enabled = true;
-  UNUSED_VALUE(settings::Get(kZoomButtonsEnabledKey, enabled));
-  return enabled;
-}
-
-+ (void)setZoomButtonsEnabled:(BOOL)zoomButtonsEnabled
-{
-  settings::Set(kZoomButtonsEnabledKey, static_cast<bool>(zoomButtonsEnabled));
-  [MWMMapViewControlsManager manager].zoomHidden = !zoomButtonsEnabled;
 }
 
 + (MWMPlacement)bookmarksTextPlacement

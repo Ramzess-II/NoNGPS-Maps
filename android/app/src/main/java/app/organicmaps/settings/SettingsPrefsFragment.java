@@ -58,7 +58,6 @@ public class SettingsPrefsFragment extends BaseXmlSettingsFragment implements La
 
     initStoragePrefCallbacks();
     initMeasureUnitsPrefsCallbacks();
-    initZoomPrefsCallbacks();
     initMapStylePrefsCallbacks();
     initAutoDownloadPrefsCallbacks();
     initLargeFontSizePrefsCallbacks();
@@ -511,17 +510,6 @@ public class SettingsPrefsFragment extends BaseXmlSettingsFragment implements La
       case DARK -> R.string.pref_appearance_dark;
       case SCHEDULED -> R.string.pref_appearance_scheduled;
     };
-  }
-
-  private void initZoomPrefsCallbacks()
-  {
-    final Preference pref = getPreference(getString(R.string.pref_show_zoom_buttons));
-
-    ((TwoStatePreference) pref).setChecked(Config.showZoomButtons());
-    pref.setOnPreferenceChangeListener((preference, newValue) -> {
-      Config.setShowZoomButtons((boolean) newValue);
-      return true;
-    });
   }
 
   private void initMeasureUnitsPrefsCallbacks()

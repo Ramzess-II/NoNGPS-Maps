@@ -332,7 +332,7 @@ public class MapButtonsController extends Fragment
       return;
     switch (button)
     {
-    case zoom: UiUtils.showIf(show && Config.showZoomButtons(), buttonView); break;
+    case zoom: UiUtils.showIf(show, buttonView); break;
     case toggleMapLayer:
       if (mToggleMapLayerButton != null)
         UiUtils.showIf(show && !isInNavigationMode(), mToggleMapLayerButton);

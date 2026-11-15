@@ -29,12 +29,6 @@
       android:entryValues="@array/measument_units_values"
       android:order="1" />
     <SwitchPreferenceCompat
-      android:key="@string/pref_show_zoom_buttons"
-      android:title="@string/pref_zoom_title"
-      app:singleLineTitle="false"
-      android:summary="@string/pref_zoom_summary"
-      android:order="2" />
-    <SwitchPreferenceCompat
       android:key="@string/pref_3d_buildings"
       android:title="@string/pref_map_3d_buildings_title"
       app:singleLineTitle="false"

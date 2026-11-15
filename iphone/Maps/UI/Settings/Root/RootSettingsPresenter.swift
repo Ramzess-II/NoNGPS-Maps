@@ -137,9 +137,6 @@ final class RootSettingsPresenter {
 
   private func mapItems(_ state: RootSettingsState) -> [RootSettingsItemViewModel] {
     [
-      SettingsItemViewModel(setting: .zoomButtons,
-                            detail: nil,
-                            kind: .switcher(isOn: state.zoomButtonsEnabled, isEnabled: true)),
       SettingsItemViewModel(setting: .buildings3D,
                             detail: nil,
                             kind: .switcher(isOn: state.buildings3DEditable && state.buildings3DEnabled,
