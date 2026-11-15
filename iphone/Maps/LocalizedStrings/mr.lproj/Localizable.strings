@@ -1393,6 +1393,9 @@
 /* Header of the list of the cars on the box screen: each car has its own sensor box */
 "nogps_cars" = "Cars";
 
+/* Under the current car's name at the top of the box screen: tapping the name opens the list of the cars, where the user switches, renames or forgets them */
+"nogps_cars_subtitle" = "Switch or manage cars";
+
 /* Name of a car the user hasn't named, by the four characters of the name of its sensor box: "Car C47D" */
 "nogps_car_default_name" = "Car %1$@";
 

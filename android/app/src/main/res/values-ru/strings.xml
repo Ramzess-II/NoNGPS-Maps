@@ -1041,6 +1041,8 @@
     <string name="nogps_box_buy">Купить блок</string>
     <!-- Header of the list of the cars on the box screen: each car has its own sensor box -->
     <string name="nogps_cars">Машины</string>
+    <!-- Under the current car's name at the top of the box screen: tapping the name opens the list of the cars, where the user switches, renames or forgets them -->
+    <string name="nogps_cars_subtitle">Сменить или настроить машины</string>
     <!-- State of a car in the list of the cars: its box is connected now -->
     <string name="nogps_car_connected">Подключена</string>
     <!-- State of a car in the list of the cars: the app takes this car until a box connects -->
