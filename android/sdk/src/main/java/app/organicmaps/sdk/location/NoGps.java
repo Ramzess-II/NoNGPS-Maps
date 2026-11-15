@@ -478,14 +478,17 @@ public final class NoGps
     // When it connected the last time, 0 if unknown.
     public final long seenUnixS;
     public final boolean thisPhone;
+    // The box takes the commands that change it from this phone, false if not known.
+    public final boolean changesBox;
 
     @Keep
-    Phone(@NonNull String address, @NonNull String name, long seenUnixS, boolean thisPhone)
+    Phone(@NonNull String address, @NonNull String name, long seenUnixS, boolean thisPhone, boolean changesBox)
     {
       this.address = address;
       this.name = name;
       this.seenUnixS = seenUnixS;
       this.thisPhone = thisPhone;
+      this.changesBox = changesBox;
     }
   }
 

@@ -1091,7 +1091,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private String phoneStateText(@NonNull NoGps.Phone phone)
   {
     if (phone.thisPhone)
-      return getString(R.string.nogps_phone_this);
+      return phone.changesBox
+        ? getString(R.string.nogps_phone_this) + " · " + getString(R.string.nogps_phone_changes_box)
+        : getString(R.string.nogps_phone_this);
+    // Connected now.
+    if (phone.changesBox)
+      return getString(R.string.nogps_phone_changes_box);
     if (phone.seenUnixS <= 0)
       return "";
     final CharSequence when = DateUtils.getRelativeTimeSpanString(phone.seenUnixS * 1000, System.currentTimeMillis(),

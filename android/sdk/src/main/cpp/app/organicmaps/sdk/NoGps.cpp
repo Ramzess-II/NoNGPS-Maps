@@ -432,14 +432,14 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   if (status.m_boxPhones)
   {
     static jclass const phoneClass = jni::GetGlobalClassRef(env, "app/organicmaps/sdk/location/NoGps$Phone");
-    static jmethodID const ctor = jni::GetConstructorID(env, phoneClass, "(Ljava/lang/String;Ljava/lang/String;JZ)V");
+    static jmethodID const ctor = jni::GetConstructorID(env, phoneClass, "(Ljava/lang/String;Ljava/lang/String;JZZ)V");
     jni::TScopedLocalObjectArrayRef phones(
         env, jni::ToJavaArray(env, phoneClass, *status.m_boxPhones, [](JNIEnv * env, nogps::esp32::Phone const & phone)
     {
       jni::TScopedLocalRef address(env, jni::ToJavaString(env, phone.m_address));
       jni::TScopedLocalRef name(env, jni::ToJavaString(env, phone.m_name));
       return env->NewObject(phoneClass, ctor, address.get(), name.get(), static_cast<jlong>(phone.m_seenUnixS),
-                            static_cast<jboolean>(phone.m_thisPhone));
+                            static_cast<jboolean>(phone.m_thisPhone), static_cast<jboolean>(phone.m_changesBox));
     }));
     env->SetObjectField(
         out, env->GetFieldID(env->GetObjectClass(out), "boxPhones", "[Lapp/organicmaps/sdk/location/NoGps$Phone;"),
