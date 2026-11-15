@@ -673,6 +673,41 @@
         android:gravity="center_vertical"
         android:minHeight="44dp"
         android:textSize="16sp" />
+      <!-- The car current now, as in its menu on the Cars page: a tap renames it. -->
+      <LinearLayout
+        android:id="@+id/box_car_name_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:orientation="horizontal">
+        <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="12dp"
+          android:text="@string/nogps_car_name"
+          android:textSize="16sp" />
+        <TextView
+          android:id="@+id/box_car_name"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:gravity="end|center_vertical"
+          android:textColor="?android:textColorSecondary"
+          android:textSize="16sp" />
+      </LinearLayout>
+      <!-- While the box is connected: it tells its phones. -->
+      <TextView
+        android:id="@+id/box_car_phones"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:text="@string/nogps_car_phones"
+        android:textSize="16sp"
+        app:drawableEndCompat="@drawable/ic_nogps_chevron" />
       <LinearLayout
         android:id="@+id/box_values_car"
         android:layout_width="match_parent"
@@ -716,12 +751,6 @@
         android:text="@string/nogps_speed_table_action"
         android:textSize="15sp"
         android:textStyle="bold" />
-      <TextView
-        android:id="@+id/box_speed_scale"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:textSize="16sp" />
       <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

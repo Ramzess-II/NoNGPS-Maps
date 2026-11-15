@@ -80,6 +80,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private static final String STATE_SEARCHING = "searching";
   private static final String STATE_CARS_BEFORE_ADD = "cars_before_add";
   private static final String STATE_SHARE_ASKED = "share_asked";
+  private static final String STATE_PHONES_FROM_CAR = "phones_from_car";
 
   /**
    * Each page is opened from its parent, Back returns there.
@@ -100,6 +101,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     ITEM_IMU,
     CALIBRATION;
 
+    /**
+     * The Phones page has two parents, see BoxBottomSheet.parentOf().
+     */
     @NonNull
     Page parent()
     {
@@ -110,11 +114,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
         case ITEM_BOX, ITEM_OBD, ITEM_CAR, ITEM_SPEED, ITEM_IMU -> BOX;
         case CALIBRATION -> ITEM_IMU;
       };
-    }
-
-    int depth()
-    {
-      return this == MAIN ? 0 : 1 + parent().depth();
     }
   }
 
@@ -181,11 +180,13 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private AlertDialog mAddPhoneDialog;
   // The user has turned the share on before the app is picked as the mock location app.
   private boolean mShareAsked;
+  // The Phones page was opened from the Car page, not from the menu of a car.
+  private boolean mPhonesFromCar;
   private final OnBackPressedCallback mBackFromPage = new OnBackPressedCallback(false) {
     @Override
     public void handleOnBackPressed()
     {
-      showPage(mPage.parent());
+      showPage(parentOf(mPage));
     }
   };
   private ViewGroup mRoot;
@@ -250,8 +251,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private TextView mFirmware;
   private TextView mFirmwareAction;
   private TextView mSpeed;
+  private View mCarNameRow;
+  private TextView mCarName;
+  private View mCarPhones;
   private View mVoltageMismatch;
-  private TextView mSpeedScale;
   private TextView mSpeedLagValue;
   private TextView mSpeedLagSource;
   private LinearLayout mSpeedTableRows;
@@ -317,6 +320,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       mSearching = savedInstanceState.getBoolean(STATE_SEARCHING);
       mCarsBeforeAdd = savedInstanceState.getInt(STATE_CARS_BEFORE_ADD);
       mShareAsked = savedInstanceState.getBoolean(STATE_SHARE_ASKED);
+      mPhonesFromCar = savedInstanceState.getBoolean(STATE_PHONES_FROM_CAR);
       // The app was killed while the box was searched: the new core doesn't search it. Without the core the activity
       // goes to the splash screen.
       if (MwmApplication.from(requireContext()).getOrganicMaps().arePlatformAndCoreInitialized())
@@ -356,6 +360,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     outState.putBoolean(STATE_SEARCHING, mSearching);
     outState.putInt(STATE_CARS_BEFORE_ADD, mCarsBeforeAdd);
     outState.putBoolean(STATE_SHARE_ASKED, mShareAsked);
+    outState.putBoolean(STATE_PHONES_FROM_CAR, mPhonesFromCar);
   }
 
   @Nullable
@@ -458,8 +463,16 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mFirmwareAction = view.findViewById(R.id.box_firmware_action);
     mFirmwareAction.setOnClickListener(v -> onFirmwareAction());
     mSpeed = view.findViewById(R.id.box_speed);
+    mCarNameRow = view.findViewById(R.id.box_car_name_row);
+    mCarNameRow.setOnClickListener(v -> {
+      final NoGps.Car car = currentCar(NoGps.getStatus());
+      if (car != null)
+        renameCar(car);
+    });
+    mCarName = view.findViewById(R.id.box_car_name);
+    mCarPhones = view.findViewById(R.id.box_car_phones);
+    mCarPhones.setOnClickListener(v -> showPhones(true));
     mVoltageMismatch = view.findViewById(R.id.box_voltage_mismatch);
-    mSpeedScale = view.findViewById(R.id.box_speed_scale);
     mSpeedLagValue = view.findViewById(R.id.box_speed_lag_value);
     mSpeedLagSource = view.findViewById(R.id.box_speed_lag_source);
     mSpeedTableRows = view.findViewById(R.id.box_speed_table_rows);
@@ -496,7 +509,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final TextView titleView = header.findViewById(R.id.page_title);
     if (title != 0)
       titleView.setText(title);
-    header.findViewById(R.id.page_back).setOnClickListener(v -> showPage(mPage.parent()));
+    header.findViewById(R.id.page_back).setOnClickListener(v -> showPage(parentOf(mPage)));
     return titleView;
   }
 
@@ -566,7 +579,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       startAddingCar();
     else if (page == Page.PHONES)
       NoGps.nativeListBoxPhones();
-    final boolean deeper = page.depth() > from.depth();
+    final boolean deeper = depthOf(page) > depthOf(from);
     final Slide in = new Slide(deeper ? Gravity.END : Gravity.START);
     final Slide out = new Slide(deeper ? Gravity.START : Gravity.END);
     for (View view : pageViews(page))
@@ -576,6 +589,26 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     TransitionManager.beginDelayedTransition(mRoot, new TransitionSet().addTransition(in).addTransition(out));
     update();
     getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
+  }
+
+  /**
+   * The Phones page goes back where it was opened from: the Cars page or the Car page.
+   */
+  @NonNull
+  private Page parentOf(@NonNull Page page)
+  {
+    return page == Page.PHONES && mPhonesFromCar ? Page.ITEM_CAR : page.parent();
+  }
+
+  private int depthOf(@NonNull Page page)
+  {
+    return page == Page.MAIN ? 0 : 1 + depthOf(parentOf(page));
+  }
+
+  private void showPhones(boolean fromCar)
+  {
+    mPhonesFromCar = fromCar;
+    showPage(Page.PHONES);
   }
 
   @NonNull
@@ -612,7 +645,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     // The box has disconnected: its phones are not known.
     if (mPage == Page.PHONES && !status.boxHasPhones)
     {
-      showPage(Page.CARS);
+      showPage(parentOf(Page.PHONES));
       return;
     }
     // The pages of a box set up, e.g. after the box has removed this phone.
@@ -883,7 +916,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     if (current && NoGps.getStatus().boxHasPhones)
     {
       items.add(getString(R.string.nogps_car_phones));
-      actions.add(() -> showPage(Page.PHONES));
+      actions.add(() -> showPhones(false));
     }
     items.add(getString(R.string.nogps_car_rename));
     actions.add(() -> renameCar(car));
@@ -1107,16 +1140,13 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
                                                                ? getString(R.string.nogps_speed_kmh, status.speedKmh)
                                                                : getString(R.string.nogps_unknown)));
 
+    // As in the menu of the car.
+    mCarNameRow.setVisibility(car != null ? View.VISIBLE : View.GONE);
+    if (car != null)
+      mCarName.setText(BoxTexts.carName(context, car));
+    mCarPhones.setVisibility(car != null && status.boxHasPhones ? View.VISIBLE : View.GONE);
+
     mItemSpeed.show(getString(R.string.nogps_speed_calibration), BoxTexts.speedTableText(context, status));
-    String scale = getString(R.string.nogps_sensors_scale, String.format(Locale.US, "\u00D7%.2f", status.speedScale),
-                             status.speedTableRanges);
-    // Until GPS measures the speed, e.g. on the first trip, it is corrected roughly by the roads.
-    if (status.speedTableRanges == 0)
-      scale += "\n"
-             + (status.roughSpeedTableRanges > 0
-                    ? getString(R.string.nogps_sensors_rough_speed, status.roughSpeedTableRanges)
-                    : getString(R.string.nogps_sensors_rough_speed_learning));
-    mSpeedScale.setText(scale);
     mSpeedLagValue.setText(
         getString(R.string.nogps_speed_lag_value, String.format(Locale.US, "%.1f", status.speedLagSec)));
     mSpeedLagSource.setText(status.speedLagMeasured ? R.string.nogps_speed_lag_measured
@@ -1198,8 +1228,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     boolean mismatch = false;
     for (int i = 0; i < mValueIds.length; ++i)
     {
-      mValueTexts[i].setText(live ? BoxTexts.boxValueText(requireContext(), status, mValueIds[i], mValues[i])
-                                  : getString(R.string.nogps_unknown));
+      if (mValueTexts[i] != null)
+        mValueTexts[i].setText(live ? BoxTexts.boxValueText(requireContext(), status, mValueIds[i], mValues[i])
+                                    : getString(R.string.nogps_unknown));
       if (mValueIds[i] == NoGps.BoxValue.VOLTAGE_MISMATCH && mValues[i].equals("1"))
         mismatch = true;
     }
@@ -1219,6 +1250,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
                                           NoGps.BoxValue.FIRMWARE};
     for (int i = 0; i < ids.length; ++i)
     {
+      // The firmware row of the Box page tells it.
+      if (ids[i] == NoGps.BoxValue.FIRMWARE)
+        continue;
       int group = 0;
       while (group + 1 < groupStarts.length && ids[i].ordinal() >= groupStarts[group + 1].ordinal())
         ++group;
