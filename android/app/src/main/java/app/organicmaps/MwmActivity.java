@@ -945,8 +945,23 @@ public class MwmActivity extends BaseMwmFragmentActivity
       final String reason = firmwareError(status.firmwareUpdateError);
       Toast.makeText(this, getString(R.string.nogps_firmware_failed, reason), Toast.LENGTH_LONG).show();
     }
-    else if (!status.bundledFirmware.isEmpty() && !isFinishing() && !getSupportFragmentManager().isStateSaved())
+    else
     {
+      offerFirmwareUpdate();
+    }
+    return 0;
+  }
+
+  /**
+   * The box works with another firmware than the application is tested with. When the activity can't show the offer,
+   * the core keeps it pending and onResumeFragments() asks again.
+   */
+  private void offerFirmwareUpdate()
+  {
+    final NoGps.Status status = NoGps.getStatus();
+    if (!status.bundledFirmware.isEmpty() && !isFinishing() && !getSupportFragmentManager().isStateSaved())
+    {
+      NoGps.nativeFirmwareOfferShown();
       new MaterialAlertDialogBuilder(this, R.style.MwmTheme_AlertDialog)
           .setTitle(R.string.nogps_firmware_title)
           .setMessage(getString(R.string.nogps_firmware_offer, status.boxFirmware, status.bundledFirmware))
@@ -959,7 +974,6 @@ public class MwmActivity extends BaseMwmFragmentActivity
           .setNegativeButton(R.string.later, null)
           .show();
     }
-    return 0;
   }
 
   /**
@@ -1218,6 +1232,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
   {
     super.onResumeFragments();
     RoutingController.get().restore();
+    if (NoGps.getStatus().firmwareOfferPending)
+      offerFirmwareUpdate();
   }
 
   @Override

@@ -126,6 +126,9 @@ struct Status
   int m_firmwareUpdateProgress = 0;
   // Why the update has failed, see Esp32Update::GetError().
   std::string m_firmwareUpdateError;
+  // The user has not seen the offer of m_bundledFirmware yet: the event came when the application could not show it.
+  // The application shows the offer and calls Engine::FirmwareOfferShown().
+  bool m_firmwareOfferPending = false;
   // The sensor box has been powered on since the user calibrated it: it may stand in another way now.
   bool m_boxCalibrationAdvised = false;
 
@@ -343,6 +346,8 @@ public:
   /// Sends the firmware of Status::m_bundledFirmware to the box.
   void StartFirmwareUpdate();
   void CancelFirmwareUpdate();
+  /// The user has been offered the firmware, see Status::m_firmwareOfferPending.
+  void FirmwareOfferShown();
 
   /// \returns true if the position arrow must show the car direction instead of the compass.
   bool IsCarHeadingShown() const;
@@ -554,6 +559,7 @@ private:
   Esp32Update::State m_firmwareUpdateState = Esp32Update::State::None;
   // The firmware of the box and of the application the user was asked about, not to ask again.
   std::string m_offeredFirmware;
+  bool m_firmwareOfferPending = false;
   // Since when the box is known, and if the car has driven since: the update is offered before a trip, not at
   // a traffic light.
   std::optional<int64_t> m_boxKnownSinceMs;

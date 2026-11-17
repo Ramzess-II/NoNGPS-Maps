@@ -2941,6 +2941,14 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
     TEST_EQUAL(status.m_bundledFirmware, "0.3.3", ());
     TEST_EQUAL(status.m_firmwareUpdate, Esp32Update::State::None, ());
     TEST_EQUAL(reads, 0, ());
+    // The offer stays pending until the application shows it: the event may come when it can't.
+    TEST(status.m_firmwareOfferPending, ());
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs);
+    TEST(env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    env.m_engine.FirmwareOfferShown();
+    TEST(!env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs);
+    TEST(!env.m_engine.GetStatus().m_firmwareOfferPending, ());
 
     env.m_engine.StartFirmwareUpdate();
     TEST_EQUAL(reads, 1, ());
@@ -2990,6 +2998,10 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
     connect(env, "0.3.2");
     drive(Engine::kFirmwareOfferDelayMs + Engine::kTripLogIntervalMs * 2, 0);
     TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 1, ());
+    TEST(env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    // The offer is not kept for a car that drives: the box refuses the update.
+    drive(1500, 36);
+    TEST(!env.m_engine.GetStatus().m_firmwareOfferPending, ());
   }
   {
     // A box of another kind is not updated.

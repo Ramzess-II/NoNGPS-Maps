@@ -231,6 +231,7 @@ std::optional<double> NonNegative(double value)
     _speedLagMeasured = status.m_speedLagMeasured;
     _calibration = static_cast<MWMNoGpsCalibrationState>(status.m_calibration);
     _calibrationProgress = status.m_calibrationProgress;
+    _firmwareOfferPending = status.m_firmwareOfferPending;
     _boxCalibrationAdvised = status.m_boxCalibrationAdvised;
     _hasInertialPosition = status.m_hasInertialPosition;
     _roadLost = status.m_roadLost;
@@ -434,6 +435,11 @@ static CLLocation * lastPlatformLocation;
 + (void)startFirmwareUpdate
 {
   Engine().StartFirmwareUpdate();
+}
+
++ (void)firmwareOfferShown
+{
+  Engine().FirmwareOfferShown();
 }
 
 + (void)cancelFirmwareUpdate
