@@ -166,7 +166,7 @@ void InertialNavigator::SetRoadPosition(ms::LatLon const & position, double bear
     SetHeading(bearingDeg, HeadingSource::Road);
   else if (m_deadReckoning.HasHeading())
     m_headingSource = HeadingSource::Gyro;
-  m_steadyRoad = SteadyRoad{bearingDeg, position, m_pathM, m_clock.NowMs(), m_rotationDeg};
+  m_steadyRoad = SteadyRoad{bearingDeg, position, m_pathM, m_clock.NowMs(), m_rotationDeg, m_speedKmh, m_speedKmh};
   StartRoughStretch(0);
 }
 
@@ -624,12 +624,19 @@ bool InertialNavigator::MatchLateTurn(int64_t timestampNs)
   m_turnRotationDeg = m_rotationDeg - steady.m_rotationDeg;
   m_turnStartNs = timestampNs - (m_clock.NowMs() - steady.m_timeMs) * 1'000'000;
   m_turnStartPathM = steady.m_pathM;
-  m_turnMinKmh = m_turnMaxKmh = m_speedKmh;
-  // The other marks have rotated with the car: they turn from where they are.
+  m_turnMinKmh = steady.m_minKmh;
+  m_turnMaxKmh = steady.m_maxKmh;
+  // The other marks have rotated with the car: they turn from the heading they had before, where the shown mark
+  // was steady.
+  auto const here = m_deadReckoning.GetPosition();
+  double const rotatedDeg = AngleDiff(m_deadReckoning.GetHeading(), steady.m_bearingDeg);
   for (auto & mark : m_otherMarks)
   {
-    mark.m_turnStart = mark.m_turnEnd = mark.m_deadReckoning.GetPosition();
-    mark.m_turnFromBearing = mark.m_deadReckoning.GetHeading();
+    auto const position = mark.m_deadReckoning.GetPosition();
+    mark.m_turnStart = ms::LatLon(position.m_lat + steady.m_point.m_lat - here.m_lat,
+                                  position.m_lon + steady.m_point.m_lon - here.m_lon);
+    mark.m_turnEnd = position;
+    mark.m_turnFromBearing = Normalize(mark.m_deadReckoning.GetHeading() - rotatedDeg);
     mark.m_turnFromRoad = mark.m_onRoad;
   }
   MatchTurn(timestampNs);
@@ -1147,7 +1154,7 @@ void InertialNavigator::PutOnRoad(ms::LatLon const & point, double bearingDeg)
   m_lastSnapResult = SnapResult::OnRoad;
   // The car drives along the road: what the gyroscope has counted through the maneuver is less sure.
   SetHeading(bearingDeg, HeadingSource::Road);
-  m_steadyRoad = SteadyRoad{bearingDeg, point, m_pathM, m_clock.NowMs(), m_rotationDeg};
+  m_steadyRoad = SteadyRoad{bearingDeg, point, m_pathM, m_clock.NowMs(), m_rotationDeg, m_speedKmh, m_speedKmh};
 }
 
 void InertialNavigator::CheckBackOnRoad()
@@ -1638,8 +1645,13 @@ void InertialNavigator::SnapToRoad()
     m_offRoadM = 0;
     m_offRoadMaxSpeedMps = 0;
     if (std::fabs(*m_lastSnapBearingDiffDeg) <= DeadReckoning::kMaxHeadingPullDiffDeg)
-      m_steadyRoad =
-          SteadyRoad{Orient(snapped->m_bearingDeg, heading), snapped->m_point, m_pathM, m_clock.NowMs(), m_rotationDeg};
+      m_steadyRoad = SteadyRoad{Orient(snapped->m_bearingDeg, heading),
+                                snapped->m_point,
+                                m_pathM,
+                                m_clock.NowMs(),
+                                m_rotationDeg,
+                                m_speedKmh,
+                                m_speedKmh};
   }
 }
 
@@ -1714,6 +1726,11 @@ void InertialNavigator::TrackTurn(double yawDeltaDeg, double dtSec, int64_t time
   double const yawRateDeg = yawDeltaDeg / dtSec;
   m_turnRotationDeg += std::fabs(yawDeltaDeg);
   m_rotationDeg += std::fabs(yawDeltaDeg);
+  if (m_steadyRoad)
+  {
+    m_steadyRoad->m_minKmh = std::min(m_steadyRoad->m_minKmh, m_speedKmh);
+    m_steadyRoad->m_maxKmh = std::max(m_steadyRoad->m_maxKmh, m_speedKmh);
+  }
   if (!m_turning)
   {
     if (std::fabs(yawRateDeg) < kTurnStartRateDeg)
