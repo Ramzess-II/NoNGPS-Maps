@@ -3701,7 +3701,21 @@ UNIT_TEST(NoGps_Engine_BoxTurnedAroundDoesNotDriveEveryStartBack)
   TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 15);
 }
 
-UNIT_TEST(NoGps_Engine_BoxCalibrationForgetsAccelerometer)
+UNIT_TEST(NoGps_Engine_BoxCalibrationKeepsAccelerometer)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+  env.m_engine.Calibrate();
+  // The same box: a reverse right after the calibration is told backward.
+  car.Drive(2, -1, 0);
+  car.Drive(2, 0, 0);
+  TEST(env.m_engine.GetTripLine().find(" back=1") != std::string::npos, (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_Engine_BoxCalibrationTurnedBoxIsLearnedAnew)
 {
   // The trip line tells "boxacc=<correlation>/-" while the box accelerometer is not used.
   auto const accelUsed = [](Env & env)
@@ -3718,17 +3732,13 @@ UNIT_TEST(NoGps_Engine_BoxCalibrationForgetsAccelerometer)
   car.SpeedUpAndBrake();
   TEST(accelUsed(env), ());
 
-  // The box is put in turned around and calibrated: the direction learned before is forgotten.
+  // The box is put in turned around and calibrated: the direction learned before is kept, the check of the
+  // accelerometer against the car forgets it while driving, and it is learned the right way.
   env.m_engine.Calibrate();
-  TEST(!accelUsed(env), ());
+  TEST(accelUsed(env), ());
   car.m_accelSign = -1;
-  car.Drive(3, 1, 0);
-  TEST(env.m_engine.GetTripLine().find(" back=0") != std::string::npos, (env.m_engine.GetTripLine()));
-  car.Drive(3, -1, 0);
   car.Drive(3, 0, 0);
-  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 5);
-
-  // It is learned anew, the right way.
+  car.SpeedUpAndBrake();
   car.SpeedUpAndBrake();
   TEST(accelUsed(env), ());
   double const stoppedEast = East(env.Last().m_position);
