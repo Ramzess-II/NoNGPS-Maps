@@ -158,6 +158,9 @@ struct Phone
   int64_t m_seenUnixS = 0;
   // The phone that has asked.
   bool m_thisPhone = false;
+  // The box takes the commands that change it from this phone. The box tells it only of the phone that has asked:
+  // another phone is known to change it when it is the only other one.
+  bool m_changesBox = false;
 
   bool operator==(Phone const &) const = default;
 };

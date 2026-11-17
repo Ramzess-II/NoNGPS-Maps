@@ -360,7 +360,7 @@ final class NavButton: UIControl {
       states.append(why)
     }
     if status.inertialEnabled {
-      states.append(NoGpsSensorsViewController.boxStateText(status))
+      states.append(NoGpsBoxPage.boxStateText(status))
     }
     accessibilityValue = states.joined(separator: ". ")
   }

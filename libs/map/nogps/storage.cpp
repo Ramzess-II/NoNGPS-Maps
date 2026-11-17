@@ -196,6 +196,11 @@ void CarStorage::OnBoxHeard(std::string const & id, std::string const & firmware
   }
   if (std::find(ids.begin(), ids.end(), id) == ids.end())
   {
+    if (ids.size() >= kMaxCars)
+    {
+      LOG(LWARNING, ("No more cars, the box is not added", id));
+      return;
+    }
     LOG(LINFO, ("New car", id));
     ids.push_back(id);
     SetIds(ids);

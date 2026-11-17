@@ -935,13 +935,7 @@
     <string name="nogps_status_gps">GPS</string>
     <string name="nogps_meters">%d m</string>
     <string name="nogps_kilometers">%.1f km</string>
-    <string name="nogps_sensors_title">Inertial navigation</string>
-    <string name="nogps_sensors_hint">Fix the phone so it doesn\'t move. Zero the gyroscope while the car stands still.</string>
-    <string name="nogps_sensors_adapter">Adapter: %1$s</string>
-    <string name="nogps_sensors_adapter_none">not chosen</string>
-    <string name="nogps_sensors_choose">Choose</string>
     <string name="nogps_elm_disconnected">no connection</string>
-    <string name="nogps_elm_connecting">connecting…</string>
     <string name="nogps_elm_no_adapter">OBD doesn\'t answer</string>
     <string name="nogps_box_obd_disabled">OBD is off in the box</string>
     <string name="nogps_box_obd_connecting">OBD connects…</string>
@@ -951,27 +945,14 @@
     <string name="nogps_sensors_speed">Speed: %s</string>
     <string name="nogps_speed_kmh">%d km/h</string>
     <string name="nogps_unknown">—</string>
-    <string name="nogps_sensors_gyro">Gyroscope: %s</string>
-    <string name="nogps_gyro_none">not zeroed</string>
-    <string name="nogps_gyro_calibrating">zeroing… %d%%</string>
-    <string name="nogps_gyro_done">zeroed</string>
-    <string name="nogps_gyro_failed">failed, the phone or the car moved</string>
-    <string name="nogps_sensors_calibrate">Zero</string>
-    <string name="nogps_sensors_ready">Ready</string>
-    <string name="nogps_sensors_not_ready">Not ready: %s</string>
-    <string name="nogps_missing_speed">no speed</string>
-    <string name="nogps_missing_gyro">zero the gyroscope</string>
-    <string name="nogps_missing_position">no start position</string>
-    <string name="nogps_choose_adapter">Choose the OBD adapter</string>
-    <string name="nogps_no_paired">No paired Bluetooth devices. Pair ELM327 in the Bluetooth settings (PIN is usually 1234).</string>
-    <string name="nogps_bt_permission_denied">The adapter can\'t be used without Bluetooth access</string>
-    <string name="nogps_sensors_scale">Speed correction: %1$s · measured ranges: %2$d</string>
-    <string name="nogps_sensors_lag_measured">Speed delay: %s s (measured by GPS)</string>
-    <string name="nogps_sensors_lag_usual">Speed delay: %s s (usual, not measured by GPS yet)</string>
-    <string name="nogps_sensors_rough_speed">≈ Rough correction from the roads · ranges: %d · GPS will refine it</string>
-    <string name="nogps_sensors_rough_speed_learning">≈ The correction is learned from the roads until GPS measures the speed</string>
-    <string name="nogps_speed_table_show">Show table</string>
-    <string name="nogps_speed_table_hide">Hide table</string>
+    <!-- Top of the Box page: the box gives all the navigation without GPS needs -->
+    <string name="nogps_sensors_ready">Ready to drive without GPS</string>
+    <!-- Top of the Box page: what the navigation without GPS still needs, a list of nogps_missing_* joined by commas -->
+    <string name="nogps_sensors_not_ready">Not ready to drive without GPS: %s</string>
+    <!-- After "Not ready to drive without GPS:": the box gives no car speed from the OBD socket -->
+    <string name="nogps_missing_speed">no car speed from OBD</string>
+    <!-- After "Not ready to drive without GPS:": the car has no place on the map to start from -->
+    <string name="nogps_missing_position">no start position, mark the car on the map</string>
     <string name="nogps_speed_table_row">%1$d–%2$d km/h  %3$s</string>
     <string name="nogps_speed_table_left">%d m to go</string>
     <string name="nogps_status_gps_off">GPS is off in the system settings</string>
@@ -985,10 +966,6 @@
     <string name="nogps_status_road_lost">Road lost</string>
     <!-- Second line of the status "Road lost" -->
     <string name="nogps_status_road_lost_hint">press the finger button and tap the road where you are</string>
-    <string name="nogps_source_phone">Phone + ELM327 (Bluetooth)</string>
-    <!-- Choice of where the car speed and turns come from, next to "Phone + ELM327 (Bluetooth)" -->
-    <string name="nogps_source_esp32_bt">NonGPS-OBD (Bluetooth)</string>
-    <string name="nogps_sensors_box">Box: %1$s</string>
     <!-- State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth" -->
     <string name="nogps_box_bt_searching">searching by Bluetooth</string>
     <!-- State of the sensor box, shown after its name: the "Nearby devices" permission of Android 12+ is not given -->
@@ -1028,10 +1005,6 @@
     <string name="nogps_box_calibration">Sensor box calibration</string>
     <!-- Under the heading "Sensor box calibration": when and how the box is calibrated -->
     <string name="nogps_box_calibration_hint">Needed once the box is installed and every time it was taken out or moved. The car must stand on a level surface, not on a slope.</string>
-    <!-- Question shown when the sensor box has been powered on: it is new in the car or was taken out. The buttons are "Calibrate" and "Later" -->
-    <string name="nogps_box_calibration_offer">The sensor box has been plugged in. Calibrate the sensors: the car must stand on a level surface, not on a slope.</string>
-    <!-- Row of the sensors screen: the state of the calibration of the sensor box -->
-    <string name="nogps_sensors_box_sensors">Sensors: %s</string>
     <!-- State of the sensors of the box, shown after "Sensors:" -->
     <string name="nogps_box_not_calibrated">not calibrated</string>
     <!-- State of the sensors of the box, shown after "Sensors:", with the percent done -->
@@ -1044,7 +1017,7 @@
     <string name="nogps_box_calibration_link_lost">stopped, the box is out of reach</string>
     <!-- State of the sensors of the box, shown after "Sensors:": the box has been powered on since its calibration -->
     <string name="nogps_box_calibration_advised">the box has been plugged in, calibrate it</string>
-    <!-- What is missing for the navigation without GPS, shown after "Not ready:" -->
+    <!-- After "Not ready to drive without GPS:" -->
     <string name="nogps_missing_box_calibration">calibrate the box</string>
     <string name="nogps_turns_reversed">The gyroscope turns the car the other way than GPS. Check the axes of the sensor driver: without GPS the car would turn wrong</string>
     <string name="nogps_road_lost">The road is lost, the car is stopped. Mark yourself on the map</string>
@@ -1056,12 +1029,10 @@
     <string name="nogps_box_buy_text">The NonGPS box with motion sensors keeps the car on the map where GPS is jammed or lost.</string>
     <!-- Button opening the page of the shop -->
     <string name="nogps_box_buy">Buy the box</string>
-    <!-- Button on the box screen: look for the box over Bluetooth and use it -->
-    <string name="nogps_box_connect">I have the box: connect</string>
-    <!-- Button on the box screen: stop using the box -->
-    <string name="nogps_box_forget">Forget the box</string>
     <!-- Header of the list of the cars on the box screen: each car has its own sensor box -->
     <string name="nogps_cars">Cars</string>
+    <!-- Under the current car's name at the top of the box screen: tapping the name opens the list of the cars, where the user switches, renames or forgets them -->
+    <string name="nogps_cars_subtitle">Switch or manage cars</string>
     <!-- State of a car in the list of the cars: its box is connected now -->
     <string name="nogps_car_connected">Connected</string>
     <!-- State of a car in the list of the cars: the app takes this car until a box connects -->
@@ -1070,24 +1041,26 @@
     <string name="nogps_car_last_seen">Last connected %1$s</string>
     <!-- Action for a car in the list of the cars: the app takes this car and connects to its box -->
     <string name="nogps_car_drive">Switch to this car</string>
-    <!-- Action for a car in the list of the cars -->
-    <string name="nogps_car_rename">Rename</string>
     <!-- Title of the dialog that renames a car -->
     <string name="nogps_car_name">Car name</string>
     <!-- Action for a car in the list of the cars, and the button that confirms it -->
     <string name="nogps_car_forget">Forget the car</string>
     <!-- Asked before a car is forgotten -->
     <string name="nogps_car_forget_text">What the app has learned about this car and where it was left will be lost. Its box is not connected until the car is added again.</string>
+    <!-- Under the heading Phones of the page of a car: its box is not connected to this phone now, so its phones are not known -->
+    <string name="nogps_car_phones_unknown">The phones of the box are shown while it is connected to this phone.</string>
     <!-- Button under the list of the cars: search the sensor box of another car -->
     <string name="nogps_car_add">Add a car</string>
     <!-- State of the sensor box, shown after its name: the box has phones, a new one is added on one of them -->
-    <string name="nogps_box_bt_pairing_by_phone">found, but not paired with this phone. On a phone paired with the box, open Box, tap the car, then Phones and Add a phone, and enter the code here</string>
+    <string name="nogps_box_bt_pairing_by_phone">found, but not paired with this phone. On a phone paired with the box, open Box, tap the car name at the top, then the car and Add a phone, and enter the code here</string>
     <!-- State of the sensor box, shown after its name: the box has 4 phones and takes no new one -->
-    <string name="nogps_box_bt_pairing_full">found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car, Phones)</string>
+    <string name="nogps_box_bt_pairing_full">found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car name at the top, the car)</string>
     <!-- Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car -->
     <string name="nogps_car_phones">Phones</string>
     <!-- Under a phone in the list of the phones of the sensor box: it is the phone the user holds -->
     <string name="nogps_phone_this">this phone</string>
+    <!-- Under a phone in the list of the phones of the sensor box: the box takes the calibration, the firmware, the car name and the phones from this phone, it connected first -->
+    <string name="nogps_phone_changes_box">controls the box</string>
     <!-- A phone in the list of the phones of the sensor box that has not told its model -->
     <string name="nogps_phone_unnamed">Phone</string>
     <!-- Button: remove a phone from the sensor box -->
@@ -1113,7 +1086,7 @@
     <!-- Shown when the sensor box has not taken the one-time pairing code -->
     <string name="nogps_phone_add_failed">The box has not taken the code. Try again.</string>
     <!-- Shown in the Box sheet when another phone has connected to the sensor box first: this phone gets the data only -->
-    <string name="nogps_box_read_only">Another phone connected to the box first: the calibration, the firmware and the phones of the box are changed on it</string>
+    <string name="nogps_box_read_only">Another phone connected to the box first: the calibration, the firmware, the car name and the phones of the box are changed on it</string>
     <string name="nogps_obd_stopped">No speed from the OBD adapter, the car stands still on the map. Check the adapter or mark yourself</string>
     <string name="nogps_box_stopped">No data from the sensor box, the car stands still on the map. Check the box or mark yourself</string>
     <!-- Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration -->
@@ -1124,8 +1097,6 @@
     <string name="nogps_gyro_stopped">The gyroscope is not zeroed, the car stands still on the map. Stop and zero it</string>
     <!-- State of the sensor box, shown after its name while it takes a new firmware -->
     <string name="nogps_box_updating">takes a new firmware</string>
-    <!-- Row of the sensors screen: the version of the firmware of the sensor box or what its update does now -->
-    <string name="nogps_sensors_firmware">Box firmware: %1$s</string>
     <!-- Button: sends the firmware that comes with the app to the sensor box, with its version -->
     <string name="nogps_firmware_install">Install %1$s</string>
     <!-- Title of the question about the firmware of the sensor box -->
@@ -1174,7 +1145,6 @@
     <string name="nogps_delete_recent_query">Delete from the history?</string>
     <string name="nogps_box_sleeping">sleeps: the engine is stopped</string>
     <string name="nogps_box_obd_sleeping">OBD sleeps: the engine is stopped</string>
-    <string name="nogps_sensors_car">Engine: %1$s\nEngine speed: %2$s\nVoltage, box ADC: %3$s\nVoltage, OBD: %4$s\nVoltage, car control unit: %5$s</string>
     <string name="nogps_engine_running">running</string>
     <string name="nogps_engine_stopped">stopped</string>
     <string name="nogps_rpm">%d rpm</string>
@@ -1217,12 +1187,38 @@
     <string name="nogps_gps_why_spoofed">Far from cell towers and Wi-Fi, or jumps: not used.</string>
     <!-- Why, under the state of GPS -->
     <string name="nogps_gps_why_none">No position from GPS for 5 seconds.</string>
-    <!-- Switch in the GPS sheet -->
-    <string name="nogps_gps_use">Use GPS for the car</string>
-    <!-- Under the switch in the GPS sheet -->
-    <string name="nogps_gps_use_hint">Off: GPS is ignored, the box and your marks place the car. For places where GPS is spoofed but the app doesn\'t see it.</string>
-    <!-- Under the disabled switch Use GPS for the car in the Box sheet: no box is heard -->
-    <string name="nogps_gps_use_needs_box">GPS can be turned off only while a box is connected: nothing else would move the car.</string>
+    <!-- Switch in the Box sheet: on, GPS is not used for the car -->
+    <string name="nogps_gps_block">Don\'t use GPS for navigation</string>
+    <!-- Under the switch Don't use GPS for navigation in the Box sheet -->
+    <string name="nogps_gps_block_hint">On: GPS is ignored, the box and your marks place the car. For places where GPS is spoofed but the app doesn\'t see it.</string>
+    <!-- Under the disabled switch Don't use GPS for navigation in the Box sheet: no box is heard -->
+    <string name="nogps_gps_block_needs_box">GPS can be turned off only while a box is connected: nothing else would move the car.</string>
+    <!-- At the top of the Cars page of the Box sheet -->
+    <string name="nogps_cars_text">Each box is one car with its own calibration and parking spot. Tap a car to drive it, rename it or forget it.</string>
+    <!-- On the Add a car page while the box of the new car is searched -->
+    <string name="nogps_car_add_text">Power on the box of the new car near the phone: the car is added together with the box in it.</string>
+    <!-- Section of the Box page: how the car speed is corrected -->
+    <string name="nogps_speed_calibration">Speed calibration</string>
+    <!-- On the Calibration page of the sensor box, under when it is needed: how to do it -->
+    <string name="nogps_calibration_steps">Stop the car on a level surface. Nobody gets in or out and nobody touches the box until it\'s done.</string>
+    <!-- Result on the Calibration page of the sensor box -->
+    <string name="nogps_calibration_failed_moving">Not calibrated: the car moved. Keep it still and calibrate again.</string>
+    <!-- Result on the Calibration page of the sensor box -->
+    <string name="nogps_calibration_failed_mount">The box has moved in its mount. Fix it firmly and calibrate again.</string>
+    <!-- Result on the Calibration page of the sensor box -->
+    <string name="nogps_calibration_failed_link">The connection to the box was lost. Stay near the car and calibrate again.</string>
+    <!-- On the Calibration page of the sensor box, under the disabled Calibrate button -->
+    <string name="nogps_calibration_needs_box">The box is out of reach: power it on and stay near the car.</string>
+    <!-- Title of the Box section of the Box page: the model of the sensor box, e.g. "Box NonGPS-OBD" -->
+    <string name="nogps_box_section">Box %1$s</string>
+    <!-- Item of the Box page and the title of its page: the car of the box with its name, e.g. "Car: Kia" -->
+    <string name="nogps_box_car">Car: %1$s</string>
+    <!-- Item of the Box page and the title of its page: the motion sensors of the box (gyroscope, accelerometer) -->
+    <string name="nogps_box_imu">Inertial Measurement Unit</string>
+    <!-- Start of the subtitle of the Box section of the Box page: the firmware version of the box, then its state -->
+    <string name="nogps_box_version">Ver %1$s</string>
+    <!-- Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page -->
+    <string name="nogps_calibration_snackbar">Calibrate the sensor box</string>
     <!-- Switch in the Box sheet under Use GPS for the car: the app is the mock location app for other apps -->
     <string name="nogps_share_position">Share the position with other apps</string>
     <!-- Under the switch Share the position with other apps -->
@@ -1267,8 +1263,6 @@
     <string name="nogps_gps_db_hz">%d dB-Hz</string>
     <!-- Title of the Box sheet -->
     <string name="nogps_box_title">Sensor box</string>
-    <!-- Title of the screen with the speed table of the sensor box -->
-    <string name="nogps_speed_table_title">Speed table</string>
     <!-- State of the speed table on the Box sheet: GPS has measured all its ranges -->
     <string name="nogps_speed_table_calibrated">Calibrated</string>
     <!-- State of the speed table on the Box sheet: GPS has measured no range -->
@@ -1289,12 +1283,6 @@
     <string name="nogps_speed_lag_measured">Measured by GPS</string>
     <!-- Second line of the speed delay row of the Box sheet -->
     <string name="nogps_speed_lag_usual">Usual, not measured by GPS yet</string>
-    <!-- Row of the Box sheet below the speed: the engine revs, e.g. "850 rpm" -->
-    <string name="nogps_box_rpm">Revs: %s</string>
-    <!-- Row of the Box sheet, next to the "Calibrate" action -->
-    <string name="nogps_box_sensors_not_calibrated">Sensors not calibrated</string>
-    <!-- Row of the Box sheet, next to the "Recalibrate" action -->
-    <string name="nogps_box_sensors_calibrated">Sensors calibrated</string>
     <!-- Action of the Box sheet: calibrate the sensors of the box again -->
     <string name="nogps_box_recalibrate">Recalibrate</string>
     <!-- State under the title of the Box sheet when no box is set up -->
@@ -1325,16 +1313,10 @@
     <string name="nogps_box_turn_on_location">Turn on location</string>
     <!-- Hint while the box is searched -->
     <string name="nogps_box_power_hint">Have a box? Power it on near the phone: it accepts a new phone for 2 minutes. The phone may ask for the code from the box.</string>
-    <!-- Title of the page with all values the sensor box sends, opened from the box row of the Box sheet -->
-    <string name="nogps_box_value_title">Box values</string>
     <!-- Section of the Box values page -->
     <string name="nogps_box_value_group_car">Car</string>
-    <!-- Section of the Box values page -->
-    <string name="nogps_box_value_group_gyroscope">Gyroscope</string>
     <!-- Section of the Box values page: the ELM327 adapter of the box -->
     <string name="nogps_box_value_group_obd">OBD</string>
-    <!-- Section of the Box values page: the box itself -->
-    <string name="nogps_box_value_group_box">Box</string>
     <!-- Row of the Box values page, the value is running or stopped -->
     <string name="nogps_box_value_engine">Engine</string>
     <!-- Row of the Box values page -->

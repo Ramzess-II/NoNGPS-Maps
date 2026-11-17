@@ -2390,6 +2390,35 @@ UNIT_TEST(NoGps_Cars_ForgetRemovesOnlyThatCar)
   TEST(!cars.GetString(Storage::kSpeedTable), ());
 }
 
+UNIT_TEST(NoGps_MaxCars)
+{
+  TestStorage storage;
+  storage.Set(Storage::kInertialEnabled, true);
+  CarStorage cars(storage);
+  for (auto const id : {"C47D", "42FD", "1234", "ABCD"})
+    cars.OnBoxHeard(id, "0.3.5", 1000);
+  TEST_EQUAL(cars.GetCars().size(), CarStorage::kMaxCars, ());
+
+  // The 5th box is not a car: the current car stays.
+  cars.OnBoxHeard("5678", "0.3.5", 2000);
+  TEST_EQUAL(CarIds(cars.GetCars()), std::vector<std::string>({"C47D", "42FD", "1234", "ABCD"}), ());
+  TEST_EQUAL(cars.GetCurrentCar(), "ABCD", ());
+  // A box of a car is still heard.
+  cars.OnBoxHeard("C47D", "0.3.6", 3000);
+  TEST_EQUAL(cars.GetCurrentCar(), "C47D", ());
+  TEST_EQUAL(cars.GetCars()[0].m_firmware, "0.3.6", ());
+
+  // Cars over the limit, kept from before it, stay.
+  storage.Set(Storage::kCars, std::string("C47D,42FD,1234,ABCD,5678"));
+  TEST_EQUAL(cars.GetCars().size(), 5, ());
+  cars.OnBoxHeard("5678", "0.3.5", 4000);
+  TEST_EQUAL(cars.GetCurrentCar(), "5678", ());
+  cars.OnBoxHeard("9ABC", "0.3.5", 5000);
+  TEST_EQUAL(cars.GetCars().size(), 5, ());
+  cars.ForgetCar("5678");
+  TEST_EQUAL(cars.GetCars().size(), CarStorage::kMaxCars, ());
+}
+
 UNIT_TEST(NoGps_Engine_KeepsCalibrationForEachCar)
 {
   // The roads have told the speedometer is 5% low at 30-40 km/h, before the cars.
@@ -2766,6 +2795,67 @@ UNIT_TEST(NoGps_BoxCarValues_PhoneConnectedSecondDoesNotWrite)
   box.m_busy = false;
   box.Connect(env);
   TEST_EQUAL(box.m_values["car_name"], "Lada", ());
+}
+
+UNIT_TEST(NoGps_BoxCarValues_PhoneConnectedSecondTakesNewName)
+{
+  CarBox box;
+  box.m_busy = true;
+  Env env(true /* inertial */);
+  box.Connect(env);
+  // The box refuses the name: another phone keeps it.
+  env.m_engine.RenameCar("C47D", "Kia");
+  box.Answer(env);
+  auto const drive = [&](int64_t ms)
+  {
+    for (int64_t driven = 0; driven < ms; driven += 1000)
+    {
+      env.Drive(1000, 0, 0);
+      box.Answer(env);
+    }
+  };
+  auto const name = [&env] { return env.m_engine.GetCars()[0].m_name; };
+
+  // The first phone renames the car: the box doesn't tell it, this phone reads the name in a minute.
+  box.m_values["car_name"] = "Opel";
+  drive(BoxCarValues::kReadNameIntervalMs / 2);
+  TEST_EQUAL(name(), "Kia", ());
+  drive(BoxCarValues::kReadNameIntervalMs);
+  TEST_EQUAL(name(), "Opel", ());
+
+  // The phone that changes the box knows its name.
+  box.m_busy = false;
+  box.Connect(env);
+  auto const countGets = [&env]
+  {
+    return std::count_if(env.m_delegate.m_esp32BleSent.begin(), env.m_delegate.m_esp32BleSent.end(),
+                         [](std::string const & line) { return line.find(",CAR_GET,") != std::string::npos; });
+  };
+  auto const gets = countGets();
+  drive(2 * BoxCarValues::kReadNameIntervalMs);
+  TEST_EQUAL(countGets(), gets, ());
+}
+
+UNIT_TEST(NoGps_BoxCarValues_BoxOverCarLimitIsNotWritten)
+{
+  Env env(true /* inertial */);
+  for (auto const id : {"42FD", "1234", "ABCD"})
+    HearBox(env, id);
+  CarBox box;
+  box.Connect(env);
+  env.m_engine.RenameCar("C47D", "Kia");
+  box.Answer(env);
+  TEST_EQUAL(box.m_values["car_name"], "Kia", ());
+
+  // The 5th box is not a car: it doesn't get the values of the current one.
+  CarBox fifth;
+  fifth.Connect(env, "5678");
+  TEST_EQUAL(env.m_engine.GetCars().size(), CarStorage::kMaxCars, ());
+  env.m_engine.RenameCar("C47D", "Lada");
+  fifth.Answer(env);
+  env.Drive(BoxCarValues::kSaveIntervalMs, 0, 0);
+  fifth.Answer(env);
+  TEST(fifth.m_written.empty(), (fifth.m_written));
 }
 
 UNIT_TEST(NoGps_BoxCarValues_OldFirmwareIsNotAsked)

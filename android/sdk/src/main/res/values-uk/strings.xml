@@ -51,5 +51,5 @@
 
     <!-- SECTION: NonGPS Maps -->
     <!-- Name of a car the user hasn't named, by the four characters of the name of its sensor box: "Car C47D" -->
-    <string name="nogps_car_default_name">Машина %1$s</string>
+    <string name="nogps_car_default_name">Авто %1$s</string>
 </resources>

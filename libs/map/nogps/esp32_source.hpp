@@ -137,6 +137,7 @@ public:
   /// Reads the values of the car one by one: the listener gets all of them, or nothing if the box refuses one or the
   /// link drops.
   void ReadCarValues(std::vector<std::string> keys);
+  bool IsReadingCarValues() const { return m_carRead.has_value(); }
   /// Writes a value of the car, an empty one erases it. The listener gets the reply.
   void WriteCarValue(std::string const & key, std::string const & value);
 

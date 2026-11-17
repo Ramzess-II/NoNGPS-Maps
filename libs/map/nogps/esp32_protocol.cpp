@@ -299,6 +299,10 @@ std::optional<Phones> ParsePhones(Reply const & reply)
     phone.m_thisPhone = parts[3] == "1";
     phones.m_phones.push_back(std::move(phone));
   }
+  auto const others = std::count_if(phones.m_phones.begin(), phones.m_phones.end(),
+                                    [](Phone const & phone) { return !phone.m_thisPhone; });
+  for (auto & phone : phones.m_phones)
+    phone.m_changesBox = phone.m_thisPhone ? phones.m_changesBox : !phones.m_changesBox && others == 1;
   return phones;
 }
 
@@ -378,7 +382,7 @@ std::string DebugPrint(BoxValue value)
 std::string DebugPrint(Phone const & phone)
 {
   return phone.m_address + " " + phone.m_name + " seen " + std::to_string(phone.m_seenUnixS) +
-         (phone.m_thisPhone ? " this" : "");
+         (phone.m_thisPhone ? " this" : "") + (phone.m_changesBox ? " changes" : "");
 }
 }  // namespace esp32
 }  // namespace nogps

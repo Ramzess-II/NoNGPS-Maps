@@ -945,13 +945,7 @@
     <string name="nogps_gps_restored">GPS снова в норме</string>
     <string name="nogps_meters">%d м</string>
     <string name="nogps_kilometers">%.1f км</string>
-    <string name="nogps_sensors_title">Инерциальная навигация</string>
-    <string name="nogps_sensors_hint">Закрепите телефон неподвижно. Обнуляйте гироскоп, когда машина стоит.</string>
-    <string name="nogps_sensors_adapter">Адаптер: %1$s</string>
-    <string name="nogps_sensors_adapter_none">не выбран</string>
-    <string name="nogps_sensors_choose">Выбрать</string>
     <string name="nogps_elm_disconnected">нет связи</string>
-    <string name="nogps_elm_connecting">подключение…</string>
     <string name="nogps_elm_no_adapter">OBD не отвечает</string>
     <string name="nogps_box_obd_disabled">OBD выключен в блоке</string>
     <string name="nogps_box_obd_connecting">OBD подключается…</string>
@@ -961,27 +955,14 @@
     <string name="nogps_sensors_speed">Скорость: %s</string>
     <string name="nogps_speed_kmh">%d км/ч</string>
     <string name="nogps_unknown">—</string>
-    <string name="nogps_sensors_gyro">Гироскоп: %s</string>
-    <string name="nogps_gyro_none">не обнулён</string>
-    <string name="nogps_gyro_calibrating">обнуление… %d%%</string>
-    <string name="nogps_gyro_done">обнулён</string>
-    <string name="nogps_gyro_failed">не вышло, телефон или машина двигались</string>
-    <string name="nogps_sensors_calibrate">Обнулить</string>
-    <string name="nogps_sensors_ready">Готово к работе</string>
-    <string name="nogps_sensors_not_ready">Не готово: %s</string>
-    <string name="nogps_missing_speed">нет скорости</string>
-    <string name="nogps_missing_gyro">обнулите гироскоп</string>
-    <string name="nogps_missing_position">нет стартовой точки</string>
-    <string name="nogps_choose_adapter">Выберите OBD-адаптер</string>
-    <string name="nogps_no_paired">Нет сопряжённых Bluetooth-устройств. Сопрягите ELM327 в настройках Bluetooth (PIN обычно 1234).</string>
-    <string name="nogps_bt_permission_denied">Без доступа к Bluetooth адаптер не подключить</string>
-    <string name="nogps_sensors_scale">Поправка скорости: %1$s · диапазонов измерено: %2$d</string>
-    <string name="nogps_sensors_lag_measured">Опоздание скорости: %s с (измерено по GPS)</string>
-    <string name="nogps_sensors_lag_usual">Опоздание скорости: %s с (обычное, GPS ещё не измерил)</string>
-    <string name="nogps_sensors_rough_speed">≈ Черновая поправка по дорогам · диапазонов: %d · GPS её уточнит</string>
-    <string name="nogps_sensors_rough_speed_learning">≈ Поправка учится по дорогам, пока скорость не измерит GPS</string>
-    <string name="nogps_speed_table_show">Показать таблицу</string>
-    <string name="nogps_speed_table_hide">Скрыть таблицу</string>
+    <!-- Top of the Box page: the box gives all the navigation without GPS needs -->
+    <string name="nogps_sensors_ready">Готово к езде без GPS</string>
+    <!-- Top of the Box page: what the navigation without GPS still needs, a list of nogps_missing_* joined by commas -->
+    <string name="nogps_sensors_not_ready">Не готово к езде без GPS: %s</string>
+    <!-- After "Not ready to drive without GPS:": the box gives no car speed from the OBD socket -->
+    <string name="nogps_missing_speed">нет скорости машины по OBD</string>
+    <!-- After "Not ready to drive without GPS:": the car has no place on the map to start from -->
+    <string name="nogps_missing_position">нет стартовой точки, отметьте машину на карте</string>
     <string name="nogps_speed_table_row">%1$d–%2$d км/ч  %3$s</string>
     <string name="nogps_speed_table_left">ещё %d м</string>
     <string name="nogps_status_gps_off">GPS выключен в настройках системы</string>
@@ -995,10 +976,6 @@
     <string name="nogps_status_road_lost">Дорога потеряна</string>
     <!-- Second line of the status "Road lost" -->
     <string name="nogps_status_road_lost_hint">нажмите кнопку с пальцем и коснитесь дороги, где вы</string>
-    <string name="nogps_source_phone">Телефон + ELM327 (Bluetooth)</string>
-    <!-- Choice of where the car speed and turns come from, next to "Phone + ELM327 (Bluetooth)" -->
-    <string name="nogps_source_esp32_bt">NonGPS-OBD (Bluetooth)</string>
-    <string name="nogps_sensors_box">Блок: %1$s</string>
     <!-- State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth" -->
     <string name="nogps_box_bt_searching">ищу блок по Bluetooth</string>
     <!-- State of the sensor box, shown after its name: the "Nearby devices" permission of Android 12+ is not given -->
@@ -1038,10 +1015,6 @@
     <string name="nogps_box_calibration">Калибровка блока датчиков</string>
     <!-- Under the heading "Sensor box calibration": when and how the box is calibrated -->
     <string name="nogps_box_calibration_hint">Нужна после установки блока и каждый раз, когда его вынимали или сдвигали. Машина должна стоять на ровной поверхности без уклонов.</string>
-    <!-- Question shown when the sensor box has been powered on: it is new in the car or was taken out. The buttons are "Calibrate" and "Later" -->
-    <string name="nogps_box_calibration_offer">Блок датчиков подключали заново. Откалибруйте датчики: машина должна стоять на ровной поверхности без уклонов.</string>
-    <!-- Row of the sensors screen: the state of the calibration of the sensor box -->
-    <string name="nogps_sensors_box_sensors">Датчики: %s</string>
     <!-- State of the sensors of the box, shown after "Sensors:" -->
     <string name="nogps_box_not_calibrated">не откалиброваны</string>
     <!-- State of the sensors of the box, shown after "Sensors:", with the percent done -->
@@ -1054,7 +1027,7 @@
     <string name="nogps_box_calibration_link_lost">прервана, блок вне связи</string>
     <!-- State of the sensors of the box, shown after "Sensors:": the box has been powered on since its calibration -->
     <string name="nogps_box_calibration_advised">блок подключали заново, откалибруйте</string>
-    <!-- What is missing for the navigation without GPS, shown after "Not ready:" -->
+    <!-- After "Not ready to drive without GPS:" -->
     <string name="nogps_missing_box_calibration">откалибруйте блок</string>
     <string name="nogps_turns_reversed">Гироскоп поворачивает машину не в ту сторону, что GPS. Проверьте оси в драйвере датчика: без GPS машина будет поворачивать неправильно</string>
     <string name="nogps_road_lost">Дорога потеряна, машина остановлена. Отметьте себя на карте</string>
@@ -1066,12 +1039,10 @@
     <string name="nogps_box_buy_text">Блок NonGPS с датчиками движения держит машину на карте там, где GPS глушат или он пропал.</string>
     <!-- Button opening the page of the shop -->
     <string name="nogps_box_buy">Купить блок</string>
-    <!-- Button on the box screen: look for the box over Bluetooth and use it -->
-    <string name="nogps_box_connect">У меня есть блок: подключить</string>
-    <!-- Button on the box screen: stop using the box -->
-    <string name="nogps_box_forget">Забыть блок</string>
     <!-- Header of the list of the cars on the box screen: each car has its own sensor box -->
     <string name="nogps_cars">Машины</string>
+    <!-- Under the current car's name at the top of the box screen: tapping the name opens the list of the cars, where the user switches, renames or forgets them -->
+    <string name="nogps_cars_subtitle">Сменить или настроить машины</string>
     <!-- State of a car in the list of the cars: its box is connected now -->
     <string name="nogps_car_connected">Подключена</string>
     <!-- State of a car in the list of the cars: the app takes this car until a box connects -->
@@ -1080,24 +1051,26 @@
     <string name="nogps_car_last_seen">Последнее подключение %1$s</string>
     <!-- Action for a car in the list of the cars: the app takes this car and connects to its box -->
     <string name="nogps_car_drive">Переключиться на эту машину</string>
-    <!-- Action for a car in the list of the cars -->
-    <string name="nogps_car_rename">Переименовать</string>
     <!-- Title of the dialog that renames a car -->
     <string name="nogps_car_name">Название машины</string>
     <!-- Action for a car in the list of the cars, and the button that confirms it -->
     <string name="nogps_car_forget">Забыть машину</string>
     <!-- Asked before a car is forgotten -->
     <string name="nogps_car_forget_text">То, что приложение узнало об этой машине, и место, где она осталась, будут потеряны. Её блок не будет подключаться, пока машину не добавят снова.</string>
+    <!-- Under the heading Phones of the page of a car: its box is not connected to this phone now, so its phones are not known -->
+    <string name="nogps_car_phones_unknown">Телефоны блока видны, пока он подключён к этому телефону.</string>
     <!-- Button under the list of the cars: search the sensor box of another car -->
     <string name="nogps_car_add">Добавить машину</string>
     <!-- State of the sensor box, shown after its name: the box has phones, a new one is added on one of them -->
-    <string name="nogps_box_bt_pairing_by_phone">найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на машину, затем «Телефоны» и «Добавить телефон» и введите код здесь</string>
+    <string name="nogps_box_bt_pairing_by_phone">найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на имя машины вверху, затем на машину и «Добавить телефон» и введите код здесь</string>
     <!-- State of the sensor box, shown after its name: the box has 4 phones and takes no new one -->
-    <string name="nogps_box_bt_pairing_full">найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», машина, «Телефоны»)</string>
+    <string name="nogps_box_bt_pairing_full">найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху, машина)</string>
     <!-- Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car -->
     <string name="nogps_car_phones">Телефоны</string>
     <!-- Under a phone in the list of the phones of the sensor box: it is the phone the user holds -->
     <string name="nogps_phone_this">этот телефон</string>
+    <!-- Under a phone in the list of the phones of the sensor box: the box takes the calibration, the firmware, the car name and the phones from this phone, it connected first -->
+    <string name="nogps_phone_changes_box">управляет блоком</string>
     <!-- A phone in the list of the phones of the sensor box that has not told its model -->
     <string name="nogps_phone_unnamed">Телефон</string>
     <!-- Button: remove a phone from the sensor box -->
@@ -1123,7 +1096,7 @@
     <!-- Shown when the sensor box has not taken the one-time pairing code -->
     <string name="nogps_phone_add_failed">Блок не принял код. Попробуйте ещё раз.</string>
     <!-- Shown in the Box sheet when another phone has connected to the sensor box first: this phone gets the data only -->
-    <string name="nogps_box_read_only">Другой телефон подключился к блоку первым: калибровку, прошивку и телефоны блока меняют на нём</string>
+    <string name="nogps_box_read_only">Другой телефон подключился к блоку первым: калибровку, прошивку, имя машины и телефоны блока меняют на нём</string>
     <string name="nogps_obd_stopped">Нет скорости от OBD-адаптера, машина на карте стоит. Проверьте адаптер или отметьте себя</string>
     <string name="nogps_box_stopped">Нет данных от блока датчиков, машина на карте стоит. Проверьте блок или отметьте себя</string>
     <!-- Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration -->
@@ -1134,8 +1107,6 @@
     <string name="nogps_gyro_stopped">Гироскоп не обнулён, машина на карте стоит. Остановитесь и обнулите его</string>
     <!-- State of the sensor box, shown after its name while it takes a new firmware -->
     <string name="nogps_box_updating">принимает новую прошивку</string>
-    <!-- Row of the sensors screen: the version of the firmware of the sensor box or what its update does now -->
-    <string name="nogps_sensors_firmware">Прошивка блока: %1$s</string>
     <!-- Button: sends the firmware that comes with the app to the sensor box, with its version -->
     <string name="nogps_firmware_install">Установить %1$s</string>
     <!-- Title of the question about the firmware of the sensor box -->
@@ -1184,7 +1155,6 @@
     <string name="nogps_delete_recent_query">Удалить из истории?</string>
     <string name="nogps_box_sleeping">спит: двигатель заглушен</string>
     <string name="nogps_box_obd_sleeping">OBD спит: двигатель заглушен</string>
-    <string name="nogps_sensors_car">Двигатель: %1$s\nОбороты: %2$s\nНапряжение, АЦП блока: %3$s\nНапряжение, OBD: %4$s\nНапряжение, блок управления машины: %5$s</string>
     <string name="nogps_engine_running">работает</string>
     <string name="nogps_engine_stopped">заглушен</string>
     <string name="nogps_rpm">%d об/мин</string>
@@ -1227,12 +1197,38 @@
     <string name="nogps_gps_why_spoofed">Далеко от вышек и Wi-Fi или прыгает: не используется.</string>
     <!-- Why, under the state of GPS -->
     <string name="nogps_gps_why_none">Нет позиций GPS 5 секунд.</string>
-    <!-- Switch in the GPS sheet -->
-    <string name="nogps_gps_use">Вести машину по GPS</string>
-    <!-- Under the switch in the GPS sheet -->
-    <string name="nogps_gps_use_hint">Выключено: GPS не используется, машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.</string>
-    <!-- Under the disabled switch Use GPS for the car in the Box sheet: no box is heard -->
-    <string name="nogps_gps_use_needs_box">GPS можно выключить, только когда подключён блок: иначе машину ничто не поведёт.</string>
+    <!-- Switch in the Box sheet: on, GPS is not used for the car -->
+    <string name="nogps_gps_block">Не использовать GPS для навигации</string>
+    <!-- Under the switch Don't use GPS for navigation in the Box sheet -->
+    <string name="nogps_gps_block_hint">Включено: GPS не используется, машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.</string>
+    <!-- Under the disabled switch Don't use GPS for navigation in the Box sheet: no box is heard -->
+    <string name="nogps_gps_block_needs_box">GPS можно отключить, только когда подключён блок: иначе машину ничто не поведёт.</string>
+    <!-- At the top of the Cars page of the Box sheet -->
+    <string name="nogps_cars_text">Каждый блок — это одна машина со своей калибровкой и местом парковки. Нажмите на машину, чтобы ехать на ней, переименовать или забыть её.</string>
+    <!-- On the Add a car page while the box of the new car is searched -->
+    <string name="nogps_car_add_text">Включите блок новой машины рядом с телефоном: машина добавится вместе с блоком в ней.</string>
+    <!-- Section of the Box page: how the car speed is corrected -->
+    <string name="nogps_speed_calibration">Калибровка скорости</string>
+    <!-- On the Calibration page of the sensor box, under when it is needed: how to do it -->
+    <string name="nogps_calibration_steps">Остановите машину на ровной поверхности. Пока калибровка идёт, никто не садится и не выходит и не трогает блок.</string>
+    <!-- Result on the Calibration page of the sensor box -->
+    <string name="nogps_calibration_failed_moving">Не откалиброван: машина двигалась. Пусть она стоит неподвижно, и откалибруйте снова.</string>
+    <!-- Result on the Calibration page of the sensor box -->
+    <string name="nogps_calibration_failed_mount">Блок сдвинулся в креплении. Закрепите его надёжно и откалибруйте снова.</string>
+    <!-- Result on the Calibration page of the sensor box -->
+    <string name="nogps_calibration_failed_link">Связь с блоком потеряна. Оставайтесь рядом с машиной и откалибруйте снова.</string>
+    <!-- On the Calibration page of the sensor box, under the disabled Calibrate button -->
+    <string name="nogps_calibration_needs_box">Блок вне досягаемости: включите его и оставайтесь рядом с машиной.</string>
+    <!-- Title of the Box section of the Box page: the model of the sensor box, e.g. "Box NonGPS-OBD" -->
+    <string name="nogps_box_section">Блок %1$s</string>
+    <!-- Item of the Box page and the title of its page: the car of the box with its name, e.g. "Car: Kia" -->
+    <string name="nogps_box_car">Машина: %1$s</string>
+    <!-- Item of the Box page and the title of its page: the motion sensors of the box (gyroscope, accelerometer) -->
+    <string name="nogps_box_imu">Инерциальный измерительный блок</string>
+    <!-- Start of the subtitle of the Box section of the Box page: the firmware version of the box, then its state -->
+    <string name="nogps_box_version">Версия %1$s</string>
+    <!-- Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page -->
+    <string name="nogps_calibration_snackbar">Откалибруйте блок датчиков</string>
     <!-- Switch in the Box sheet under Use GPS for the car: the app is the mock location app for other apps -->
     <string name="nogps_share_position">Передавать позицию другим приложениям</string>
     <!-- Under the switch Share the position with other apps -->
@@ -1277,8 +1273,6 @@
     <string name="nogps_gps_db_hz">%d дБ-Гц</string>
     <!-- Title of the Box sheet -->
     <string name="nogps_box_title">Блок датчиков</string>
-    <!-- Title of the screen with the speed table of the sensor box -->
-    <string name="nogps_speed_table_title">Таблица скорости</string>
     <!-- State of the speed table on the Box sheet: GPS has measured all its ranges -->
     <string name="nogps_speed_table_calibrated">Откалибрована</string>
     <!-- State of the speed table on the Box sheet: GPS has measured no range -->
@@ -1299,12 +1293,6 @@
     <string name="nogps_speed_lag_measured">Измерено по GPS</string>
     <!-- Second line of the speed delay row of the Box sheet -->
     <string name="nogps_speed_lag_usual">Обычное, GPS ещё не измерил</string>
-    <!-- Row of the Box sheet below the speed: the engine revs, e.g. "850 rpm" -->
-    <string name="nogps_box_rpm">Обороты: %s</string>
-    <!-- Row of the Box sheet, next to the "Calibrate" action -->
-    <string name="nogps_box_sensors_not_calibrated">Датчики не откалиброваны</string>
-    <!-- Row of the Box sheet, next to the "Recalibrate" action -->
-    <string name="nogps_box_sensors_calibrated">Датчики откалиброваны</string>
     <!-- Action of the Box sheet: calibrate the sensors of the box again -->
     <string name="nogps_box_recalibrate">Откалибровать заново</string>
     <!-- State under the title of the Box sheet when no box is set up -->
@@ -1335,16 +1323,10 @@
     <string name="nogps_box_turn_on_location">Включить геолокацию</string>
     <!-- Hint while the box is searched -->
     <string name="nogps_box_power_hint">Есть блок? Включите его рядом с телефоном: 2 минуты он принимает новый телефон. Телефон может спросить код с блока.</string>
-    <!-- Title of the page with all values the sensor box sends, opened from the box row of the Box sheet -->
-    <string name="nogps_box_value_title">Значения блока</string>
     <!-- Section of the Box values page -->
     <string name="nogps_box_value_group_car">Машина</string>
-    <!-- Section of the Box values page -->
-    <string name="nogps_box_value_group_gyroscope">Гироскоп</string>
     <!-- Section of the Box values page: the ELM327 adapter of the box -->
     <string name="nogps_box_value_group_obd">OBD</string>
-    <!-- Section of the Box values page: the box itself -->
-    <string name="nogps_box_value_group_box">Блок</string>
     <!-- Row of the Box values page, the value is running or stopped -->
     <string name="nogps_box_value_engine">Двигатель</string>
     <!-- Row of the Box values page -->

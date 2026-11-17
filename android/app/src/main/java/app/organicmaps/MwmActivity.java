@@ -69,7 +69,7 @@ import app.organicmaps.location.TrackRecordingService;
 import app.organicmaps.maplayer.MapButtonsController;
 import app.organicmaps.maplayer.MapButtonsViewModel;
 import app.organicmaps.maplayer.ToggleMapLayerFragment;
-import app.organicmaps.nogps.SensorsBottomSheet;
+import app.organicmaps.nogps.BoxBottomSheet;
 import app.organicmaps.routing.NavigationController;
 import app.organicmaps.routing.NavigationService;
 import app.organicmaps.routing.RoutePointLabels;
@@ -884,7 +884,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     case help -> showHelp();
     case trackRecordingStatus -> toggleTrackRecordingPP();
     case manualPosition -> toggleMarkByTap();
-    case positionStatus -> showSensorsSheet();
+    case positionStatus -> showBoxSheet(BoxBottomSheet.Page.BOX);
     case reverseDirection -> NoGps.nativeReverseDirection();
     case switchMark -> NoGps.nativeSwitchMark();
     }
@@ -907,7 +907,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
     final int message = switch (event)
     {
       case FIRMWARE_UPDATE_AVAILABLE, FIRMWARE_UPDATE_DONE, FIRMWARE_UPDATE_FAILED -> onFirmwareEvent(event);
-      case BOX_CALIBRATION_ADVISED -> onBoxCalibrationAdvised();
+      // The bar on the map asks to calibrate the box until it is.
+      case BOX_CALIBRATION_ADVISED -> 0;
       case THIS_PHONE_REMOVED -> onThisPhoneRemoved();
       // The buttons show the mode, they are updated every second.
       case MANUAL_MODE_CHANGED -> 0;
@@ -953,7 +954,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
                              (dialog, which) -> {
                                NoGps.nativeStartFirmwareUpdate();
                                // It shows how the update goes.
-                               showSensorsSheet();
+                               showBoxSheet(BoxBottomSheet.Page.ITEM_BOX);
                              })
           .setNegativeButton(R.string.later, null)
           .show();
@@ -972,33 +973,9 @@ public class MwmActivity extends BaseMwmFragmentActivity
     return R.string.nogps_phone_removed;
   }
 
-  /**
-   * The sensor box has been plugged in: asks the user to calibrate it, the car should stand on a level place.
-   * @return 0, there is no message of a fixed text.
-   */
-  private int onBoxCalibrationAdvised()
+  private void showBoxSheet(@NonNull BoxBottomSheet.Page page)
   {
-    if (isFinishing() || getSupportFragmentManager().isStateSaved())
-      return 0;
-    new MaterialAlertDialogBuilder(this, R.style.MwmTheme_AlertDialog)
-        .setTitle(R.string.nogps_box_calibration)
-        .setMessage(R.string.nogps_box_calibration_offer)
-        .setPositiveButton(R.string.nogps_sensors_calibrate_box,
-                           (dialog, which) -> {
-                             NoGps.nativeCalibrate();
-                             // It shows how the calibration goes.
-                             showSensorsSheet();
-                           })
-        .setNegativeButton(R.string.later, null)
-        .show();
-    return 0;
-  }
-
-  private void showSensorsSheet()
-  {
-    if (!getSupportFragmentManager().isStateSaved()
-        && getSupportFragmentManager().findFragmentByTag(SensorsBottomSheet.TAG) == null)
-      new SensorsBottomSheet().show(getSupportFragmentManager(), SensorsBottomSheet.TAG);
+    BoxBottomSheet.show(getSupportFragmentManager(), page);
   }
 
   @NonNull

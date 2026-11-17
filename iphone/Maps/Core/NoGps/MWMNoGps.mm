@@ -167,6 +167,7 @@ std::optional<double> NonNegative(double value)
     if (phone.m_seenUnixS > 0)
       _lastSeen = [NSDate dateWithTimeIntervalSince1970:phone.m_seenUnixS];
     _thisPhone = phone.m_thisPhone;
+    _changesBox = phone.m_changesBox;
   }
   return self;
 }
@@ -369,6 +370,11 @@ static CLLocation * lastPlatformLocation;
   for (auto const & car : Engine().GetCars())
     [cars addObject:[[MWMNoGpsCar alloc] initWithCar:car]];
   return cars;
+}
+
++ (NSInteger)maxCars
+{
+  return nogps::CarStorage::kMaxCars;
 }
 
 + (void)selectCar:(NSString *)carId

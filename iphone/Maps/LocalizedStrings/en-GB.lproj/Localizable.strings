@@ -1265,7 +1265,6 @@
 "nogps_status_gps" = "GPS";
 "nogps_meters" = "%d m";
 "nogps_kilometers" = "%.1f km";
-"nogps_sensors_title" = "Inertial navigation";
 "nogps_elm_disconnected" = "no connection";
 "nogps_elm_no_adapter" = "OBD doesn't answer";
 "nogps_box_obd_disabled" = "OBD is off in the box";
@@ -1276,17 +1275,18 @@
 "nogps_sensors_speed" = "Speed: %@";
 "nogps_speed_kmh" = "%d km/h";
 "nogps_unknown" = "—";
-"nogps_sensors_ready" = "Ready";
-"nogps_sensors_not_ready" = "Not ready: %@";
-"nogps_missing_speed" = "no speed";
-"nogps_missing_position" = "no start position";
-"nogps_sensors_scale" = "Speed correction: %1$@ · measured ranges: %2$d";
-"nogps_sensors_lag_measured" = "Speed delay: %@ s (measured by GPS)";
-"nogps_sensors_lag_usual" = "Speed delay: %@ s (usual, not measured by GPS yet)";
-"nogps_sensors_rough_speed" = "≈ Rough correction from the roads · ranges: %d · GPS will refine it";
-"nogps_sensors_rough_speed_learning" = "≈ The correction is learned from the roads until GPS measures the speed";
-"nogps_speed_table_show" = "Show table";
-"nogps_speed_table_hide" = "Hide table";
+
+/* Top of the Box page: the box gives all the navigation without GPS needs */
+"nogps_sensors_ready" = "Ready to drive without GPS";
+
+/* Top of the Box page: what the navigation without GPS still needs, a list of nogps_missing_* joined by commas */
+"nogps_sensors_not_ready" = "Not ready to drive without GPS: %@";
+
+/* After "Not ready to drive without GPS:": the box gives no car speed from the OBD socket */
+"nogps_missing_speed" = "no car speed from OBD";
+
+/* After "Not ready to drive without GPS:": the car has no place on the map to start from */
+"nogps_missing_position" = "no start position, mark the car on the map";
 "nogps_speed_table_row" = "%1$d–%2$d km/h  %3$@";
 "nogps_speed_table_left" = "%d m to go";
 "nogps_status_gps_off" = "GPS is off in the system settings";
@@ -1303,7 +1303,6 @@
 
 /* Second line of the status "Road lost" */
 "nogps_status_road_lost_hint" = "press the finger button and tap the road where you are";
-"nogps_sensors_box" = "Box: %1$@";
 
 /* State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth" */
 "nogps_box_bt_searching" = "searching by Bluetooth";
@@ -1356,12 +1355,6 @@
 /* Under the heading "Sensor box calibration": when and how the box is calibrated */
 "nogps_box_calibration_hint" = "Needed once the box is installed and every time it was taken out or moved. The car must stand on a level surface, not on a slope.";
 
-/* Question shown when the sensor box has been powered on: it is new in the car or was taken out. The buttons are "Calibrate" and "Later" */
-"nogps_box_calibration_offer" = "The sensor box has been plugged in. Calibrate the sensors: the car must stand on a level surface, not on a slope.";
-
-/* Row of the sensors screen: the state of the calibration of the sensor box */
-"nogps_sensors_box_sensors" = "Sensors: %@";
-
 /* State of the sensors of the box, shown after "Sensors:" */
 "nogps_box_not_calibrated" = "not calibrated";
 
@@ -1380,7 +1373,7 @@
 /* State of the sensors of the box, shown after "Sensors:": the box has been powered on since its calibration */
 "nogps_box_calibration_advised" = "the box has been plugged in, calibrate it";
 
-/* What is missing for the navigation without GPS, shown after "Not ready:" */
+/* After "Not ready to drive without GPS:" */
 "nogps_missing_box_calibration" = "calibrate the box";
 "nogps_turns_reversed" = "The gyroscope turns the car the other way than GPS. Check the axes of the sensor driver: without GPS the car would turn wrong";
 "nogps_road_lost" = "The road is lost, the car is stopped. Mark yourself on the map";
@@ -1397,14 +1390,11 @@
 /* Button opening the page of the shop */
 "nogps_box_buy" = "Buy the box";
 
-/* Button on the box screen: look for the box over Bluetooth and use it */
-"nogps_box_connect" = "I have the box: connect";
-
-/* Button on the box screen: stop using the box */
-"nogps_box_forget" = "Forget the box";
-
 /* Header of the list of the cars on the box screen: each car has its own sensor box */
 "nogps_cars" = "Cars";
+
+/* Under the current car's name at the top of the box screen: tapping the name opens the list of the cars, where the user switches, renames or forgets them */
+"nogps_cars_subtitle" = "Switch or manage cars";
 
 /* Name of a car the user hasn't named, by the four characters of the name of its sensor box: "Car C47D" */
 "nogps_car_default_name" = "Car %1$@";
@@ -1421,9 +1411,6 @@
 /* Action for a car in the list of the cars: the app takes this car and connects to its box */
 "nogps_car_drive" = "Switch to this car";
 
-/* Action for a car in the list of the cars */
-"nogps_car_rename" = "Rename";
-
 /* Title of the dialog that renames a car */
 "nogps_car_name" = "Car name";
 
@@ -1433,20 +1420,26 @@
 /* Asked before a car is forgotten */
 "nogps_car_forget_text" = "What the app has learned about this car and where it was left will be lost. Its box is not connected until the car is added again.";
 
+/* Under the heading Phones of the page of a car: its box is not connected to this phone now, so its phones are not known */
+"nogps_car_phones_unknown" = "The phones of the box are shown while it is connected to this phone.";
+
 /* Button under the list of the cars: search the sensor box of another car */
 "nogps_car_add" = "Add a car";
 
 /* State of the sensor box, shown after its name: the box has phones, a new one is added on one of them */
-"nogps_box_bt_pairing_by_phone" = "found, but not paired with this phone. On a phone paired with the box, open Box, tap the car, then Phones and Add a phone, and enter the code here";
+"nogps_box_bt_pairing_by_phone" = "found, but not paired with this phone. On a phone paired with the box, open Box, tap the car name at the top, then the car and Add a phone, and enter the code here";
 
 /* State of the sensor box, shown after its name: the box has 4 phones and takes no new one */
-"nogps_box_bt_pairing_full" = "found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car, Phones)";
+"nogps_box_bt_pairing_full" = "found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car name at the top, the car)";
 
 /* Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car */
 "nogps_car_phones" = "Phones";
 
 /* Under a phone in the list of the phones of the sensor box: it is the phone the user holds */
 "nogps_phone_this" = "this phone";
+
+/* Under a phone in the list of the phones of the sensor box: the box takes the calibration, the firmware, the car name and the phones from this phone, it connected first */
+"nogps_phone_changes_box" = "controls the box";
 
 /* A phone in the list of the phones of the sensor box that has not told its model */
 "nogps_phone_unnamed" = "Phone";
@@ -1485,7 +1478,7 @@
 "nogps_phone_add_failed" = "The box has not taken the code. Try again.";
 
 /* Shown in the Box sheet when another phone has connected to the sensor box first: this phone gets the data only */
-"nogps_box_read_only" = "Another phone connected to the box first: the calibration, the firmware and the phones of the box are changed on it";
+"nogps_box_read_only" = "Another phone connected to the box first: the calibration, the firmware, the car name and the phones of the box are changed on it";
 "nogps_box_stopped" = "No data from the sensor box, the car stands still on the map. Check the box or mark yourself";
 
 /* Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration */
@@ -1496,9 +1489,6 @@
 
 /* State of the sensor box, shown after its name while it takes a new firmware */
 "nogps_box_updating" = "takes a new firmware";
-
-/* Row of the sensors screen: the version of the firmware of the sensor box or what its update does now */
-"nogps_sensors_firmware" = "Box firmware: %1$@";
 
 /* Button: sends the firmware that comes with the app to the sensor box, with its version */
 "nogps_firmware_install" = "Install %1$@";
@@ -1559,7 +1549,6 @@
 "nogps_based_on" = "Based on Organic Maps %@";
 "nogps_box_sleeping" = "sleeps: the engine is stopped";
 "nogps_box_obd_sleeping" = "OBD sleeps: the engine is stopped";
-"nogps_sensors_car" = "Engine: %1$@\nEngine speed: %2$@\nVoltage, box ADC: %3$@\nVoltage, OBD: %4$@\nVoltage, car control unit: %5$@";
 "nogps_engine_running" = "running";
 "nogps_engine_stopped" = "stopped";
 "nogps_rpm" = "%d rpm";
@@ -1615,14 +1604,53 @@
 /* Why, under the state of GPS */
 "nogps_gps_why_none" = "No position from GPS for 5 seconds.";
 
-/* Switch in the GPS sheet */
-"nogps_gps_use" = "Use GPS for the car";
+/* Switch in the Box sheet: on, GPS is not used for the car */
+"nogps_gps_block" = "Don't use GPS for navigation";
 
-/* Under the switch in the GPS sheet */
-"nogps_gps_use_hint" = "Off: GPS is ignored, the box and your marks place the car. For places where GPS is spoofed but the app doesn't see it.";
+/* Under the switch Don't use GPS for navigation in the Box sheet */
+"nogps_gps_block_hint" = "On: GPS is ignored, the box and your marks place the car. For places where GPS is spoofed but the app doesn't see it.";
 
-/* Under the disabled switch Use GPS for the car in the Box sheet: no box is heard */
-"nogps_gps_use_needs_box" = "GPS can be turned off only while a box is connected: nothing else would move the car.";
+/* Under the disabled switch Don't use GPS for navigation in the Box sheet: no box is heard */
+"nogps_gps_block_needs_box" = "GPS can be turned off only while a box is connected: nothing else would move the car.";
+
+/* At the top of the Cars page of the Box sheet */
+"nogps_cars_text" = "Each box is one car with its own calibration and parking spot. Tap a car to drive it, rename it or forget it.";
+
+/* On the Add a car page while the box of the new car is searched */
+"nogps_car_add_text" = "Power on the box of the new car near the phone: the car is added together with the box in it.";
+
+/* Section of the Box page: how the car speed is corrected */
+"nogps_speed_calibration" = "Speed calibration";
+
+/* On the Calibration page of the sensor box, under when it is needed: how to do it */
+"nogps_calibration_steps" = "Stop the car on a level surface. Nobody gets in or out and nobody touches the box until it's done.";
+
+/* Result on the Calibration page of the sensor box */
+"nogps_calibration_failed_moving" = "Not calibrated: the car moved. Keep it still and calibrate again.";
+
+/* Result on the Calibration page of the sensor box */
+"nogps_calibration_failed_mount" = "The box has moved in its mount. Fix it firmly and calibrate again.";
+
+/* Result on the Calibration page of the sensor box */
+"nogps_calibration_failed_link" = "The connection to the box was lost. Stay near the car and calibrate again.";
+
+/* On the Calibration page of the sensor box, under the disabled Calibrate button */
+"nogps_calibration_needs_box" = "The box is out of reach: power it on and stay near the car.";
+
+/* Title of the Box section of the Box page: the model of the sensor box, e.g. "Box NonGPS-OBD" */
+"nogps_box_section" = "Box %1$@";
+
+/* Item of the Box page and the title of its page: the car of the box with its name, e.g. "Car: Kia" */
+"nogps_box_car" = "Car: %1$@";
+
+/* Item of the Box page and the title of its page: the motion sensors of the box (gyroscope, accelerometer) */
+"nogps_box_imu" = "Inertial Measurement Unit";
+
+/* Start of the subtitle of the Box section of the Box page: the firmware version of the box, then its state */
+"nogps_box_version" = "Ver %1$@";
+
+/* Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page */
+"nogps_calibration_snackbar" = "Calibrate the sensor box";
 
 /* Under the distance left in navigation: the distance driven since navigation started, e.g. 12.4 km covered */
 "nogps_nav_covered" = "%@ covered";
@@ -1678,9 +1706,6 @@
 /* Title of the Box sheet */
 "nogps_box_title" = "Sensor box";
 
-/* Title of the screen with the speed table of the sensor box */
-"nogps_speed_table_title" = "Speed table";
-
 /* State of the speed table on the Box sheet: GPS has measured all its ranges */
 "nogps_speed_table_calibrated" = "Calibrated";
 
@@ -1710,15 +1735,6 @@
 
 /* Second line of the speed delay row of the Box sheet */
 "nogps_speed_lag_usual" = "Usual, not measured by GPS yet";
-
-/* Row of the Box sheet below the speed: the engine revs, e.g. "850 rpm" */
-"nogps_box_rpm" = "Revs: %@";
-
-/* Row of the Box sheet, next to the "Calibrate" action */
-"nogps_box_sensors_not_calibrated" = "Sensors not calibrated";
-
-/* Row of the Box sheet, next to the "Recalibrate" action */
-"nogps_box_sensors_calibrated" = "Sensors calibrated";
 
 /* Action of the Box sheet: calibrate the sensors of the box again */
 "nogps_box_recalibrate" = "Recalibrate";
@@ -1750,20 +1766,11 @@
 /* Hint while the box is searched */
 "nogps_box_power_hint" = "Have a box? Power it on near the phone: it accepts a new phone for 2 minutes. The phone may ask for the code from the box.";
 
-/* Title of the page with all values the sensor box sends, opened from the box row of the Box sheet */
-"nogps_box_value_title" = "Box values";
-
 /* Section of the Box values page */
 "nogps_box_value_group_car" = "Car";
 
-/* Section of the Box values page */
-"nogps_box_value_group_gyroscope" = "Gyroscope";
-
 /* Section of the Box values page: the ELM327 adapter of the box */
 "nogps_box_value_group_obd" = "OBD";
-
-/* Section of the Box values page: the box itself */
-"nogps_box_value_group_box" = "Box";
 
 /* Row of the Box values page, the value is running or stopped */
 "nogps_box_value_engine" = "Engine";

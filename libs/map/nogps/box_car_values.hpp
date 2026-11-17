@@ -30,6 +30,8 @@ public:
   // The phone writes a line in one piece of Bluetooth, iOS takes 182 bytes: the name is cut to fit.
   static size_t constexpr kMaxNameSize = 140;
   static size_t constexpr kMaxLineSize = 182;
+  // The box doesn't tell a phone connected second that the first one has renamed the car: it reads the name this often.
+  static int64_t constexpr kReadNameIntervalMs = 60 * 1000;
 
   /// The values of the box by its keys.
   using Values = std::map<std::string, std::string>;
@@ -39,6 +41,7 @@ public:
   {
     bool m_calibration = false;
     bool m_position = false;
+    bool m_name = false;
   };
 
   BoxCarValues(CarStorage & cars, Clock const & clock) : m_cars(cars), m_clock(clock) {}
@@ -52,8 +55,15 @@ public:
 
   /// The box of the car has connected and told about itself: its values are read.
   void OnBoxHeard(Esp32Source & box, std::string const & carId);
+  /// A box that is not of the car has connected, e.g. a 5th one: the values read before are not written to it or
+  /// read from it.
+  void Forget() { m_boxValues.reset(); }
   /// The phone takes the values another phone has written to the box, and writes its own ones that differ.
+  /// \param values all the values of the box or some of them.
   Taken OnValues(Esp32Source & box, Values const & values);
+  /// Reads the name again every kReadNameIntervalMs while another phone changes the box. Its other values are
+  /// taken at the next connection: they change while the car drives.
+  void ReadName(Esp32Source * box);
   /// \param error empty if the box keeps the value.
   void OnWritten(std::string const & key, std::string const & value, std::string const & error);
   /// Writes the values of the phone that differ from the box. Not more often than kSaveIntervalMs unless |now|: the
@@ -71,5 +81,6 @@ private:
   // Another phone keeps the box until the next connection.
   bool m_busy = false;
   std::optional<int64_t> m_savedMs;
+  int64_t m_readMs = 0;
 };
 }  // namespace nogps

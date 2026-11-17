@@ -896,6 +896,8 @@ void Engine::OnBoxHeard(std::string const & id, std::string const & firmware)
   }
   if (auto * box = m_inertial->GetEsp32(); box && box->CanStoreCarValues() && id == m_cars.GetCurrentCar())
     m_boxCarValues.OnBoxHeard(*box, id);
+  else
+    m_boxCarValues.Forget();
 }
 
 void Engine::OnBoxCarValues(std::map<std::string, std::string> const & values)
@@ -903,6 +905,9 @@ void Engine::OnBoxCarValues(std::map<std::string, std::string> const & values)
   auto * box = m_inertial->GetEsp32();
   CHECK(box, ());
   auto const taken = m_boxCarValues.OnValues(*box, values);
+  // The marks of the parked cars show their names.
+  if (taken.m_name)
+    OnParkedCarsChanged();
   // The user may have chosen another car meanwhile.
   if (m_boxCarValues.GetCarId() != m_cars.GetCurrentCar())
     return;
@@ -1768,6 +1773,7 @@ void Engine::LogTrip()
   bool const changed = LogStateChanges();
   SaveCarPosition(false /* now */);
   SaveBoxCarValues(false /* now */);
+  m_boxCarValues.ReadName(m_inertial ? m_inertial->GetEsp32() : nullptr);
   int64_t const now = m_clock.NowMs();
   if (changed || IsCarMoving())
     m_tripEverySecondMs = now;

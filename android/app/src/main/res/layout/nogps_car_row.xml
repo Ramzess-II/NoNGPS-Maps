@@ -1,23 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A car of the Box sheet: its name and its state. -->
+<!-- A car of the Box sheet, or a phone of its box: its name and its state. A car opens its page: its chevron shows. -->
 <LinearLayout
   xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
   android:layout_width="match_parent"
   android:layout_height="wrap_content"
   android:background="?selectableItemBackground"
   android:gravity="center_vertical"
   android:minHeight="56dp"
-  android:orientation="vertical"
+  android:orientation="horizontal"
   android:paddingVertical="6dp">
-  <TextView
-    android:id="@+id/car_name"
-    android:layout_width="match_parent"
+  <LinearLayout
+    android:layout_width="0dp"
     android:layout_height="wrap_content"
-    android:textSize="16sp" />
-  <TextView
-    android:id="@+id/car_state"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:textColor="?android:textColorSecondary"
-    android:textSize="14sp" />
+    android:layout_weight="1"
+    android:orientation="vertical">
+    <TextView
+      android:id="@+id/car_name"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:textSize="16sp" />
+    <TextView
+      android:id="@+id/car_state"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp" />
+  </LinearLayout>
+  <ImageView
+    android:id="@+id/car_chevron"
+    android:layout_width="24dp"
+    android:layout_height="24dp"
+    android:layout_marginStart="12dp"
+    android:importantForAccessibility="no"
+    android:visibility="gone"
+    app:srcCompat="@drawable/ic_nogps_chevron" />
 </LinearLayout>
