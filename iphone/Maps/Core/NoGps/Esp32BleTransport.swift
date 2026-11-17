@@ -80,6 +80,7 @@ final class Esp32BleTransport: NSObject {
   private var isReady = false
   /// The box has sent data over this connection: it is encrypted, so the box is paired.
   private var isHeard = false
+  private var foregroundObserver: NSObjectProtocol?
   /// The box accepted a new phone when it was found: the user may be entering its code.
   private var acceptsNewPhone = false
   /// The box had sent data before, when it was found.
@@ -129,6 +130,13 @@ final class Esp32BleTransport: NSObject {
     isOpen = true
     retryDelay = Constants.retryDelay
     silentConnections = 0
+    // A scan started in the background reports a box once: start it again to see the boxes near now.
+    foregroundObserver = NotificationCenter.default.addObserver(
+      forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
+    ) { [weak self] _ in
+      guard let self, isOpen, isHeard, central?.state == .poweredOn else { return }
+      scan()
+    }
     if central == nil {
       // The user is asked for Bluetooth the first time, centralManagerDidUpdateState() follows.
       central = CBCentralManager(delegate: self, queue: nil)
@@ -208,6 +216,8 @@ final class Esp32BleTransport: NSObject {
   func close() {
     guard isOpen else { return }
     isOpen = false
+    foregroundObserver.map(NotificationCenter.default.removeObserver)
+    foregroundObserver = nil
     seenTimes.removeAll()
     timer?.cancel()
     cancelPairingClosedCheck()
