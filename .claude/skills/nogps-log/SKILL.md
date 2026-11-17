@@ -14,6 +14,8 @@ Each call reads the logs again: a day of Android logs takes a few seconds.
    phone; iOS times are UTC.
 2. **Overview.** `nogps_log.py trip <logs> --trip N` prints the stats, the error from GPS per source, the counts
    `nogps_replay.py compare` uses, the events by name and every anomaly with its time.
+   It also counts the rules of the core that fired (`rules:`) with what came next within 300 m; `nogps_log.py rules
+   <logs>` does it over all the trips.
 3. **Narrow down** to the moments that matter:
    - `state <logs> --trip N --at HH:MM:SS`: every TRIP field (`*` = changed since the line before), the box flags
      decoded, the anomalies at that moment, the events within 30 s and the other log lines within 5 s.

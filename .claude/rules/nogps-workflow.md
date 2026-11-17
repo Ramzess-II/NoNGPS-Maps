@@ -137,6 +137,13 @@ Ukrainian. The app's Russian translations in `data/strings/` stay as they are.
 - A change to how the mark moves: replay the recorded trips with `tools/python/nogps_replay.py` (Android debug
   build, `-PnativeOptimized` for speed; before and after built the same way) and put the before/after numbers in
   the PR. If nobody replayed it, the PR says so.
+- Replay the days of both sets: the held-out days listed in `tools/python/nogps_held_out_days.txt` (never used to set
+  a rule) and the others (`nogps_replay.py days <logs>` tells each day's set). Give the numbers of each set apart: a
+  rule better on the days it was made from and not on the held-out ones fits its case only. Never move a day into the
+  held-out list after a rule was made from it.
+- `nogps_log.py rules <logs>` counts how often each rule fired over the trips and what came next within 300 m. Run it
+  before and after a change of a rule; a rule that fired in one or two trips, or is followed by a loss or a tap
+  more often than not, is a candidate to drop or merge.
 - Every behavior change gets a unit test.
 - Strings: tag a string in `data/strings/strings.txt` only for the platforms whose code uses it. On iOS, write the
   key inside `L("key")`, not in a variable. Check with `python3 tools/python/validate_translation_keys.py`.

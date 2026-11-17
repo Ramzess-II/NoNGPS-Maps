@@ -19,10 +19,12 @@ Input: an idea in words, or an existing issue number. Research only: don't chang
 4. **Plan.** Keep it to 40 lines or fewer, in English:
    - **Problem**: what goes wrong, with evidence (trip date and time, log line, numbers).
    - **Behavior after**: the rule as it will read in `navigation-rules.md`.
-   - **Changes**: files and functions; new constants with their values.
+   - **Changes**: files and functions; new constants with their values. A new case is first tried with a change of
+     an existing rule or a value the core measures; a new threshold with an exception comes last.
    - **Shared interface**: changes to `engine.hpp`, `delegate.hpp`, enums, and the changes in both bridges,
      or "none".
-   - **Verification**: the unit tests to add, and which trips to replay with which numbers to compare.
+   - **Verification**: the unit tests to add, and which trips to replay with which numbers to compare,
+     on the days of both sets (`nogps_replay.py days`).
    - **Out of scope**.
 5. **Publish.** The repo is public. Show the issue text to the user and create it only after they confirm:
    `gh issue create --title "[<area>] <summary>" --label <core|ios|android|firmware> --assignee @me --body-file -`.
