@@ -285,6 +285,16 @@ UNIT_TEST(NoGps_Spoofing_ShortMismatchIsReset)
   TEST(!detector.IsSpoofed(), ());
 }
 
+UNIT_TEST(NoGps_Spoofing_SpeedCheckCanBeSkipped)
+{
+  GpsSpoofingDetector detector;
+  int64_t time = 0;
+  TEST(detector.CheckSatellitePosition(kKyiv, time), ());
+  for (int i = 0; i < 2 * GpsSpoofingDetector::kSpeedMismatchFixes; ++i)
+    TEST(detector.CheckSatellitePosition(kKyiv, time += 1000, 5, 0.0, 60 / 3.6, false /* checkSpeed */), ());
+  TEST(!detector.IsSpoofed(), ());
+}
+
 UNIT_TEST(NoGps_Spoofing_RecoversWhenSpeedAgreesAgain)
 {
   GpsSpoofingDetector detector;

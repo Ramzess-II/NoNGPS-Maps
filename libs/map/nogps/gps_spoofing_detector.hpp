@@ -79,9 +79,12 @@ public:
   /// Checks a satellite (or fused) position.
   /// \param gpsSpeedMps the speed of the point, or nothing: then it is taken from the previous point.
   /// \param carSpeedMps the fresh car speed, or nothing if it is unknown: then the speed is not checked.
+  /// \param checkSpeed false for a provider whose points are not one chain with the others (Fused next to Gps): the
+  /// speed derived from the previous point would be wrong, and the speed counter stays as it is.
   /// \returns true if the position can be trusted.
   bool CheckSatellitePosition(ms::LatLon const & position, int64_t timeMs, double accuracyM = 0,
-                              std::optional<double> gpsSpeedMps = {}, std::optional<double> carSpeedMps = {});
+                              std::optional<double> gpsSpeedMps = {}, std::optional<double> carSpeedMps = {},
+                              bool checkSpeed = true);
 
 private:
   struct Network

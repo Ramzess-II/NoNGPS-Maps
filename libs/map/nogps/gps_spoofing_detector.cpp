@@ -169,9 +169,11 @@ void GpsSpoofingDetector::CheckSpeed(ms::LatLon const & position, int64_t timeMs
 }
 
 bool GpsSpoofingDetector::CheckSatellitePosition(ms::LatLon const & position, int64_t timeMs, double accuracyM,
-                                                 std::optional<double> gpsSpeedMps, std::optional<double> carSpeedMps)
+                                                 std::optional<double> gpsSpeedMps, std::optional<double> carSpeedMps,
+                                                 bool checkSpeed)
 {
-  CheckSpeed(position, timeMs, accuracyM, gpsSpeedMps, carSpeedMps);
+  if (checkSpeed)
+    CheckSpeed(position, timeMs, accuracyM, gpsSpeedMps, carSpeedMps);
   bool const consistent = IsConsistent(position, timeMs) && m_speedMismatchCount < kSpeedMismatchFixes;
   if (!m_spoofed)
   {

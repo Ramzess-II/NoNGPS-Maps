@@ -186,7 +186,8 @@ void Engine::OnFix(Fix const & location)
   else
   {
     trusted = m_spoofingDetector.CheckSatellitePosition(location.m_position, location.m_timeMs, location.m_accuracyM,
-                                                        location.m_speedMps, GetCarSpeedMps());
+                                                        location.m_speedMps, GetCarSpeedMps(),
+                                                        location.m_provider == Provider::Gps);
   }
 
   bool const spoofed = m_spoofingDetector.IsSpoofed();
