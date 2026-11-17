@@ -77,23 +77,31 @@ private:
 };
 
 /// Drives the car along the road from its start to the distance.
-/// \param laneChangeAtM where the car changes a lane: it turns by 5 degrees and back within 40 m.
-BendMatcher Drive(Road const & road, double distanceM, std::optional<double> laneChangeAtM)
+/// \param laneChangesAtM where the car changes a lane: it turns by 5 degrees and back within 40 m.
+BendMatcher Drive(BendMatcher matcher, Road const & road, double distanceM, std::vector<double> const & laneChangesAtM)
 {
-  BendMatcher matcher;
   double bearing = road.AtDistance(0).m_bearingDeg;
   for (int m = 1; m <= distanceM; ++m)
   {
     double const roadBearing = road.AtDistance(m).m_bearingDeg;
     double yaw = AngleDiff(roadBearing, bearing);
     bearing = roadBearing;
-    if (laneChangeAtM && m > *laneChangeAtM && m <= *laneChangeAtM + 10)
-      yaw += 0.5;
-    else if (laneChangeAtM && m > *laneChangeAtM + 30 && m <= *laneChangeAtM + 40)
-      yaw -= 0.5;
+    for (double const laneChangeAtM : laneChangesAtM)
+      if (m > laneChangeAtM && m <= laneChangeAtM + 10)
+        yaw += 0.5;
+      else if (m > laneChangeAtM + 30 && m <= laneChangeAtM + 40)
+        yaw -= 0.5;
     matcher.OnMotion(yaw, 1);
   }
   return matcher;
+}
+
+BendMatcher Drive(Road const & road, double distanceM, std::optional<double> laneChangeAtM)
+{
+  std::vector<double> laneChanges;
+  if (laneChangeAtM)
+    laneChanges.push_back(*laneChangeAtM);
+  return Drive(BendMatcher(), road, distanceM, laneChanges);
 }
 
 std::optional<double> Match(BendMatcher const & matcher, Road & road, double positionM, std::string * whyNot = nullptr,
@@ -237,5 +245,76 @@ UNIT_TEST(NoGps_BendMatcher_RotationOfLastMeters)
   TEST_ALMOST_EQUAL_ABS(*matcher.GetRotationDeg(50), -10.0, 1e-6, ());
   matcher.Reset();
   TEST(!matcher.GetRotationDeg(50), ());
+}
+
+// The matcher of the roads that bend gently, as the navigator makes it.
+BendMatcher::Params GentleParams()
+{
+  return {800 /* window */, 10 /* step */,        100 /* smooth */,         6 /* min bend */,
+          2 /* max diff */, 40 /* clear aside */, 0.1 /* min aside diff */, 45 /* max bend */};
+}
+
+// 1 km straight, 600 m turning by 12 degrees, 1 km straight: a highway.
+Road HighwayRoad()
+{
+  Road road(90);
+  road.Add(1000, 0).Add(600, 12).Add(1000, 0);
+  return road;
+}
+
+UNIT_TEST(NoGps_BendMatcher_GentleFindsPositionAheadAndBehind)
+{
+  auto road = HighwayRoad();
+  // The car has driven the whole bend: 12 degrees in 600 m, the ordinary matcher sees 3 degrees in 150 m.
+  auto const matcher = Drive(BendMatcher(GentleParams()), road, 1700, {});
+  for (double const error : {40.0, -40.0, 0.0})
+  {
+    std::string whyNot;
+    auto const ahead = Match(matcher, road, 1700 + error, &whyNot);
+    TEST(ahead, (error, whyNot));
+    TEST_ALMOST_EQUAL_ABS(*ahead, error, 5.0, ());
+  }
+  // The ordinary matcher tells nothing here.
+  TEST(!Match(Drive(road, 1700, {}), road, 1740), ());
+}
+
+UNIT_TEST(NoGps_BendMatcher_GentleLaneChangesAreNotBend)
+{
+  // Two lane changes on a straight road: the smoothing leaves less than the minimal bend.
+  Road straight(90);
+  straight.Add(2000, 0);
+  auto const matcher = Drive(BendMatcher(GentleParams()), straight, 1500, {1000, 1250});
+  std::string whyNot;
+  TEST(!Match(matcher, straight, 1540, &whyNot), ());
+  TEST(whyNot.empty(), (whyNot));
+}
+
+UNIT_TEST(NoGps_BendMatcher_GentleTellsNothingInsideLongEvenArc)
+{
+  Road road(90);
+  road.Add(500, 0).Add(2400, 48).Add(500, 0);
+  // The car is far from both ends of the arc: 12 degrees in 600 m everywhere around.
+  auto const matcher = Drive(BendMatcher(GentleParams()), road, 1800, {});
+  std::string whyNot;
+  TEST(!Match(matcher, road, 1840, &whyNot), ());
+  TEST(whyNot.starts_with("not clear"), (whyNot));
+}
+
+UNIT_TEST(NoGps_BendMatcher_GentleTellsNothingAfterTurn)
+{
+  auto road = HighwayRoad();
+  BendMatcher matcher(GentleParams());
+  // The car has turned by 90 degrees within the window: a turn, not a bend of the road.
+  for (int m = 0; m < 1000; ++m)
+    matcher.OnMotion(m == 1000 - 300 ? 90 : 0, 1);
+  std::string whyNot;
+  TEST(!Match(matcher, road, 1740, &whyNot), ());
+  TEST(whyNot.empty(), (whyNot));
+}
+
+UNIT_TEST(NoGps_BendMatcher_GentleTellsNothingBeforeWindowIsDriven)
+{
+  auto road = HighwayRoad();
+  TEST(!Match(Drive(BendMatcher(GentleParams()), road, 700, {}), road, 740), ());
 }
 }  // namespace nogps_bend_matcher_tests
