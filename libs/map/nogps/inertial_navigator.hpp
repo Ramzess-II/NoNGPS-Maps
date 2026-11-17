@@ -344,6 +344,15 @@ public:
   static int constexpr kCrawlSpeedKmh = 5;
   static int64_t constexpr kCrawlCheckBackMs = 4000;
   static double constexpr kCrawlClearForwardMps = 0.5;
+  // The stop of a slow segment is a clearer pull than its start: a car driving forward brakes with a pull backward,
+  // and one driving backward with a pull forward. Where the start of a segment was not felt clearly, the way told by
+  // the speed felt while it braked, against the stand felt after, turns the segment if it is felt this clearly the
+  // other way. Only a short and slow segment is checked: braking hard on a ramp or over a curb looks like a pull.
+  // On the trips of November 14-15 the sign of the pull matched the way in 6 stops of 6.
+  static double constexpr kStopFeltSpeedMps = 0.5;
+  static int constexpr kStopCheckMaxKmh = 8;
+  static double constexpr kStopCheckMaxM = 30;
+  static int64_t constexpr kStopBrakeMs = 2000;
   // The accelerometer is compared with the last seconds of the car speed, which has no sign: it is not learned
   // from and doesn't tell how much faster the car is while the car drives backwards and for this time after it.
   // A start backward is not always told, so it is learned from at a speed nobody drives backwards at only: a
@@ -566,6 +575,11 @@ private:
   // Tells by the accelerometer of the box which way the car drives, forward or backward.
   void TrackDirection();
   void SetDirection(int direction);
+  /// Moves the mark and the cars by |turned| times what the car has driven since its start.
+  void MoveStartSegment(int turned);
+  void ForgetWay();
+  void StartStopCheck();
+  void CheckStop();
   // Nothing is known about the way the car drives: it drives forward.
   void ResetDirection();
   // The car speed is not heard from a standing car: what it stood with is kept, see m_unheardStand.
@@ -886,6 +900,21 @@ private:
   // Driven since the start, either way, and how far the mark of the car was moved for that.
   double m_startM = 0;
   double m_startMarkM = 0;
+  // The segment since the start: the speed felt at its start, m/s with the sign, its top speed and when it was
+  // reported.
+  double m_startFeltMps = 0;
+  int m_segMaxKmh = 0;
+  int64_t m_segPeakMs = 0;
+  // A slow segment that has ended is checked by its stop when the stand after it is felt: the way it was told, the
+  // time it has stopped, the time its braking is summed from and its top speed.
+  struct StopCheck
+  {
+    int m_way;
+    int64_t m_stopMs;
+    int64_t m_brakeFromMs;
+    double m_peakMps;
+  };
+  std::optional<StopCheck> m_stopCheck;
   // When it drove backwards the last time.
   std::optional<int64_t> m_lastBackMs;
   // The car speed is not heard since the car stood, e.g. the engine was off. The car may start before it is heard

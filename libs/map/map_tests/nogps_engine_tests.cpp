@@ -3428,6 +3428,7 @@ public:
   }
 
   double East() const { return m_east; }
+  double Speed() const { return m_speed; }
   double North() const { return m_north; }
 
   // The gravity the accelerometer feels along the car on a slope.
@@ -3890,6 +3891,82 @@ UNIT_TEST(NoGps_Engine_CarStartingClearlyForwardAndBrakingStaysForward)
   car.m_minReportedKmh = 0;
   car.Drive(3, 0, 0);
   TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 3);
+}
+
+// The car creeps backward from a stand with a start too weak to tell its way, speeds up to |topAccel| * 5 s and brakes.
+// The stop pulls it forward, as on November 15 at 11:23:37.
+static void CreepBackAndBrake(BoxCar & car, double topAccel)
+{
+  car.m_minReportedKmh = 1;
+  car.Drive(4, -0.05, 0);
+  car.Drive(1, 0, 0);
+  car.Drive(5, topAccel, 0);
+  car.Drive(2, 0, 0);
+  car.m_minReportedKmh = 0;
+  car.Drive(-car.Speed() / 1.0, 1, 0);
+  car.Drive(3, 0, 0);
+}
+
+UNIT_TEST(NoGps_Engine_StopPullTurnsSegmentStartedWeakly)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+  double const startEast = car.East();
+
+  CreepBackAndBrake(car, -0.2);
+  TEST_LESS(car.East(), startEast - 5, ());
+  // The start was told forward, the stop tells that the car has backed.
+  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 3);
+}
+
+UNIT_TEST(NoGps_Engine_StopPullKeepsFastSegment)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+  double const startEast = car.East();
+
+  // 12 km/h is faster than a segment that is checked by its stop.
+  CreepBackAndBrake(car, -0.65);
+  TEST_LESS(car.East(), startEast - 5, ());
+  TEST_GREATER(East(env.Last().m_position), startEast, ());
+}
+
+UNIT_TEST(NoGps_Engine_StopPullKeepsClearForwardStart)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+
+  // The car starts clearly forward to 5 km/h and brakes over a curb that pulls it the other way.
+  car.Drive(1.5, 1, 0);
+  car.Drive(2, 0, 0);
+  car.m_slopeMps2 = 2.5;
+  car.Drive(1.5, -1, 0);
+  car.m_slopeMps2 = 0;
+  car.Drive(3, 0, 0);
+  // The pull moves the mark ahead a little. A segment turned would put it 10 m behind.
+  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 6);
+}
+
+UNIT_TEST(NoGps_Engine_StopPullChangesNothingWithoutAccelerometer)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, false /* accelerometer */);
+  car.SpeedUpAndBrake();
+  double const startEast = East(env.Last().m_position);
+
+  CreepBackAndBrake(car, -0.2);
+  TEST_GREATER(East(env.Last().m_position), startEast, ());
 }
 
 UNIT_TEST(NoGps_Engine_CarCrawlingAfterShortStopStaysForward)
