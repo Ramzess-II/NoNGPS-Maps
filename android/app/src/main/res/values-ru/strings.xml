@@ -1049,6 +1049,10 @@
     <string name="nogps_car_current">Текущая машина</string>
     <!-- State of a car in the list of the cars: when its box was connected the last time, e.g. "Last connected 2 hours ago" -->
     <string name="nogps_car_last_seen">Последнее подключение %1$s</string>
+    <!-- State of a car in the list of the cars: its box is awake near the phone, the car may be switched to -->
+    <string name="nogps_car_nearby">Рядом</string>
+    <!-- Button in the row of a car in the list of the cars, next to "Nearby": the app takes this car and connects to its box -->
+    <string name="nogps_car_switch">Переключить</string>
     <!-- Action for a car in the list of the cars: the app takes this car and connects to its box -->
     <string name="nogps_car_drive">Переключиться на эту машину</string>
     <!-- Title of the dialog that renames a car -->
