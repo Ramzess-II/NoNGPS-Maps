@@ -177,6 +177,33 @@ UNIT_TEST(NoGps_PeerSync_LeaderSendsPlaces)
   TEST(!sync.MakeMessage(PeerRole::Leading, PeerTrigger::GpsFix, box.m_nowMs, Place()), ());
 }
 
+UNIT_TEST(NoGps_PeerSync_DistanceIsTakenAtTheMomentOfThePlace)
+{
+  PeerSync sync;
+  Box box;
+  box.Drive(sync, 2000, 10, 0);
+  auto place = Place();
+  place.m_ageMs = 1000;
+  auto const anchor = sync.MakeMessage(PeerRole::Leading, PeerTrigger::PlaceSet, box.m_nowMs, place);
+  TEST(anchor, ());
+  // 10 m/s: the distance of a second ago is 10 m less than now.
+  TEST_ALMOST_EQUAL_ABS(static_cast<double>(*sync.GetDistMm() - anchor->m_distMm), 10'000.0, 200.0, ());
+  // A place older than the history is not sent.
+  place.m_ageMs = 3000;
+  TEST(!sync.MakeMessage(PeerRole::Leading, PeerTrigger::PlaceSet, box.m_nowMs, place), ());
+}
+
+UNIT_TEST(NoGps_PeerSync_LeaderManualForgottenOnRoleChange)
+{
+  PeerSync sync;
+  Box box;
+  box.Drive(sync, 1000, 10, 0);
+  TEST(sync.OnReceived(PeerRole::Following, At0(*sync.GetDistMm(), 'S', 'M')), ());
+  TEST(sync.IsLeaderManual(), ());
+  sync.MakeMessage(PeerRole::Leading, PeerTrigger::PlaceSet, box.m_nowMs, Place());
+  TEST(!sync.IsLeaderManual(), ());
+}
+
 UNIT_TEST(NoGps_PeerSync_FollowerSendsCorrectionsAndGpsOfManualLeader)
 {
   PeerSync sync;

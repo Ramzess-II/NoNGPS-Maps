@@ -60,6 +60,8 @@ struct PeerOutPlace
   double m_accuracyM = 0;
   // See esp32::Peer::m_source.
   char m_source = 'G';
+  // How long ago the place was fixed: the distance of the box is taken at that moment.
+  int64_t m_ageMs = 0;
 };
 
 /// Two phones on one box: what each sends to the other, and how a place of the other one is carried to now by the
@@ -89,6 +91,8 @@ public:
   std::optional<int64_t> GetDistMm() const;
 
 private:
+  void TrackRole(PeerRole role);
+
   struct Sample
   {
     int64_t m_timeMs;
@@ -98,6 +102,7 @@ private:
 
   std::deque<Sample> m_samples;
   std::optional<int64_t> m_sentMs;
+  PeerRole m_role = PeerRole::None;
   bool m_leaderManual = false;
 };
 }  // namespace nogps

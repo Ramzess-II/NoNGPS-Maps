@@ -44,6 +44,14 @@ void PeerSync::Reset()
   m_leaderManual = false;
 }
 
+void PeerSync::TrackRole(PeerRole role)
+{
+  // What the other phone said is not true for another role: no new line may come from a leader that has gone.
+  if (role != m_role)
+    m_leaderManual = false;
+  m_role = role;
+}
+
 std::optional<int64_t> PeerSync::GetDistMm() const
 {
   if (m_samples.empty())
@@ -54,6 +62,7 @@ std::optional<int64_t> PeerSync::GetDistMm() const
 std::optional<esp32::Peer> PeerSync::MakeMessage(PeerRole role, PeerTrigger trigger, int64_t nowMs,
                                                  PeerOutPlace const & place)
 {
+  TrackRole(role);
   char kind = 0;
   switch (trigger)
   {
@@ -77,8 +86,17 @@ std::optional<esp32::Peer> PeerSync::MakeMessage(PeerRole role, PeerTrigger trig
       kind = 'A';
     break;
   }
-  auto const dist = GetDistMm();
-  if (kind == 0 || !dist)
+  if (kind == 0 || m_samples.empty())
+    return {};
+  // The last line of the box that is not after the moment of the place; a place older than the history is not sent.
+  std::optional<int64_t> dist;
+  for (auto it = m_samples.rbegin(); it != m_samples.rend(); ++it)
+    if (it->m_timeMs <= nowMs - place.m_ageMs)
+    {
+      dist = it->m_distMm;
+      break;
+    }
+  if (!dist)
     return {};
   if (kind == 'A' || kind == 'S')
     m_sentMs = nowMs;
@@ -97,6 +115,7 @@ std::optional<esp32::Peer> PeerSync::MakeMessage(PeerRole role, PeerTrigger trig
 
 std::optional<PeerPlace> PeerSync::OnReceived(PeerRole role, esp32::Peer const & peer)
 {
+  TrackRole(role);
   if (!IsTakenBy(role, peer.m_kind))
     return {};
   if (role == PeerRole::Following)

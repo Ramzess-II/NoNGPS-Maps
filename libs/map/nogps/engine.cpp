@@ -514,7 +514,11 @@ void Engine::EnterManualModeByItself(std::string const & reason)
   // The car is where it was shown until the user moves it: on the road there, or where GPS has left it if
   // there is no road. The inertial navigation has moved the car on since, it continues from there.
   bool const inertialReady = m_inertial && m_inertial->IsReady();
-  if (last && !inertialReady && !SetManualLocation(last->m_position) && SourceOf(*last) == PositionSource::Gps)
+  // The place is a guess, not a place set by the user: it is not sent as one, the snapshot tells it as manual.
+  m_applyingPeer = true;
+  bool const marked = last && !inertialReady && SetManualLocation(last->m_position);
+  m_applyingPeer = false;
+  if (last && !inertialReady && !marked && SourceOf(*last) == PositionSource::Gps)
   {
     Fix location = *last;
     location.m_provider = Provider::Manual;
@@ -1523,13 +1527,15 @@ void Engine::SharePlace(PeerTrigger trigger, char source, Fix const & place)
   auto * box = GetBox();
   if (!box || m_applyingPeer)
     return;
-  box->SendPeer(trigger, {place.m_position, place.m_bearingDeg, place.m_accuracyM, source});
+  box->SendPeer(trigger, {place.m_position, place.m_bearingDeg, place.m_accuracyM, source, AgeMs(place)});
 }
 
 void Engine::SharePlaceByTimer()
 {
   m_peerTimer.Start(kPeerSnapshotIntervalMs, [this] { SharePlaceByTimer(); });
-  if (m_savedLocation && AgeMs(*m_savedLocation) <= kPositionStaleMs)
+  // A cell-tower position is too rough to be taken for the place of the car.
+  if (m_savedLocation && AgeMs(*m_savedLocation) <= kPositionStaleMs &&
+      SourceOf(*m_savedLocation) != PositionSource::Network)
     SharePlace(PeerTrigger::Timer, m_manualMode ? 'M' : 'G', *m_savedLocation);
 }
 
