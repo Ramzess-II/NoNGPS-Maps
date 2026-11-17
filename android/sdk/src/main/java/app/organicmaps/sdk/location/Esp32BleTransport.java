@@ -297,7 +297,7 @@ class Esp32BleTransport
       {
         if (!isBoxOf(device.getName(), id))
           continue;
-        removed &= (Boolean) BluetoothDevice.class.getMethod("removeBond").invoke(device);
+        removed &= Boolean.TRUE.equals(BluetoothDevice.class.getMethod("removeBond").invoke(device));
       }
     }
     catch (ReflectiveOperationException | RuntimeException e)

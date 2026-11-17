@@ -546,10 +546,12 @@ final class NoGpsControls: NSObject {
     // only blocks the next connection, and an app can't remove it: the user is told to.
     case .thisPhoneRemoved:
       let carId = NoGps.status().carId
-      if !carId.isEmpty {
+      if carId.isEmpty {
+        text = nil
+      } else {
         NoGps.forgetCar(carId)
+        text = String(format: L("nogps_phone_removed_forget"), carId)
       }
-      text = String(format: L("nogps_phone_removed_forget"), carId)
     @unknown default: text = nil
     }
     if let text {
