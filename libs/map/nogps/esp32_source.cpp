@@ -64,6 +64,7 @@ void Esp32Source::Stop()
   m_dataTimesMs.clear();
   m_hasLast = false;
   m_lastDataMs.reset();
+  m_speedKmh = -1;
   m_wakingLinkMs.reset();
   m_info.reset();
   m_carSilent = false;
@@ -477,7 +478,7 @@ void Esp32Source::OnLine(std::string_view text)
     m_carInfo = carInfo;
     // The engine speed on the move is for the check of the speed it gives: the status comes less often than the
     // speed, this line tells how often.
-    if (carInfo->m_rpm >= 0 && m_speedKmh > 0)
+    if (carInfo->m_rpm >= 0 && m_speedKmh > 0 && IsConnected())
       LOG(LINFO, ("RPM", carInfo->m_rpm, "speed =", m_speedKmh));
   }
   auto const obdState = esp32::ParseObdState(*fields);
