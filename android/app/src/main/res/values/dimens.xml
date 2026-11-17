@@ -153,6 +153,10 @@
   <dimen name="nav_bottom_gap">12dp</dimen>
   <dimen name="nav_source_width">136dp</dimen>
   <dimen name="speed_view_size">60dp</dimen>
+  <!-- The bar of the speed calibration starts under the middle of the speed: margin_base + speed_view_size / 2. -->
+  <dimen name="speed_hint_margin_start">46dp</dimen>
+  <!-- Its text starts after the speed. -->
+  <dimen name="speed_hint_padding_start">42dp</dimen>
   <dimen name="speed_limit_size">30dp</dimen>
   <dimen name="nav_search_wheel_radius">96dp</dimen>
   <dimen name="nav_search_wheel_diameter">192dp</dimen>

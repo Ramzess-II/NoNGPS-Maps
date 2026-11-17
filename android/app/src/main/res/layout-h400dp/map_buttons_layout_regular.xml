@@ -40,6 +40,13 @@
     android:layout_marginBottom="@dimen/nav_menu_height"
     android:layout_alignParentBottom="true"
     android:layout_centerHorizontal="true" />
+  <!-- Under the speed and the panels: the speed covers its start, see SpeedHintView. -->
+  <include
+    layout="@layout/map_speed_hint"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="@dimen/nav_menu_height"
+    android:layout_alignParentBottom="true" />
   <androidx.constraintlayout.widget.ConstraintLayout
     android:id="@+id/map_buttons_inner_right"
     android:layout_width="wrap_content"
@@ -92,4 +99,8 @@
     android:layout_height="wrap_content"
     android:layout_alignParentBottom="true"
     android:layout_alignParentEnd="true" />
+  <include
+    layout="@layout/map_speed_hint_confetti"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent" />
 </RelativeLayout>

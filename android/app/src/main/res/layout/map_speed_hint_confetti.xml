@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The confetti of the speed calibration over the map, takes no touches, see SpeedHintConfettiView. -->
+<app.organicmaps.maplayer.SpeedHintConfettiView
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:id="@+id/speed_hint_confetti"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:elevation="8dp"
+  android:importantForAccessibility="no" />
