@@ -1213,11 +1213,12 @@ UNIT_TEST(NoGps_Esp32Source_BoxValuesWhileConnected)
   TEST_EQUAL(value(values, V::LastEvent), esp32::BoxValues::value_type(V::LastEvent, "9"), ());
   TEST_EQUAL(value(values, V::Id), esp32::BoxValues::value_type(V::Id, ""), ());
 
-  source.OnBleBytes(BoxLine("NGI,1,0.3.5,2026-10-10T10:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA,7"));
+  source.OnBleBytes(BoxLine("NGI,1,0.3.5,2026-10-10T10:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA,7,R1"));
   values = source.GetBoxValues();
   TEST_EQUAL(values.size(), kAll, ());
   TEST_EQUAL(value(values, V::Id), esp32::BoxValues::value_type(V::Id, "C47D"), ());
   TEST_EQUAL(value(values, V::PowerOns), esp32::BoxValues::value_type(V::PowerOns, "7"), ());
+  TEST_EQUAL(value(values, V::Revision), esp32::BoxValues::value_type(V::Revision, "R1"), ());
   TEST_EQUAL(value(values, V::Engine), esp32::BoxValues::value_type(V::Engine, "RUN"), ());
 
   source.OnBleState(BleState::Searching);

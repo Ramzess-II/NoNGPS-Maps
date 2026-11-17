@@ -1165,7 +1165,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final String boxState = BoxTexts.boxStateText(context, status);
     // How the firmware is sent stands for the state of the box while it goes.
     final String state = BoxTexts.isUpdating(status.getFirmwareUpdate()) ? firmware : boxState;
-    mItemBox.show(getString(R.string.nogps_box_section, BOX_NAME),
+    mItemBox.show(getString(R.string.nogps_box_section, boxModel(status)),
                   status.boxFirmware.isEmpty()
                       ? state
                       : getString(R.string.nogps_box_version, status.boxFirmware) + ", " + BoxTexts.capitalize(state));
@@ -1291,6 +1291,16 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
         mismatch = true;
     }
     mVoltageMismatch.setVisibility(mismatch ? View.VISIBLE : View.GONE);
+  }
+
+  // "NonGPS-OBD, R1" once the box has told its hardware revision.
+  @NonNull
+  private static String boxModel(@NonNull NoGps.Status status)
+  {
+    for (int i = 0; i < status.boxValues.length; i++)
+      if (status.getBoxValueId(i) == NoGps.BoxValue.REVISION && !status.boxValues[i].isEmpty())
+        return BOX_NAME + ", " + status.boxValues[i];
+    return BOX_NAME;
   }
 
   private void makeValueRows(@NonNull NoGps.BoxValue[] ids)

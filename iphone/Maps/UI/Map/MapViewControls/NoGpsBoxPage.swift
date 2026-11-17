@@ -300,9 +300,17 @@ final class NoGpsBoxPage: MWMTableViewController {
 
   // MARK: - Texts
 
+  /// "NonGPS-OBD, R1" once the box has told its hardware revision.
+  private var boxModel: String {
+    guard let revision = status.boxValues.first(where: { $0.kind == .revision })?.value, !revision.isEmpty else {
+      return Constants.boxModel
+    }
+    return "\(Constants.boxModel), \(revision)"
+  }
+
   private func itemTitle(_ part: Part) -> String {
     switch part {
-    case .box: return String(format: L("nogps_box_section"), Constants.boxModel)
+    case .box: return String(format: L("nogps_box_section"), boxModel)
     case .obd: return L("nogps_box_value_group_obd")
     case .car:
       return currentCar.map { String(format: L("nogps_box_car"), NoGpsBoxSheet.carName($0)) } ?? L("nogps_box_value_group_car")
@@ -426,6 +434,7 @@ final class NoGpsBoxPage: MWMTableViewController {
     case .buildDate: L("nogps_box_value_build_date")
     case .chip: L("nogps_box_value_chip")
     case .board: L("nogps_box_value_board")
+    case .revision: L("nogps_box_value_revision")
     case .id: L("nogps_box_value_id")
     case .flashSize: L("nogps_box_value_flash_size")
     case .maxImageSize: L("nogps_box_value_max_image_size")

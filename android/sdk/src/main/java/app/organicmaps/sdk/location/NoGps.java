@@ -182,6 +182,7 @@ public final class NoGps
     BUILD_DATE,
     CHIP,
     BOARD,
+    REVISION,
     ID,
     // KB.
     FLASH_SIZE,

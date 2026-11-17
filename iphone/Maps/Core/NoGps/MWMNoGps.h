@@ -139,6 +139,7 @@ typedef NS_ENUM(NSInteger, MWMNoGpsBoxValue) {
   MWMNoGpsBoxValueBuildDate,
   MWMNoGpsBoxValueChip,
   MWMNoGpsBoxValueBoard,
+  MWMNoGpsBoxValueRevision,
   MWMNoGpsBoxValueId,
   // KB.
   MWMNoGpsBoxValueFlashSize,
