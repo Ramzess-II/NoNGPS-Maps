@@ -57,6 +57,16 @@ the same time its own worktree made by `tools/unix/nogps_worktree.sh`:
 
   Claude doesn't remove the worktree of a subagent: run `remove` when it is done.
 
+## Issue roller
+
+`/nogps-roll [count | <issue numbers>] [--dry]` works through the open issues of koloboid and Ramzess-II in both
+repos, oldest first, in 4 parallel worktrees, at most one of them on iOS. It closes an issue that a merged PR or a
+newer issue covers. It takes the rest through this flow up to a PR labeled `roller`, without asking. It postpones
+what needs a car, a phone, a box, a replay or a person's decision: it comments on the issue with what is missing and
+labels it `postponed`. Remove the label when the answer is there. `--dry` only triages and writes nothing. The
+script is `.claude/workflows/nogps-roll.js`. Unlike a session, its iOS slot builds Xcode in its worktree, from
+scratch, into a build dir that removing the worktree deletes.
+
 ## Versions
 
 Nobody raises a version by hand. Each build takes them from git: `tools/unix/version.sh` gives the app version
