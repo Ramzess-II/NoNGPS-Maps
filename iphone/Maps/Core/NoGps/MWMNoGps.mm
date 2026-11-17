@@ -46,6 +46,7 @@ public:
   bool IsBoxPairing() const { return m_esp32.isPairing; }
   void ForgetBoxes() { [m_esp32 forgetKnownBoxes]; }
   void ForgetBox(NSString * carId) { [m_esp32 forgetBox:carId]; }
+  bool IsBoxNearby(NSString * carId) const { return [m_esp32 isBoxNearby:carId]; }
   void SearchNewBox(bool newOnly) { [m_esp32 searchNewBox:newOnly]; }
   void RetryBox() { [m_esp32 retry]; }
 
@@ -414,6 +415,11 @@ static CLLocation * lastPlatformLocation;
 + (void)endAddPhone
 {
   Engine().EndAddPhone();
+}
+
++ (BOOL)isBoxNearby:(NSString *)carId
+{
+  return Delegate().IsBoxNearby(carId);
 }
 
 + (void)searchNewBox:(BOOL)newOnly

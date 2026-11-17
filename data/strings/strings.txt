@@ -46154,6 +46154,20 @@ en = Last connected %1$@
 ru = Последнее подключение %1$@
 uk = Останнє підключення %1$@
 
+[nogps_car_nearby]
+comment = State of a car in the list of the cars: its box is awake near the phone, the car may be switched to
+tags = android-app,apple-maps
+en = Nearby
+ru = Рядом
+uk = Поруч
+
+[nogps_car_switch]
+comment = Button in the row of a car in the list of the cars, next to "Nearby": the app takes this car and connects to its box
+tags = android-app,apple-maps
+en = Switch
+ru = Переключить
+uk = Перемкнути
+
 [nogps_car_drive]
 comment = Action for a car in the list of the cars: the app takes this car and connects to its box
 tags = android-app,apple-maps

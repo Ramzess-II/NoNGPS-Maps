@@ -917,11 +917,20 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     if (car.id.equals(status.carId))
       return getString(isConnected(status) ? R.string.nogps_car_connected : R.string.nogps_car_current);
+    if (isNearby(status, car))
+      return getString(R.string.nogps_car_nearby);
     if (car.lastSeenUnixMs <= 0)
       return "";
     final CharSequence when =
         DateUtils.getRelativeTimeSpanString(car.lastSeenUnixMs, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS);
     return getString(R.string.nogps_car_last_seen, when);
+  }
+
+  // The box of another car is awake near the phone.
+  private boolean isNearby(@NonNull NoGps.Status status, @NonNull NoGps.Car car)
+  {
+    return !car.id.equals(status.carId)
+ && MwmApplication.from(requireContext()).getLocationHelper().isBoxNearby(car.id);
   }
 
   private void updateCars(@NonNull NoGps.Status status)
@@ -949,6 +958,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       state.setText(texts.get(2 * i + 1));
       state.setVisibility(texts.get(2 * i + 1).isEmpty() ? View.GONE : View.VISIBLE);
       row.findViewById(R.id.car_chevron).setVisibility(View.VISIBLE);
+      final View switchCar = row.findViewById(R.id.car_switch);
+      switchCar.setVisibility(isNearby(status, car) ? View.VISIBLE : View.GONE);
+      switchCar.setOnClickListener(v -> {
+        NoGps.nativeSelectCar(car.id);
+        update();
+      });
       row.setOnClickListener(v -> showCar(car.id, false));
       mCars.addView(row);
     }

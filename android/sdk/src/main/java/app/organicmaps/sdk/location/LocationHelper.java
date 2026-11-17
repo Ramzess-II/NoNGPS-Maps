@@ -266,6 +266,16 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   /**
+   * @return true if the box of the car, other than the connected one, was seen in the last minute: the car may be
+   * switched to.
+   */
+  @UiThread
+  public boolean isBoxNearby(@NonNull String id)
+  {
+    return mEsp32Ble.isBoxNearby(id);
+  }
+
+  /**
    * Forgets the car with what is learned about it. Its box, still paired, is not connected until the car is added
    * again. Without cars left the box is not looked for.
    */

@@ -164,6 +164,8 @@ class Esp32BleTransport
   private boolean mNewBoxOnly;
   // The cars and the current one, as the search starts.
   private final Set<String> mCarIds = new HashSet<>();
+  // The boxes seen in the scan, also while one is connected: the Box sheet offers a car whose box is awake.
+  private final NearbyBoxes mNearbyBoxes = new NearbyBoxes();
   @NonNull
   private String mCurrentCar = "";
   // The box connected, null if its name is not known.
@@ -277,12 +279,23 @@ class Esp32BleTransport
       getPrefs().edit().putStringSet(FORGOTTEN_BOXES, forgotten).apply();
   }
 
+  /**
+   * @return true if the box of the car was seen in the scan in the last minute, other than the connected one: it
+   * doesn't advertise.
+   */
+  @UiThread
+  boolean isBoxNearby(@NonNull String id)
+  {
+    return mOpen && !id.equals(mBoxId) && mNearbyBoxes.isNearby(id, SystemClock.elapsedRealtime());
+  }
+
   @UiThread
   void close()
   {
     if (!mOpen)
       return;
     mOpen = false;
+    mNearbyBoxes.clear();
     mMainHandler.removeCallbacks(mStarter);
     mMainHandler.removeCallbacks(mPairingClosedEnd);
     mContext.unregisterReceiver(mReceiver);
@@ -320,8 +333,14 @@ class Esp32BleTransport
   private void start()
   {
     mMainHandler.removeCallbacks(mStarter);
-    if (!mOpen || mGatt != null)
+    if (!mOpen)
       return;
+    if (mGatt != null)
+    {
+      // Android turns a long scan into one that finds nothing, as below.
+      startNearbyScan();
+      return;
+    }
     stopScan();
     final BluetoothManager manager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
     final BluetoothAdapter adapter = manager != null ? manager.getAdapter() : null;
@@ -355,8 +374,12 @@ class Esp32BleTransport
       @Override
       public void onScanResult(int callbackType, ScanResult result)
       {
-        if (this == mScanCallback)
-          onBoxFound(adapter, result);
+        if (this != mScanCallback)
+          return;
+        final String id = getBoxId(result);
+        if (id != null)
+          mNearbyBoxes.onSeen(id, SystemClock.elapsedRealtime());
+        onBoxFound(adapter, result);
       }
 
       @Override
@@ -392,6 +415,44 @@ class Esp32BleTransport
     mMainHandler.postDelayed(mStarter, RESCAN_INTERVAL_MS);
   }
 
+  /**
+   * Keeps looking for the boxes of the other cars while one is connected, slowly: they are not connected, only seen.
+   */
+  @SuppressLint("MissingPermission")
+  private void startNearbyScan()
+  {
+    stopScan();
+    final BluetoothManager manager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
+    final BluetoothAdapter adapter = manager != null ? manager.getAdapter() : null;
+    final BluetoothLeScanner scanner =
+        adapter != null && adapter.isEnabled() && hasPermission() ? adapter.getBluetoothLeScanner() : null;
+    if (scanner == null)
+      return;
+    final ScanCallback callback = new ScanCallback() {
+      @Override
+      public void onScanResult(int callbackType, ScanResult result)
+      {
+        final String id = this == mScanCallback ? getBoxId(result) : null;
+        if (id != null)
+          mNearbyBoxes.onSeen(id, SystemClock.elapsedRealtime());
+      }
+    };
+    final ScanFilter filter = new ScanFilter.Builder().setServiceUuid(new ParcelUuid(SERVICE)).build();
+    final ScanSettings settings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_POWER).build();
+    try
+    {
+      scanner.startScan(Collections.singletonList(filter), settings, callback);
+    }
+    catch (SecurityException | IllegalStateException e)
+    {
+      Logger.w(TAG, "Can't scan for the nearby boxes: " + e.getMessage());
+      return;
+    }
+    mScanner = scanner;
+    mScanCallback = callback;
+    mMainHandler.postDelayed(mStarter, RESCAN_INTERVAL_MS);
+  }
+
   @SuppressLint("MissingPermission")
   private void stopScan()
   {
@@ -415,6 +476,8 @@ class Esp32BleTransport
   @SuppressLint("MissingPermission")
   private void onBoxFound(@NonNull BluetoothAdapter adapter, @NonNull ScanResult result)
   {
+    if (mGatt != null)
+      return;
     final BluetoothDevice device = result.getDevice();
     final boolean bonded = device.getBondState() == BluetoothDevice.BOND_BONDED;
     final String id = getBoxId(result);
@@ -763,6 +826,7 @@ class Esp32BleTransport
     final Set<String> forgotten = getForgottenBoxes();
     if (mBoxId != null && forgotten.remove(mBoxId))
       getPrefs().edit().putStringSet(FORGOTTEN_BOXES, forgotten).apply();
+    startNearbyScan();
   }
 
   @SuppressLint("MissingPermission")
