@@ -28,6 +28,9 @@ public:
   // Nor farther than this, however long the car has driven without a known place: the bends of the roads keep
   // the calculated distance right within 10 m, and no turn moved farther than 20 m was moved to its crossing.
   static double constexpr kMaxSearchM = 60;
+  // After a long way without a known place the along error grows past kMaxSearchM (0.7 % of the way): the crossing
+  // is searched that far, but not beyond this.
+  static double constexpr kMaxFarSearchM = 300;
   // A crossing farther from the road the car drove along is on a parallel street.
   static double constexpr kMaxSideOffsetM = 20;
   // The roads of a crossing are checked this far from it: close to it all its roads meet.
@@ -56,6 +59,8 @@ public:
   /// \param fromBearingDeg where the car looked before the turn.
   /// \param toBearingDeg where the car looks after the turn.
   /// \param searchM how far along the road the crossing is searched, e.g. the accuracy of the calculation.
+  /// \param farSearchM the along error of the calculation, DeadReckoning::GetAlongErrorM(): when it is larger than
+  /// |searchM| allows, the crossing is searched this far, up to kMaxFarSearchM.
   /// \param whyNot why the turn is not at a crossing, for the log.
   /// \param onlyOne nothing is returned if several crossings fit the turn. The closest one along the road is the
   /// crossing of a car that drove along that road. A car that was not on a road, e.g. maneuvering in a yard, has
@@ -70,7 +75,7 @@ public:
                                                 double toBearingDeg, double searchM, std::string * whyNot = nullptr,
                                                 bool onlyOne = false, std::vector<ms::LatLon> * fitting = nullptr,
                                                 double farAheadM = 0, double farBehindM = 0,
-                                                std::vector<ms::LatLon> * far = nullptr);
+                                                std::vector<ms::LatLon> * far = nullptr, double farSearchM = 0);
 
   /// \returns the crossings around the corner for the trip log, the closest first, as "+40/-3/BA,-60/+0/B-": how
   /// far the crossing is ahead of the corner the way the car came, how far to the right, meters, whether it has the

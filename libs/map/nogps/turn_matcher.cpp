@@ -66,7 +66,7 @@ std::optional<ms::LatLon> TurnMatcher::FindCrossing(Roads & roads, ms::LatLon co
                                                     double toBearingDeg, double searchM, std::string * whyNot,
                                                     bool onlyOne, std::vector<ms::LatLon> * fittingOut,
                                                     double farAheadM, double farBehindM,
-                                                    std::vector<ms::LatLon> * farOut)
+                                                    std::vector<ms::LatLon> * farOut, double farSearchM)
 {
   if (fittingOut)
     fittingOut->clear();
@@ -86,7 +86,8 @@ std::optional<ms::LatLon> TurnMatcher::FindCrossing(Roads & roads, ms::LatLon co
   if (turn > kMaxTurnDeg)
     return no("a turn that large is a turn around");
 
-  double const radius = std::max(kMinSearchM, std::min(kMaxSearchM, searchM));
+  double const radius =
+      std::max(std::max(kMinSearchM, std::min(kMaxSearchM, searchM)), std::min(kMaxFarSearchM, farSearchM));
   // A bend of the road with a side street close to it would move the car to the street.
   if (IsBend(roads, corner, fromBearingDeg, toBearingDeg, radius))
     return no("the road bends that way");

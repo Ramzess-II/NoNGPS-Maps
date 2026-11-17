@@ -139,6 +139,8 @@ public:
   static double constexpr kMaxBendShiftM = 60;
   // Smaller errors are within the accuracy of the bends on the map.
   static double constexpr kMinBendShiftM = 8;
+  // A larger shift is moved to only after the bends have told it repeatedly, as for a slow car.
+  static double constexpr kFarBendShiftM = 20;
   // A slow car weaves around holes and parked cars, that looks like a bend of the road.
   static double constexpr kMinBendMoveSpeedMps = 25 / 3.6;
   // Unless the bends tell the same place several times while the car drives on. On October 14 they told the mark was
