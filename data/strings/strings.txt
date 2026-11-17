@@ -47051,6 +47051,90 @@ en = To calibrate, drive with good GPS about 300 m in each range.
 ru = Для калибровки проедьте с хорошим GPS около 300 м в каждом диапазоне.
 uk = Для калібрування проїдьте з добрим GPS близько 300 м у кожному діапазоні.
 
+[nogps_speed_hint_calibrating]
+comment = Bar next to the speed on the map: accurate GPS measures the error of the car speed in this range now, e.g. "Calibrating 50–60 km/h"
+tags = android-app,apple-maps
+en = Calibrating %1$d–%2$d km/h
+ru = Калибруется %1$d–%2$d км/ч
+uk = Калібрується %1$d–%2$d км/год
+
+[nogps_speed_hint_not_calibrated]
+comment = Bar next to the speed on the map: GPS has not measured the error of the car speed in this range, and there is no accurate GPS now
+tags = android-app,apple-maps
+en = %1$d–%2$d km/h not calibrated
+ru = %1$d–%2$d км/ч не откалибровано
+uk = %1$d–%2$d км/год не відкалібровано
+
+[nogps_speed_hint_keep_gps]
+comment = Bar next to the speed on the map, under nogps_speed_hint_calibrating
+tags = android-app,apple-maps
+en = Vital for driving without GPS: keep GPS on
+ru = Важно для езды без GPS: держите GPS включённым
+uk = Важливо для їзди без GPS: тримайте GPS увімкненим
+
+[nogps_speed_hint_turn_gps_on]
+comment = Bar next to the speed on the map, under nogps_speed_hint_not_calibrated
+tags = android-app,apple-maps
+en = Vital for driving without GPS: turn GPS on
+ru = Важно для езды без GPS: включите GPS
+uk = Важливо для їзди без GPS: увімкніть GPS
+
+[nogps_speed_hint_done]
+comment = Bar next to the speed on the map: GPS has just measured the error of the car speed in this range
+tags = android-app,apple-maps
+en = %1$d–%2$d km/h calibrated!
+ru = %1$d–%2$d км/ч откалибровано!
+uk = %1$d–%2$d км/год відкалібровано!
+
+[nogps_speed_hint_done_count]
+comment = Bar next to the speed on the map, under nogps_speed_hint_done: the speed ranges measured, of all, e.g. "5 of 14 speed ranges"
+tags = android-app,apple-maps
+en = %1$d of %2$d speed ranges
+ru = %1$d из %2$d диапазонов скорости
+uk = %1$d з %2$d діапазонів швидкості
+
+[nogps_speed_hint_city]
+comment = Bar next to the speed on the map: GPS has measured all the speeds of 5–60 km/h
+tags = android-app,apple-maps
+en = City speeds calibrated!
+ru = Городские скорости откалиброваны!
+uk = Міські швидкості відкалібровано!
+
+[nogps_speed_hint_city_hint]
+comment = Bar next to the speed on the map, under nogps_speed_hint_city
+tags = android-app,apple-maps
+en = 5–60 km/h: ready for the city without GPS
+ru = 5–60 км/ч: готово к городу без GPS
+uk = 5–60 км/год: готово до міста без GPS
+
+[nogps_speed_hint_out_of_town]
+comment = Bar next to the speed on the map: GPS has measured all the speeds of 5–100 km/h
+tags = android-app,apple-maps
+en = Out-of-town speeds calibrated!
+ru = Загородные скорости откалиброваны!
+uk = Заміські швидкості відкалібровано!
+
+[nogps_speed_hint_out_of_town_hint]
+comment = Bar next to the speed on the map, under nogps_speed_hint_out_of_town
+tags = android-app,apple-maps
+en = 5–100 km/h: ready for highways without GPS
+ru = 5–100 км/ч: готово к трассе без GPS
+uk = 5–100 км/год: готово до траси без GPS
+
+[nogps_speed_hint_full]
+comment = Bar next to the speed on the map: GPS has measured all the speed ranges
+tags = android-app,apple-maps
+en = Speed fully calibrated!
+ru = Скорость полностью откалибрована!
+uk = Швидкість повністю відкалібровано!
+
+[nogps_speed_hint_full_hint]
+comment = Bar next to the speed on the map, under nogps_speed_hint_full: the number of all the speed ranges
+tags = android-app,apple-maps
+en = All %d ranges: ready to drive without GPS
+ru = Все %d диапазонов: можно ехать без GPS
+uk = Усі %d діапазонів: можна їхати без GPS
+
 [nogps_speed_lag]
 comment = Row of the Box sheet: how late the car tells its speed, the value is on the right
 tags = android-app,apple-maps
