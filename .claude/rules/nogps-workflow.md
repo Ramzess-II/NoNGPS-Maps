@@ -19,6 +19,8 @@ merges stay clean. Fork rules go in `.claude/rules/nogps-*.md`, fork skills in `
 1. **Idea → issue.** Run `/nogps-plan <idea>`. It checks open issues and PRs for overlap and writes the plan into
    the issue. Skip the plan when the diff fits in one sentence.
 2. **Implement in a fresh session** (`/clear`, then "implement #N") on `feature/<name>` from current `origin/master`.
+   If the main checkout isn't on a clean `master`, another session probably works in it: implement in a worktree,
+   see "Parallel work". An iOS change stays in the main checkout, so ask the user first.
 3. **Finish with `/nogps-pr`**: tests, living docs, issue for the other platform, review in a fresh context, PR.
 4. **Merge only through a PR.** When the repo variable `CLAUDE_REVIEW` is `on`, CI posts a Claude review when a PR
    opens. Comment `@claude <request>` on a PR to ask for a re-review or a fix. If the PR changes the shared
