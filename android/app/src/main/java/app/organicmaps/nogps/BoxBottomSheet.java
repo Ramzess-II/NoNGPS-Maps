@@ -527,8 +527,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
 
     mCalibrationPage = view.findViewById(R.id.box_calibration_page);
     setUpHeader(view, R.id.box_calibration_header, R.string.nogps_box_calibration);
-    ((TextView) view.findViewById(R.id.box_calibration_text))
-        .setText(getString(R.string.nogps_box_calibration_hint) + "\n\n" + getString(R.string.nogps_calibration_steps));
     mCalibrationState = view.findViewById(R.id.box_calibration_state);
     mCalibrationProgress = view.findViewById(R.id.box_calibration_progress);
     mCalibrationResult = view.findViewById(R.id.box_calibration_result);

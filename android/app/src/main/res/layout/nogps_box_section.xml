@@ -3,6 +3,7 @@
 <LinearLayout
   xmlns:android="http://schemas.android.com/apk/res/android"
   xmlns:app="http://schemas.android.com/apk/res-auto"
+  xmlns:tools="http://schemas.android.com/tools"
   android:layout_width="match_parent"
   android:layout_height="wrap_content"
   android:background="?selectableItemBackground"
@@ -10,7 +11,8 @@
   android:minHeight="56dp"
   android:orientation="horizontal"
   android:paddingHorizontal="16dp"
-  android:paddingVertical="6dp">
+  android:paddingVertical="6dp"
+  tools:ignore="Overdraw">
   <LinearLayout
     android:layout_width="0dp"
     android:layout_height="wrap_content"

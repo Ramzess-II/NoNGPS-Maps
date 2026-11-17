@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- The sensor box and GPS, or the search of the box when none is set up, and the pages they open, see BoxBottomSheet.
-     Scrolls on small screens. -->
+     Scrolls on small screens. All the pages are here, one is shown at a time: hence TooManyViews. -->
 <androidx.core.widget.NestedScrollView
   xmlns:android="http://schemas.android.com/apk/res/android"
   xmlns:app="http://schemas.android.com/apk/res-auto"
+  xmlns:tools="http://schemas.android.com/tools"
   android:layout_width="match_parent"
   android:layout_height="wrap_content"
-  android:background="?cardBackground">
+  android:background="?cardBackground"
+  tools:ignore="TooManyViews">
 <LinearLayout
   android:layout_width="match_parent"
   android:layout_height="wrap_content"
@@ -51,6 +53,7 @@
       android:id="@+id/box_tiles"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
+      android:baselineAligned="false"
       android:orientation="horizontal">
       <LinearLayout
         android:id="@+id/box_box"
@@ -86,7 +89,8 @@
             <FrameLayout
               android:layout_width="26dp"
               android:layout_height="26dp"
-              android:layout_gravity="center">
+              android:layout_gravity="center"
+              tools:ignore="UselessParent">
               <ImageView
                 android:id="@+id/box_icon"
                 android:layout_width="24dp"
@@ -125,7 +129,7 @@
           android:textSize="13sp"
           android:textStyle="bold" />
       </LinearLayout>
-      <FrameLayout
+      <LinearLayout
         android:id="@+id/box_gps_row"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -134,73 +138,70 @@
         android:background="@drawable/bg_nogps_group"
         android:clickable="true"
         android:focusable="true"
-        android:foreground="?selectableItemBackground">
-        <LinearLayout
+        android:foreground="?selectableItemBackground"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="12dp">
+        <TextView
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
+          android:layout_marginBottom="8dp"
+          android:ellipsize="end"
           android:gravity="center_horizontal"
-          android:orientation="vertical"
-          android:padding="12dp">
-          <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="8dp"
-            android:ellipsize="end"
-            android:gravity="center_horizontal"
-            android:importantForAccessibility="no"
-            android:maxLines="1"
-            android:text="@string/nogps_status_gps"
-            android:textColor="?android:textColorSecondary"
-            android:textSize="12sp" />
+          android:importantForAccessibility="no"
+          android:maxLines="1"
+          android:text="@string/nogps_status_gps"
+          android:textColor="?android:textColorSecondary"
+          android:textSize="12sp" />
+        <FrameLayout
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content">
           <FrameLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:id="@+id/box_gps_tile"
+            android:layout_width="@dimen/map_button_size"
+            android:layout_height="@dimen/map_button_size"
+            android:layout_gravity="center_horizontal"
+            android:background="@drawable/bg_status_button">
             <FrameLayout
-              android:id="@+id/box_gps_tile"
-              android:layout_width="@dimen/map_button_size"
-              android:layout_height="@dimen/map_button_size"
-              android:layout_gravity="center_horizontal"
-              android:background="@drawable/bg_status_button">
-              <FrameLayout
-                android:layout_width="26dp"
-                android:layout_height="26dp"
-                android:layout_gravity="center">
-                <ImageView
-                  android:id="@+id/box_gps_icon"
-                  android:layout_width="24dp"
-                  android:layout_height="24dp"
-                  android:layout_gravity="center"
-                  android:importantForAccessibility="no" />
-                <ImageView
-                  android:id="@+id/box_gps_badge"
-                  android:layout_width="11dp"
-                  android:layout_height="11dp"
-                  android:layout_gravity="top|end"
-                  android:background="@drawable/bg_source_badge"
-                  android:importantForAccessibility="no"
-                  android:padding="1dp"
-                  android:visibility="gone" />
-              </FrameLayout>
+              android:layout_width="26dp"
+              android:layout_height="26dp"
+              android:layout_gravity="center"
+              tools:ignore="UselessParent">
+              <ImageView
+                android:id="@+id/box_gps_icon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:importantForAccessibility="no" />
+              <ImageView
+                android:id="@+id/box_gps_badge"
+                android:layout_width="11dp"
+                android:layout_height="11dp"
+                android:layout_gravity="top|end"
+                android:background="@drawable/bg_source_badge"
+                android:importantForAccessibility="no"
+                android:padding="1dp"
+                android:visibility="gone" />
             </FrameLayout>
-            <ImageView
-              android:layout_width="24dp"
-              android:layout_height="24dp"
-              android:layout_gravity="center_vertical|end"
-              android:importantForAccessibility="no"
-              app:srcCompat="@drawable/ic_nogps_chevron" />
           </FrameLayout>
-          <TextView
-            android:id="@+id/box_gps_state"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:ellipsize="end"
-            android:gravity="center_horizontal|top"
-            android:lines="3"
-            android:textSize="13sp"
-            android:textStyle="bold" />
-        </LinearLayout>
-      </FrameLayout>
+          <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_gravity="center_vertical|end"
+            android:importantForAccessibility="no"
+            app:srcCompat="@drawable/ic_nogps_chevron" />
+        </FrameLayout>
+        <TextView
+          android:id="@+id/box_gps_state"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="8dp"
+          android:ellipsize="end"
+          android:gravity="center_horizontal|top"
+          android:lines="3"
+          android:textSize="13sp"
+          android:textStyle="bold" />
+      </LinearLayout>
     </LinearLayout>
 
     <!-- What the user does for the phone to reach the box set up. -->
@@ -307,6 +308,7 @@
     <LinearLayout
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
+      android:baselineAligned="false"
       android:gravity="center_vertical"
       android:orientation="horizontal">
       <FrameLayout
@@ -351,7 +353,8 @@
           android:layout_width="match_parent"
           android:layout_height="wrap_content"
           android:gravity="center_vertical"
-          android:orientation="horizontal">
+          android:orientation="horizontal"
+          tools:ignore="UseCompoundDrawables">
           <ImageView
             android:id="@+id/box_step0_dot"
             android:layout_width="22dp"
@@ -371,7 +374,8 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="10dp"
           android:gravity="center_vertical"
-          android:orientation="horizontal">
+          android:orientation="horizontal"
+          tools:ignore="UseCompoundDrawables">
           <ImageView
             android:id="@+id/box_step1_dot"
             android:layout_width="22dp"
@@ -391,7 +395,8 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="10dp"
           android:gravity="center_vertical"
-          android:orientation="horizontal">
+          android:orientation="horizontal"
+          tools:ignore="UseCompoundDrawables">
           <ImageView
             android:id="@+id/box_step2_dot"
             android:layout_width="22dp"
@@ -411,7 +416,8 @@
           android:layout_height="wrap_content"
           android:layout_marginTop="10dp"
           android:gravity="center_vertical"
-          android:orientation="horizontal">
+          android:orientation="horizontal"
+          tools:ignore="UseCompoundDrawables">
           <ImageView
             android:id="@+id/box_step3_dot"
             android:layout_width="22dp"
@@ -923,12 +929,19 @@
     <include
       android:id="@+id/box_calibration_header"
       layout="@layout/nogps_box_page_header" />
-    <!-- When and how, see BoxBottomSheet. -->
+    <!-- When and how. -->
     <TextView
-      android:id="@+id/box_calibration_text"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="4dp"
+      android:text="@string/nogps_box_calibration_hint"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp" />
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="16dp"
+      android:text="@string/nogps_calibration_steps"
       android:textColor="?android:textColorSecondary"
       android:textSize="14sp" />
     <TextView
