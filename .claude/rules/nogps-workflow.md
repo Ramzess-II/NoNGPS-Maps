@@ -26,6 +26,12 @@ merges stay clean. Fork rules go in `.claude/rules/nogps-*.md`, fork skills in `
    opens. Comment `@claude <request>` on a PR to ask for a re-review or a fix. If the PR changes the shared
    interface, the other person approves it. Otherwise the author merges after CI passes.
 
+   IMPORTANT: an agent never merges a PR, in either repo, that has a commit authored by anyone but koloboid or
+   Ramzess-II, even when asked to. The commit's author counts; Co-Authored-By trailers don't. Before every merge,
+   `gh api --paginate repos/<owner>/<repo>/pulls/<n>/commits --jq '.[].author.login // "unknown"' | sort -u` must
+   print only `koloboid` and `Ramzess-II`. Any other login or `unknown` stops the merge: tell the user, and a person
+   merges it on GitHub. An upstream sync PR has Organic Maps authors, so a person merges it too.
+
 ## Parallel work
 
 A checkout has one working tree. When one of two sessions in it switches branches, its uncommitted changes go
@@ -56,6 +62,16 @@ the same time its own worktree made by `tools/unix/nogps_worktree.sh`:
   ```
 
   Claude doesn't remove the worktree of a subagent: run `remove` when it is done.
+
+## Issue roller
+
+`/nogps-roll [count | <issue numbers>] [--dry]` works through the open issues of koloboid and Ramzess-II in both
+repos, oldest first, in 4 parallel worktrees, at most one of them on iOS. It closes an issue that a merged PR or a
+newer issue covers. It takes the rest through this flow up to a PR labeled `roller`, without asking. It postpones
+what needs a car, a phone, a box, a replay or a person's decision: it comments on the issue with what is missing and
+labels it `postponed`. Remove the label when the answer is there. `--dry` only triages and writes nothing. The
+script is `.claude/workflows/nogps-roll.js`. Unlike a session, its iOS slot builds Xcode in its worktree, from
+scratch, into a build dir that removing the worktree deletes.
 
 ## Versions
 
