@@ -24,6 +24,37 @@ merges stay clean. Fork rules go in `.claude/rules/nogps-*.md`, fork skills in `
    opens. Comment `@claude <request>` on a PR to ask for a re-review or a fix. If the PR changes the shared
    interface, the other person approves it. Otherwise the author merges after CI passes.
 
+## Parallel work
+
+A checkout has one working tree. When one of two sessions in it switches branches, its uncommitted changes go
+along, and the other session commits them as its own. Run one session per checkout, and give a second session at
+the same time its own worktree made by `tools/unix/nogps_worktree.sh`:
+
+- `add <name> [base]` makes the branch `feature/<name>` from `base` (default `origin/master`: fetch first) in
+  `<ws>/worktrees/<name>`, where `<ws>` is the folder that holds the main checkout. It clones the submodules from the
+  main checkout with no network, links `credentials/` and `trip-logs/`, and prints the path. Build there in
+  `build-<name>`.
+- `remove <path>` refuses a worktree with uncommitted changes. It deletes the branch when all its commits are on a
+  remote and it is merged or was never pushed. `list` shows the worktrees and the size of their build dirs.
+- The first build in a new worktree is mostly ccache hits once ccache is set up on the machine:
+  `ccache --set-config base_dir=<ws>`, `hash_dir=false` and `max_size=20G`. `add` warns when they aren't set.
+- Build iOS in the main checkout: Xcode's DerivedData is per path, so a worktree builds it from scratch.
+- Claude Code's `--worktree`, EnterWorktree and `isolation: "worktree"` use the script through hooks in
+  `.claude/settings.local.json` of the folder you start Claude in (drop `app/` from the path when that is `app/`):
+
+  ```json
+  {
+    "hooks": {
+      "WorktreeCreate": [{"hooks": [{"type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR\"/app/tools/unix/nogps_worktree.sh hook-create"}]}],
+      "WorktreeRemove": [{"hooks": [{"type": "command",
+        "command": "\"$CLAUDE_PROJECT_DIR\"/app/tools/unix/nogps_worktree.sh hook-remove"}]}]
+    }
+  }
+  ```
+
+  Claude doesn't remove the worktree of a subagent: run `remove` when it is done.
+
 ## Versions
 
 Nobody raises a version by hand. Each build takes them from git: `tools/unix/version.sh` gives the app version
