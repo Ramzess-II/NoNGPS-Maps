@@ -3418,6 +3418,82 @@ UNIT_TEST(NoGps_Engine_AccelerometerTellsCarInYardDrivesBack)
   }
 }
 
+// The car marked on the street going east drives at 30 km/h along it.
+void DriveAt30(BoxCar & car)
+{
+  car.Drive(25.0 / 3, 1, 0);
+  car.Drive(3, 0, 0);
+}
+
+UNIT_TEST(NoGps_Engine_CarBrakingIntoGasStationIsFollowedApart)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  BoxCar car(env, 0, false /* accelerometer */);
+  DriveAt30(car);
+  // It brakes and turns right into a gas station: after it has left the street it reports the speed it drove the
+  // street at, 26 km/h, then the speed it brakes with. It stops 22 m off the street.
+  car.Drive(1, -1, 0);
+  car.Drive(1, -1, 90);
+  car.Drive(6.3, -1, 0);
+  car.Drive(60, 0, 0);
+  TEST(FollowedApart(env), (env.m_engine.GetTripLine()));
+  TEST_LESS(std::stod(TripField(env, "offv")), 20, ());
+  // It drives on after refuelling: it maneuvers, its road is not lost.
+  car.Drive(2, 1, 0);
+  car.Drive(7, 0, 0);
+  TEST(FollowedApart(env), (env.m_engine.GetTripLine()));
+  TEST(!env.m_engine.GetStatus().m_roadLost, ());
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), ());
+}
+
+UNIT_TEST(NoGps_Engine_CarLeavingRoadFastIsNotFollowedApart)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  // It turns right off the street at 30 km/h and drives on without braking, or brakes for 2 s and speeds up to
+  // 30 km/h again.
+  for (bool brakes : {false, true})
+  {
+    Env env(true /* inertial */, &roads);
+    MarkCar(env, 0);
+    BoxCar car(env, 0, false /* accelerometer */);
+    DriveAt30(car);
+    car.Drive(1, 0, 90);
+    if (brakes)
+    {
+      car.Drive(2, -1, 0);
+      car.Drive(2, 1, 0);
+    }
+    car.Drive(6, 0, 0);
+    TEST(!FollowedApart(env), (brakes, env.m_engine.GetTripLine()));
+    // The speed it has sped up to counts. Driving on without braking, its speed counts after it has driven 30 m off
+    // the roads: its road is lost first.
+    if (brakes)
+      TEST_GREATER(std::stod(TripField(env, "offv")), 20, ());
+    else
+      TEST(env.m_delegate.HasEvent(Event::RoadLost), ());
+  }
+}
+
+UNIT_TEST(NoGps_Engine_CarTurningLongOffRoadAfterDrivingFastIsNotFollowedApart)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  BoxCar car(env, 0, false /* accelerometer */);
+  car.Drive(25.0 / 3.6, 1, 0);
+  car.Drive(3, 0, 0);
+  // It leaves the street at 25 km/h without braking, and 2.5 s later turns slowly for 10 s, slowing down to 10 km/h.
+  // The speeds it reported before the turn count: on November 7 a car so was followed apart after the turn at the
+  // speed it had then.
+  car.Drive(1, 0, 45);
+  car.Drive(2.5, 0, 0);
+  car.Drive(10, -0.4, 15);
+  car.Drive(3, 0.3, 0);
+  TEST(!FollowedApart(env), (env.m_engine.GetTripLine()));
+}
+
 UNIT_TEST(NoGps_Engine_TurnStartedBeforeCarReportsSpeedIsNotLost)
 {
   PieceRoads roads({{-2000, 0, 3000, 0}}, {});
