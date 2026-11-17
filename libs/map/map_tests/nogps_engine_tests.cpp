@@ -3967,6 +3967,8 @@ UNIT_TEST(NoGps_Engine_StopPullChangesNothingWithoutAccelerometer)
 
   CreepBackAndBrake(car, -0.2);
   TEST_GREATER(East(env.Last().m_position), startEast, ());
+  // Without the check the segment is not turned: the mark stays far ahead of the car that has backed.
+  TEST_GREATER(East(env.Last().m_position), car.East() + 5, ());
 }
 
 UNIT_TEST(NoGps_Engine_CarCrawlingAfterShortStopStaysForward)
