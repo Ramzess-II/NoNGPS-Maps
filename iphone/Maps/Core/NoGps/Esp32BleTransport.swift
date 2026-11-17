@@ -250,8 +250,16 @@ final class Esp32BleTransport: NSObject {
     carIds = Set(NoGps.cars().map(\.carId))
     currentCar = NoGps.status().carId
     setState(.searching)
-    // The system keeps the link to a paired box after the application has gone, and doesn't report the box while it
-    // is linked. Holding one of its two links, the box may not advertise at all.
+    connectLinked()
+    // The box of another car is refused for otherCarDelay: ask again when it has passed.
+    guard peripheral == nil else { return }
+    schedule(after: Constants.otherCarDelay) { [weak self] in self?.connectLinked() }
+  }
+
+  /// The system keeps the link to a paired box after the application has gone, and doesn't report the box while it
+  /// is linked. Holding one of its two links, the box may not advertise at all.
+  private func connectLinked() {
+    guard isOpen, peripheral == nil, let central else { return }
     let linked = central.retrieveConnectedPeripherals(withServices: [Constants.service]).first { peripheral in
       let id = Self.boxId(peripheral, [:])
       return knownBoxes.contains(peripheral.identifier.uuidString)
