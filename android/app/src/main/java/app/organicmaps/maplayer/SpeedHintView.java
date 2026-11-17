@@ -164,7 +164,8 @@ class SpeedHintView
    */
   void celebrate(@NonNull NoGps.Status status)
   {
-    if (!SpeedHints.celebrates(status))
+    // The bar slides out of the speed, the ring goes out of it.
+    if (!SpeedHints.celebrates(status) || mSpeed.getVisibility() != View.VISIBLE)
       return;
     final Context context = mBar.getContext();
     final NoGps.SpeedMilestone milestone = status.getSpeedMilestone();
