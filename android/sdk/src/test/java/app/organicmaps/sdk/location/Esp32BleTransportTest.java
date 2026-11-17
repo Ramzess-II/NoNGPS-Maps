@@ -3,6 +3,9 @@ package app.organicmaps.sdk.location;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import org.junit.Test;
 
 public class Esp32BleTransportTest
@@ -26,5 +29,16 @@ public class Esp32BleTransportTest
     assertFalse(Esp32BleTransport.needsPairingWindow(true /* bonded */, false /* forgotten */, false /* newBoxOnly */));
     assertTrue(Esp32BleTransport.needsPairingWindow(false /* bonded */, false /* forgotten */, false /* newBoxOnly */));
     assertTrue(Esp32BleTransport.needsPairingWindow(false /* bonded */, false /* forgotten */, true /* newBoxOnly */));
+  }
+
+  @Test
+  public void boxOfNoCar_isSkippedAtTheLimitOfCars()
+  {
+    final Set<String> cars = new HashSet<>(Arrays.asList("A", "B", "C", "D"));
+    assertTrue(Esp32BleTransport.isOverCarLimit(cars, 4, "E"));
+    assertTrue(Esp32BleTransport.isOverCarLimit(cars, 4, null));
+    assertFalse(Esp32BleTransport.isOverCarLimit(cars, 4, "C"));
+    cars.remove("D");
+    assertFalse(Esp32BleTransport.isOverCarLimit(cars, 4, "E"));
   }
 }

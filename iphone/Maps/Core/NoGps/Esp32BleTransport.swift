@@ -280,9 +280,17 @@ final class Esp32BleTransport: NSObject {
     return String(name.dropFirst(Constants.namePrefix.count))
   }
 
-  /// Returns false if the box is not to be connected now: of a known car while the user adds one, forgotten, or of
-  /// another car while the box of the current one may be found too.
+  /// The user has the most cars: a box that is not of one of them would drive the mark under the current car's values.
+  private var isCarLimitReached: Bool {
+    carIds.count >= NoGps.maxCars()
+  }
+
+  /// Returns false if the box is not to be connected now: of a known car while the user adds one, not of a car at the
+  /// limit of cars, forgotten, or of another car while the box of the current one may be found too.
   private func isBoxWanted(_ id: String, known: Bool) -> Bool {
+    if isCarLimitReached, !carIds.contains(id) {
+      return false
+    }
     if newBoxOnly {
       return !carIds.contains(id)
     }
@@ -483,7 +491,8 @@ extension Esp32BleTransport: CBCentralManagerDelegate {
     let known = knownBoxes.contains(peripheral.identifier.uuidString)
     let id = Self.boxId(peripheral, advertisementData)
     // A known box without its name may be of a car: not while a new one is added.
-    guard id.map({ isBoxWanted($0, known: known) }) ?? !(newBoxOnly && known) else { return }
+    guard id.map({ isBoxWanted($0, known: known) }) ?? !((newBoxOnly && known) || (!known && isCarLimitReached))
+    else { return }
     let pairingOpen = isPairingOpen(advertisementData)
     if !known {
       // A box accepts a new phone for two minutes after it is powered, if it has no phones, or after a paired phone has
