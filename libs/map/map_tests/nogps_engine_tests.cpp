@@ -2701,6 +2701,19 @@ UNIT_TEST(NoGps_BoxCarValues_ValueChangedByPhoneIsWritten)
   box.Connect(env);
   TEST_EQUAL(box.m_values["car_name"], "Opel", ());
 
+  // Another phone has erased the name, the box keeps the other values: the phone takes the empty name.
+  box.m_values["spd_factor"] = "1.05";
+  box.Connect(env);
+  TEST_EQUAL(box.m_values["spd_factor"], "1.05", ());
+  box.m_values.erase("car_name");
+  box.Connect(env);
+  TEST_EQUAL(env.m_engine.GetCars()[0].m_name, "", ());
+  TEST(!box.m_values.contains("car_name"), ());
+  // A name the phone has never seen on the box is written.
+  env.m_engine.RenameCar("C47D", "Opel");
+  box.Answer(env);
+  TEST_EQUAL(box.m_values["car_name"], "Opel", ());
+
   // A name given by the user to the box of another car waits for that box.
   box.Connect(env, "42FD");
   env.m_engine.RenameCar("C47D", "Kia");

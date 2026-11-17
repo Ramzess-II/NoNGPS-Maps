@@ -107,6 +107,16 @@ std::string GetValue(BoxCarValues::Values const & values, std::string_view key)
   auto const it = values.find(std::string(key));
   return it == values.end() ? std::string() : it->second;
 }
+
+void MarkTaken(std::string_view key, BoxCarValues::Taken & taken)
+{
+  if (key == Storage::kCarPosition)
+    taken.m_position = true;
+  else if (key == CarStorage::kCarName)
+    taken.m_name = true;
+  else
+    taken.m_calibration = true;
+}
 }  // namespace
 
 std::vector<std::pair<std::string, std::string>> BoxCarValues::Encode(std::string_view key, std::string const & value)
@@ -182,12 +192,24 @@ BoxCarValues::Taken BoxCarValues::OnValues(Esp32Source & box, Values const & val
   auto const & read = *m_boxValues;
   Taken taken;
   std::vector<std::string> takenKeys;
+  // A box that keeps nothing has had its flash wiped: it is not another phone that has erased a value.
+  bool const boxKeepsSome = std::any_of(std::begin(CarStorage::kValuesOnBox), std::end(CarStorage::kValuesOnBox),
+                                        [&read](auto const key) { return Decode(key, read).has_value(); });
   for (auto const key : CarStorage::kValuesOnBox)
   {
-    // A box without the value has lost it or has not got it yet: Save() gives it the value of the phone.
     auto const boxValue = Decode(key, read);
     if (!boxValue)
+    {
+      // A value the phone saw on the box and that is gone, while the box keeps others, was erased by another phone.
+      // Otherwise the box has lost it or has not got it yet: Save() gives it the value of the phone.
+      if (boxKeepsSome && Decode(key, before) && m_cars.GetCarValue(m_carId, key).value_or("") != "")
+      {
+        m_cars.SetCarValue(m_carId, key, "");
+        takenKeys.emplace_back(key);
+        MarkTaken(key, taken);
+      }
       continue;
+    }
     // The box keeps what the phone saw there the last time: the value of the phone is newer, if it differs. Another
     // phone has written the box since: its value is newer.
     auto const & keys = FindBoxKeys(key);
@@ -197,12 +219,7 @@ BoxCarValues::Taken BoxCarValues::OnValues(Esp32Source & box, Values const & val
       continue;
     m_cars.SetCarValue(m_carId, key, *boxValue);
     takenKeys.emplace_back(key);
-    if (key == Storage::kCarPosition)
-      taken.m_position = true;
-    else if (key == CarStorage::kCarName)
-      taken.m_name = true;
-    else
-      taken.m_calibration = true;
+    MarkTaken(key, taken);
   }
   // The name read every minute is logged when it has changed.
   if (values.size() > 1 || !takenKeys.empty())
