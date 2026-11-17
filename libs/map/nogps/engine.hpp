@@ -372,6 +372,7 @@ private:
   GpsState GetGpsState() const;
   bool IsGpsBack(Fix const & gps);
   bool IsSpeedTableGps(Fix const & gps);
+  std::optional<double> GetCarSpeedMps() const;
   bool ContradictsInertial(Fix const & gps) const;
   bool IsOffRoadWhileDriving(Fix const & gps);
   bool IsNearRoad(Fix const & gps);

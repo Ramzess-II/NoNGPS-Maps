@@ -196,6 +196,114 @@ UNIT_TEST(NoGps_Spoofing_RecoversSlowerWithoutNetwork)
   TEST(detector.CheckSatellitePosition(kKyiv, time += 1000), ());
 }
 
+// Feeds |count| points a second apart, the car drives |carKmh|, the points move |gpsKmh|.
+// \returns true if all of them are trusted.
+bool FeedSpeeds(GpsSpoofingDetector & detector, ms::LatLon & position, int64_t & time, int count, double gpsKmh,
+                std::optional<double> carKmh, bool withGpsSpeed)
+{
+  bool trusted = true;
+  for (int i = 0; i < count; ++i)
+  {
+    time += 1000;
+    position = North(position, gpsKmh / 3.6 / 111'195.0);
+    trusted =
+        detector.CheckSatellitePosition(position, time, 5, withGpsSpeed ? std::optional(gpsKmh / 3.6) : std::nullopt,
+                                        carKmh ? std::optional(*carKmh / 3.6) : std::nullopt) &&
+        trusted;
+  }
+  return trusted;
+}
+
+UNIT_TEST(NoGps_Spoofing_DetectsStandingPointWhileCarDrives)
+{
+  GpsSpoofingDetector detector;
+  auto position = kKyiv;
+  int64_t time = 0;
+  TEST(detector.CheckSatellitePosition(position, time), ());
+  TEST(FeedSpeeds(detector, position, time, GpsSpoofingDetector::kSpeedMismatchFixes - 1, 0, 60, true), ());
+  TEST(!detector.IsSpoofed(), ());
+  TEST(!FeedSpeeds(detector, position, time, 1, 0, 60, true), ());
+  TEST(detector.IsSpoofed(), ());
+}
+
+UNIT_TEST(NoGps_Spoofing_TakesGpsSpeedFromPreviousPoint)
+{
+  GpsSpoofingDetector detector;
+  auto position = kKyiv;
+  int64_t time = 0;
+  TEST(detector.CheckSatellitePosition(position, time), ());
+  TEST(!FeedSpeeds(detector, position, time, GpsSpoofingDetector::kSpeedMismatchFixes, 0, 60, false), ());
+  TEST(detector.IsSpoofed(), ());
+}
+
+UNIT_TEST(NoGps_Spoofing_DetectsGpsFasterThanCar)
+{
+  GpsSpoofingDetector detector;
+  auto position = kKyiv;
+  int64_t time = 0;
+  TEST(detector.CheckSatellitePosition(position, time), ());
+  TEST(!FeedSpeeds(detector, position, time, GpsSpoofingDetector::kSpeedMismatchFixes, 100, 60, true), ());
+  TEST(detector.IsSpoofed(), ());
+}
+
+UNIT_TEST(NoGps_Spoofing_IgnoresAccelerationWithBoxLag)
+{
+  GpsSpoofingDetector detector;
+  auto position = kKyiv;
+  int64_t time = 0;
+  TEST(detector.CheckSatellitePosition(position, time), ());
+  // 0 to 50 km/h in 10 s, the car speed is a second late.
+  for (int i = 1; i <= 10; ++i)
+    TEST(FeedSpeeds(detector, position, time, 1, 5.0 * i, 5.0 * (i - 1), true), ());
+  TEST(!detector.IsSpoofed(), ());
+}
+
+UNIT_TEST(NoGps_Spoofing_IgnoresSpeedWithoutCarSpeedOrAccuracy)
+{
+  GpsSpoofingDetector detector;
+  auto position = kKyiv;
+  int64_t time = 0;
+  TEST(detector.CheckSatellitePosition(position, time), ());
+  TEST(FeedSpeeds(detector, position, time, 10, 0, std::nullopt, true), ());
+  TEST(!detector.IsSpoofed(), ());
+  for (int i = 0; i < 10; ++i)
+    TEST(detector.CheckSatellitePosition(position, time += 1000, 50, 0.0, 60 / 3.6), ());
+  TEST(!detector.IsSpoofed(), ());
+}
+
+UNIT_TEST(NoGps_Spoofing_ShortMismatchIsReset)
+{
+  GpsSpoofingDetector detector;
+  auto position = kKyiv;
+  int64_t time = 0;
+  TEST(detector.CheckSatellitePosition(position, time), ());
+  for (int round = 0; round < 3; ++round)
+  {
+    TEST(FeedSpeeds(detector, position, time, GpsSpoofingDetector::kSpeedMismatchFixes - 1, 0, 60, true), ());
+    TEST(FeedSpeeds(detector, position, time, 1, 60, 60, true), ());
+  }
+  TEST(!detector.IsSpoofed(), ());
+}
+
+UNIT_TEST(NoGps_Spoofing_RecoversWhenSpeedAgreesAgain)
+{
+  GpsSpoofingDetector detector;
+  auto position = kKyiv;
+  int64_t time = 0;
+  TEST(detector.CheckSatellitePosition(position, time), ());
+  TEST(!FeedSpeeds(detector, position, time, GpsSpoofingDetector::kSpeedMismatchFixes, 0, 60, true), ());
+  TEST(detector.IsSpoofed(), ());
+
+  // The consistent points need an agreeing speed.
+  int const required = GpsSpoofingDetector::kConsistentPositionsToRecoverWithoutNetwork;
+  TEST(!FeedSpeeds(detector, position, time, required, 0, 60, true), ());
+  TEST(detector.IsSpoofed(), ());
+  TEST(!FeedSpeeds(detector, position, time, required - 1, 60, 60, true), ());
+  TEST(detector.IsSpoofed(), ());
+  TEST(FeedSpeeds(detector, position, time, 1, 60, 60, true), ());
+  TEST(!detector.IsSpoofed(), ());
+}
+
 // ~11 m per 0.0001 degree of latitude.
 double constexpr kSmallStep = 0.0001;
 using Own = GpsReturnDetector::Own;

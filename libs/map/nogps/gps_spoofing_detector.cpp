@@ -2,6 +2,7 @@
 
 #include "map/nogps/geo.hpp"
 
+#include "base/logging.hpp"
 #include "base/string_utils.hpp"
 
 #include <algorithm>
@@ -134,9 +135,44 @@ bool GpsSpoofingDetector::AcceptNetworkPosition(ms::LatLon const & position, dou
   return false;
 }
 
-bool GpsSpoofingDetector::CheckSatellitePosition(ms::LatLon const & position, int64_t timeMs)
+void GpsSpoofingDetector::CheckSpeed(ms::LatLon const & position, int64_t timeMs, double accuracyM,
+                                     std::optional<double> gpsSpeedMps, std::optional<double> carSpeedMps)
 {
-  bool const consistent = IsConsistent(position, timeMs);
+  if (!gpsSpeedMps && m_previous)
+  {
+    int64_t const dtMs = timeMs - m_previous->m_timeMs;
+    if (dtMs >= kSpeedMinGapMs && dtMs <= kSpeedMaxGapMs)
+      gpsSpeedMps = Distance(position, m_previous->m_position) * 1000.0 / dtMs;
+  }
+  m_previous = Trusted{position, timeMs};
+
+  if (!carSpeedMps)
+  {
+    m_speedMismatchCount = 0;
+    return;
+  }
+  // Nothing to compare: the count neither grows nor drops.
+  if (!gpsSpeedMps || accuracyM > kSpeedMaxAccuracyM)
+    return;
+
+  double const diffMps = std::abs(*gpsSpeedMps - *carSpeedMps);
+  bool const mismatch =
+      diffMps * 3.6 > kSpeedMismatchKmh && diffMps > kSpeedMismatchFactor * std::max(*gpsSpeedMps, *carSpeedMps);
+  bool const wasMismatch = m_speedMismatchCount >= kSpeedMismatchFixes;
+  m_speedMismatchCount = mismatch ? m_speedMismatchCount + 1 : 0;
+  bool const isMismatch = m_speedMismatchCount >= kSpeedMismatchFixes;
+  if (isMismatch != wasMismatch)
+  {
+    LOG(LWARNING, (isMismatch ? "GPS speed disagrees with the car speed:" : "GPS speed agrees with the car speed:",
+                   "gps =", *gpsSpeedMps * 3.6, "km/h, car =", *carSpeedMps * 3.6, "km/h"));
+  }
+}
+
+bool GpsSpoofingDetector::CheckSatellitePosition(ms::LatLon const & position, int64_t timeMs, double accuracyM,
+                                                 std::optional<double> gpsSpeedMps, std::optional<double> carSpeedMps)
+{
+  CheckSpeed(position, timeMs, accuracyM, gpsSpeedMps, carSpeedMps);
+  bool const consistent = IsConsistent(position, timeMs) && m_speedMismatchCount < kSpeedMismatchFixes;
   if (!m_spoofed)
   {
     if (consistent)
