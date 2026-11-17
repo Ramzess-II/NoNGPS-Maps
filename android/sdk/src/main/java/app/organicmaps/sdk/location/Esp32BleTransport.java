@@ -277,6 +277,42 @@ class Esp32BleTransport
       getPrefs().edit().putStringSet(FORGOTTEN_BOXES, forgotten).apply();
   }
 
+  /**
+   * The box has erased this phone: the old system pairing only blocks the next connection. removeBond() is hidden:
+   * it works on many phones, a newer Android may block it.
+   * @return false if the pairing of the box is still there.
+   */
+  @UiThread
+  @SuppressLint("MissingPermission")
+  boolean unpairBox(@NonNull String id)
+  {
+    final BluetoothManager manager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
+    final BluetoothAdapter adapter = manager != null ? manager.getAdapter() : null;
+    if (adapter == null || !hasPermission())
+      return false;
+    boolean removed = true;
+    try
+    {
+      for (BluetoothDevice device : adapter.getBondedDevices())
+      {
+        if (!isBoxOf(device.getName(), id))
+          continue;
+        removed &= (Boolean) BluetoothDevice.class.getMethod("removeBond").invoke(device);
+      }
+    }
+    catch (ReflectiveOperationException | RuntimeException e)
+    {
+      Logger.w(TAG, "Cannot remove the pairing of the box " + id + ": " + e);
+      return false;
+    }
+    return removed;
+  }
+
+  static boolean isBoxOf(@Nullable String deviceName, @NonNull String id)
+  {
+    return (NAME_PREFIX + id).equals(deviceName);
+  }
+
   @UiThread
   void close()
   {

@@ -542,13 +542,14 @@ final class NoGpsControls: NSObject {
     case .firmwareUpdateDone: text = String(format: L("nogps_firmware_done"), NoGps.status().boxFirmware)
     case .firmwareUpdateFailed:
       text = String(format: L("nogps_firmware_failed"), firmwareErrorText(NoGps.status().firmwareUpdateError))
-    // The box doesn't take this phone any more: its car is forgotten as by the user.
+    // The box doesn't take this phone any more: its car is forgotten as by the user. The old system pairing of the box
+    // only blocks the next connection, and an app can't remove it: the user is told to.
     case .thisPhoneRemoved:
       let carId = NoGps.status().carId
       if !carId.isEmpty {
         NoGps.forgetCar(carId)
       }
-      text = L("nogps_phone_removed")
+      text = String(format: L("nogps_phone_removed_forget"), carId)
     @unknown default: text = nil
     }
     if let text {

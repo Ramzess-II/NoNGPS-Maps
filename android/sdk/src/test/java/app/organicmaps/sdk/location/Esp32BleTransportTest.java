@@ -27,4 +27,14 @@ public class Esp32BleTransportTest
     assertTrue(Esp32BleTransport.needsPairingWindow(false /* bonded */, false /* forgotten */, false /* newBoxOnly */));
     assertTrue(Esp32BleTransport.needsPairingWindow(false /* bonded */, false /* forgotten */, true /* newBoxOnly */));
   }
+
+  // This phone is removed from the box: only the pairing of the box of that car is removed.
+  @Test
+  public void unpair_takesOnlyTheBoxOfTheCar()
+  {
+    assertTrue(Esp32BleTransport.isBoxOf("NoGPS-C47D", "C47D"));
+    assertFalse(Esp32BleTransport.isBoxOf("NoGPS-A1B2", "C47D"));
+    assertFalse(Esp32BleTransport.isBoxOf("ELM327", "C47D"));
+    assertFalse(Esp32BleTransport.isBoxOf(null, "C47D"));
+  }
 }

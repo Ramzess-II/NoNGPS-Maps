@@ -46199,16 +46199,16 @@ uk = Додати авто
 [nogps_box_bt_pairing_by_phone]
 comment = State of the sensor box, shown after its name: the box has phones, a new one is added on one of them
 tags = android-app,apple-maps
-en = found, but not paired with this phone. On a phone paired with the box, open Box, tap the car name at the top, then the car and Add a phone, and enter the code here
-ru = найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на имя машины вверху, затем на машину и «Добавить телефон» и введите код здесь
-uk = знайдено, але не спарено з цим телефоном. На телефоні, спареному з блоком, відкрийте «Блок», натисніть на назву авто вгорі, потім на авто й «Додати телефон» і введіть код тут
+en = found, but not paired with this phone. On a phone paired with the box, open Box, tap the car name at the top, then the car and Add a phone, and enter the code here. No paired phone at hand? Turn Bluetooth off on the other phones that were paired with the box. Plug the box in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts this phone for 2 minutes with the code 123456, unless it was changed, and forgets the other phones
+ru = найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на имя машины вверху, затем на машину и «Добавить телефон» и введите код здесь. Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны
+uk = знайдено, але не спарено з цим телефоном. На телефоні, спареному з блоком, відкрийте «Блок», натисніть на назву авто вгорі, потім на авто й «Додати телефон» і введіть код тут. Немає спареного телефона під рукою? Вимкніть Bluetooth на решті телефонів, спарених з блоком. Вставте блок у роз'єм і вийміть його протягом хвилини, 3 рази, а втретє залиште вставленим: 2 хвилини він приймає цей телефон із кодом 123456, якщо його не змінювали, і забуває решту телефонів
 
 [nogps_box_bt_pairing_full]
 comment = State of the sensor box, shown after its name: the box has 4 phones and takes no new one
 tags = android-app,apple-maps
-en = found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car name at the top, the car)
-ru = найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху, машина)
-uk = знайдено, але не спарено з цим телефоном. Блок має 4 телефони: видаліть один на спареному телефоні («Блок», назва авто вгорі, авто)
+en = found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car name at the top, the car). No paired phone at hand? Turn Bluetooth off on the other phones that were paired with the box. Plug the box in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts this phone for 2 minutes with the code 123456, unless it was changed, and forgets the other phones
+ru = найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху, машина). Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны
+uk = знайдено, але не спарено з цим телефоном. Блок має 4 телефони: видаліть один на спареному телефоні («Блок», назва авто вгорі, авто). Немає спареного телефона під рукою? Вимкніть Bluetooth на решті телефонів, спарених з блоком. Вставте блок у роз'єм і вийміть його протягом хвилини, 3 рази, а втретє залиште вставленим: 2 хвилини він приймає цей телефон із кодом 123456, якщо його не змінювали, і забуває решту телефонів
 
 [nogps_car_phones]
 comment = Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car
@@ -46261,10 +46261,24 @@ uk = Цей телефон більше не підключатиметься д
 
 [nogps_phone_removed]
 comment = Message: this phone has been removed from the sensor box on its own request
-tags = android-app,apple-maps
+tags = android-app
 en = This phone is removed from the box, the car is forgotten
 ru = Этот телефон удалён из блока, машина забыта
 uk = Цей телефон видалено з блока, авто забуто
+
+[nogps_phone_removed_forget]
+comment = Message on iOS: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and iOS apps cannot remove it
+tags = apple-maps
+en = This phone is removed from the box, the car is forgotten. Remove NoGPS-%1$@ in Settings > Bluetooth: tap its info button, then Forget This Device
+ru = Этот телефон удалён из блока, машина забыта. Удалите NoGPS-%1$@ в Настройки > Bluetooth: нажмите кнопку информации и «Забыть это устройство»
+uk = Цей телефон видалено з блока, авто забуто. Видаліть NoGPS-%1$@ у Налаштування > Bluetooth: натисніть кнопку інформації й «Забути цей пристрій»
+
+[nogps_phone_removed_unpair]
+comment = Message on Android: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and the app could not remove it
+tags = android-app
+en = This phone is removed from the box, the car is forgotten. Remove NoGPS-%1$@ in the Bluetooth settings
+ru = Этот телефон удалён из блока, машина забыта. Удалите NoGPS-%1$@ в настройках Bluetooth
+uk = Цей телефон видалено з блока, авто забуто. Видаліть NoGPS-%1$@ у налаштуваннях Bluetooth
 
 [nogps_phone_add]
 comment = Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code
