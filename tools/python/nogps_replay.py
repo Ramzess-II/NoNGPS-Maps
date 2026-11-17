@@ -17,7 +17,14 @@ Compare a change only with a build of the same kind: a few diagnostic values dif
       a tap: a tap would put it on a road.
 
   nogps_replay.py compare log-*.log --day 10-11 --replay nogps-replay-out.txt
-      how far the mark was from GPS on the trip and how far it is driven again, where GPS was seen.
+      how far the mark was from GPS on the trip and how far it is driven again, where GPS was seen. The first line
+      says which set the day is in.
+
+  nogps_replay.py days log-*.log
+      the days of the logs with the seconds of TRIP lines and the set of each: "held out" (listed in
+      nogps_held_out_days.txt, never used to set a rule) or "made from". A change of how the mark moves is replayed
+      on the days of both sets, and the numbers of both go to the PR: better on the days it was made from and not
+      on the held-out ones means the rule fits its case only.
 
 The files made here keep the places of the trip: they are not for git. Nothing printed has coordinates.
 """
@@ -25,6 +32,7 @@ import argparse
 import bisect
 import collections
 import math
+import os
 import re
 
 LINE = re.compile(r'^(\d\d-\d\d) (\d\d):(\d\d):(\d\d)\.(\d\d\d) \(([^)]*)\) \w/(\w+): (.*)$')
@@ -40,6 +48,34 @@ MAX_STAND_FILL_MS = 600_000
 STAND_TRIP_MS = 35_000
 # The car standing before the first data of the box is driven again for this long at most.
 MAX_STAND_BEFORE_MS = 15_000
+HELD_OUT_DAYS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nogps_held_out_days.txt')
+
+
+def held_out_days(path=HELD_OUT_DAYS_FILE):
+    """The days (MM-DD) of the held-out set: the lines of the file that are not comments."""
+    with open(path, encoding='utf-8') as f:
+        return {line.split('#')[0].strip() for line in f} - {''}
+
+
+def set_of(day, held_out):
+    return 'held out' if day in held_out else 'made from'
+
+
+def days(args):
+    """Every day of the logs with its seconds of TRIP lines and its set."""
+    held_out = held_out_days()
+    counts = collections.Counter()
+    for path in args.logs:
+        seen = set()
+        with open(path, encoding='utf-8', errors='replace') as f:
+            for line in f:
+                m = LINE.match(line.rstrip('\n'))
+                if m and m.group(7) == 'OMcore' and ' TRIP ' in m.group(8) and line not in seen:
+                    seen.add(line)
+                    counts[m.group(1)] += 1
+    for day in sorted(counts):
+        print('%s  %6d TRIP lines  %s' % (day, counts[day], set_of(day, held_out)))
+    print('held out %d of %d days' % (sum(day in held_out for day in counts), len(counts)))
 
 
 def read(paths, day):
@@ -612,8 +648,8 @@ def compare(args):
 
 
 def print_compare(stats, day, change):
-    print('the day %s, driven again: %d s of TRIP lines, the trip had %d' % (day, stats['lines'],
-                                                                          stats['trip_lines']))
+    print('the day %s (%s), driven again: %d s of TRIP lines, the trip had %d' % (
+        day, set_of(day, held_out_days()), stats['lines'], stats['trip_lines']))
     for name, errors in stats['errors']:
         summary(name, errors)
     apart = stats['apart']
@@ -639,6 +675,8 @@ def print_compare(stats, day, change):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest='command', required=True)
+    sub = commands.add_parser('days')
+    sub.add_argument('logs', nargs='+', help='the trip logs of the application, log-*.log (app*.log before)')
     for name in ('input', 'compare'):
         sub = commands.add_parser(name)
         sub.add_argument('logs', nargs='+', help='the trip logs of the application, log-*.log (app*.log before)')
@@ -653,7 +691,9 @@ def main():
             sub.add_argument('--replay', required=True, help='nogps-replay-out.txt of the application')
             sub.add_argument('--change', type=float, default=15, help='meters that count as a change')
     args = parser.parse_args()
-    if args.command == 'input':
+    if args.command == 'days':
+        days(args)
+    elif args.command == 'input':
         make_input(args)
     else:
         compare(args)

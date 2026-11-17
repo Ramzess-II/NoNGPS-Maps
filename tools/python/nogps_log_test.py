@@ -4,9 +4,11 @@
   python3 tools/python/nogps_log_test.py
 """
 
+import argparse
 import io
 import os
 import sys
+import tempfile
 import unittest
 import zipfile
 from contextlib import redirect_stdout
@@ -312,6 +314,69 @@ class ExportTest(unittest.TestCase):
     def test_error_stats(self):
         self.assertEqual(nogps_replay.error_stats([]), None)
         self.assertEqual(nogps_replay.error_stats([10, 40, 60, 120])['over50'], 50)
+
+
+class RulesTest(unittest.TestCase):
+    def trip(self, lines, fields=lambda s: {}):
+        log = android_drive(seconds=120, stand=0, fields=fields)
+        log += [core('10-08', 18 * 3600 + sec, 'F', text) for sec, text in lines]
+        return analyse(('app.log', log)).trips[0]
+
+    def test_counts_and_what_came_next(self):
+        trip = self.trip(
+            [(10, 'Turn from 10 to 100 is moved to the crossing by 12 m'),
+             (50, 'Bend: moved along the road by 20 m'),
+             (51, 'Bend: moved along the road by 9 m, told repeatedly to a slow car'),
+             (70, 'Turn from 10 to 100 has followed the roads, the crossing 40 m away would move the car by 50 m'),
+             (72, 'tap = ms::LatLon(10.0, 20.0) location = ms::LatLon(10.0, 20.0) bearing = 0'),
+             (105, 'FORK the car goes along the branch 5 m aside')],
+            lambda s: dict(lost='1') if 55 <= s < 60 else {})
+        counts = trip.rule_counts()
+        self.assertEqual(counts['turn moved to a crossing'], dict(fired=1, ok=1, lost=0, tap=0))
+        # 10 m/s: 300 m take 30 s, the loss at 55 s is within them.
+        self.assertEqual(counts['bend moved'], dict(fired=1, ok=0, lost=1, tap=0))
+        self.assertEqual(counts['bend moved, slow car'], dict(fired=1, ok=0, lost=1, tap=0))
+        self.assertEqual(counts['turn left by "followed the roads"'], dict(fired=1, ok=0, lost=0, tap=1))
+        self.assertEqual(counts['fork branch chosen'], dict(fired=1, ok=1, lost=0, tap=0))
+        self.assertNotIn('loop', counts)
+
+    def test_a_road_already_lost_is_not_a_new_loss(self):
+        trip = self.trip([(30, 'Loop: the way driven lies on the roads 20 m away, moved there')],
+                         lambda s: dict(lost='1') if 20 <= s < 60 else {})
+        self.assertEqual(trip.rule_counts()['loop'], dict(fired=1, ok=1, lost=0, tap=0))
+
+    def test_report(self):
+        log = android_drive(seconds=120, stand=0) + [
+            core('10-08', 18 * 3600 + 10, 'F', 'Loop: the way driven lies on the roads 20 m away, moved there')]
+        out = io.StringIO()
+        with redirect_stdout(out):
+            nogps_log.print_rules(analyse(('app.log', log)))
+        loop = next(line for line in out.getvalue().splitlines() if line.startswith('loop'))
+        self.assertIn('rare: 1 trips', loop)
+
+
+class HeldOutTest(unittest.TestCase):
+    def test_days_and_sets(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, 'days.txt')
+            with open(path, 'w') as f:
+                f.write('# comment\n10-09  # another car\n\n')
+            held_out = nogps_replay.held_out_days(path)
+            self.assertEqual(held_out, {'10-09'})
+            self.assertEqual([nogps_replay.set_of(d, held_out) for d in ('10-08', '10-09')],
+                             ['made from', 'held out'])
+            log = os.path.join(folder, 'log.log')
+            with open(log, 'w') as f:
+                f.write('\n'.join(android_drive('10-08', seconds=3, stand=0) + android_drive('10-09', seconds=2,
+                                                                                            stand=0)) + '\n')
+            out = io.StringIO()
+            with redirect_stdout(out):
+                nogps_replay.days(argparse.Namespace(logs=[log]))
+            self.assertEqual(out.getvalue().splitlines()[:2], ['10-08       3 TRIP lines  made from',
+                                                               '10-09       2 TRIP lines  made from'])
+
+    def test_file_of_the_repo_parses(self):
+        self.assertIsInstance(nogps_replay.held_out_days(), set)
 
 
 class ReportTest(unittest.TestCase):

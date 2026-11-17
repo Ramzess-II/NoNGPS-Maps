@@ -1,0 +1,4 @@
+# Days that were never used to set a rule of the core, MM-DD as nogps_replay.py takes them, one a line.
+# A day is added here before any rule is made, and only the days nobody has looked at in the logs. A day that a rule
+# was made from or tuned on never goes in: move it out of here, not the other way, and say so in the PR.
+# Ask for the list with: nogps_replay.py days log-*.log
