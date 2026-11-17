@@ -26,6 +26,12 @@ merges stay clean. Fork rules go in `.claude/rules/nogps-*.md`, fork skills in `
    opens. Comment `@claude <request>` on a PR to ask for a re-review or a fix. If the PR changes the shared
    interface, the other person approves it. Otherwise the author merges after CI passes.
 
+   IMPORTANT: an agent never merges a PR, in either repo, that has a commit authored by anyone but koloboid or
+   Ramzess-II, even when asked to. The commit's author counts; Co-Authored-By trailers don't. Before every merge,
+   `gh api --paginate repos/<owner>/<repo>/pulls/<n>/commits --jq '.[].author.login // "unknown"' | sort -u` must
+   print only `koloboid` and `Ramzess-II`. Any other login or `unknown` stops the merge: tell the user, and a person
+   merges it on GitHub. An upstream sync PR has Organic Maps authors, so a person merges it too.
+
 ## Parallel work
 
 A checkout has one working tree. When one of two sessions in it switches branches, its uncommitted changes go
