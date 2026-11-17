@@ -462,9 +462,13 @@ bool Engine::IsSpeedTableGps(Fix const & gps)
   {
     return false;
   }
-  return m_speedTableGpsDetector.OnGpsPosition(gps.m_position, gps.m_accuracyM, gps.m_timeMs, {} /* own */,
-                                               {} /* gpsSpeedMps */, {} /* carSpeedMps */, false /* onRoad */) &&
-         IsNearRoad(gps);
+  bool const good =
+      m_speedTableGpsDetector.OnGpsPosition(gps.m_position, gps.m_accuracyM, gps.m_timeMs, {} /* own */,
+                                            {} /* gpsSpeedMps */, {} /* carSpeedMps */, false /* onRoad */) &&
+      IsNearRoad(gps);
+  if (good)
+    m_speedTableGpsMs = m_clock.NowMs();
+  return good;
 }
 
 bool Engine::ContradictsInertial(Fix const & gps) const
@@ -596,6 +600,91 @@ void Engine::CheckNotCalibrated()
   m_notCalibratedWarnedMs = now;
   LOG(LWARNING, ("The car drives, the gyroscope is not calibrated:", m_inertial->GetCalibrationState()));
   Notify(Event::NotCalibrated);
+}
+
+void Engine::UpdateSpeedHint()
+{
+  if (!m_inertial || !IsInertialNavigationEnabled())
+  {
+    m_measuredSpeedRanges.reset();
+    m_speedHintShown = false;
+    m_speedHintSinceMs.reset();
+    m_speedHintLeftMs.reset();
+    return;
+  }
+  auto const table = m_inertial->GetGpsSpeedTable();
+  std::bitset<SpeedTable::kRanges> measured;
+  for (int i = 0; i < SpeedTable::kRanges; ++i)
+    measured[i] = table[i].m_scale > 0;
+  auto const before = m_measuredSpeedRanges;
+  m_measuredSpeedRanges = measured;
+  std::optional<int> calibrated;
+  if (before)
+  {
+    for (int i = 0; i < SpeedTable::kRanges; ++i)
+      if (measured[i] && !(*before)[i])
+        calibrated = i;
+  }
+  if (calibrated)
+  {
+    // The first |count| ranges are all measured now and were not before.
+    auto const completes = [&](int count)
+    {
+      bool wasComplete = true;
+      for (int i = 0; i < count; ++i)
+      {
+        if (!measured[i])
+          return false;
+        wasComplete = wasComplete && (*before)[i];
+      }
+      return !wasComplete;
+    };
+    if (completes(SpeedTable::kRanges))
+      m_speedMilestone = SpeedMilestone::Full;
+    else if (completes(kOutOfTownSpeedRanges))
+      m_speedMilestone = SpeedMilestone::OutOfTown;
+    else if (completes(kCitySpeedRanges))
+      m_speedMilestone = SpeedMilestone::City;
+    else
+      m_speedMilestone = SpeedMilestone::Range;
+    // The bar shows that the range is measured and slides back: it doesn't stay for the measured speed.
+    m_speedHintRange = *calibrated;
+    m_speedHintShown = false;
+    m_speedHintSinceMs.reset();
+    m_speedHintLeftMs.reset();
+    LOG(LINFO, ("GPS has measured the speed range", *calibrated, "of", measured.count(), m_speedMilestone));
+    Notify(Event::SpeedRangeCalibrated);
+    return;
+  }
+
+  int64_t const now = m_clock.NowMs();
+  int const speedKmh = m_inertial->GetSpeedKmh();
+  int const range = SpeedTable::Range(std::max(0, speedKmh));
+  if (m_inertial->GetSourceState() == SourceState::Connected && speedKmh >= SpeedTable::kMinSpeedKmh &&
+      !measured[range])
+  {
+    m_speedHintLeftMs.reset();
+    if (!m_speedHintSinceMs)
+      m_speedHintSinceMs = now;
+    if (!m_speedHintShown && now - *m_speedHintSinceMs >= kSpeedHintDelayMs)
+    {
+      LOG(LINFO, ("GPS has not measured the speed range", range));
+      m_speedHintShown = true;
+    }
+    if (m_speedHintShown)
+      m_speedHintRange = range;
+    return;
+  }
+  m_speedHintSinceMs.reset();
+  if (!m_speedHintShown)
+    return;
+  if (!m_speedHintLeftMs)
+    m_speedHintLeftMs = now;
+  if (now - *m_speedHintLeftMs >= kSpeedHintLingerMs)
+  {
+    m_speedHintShown = false;
+    m_speedHintLeftMs.reset();
+  }
 }
 
 void Engine::CheckFirmwareUpdate()
@@ -843,6 +932,8 @@ void Engine::OnCarChanged()
 {
   if (m_inertial)
     m_inertial->RestoreCalibration();
+  // The table of another car: its ranges are not measured now.
+  m_measuredSpeedRanges.reset();
   // The place saved is of the car before: the mark left where it is, the new car gets it too.
   m_savedCar.clear();
   MoveParkedCar();
@@ -912,7 +1003,11 @@ void Engine::OnBoxCarValues(std::map<std::string, std::string> const & values)
   if (m_boxCarValues.GetCarId() != m_cars.GetCurrentCar())
     return;
   if (taken.m_calibration)
+  {
+    // Measured with another phone.
     m_inertial->RestoreSpeedCalibration();
+    m_measuredSpeedRanges.reset();
+  }
   // The car shown elsewhere, e.g. marked by the user before the box has connected, is there: its place is newer.
   if (taken.m_position && !MoveParkedCar())
   {
@@ -1707,6 +1802,11 @@ Status Engine::GetStatus()
     status.m_speedTableRanges = m_inertial->GetSpeedTableRanges();
     status.m_roughSpeedTableRanges = m_inertial->GetRoughSpeedTableRanges();
     status.m_speedTable = m_inertial->GetSpeedTable();
+    status.m_gpsSpeedTable = m_inertial->GetGpsSpeedTable();
+    status.m_speedHintShown = m_speedHintShown;
+    status.m_speedHintRange = m_speedHintRange;
+    status.m_speedHintGps = MsSince(m_speedTableGpsMs) < kSpeedHintGpsMs;
+    status.m_speedMilestone = m_speedMilestone;
     status.m_speedLagSec = m_inertial->GetSpeedLag();
     status.m_speedLagMeasured = m_inertial->IsSpeedLagMeasured();
     status.m_calibration = m_inertial->GetCalibrationState();
@@ -1768,6 +1868,7 @@ void Engine::LogTrip()
   CheckGpsLost();
   CheckMotionSourceStopped();
   CheckNotCalibrated();
+  UpdateSpeedHint();
   CheckFirmwareUpdate();
   CheckBoxCalibration();
   bool const changed = LogStateChanges();
@@ -1983,6 +2084,18 @@ std::string DebugPrint(GpsState state)
   case GpsState::Spoofed: return "SPOOFED";
   case GpsState::Checking: return "CHECKING";
   case GpsState::Good: return "GOOD";
+  }
+  UNREACHABLE();
+}
+
+std::string DebugPrint(SpeedMilestone milestone)
+{
+  switch (milestone)
+  {
+  case SpeedMilestone::Range: return "RANGE";
+  case SpeedMilestone::City: return "CITY";
+  case SpeedMilestone::OutOfTown: return "OUT_OF_TOWN";
+  case SpeedMilestone::Full: return "FULL";
   }
   UNREACHABLE();
 }

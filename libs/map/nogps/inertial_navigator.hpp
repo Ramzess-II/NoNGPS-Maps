@@ -455,6 +455,8 @@ public:
   /// \returns the ranges of the table in use: by GPS once it has measured a range, times the common factor, the
   /// rough one until then.
   SpeedTable::Ranges GetSpeedTable() const;
+  /// \returns the ranges of the table GPS has measured, as GetSpeedTable() without the rough table.
+  SpeedTable::Ranges GetGpsSpeedTable() const;
   /// \returns the factor of the GPS table, see SpeedFactor.
   double GetSpeedFactor() const { return m_speedFactor.Get(); }
   std::string GetSpeedTableDescription() const { return m_speedTable.ToString(); }

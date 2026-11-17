@@ -70,6 +70,9 @@ enum class Event
   BoxCalibrationAdvised,
   // The box has removed this phone on the request of the user: the platform forgets the car of the box.
   ThisPhoneRemoved,
+  // GPS has measured a range of the speed table, see Status::m_speedHintRange and m_speedMilestone. Told once for the
+  // ranges measured since the last check, not for the ranges of a table restored or taken from the box.
+  SpeedRangeCalibrated,
 };
 
 /// What the platform does about the ESP32 sensor box over Bluetooth LE, told to Engine::OnEsp32BleState().

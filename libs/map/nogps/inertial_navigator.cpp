@@ -248,6 +248,11 @@ SpeedTable::Ranges InertialNavigator::GetSpeedTable() const
 {
   if (m_speedTable.GetKnownRanges() == 0)
     return m_roughSpeedTable.GetRanges();
+  return GetGpsSpeedTable();
+}
+
+SpeedTable::Ranges InertialNavigator::GetGpsSpeedTable() const
+{
   auto ranges = m_speedTable.GetRanges();
   for (auto & range : ranges)
     range.m_scale *= m_speedFactor.Get();
