@@ -198,11 +198,14 @@ BoxCarValues::Taken BoxCarValues::OnValues(Esp32Source & box, Values const & val
   for (auto const key : CarStorage::kValuesOnBox)
   {
     auto const boxValue = Decode(key, read);
+    auto const & keys = FindBoxKeys(key);
     if (!boxValue)
     {
+      // A table with one half only is being written by another phone: it is not erased.
+      bool const absent = GetValue(read, keys.m_box).empty() && GetValue(read, keys.m_secondHalf).empty();
       // A value the phone saw on the box and that is gone, while the box keeps others, was erased by another phone.
       // Otherwise the box has lost it or has not got it yet: Save() gives it the value of the phone.
-      if (boxKeepsSome && Decode(key, before) && m_cars.GetCarValue(m_carId, key).value_or("") != "")
+      if (absent && boxKeepsSome && Decode(key, before) && m_cars.GetCarValue(m_carId, key).value_or("") != "")
       {
         m_cars.SetCarValue(m_carId, key, "");
         takenKeys.emplace_back(key);
@@ -212,7 +215,6 @@ BoxCarValues::Taken BoxCarValues::OnValues(Esp32Source & box, Values const & val
     }
     // The box keeps what the phone saw there the last time: the value of the phone is newer, if it differs. Another
     // phone has written the box since: its value is newer.
-    auto const & keys = FindBoxKeys(key);
     bool const changed = GetValue(read, keys.m_box) != GetValue(before, keys.m_box) ||
                          GetValue(read, keys.m_secondHalf) != GetValue(before, keys.m_secondHalf);
     if (!changed || boxValue == m_cars.GetCarValue(m_carId, key))

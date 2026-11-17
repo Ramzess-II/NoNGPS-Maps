@@ -2709,6 +2709,14 @@ UNIT_TEST(NoGps_BoxCarValues_ValueChangedByPhoneIsWritten)
   box.Connect(env);
   TEST_EQUAL(env.m_engine.GetCars()[0].m_name, "", ());
   TEST(!box.m_values.contains("car_name"), ());
+  // A calibration erased by another phone is taken too, while a half of a table is not an erase.
+  env.m_engine.RenameCar("C47D", "Opel");
+  box.Answer(env);
+  box.m_values.erase("spd_factor");
+  box.m_values["spd_table_lo"] = "1";
+  box.Connect(env);
+  TEST(!box.m_values.contains("spd_factor"), ());
+  box.m_values.erase("spd_table_lo");
   // A name the phone has never seen on the box is written.
   env.m_engine.RenameCar("C47D", "Opel");
   box.Answer(env);
