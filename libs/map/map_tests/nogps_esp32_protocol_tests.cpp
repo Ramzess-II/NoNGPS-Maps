@@ -361,6 +361,17 @@ UNIT_TEST(NoGps_Esp32_ParsesPhones)
   TEST_EQUAL(changes(ParsePhones(reply("OK,BC:D0:74:A9:71:92|a||1;D0:56:FB:11:00:88|b||0;D0:56:FB:11:00:89|c||0,0"))),
              (std::vector<bool>{false, false, false}), ());
 
+  // The fifth part names the phone the box takes the changes from, also among 3 phones.
+  TEST_EQUAL(
+      changes(ParsePhones(reply("OK,BC:D0:74:A9:71:92|a||1|0;D0:56:FB:11:00:88|b||0|0;D0:56:FB:11:00:89|c||0|1,0"))),
+      (std::vector<bool>{false, false, true}), ());
+  TEST_EQUAL(
+      changes(ParsePhones(reply("OK,BC:D0:74:A9:71:92|a||1|1;D0:56:FB:11:00:88|b||0|0;D0:56:FB:11:00:89|c||0|0,1"))),
+      (std::vector<bool>{true, false, false}), ());
+  // The asking phone changes the box when none has sent HELLO.
+  TEST_EQUAL(changes(ParsePhones(reply("OK,BC:D0:74:A9:71:92|a||1|0;D0:56:FB:11:00:88|b||0|0,1"))),
+             (std::vector<bool>{true, false}), ());
+
   // A box without phones. The reply without the last field comes from nobody, it would change the box.
   auto const none = ParsePhones(reply("OK,,1"));
   TEST(none && none->m_phones.empty() && none->m_changesBox, ());
