@@ -3428,24 +3428,39 @@ void DriveAt30(BoxCar & car)
 UNIT_TEST(NoGps_Engine_CarBrakingIntoGasStationIsFollowedApart)
 {
   PieceRoads roads({{-2000, 0, 3000, 0}}, {});
-  Env env(true /* inertial */, &roads);
-  MarkCar(env, 0);
-  BoxCar car(env, 0, false /* accelerometer */);
-  DriveAt30(car);
   // It brakes and turns right into a gas station: after it has left the street it reports the speed it drove the
-  // street at, 26 km/h, then the speed it brakes with. It stops 22 m off the street.
-  car.Drive(1, -1, 0);
-  car.Drive(1, -1, 90);
-  car.Drive(6.3, -1, 0);
-  car.Drive(60, 0, 0);
-  TEST(FollowedApart(env), (env.m_engine.GetTripLine()));
-  TEST_LESS(std::stod(TripField(env, "offv")), 20, ());
-  // It drives on after refuelling: it maneuvers, its road is not lost.
-  car.Drive(2, 1, 0);
-  car.Drive(7, 0, 0);
-  TEST(FollowedApart(env), (env.m_engine.GetTripLine()));
-  TEST(!env.m_engine.GetStatus().m_roadLost, ());
-  TEST(!env.m_delegate.HasEvent(Event::RoadLost), ());
+  // street at, then the speed it brakes with, rising by 1 km/h for a moment or not. It stops 22-27 m off the street.
+  for (bool rises : {false, true})
+  {
+    Env env(true /* inertial */, &roads);
+    MarkCar(env, 0);
+    BoxCar car(env, 0, false /* accelerometer */);
+    DriveAt30(car);
+    if (rises)
+    {
+      car.Drive(1, -0.5, 0);
+      car.Drive(1, -0.5, 90);
+      car.Drive(0.5, -0.5, 0);
+      car.Drive(0.7, 0.4, 0);
+      car.Drive(4.91, -1.5, 0);
+    }
+    else
+    {
+      car.Drive(1, -1, 0);
+      car.Drive(1, -1, 90);
+      car.Drive(6.3, -1, 0);
+    }
+    car.Drive(60, 0, 0);
+    TEST(FollowedApart(env), (rises, env.m_engine.GetTripLine()));
+    // While it brakes it is followed apart by its speed.
+    TEST_LESS_OR_EQUAL(std::stod(TripField(env, "offv")), 20, (rises));
+    // It drives on after refuelling: it maneuvers, its road is not lost.
+    car.Drive(2, 1, 0);
+    car.Drive(7, 0, 0);
+    TEST(FollowedApart(env), (rises, env.m_engine.GetTripLine()));
+    TEST(!env.m_engine.GetStatus().m_roadLost, (rises));
+    TEST(!env.m_delegate.HasEvent(Event::RoadLost), (rises));
+  }
 }
 
 UNIT_TEST(NoGps_Engine_CarLeavingRoadFastIsNotFollowedApart)

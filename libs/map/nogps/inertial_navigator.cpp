@@ -564,7 +564,7 @@ void InertialNavigator::TrackOffRoad(double distanceM, int64_t timestampNs)
 void InertialNavigator::ResetOffRoadSpeed()
 {
   m_offRoadMaxSpeedMps = 0;
-  m_offRoadSinceMs.reset();
+  m_offRoadCountsFromMs.reset();
   m_offRoadSpeedCounts = false;
   m_offRoadBrakeFromKmh = 0;
   m_offRoadBrakeToKmh = std::numeric_limits<int>::max();
@@ -573,25 +573,25 @@ void InertialNavigator::ResetOffRoadSpeed()
 bool InertialNavigator::TrackOffRoadSpeed()
 {
   int64_t const now = m_clock.NowMs();
-  if (!m_offRoadSinceMs)
-  {
-    m_offRoadSinceMs = now;
-    m_offRoadLastKmh = m_speedKmh;
-  }
-  int64_t const afterLagMs = now - *m_offRoadSinceMs - std::llround(m_speedLag.Get() * 1000);
-  bool const rises = m_speedKmh > m_offRoadLastKmh;
-  m_offRoadLastKmh = m_speedKmh;
+  if (!m_offRoadCountsFromMs)
+    m_offRoadCountsFromMs = now + std::llround(m_speedLag.Get() * 1000);
+  int64_t const afterLagMs = now - *m_offRoadCountsFromMs;
   if (afterLagMs < 0)
     return false;
-  if (!m_offRoadSpeedCounts && afterLagMs < kOffRoadBrakeMs && !rises)
+  if (!m_offRoadSpeedCounts)
   {
-    m_offRoadBrakeFromKmh = std::max(m_offRoadBrakeFromKmh, m_speedKmh);
-    m_offRoadBrakeToKmh = std::min(m_offRoadBrakeToKmh, m_speedKmh);
-  }
-  else if (!m_offRoadSpeedCounts)
-  {
-    m_offRoadSpeedCounts = true;
-    // The speeds the car has braked with are dropped.
+    // The rounded speed a car reports at a steady speed changes by 1 km/h.
+    bool const rises = m_speedKmh - kOffRoadRiseKmh >= m_offRoadBrakeToKmh;
+    if (afterLagMs < kOffRoadBrakeMs && !rises)
+    {
+      m_offRoadBrakeFromKmh = std::max(m_offRoadBrakeFromKmh, m_speedKmh);
+      m_offRoadBrakeToKmh = std::min(m_offRoadBrakeToKmh, m_speedKmh);
+    }
+    else
+    {
+      m_offRoadSpeedCounts = true;
+    }
+    // The speeds the car has braked with are dropped: while it brakes, it is followed apart by its speed.
     if (m_offRoadBrakeFromKmh - m_offRoadBrakeToKmh >= kOffRoadBrakeKmh)
       m_offRoadMaxSpeedMps = 0;
   }

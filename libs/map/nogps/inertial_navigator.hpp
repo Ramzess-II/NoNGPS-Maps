@@ -289,13 +289,15 @@ public:
   static double constexpr kMaxManeuverSpeedMps = 20 / 3.6;
   // The speed of a car off the roads counts from the lag after it has left its road: before that the car reports the
   // speed it drove its road at, and it is not followed apart. A car braking into a yard or a gas station brakes on
-  // after that: if its speed has fallen by this much till it rises, or this long after the lag, only the speeds
-  // since then count. On November 17 a car braking into a gas station reported 22 km/h after it had left its road
-  // and 18 then, it was not followed apart, and its road was lost when it drove on after refuelling. A car that has
-  // not braked keeps its speed: on November 7 a car leaving its road at 25 km/h turned slowly for 14 s, and would
-  // have been followed apart after the turn at 14 km/h.
+  // after that: once its speed has fallen by this much before it rises, or this long after the lag, the speeds before
+  // don't count, and while it brakes it is followed apart by its speed. On November 17 a car braking into a gas station
+  // reported 22 km/h after it had left its road and 18 then, it was not followed apart, and its road was lost when it
+  // drove on after refuelling. A car that has not braked keeps its speed: on November 7 a car leaving its road at 25
+  // km/h turned slowly for 14 s, and would have been followed apart after the turn at 14 km/h.
   static int64_t constexpr kOffRoadBrakeMs = 3000;
   static int constexpr kOffRoadBrakeKmh = 5;
+  // A rise of the speed by this much from the lowest ends the braking.
+  static int constexpr kOffRoadRiseKmh = 2;
   // A maneuvering car this far off the roads has left them: it is followed apart, the mark waits on the road. On
   // the trips checked a car that was not parking drove so far off the roads that slowly twice an hour, for a few
   // seconds.
@@ -857,12 +859,10 @@ private:
   bool m_fastWithoutRoad = false;
   // Where the car that has left the roads maneuvering is by the calculation, its mark waits on the road.
   std::optional<ms::LatLon> m_offRoadCar;
-  // The fastest the car has driven off the roads since the last road point, see kOffRoadBrakeMs. Since when it is off
-  // the roads, the speed it reported the last time there, and only the speeds since it has stopped braking count.
-  // The speeds it has braked from and to.
+  // The fastest the car has driven off the roads since the last road point, see kOffRoadBrakeMs. When its speeds start
+  // to count, whether they count without braking yet, and the speeds it has braked from and to.
   double m_offRoadMaxSpeedMps = 0;
-  std::optional<int64_t> m_offRoadSinceMs;
-  int m_offRoadLastKmh = 0;
+  std::optional<int64_t> m_offRoadCountsFromMs;
   bool m_offRoadSpeedCounts = false;
   int m_offRoadBrakeFromKmh = 0;
   int m_offRoadBrakeToKmh = std::numeric_limits<int>::max();
