@@ -1479,6 +1479,12 @@
 
 /* Shown in the Box sheet when another phone has connected to the sensor box first: this phone gets the data only */
 "nogps_box_read_only" = "Другой телефон подключился к блоку первым: калибровку, прошивку, имя машины и телефоны блока меняют на нём";
+
+/* Shown instead of the source of the position on the phone that follows the other phone on the sensor box, %@ is the name of the other phone: "Position from Pixel 8" */
+"nogps_peer_position_from" = "Позиция от %@";
+
+/* Used in "Position from %@" when the box doesn't know the name of the other phone */
+"nogps_peer_other_phone" = "другого телефона";
 "nogps_box_stopped" = "Нет данных от блока датчиков, машина на карте стоит. Проверьте блок или отметьте себя";
 
 /* Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration */

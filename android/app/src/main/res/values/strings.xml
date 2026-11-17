@@ -1087,6 +1087,10 @@
     <string name="nogps_phone_add_failed">The box has not taken the code. Try again.</string>
     <!-- Shown in the Box sheet when another phone has connected to the sensor box first: this phone gets the data only -->
     <string name="nogps_box_read_only">Another phone connected to the box first: the calibration, the firmware, the car name and the phones of the box are changed on it</string>
+    <!-- Shown instead of the source of the position on the phone that follows the other phone on the sensor box, %@ is the name of the other phone: "Position from Pixel 8" -->
+    <string name="nogps_peer_position_from">Position from %s</string>
+    <!-- Used in "Position from %@" when the box doesn't know the name of the other phone -->
+    <string name="nogps_peer_other_phone">the other phone</string>
     <string name="nogps_obd_stopped">No speed from the OBD adapter, the car stands still on the map. Check the adapter or mark yourself</string>
     <string name="nogps_box_stopped">No data from the sensor box, the car stands still on the map. Check the box or mark yourself</string>
     <!-- Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration -->
