@@ -414,6 +414,17 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   }
   SetNoGpsFloats(env, out, "speedTableCarM", carM);
   SetNoGpsFloats(env, out, "speedTableScale", scale);
+  for (size_t i = 0; i < carM.size(); ++i)
+  {
+    carM[i] = static_cast<jfloat>(status.m_gpsSpeedTable[i].m_carM);
+    scale[i] = static_cast<jfloat>(status.m_gpsSpeedTable[i].m_scale);
+  }
+  SetNoGpsFloats(env, out, "gpsSpeedTableCarM", carM);
+  SetNoGpsFloats(env, out, "gpsSpeedTableScale", scale);
+  SetNoGpsField(env, out, "speedHintShown", status.m_speedHintShown);
+  SetNoGpsField(env, out, "speedHintRange", status.m_speedHintRange);
+  SetNoGpsField(env, out, "speedHintGps", status.m_speedHintGps);
+  SetNoGpsField(env, out, "speedMilestone", static_cast<int>(status.m_speedMilestone));
   SetNoGpsDouble(env, out, "speedLagSec", status.m_speedLagSec);
   SetNoGpsField(env, out, "speedLagMeasured", status.m_speedLagMeasured);
   SetNoGpsField(env, out, "calibration", static_cast<int>(status.m_calibration));
