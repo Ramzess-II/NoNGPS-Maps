@@ -391,6 +391,7 @@ private:
   void CheckMotionSourceStopped();
   void CheckNotCalibrated();
   void CheckFirmwareUpdate();
+  void DropFirmwareOffer();
   void CheckBoxCalibration();
   /// \returns the firmware for the connected sensor box, nullptr if there is none or the box can't take it now.
   Firmware const * FindBoxFirmware();

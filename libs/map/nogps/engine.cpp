@@ -615,7 +615,7 @@ void Engine::CheckFirmwareUpdate()
   {
     m_boxKnownSinceMs.reset();
     m_drivenWithBox = false;
-    m_firmwareOfferPending = false;
+    DropFirmwareOffer();
     return;
   }
   int64_t const now = m_clock.NowMs();
@@ -629,7 +629,7 @@ void Engine::CheckFirmwareUpdate()
   if (m_drivenWithBox || now - *m_boxKnownSinceMs < kFirmwareOfferDelayMs || !firmware ||
       firmware->m_version == box->GetInfo()->m_firmware)
   {
-    m_firmwareOfferPending = false;
+    DropFirmwareOffer();
     return;
   }
   std::string const offer = box->GetInfo()->m_firmware + " to " + firmware->m_version;
@@ -639,6 +639,14 @@ void Engine::CheckFirmwareUpdate()
   m_firmwareOfferPending = true;
   LOG(LINFO, ("The firmware of the box can be updated:", offer));
   Notify(Event::FirmwareUpdateAvailable);
+}
+
+// An offer nobody has seen is made again when its conditions hold again.
+void Engine::DropFirmwareOffer()
+{
+  if (m_firmwareOfferPending)
+    m_offeredFirmware.clear();
+  m_firmwareOfferPending = false;
 }
 
 void Engine::CheckBoxCalibration()

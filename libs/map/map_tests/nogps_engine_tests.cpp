@@ -3004,6 +3004,21 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
     TEST(!env.m_engine.GetStatus().m_firmwareOfferPending, ());
   }
   {
+    // The box is gone before the application shows the offer: it is made again when the box is back.
+    Env env(true /* inertial */);
+    env.m_engine.SetFirmwares(firmwares);
+    connect(env, "0.3.2");
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
+    TEST(env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    env.m_engine.OnEsp32BleState(BleState::Searching);
+    env.m_clock.Advance(Engine::kTripLogIntervalMs);
+    TEST(!env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    connect(env, "0.3.2");
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
+    TEST(env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 2, ());
+  }
+  {
     // A box of another kind is not updated.
     Env env(true /* inertial */);
     env.m_engine.SetFirmwares({{"0.3.3", "esp32c3", "c3supermini", [] { return std::string(); }}});
