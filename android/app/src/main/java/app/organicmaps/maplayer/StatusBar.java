@@ -137,7 +137,15 @@ public class StatusBar
   @NonNull
   public static String getSourceWord(@NonNull Context context, @NonNull NoGps.Status status)
   {
-    return switch (status.getSource())
+    // Without its own GPS the follower shows the place of the other phone.
+    final NoGps.PositionSource source = status.getSource();
+    if (source == NoGps.PositionSource.MANUAL || source == NoGps.PositionSource.INERTIAL)
+    {
+      final String peer = BoxTexts.peerPositionText(context, status);
+      if (peer != null)
+        return peer;
+    }
+    return switch (source)
     {
       case GPS -> context.getString(R.string.nogps_status_gps);
       case NETWORK -> context.getString(R.string.nogps_bar_network);
