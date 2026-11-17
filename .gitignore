@@ -104,10 +104,11 @@ CMakeUserPresets.json
 /iphone/metadata/**/keywords.txt
 
 # Trip logs pulled from the phone: they have real coordinates, never commit them.
-/trip-logs/
+/trip-logs
 /credentials
 
 # Local files that should not be tracked or committed
 AGENTS.override.md
 CLAUDE.local.md
+.claude/settings.local.json
 plans
