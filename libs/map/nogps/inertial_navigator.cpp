@@ -1682,7 +1682,10 @@ void InertialNavigator::MatchGentleBend()
 {
   auto const position = m_deadReckoning.GetPosition();
   double const heading = m_deadReckoning.GetHeading();
-  double const maxShiftM = std::min(kMaxBendShiftM, std::max(kMinBendSearchM, m_deadReckoning.GetAccuracy()));
+  // The search reaches farther than the clear-aside distance on both sides of the best fit: the check is empty
+  // otherwise.
+  double const maxShiftM = std::max(2 * kGentleClearAsideM,
+                                    std::min(kMaxBendShiftM, std::max(kMinBendSearchM, m_deadReckoning.GetAccuracy())));
   std::string whyNot;
   auto const aheadM = m_gentleBendMatcher.Match(m_roads, position, heading, maxShiftM, &whyNot);
   if (!aheadM)
@@ -1704,6 +1707,9 @@ void InertialNavigator::ApplyBend(double aheadM, bool gentle)
   double const heading = m_deadReckoning.GetHeading();
   std::string const tag = gentle ? "Gentle bend:" : "Bend:";
   char const * const where = gentle ? "gentle bend" : "bend";
+  // Two gentle comparisons agree only when no ordinary answer comes between them.
+  if (!gentle)
+    m_lastGentleBend.reset();
   if (std::fabs(aheadM) < kMinBendShiftM)
   {
     LOG(LINFO, (tag, "the position fits the road, ahead by", std::round(aheadM), "m"));
