@@ -254,6 +254,8 @@ std::optional<double> NonNegative(double value)
       _boxPhones = phones;
     }
     _boxReadOnly = status.m_boxReadOnly;
+    _peerRole = static_cast<MWMNoGpsPeerRole>(status.m_peerRole);
+    _peerName = @(status.m_peerName.c_str());
     _addPhone = static_cast<MWMNoGpsAddPhone>(status.m_addPhone);
     _addPhoneCode = @(status.m_addPhoneCode.c_str());
     _addPhoneSecondsLeft = status.m_addPhoneSecondsLeft;

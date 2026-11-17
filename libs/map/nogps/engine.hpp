@@ -140,6 +140,12 @@ struct Status
   // The code to enter on the new phone while m_addPhone is Open, and how long the box takes it.
   std::string m_addPhoneCode;
   int m_addPhoneSecondsLeft = 0;
+
+  // The phone that changes the box leads the place, the other one follows it: it shows the place of the leader and
+  // sends its corrections. None without the ability of the box or with one phone.
+  PeerRole m_peerRole = PeerRole::None;
+  // The name of the phone that leads while this one follows, empty if the box doesn't know it.
+  std::string m_peerName;
 };
 
 /// Navigation without GPS: it chooses the position to show from GPS, cell towers, the marks of the user and the
@@ -246,6 +252,9 @@ public:
   // time the box has worked since: it sleeps most of its time, and its clock is not exact then.
   static int64_t constexpr kSamePowerOnMs = 30'000;
   static double constexpr kBoxClockError = 0.1;
+  // The follower takes a place of the leader in the manual mode if its own differs by more than this: the same box
+  // gives both the same way, so the places differ only after a tap or a road the other phone has chosen.
+  static double constexpr kPeerMinDiffM = 10;
 
   Engine(Delegate & delegate, MapApi & map, Storage & storage, Clock const & clock, Scheduler & scheduler);
   ~Engine() override;
@@ -363,6 +372,7 @@ private:
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
   void OnThisPhoneRemoved() override;
   void OnBoxStopping() override;
+  void OnPeerPlace(PeerPlace const & place) override;
 
   static PositionSource SourceOf(Fix const & fix);
   int64_t AgeMs(Fix const & fix) const;
@@ -379,7 +389,8 @@ private:
   std::optional<RoadPoint> SnapMarkToRoad(ms::LatLon const & position, std::optional<double> bearingDeg, double radiusM,
                                           std::optional<Fix> const & turnedFrom);
   /// The road the car is put on by a mark at the position, nothing if there is none.
-  std::optional<RoadPoint> FindMarkRoad(ms::LatLon const & position);
+  /// \param heading the way the car looks, nothing if it is not known.
+  std::optional<RoadPoint> FindMarkRoad(ms::LatLon const & position, std::optional<double> heading);
   void PutMark(ms::LatLon const & position, RoadPoint const & road);
   void EnterManualModeByItself(std::string const & reason);
   void CheckGpsLost();
@@ -440,6 +451,14 @@ private:
   /// \returns whether the position source or the box has changed.
   bool LogStateChanges();
   void Notify(Event event);
+  /// \returns the box if the inertial navigation uses it.
+  Esp32Source * GetBox();
+  /// Tells the other phone on the box where the car is, if the role of this phone does, see PeerSync.
+  /// \param source see esp32::Peer::m_source.
+  void SharePlace(PeerTrigger trigger, char source, Fix const & place);
+  void SharePlaceByTimer();
+  /// Shows the place of the other phone as if the user had marked it.
+  void ApplyPeerPlace(PeerPlace const & place);
 
   Delegate & m_delegate;
   MapApi & m_map;
@@ -541,6 +560,7 @@ private:
     std::string m_gps;
     std::string m_box;
     std::string m_ble;
+    std::string m_peer;
   };
   LoggedState m_loggedState;
   // The motion source of the inertial navigation gave the car speed, the user is told when it stops.
@@ -570,6 +590,9 @@ private:
   std::optional<Fix> m_networkLocation;
 
   Timer m_manualRepeatTimer;
+  Timer m_peerTimer;
+  // The place is set by the other phone: it is not told to it again.
+  bool m_applyingPeer = false;
   Timer m_tripLogTimer;
   // The platform forgets the car on Event::ThisPhoneRemoved: not while the box is being read.
   Timer m_phoneRemovedTimer;

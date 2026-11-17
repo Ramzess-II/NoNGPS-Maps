@@ -138,6 +138,13 @@ std::string Hello(std::string_view phoneName, int64_t unixMs)
   return "HELLO," + std::string(phoneName) + "," + std::to_string(unixMs / 1000);
 }
 
+std::string PeerCommand(Peer const & peer)
+{
+  return "PEER," + std::string(1, peer.m_kind) + "," + std::to_string(peer.m_distMm) + "," +
+         std::to_string(peer.m_latE7) + "," + std::to_string(peer.m_lonE7) + "," + std::to_string(peer.m_headingCdeg) +
+         "," + std::to_string(peer.m_accuracyDm) + "," + std::string(1, peer.m_source);
+}
+
 std::string PhoneName(std::string_view name)
 {
   strings::Trim(name);
@@ -259,6 +266,8 @@ std::optional<Info> ParseInfo(Fields const & fields)
         info.m_hasPhones = true;
       else if (ability == "MULTI")
         info.m_twoPhones = true;
+      else if (ability == "PEER")
+        info.m_canPeer = true;
   }
   if (fields.size() > 6)
     info.m_id = fields[6];
@@ -304,6 +313,34 @@ std::optional<Phones> ParsePhones(Reply const & reply)
   for (auto & phone : phones.m_phones)
     phone.m_changesBox = phone.m_thisPhone ? phones.m_changesBox : !phones.m_changesBox && others == 1;
   return phones;
+}
+
+std::optional<Peer> ParsePeer(Fields const & fields)
+{
+  // NGX,<version>,<kind>,<dist_mm>,<lat_e7>,<lon_e7>,<heading_cdeg>,<acc_dm>,<src>
+  int version;
+  if (!IsLine(fields, 9, "NGX") || !strings::to_int(fields[1], version) || version != kVersion ||
+      fields[2].size() != 1 || fields[8].size() != 1 ||
+      std::string_view("ASCG").find(fields[2][0]) == std::string_view::npos)
+  {
+    return {};
+  }
+  Peer peer;
+  peer.m_kind = fields[2][0];
+  peer.m_source = fields[8][0];
+  if (!strings::to_int(fields[3], peer.m_distMm) || !strings::to_int(fields[4], peer.m_latE7) ||
+      !strings::to_int(fields[5], peer.m_lonE7) || !strings::to_int(fields[6], peer.m_headingCdeg) ||
+      !strings::to_int(fields[7], peer.m_accuracyDm))
+  {
+    return {};
+  }
+  // A wrong place is worse than none.
+  if (std::abs(peer.m_latE7) > 900'000'000 || std::abs(peer.m_lonE7) > 1'800'000'000 || peer.m_headingCdeg < -1 ||
+      peer.m_headingCdeg >= 36000)
+  {
+    return {};
+  }
+  return peer;
 }
 
 std::optional<UpdateProgress> ParseUpdateProgress(Fields const & fields)

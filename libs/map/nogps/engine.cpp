@@ -99,6 +99,7 @@ Engine::Engine(Delegate & delegate, MapApi & map, Storage & storage, Clock const
   , m_clock(clock)
   , m_scheduler(scheduler)
   , m_manualRepeatTimer(scheduler)
+  , m_peerTimer(scheduler)
   , m_tripLogTimer(scheduler)
   , m_phoneRemovedTimer(scheduler)
 {}
@@ -126,6 +127,7 @@ void Engine::Start()
   if (!m_gpsDisabled && m_storage.Get<bool>(Storage::kGpsDisabled, false))
     SetGpsDisabled(true);
   m_tripLogTimer.Start(0, [this] { LogTrip(); });
+  m_peerTimer.Start(kPeerSnapshotIntervalMs, [this] { SharePlaceByTimer(); });
   if (m_manualLocation)
     m_manualRepeatTimer.Start(0, [this] { ApplyManualLocation(); });
 }
@@ -140,6 +142,7 @@ void Engine::Stop()
   if (m_inertial)
     m_inertial->Stop();
   m_manualRepeatTimer.Stop();
+  m_peerTimer.Stop();
   m_tripLogTimer.Stop();
   m_active = false;
 }
@@ -226,6 +229,8 @@ void Engine::OnFix(Fix const & location)
   }
 
   bool const goodGps = TrackWorkingGps(location);
+  if (goodGps)
+    SharePlace(PeerTrigger::GpsFix, 'G', location);
   if (m_manualMode && goodGps && (m_manualUntilGps || IsGpsBack(location)))
   {
     LOG(LINFO, ("GPS is trusted again, leaving the manual mode, location =", location.m_position));
@@ -256,6 +261,7 @@ void Engine::OnFix(Fix const & location)
     m_lastTrustedGpsTimeMs = location.m_timeMs;
     if (m_inertial)
       m_inertial->OnGpsPosition(location);
+    SharePlace(PeerTrigger::GpsPlace, 'G', location);
   }
 
   if (m_manualMode && m_manualForNoPosition && isNetwork && !m_manualLocation)
@@ -1138,6 +1144,7 @@ void Engine::ReverseDirection()
   // The route goes the other way now.
   RebuildRouteIfOffRoute(location);
   NotifyLocationUpdated();
+  SharePlace(PeerTrigger::PlaceSet, 'R', location);
 }
 
 void Engine::SwitchMark()
@@ -1165,6 +1172,7 @@ void Engine::OnMarkSwitched()
   m_wasOnRouteRoad = true;
   m_map.RebuildRouteIfOffRoute(*location, kManualOffRouteDistanceM, location->m_bearingDeg);
   NotifyLocationUpdated();
+  SharePlace(PeerTrigger::PlaceSet, 'W', *location);
 }
 
 std::optional<double> Engine::GetCarBearing() const
@@ -1426,7 +1434,7 @@ bool Engine::SetManualLocation(ms::LatLon const & position)
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());
   CHECK(m_manualMode, ("Manual mode is off"));
-  auto const road = FindMarkRoad(position);
+  auto const road = FindMarkRoad(position, GetCarBearing());
   if (!road)
     return false;
   PutMark(position, *road);
@@ -1444,7 +1452,7 @@ bool Engine::PlaceMarkByTap(ms::LatLon const & position)
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());
   // Without a road there the next tap still shows where the car is: the user taps the road once more.
-  auto const road = FindMarkRoad(position);
+  auto const road = FindMarkRoad(position, GetCarBearing());
   if (!road)
   {
     Notify(Event::MarkNoRoad);
@@ -1457,11 +1465,10 @@ bool Engine::PlaceMarkByTap(ms::LatLon const & position)
   return true;
 }
 
-std::optional<RoadPoint> Engine::FindMarkRoad(ms::LatLon const & position)
+std::optional<RoadPoint> Engine::FindMarkRoad(ms::LatLon const & position, std::optional<double> heading)
 {
   // The car stands on the axis of a road and looks one of its two ways: the way it has looked before, the
   // user turns it around with the reverse button. The gyroscope has followed the turns since.
-  auto const heading = GetCarBearing();
   // While navigating, the car is on the route and drives the way the route goes.
   std::optional<RoadPoint> road;
   if (m_map.IsNavigating())
@@ -1503,6 +1510,74 @@ void Engine::PutMark(ms::LatLon const & position, RoadPoint const & road)
   if (m_inertial)
     m_inertial->SetMarkOnRoad(road.m_point, road.m_bearingDeg);
   ApplyManualLocation();
+  SharePlace(PeerTrigger::PlaceSet, 'T', location);
+}
+
+Esp32Source * Engine::GetBox()
+{
+  return m_inertial && IsInertialNavigationEnabled() ? m_inertial->GetEsp32() : nullptr;
+}
+
+void Engine::SharePlace(PeerTrigger trigger, char source, Fix const & place)
+{
+  auto * box = GetBox();
+  if (!box || m_applyingPeer)
+    return;
+  box->SendPeer(trigger, {place.m_position, place.m_bearingDeg, place.m_accuracyM, source});
+}
+
+void Engine::SharePlaceByTimer()
+{
+  m_peerTimer.Start(kPeerSnapshotIntervalMs, [this] { SharePlaceByTimer(); });
+  if (m_savedLocation && AgeMs(*m_savedLocation) <= kPositionStaleMs)
+    SharePlace(PeerTrigger::Timer, m_manualMode ? 'M' : 'G', *m_savedLocation);
+}
+
+void Engine::OnPeerPlace(PeerPlace const & place)
+{
+  CHECK_THREAD_CHECKER(m_threadChecker, ());
+  if (!m_active)
+    return;
+  if (place.m_kind == 'G')
+  {
+    // The follower's GPS goes through the checks of the own GPS: it may be spoofed too.
+    Fix fix;
+    fix.m_provider = Provider::Gps;
+    fix.m_position = place.m_position;
+    fix.m_accuracyM = place.m_accuracyM;
+    fix.m_bearingDeg = place.m_bearingDeg;
+    fix.m_timeMs = m_clock.NowMs();
+    fix.m_unixTimeMs = m_clock.UnixNowMs();
+    OnFix(fix);
+    return;
+  }
+  ApplyPeerPlace(place);
+}
+
+void Engine::ApplyPeerPlace(PeerPlace const & place)
+{
+  // A place the user has set is where the car is. The leader tells the rest while the follower has no place of its
+  // own or does not take it from GPS, and only when it differs.
+  bool const set = place.m_source == 'T' || place.m_source == 'R' || place.m_source == 'W';
+  if (!set && m_savedLocation && !m_manualMode)
+    return;
+  if (!set && m_savedLocation && Distance(m_savedLocation->m_position, place.m_position) <= kPeerMinDiffM)
+    return;
+
+  auto const road = FindMarkRoad(place.m_position, place.m_bearingDeg);
+  if (!road)
+  {
+    LOG(LINFO, ("No road at the place of the other phone =", place.m_position));
+    return;
+  }
+  LOG(LINFO, ("The place of the other phone, kind =", place.m_kind, "source =", place.m_source, "=", place.m_position));
+  m_applyingPeer = true;
+  SetManualMode(true);
+  PutMark(place.m_position, *road);
+  m_applyingPeer = false;
+  // The leader has taken the correction: the follower is told the place it has.
+  if (place.m_kind == 'C' && m_manualLocation)
+    SharePlace(PeerTrigger::CorrectionTaken, place.m_source, *m_manualLocation);
 }
 
 bool Engine::IsAlongRoad(ms::LatLon const & position, double bearingDeg)
@@ -1729,6 +1804,8 @@ Status Engine::GetStatus()
       if (box->GetPhones())
         status.m_boxPhones = box->GetPhones()->m_phones;
       status.m_boxReadOnly = box->IsReadOnly();
+      status.m_peerRole = box->GetPeerRole();
+      status.m_peerName = box->GetLeaderName();
       status.m_addPhone = box->GetAddPhoneState();
       status.m_addPhoneCode = box->GetAddPhoneCode();
       status.m_addPhoneSecondsLeft = static_cast<int>((box->GetAddPhoneMsLeft() + 999) / 1000);
@@ -1756,6 +1833,7 @@ bool Engine::LogStateChanges()
   log("GPS signal", m_loggedState.m_gps, DebugPrint(status.m_gpsState));
   changed = log("Box state", m_loggedState.m_box, box) || changed;
   changed = log("Box Bluetooth", m_loggedState.m_ble, DebugPrint(status.m_bleState)) || changed;
+  log("Peer role", m_loggedState.m_peer, DebugPrint(status.m_peerRole));
   return changed;
 }
 

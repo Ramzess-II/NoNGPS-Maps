@@ -81,6 +81,15 @@ typedef NS_ENUM(NSInteger, MWMNoGpsAddPhone) {
   MWMNoGpsAddPhoneFailed,
 } NS_SWIFT_NAME(NoGpsAddPhone);
 
+/// What the phone does about the place of the car when two phones are on one box: the one that changes the box leads,
+/// the other one follows it.
+typedef NS_ENUM(NSInteger, MWMNoGpsPeerRole) {
+  // The box can't pass the places on, or this phone is alone on it.
+  MWMNoGpsPeerRoleNone,
+  MWMNoGpsPeerRoleLeading,
+  MWMNoGpsPeerRoleFollowing,
+} NS_SWIFT_NAME(NoGpsPeerRole);
+
 typedef NS_ENUM(NSInteger, MWMNoGpsCalibrationState) {
   MWMNoGpsCalibrationStateNone,
   MWMNoGpsCalibrationStateCalibrating,
@@ -292,6 +301,9 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly, nullable) NSArray<MWMNoGpsPhone *> * boxPhones;
 /// Another phone has connected to the box first and changes it: this one gets the data only.
 @property(nonatomic, readonly) BOOL boxReadOnly;
+@property(nonatomic, readonly) MWMNoGpsPeerRole peerRole;
+/// The name of the phone this one follows, empty if the box doesn't know it.
+@property(nonatomic, readonly) NSString * peerName;
 @property(nonatomic, readonly) MWMNoGpsAddPhone addPhone;
 /// The code to enter on the new phone while addPhone is Open.
 @property(nonatomic, readonly) NSString * addPhoneCode;

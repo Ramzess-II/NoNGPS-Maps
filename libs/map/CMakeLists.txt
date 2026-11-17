@@ -76,6 +76,8 @@ set(SRC
   nogps/motion_source.hpp
   nogps/path_matcher.cpp
   nogps/path_matcher.hpp
+  nogps/peer_sync.cpp
+  nogps/peer_sync.hpp
   nogps/phone_motion.cpp
   nogps/phone_motion.hpp
   nogps/road_walker.cpp
