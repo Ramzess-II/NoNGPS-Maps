@@ -46322,6 +46322,20 @@ en = Another phone connected to the box first: the calibration, the firmware, th
 ru = Другой телефон подключился к блоку первым: калибровку, прошивку, имя машины и телефоны блока меняют на нём
 uk = Інший телефон підключився до блока першим: калібрування, прошивку, ім'я авто й телефони блока змінюють на ньому
 
+[nogps_peer_position_from]
+comment = Shown instead of the source of the position on the phone that follows the other phone on the sensor box, %@ is the name of the other phone: "Position from Pixel 8"
+tags = android-app,apple-maps
+en = Position from %@
+ru = Позиция от %@
+uk = Позиція від %@
+
+[nogps_peer_other_phone]
+comment = Used in "Position from %@" when the box doesn't know the name of the other phone
+tags = android-app,apple-maps
+en = the other phone
+ru = другого телефона
+uk = іншого телефона
+
 [nogps_obd_stopped]
 tags = android-app
 en = No speed from the OBD adapter, the car stands still on the map. Check the adapter or mark yourself
