@@ -46228,7 +46228,7 @@ uk = знайдено, але не спарено з цим телефоном. 
 comment = State of the sensor box, shown after its name: the box is of no car of the user, and the user has the most cars
 tags = android-app,apple-maps
 en = found, but it is of no car of this phone, and the phone has the most cars. Forget a car first (Box, the car name at the top, the car, Forget the car)
-uk = знайдено, але це блок не жодного з авто цього телефона, а авто вже найбільше. Спершу забудьте авто («Блок», назва авто вгорі, авто, «Забути авто»)
+uk = знайдено, але це не блок жодного з авто цього телефона, а авто вже максимум. Спершу забудьте авто («Блок», назва авто вгорі, авто, «Забути авто»)
 
 [nogps_car_phones]
 comment = Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car
