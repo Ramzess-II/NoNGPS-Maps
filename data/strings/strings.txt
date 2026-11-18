@@ -46765,25 +46765,25 @@ ru = Нет позиций GPS 5 секунд.
 uk = Немає позицій GPS 5 секунд.
 
 [nogps_gps_block]
-comment = Switch in the Box sheet: on, GPS is not used for the car
+comment = Switch in the Box sheet: on, GPS is ignored for the car
 tags = android-app,apple-maps
-en = Don't use GPS for navigation
-ru = Не использовать GPS для навигации
-uk = Не використовувати GPS для навігації
+en = Ignore GPS
+ru = Игнорировать GPS
+uk = Ігнорувати GPS
 
 [nogps_gps_block_hint]
-comment = Under the switch Don't use GPS for navigation in the Box sheet
+comment = Under the switch Ignore GPS in the Box sheet
 tags = android-app,apple-maps
-en = On: GPS is ignored, the box and your marks place the car. For places where GPS is spoofed but the app doesn't see it.
-ru = Включено: GPS не используется, машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.
-uk = Увімкнено: GPS не використовується, авто ведуть блок і ваші мітки. Для місць, де GPS підмінений, а застосунок цього не бачить.
+en = The box and your marks place the car. For places where GPS is spoofed but the app doesn't see it.
+ru = Машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.
+uk = Авто ведуть блок і ваші мітки. Для місць, де GPS підмінений, а застосунок цього не бачить.
 
 [nogps_gps_block_needs_box]
-comment = Under the disabled switch Don't use GPS for navigation in the Box sheet: no box is heard
+comment = Under the disabled switch Ignore GPS in the Box sheet: no box is heard
 tags = android-app,apple-maps
-en = GPS can be turned off only while a box is connected: nothing else would move the car.
-ru = GPS можно отключить, только когда подключён блок: иначе машину ничто не поведёт.
-uk = GPS можна вимкнути, лише коли блок підключений: інакше авто ніщо не поведе.
+en = GPS can be ignored only while a box is connected: nothing else would move the car.
+ru = GPS можно игнорировать, только когда подключён блок: иначе машину ничто не поведёт.
+uk = GPS можна ігнорувати, лише коли блок підключений: інакше авто ніщо не поведе.
 
 [nogps_cars_text]
 comment = At the top of the Cars page of the Box sheet
