@@ -11,18 +11,20 @@ final class RateUsManager: NSObject {
   func showSKStoreReviewRequest() {
     guard MapViewController.shared()!.isMapFullyVisible(),
           !CarPlayService.shared.isCarplayActivated,
-          FrameworkHelper.canShowRateUsRequest() else { return }
-    SKStoreReviewController.requestReviewInCurrentScene()
+          FrameworkHelper.canShowRateUsRequest(),
+          SKStoreReviewController.requestReviewInCurrentScene() else { return }
     FrameworkHelper.didShowRateUsRequest()
   }
 }
 
 private extension SKStoreReviewController {
-  static func requestReviewInCurrentScene() {
+  /// Returns false when there is no active scene to show the request in.
+  static func requestReviewInCurrentScene() -> Bool {
     guard let scene = UIApplication.shared.foregroundActiveScene else {
-      LOG(.error, "Attempt to display SKStoreReviewController in a non-active scene.")
-      return
+      LOG(.warning, "Attempt to display SKStoreReviewController in a non-active scene.")
+      return false
     }
     requestReview(in: scene)
+    return true
   }
 }
