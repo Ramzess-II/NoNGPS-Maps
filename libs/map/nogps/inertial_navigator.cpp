@@ -908,7 +908,11 @@ void InertialNavigator::TrackDirection()
   if (m_speedKmh == 0)
   {
     if (!m_standMs)
+    {
       m_standMs = now;
+      StartStopCheck();
+    }
+    CheckStop();
     m_startMs.reset();
     m_slowMs.reset();
     m_startAfterSlow = false;
@@ -936,6 +940,9 @@ void InertialNavigator::TrackDirection()
     m_fasterSinceStart = false;
     m_startM = 0;
     m_startMarkM = 0;
+    m_startFeltMps = 0;
+    m_segMaxKmh = 0;
+    m_stopCheck.reset();
     m_startFelt = false;
     m_crawlCheck = false;
     m_otherWayMs.reset();
@@ -945,6 +952,11 @@ void InertialNavigator::TrackDirection()
   }
   if (m_speedKmh > kSlowSpeedKmh)
     m_fasterSinceStart = true;
+  if (m_speedKmh >= m_segMaxKmh)
+  {
+    m_segMaxKmh = m_speedKmh;
+    m_segPeakMs = now;
+  }
   int direction = m_direction;
   if (!m_startFelt && now - *m_startMs >= kStartFeltAfterMs)
   {
@@ -978,6 +990,7 @@ void InertialNavigator::TrackDirection()
     if (m_standAccel && start)
     {
       double const feltMps = m_startFromMps + (*start - *m_standAccel) * (now - m_startStandToMs) / 1000.0;
+      m_startFeltMps = feltMps;
       // An accelerometer that doesn't follow the car now may look the other way: a box put in turned around
       // feels every start backward.
       bool const usable = m_boxAccelSpeed.IsUsable();
@@ -1010,6 +1023,7 @@ void InertialNavigator::TrackDirection()
     auto const start = m_boxAccelSpeed.GetAccelAlong(m_startStandToMs, tillMs);
     double const feltMps = start ? m_startFromMps + (*start - *m_standAccel) * (tillMs - m_startStandToMs) / 1000.0 : 0;
     double const speedMps = m_speedKmh / 3.6;
+    m_startFeltMps = feltMps;
     int const felt = feltMps < 0 ? -1 : 1;
     bool const clear = std::fabs(feltMps) >= std::max(kReverseStartSpeedMps, kMinFeltSpeedRatio * speedMps) &&
                        std::fabs(feltMps) <= kMaxFeltSpeedRatio * speedMps + kMaxFeltSpeedExtraMps;
@@ -1045,7 +1059,14 @@ void InertialNavigator::SetDirection(int direction)
   if (direction == m_direction)
     return;
   // What the car has driven since the start was counted the other way.
-  int const turned = direction - m_direction;
+  MoveStartSegment(direction - m_direction);
+  m_direction = direction;
+  if (direction < 0)
+    ForgetWay();
+}
+
+void InertialNavigator::MoveStartSegment(int turned)
+{
   double const heading = m_deadReckoning.GetHeading();
   if (m_offRoadCar)
     m_offRoadCar = Move(*m_offRoadCar, heading, turned * m_startM);
@@ -1056,15 +1077,66 @@ void InertialNavigator::SetDirection(int direction)
     auto & reckoning = mark.m_deadReckoning;
     reckoning.MoveTo(Move(reckoning.GetPosition(), reckoning.GetHeading(), turned * m_startM));
   }
-  m_direction = direction;
-  if (direction > 0)
-    return;
+}
+
+void InertialNavigator::ForgetWay()
+{
   // A turn of a car driving backwards is not a turn at a crossing, and the road doesn't bend as the car rotates.
   // Nor does it drive to the mark waiting ahead: the mark drives back from there.
   m_turning = false;
   m_waitAhead.reset();
   m_bendMatcher.Reset();
   m_pathMatcher.Reset();
+}
+
+void InertialNavigator::StartStopCheck()
+{
+  // The car has reported 0 the lag after it stood.
+  int64_t const lagMs = static_cast<int64_t>(m_speedLag.Get() * 1000);
+  m_stopCheck.reset();
+  if (!m_startMs || !m_startFelt || m_startAfterSlow || m_startM <= 0 || m_startM > kStopCheckMaxM ||
+      m_segMaxKmh > kStopCheckMaxKmh)
+  {
+    return;
+  }
+  // A start felt clearly the way it was told is not turned.
+  if (m_direction * m_startFeltMps >= kCrawlClearForwardMps)
+    return;
+  int64_t const stopMs = m_clock.NowMs() - lagMs;
+  // The speed of the car falls from its top one: before that the car speeds up.
+  m_stopCheck = StopCheck{m_direction, stopMs, std::max(stopMs - kStopBrakeMs, m_segPeakMs - lagMs), m_segMaxKmh / 3.6};
+}
+
+void InertialNavigator::CheckStop()
+{
+  if (!m_stopCheck)
+    return;
+  auto const check = *m_stopCheck;
+  int64_t const now = m_clock.NowMs();
+  int64_t const standFromMs = check.m_stopMs + kStandMarginMs;
+  if (now - standFromMs < kMinStandFeltMs)
+    return;
+  m_stopCheck.reset();
+  if (check.m_stopMs - check.m_brakeFromMs < kMinStandFeltMs || !m_boxAccelSpeed.IsUsable())
+    return;
+  auto const stand = m_boxAccelSpeed.GetAccelAlong(standFromMs, now);
+  auto const brake = m_boxAccelSpeed.GetAccelAlong(check.m_brakeFromMs, check.m_stopMs);
+  if (!stand || !brake)
+    return;
+  // The car driving forward loses its speed: what was felt is negative, backward positive.
+  double const feltMps = (*brake - *stand) * (check.m_stopMs - check.m_brakeFromMs) / 1000.0;
+  int const way = feltMps < 0 ? 1 : -1;
+  if (way == check.m_way || std::fabs(feltMps) < kStopFeltSpeedMps ||
+      std::fabs(feltMps) > kMaxFeltSpeedRatio * check.m_peakMps + kMaxFeltSpeedExtraMps)
+  {
+    return;
+  }
+  LOG(LINFO, ("The car has stopped after driving", check.m_way > 0 ? "forward" : "backward", "the stop was felt",
+              feltMps, "m/s: the segment is turned", std::round(m_startM), "m"));
+  MoveStartSegment(way - check.m_way);
+  if (way < 0)
+    m_lastBackMs = now;
+  ForgetWay();
 }
 
 void InertialNavigator::RememberUnheardStand()
@@ -1120,6 +1192,7 @@ void InertialNavigator::ResetDirection()
   m_crawlCheck = false;
   m_startM = 0;
   m_startMarkM = 0;
+  m_stopCheck.reset();
 }
 
 bool InertialNavigator::HasDrivenBackLately() const
