@@ -129,6 +129,18 @@ UNIT_TEST(NoGps_BendMatcher_FindsPositionAheadOfCar)
   TEST_ALMOST_EQUAL_ABS(*ahead, 25.0, 3.0, ());
 }
 
+UNIT_TEST(NoGps_BendMatcher_FindsFarPositionAfterLongWay)
+{
+  auto road = BentRoad();
+  // The calculated position is 150 m ahead of the car: not found within 60 m, found within the along error.
+  auto const matcher = Drive(road, 440, {});
+  auto const near = Match(matcher, road, 590);
+  TEST(!near || std::fabs(*near - 150) > 20, ());
+  auto const ahead = Match(matcher, road, 590, nullptr, 200);
+  TEST(ahead, ());
+  TEST_ALMOST_EQUAL_ABS(*ahead, 150.0, 3.0, ());
+}
+
 UNIT_TEST(NoGps_BendMatcher_FindsPositionBehindCar)
 {
   auto road = BentRoad();

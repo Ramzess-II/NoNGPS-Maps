@@ -139,6 +139,30 @@ EVENT_KINDS = [
     ('gps', 'location ignored', r'^Not active, ignoring', None),
 ]
 EVENT_KINDS = [(c, n, re.compile(t), re.compile(f) if f else None) for c, n, t, f in EVENT_KINDS]
+# The rules of the core a trip counts, in the order tried: (name, pattern of the log line). A line is one rule.
+RULES = [
+    ('turn moved to a crossing', r'is moved to the crossing'),
+    ('turn left by "followed the roads"', r'has followed the roads, the crossing'),
+    ('late turn', r'^The car has turned by'),
+    ('bend moved, slow car', r'told repeatedly to a slow car'),
+    ('bend moved', r'^Bend: moved along the road'),
+    ('bend confirmed', r'^Bend: the position fits the road'),
+    ('loop', r'^Loop: the way driven'),
+    ('fork branch chosen', r'^FORK '),
+    ('wait ahead', r'the mark is ahead, it waits'),
+    ('wait at a roundabout', r'come to a roundabout before the car'),
+    ('exit of a roundabout', r'has left the roundabout along a road|road past the roundabout'),
+    ('followed apart', r'^The car maneuvers'),
+    ('back on a road', r'drives along a road again|^The maneuvering car has driven along a road'),
+    ('far mark taken', r'WAY misses.* there far\b'),
+    ('mark switched by the way', r'^The car is shown on another road.*WAY misses'),
+    ('road lost', r'^The road is lost after'),
+]
+RULES = [(name, re.compile(pattern)) for name, pattern in RULES]
+# What came next is looked at this far from the line of a rule.
+RULE_FOLLOW_M = 300
+# A rule that fired in so few trips was made for one case: to drop or merge.
+RULE_RARE_TRIPS = 2
 SENSORS = ('ACCB', 'ACCB_BEFORE', 'ACC', 'GYRO')
 SLICES = 5
 
@@ -654,6 +678,38 @@ class Trip:
                     events=len(self.events), anomalies=severities,
                     inertial_error_median=errors[len(errors) // 2] if errors else None)
 
+    def rule_counts(self):
+        """{rule name: dict(fired, ok, lost, tap)}: how often a rule of RULES fired in the trip, and what came next
+        within RULE_FOLLOW_M of driving: the road lost (a new loss), a tap of the user, or neither (ok). The loss
+        after "road lost" itself is not counted."""
+        taps = [e['t'] for e in self.events if e['cat'] == 'user' and e['name'] == 'tap']
+        result = {}
+        for e in self.events:
+            name = next((n for n, rx in RULES if rx.search(e['text'])), None)
+            if not name:
+                continue
+            counts = result.setdefault(name, dict(fired=0, ok=0, lost=0, tap=0))
+            counts['fired'] += 1
+            first = bisect.bisect_left(self.group.row_times, e['t'])
+            rows = self.group.rows
+            walked, end, lost = 0.0, e['t'], False
+            was_lost = first < len(rows) and rows[first].get('lost') == '1'
+            for row, after in zip(rows[first:], rows[first + 1:]):
+                lost = lost or (row.get('lost') == '1' and not was_lost)
+                kmh = num(row, 'speed') or num(row, 'gps_kmh') or 0
+                walked += kmh / 3.6 * min(5, (after['t'] - row['t']) / 1000)
+                end = after['t']
+                if walked >= RULE_FOLLOW_M or after['t'] > self.end:
+                    break
+            tapped = any(e['t'] < t <= end for t in taps)
+            if lost and name != 'road lost':
+                counts['lost'] += 1
+            elif tapped:
+                counts['tap'] += 1
+            else:
+                counts['ok'] += 1
+        return result
+
     def details(self):
         fields = list(dict.fromkeys(k for row in self.rows for k in row))
         series = {name: [s for s in values if self.start - 1000 <= s[0] <= self.end]
@@ -667,7 +723,8 @@ class Trip:
         switches = sum(1 for a, b in zip(self.rows, self.rows[1:]) if a.get('choice') != b.get('choice'))
         return dict(self.summary(), fields=fields, rows=[[row.get(k) for k in fields] for row in self.rows],
                     series=series, events=self.events, anomalies=self.anomalies,
-                    errors=error_summary(self.rows), counts=counts, choice_switches=switches)
+                    errors=error_summary(self.rows), counts=counts, choice_switches=switches,
+                    rules=self.rule_counts())
 
     def csv(self):
         rows = []
@@ -698,7 +755,7 @@ class Trip:
                 return f.read()
 
     def replay(self, data):
-        """The trip driven again by an Android debug build: nogps-replay-out.txt against the trip."""
+        """The trip driven again by nogps_replay_tool or an Android debug build: its trip log against the trip."""
         if self.group.platform != 'android':
             raise ValueError('only an Android trip is driven again')
         day_start = self.start - self.start % 86_400_000
@@ -838,11 +895,38 @@ def print_trip(trip):
     by_name = {}
     for e in trip.events:
         by_name[e['cat'] + '/' + e['name']] = by_name.get(e['cat'] + '/' + e['name'], 0) + 1
+    rules = trip.rule_counts()
+    print('rules:', ', '.join('%s %d (lost %d, tap %d)' % (name, c['fired'], c['lost'], c['tap'])
+                              for name, c in rules.items()) or 'none')
     print('events:', ', '.join('%s %d' % kv for kv in sorted(by_name.items())) or 'none')
     print('anomalies:', len(trip.anomalies))
     for a in trip.anomalies:
         print('  %s %8s  %-6s  %s: %s' % (clock(a['start']), duration(a['end'] - a['start'] + 1000), a['severity'],
                                           a['kind'], short(a['text'], False)))
+
+
+def print_rules(analysis):
+    """The rules of RULES over all the driven trips: how often each fired, in how many trips, and what came next."""
+    total = {}
+    for trip in analysis.trips:
+        if not trip.driven:
+            continue
+        for name, c in trip.rule_counts().items():
+            t = total.setdefault(name, dict(fired=0, ok=0, lost=0, tap=0, trips=0))
+            t['trips'] += 1
+            for key in ('fired', 'ok', 'lost', 'tap'):
+                t[key] += c[key]
+    print('%-36s %6s %6s %6s %6s %6s  %s' % ('rule', 'fired', 'trips', 'ok', 'lost', 'tap',
+                                           'within %d m of driving' % RULE_FOLLOW_M))
+    for name, _ in RULES:
+        t = total.get(name, dict(fired=0, ok=0, lost=0, tap=0, trips=0))
+        notes = []
+        if t['trips'] <= RULE_RARE_TRIPS:
+            notes.append('rare: %d trips, made for one case?' % t['trips'])
+        if name != 'road lost' and t['lost'] + t['tap'] > t['ok']:
+            notes.append('followed by a loss or a tap more often than not')
+        print('%-36s %6d %6d %6d %6d %6d  %s' % (name, t['fired'], t['trips'], t['ok'], t['lost'], t['tap'],
+                                                '; '.join(notes)))
 
 
 def print_events(trip, start, end, category, text, full):
@@ -903,13 +987,14 @@ def main():
         description='What the trip log viewer shows, as text: for a terminal and for Claude Code.',
         epilog='''commands:
   trips   the trips of the logs, --all with the stationary ones
+  rules   how often each rule of the core fired over all the trips, and what came next
   trip    a trip: stats, error from GPS, counts, events, anomalies
   events  the events of a trip, --from/--to HH:MM[:SS], --cat road, --grep regex, --full
   state   every TRIP field at --at HH:MM[:SS], anomalies, events and log lines around it
   rows    TRIP fields second by second: --fields a,b,c, --every N s, --from/--to
   replay  the trip against a nogps-replay-out.txt: --replay file''',
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('command', choices=['trips', 'trip', 'events', 'state', 'rows', 'replay'])
+    parser.add_argument('command', choices=['trips', 'rules', 'trip', 'events', 'state', 'rows', 'replay'])
     parser.add_argument('logs', nargs='+', help='log-*.log, logs.zip or a folder of them; app*.log, log.txt and '
                         'log.zip of the earlier versions')
     parser.add_argument('--year', type=int, help='the year of an Android log without its header')
@@ -929,6 +1014,8 @@ def main():
     analysis = Analysis(load_paths(args.logs), args.year)
     if args.command == 'trips':
         return print_trips(analysis, args.all)
+    if args.command == 'rules':
+        return print_rules(analysis)
     if args.trip is None or not 0 <= args.trip < len(analysis.trips):
         parser.error('--trip: one of the ids the trips command shows')
     trip = analysis.trips[args.trip]

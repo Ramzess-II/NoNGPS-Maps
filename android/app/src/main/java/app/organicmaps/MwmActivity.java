@@ -910,6 +910,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
       // The bar on the map asks to calibrate the box until it is.
       case BOX_CALIBRATION_ADVISED -> 0;
       case THIS_PHONE_REMOVED -> onThisPhoneRemoved();
+      // The bar next to the speed celebrates it.
+      case SPEED_RANGE_CALIBRATED -> 0;
       // The buttons show the mode, they are updated every second.
       case MANUAL_MODE_CHANGED -> 0;
       case GPS_BACK -> R.string.nogps_gps_back_auto;

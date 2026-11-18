@@ -1721,6 +1721,42 @@
 /* What the user does to calibrate the speed table, shown below nogps_speed_table_hint */
 "nogps_speed_table_action" = "Для калибровки проедьте с хорошим GPS около 300 м в каждом диапазоне.";
 
+/* Bar next to the speed on the map: accurate GPS measures the error of the car speed in this range now, e.g. "Calibrating 50–60 km/h" */
+"nogps_speed_hint_calibrating" = "Калибруется %1$d–%2$d км/ч";
+
+/* Bar next to the speed on the map: GPS has not measured the error of the car speed in this range, and there is no accurate GPS now */
+"nogps_speed_hint_not_calibrated" = "%1$d–%2$d км/ч не откалибровано";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_calibrating */
+"nogps_speed_hint_keep_gps" = "Важно для езды без GPS: держите GPS включённым";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_not_calibrated */
+"nogps_speed_hint_turn_gps_on" = "Важно для езды без GPS: включите GPS";
+
+/* Bar next to the speed on the map: GPS has just measured the error of the car speed in this range */
+"nogps_speed_hint_done" = "%1$d–%2$d км/ч откалибровано!";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_done: the speed ranges measured, of all, e.g. "5 of 14 speed ranges" */
+"nogps_speed_hint_done_count" = "%1$d из %2$d диапазонов скорости";
+
+/* Bar next to the speed on the map: GPS has measured all the speeds of 5–60 km/h */
+"nogps_speed_hint_city" = "Городские скорости откалиброваны!";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_city */
+"nogps_speed_hint_city_hint" = "5–60 км/ч: готово к городу без GPS";
+
+/* Bar next to the speed on the map: GPS has measured all the speeds of 5–100 km/h */
+"nogps_speed_hint_out_of_town" = "Загородные скорости откалиброваны!";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_out_of_town */
+"nogps_speed_hint_out_of_town_hint" = "5–100 км/ч: готово к трассе без GPS";
+
+/* Bar next to the speed on the map: GPS has measured all the speed ranges */
+"nogps_speed_hint_full" = "Скорость полностью откалибрована!";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_full: the number of all the speed ranges */
+"nogps_speed_hint_full_hint" = "Все %d диапазонов: можно ехать без GPS";
+
 /* Row of the Box sheet: how late the car tells its speed, the value is on the right */
 "nogps_speed_lag" = "Опоздание скорости";
 

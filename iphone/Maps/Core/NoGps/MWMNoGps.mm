@@ -227,6 +227,19 @@ std::optional<double> NonNegative(double value)
     }
     _speedTableCarM = carM;
     _speedTableScale = scale;
+    NSMutableArray<NSNumber *> * gpsCarM = [NSMutableArray arrayWithCapacity:status.m_gpsSpeedTable.size()];
+    NSMutableArray<NSNumber *> * gpsScale = [NSMutableArray arrayWithCapacity:status.m_gpsSpeedTable.size()];
+    for (auto const & range : status.m_gpsSpeedTable)
+    {
+      [gpsCarM addObject:@(range.m_carM)];
+      [gpsScale addObject:@(range.m_scale)];
+    }
+    _gpsSpeedTableCarM = gpsCarM;
+    _gpsSpeedTableScale = gpsScale;
+    _speedHintShown = status.m_speedHintShown;
+    _speedHintRange = status.m_speedHintRange;
+    _speedHintGps = status.m_speedHintGps;
+    _speedMilestone = static_cast<MWMNoGpsSpeedMilestone>(status.m_speedMilestone);
     _speedLagSec = status.m_speedLagSec;
     _speedLagMeasured = status.m_speedLagMeasured;
     _calibration = static_cast<MWMNoGpsCalibrationState>(status.m_calibration);

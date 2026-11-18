@@ -167,7 +167,7 @@ void InertialNavigator::SetRoadPosition(ms::LatLon const & position, double bear
     SetHeading(bearingDeg, HeadingSource::Road);
   else if (m_deadReckoning.HasHeading())
     m_headingSource = HeadingSource::Gyro;
-  m_steadyRoad = SteadyRoad{bearingDeg, position, m_pathM, m_clock.NowMs(), m_rotationDeg};
+  m_steadyRoad = SteadyRoad{bearingDeg, position, m_pathM, m_clock.NowMs(), m_rotationDeg, m_speedKmh, m_speedKmh};
   StartRoughStretch(0);
 }
 
@@ -249,6 +249,11 @@ SpeedTable::Ranges InertialNavigator::GetSpeedTable() const
 {
   if (m_speedTable.GetKnownRanges() == 0)
     return m_roughSpeedTable.GetRanges();
+  return GetGpsSpeedTable();
+}
+
+SpeedTable::Ranges InertialNavigator::GetGpsSpeedTable() const
+{
   auto ranges = m_speedTable.GetRanges();
   for (auto & range : ranges)
     range.m_scale *= m_speedFactor.Get();
@@ -538,7 +543,7 @@ void InertialNavigator::SetRoadPoint(ms::LatLon const & position)
 {
   m_roadPoint = position;
   m_offRoadM = 0;
-  m_offRoadMaxSpeedMps = 0;
+  ResetOffRoadSpeed();
   m_roadLost = false;
   m_waitAhead.reset();
 }
@@ -550,9 +555,8 @@ void InertialNavigator::TrackOffRoad(double distanceM, int64_t timestampNs)
   if (m_onRoad || m_turning || m_atRoundabout || !m_roadPoint || m_roadLost)
     return;
   m_offRoadM += distanceM;
-  m_offRoadMaxSpeedMps = std::max(m_offRoadMaxSpeedMps, m_deadReckoning.GetSpeed());
   // A car driving along a road aside is put on it in a moment, see SnapToRoad(): it is not followed apart meanwhile.
-  if (m_offRoadMaxSpeedMps <= kMaxManeuverSpeedMps &&
+  if (TrackOffRoadSpeed() && m_offRoadMaxSpeedMps <= kMaxManeuverSpeedMps &&
       (m_offRoadM >= kLostRoadM || (m_offRoadM >= kManeuverOffRoadM && !m_roadCandidate)))
   {
     StartFollowingApart();
@@ -561,6 +565,44 @@ void InertialNavigator::TrackOffRoad(double distanceM, int64_t timestampNs)
   if (m_offRoadM < kLostRoadM || MatchLateTurn(timestampNs) || JumpToRoadGoingCarWay())
     return;
   LoseRoad(std::to_string(std::lround(m_offRoadM)) + " m");
+}
+
+void InertialNavigator::ResetOffRoadSpeed()
+{
+  m_offRoadMaxSpeedMps = 0;
+  m_offRoadCountsFromMs.reset();
+  m_offRoadSpeedCounts = false;
+  m_offRoadBrakeFromKmh = 0;
+  m_offRoadBrakeToKmh = std::numeric_limits<int>::max();
+}
+
+bool InertialNavigator::TrackOffRoadSpeed()
+{
+  int64_t const now = m_clock.NowMs();
+  if (!m_offRoadCountsFromMs)
+    m_offRoadCountsFromMs = now + std::llround(m_speedLag.Get() * 1000);
+  int64_t const afterLagMs = now - *m_offRoadCountsFromMs;
+  if (afterLagMs < 0)
+    return false;
+  if (!m_offRoadSpeedCounts)
+  {
+    // The rounded speed a car reports at a steady speed changes by 1 km/h.
+    bool const rises = m_speedKmh - kOffRoadRiseKmh >= m_offRoadBrakeToKmh;
+    if (afterLagMs < kOffRoadBrakeMs && !rises)
+    {
+      m_offRoadBrakeFromKmh = std::max(m_offRoadBrakeFromKmh, m_speedKmh);
+      m_offRoadBrakeToKmh = std::min(m_offRoadBrakeToKmh, m_speedKmh);
+    }
+    else
+    {
+      m_offRoadSpeedCounts = true;
+    }
+    // The speeds the car has braked with are dropped: while it brakes, it is followed apart by its speed.
+    if (m_offRoadBrakeFromKmh - m_offRoadBrakeToKmh >= kOffRoadBrakeKmh)
+      m_offRoadMaxSpeedMps = 0;
+  }
+  m_offRoadMaxSpeedMps = std::max(m_offRoadMaxSpeedMps, m_deadReckoning.GetSpeed());
+  return true;
 }
 
 bool InertialNavigator::JumpToRoadGoingCarWay()
@@ -625,12 +667,19 @@ bool InertialNavigator::MatchLateTurn(int64_t timestampNs)
   m_turnRotationDeg = m_rotationDeg - steady.m_rotationDeg;
   m_turnStartNs = timestampNs - (m_clock.NowMs() - steady.m_timeMs) * 1'000'000;
   m_turnStartPathM = steady.m_pathM;
-  m_turnMinKmh = m_turnMaxKmh = m_speedKmh;
-  // The other marks have rotated with the car: they turn from where they are.
+  m_turnMinKmh = steady.m_minKmh;
+  m_turnMaxKmh = steady.m_maxKmh;
+  // The other marks have rotated with the car: they turn from the heading they had before, where the shown mark
+  // was steady.
+  auto const here = m_deadReckoning.GetPosition();
+  double const rotatedDeg = AngleDiff(m_deadReckoning.GetHeading(), steady.m_bearingDeg);
   for (auto & mark : m_otherMarks)
   {
-    mark.m_turnStart = mark.m_turnEnd = mark.m_deadReckoning.GetPosition();
-    mark.m_turnFromBearing = mark.m_deadReckoning.GetHeading();
+    auto const position = mark.m_deadReckoning.GetPosition();
+    mark.m_turnStart = ms::LatLon(position.m_lat + steady.m_point.m_lat - here.m_lat,
+                                  position.m_lon + steady.m_point.m_lon - here.m_lon);
+    mark.m_turnEnd = position;
+    mark.m_turnFromBearing = Normalize(mark.m_deadReckoning.GetHeading() - rotatedDeg);
     mark.m_turnFromRoad = mark.m_onRoad;
   }
   MatchTurn(timestampNs);
@@ -1149,7 +1198,7 @@ void InertialNavigator::PutOnRoad(ms::LatLon const & point, double bearingDeg)
   m_lastSnapResult = SnapResult::OnRoad;
   // The car drives along the road: what the gyroscope has counted through the maneuver is less sure.
   SetHeading(bearingDeg, HeadingSource::Road);
-  m_steadyRoad = SteadyRoad{bearingDeg, point, m_pathM, m_clock.NowMs(), m_rotationDeg};
+  m_steadyRoad = SteadyRoad{bearingDeg, point, m_pathM, m_clock.NowMs(), m_rotationDeg, m_speedKmh, m_speedKmh};
 }
 
 void InertialNavigator::CheckBackOnRoad()
@@ -1639,10 +1688,15 @@ void InertialNavigator::SnapToRoad()
   {
     m_roadPoint = snapped->m_point;
     m_offRoadM = 0;
-    m_offRoadMaxSpeedMps = 0;
+    ResetOffRoadSpeed();
     if (std::fabs(*m_lastSnapBearingDiffDeg) <= DeadReckoning::kMaxHeadingPullDiffDeg)
-      m_steadyRoad =
-          SteadyRoad{Orient(snapped->m_bearingDeg, heading), snapped->m_point, m_pathM, m_clock.NowMs(), m_rotationDeg};
+      m_steadyRoad = SteadyRoad{Orient(snapped->m_bearingDeg, heading),
+                                snapped->m_point,
+                                m_pathM,
+                                m_clock.NowMs(),
+                                m_rotationDeg,
+                                m_speedKmh,
+                                m_speedKmh};
   }
 }
 
@@ -1658,7 +1712,10 @@ void InertialNavigator::MatchBend()
   // crossing: the car is moved along the road to where the bends of the road fit its rotation.
   auto const position = m_deadReckoning.GetPosition();
   double const heading = m_deadReckoning.GetHeading();
-  double const maxShiftM = std::min(kMaxBendShiftM, std::max(kMinBendSearchM, m_deadReckoning.GetAccuracy()));
+  // After a long way the along error is larger than that, see TurnMatcher::kMaxFarSearchM.
+  double const nearShiftM = std::min(kMaxBendShiftM, std::max(kMinBendSearchM, m_deadReckoning.GetAccuracy()));
+  double const maxShiftM =
+      std::max(nearShiftM, std::min(TurnMatcher::kMaxFarSearchM, m_deadReckoning.GetAlongErrorM()));
   std::string whyNot;
   auto const aheadM = m_bendMatcher.Match(m_roads, position, heading, maxShiftM, &whyNot);
   if (!aheadM)
@@ -1723,9 +1780,12 @@ void InertialNavigator::ApplyBend(double aheadM, bool gentle)
     return;
   }
   bool const slow = m_deadReckoning.GetSpeed() < kMinBendMoveSpeedMps;
-  if (slow && !IsSlowBendConfirmed(aheadM))
+  // A far place is moved to only when the bends tell it repeatedly: a far road may have a similar bend.
+  bool const far = std::fabs(aheadM) > kFarBendShiftM;
+  if ((slow || far) && !IsSlowBendConfirmed(aheadM))
   {
-    LOG(LINFO, (tag, "ahead by", std::round(aheadM), "m, but the car is too slow to trust it"));
+    LOG(LINFO, (tag, "ahead by", std::round(aheadM), "m, but", slow ? "the car is too slow" : "it is far",
+                "to trust it at once"));
     return;
   }
   // The long window is rough: a large shift is moved only when the next comparison tells the same.
@@ -1749,8 +1809,8 @@ void InertialNavigator::ApplyBend(double aheadM, bool gentle)
     LOG(LINFO, (tag, "ahead by", std::round(aheadM), "m, but the road is not followed that far"));
     return;
   }
-  if (slow)
-    LOG(LINFO, (tag, "moved along the road by", std::round(-aheadM), "m, told repeatedly to a slow car"));
+  if (slow || far)
+    LOG(LINFO, (tag, "moved along the road by", std::round(-aheadM), "m, told repeatedly"));
   else
     LOG(LINFO, (tag, "moved along the road by", std::round(-aheadM), "m"));
   m_lastGentleBend.reset();
@@ -1779,6 +1839,11 @@ void InertialNavigator::TrackTurn(double yawDeltaDeg, double dtSec, int64_t time
   double const yawRateDeg = yawDeltaDeg / dtSec;
   m_turnRotationDeg += std::fabs(yawDeltaDeg);
   m_rotationDeg += std::fabs(yawDeltaDeg);
+  if (m_steadyRoad)
+  {
+    m_steadyRoad->m_minKmh = std::min(m_steadyRoad->m_minKmh, m_speedKmh);
+    m_steadyRoad->m_maxKmh = std::max(m_steadyRoad->m_maxKmh, m_speedKmh);
+  }
   if (!m_turning)
   {
     if (std::fabs(yawRateDeg) < kTurnStartRateDeg)
@@ -1873,9 +1938,9 @@ void InertialNavigator::MatchTurn(int64_t timestampNs)
   std::string whyNot;
   std::vector<ms::LatLon> crossings;
   std::vector<ms::LatLon> far;
-  auto const crossing =
-      TurnMatcher::FindCrossing(m_roads, corner, m_turnFromBearing, toBearing, m_deadReckoning.GetAccuracy(), &whyNot,
-                                !m_turnFromRoad /* onlyOne */, &crossings, farAheadM, farBehindM, &far);
+  auto const crossing = TurnMatcher::FindCrossing(
+      m_roads, corner, m_turnFromBearing, toBearing, m_deadReckoning.GetAccuracy(), &whyNot,
+      !m_turnFromRoad /* onlyOne */, &crossings, farAheadM, farBehindM, &far, m_deadReckoning.GetAlongErrorM());
   // The whole turn is moved to a crossing: the car has driven the same way after it. The way of the turn is moved as
   // it was driven: the snapping may have taken the car to a road aside meanwhile, on October 16 to a street 38 m from
   // the right one, and the turn moved from there was not on the right one either.
@@ -2226,9 +2291,9 @@ std::optional<size_t> InertialNavigator::TurnOtherMarks(double toBearingDeg, boo
       auto const [farAheadM, farBehindM] =
           mark.m_turnFromRoad ? GetFarCrossingM(reckoning, mark.m_roadSincePathM) : std::pair<double, double>();
       std::vector<ms::LatLon> far;
-      if (auto const crossing =
-              TurnMatcher::FindCrossing(m_roads, corner, mark.m_turnFromBearing, toBearingDeg, reckoning.GetAccuracy(),
-                                        nullptr, !mark.m_turnFromRoad, nullptr, farAheadM, farBehindM, &far))
+      if (auto const crossing = TurnMatcher::FindCrossing(
+              m_roads, corner, mark.m_turnFromBearing, toBearingDeg, reckoning.GetAccuracy(), nullptr,
+              !mark.m_turnFromRoad, nullptr, farAheadM, farBehindM, &far, reckoning.GetAlongErrorM()))
       {
         road = movedTo(*crossing);
         // As the shown one: a mark that has followed the roads is where they have taken it.

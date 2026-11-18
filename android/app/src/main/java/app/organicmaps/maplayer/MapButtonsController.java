@@ -49,6 +49,7 @@ import app.organicmaps.routing.RoutingPlanViewModel;
 import app.organicmaps.sdk.Framework;
 import app.organicmaps.sdk.downloader.MapManager;
 import app.organicmaps.sdk.downloader.UpdateInfo;
+import app.organicmaps.sdk.location.LocationHelper;
 import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.sdk.location.TrackRecorder;
 import app.organicmaps.sdk.maplayer.isolines.IsolinesManager;
@@ -123,6 +124,14 @@ public class MapButtonsController extends Fragment
   private StatusBar mStatusBar;
   @Nullable
   private SpeedView mSpeedView;
+  @Nullable
+  private SpeedHintView mSpeedHint;
+  // A range of the speed measured by GPS is celebrated by the bar next to the speed.
+  private final LocationHelper.NoGpsListener mNoGpsListener = (event) ->
+  {
+    if (event == NoGps.Event.SPEED_RANGE_CALIBRATED && mSpeedHint != null)
+      mSpeedHint.celebrate(NoGps.getStatus());
+  };
   @Nullable
   private FloatingActionButton mManualPositionButton;
   @Nullable
@@ -244,6 +253,11 @@ public class MapButtonsController extends Fragment
     final View speedView = mFrame.findViewById(R.id.speed_view);
     if (speedView != null)
       mSpeedView = new SpeedView(speedView);
+    final View speedHint = mFrame.findViewById(R.id.speed_hint_frame);
+    if (speedHint != null && speedView != null)
+      mSpeedHint =
+          new SpeedHintView(speedHint, mFrame.findViewById(R.id.speed_hint_confetti), speedView,
+                            mFrame.findViewById(R.id.right_panel), () -> showBoxSheet(BoxBottomSheet.Page.ITEM_SPEED));
     mManualPositionButton.setOnClickListener((v) -> {
       mMapButtonClickListener.onMapButtonClick(MapButtons.manualPosition);
       updatePositionStatus();
@@ -444,6 +458,8 @@ public class MapButtonsController extends Fragment
     final RoutingController routing = RoutingController.get();
     final RoutingInfo info = routing.isNavigating() ? routing.getCachedRoutingInfo() : null;
     mSpeedView.update(status, location, info != null && info.isSpeedCamLimitExceeded());
+    if (mSpeedHint != null)
+      mSpeedHint.update(status);
   }
 
   /**
@@ -828,6 +844,8 @@ public class MapButtonsController extends Fragment
       applyMove(mInnerRightButtonsFrame, translationY);
     if (mCarButtonsFrame != null)
       mCarButtonsFrame.setTranslationY(mInnerRightButtonsFrame != null ? mInnerRightButtonsFrame.getTranslationY() : 0);
+    if (mSpeedHint != null && mCarButtonsFrame != null)
+      mSpeedHint.setTranslationY(mCarButtonsFrame.getTranslationY());
   }
 
   private void moveForSearch(float translationY)
@@ -945,6 +963,7 @@ public class MapButtonsController extends Fragment
     mMapButtonsViewModel.getNavTopBottoms().observe(viewLifecycleOwner, mNavTopObserver);
     mMapButtonsViewModel.getSearchOption().observe(viewLifecycleOwner, mSearchOptionObserver);
     mHandler.post(mPositionStatusUpdater);
+    MwmApplication.from(requireContext()).getLocationHelper().addNoGpsListener(mNoGpsListener);
   }
 
   @Override
@@ -961,6 +980,9 @@ public class MapButtonsController extends Fragment
   {
     super.onStop();
     mHandler.removeCallbacks(mPositionStatusUpdater);
+    MwmApplication.from(requireContext()).getLocationHelper().removeNoGpsListener(mNoGpsListener);
+    if (mSpeedHint != null)
+      mSpeedHint.stop();
     if (mPositionStatus != null)
       mStatusBlinkingAnimator =
           blink(mPositionStatus, false, mStatusBlinkingAnimator, ROAD_LOST_BLINK_MS, ROAD_LOST_BLINK_ALPHA);
