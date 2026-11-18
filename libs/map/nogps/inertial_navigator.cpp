@@ -99,13 +99,10 @@ void InertialNavigator::Calibrate()
   LOG(LINFO, ("Calibrate"));
   if (m_source)
     m_source->Calibrate();
+  // The learned accelerometer is kept: a power-on of the box is not a new way of putting it. If it was turned, the
+  // check of AccelSpeed forgets the direction while driving.
   if (m_esp32)
-  {
-    // The box is calibrated after it was put in again, maybe turned another way.
-    m_boxAccelSpeed.Reset();
-    m_storage.Set(Storage::kBoxAccel, m_boxAccelId + ":");
-    LOG(LINFO, ("The accelerometer of the box is learned anew"));
-  }
+    LOG(LINFO, ("The learned accelerometer of the box is kept"));
 }
 
 void InertialNavigator::OnGpsPosition(Fix const & gps)
