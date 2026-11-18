@@ -1175,6 +1175,10 @@
     <string name="nogps_background_channel">Навигация без GPS</string>
     <!-- The notification shown while the app is hidden and the car is followed by the sensor box -->
     <string name="nogps_background_following">Машина ведётся по блоку датчиков</string>
+    <!-- The line of a notification while the position of the car is given to other apps through the mock location -->
+    <string name="nogps_share_notice">Ваша позиция передаётся другим приложениям</string>
+    <!-- The button of a notification: stops giving the position of the car to other apps -->
+    <string name="nogps_share_turn_off">Выключить передачу</string>
     <!-- Source word in the bottom bar: the car is placed by the sensor box -->
     <string name="nogps_bar_inertial">Инерциально</string>
     <!-- Source word in the bottom bar: the position is from cell towers and Wi-Fi -->
