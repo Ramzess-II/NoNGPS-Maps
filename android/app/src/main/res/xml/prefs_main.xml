@@ -140,6 +140,12 @@
       app:singleLineTitle="false"
       android:persistent="false"
       android:order="21"/>
+    <Preference
+      android:key="@string/pref_share_position_screen"
+      android:title="@string/nogps_share_position"
+      app:singleLineTitle="false"
+      android:persistent="false"
+      android:order="22"/>
   </androidx.preference.PreferenceCategory>
 
   <androidx.preference.PreferenceCategory

@@ -1219,11 +1219,13 @@
     <string name="nogps_box_version">Ver %1$s</string>
     <!-- Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page -->
     <string name="nogps_calibration_snackbar">Calibrate the sensor box</string>
-    <!-- Switch in the Box sheet under Use GPS for the car: the app is the mock location app for other apps -->
-    <string name="nogps_share_position">Share the position with other apps</string>
-    <!-- Under the switch Share the position with other apps -->
-    <string name="nogps_share_position_hint">While GPS isn\'t used, Google Maps, Waze and other apps take the car\'s position from here. Once a minute GPS is checked for 10 s.</string>
-    <!-- Under the switch Share the position with other apps, tapped opens Developer options of Android -->
+    <!-- Settings item and the switch on its page: the app is the mock location app for other apps -->
+    <string name="nogps_share_position">Share position</string>
+    <!-- Share position page of Settings, above the switch -->
+    <string name="nogps_share_position_text">While GPS isn\'t used, the position worked out from the box is given to other apps (Google Maps, Waze and others) as the phone\'s location, through Android\'s mock location. Once a minute GPS is checked for 10 s.</string>
+    <!-- Share position page of Settings: how to allow the app, the names are the items of Android Developer options -->
+    <string name="nogps_share_position_how">To turn it on, open Developer options, tap Select mock location app and pick NonGPS Maps.</string>
+    <!-- Share position page of Settings, under the switch while the app isn't the mock location app, tapped opens Developer options of Android -->
     <string name="nogps_share_position_needs_mock">Pick NonGPS Maps as the mock location app in Developer options. Tap to open them.</string>
     <!-- Under the distance left in navigation: the distance driven since navigation started, e.g. 12.4 km covered -->
     <string name="nogps_nav_covered">%s covered</string>

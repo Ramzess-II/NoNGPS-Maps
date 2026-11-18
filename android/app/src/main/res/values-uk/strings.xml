@@ -1229,11 +1229,13 @@
     <string name="nogps_box_version">Версія %1$s</string>
     <!-- Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page -->
     <string name="nogps_calibration_snackbar">Відкалібруйте блок датчиків</string>
-    <!-- Switch in the Box sheet under Use GPS for the car: the app is the mock location app for other apps -->
-    <string name="nogps_share_position">Передавати позицію іншим застосункам</string>
-    <!-- Under the switch Share the position with other apps -->
-    <string name="nogps_share_position_hint">Поки GPS не використовується, Google Карти, Waze та інші застосунки беруть позицію авто звідси. Раз на хвилину GPS перевіряється 10 с.</string>
-    <!-- Under the switch Share the position with other apps, tapped opens Developer options of Android -->
+    <!-- Settings item and the switch on its page: the app is the mock location app for other apps -->
+    <string name="nogps_share_position">Передавати позицію</string>
+    <!-- Share position page of Settings, above the switch -->
+    <string name="nogps_share_position_text">Поки GPS не використовується, позиція, обчислена за блоком, передається іншим застосункам (Google Карти, Waze та іншим) як місцезнаходження телефона через фіктивні місцезнаходження Android. Раз на хвилину GPS перевіряється 10 с.</string>
+    <!-- Share position page of Settings: how to allow the app, the names are the items of Android Developer options -->
+    <string name="nogps_share_position_how">Щоб увімкнути, відкрийте параметри розробника, торкніться «Вибрати застосунок для фіктивних місцезнаходжень» і виберіть NonGPS Maps.</string>
+    <!-- Share position page of Settings, under the switch while the app isn't the mock location app, tapped opens Developer options of Android -->
     <string name="nogps_share_position_needs_mock">Виберіть NonGPS Maps застосунком для фіктивних місцезнаходжень у параметрах розробника. Торкніться, щоб відкрити їх.</string>
     <!-- Under the distance left in navigation: the distance driven since navigation started, e.g. 12.4 km covered -->
     <string name="nogps_nav_covered">пройдено %s</string>

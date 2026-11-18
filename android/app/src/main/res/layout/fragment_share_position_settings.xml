@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent"
+  android:layout_height="match_parent"
+  android:background="?attr/cardBackground"
+  android:fillViewport="true"
+  android:scrollbars="none">
+
+  <LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:minHeight="@dimen/height_block_base"
+      android:orientation="horizontal"
+      android:paddingStart="@dimen/margin_base"
+      android:paddingEnd="@dimen/margin_base">
+      <TextView
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_vertical"
+        android:layout_weight="1"
+        android:text="@string/nogps_share_position"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:textColor="?android:attr/textColorPrimary"/>
+      <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/share_position"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:padding="@dimen/margin_half_double_plus"/>
+    </LinearLayout>
+
+    <!-- Tapped, opens Developer options. -->
+    <TextView
+      android:id="@+id/share_position_needs_mock"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:background="?selectableItemBackground"
+      android:paddingHorizontal="@dimen/margin_base"
+      android:paddingVertical="@dimen/margin_half"
+      android:text="@string/nogps_share_position_needs_mock"
+      android:textColor="?colorAccent"
+      android:textSize="14sp"/>
+
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:paddingHorizontal="@dimen/margin_base"
+      android:paddingVertical="@dimen/margin_half"
+      android:text="@string/nogps_share_position_text"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp"/>
+
+    <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:paddingHorizontal="@dimen/margin_base"
+      android:paddingVertical="@dimen/margin_half"
+      android:text="@string/nogps_share_position_how"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp"/>
+  </LinearLayout>
+</androidx.core.widget.NestedScrollView>

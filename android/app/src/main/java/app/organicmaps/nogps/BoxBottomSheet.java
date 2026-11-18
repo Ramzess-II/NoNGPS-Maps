@@ -5,7 +5,6 @@ import android.animation.Animator;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.animation.ValueAnimator;
-import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -50,7 +49,6 @@ import androidx.transition.TransitionSet;
 import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
 import app.organicmaps.maplayer.StatusBar;
-import app.organicmaps.sdk.location.MockLocationShare;
 import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.util.Utils;
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
@@ -79,7 +77,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private static final String STATE_PAGE = "page";
   private static final String STATE_SEARCHING = "searching";
   private static final String STATE_CARS_BEFORE_ADD = "cars_before_add";
-  private static final String STATE_SHARE_ASKED = "share_asked";
   private static final String STATE_CAR_ID = "car_id";
   private static final String STATE_CAR_FROM_ITEM = "car_from_item";
 
@@ -180,7 +177,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   @Nullable
   private AlertDialog mAddPhoneDialog;
   // The user has turned the share on before the app is picked as the mock location app.
-  private boolean mShareAsked;
   // The car of the Car page, and if the page was opened from the Car item of the Box page, not from the cars.
   @NonNull
   private String mCarId = "";
@@ -211,8 +207,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private SwitchCompat mGpsBlock;
   private View mGpsBlockHint;
   private View mGpsBlockNeedsBox;
-  private SwitchCompat mSharePosition;
-  private View mSharePositionNeedsMock;
   private View mShop;
   private View mBuyText;
   private View mSearchBuyText;
@@ -333,7 +327,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       mPage = Page.values()[savedInstanceState.getInt(STATE_PAGE)];
       mSearching = savedInstanceState.getBoolean(STATE_SEARCHING);
       mCarsBeforeAdd = savedInstanceState.getInt(STATE_CARS_BEFORE_ADD);
-      mShareAsked = savedInstanceState.getBoolean(STATE_SHARE_ASKED);
       mCarId = savedInstanceState.getString(STATE_CAR_ID, "");
       mCarFromItem = savedInstanceState.getBoolean(STATE_CAR_FROM_ITEM);
       // The app was killed while the box was searched: the new core doesn't search it. Without the core the activity
@@ -374,7 +367,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     outState.putInt(STATE_PAGE, mPage.ordinal());
     outState.putBoolean(STATE_SEARCHING, mSearching);
     outState.putInt(STATE_CARS_BEFORE_ADD, mCarsBeforeAdd);
-    outState.putBoolean(STATE_SHARE_ASKED, mShareAsked);
     outState.putString(STATE_CAR_ID, mCarId);
     outState.putBoolean(STATE_CAR_FROM_ITEM, mCarFromItem);
   }
@@ -412,18 +404,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       NoGps.nativeSetGpsDisabled(mGpsBlock.isChecked());
       update();
     });
-    mSharePosition = view.findViewById(R.id.box_share_position);
-    mSharePositionNeedsMock = view.findViewById(R.id.box_share_position_needs_mock);
-    mSharePosition.setOnClickListener(v -> {
-      final boolean share = mSharePosition.isChecked();
-      mShareAsked = share && !MockLocationShare.isAllowed(requireContext());
-      MockLocationShare.setEnabled(share && !mShareAsked);
-      // The share is turned on when the user comes back with the app picked there.
-      if (mShareAsked)
-        openDeveloperOptions();
-      update();
-    });
-    mSharePositionNeedsMock.setOnClickListener(v -> openDeveloperOptions());
     mShop = view.findViewById(R.id.box_shop);
     mBuyText = view.findViewById(R.id.box_buy_text);
     mSearchBuyText = view.findViewById(R.id.box_search_buy_text);
@@ -791,32 +771,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       mGpsBlock.setChecked(status.gpsDisabled);
     mGpsBlockHint.setVisibility(canSwitch ? View.VISIBLE : View.INVISIBLE);
     mGpsBlockNeedsBox.setVisibility(canSwitch ? View.INVISIBLE : View.VISIBLE);
-
-    // Off until the app is picked as the mock location app, the hint tells where.
-    final boolean shareAllowed = MockLocationShare.isAllowed(context);
-    if (mShareAsked && shareAllowed)
-    {
-      mShareAsked = false;
-      MockLocationShare.setEnabled(true);
-    }
-    // Also unpicked since the share was turned on.
-    final boolean shareNeedsMock = (mShareAsked || MockLocationShare.isEnabled()) && !shareAllowed;
-    if (!mSharePosition.isPressed())
-      mSharePosition.setChecked(MockLocationShare.isEnabled() && shareAllowed);
-    mSharePositionNeedsMock.setVisibility(shareNeedsMock ? View.VISIBLE : View.GONE);
-  }
-
-  private void openDeveloperOptions()
-  {
-    try
-    {
-      startActivity(new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS));
-    }
-    catch (ActivityNotFoundException e)
-    {
-      // Developer options are turned on in About phone.
-      startActivity(new Intent(Settings.ACTION_DEVICE_INFO_SETTINGS));
-    }
   }
 
   /**

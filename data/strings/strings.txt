@@ -46835,21 +46835,28 @@ ru = Откалибруйте блок датчиков
 uk = Відкалібруйте блок датчиків
 
 [nogps_share_position]
-comment = Switch in the Box sheet under Use GPS for the car: the app is the mock location app for other apps
+comment = Settings item and the switch on its page: the app is the mock location app for other apps
 tags = android-app
-en = Share the position with other apps
-ru = Передавать позицию другим приложениям
-uk = Передавати позицію іншим застосункам
+en = Share position
+ru = Передавать позицию
+uk = Передавати позицію
 
-[nogps_share_position_hint]
-comment = Under the switch Share the position with other apps
+[nogps_share_position_text]
+comment = Share position page of Settings, above the switch
 tags = android-app
-en = While GPS isn't used, Google Maps, Waze and other apps take the car's position from here. Once a minute GPS is checked for 10 s.
-ru = Пока GPS не используется, Google Карты, Waze и другие приложения берут позицию машины отсюда. Раз в минуту GPS проверяется 10 с.
-uk = Поки GPS не використовується, Google Карти, Waze та інші застосунки беруть позицію авто звідси. Раз на хвилину GPS перевіряється 10 с.
+en = While GPS isn't used, the position worked out from the box is given to other apps (Google Maps, Waze and others) as the phone's location, through Android's mock location. Once a minute GPS is checked for 10 s.
+ru = Пока GPS не используется, позиция, вычисленная по блоку, передаётся другим приложениям (Google Карты, Waze и другим) как местоположение телефона через фиктивные местоположения Android. Раз в минуту GPS проверяется 10 с.
+uk = Поки GPS не використовується, позиція, обчислена за блоком, передається іншим застосункам (Google Карти, Waze та іншим) як місцезнаходження телефона через фіктивні місцезнаходження Android. Раз на хвилину GPS перевіряється 10 с.
+
+[nogps_share_position_how]
+comment = Share position page of Settings: how to allow the app, the names are the items of Android Developer options
+tags = android-app
+en = To turn it on, open Developer options, tap Select mock location app and pick NonGPS Maps.
+ru = Чтобы включить, откройте параметры разработчика, нажмите «Выбрать приложение для фиктивных местоположений» и выберите NonGPS Maps.
+uk = Щоб увімкнути, відкрийте параметри розробника, торкніться «Вибрати застосунок для фіктивних місцезнаходжень» і виберіть NonGPS Maps.
 
 [nogps_share_position_needs_mock]
-comment = Under the switch Share the position with other apps, tapped opens Developer options of Android
+comment = Share position page of Settings, under the switch while the app isn't the mock location app, tapped opens Developer options of Android
 tags = android-app
 en = Pick NonGPS Maps as the mock location app in Developer options. Tap to open them.
 ru = Выберите NonGPS Maps приложением для фиктивных местоположений в параметрах разработчика. Нажмите, чтобы открыть их.
