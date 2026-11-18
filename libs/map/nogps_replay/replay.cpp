@@ -462,6 +462,14 @@ private:
       }
       break;
     }
+    case 'I':
+    {
+      // The box the trip was driven with: what the navigation has learned about another box is not taken.
+      std::string id;
+      if (in >> id)
+        OnBoxInfo(id);
+      break;
+    }
     case 'G':
     {
       Fix fix;
@@ -567,6 +575,14 @@ private:
   {
     m_engine.reset();
     m_engine = std::make_unique<Engine>(m_delegate, m_map, m_storage, m_clock, m_clock);
+  }
+
+  void OnBoxInfo(std::string const & id)
+  {
+    std::string const body = "NGI,1,0,0,esp32,box," + id;
+    char crc[8];
+    std::snprintf(crc, sizeof(crc), "%04X", esp32::Crc16(body));
+    m_engine->OnEsp32BleBytes("$" + body + "*" + crc + "\r\n");
   }
 
   // The box sends its data 50 times a second, the log keeps 5 parts of a second: every part is sent as 10 lines.
