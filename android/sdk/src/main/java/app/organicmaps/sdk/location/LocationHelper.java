@@ -662,7 +662,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   @RequiresPermission(anyOf = {ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION})
-  private void resumeSystemLocation()
+  public void resumeSystemLocation()
   {
     if (!mSystemLocationPaused)
       return;

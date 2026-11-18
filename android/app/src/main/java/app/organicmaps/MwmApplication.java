@@ -271,6 +271,16 @@ public class MwmApplication extends Application implements Application.ActivityL
       stopLocationInBackgroundIfUnused(false /* followCarByBox */);
   }
 
+  /**
+   * A feature that needs GPS runs while the box was followed in the background: GPS goes on, the box service stops.
+   */
+  public void resumeSystemLocationFromBox()
+  {
+    NoGpsBoxService.stop(this);
+    if (LocationUtils.checkLocationPermission(this))
+      getLocationHelper().resumeSystemLocation();
+  }
+
   private void stopLocationInBackgroundIfUnused()
   {
     stopLocationInBackgroundIfUnused(true /* followCarByBox */);
@@ -281,14 +291,23 @@ public class MwmApplication extends Application implements Application.ActivityL
    */
   private void stopLocationInBackgroundIfUnused(boolean followCarByBox)
   {
+    final String keepReason;
     if (!mDisplayManager.isDeviceDisplayUsed())
-      Logger.i(LOCATION_TAG, "Android Auto is active, keeping location in the background");
+      keepReason = "Android Auto is active";
     else if (RoutingController.get().isNavigating())
-      Logger.i(LOCATION_TAG, "Navigation is in progress, keeping location in the background");
+      keepReason = "Navigation is in progress";
     else if (!Map.isEngineCreated() || LocationState.getMode() == LocationState.PENDING_POSITION)
-      Logger.i(LOCATION_TAG, "PENDING_POSITION mode, keeping location in the background");
+      keepReason = "PENDING_POSITION mode";
     else if (TrackRecorder.nativeIsTrackRecordingEnabled())
-      Logger.i(LOCATION_TAG, "Track Recordr is active, keeping location in the background");
+      keepReason = "Track Recorder is active";
+    else
+      keepReason = null;
+
+    if (keepReason != null)
+    {
+      Logger.i(LOCATION_TAG, keepReason + ", keeping location in the background");
+      resumeSystemLocationFromBox();
+    }
     else if (followCarByBox && NoGpsBoxService.startIfCarData(this))
     {
       Logger.i(LOCATION_TAG, "The box tells the car data, following the car by it in the background");
