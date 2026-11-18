@@ -369,7 +369,7 @@ final class NoGpsSpeedHintView: UIControl {
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.8) { ring.removeFromSuperlayer() }
   }
 
-  private static func confettiCells(velocity: CGFloat, birthRate: Float, lifetime: Float) -> [CAEmitterCell] {
+  static func confettiCells(velocity: CGFloat, birthRate: Float, lifetime: Float) -> [CAEmitterCell] {
     Constants.confettiColors.map { color in
       let cell = CAEmitterCell()
       cell.contents = confettiImage.cgImage
