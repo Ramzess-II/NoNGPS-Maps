@@ -303,6 +303,11 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeStartFirmwareUpdate
   NoGpsEngine().StartFirmwareUpdate();
 }
 
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeFirmwareOfferShown(JNIEnv *, jclass)
+{
+  NoGpsEngine().FirmwareOfferShown();
+}
+
 JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeCancelFirmwareUpdate(JNIEnv *, jclass)
 {
   NoGpsEngine().CancelFirmwareUpdate();
@@ -437,6 +442,7 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsField(env, out, "firmwareUpdate", static_cast<int>(status.m_firmwareUpdate));
   SetNoGpsField(env, out, "firmwareUpdateProgress", status.m_firmwareUpdateProgress);
   SetNoGpsString(env, out, "firmwareUpdateError", status.m_firmwareUpdateError);
+  SetNoGpsField(env, out, "firmwareOfferPending", status.m_firmwareOfferPending);
   SetNoGpsField(env, out, "boxCalibrationAdvised", status.m_boxCalibrationAdvised);
   SetNoGpsField(env, out, "boxHasPhones", status.m_boxHasPhones);
   SetNoGpsField(env, out, "boxPhonesListed", status.m_boxPhones.has_value());

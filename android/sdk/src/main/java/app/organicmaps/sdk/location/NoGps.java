@@ -404,6 +404,9 @@ public final class NoGps
     @Keep
     @NonNull
     public String firmwareUpdateError = "";
+    // The user has not seen the offer of bundledFirmware: show it and call nativeFirmwareOfferShown().
+    @Keep
+    public boolean firmwareOfferPending;
     // The sensor box has been powered on since the user calibrated it.
     @Keep
     public boolean boxCalibrationAdvised;
@@ -791,6 +794,11 @@ public final class NoGps
   public static native void nativeStartFirmwareUpdate();
 
   public static native void nativeCancelFirmwareUpdate();
+
+  /**
+   * The user has been offered the firmware, see {@link Status#firmwareOfferPending}.
+   */
+  public static native void nativeFirmwareOfferShown();
 
   public static native void nativeClearSpeedCalibration();
 

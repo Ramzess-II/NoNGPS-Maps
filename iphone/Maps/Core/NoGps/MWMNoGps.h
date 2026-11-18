@@ -290,6 +290,8 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly) BOOL speedLagMeasured;
 @property(nonatomic, readonly) MWMNoGpsCalibrationState calibration;
 @property(nonatomic, readonly) NSInteger calibrationProgress;
+/// The user has not seen the offer of bundledFirmware: show it and call +firmwareOfferShown.
+@property(nonatomic, readonly) BOOL firmwareOfferPending;
 /// The sensor box has been powered on since the user calibrated it: it may stand in another way now.
 @property(nonatomic, readonly) BOOL boxCalibrationAdvised;
 @property(nonatomic, readonly) BOOL hasInertialPosition;
@@ -372,6 +374,8 @@ NS_SWIFT_NAME(NoGps)
 /// Sends the firmware of MWMNoGpsStatus.bundledFirmware to the box.
 + (void)startFirmwareUpdate;
 + (void)cancelFirmwareUpdate;
+/// The user has been offered the firmware, see MWMNoGpsStatus.firmwareOfferPending.
++ (void)firmwareOfferShown;
 /// Asks the box of the car for its phones again, see MWMNoGpsStatus.boxPhones.
 + (void)listBoxPhones;
 /// Removes the phone from the box. Removing this phone ends with MWMNoGpsEventThisPhoneRemoved.

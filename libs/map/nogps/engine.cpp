@@ -711,6 +711,7 @@ void Engine::CheckFirmwareUpdate()
   {
     m_boxKnownSinceMs.reset();
     m_drivenWithBox = false;
+    DropFirmwareOffer();
     return;
   }
   int64_t const now = m_clock.NowMs();
@@ -724,14 +725,24 @@ void Engine::CheckFirmwareUpdate()
   if (m_drivenWithBox || now - *m_boxKnownSinceMs < kFirmwareOfferDelayMs || !firmware ||
       firmware->m_version == box->GetInfo()->m_firmware)
   {
+    DropFirmwareOffer();
     return;
   }
   std::string const offer = box->GetInfo()->m_firmware + " to " + firmware->m_version;
   if (offer == m_offeredFirmware)
     return;
   m_offeredFirmware = offer;
+  m_firmwareOfferPending = true;
   LOG(LINFO, ("The firmware of the box can be updated:", offer));
   Notify(Event::FirmwareUpdateAvailable);
+}
+
+// An offer nobody has seen is made again when its conditions hold again.
+void Engine::DropFirmwareOffer()
+{
+  if (m_firmwareOfferPending)
+    m_offeredFirmware.clear();
+  m_firmwareOfferPending = false;
 }
 
 void Engine::CheckBoxCalibration()
@@ -1202,8 +1213,14 @@ Firmware const * Engine::FindBoxFirmware()
 
 void Engine::StartFirmwareUpdate()
 {
+  m_firmwareOfferPending = false;
   if (auto const * firmware = FindBoxFirmware())
     m_inertial->GetEsp32()->StartUpdate(*firmware);
+}
+
+void Engine::FirmwareOfferShown()
+{
+  m_firmwareOfferPending = false;
 }
 
 void Engine::CancelFirmwareUpdate()
@@ -1831,6 +1848,7 @@ Status Engine::GetStatus()
       status.m_firmwareUpdate = box->GetUpdate().GetState();
       status.m_firmwareUpdateProgress = box->GetUpdate().GetProgressPercent();
       status.m_firmwareUpdateError = box->GetUpdate().GetError();
+      status.m_firmwareOfferPending = m_firmwareOfferPending;
       status.m_boxCalibrationAdvised = m_storage.Get<bool>(Storage::kBoxCalibrationAdvised, false);
       status.m_boxHasPhones = box->HasPhones();
       if (box->GetPhones())
