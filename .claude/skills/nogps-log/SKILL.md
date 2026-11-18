@@ -22,7 +22,8 @@ Each call reads the logs again: a day of Android logs takes a few seconds.
    - `rows <logs> --trip N --from HH:MM:SS --to HH:MM:SS --fields src,err_m,speed,gps_kmh,hdg,gps_bear,snapwhy`:
      how fields change second by second. `--every 5` thins them out.
    - `events <logs> --trip N [--cat road|turn|box|gps|route|user|state|app|other] [--grep regex] [--full]`.
-   - `replay <logs> --trip N --replay nogps-replay-out.txt`: the trip against its replay (Android only).
+   - `replay <logs> --trip N --replay <day>-out.txt`: the trip against its replay, the output of
+     `nogps_replay.py run` or the Android app's `nogps-replay-out.txt`. Only Android trips are replayed.
 4. **Explain.** Read what a field means in `Engine::GetTripLine()` (`libs/map/nogps/engine.cpp`), and the rule
    behind it in the matching section of `docs/nogps/navigation-rules.md`. Find the code that writes an event
    line by its text. For a question the commands don't answer, import the parser in Python:
