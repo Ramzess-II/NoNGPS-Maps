@@ -8,6 +8,8 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     /// \param firmware unfolds the Box section to show how the update goes.
     case box(firmware: Bool)
     case calibration
+    /// The speed table, from the bar of the speed calibration on the map.
+    case speedCalibration
   }
 
   private enum Constants {
@@ -120,6 +122,11 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
         navigation.setViewControllers([root, NoGpsBoxPage(), NoGpsBoxPage(part: .imu), NoGpsCalibrationPage()],
                                       animated: animated)
       }
+    case .speedCalibration:
+      if let shown = navigation.topViewController as? NoGpsBoxPage, shown.part == .speed {
+        break
+      }
+      navigation.setViewControllers([root, NoGpsBoxPage(), NoGpsBoxPage(part: .speed)], animated: animated)
     }
     root.selectDetent(for: navigation.topViewController)
   }

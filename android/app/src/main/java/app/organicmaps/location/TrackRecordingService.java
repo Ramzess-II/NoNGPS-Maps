@@ -81,7 +81,10 @@ public class TrackRecordingService
     if (!TrackRecorder.nativeIsTrackRecordingEnabled())
       TrackRecorder.nativeStartTrackRecording();
     sIsRecording.setValue(true);
-    MwmApplication.from(context).getLocationHelper().restartWithNewMode();
+    final MwmApplication app = MwmApplication.from(context);
+    // A recording started from the widget while the box follows the car in the background needs GPS.
+    app.resumeSystemLocationFromBox();
+    app.getLocationHelper().restartWithNewMode();
     ContextCompat.startForegroundService(context, new Intent(context, TrackRecordingService.class));
   }
 

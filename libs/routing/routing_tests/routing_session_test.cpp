@@ -931,6 +931,67 @@ UNIT_CLASS_TEST(AsyncGuiThreadTestWithRoutingSession, TestSwapActiveAlternative)
   TEST(swappedSignal.WaitUntil(steady_clock::now() + kRouteBuildingMaxDuration), ("Alternative was not swapped."));
 }
 
+// The car turns to an alternative after a rebuild: the distance driven before it stays covered.
+UNIT_CLASS_TEST(AsyncGuiThreadTestWithRoutingSession, TestDistanceCoveredAcrossSwapActiveAlternative)
+{
+  TimedSignal builtSignal;
+  size_t swapCount = 0;
+  GetPlatform().RunTask(Platform::Thread::Gui, [&builtSignal, &swapCount, this]()
+  {
+    InitRoutingSession();
+    m_session->SetRouter(make_unique<AltRoutesRouter>(swapCount), nullptr);
+    m_session->SetRoutingCallbacks([&builtSignal](RoutesResult const &, RouterResultCode) {
+      builtSignal.Signal();
+    }, nullptr /* rebuildReadyCallback */, nullptr /* needMoreMapsCallback */, nullptr /* removeRouteCallback */);
+    m_session->BuildRoute(Checkpoints(kTestRoute.front(), kTestRoute.back()), RouterDelegate::kNoTimeout);
+  });
+  TEST(builtSignal.WaitUntil(steady_clock::now() + kRouteBuildingMaxDuration), ("Route was not built."));
+
+  TimedSignal rebuiltSignal;
+  GetPlatform().RunTask(Platform::Thread::Gui, [&rebuiltSignal, this]()
+  {
+    auto const covered = [this]()
+    {
+      FollowingInfo following;
+      m_session->GetRouteFollowingInfo(following);
+      return following.m_distCoveredM;
+    };
+    double const kStepM = mercator::DistanceOnEarth({0.0, 1.0}, {0.0, 2.0});
+
+    location::GpsInfo info;
+    info.m_horizontalAccuracy = 5.0;
+    info.m_longitude = 0.0;
+    info.m_latitude = 1.0;
+    m_session->OnLocationPositionChanged(info);
+    info.m_latitude = 2.0;
+    m_session->OnLocationPositionChanged(info);
+    TEST_ALMOST_EQUAL_ABS(covered(), kStepM, 100.0, ());
+
+    // The car leaves the route, the distance driven so far is counted as passed.
+    SessionState state = SessionState::OnRoute;
+    for (size_t j = 0; j < 20 && state != SessionState::RouteNeedRebuild; ++j, info.m_longitude += 1.0)
+      state = m_session->OnLocationPositionChanged(info);
+    TEST_EQUAL(state, SessionState::RouteNeedRebuild, ());
+
+    m_session->RebuildRoute({0.0, 1.0}, [&rebuiltSignal](RoutesResult const &, RouterResultCode)
+    { rebuiltSignal.Signal(); }, nullptr /* needMoreMapsCallback */, nullptr /* removeRouteCallback */,
+                            RouterDelegate::kNoTimeout, SessionState::RouteRebuilding, false /* adjustToPrevRoute */);
+  });
+  TEST(rebuiltSignal.WaitUntil(steady_clock::now() + kRouteBuildingMaxDuration), ("Route was not rebuilt."));
+
+  TimedSignal checkSignal;
+  GetPlatform().RunTask(Platform::Thread::Gui, [&checkSignal, this]()
+  {
+    FollowingInfo following;
+    // The rebuilt route is followed, the car turns to its alternative.
+    TEST(m_session->SwapActiveAlternative(1), ());
+    m_session->GetRouteFollowingInfo(following);
+    TEST_ALMOST_EQUAL_ABS(following.m_distCoveredM, mercator::DistanceOnEarth({0.0, 1.0}, {0.0, 2.0}), 100.0, ());
+    checkSignal.Signal();
+  });
+  TEST(checkSignal.WaitUntil(steady_clock::now() + kRouteBuildingMaxDuration), ("Route checking timeout."));
+}
+
 UNIT_CLASS_TEST(AsyncGuiThreadTestWithRoutingSession, TestFollowingInfoPreservesSeconds)
 {
   TimedSignal signal;

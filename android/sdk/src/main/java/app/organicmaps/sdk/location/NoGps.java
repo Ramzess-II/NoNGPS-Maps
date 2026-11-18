@@ -223,6 +223,20 @@ public final class NoGps
     BOX_CALIBRATION_ADVISED,
     // The box has removed this phone on the request of the user: the car of the box is forgotten.
     THIS_PHONE_REMOVED,
+    // GPS has measured a range of the speed table: Status.speedHintRange and getSpeedMilestone() tell which, and what
+    // it has completed.
+    SPEED_RANGE_CALIBRATED,
+  }
+
+  // What the last speed range measured by GPS has completed.
+  public enum SpeedMilestone
+  {
+    RANGE,
+    // All of 5-60 km/h.
+    CITY,
+    // All of 5-100 km/h.
+    OUT_OF_TOWN,
+    FULL,
   }
 
   // nogps::Provider.
@@ -342,6 +356,22 @@ public final class NoGps
     public float[] speedTableCarM = new float[0];
     @Keep
     public float[] speedTableScale = new float[0];
+    // The table GPS has measured, without the rough one.
+    @Keep
+    public float[] gpsSpeedTableCarM = new float[0];
+    @Keep
+    public float[] gpsSpeedTableScale = new float[0];
+    // The bar next to the speed: GPS has not measured the speed of the car. The range it tells about, at
+    // Event.SPEED_RANGE_CALIBRATED the one just measured.
+    @Keep
+    public boolean speedHintShown;
+    @Keep
+    public int speedHintRange;
+    // Accurate GPS measures the speed now.
+    @Keep
+    public boolean speedHintGps;
+    @Keep
+    int speedMilestone;
     @Keep
     public double speedLagSec;
     @Keep
@@ -445,6 +475,12 @@ public final class NoGps
     public CalibrationState getCalibration()
     {
       return CalibrationState.values()[calibration];
+    }
+
+    @NonNull
+    public SpeedMilestone getSpeedMilestone()
+    {
+      return SpeedMilestone.values()[speedMilestone];
     }
 
     @NonNull
