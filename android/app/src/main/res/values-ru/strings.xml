@@ -1049,6 +1049,10 @@
     <string name="nogps_car_current">Текущая машина</string>
     <!-- State of a car in the list of the cars: when its box was connected the last time, e.g. "Last connected 2 hours ago" -->
     <string name="nogps_car_last_seen">Последнее подключение %1$s</string>
+    <!-- State of a car in the list of the cars: its box is awake near the phone, the car may be switched to -->
+    <string name="nogps_car_nearby">Рядом</string>
+    <!-- Button in the row of a car in the list of the cars, next to "Nearby": the app takes this car and connects to its box -->
+    <string name="nogps_car_switch">Переключить</string>
     <!-- Action for a car in the list of the cars: the app takes this car and connects to its box -->
     <string name="nogps_car_drive">Переключиться на эту машину</string>
     <!-- Title of the dialog that renames a car -->
@@ -1231,11 +1235,13 @@
     <string name="nogps_box_version">Версия %1$s</string>
     <!-- Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page -->
     <string name="nogps_calibration_snackbar">Откалибруйте блок датчиков</string>
-    <!-- Switch in the Box sheet under Use GPS for the car: the app is the mock location app for other apps -->
-    <string name="nogps_share_position">Передавать позицию другим приложениям</string>
-    <!-- Under the switch Share the position with other apps -->
-    <string name="nogps_share_position_hint">Пока GPS не используется, Google Карты, Waze и другие приложения берут позицию машины отсюда. Раз в минуту GPS проверяется 10 с.</string>
-    <!-- Under the switch Share the position with other apps, tapped opens Developer options of Android -->
+    <!-- Settings item and the switch on its page: the app is the mock location app for other apps -->
+    <string name="nogps_share_position">Передавать позицию</string>
+    <!-- Share position page of Settings, above the switch -->
+    <string name="nogps_share_position_text">Пока GPS не используется, позиция, вычисленная по блоку, передаётся другим приложениям (Google Карты, Waze и другим) как местоположение телефона через фиктивные местоположения Android. Раз в минуту GPS проверяется 10 с.</string>
+    <!-- Share position page of Settings: how to allow the app, the names are the items of Android Developer options -->
+    <string name="nogps_share_position_how">Чтобы включить, откройте параметры разработчика, нажмите «Выбрать приложение для фиктивных местоположений» и выберите NonGPS Maps.</string>
+    <!-- Share position page of Settings, under the switch while the app isn't the mock location app, tapped opens Developer options of Android -->
     <string name="nogps_share_position_needs_mock">Выберите NonGPS Maps приложением для фиктивных местоположений в параметрах разработчика. Нажмите, чтобы открыть их.</string>
     <!-- Under the distance left in navigation: the distance driven since navigation started, e.g. 12.4 km covered -->
     <string name="nogps_nav_covered">пройдено %s</string>
@@ -1285,6 +1291,30 @@
     <string name="nogps_speed_table_hint">Машина сообщает скорость немного неточно из-за шин. Приложение поправляет её, чтобы считать путь без GPS.</string>
     <!-- What the user does to calibrate the speed table, shown below nogps_speed_table_hint -->
     <string name="nogps_speed_table_action">Для калибровки проедьте с хорошим GPS около 300 м в каждом диапазоне.</string>
+    <!-- Bar next to the speed on the map: accurate GPS measures the error of the car speed in this range now, e.g. "Calibrating 50–60 km/h" -->
+    <string name="nogps_speed_hint_calibrating">Калибруется %1$d–%2$d км/ч</string>
+    <!-- Bar next to the speed on the map: GPS has not measured the error of the car speed in this range, and there is no accurate GPS now -->
+    <string name="nogps_speed_hint_not_calibrated">%1$d–%2$d км/ч не откалибровано</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_calibrating -->
+    <string name="nogps_speed_hint_keep_gps">Важно для езды без GPS: держите GPS включённым</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_not_calibrated -->
+    <string name="nogps_speed_hint_turn_gps_on">Важно для езды без GPS: включите GPS</string>
+    <!-- Bar next to the speed on the map: GPS has just measured the error of the car speed in this range -->
+    <string name="nogps_speed_hint_done">%1$d–%2$d км/ч откалибровано!</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_done: the speed ranges measured, of all, e.g. "5 of 14 speed ranges" -->
+    <string name="nogps_speed_hint_done_count">%1$d из %2$d диапазонов скорости</string>
+    <!-- Bar next to the speed on the map: GPS has measured all the speeds of 5–60 km/h -->
+    <string name="nogps_speed_hint_city">Городские скорости откалиброваны!</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_city -->
+    <string name="nogps_speed_hint_city_hint">5–60 км/ч: готово к городу без GPS</string>
+    <!-- Bar next to the speed on the map: GPS has measured all the speeds of 5–100 km/h -->
+    <string name="nogps_speed_hint_out_of_town">Загородные скорости откалиброваны!</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_out_of_town -->
+    <string name="nogps_speed_hint_out_of_town_hint">5–100 км/ч: готово к трассе без GPS</string>
+    <!-- Bar next to the speed on the map: GPS has measured all the speed ranges -->
+    <string name="nogps_speed_hint_full">Скорость полностью откалибрована!</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_full: the number of all the speed ranges -->
+    <string name="nogps_speed_hint_full_hint">Все %d диапазонов: можно ехать без GPS</string>
     <!-- Row of the Box sheet: how late the car tells its speed, the value is on the right -->
     <string name="nogps_speed_lag">Опоздание скорости</string>
     <!-- Value of the speed delay row of the Box sheet, in seconds, e.g. "1.2 s" -->
@@ -1371,6 +1401,8 @@
     <string name="nogps_box_value_chip">Чип</string>
     <!-- Row of the Box values page: the board of the box, e.g. s3zero -->
     <string name="nogps_box_value_board">Плата</string>
+    <!-- Row of the Box values page: the hardware revision of the box board, e.g. R1 -->
+    <string name="nogps_box_value_revision">Ревизия платы</string>
     <!-- Row of the Box values page: the four characters of the box name -->
     <string name="nogps_box_value_id">ID</string>
     <!-- Row of the Box values page: the size of the flash memory of the box -->

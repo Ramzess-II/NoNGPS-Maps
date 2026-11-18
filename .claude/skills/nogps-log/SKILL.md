@@ -14,13 +14,16 @@ Each call reads the logs again: a day of Android logs takes a few seconds.
    phone; iOS times are UTC.
 2. **Overview.** `nogps_log.py trip <logs> --trip N` prints the stats, the error from GPS per source, the counts
    `nogps_replay.py compare` uses, the events by name and every anomaly with its time.
+   It also counts the rules of the core that fired (`rules:`) with what came next within 300 m; `nogps_log.py rules
+   <logs>` does it over all the trips.
 3. **Narrow down** to the moments that matter:
    - `state <logs> --trip N --at HH:MM:SS`: every TRIP field (`*` = changed since the line before), the box flags
      decoded, the anomalies at that moment, the events within 30 s and the other log lines within 5 s.
    - `rows <logs> --trip N --from HH:MM:SS --to HH:MM:SS --fields src,err_m,speed,gps_kmh,hdg,gps_bear,snapwhy`:
      how fields change second by second. `--every 5` thins them out.
    - `events <logs> --trip N [--cat road|turn|box|gps|route|user|state|app|other] [--grep regex] [--full]`.
-   - `replay <logs> --trip N --replay nogps-replay-out.txt`: the trip against its replay (Android only).
+   - `replay <logs> --trip N --replay <day>-out.txt`: the trip against its replay, the output of
+     `nogps_replay.py run` or the Android app's `nogps-replay-out.txt`. Only Android trips are replayed.
 4. **Explain.** Read what a field means in `Engine::GetTripLine()` (`libs/map/nogps/engine.cpp`), and the rule
    behind it in the matching section of `docs/nogps/navigation-rules.md`. Find the code that writes an event
    line by its text. For a question the commands don't answer, import the parser in Python:

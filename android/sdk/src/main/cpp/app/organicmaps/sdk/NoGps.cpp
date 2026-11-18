@@ -303,6 +303,11 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeStartFirmwareUpdate
   NoGpsEngine().StartFirmwareUpdate();
 }
 
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeFirmwareOfferShown(JNIEnv *, jclass)
+{
+  NoGpsEngine().FirmwareOfferShown();
+}
+
 JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeCancelFirmwareUpdate(JNIEnv *, jclass)
 {
   NoGpsEngine().CancelFirmwareUpdate();
@@ -414,6 +419,17 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   }
   SetNoGpsFloats(env, out, "speedTableCarM", carM);
   SetNoGpsFloats(env, out, "speedTableScale", scale);
+  for (size_t i = 0; i < carM.size(); ++i)
+  {
+    carM[i] = static_cast<jfloat>(status.m_gpsSpeedTable[i].m_carM);
+    scale[i] = static_cast<jfloat>(status.m_gpsSpeedTable[i].m_scale);
+  }
+  SetNoGpsFloats(env, out, "gpsSpeedTableCarM", carM);
+  SetNoGpsFloats(env, out, "gpsSpeedTableScale", scale);
+  SetNoGpsField(env, out, "speedHintShown", status.m_speedHintShown);
+  SetNoGpsField(env, out, "speedHintRange", status.m_speedHintRange);
+  SetNoGpsField(env, out, "speedHintGps", status.m_speedHintGps);
+  SetNoGpsField(env, out, "speedMilestone", static_cast<int>(status.m_speedMilestone));
   SetNoGpsDouble(env, out, "speedLagSec", status.m_speedLagSec);
   SetNoGpsField(env, out, "speedLagMeasured", status.m_speedLagMeasured);
   SetNoGpsField(env, out, "calibration", static_cast<int>(status.m_calibration));
@@ -426,6 +442,7 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsField(env, out, "firmwareUpdate", static_cast<int>(status.m_firmwareUpdate));
   SetNoGpsField(env, out, "firmwareUpdateProgress", status.m_firmwareUpdateProgress);
   SetNoGpsString(env, out, "firmwareUpdateError", status.m_firmwareUpdateError);
+  SetNoGpsField(env, out, "firmwareOfferPending", status.m_firmwareOfferPending);
   SetNoGpsField(env, out, "boxCalibrationAdvised", status.m_boxCalibrationAdvised);
   SetNoGpsField(env, out, "boxHasPhones", status.m_boxHasPhones);
   SetNoGpsField(env, out, "boxPhonesListed", status.m_boxPhones.has_value());

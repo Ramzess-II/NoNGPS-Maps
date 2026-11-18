@@ -36,6 +36,7 @@ std::string DebugPrint(Event event)
   case Event::FirmwareUpdateFailed: return "FirmwareUpdateFailed";
   case Event::BoxCalibrationAdvised: return "BoxCalibrationAdvised";
   case Event::ThisPhoneRemoved: return "ThisPhoneRemoved";
+  case Event::SpeedRangeCalibrated: return "SpeedRangeCalibrated";
   }
   UNREACHABLE();
 }

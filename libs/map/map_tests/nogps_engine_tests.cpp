@@ -1158,6 +1158,20 @@ UNIT_TEST(NoGps_Engine_TurnFitsCrossingOtherMarkHasPassed)
   TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
 }
 
+UNIT_TEST(NoGps_Engine_TurnStartedWithoutCrossingIsMatchedLate)
+{
+  // The car turns left 40 m before the crossing at 200 m by the calculation: no crossing is in reach then. It drives
+  // north off the road, and is moved to the crossing when the road is lost, as on October 16 at 17:18.
+  PieceRoads roads({{-300, 0, 600, 0}, {200, 0, 200, 400}}, {{200, 0}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 100);
+  env.Drive(4000, 36, 0);
+  env.Drive(3000, 36, -30);
+  env.Drive(6000, 36, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 200, 3);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+}
+
 UNIT_TEST(NoGps_Engine_TurnDoesNotFitCrossingBeforeKnownPlace)
 {
   // The same, the car marked 30 m past the crossing: it has not passed the crossing since, the road is lost.
@@ -1456,6 +1470,59 @@ UNIT_TEST(NoGps_Engine_MarkWaitingAtRoundaboutOnGentleBend)
   TEST_LESS(East(env.Last().m_position), -25, ());
   env.Drive(5000, 0, 0);
   DriveAroundRoundaboutToExit(env, 32);
+}
+
+// A highway going east: 1 km straight, 600 m bending to the right by 12 degrees, 1 km straight, as pieces of 20 m.
+// \param points the starts of the pieces if needed.
+std::vector<PieceRoads::Piece> HighwayPieces(std::vector<std::pair<double, double>> * points = nullptr)
+{
+  std::vector<PieceRoads::Piece> pieces;
+  double x = -100;
+  double y = 0;
+  double bearing = 90;
+  for (int i = 0; i < 135; ++i)
+  {
+    // The bend is the pieces from 1000 m to 1600 m from the start of the car, which is at 0.
+    double const from = -100 + i * 20.0;
+    if (from >= 1000 && from < 1600)
+      bearing += 12.0 / 30;
+    double const nx = x + 20 * std::sin(math::DegToRad(bearing));
+    double const ny = y + 20 * std::cos(math::DegToRad(bearing));
+    pieces.push_back({x, y, nx, ny});
+    if (points)
+      points->emplace_back(x, y);
+    x = nx;
+    y = ny;
+  }
+  return pieces;
+}
+
+UNIT_TEST(NoGps_Engine_GentleBendRemovesAlongError)
+{
+  std::vector<std::pair<double, double>> points;
+  PieceRoads roads(HighwayPieces(&points), {});
+  Env env(true /* inertial */, &roads);
+  int driven = 0;
+  // The car stands at 0 and is marked there.
+  env.m_engine.SetManualMode(true);
+  env.Drive(500, 0, 0);
+  TEST(env.m_engine.PlaceMarkByTap(At(0, 3)), ());
+  // 50 s to the bend at 72 km/h, 30 s along it, 20 s after it.
+  env.Drive(50'000, 72, 0);
+  auto const alongError = [&]()
+  {
+    // The car is |driven| m from where it stood, the road starts 100 m before.
+    return std::hypot(East(env.Last().m_position) - points[(driven + 100) / 20].first,
+                      North(env.Last().m_position) - points[(driven + 100) / 20].second);
+  };
+  driven = 1000;
+  // The mark runs ahead of the car at the start of the bend: the box speed is taken as 1.2 s old.
+  double const before = alongError();
+  TEST_GREATER(before, 15.0, ());
+  env.Drive(30'000, 72, 0.4);
+  env.Drive(20'000, 72, 0);
+  driven = 2000;
+  TEST_LESS(alongError(), 15.0, (env.m_engine.GetTripLine()));
 }
 
 UNIT_TEST(NoGps_Engine_StopsCarThatLeftRoads)
@@ -2090,6 +2157,177 @@ UNIT_TEST(NoGps_Engine_StatusShowsSpeedTableInUse)
   TestAlmostEqualAbs(status.m_speedTable[5].m_scale, 1.02, 1e-9);
 }
 
+// The car drives east along the street at |kmh| for |seconds| with the GPS of the phone switched off in the sheet:
+// GPS tells the speed of the car, and measures it, but the car is not put where it tells.
+void DriveWithGps(Env & env, int seconds, int kmh)
+{
+  for (int i = 0; i < seconds; ++i)
+  {
+    env.Drive(1000, kmh, 0);
+    auto const & position = env.Last().m_position;
+    env.m_engine.OnFix(GpsAt(env.m_clock, East(position), North(position), 90.0, kmh / 3.6));
+  }
+}
+
+int CountEvents(Env const & env, Event event)
+{
+  return static_cast<int>(std::count(env.m_delegate.m_events.begin(), env.m_delegate.m_events.end(), event));
+}
+
+/// Drives with GPS at |kmh| until GPS measures a range, \returns false if it doesn't within a minute.
+bool DriveUntilRangeCalibrated(Env & env, int kmh)
+{
+  int const before = CountEvents(env, Event::SpeedRangeCalibrated);
+  for (int i = 0; i < 60; ++i)
+  {
+    DriveWithGps(env, 1, kmh);
+    if (CountEvents(env, Event::SpeedRangeCalibrated) > before)
+      return true;
+  }
+  return false;
+}
+
+/// A table GPS has measured |ranges| of, the others are 50 m short of it.
+SpeedTable GpsTable(std::set<int> const & ranges)
+{
+  SpeedTable table;
+  for (int i = 0; i < SpeedTable::kRanges; ++i)
+  {
+    double const carM = ranges.count(i) ? SpeedTable::kMinDistanceM : SpeedTable::kMinDistanceM - 50;
+    table.OnDistance(i * SpeedTable::kRangeKmh + 7, carM, carM);
+  }
+  return table;
+}
+
+UNIT_TEST(NoGps_SpeedHint_ShownAtSpeedGpsHasNotMeasured)
+{
+  // GPS has measured 50-60 km/h.
+  auto const table = GpsTable({5});
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads,
+          [&table](TestStorage & storage) { storage.Set(Storage::kSpeedTable, table.Serialize()); });
+  MarkCar(env, 0);
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+
+  // Not below 5 km/h: the speed is too rough there.
+  env.Drive(5000, SpeedTable::kMinSpeedKmh - 1, 0);
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+
+  // Not at once at 30-40 km/h, which GPS has not measured.
+  env.Drive(Engine::kSpeedHintDelayMs - 200, 36, 0);
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+  env.Drive(2000, 36, 0);
+  auto status = env.m_engine.GetStatus();
+  TEST(status.m_speedHintShown, ());
+  TEST_EQUAL(status.m_speedHintRange, 3, ());
+  TEST(!status.m_speedHintGps, ());
+  TEST_EQUAL(status.m_gpsSpeedTable[3].m_scale, 0, ());
+  TEST_EQUAL(status.m_gpsSpeedTable[3].m_carM, SpeedTable::kMinDistanceM - 50, ());
+  TEST_GREATER(status.m_gpsSpeedTable[5].m_scale, 0, ());
+
+  // It stays a while at the measured 50-60 km/h, telling about 30-40 km/h.
+  env.Drive(Engine::kSpeedHintLingerMs - 1000, 55, 0);
+  status = env.m_engine.GetStatus();
+  TEST(status.m_speedHintShown, ());
+  TEST_EQUAL(status.m_speedHintRange, 3, ());
+  env.Drive(2000, 55, 0);
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+
+  // As when the car slows down.
+  env.Drive(3000, 25, 0);
+  TEST(env.m_engine.GetStatus().m_speedHintShown, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedHintRange, 2, ());
+  env.Drive(Engine::kSpeedHintLingerMs - 1000, 0, 0);
+  TEST(env.m_engine.GetStatus().m_speedHintShown, ());
+  env.Drive(2000, 0, 0);
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+  TEST(!env.m_delegate.HasEvent(Event::SpeedRangeCalibrated), ());
+}
+
+UNIT_TEST(NoGps_SpeedHint_GpsMeasuresRangeOnce)
+{
+  auto const table = GpsTable({});
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads,
+          [&table](TestStorage & storage) { storage.Set(Storage::kSpeedTable, table.Serialize()); });
+  MarkCar(env, 0);
+  env.m_engine.SetGpsDisabled(true);
+  DriveWithGps(env, 3, 36);
+  auto status = env.m_engine.GetStatus();
+  TEST(status.m_speedHintShown, ());
+  TEST_EQUAL(status.m_speedHintRange, 3, ());
+
+  // GPS measures the range: the bar tells it, and doesn't stay.
+  TEST(DriveUntilRangeCalibrated(env, 36), ());
+  status = env.m_engine.GetStatus();
+  TEST_EQUAL(status.m_speedHintRange, 3, ());
+  TEST_EQUAL(status.m_speedMilestone, SpeedMilestone::Range, ());
+  TEST_GREATER(status.m_gpsSpeedTable[3].m_scale, 0, ());
+  TEST(!status.m_speedHintShown, ());
+  TEST(status.m_speedHintGps, ());
+  DriveWithGps(env, 10, 36);
+  TEST_EQUAL(CountEvents(env, Event::SpeedRangeCalibrated), 1, ());
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+
+  // GPS measures nothing a while after its last good position.
+  env.Drive(3000, 25, 0);
+  status = env.m_engine.GetStatus();
+  TEST(status.m_speedHintShown, ());
+  TEST_EQUAL(status.m_speedHintRange, 2, ());
+  TEST(!status.m_speedHintGps, ());
+
+  // A cleared table is measured anew.
+  env.m_engine.ClearSpeedCalibration();
+  env.Drive(3000, 36, 0);
+  TEST(env.m_engine.GetStatus().m_speedHintShown, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedHintRange, 3, ());
+}
+
+UNIT_TEST(NoGps_SpeedHint_TableRestoredIsNotMeasuredAgain)
+{
+  // GPS measured 30-40 km/h on the trip before.
+  auto const table = GpsTable({3});
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads,
+          [&table](TestStorage & storage) { storage.Set(Storage::kSpeedTable, table.Serialize()); });
+  MarkCar(env, 0);
+  env.m_engine.SetGpsDisabled(true);
+  DriveWithGps(env, 20, 36);
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+  TEST(!env.m_delegate.HasEvent(Event::SpeedRangeCalibrated), ());
+}
+
+UNIT_TEST(NoGps_SpeedHint_Milestones)
+{
+  // All but 50-60, 90-100 and 130+ km/h are measured.
+  auto const table = GpsTable({0, 1, 2, 3, 4, 6, 7, 8, 10, 11, 12});
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads,
+          [&table](TestStorage & storage) { storage.Set(Storage::kSpeedTable, table.Serialize()); });
+  MarkCar(env, 0);
+  env.m_engine.SetGpsDisabled(true);
+
+  TEST(DriveUntilRangeCalibrated(env, 55), ());
+  auto status = env.m_engine.GetStatus();
+  TEST_EQUAL(status.m_speedHintRange, 5, ());
+  TEST_EQUAL(status.m_speedMilestone, SpeedMilestone::City, ());
+
+  TEST(DriveUntilRangeCalibrated(env, 95), ());
+  status = env.m_engine.GetStatus();
+  TEST_EQUAL(status.m_speedHintRange, 9, ());
+  TEST_EQUAL(status.m_speedMilestone, SpeedMilestone::OutOfTown, ());
+
+  TEST(DriveUntilRangeCalibrated(env, 135), ());
+  status = env.m_engine.GetStatus();
+  TEST_EQUAL(status.m_speedHintRange, 13, ());
+  TEST_EQUAL(status.m_speedMilestone, SpeedMilestone::Full, ());
+  TEST_EQUAL(CountEvents(env, Event::SpeedRangeCalibrated), 3, ());
+
+  // Nothing is left to measure.
+  DriveWithGps(env, 5, 25);
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+}
+
 UNIT_TEST(NoGps_Engine_BendsToldRepeatedlyMoveSlowCar)
 {
   // The street going east bends evenly by 30 degrees to the left at 200 m: by 5 degrees in a second at 20 km/h.
@@ -2701,6 +2939,27 @@ UNIT_TEST(NoGps_BoxCarValues_ValueChangedByPhoneIsWritten)
   box.Connect(env);
   TEST_EQUAL(box.m_values["car_name"], "Opel", ());
 
+  // Another phone has erased the name, the box keeps the other values: the phone takes the empty name.
+  box.m_values["spd_factor"] = "1.05";
+  box.Connect(env);
+  TEST_EQUAL(box.m_values["spd_factor"], "1.05", ());
+  box.m_values.erase("car_name");
+  box.Connect(env);
+  TEST_EQUAL(env.m_engine.GetCars()[0].m_name, "", ());
+  TEST(!box.m_values.contains("car_name"), ());
+  // A calibration erased by another phone is taken too, while a half of a table is not an erase.
+  env.m_engine.RenameCar("C47D", "Opel");
+  box.Answer(env);
+  box.m_values.erase("spd_factor");
+  box.m_values["spd_table_lo"] = "1";
+  box.Connect(env);
+  TEST(!box.m_values.contains("spd_factor"), ());
+  box.m_values.erase("spd_table_lo");
+  // A name the phone has never seen on the box is written.
+  env.m_engine.RenameCar("C47D", "Opel");
+  box.Answer(env);
+  TEST_EQUAL(box.m_values["car_name"], "Opel", ());
+
   // A name given by the user to the box of another car waits for that box.
   box.Connect(env, "42FD");
   env.m_engine.RenameCar("C47D", "Kia");
@@ -2941,6 +3200,14 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
     TEST_EQUAL(status.m_bundledFirmware, "0.3.3", ());
     TEST_EQUAL(status.m_firmwareUpdate, Esp32Update::State::None, ());
     TEST_EQUAL(reads, 0, ());
+    // The offer stays pending until the application shows it: the event may come when it can't.
+    TEST(status.m_firmwareOfferPending, ());
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs);
+    TEST(env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    env.m_engine.FirmwareOfferShown();
+    TEST(!env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs);
+    TEST(!env.m_engine.GetStatus().m_firmwareOfferPending, ());
 
     env.m_engine.StartFirmwareUpdate();
     TEST_EQUAL(reads, 1, ());
@@ -2990,6 +3257,25 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
     connect(env, "0.3.2");
     drive(Engine::kFirmwareOfferDelayMs + Engine::kTripLogIntervalMs * 2, 0);
     TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 1, ());
+    TEST(env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    // The offer is not kept for a car that drives: the box refuses the update.
+    drive(1500, 36);
+    TEST(!env.m_engine.GetStatus().m_firmwareOfferPending, ());
+  }
+  {
+    // The box is gone before the application shows the offer: it is made again when the box is back.
+    Env env(true /* inertial */);
+    env.m_engine.SetFirmwares(firmwares);
+    connect(env, "0.3.2");
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
+    TEST(env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    env.m_engine.OnEsp32BleState(BleState::Searching);
+    env.m_clock.Advance(Engine::kTripLogIntervalMs);
+    TEST(!env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    connect(env, "0.3.2");
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
+    TEST(env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 2, ());
   }
   {
     // A box of another kind is not updated.
@@ -3428,6 +3714,7 @@ public:
   }
 
   double East() const { return m_east; }
+  double Speed() const { return m_speed; }
   double North() const { return m_north; }
 
   // The gravity the accelerometer feels along the car on a slope.
@@ -3506,6 +3793,97 @@ UNIT_TEST(NoGps_Engine_AccelerometerTellsCarInYardDrivesBack)
     if (accelerometer)
       TestAlmostEqualAbs(North(env.Last().m_position), car.North(), 4);
   }
+}
+
+// The car marked on the street going east drives at 30 km/h along it.
+void DriveAt30(BoxCar & car)
+{
+  car.Drive(25.0 / 3, 1, 0);
+  car.Drive(3, 0, 0);
+}
+
+UNIT_TEST(NoGps_Engine_CarBrakingIntoGasStationIsFollowedApart)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  // It brakes and turns right into a gas station: after it has left the street it reports the speed it drove the
+  // street at, then the speed it brakes with, rising by 1 km/h for a moment or not. It stops 22-27 m off the street.
+  for (bool rises : {false, true})
+  {
+    Env env(true /* inertial */, &roads);
+    MarkCar(env, 0);
+    BoxCar car(env, 0, false /* accelerometer */);
+    DriveAt30(car);
+    if (rises)
+    {
+      car.Drive(1, -0.5, 0);
+      car.Drive(1, -0.5, 90);
+      car.Drive(0.5, -0.5, 0);
+      car.Drive(0.7, 0.4, 0);
+      car.Drive(4.91, -1.5, 0);
+    }
+    else
+    {
+      car.Drive(1, -1, 0);
+      car.Drive(1, -1, 90);
+      car.Drive(6.3, -1, 0);
+    }
+    car.Drive(60, 0, 0);
+    TEST(FollowedApart(env), (rises, env.m_engine.GetTripLine()));
+    // While it brakes it is followed apart by its speed.
+    TEST_LESS_OR_EQUAL(std::stod(TripField(env, "offv")), 20, (rises));
+    // It drives on after refuelling: it maneuvers, its road is not lost.
+    car.Drive(2, 1, 0);
+    car.Drive(7, 0, 0);
+    TEST(FollowedApart(env), (rises, env.m_engine.GetTripLine()));
+    TEST(!env.m_engine.GetStatus().m_roadLost, (rises));
+    TEST(!env.m_delegate.HasEvent(Event::RoadLost), (rises));
+  }
+}
+
+UNIT_TEST(NoGps_Engine_CarLeavingRoadFastIsNotFollowedApart)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  // It turns right off the street at 30 km/h and drives on without braking, or brakes for 2 s and speeds up to
+  // 30 km/h again.
+  for (bool brakes : {false, true})
+  {
+    Env env(true /* inertial */, &roads);
+    MarkCar(env, 0);
+    BoxCar car(env, 0, false /* accelerometer */);
+    DriveAt30(car);
+    car.Drive(1, 0, 90);
+    if (brakes)
+    {
+      car.Drive(2, -1, 0);
+      car.Drive(2, 1, 0);
+    }
+    car.Drive(6, 0, 0);
+    TEST(!FollowedApart(env), (brakes, env.m_engine.GetTripLine()));
+    // The speed it has sped up to counts. Driving on without braking, its speed counts after it has driven 30 m off
+    // the roads: its road is lost first.
+    if (brakes)
+      TEST_GREATER(std::stod(TripField(env, "offv")), 20, ());
+    else
+      TEST(env.m_delegate.HasEvent(Event::RoadLost), ());
+  }
+}
+
+UNIT_TEST(NoGps_Engine_CarTurningLongOffRoadAfterDrivingFastIsNotFollowedApart)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  BoxCar car(env, 0, false /* accelerometer */);
+  car.Drive(25.0 / 3.6, 1, 0);
+  car.Drive(3, 0, 0);
+  // It leaves the street at 25 km/h without braking, and 2.5 s later turns slowly for 10 s, slowing down to 10 km/h.
+  // The speeds it reported before the turn count: on November 7 a car so was followed apart after the turn at the
+  // speed it had then.
+  car.Drive(1, 0, 45);
+  car.Drive(2.5, 0, 0);
+  car.Drive(10, -0.4, 15);
+  car.Drive(3, 0.3, 0);
+  TEST(!FollowedApart(env), (env.m_engine.GetTripLine()));
 }
 
 UNIT_TEST(NoGps_Engine_TurnStartedBeforeCarReportsSpeedIsNotLost)
@@ -3701,7 +4079,21 @@ UNIT_TEST(NoGps_Engine_BoxTurnedAroundDoesNotDriveEveryStartBack)
   TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 15);
 }
 
-UNIT_TEST(NoGps_Engine_BoxCalibrationForgetsAccelerometer)
+UNIT_TEST(NoGps_Engine_BoxCalibrationKeepsAccelerometer)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+  env.m_engine.Calibrate();
+  // The same box: a reverse right after the calibration is told backward.
+  car.Drive(2, -1, 0);
+  car.Drive(2, 0, 0);
+  TEST(env.m_engine.GetTripLine().find(" back=1") != std::string::npos, (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_Engine_BoxCalibrationTurnedBoxIsLearnedAnew)
 {
   // The trip line tells "boxacc=<correlation>/-" while the box accelerometer is not used.
   auto const accelUsed = [](Env & env)
@@ -3718,17 +4110,13 @@ UNIT_TEST(NoGps_Engine_BoxCalibrationForgetsAccelerometer)
   car.SpeedUpAndBrake();
   TEST(accelUsed(env), ());
 
-  // The box is put in turned around and calibrated: the direction learned before is forgotten.
+  // The box is put in turned around and calibrated: the direction learned before is kept, the check of the
+  // accelerometer against the car forgets it while driving, and it is learned the right way.
   env.m_engine.Calibrate();
-  TEST(!accelUsed(env), ());
+  TEST(accelUsed(env), ());
   car.m_accelSign = -1;
-  car.Drive(3, 1, 0);
-  TEST(env.m_engine.GetTripLine().find(" back=0") != std::string::npos, (env.m_engine.GetTripLine()));
-  car.Drive(3, -1, 0);
   car.Drive(3, 0, 0);
-  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 5);
-
-  // It is learned anew, the right way.
+  car.SpeedUpAndBrake();
   car.SpeedUpAndBrake();
   TEST(accelUsed(env), ());
   double const stoppedEast = East(env.Last().m_position);
@@ -3890,6 +4278,84 @@ UNIT_TEST(NoGps_Engine_CarStartingClearlyForwardAndBrakingStaysForward)
   car.m_minReportedKmh = 0;
   car.Drive(3, 0, 0);
   TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 3);
+}
+
+// The car creeps backward from a stand with a start too weak to tell its way, speeds up to |topAccel| * 5 s and brakes.
+// The stop pulls it forward, as on November 15 at 11:23:37.
+static void CreepBackAndBrake(BoxCar & car, double topAccel)
+{
+  car.m_minReportedKmh = 1;
+  car.Drive(4, -0.05, 0);
+  car.Drive(1, 0, 0);
+  car.Drive(5, topAccel, 0);
+  car.Drive(2, 0, 0);
+  car.m_minReportedKmh = 0;
+  car.Drive(-car.Speed() / 1.0, 1, 0);
+  car.Drive(3, 0, 0);
+}
+
+UNIT_TEST(NoGps_Engine_StopPullTurnsSegmentStartedWeakly)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+  double const startEast = car.East();
+
+  CreepBackAndBrake(car, -0.2);
+  TEST_LESS(car.East(), startEast - 5, ());
+  // The start was told forward, the stop tells that the car has backed.
+  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 3);
+}
+
+UNIT_TEST(NoGps_Engine_StopPullKeepsFastSegment)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+  double const startEast = car.East();
+
+  // 12 km/h is faster than a segment that is checked by its stop.
+  CreepBackAndBrake(car, -0.65);
+  TEST_LESS(car.East(), startEast - 5, ());
+  TEST_GREATER(East(env.Last().m_position), startEast, ());
+}
+
+UNIT_TEST(NoGps_Engine_StopPullKeepsClearForwardStart)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+
+  // The car starts clearly forward to 5 km/h and brakes over a curb that pulls it the other way.
+  car.Drive(1.5, 1, 0);
+  car.Drive(2, 0, 0);
+  car.m_slopeMps2 = 2.5;
+  car.Drive(1.5, -1, 0);
+  car.m_slopeMps2 = 0;
+  car.Drive(3, 0, 0);
+  // The pull moves the mark ahead a little. A segment turned would put it 10 m behind.
+  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 6);
+}
+
+UNIT_TEST(NoGps_Engine_StopPullChangesNothingWithoutAccelerometer)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, false /* accelerometer */);
+  car.SpeedUpAndBrake();
+  double const startEast = East(env.Last().m_position);
+
+  CreepBackAndBrake(car, -0.2);
+  TEST_GREATER(East(env.Last().m_position), startEast, ());
+  // Without the check the segment is not turned: the mark stays far ahead of the car that has backed.
+  TEST_GREATER(East(env.Last().m_position), car.East() + 5, ());
 }
 
 UNIT_TEST(NoGps_Engine_CarCrawlingAfterShortStopStaysForward)
@@ -4749,5 +5215,24 @@ UNIT_TEST(NoGps_SpeedLimitRoadFoundLater)
   TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, -1, ());
   env.m_env.m_map.m_roads = &env.m_roads;
   TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, 50, ());
+}
+UNIT_TEST(NoGps_Engine_TripLineHasRpm)
+{
+  Env env(true /* inertial */);
+  env.ConnectBox();
+  env.Drive(2000, 36, 0);
+  auto const status = [&env](std::string const & rpm)
+  {
+    env.m_engine.OnEsp32BleBytes(
+        BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,9,RUN," + rpm + ",14100,,"));
+    env.Drive(1000, 36, 0);
+  };
+  status("");
+  TEST(env.m_engine.GetTripLine().find(" rpm=") == std::string::npos, (env.m_engine.GetTripLine()));
+  status("2100");
+  TEST_EQUAL(TripField(env, "rpm"), "2100", ());
+  // The status without the rpm: it is not kept from the previous one.
+  status("");
+  TEST(env.m_engine.GetTripLine().find(" rpm=") == std::string::npos, (env.m_engine.GetTripLine()));
 }
 }  // namespace nogps_engine_tests

@@ -250,6 +250,21 @@ UNIT_TEST(NoGps_Esp32_BoxValues)
                         {V::PowerOns, "0"}}),
              ());
 
+  TEST_EQUAL(ParseBoxValues(*Parse(WithCrc("NGI,1,0.4.3,2026-11-18T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,"
+                                           "BLE OTA,5,R1"))),
+             BoxValues({{V::BuildDate, "2026-11-18T10:00"},
+                        {V::Chip, "esp32s3"},
+                        {V::Board, "s3zero"},
+                        {V::Revision, "R1"},
+                        {V::Id, "C47D"},
+                        {V::FlashSize, "4096"},
+                        {V::MaxImageSize, "1984"},
+                        {V::Slot, "ota_0"},
+                        {V::SlotState, "VALID"},
+                        {V::Abilities, "BLE OTA"},
+                        {V::PowerOns, "5"}}),
+             ());
+
   TEST(ParseBoxValues(*Parse("$NGA,18,OK*461D")).empty(), ());
 }
 
@@ -285,6 +300,13 @@ UNIT_TEST(NoGps_Esp32_ParsesLinesOfFirmware)
   TEST(!countingInfo->m_canStoreCarValues, ());
   TEST(countingInfo->m_powerOns, ());
   TEST_EQUAL(*countingInfo->m_powerOns, 12, ());
+  TEST(countingInfo->m_revision.empty(), ());
+  // A firmware that tells the hardware revision.
+  auto const revisionInfo = ParseInfo(*Parse(
+      WithCrc("NGI,1,0.4.3,2026-11-18T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES,5,R1")));
+  TEST(revisionInfo, ());
+  TEST_EQUAL(revisionInfo->m_revision, "R1", ());
+  TEST_EQUAL(*revisionInfo->m_powerOns, 5, ());
   // A firmware that keeps the values of the car.
   auto const carInfo = ParseInfo(
       *Parse(WithCrc("NGI,1,0.4.1,2026-11-15T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR,3")));
@@ -360,6 +382,17 @@ UNIT_TEST(NoGps_Esp32_ParsesPhones)
   // Which of the other phones changes the box is not known.
   TEST_EQUAL(changes(ParsePhones(reply("OK,BC:D0:74:A9:71:92|a||1;D0:56:FB:11:00:88|b||0;D0:56:FB:11:00:89|c||0,0"))),
              (std::vector<bool>{false, false, false}), ());
+
+  // The fifth part names the phone the box takes the changes from, also among 3 phones.
+  TEST_EQUAL(
+      changes(ParsePhones(reply("OK,BC:D0:74:A9:71:92|a||1|0;D0:56:FB:11:00:88|b||0|0;D0:56:FB:11:00:89|c||0|1,0"))),
+      (std::vector<bool>{false, false, true}), ());
+  TEST_EQUAL(
+      changes(ParsePhones(reply("OK,BC:D0:74:A9:71:92|a||1|1;D0:56:FB:11:00:88|b||0|0;D0:56:FB:11:00:89|c||0|0,1"))),
+      (std::vector<bool>{true, false, false}), ());
+  // The asking phone changes the box when none has sent HELLO.
+  TEST_EQUAL(changes(ParsePhones(reply("OK,BC:D0:74:A9:71:92|a||1|0;D0:56:FB:11:00:88|b||0|0,1"))),
+             (std::vector<bool>{true, false}), ());
 
   // A box without phones. The reply without the last field comes from nobody, it would change the box.
   auto const none = ParsePhones(reply("OK,,1"));

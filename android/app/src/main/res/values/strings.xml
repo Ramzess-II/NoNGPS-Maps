@@ -1039,6 +1039,10 @@
     <string name="nogps_car_current">Current car</string>
     <!-- State of a car in the list of the cars: when its box was connected the last time, e.g. "Last connected 2 hours ago" -->
     <string name="nogps_car_last_seen">Last connected %1$s</string>
+    <!-- State of a car in the list of the cars: its box is awake near the phone, the car may be switched to -->
+    <string name="nogps_car_nearby">Nearby</string>
+    <!-- Button in the row of a car in the list of the cars, next to "Nearby": the app takes this car and connects to its box -->
+    <string name="nogps_car_switch">Switch</string>
     <!-- Action for a car in the list of the cars: the app takes this car and connects to its box -->
     <string name="nogps_car_drive">Switch to this car</string>
     <!-- Title of the dialog that renames a car -->
@@ -1221,11 +1225,13 @@
     <string name="nogps_box_version">Ver %1$s</string>
     <!-- Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page -->
     <string name="nogps_calibration_snackbar">Calibrate the sensor box</string>
-    <!-- Switch in the Box sheet under Use GPS for the car: the app is the mock location app for other apps -->
-    <string name="nogps_share_position">Share the position with other apps</string>
-    <!-- Under the switch Share the position with other apps -->
-    <string name="nogps_share_position_hint">While GPS isn\'t used, Google Maps, Waze and other apps take the car\'s position from here. Once a minute GPS is checked for 10 s.</string>
-    <!-- Under the switch Share the position with other apps, tapped opens Developer options of Android -->
+    <!-- Settings item and the switch on its page: the app is the mock location app for other apps -->
+    <string name="nogps_share_position">Share position</string>
+    <!-- Share position page of Settings, above the switch -->
+    <string name="nogps_share_position_text">While GPS isn\'t used, the position worked out from the box is given to other apps (Google Maps, Waze and others) as the phone\'s location, through Android\'s mock location. Once a minute GPS is checked for 10 s.</string>
+    <!-- Share position page of Settings: how to allow the app, the names are the items of Android Developer options -->
+    <string name="nogps_share_position_how">To turn it on, open Developer options, tap Select mock location app and pick NonGPS Maps.</string>
+    <!-- Share position page of Settings, under the switch while the app isn't the mock location app, tapped opens Developer options of Android -->
     <string name="nogps_share_position_needs_mock">Pick NonGPS Maps as the mock location app in Developer options. Tap to open them.</string>
     <!-- Under the distance left in navigation: the distance driven since navigation started, e.g. 12.4 km covered -->
     <string name="nogps_nav_covered">%s covered</string>
@@ -1275,6 +1281,30 @@
     <string name="nogps_speed_table_hint">The car reports its speed slightly wrong because of the tyres. The app corrects it to count the distance without GPS.</string>
     <!-- What the user does to calibrate the speed table, shown below nogps_speed_table_hint -->
     <string name="nogps_speed_table_action">To calibrate, drive with good GPS about 300 m in each range.</string>
+    <!-- Bar next to the speed on the map: accurate GPS measures the error of the car speed in this range now, e.g. "Calibrating 50–60 km/h" -->
+    <string name="nogps_speed_hint_calibrating">Calibrating %1$d–%2$d km/h</string>
+    <!-- Bar next to the speed on the map: GPS has not measured the error of the car speed in this range, and there is no accurate GPS now -->
+    <string name="nogps_speed_hint_not_calibrated">%1$d–%2$d km/h not calibrated</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_calibrating -->
+    <string name="nogps_speed_hint_keep_gps">Vital for driving without GPS: keep GPS on</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_not_calibrated -->
+    <string name="nogps_speed_hint_turn_gps_on">Vital for driving without GPS: turn GPS on</string>
+    <!-- Bar next to the speed on the map: GPS has just measured the error of the car speed in this range -->
+    <string name="nogps_speed_hint_done">%1$d–%2$d km/h calibrated!</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_done: the speed ranges measured, of all, e.g. "5 of 14 speed ranges" -->
+    <string name="nogps_speed_hint_done_count">%1$d of %2$d speed ranges</string>
+    <!-- Bar next to the speed on the map: GPS has measured all the speeds of 5–60 km/h -->
+    <string name="nogps_speed_hint_city">City speeds calibrated!</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_city -->
+    <string name="nogps_speed_hint_city_hint">5–60 km/h: ready for the city without GPS</string>
+    <!-- Bar next to the speed on the map: GPS has measured all the speeds of 5–100 km/h -->
+    <string name="nogps_speed_hint_out_of_town">Out-of-town speeds calibrated!</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_out_of_town -->
+    <string name="nogps_speed_hint_out_of_town_hint">5–100 km/h: ready for highways without GPS</string>
+    <!-- Bar next to the speed on the map: GPS has measured all the speed ranges -->
+    <string name="nogps_speed_hint_full">Speed fully calibrated!</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_full: the number of all the speed ranges -->
+    <string name="nogps_speed_hint_full_hint">All %d ranges: ready to drive without GPS</string>
     <!-- Row of the Box sheet: how late the car tells its speed, the value is on the right -->
     <string name="nogps_speed_lag">Speed delay</string>
     <!-- Value of the speed delay row of the Box sheet, in seconds, e.g. "1.2 s" -->
@@ -1361,6 +1391,8 @@
     <string name="nogps_box_value_chip">Chip</string>
     <!-- Row of the Box values page: the board of the box, e.g. s3zero -->
     <string name="nogps_box_value_board">Board</string>
+    <!-- Row of the Box values page: the hardware revision of the box board, e.g. R1 -->
+    <string name="nogps_box_value_revision">Hardware revision</string>
     <!-- Row of the Box values page: the four characters of the box name -->
     <string name="nogps_box_value_id">ID</string>
     <!-- Row of the Box values page: the size of the flash memory of the box -->

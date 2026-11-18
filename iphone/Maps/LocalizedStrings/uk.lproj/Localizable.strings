@@ -1408,6 +1408,12 @@
 /* State of a car in the list of the cars: when its box was connected the last time, e.g. "Last connected 2 hours ago" */
 "nogps_car_last_seen" = "Останнє підключення %1$@";
 
+/* State of a car in the list of the cars: its box is awake near the phone, the car may be switched to */
+"nogps_car_nearby" = "Поруч";
+
+/* Button in the row of a car in the list of the cars, next to "Nearby": the app takes this car and connects to its box */
+"nogps_car_switch" = "Перемкнути";
+
 /* Action for a car in the list of the cars: the app takes this car and connects to its box */
 "nogps_car_drive" = "Перемкнутися на це авто";
 
@@ -1721,6 +1727,42 @@
 /* What the user does to calibrate the speed table, shown below nogps_speed_table_hint */
 "nogps_speed_table_action" = "Для калібрування проїдьте з добрим GPS близько 300 м у кожному діапазоні.";
 
+/* Bar next to the speed on the map: accurate GPS measures the error of the car speed in this range now, e.g. "Calibrating 50–60 km/h" */
+"nogps_speed_hint_calibrating" = "Калібрується %1$d–%2$d км/год";
+
+/* Bar next to the speed on the map: GPS has not measured the error of the car speed in this range, and there is no accurate GPS now */
+"nogps_speed_hint_not_calibrated" = "%1$d–%2$d км/год не відкалібровано";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_calibrating */
+"nogps_speed_hint_keep_gps" = "Важливо для їзди без GPS: тримайте GPS увімкненим";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_not_calibrated */
+"nogps_speed_hint_turn_gps_on" = "Важливо для їзди без GPS: увімкніть GPS";
+
+/* Bar next to the speed on the map: GPS has just measured the error of the car speed in this range */
+"nogps_speed_hint_done" = "%1$d–%2$d км/год відкалібровано!";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_done: the speed ranges measured, of all, e.g. "5 of 14 speed ranges" */
+"nogps_speed_hint_done_count" = "%1$d з %2$d діапазонів швидкості";
+
+/* Bar next to the speed on the map: GPS has measured all the speeds of 5–60 km/h */
+"nogps_speed_hint_city" = "Міські швидкості відкалібровано!";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_city */
+"nogps_speed_hint_city_hint" = "5–60 км/год: готово до міста без GPS";
+
+/* Bar next to the speed on the map: GPS has measured all the speeds of 5–100 km/h */
+"nogps_speed_hint_out_of_town" = "Заміські швидкості відкалібровано!";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_out_of_town */
+"nogps_speed_hint_out_of_town_hint" = "5–100 км/год: готово до траси без GPS";
+
+/* Bar next to the speed on the map: GPS has measured all the speed ranges */
+"nogps_speed_hint_full" = "Швидкість повністю відкалібровано!";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_full: the number of all the speed ranges */
+"nogps_speed_hint_full_hint" = "Усі %d діапазонів: можна їхати без GPS";
+
 /* Row of the Box sheet: how late the car tells its speed, the value is on the right */
 "nogps_speed_lag" = "Запізнення швидкості";
 
@@ -1834,6 +1876,9 @@
 
 /* Row of the Box values page: the board of the box, e.g. s3zero */
 "nogps_box_value_board" = "Плата";
+
+/* Row of the Box values page: the hardware revision of the box board, e.g. R1 */
+"nogps_box_value_revision" = "Ревізія плати";
 
 /* Row of the Box values page: the four characters of the box name */
 "nogps_box_value_id" = "ID";

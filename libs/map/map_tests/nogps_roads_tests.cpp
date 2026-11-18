@@ -143,6 +143,21 @@ UNIT_TEST(NoGps_TurnMatcher_NotFartherThanCalculationIsEverWrong)
   TEST(!TurnMatcher::FindCrossing(roads, At(30, 0), 90, 0, 140), ());
 }
 
+UNIT_TEST(NoGps_TurnMatcher_FarSearchAfterLongWay)
+{
+  // A single crossing 150 m ahead: the along error of 25 km of way (190 m) reaches it, that of 5 km (50 m) doesn't.
+  PieceRoads roads({{-300, 0, 600, 0}, {150, -300, 150, 300}}, {{150, 0}});
+  TEST(!TurnMatcher::FindCrossing(roads, At(0, 0), 90, 0, 140, nullptr, false, nullptr, 0, 0, nullptr, 50), ());
+  auto const crossing =
+      TurnMatcher::FindCrossing(roads, At(0, 0), 90, 0, 140, nullptr, false, nullptr, 0, 0, nullptr,
+                                DeadReckoning::kBaseAccuracyM + 25000 * DeadReckoning::kAlongErrorPerMeter);
+  TEST(crossing, ());
+  TestAt(150, 0, *crossing);
+  // Never farther than kMaxFarSearchM.
+  PieceRoads far({{-300, 0, 900, 0}, {400, -300, 400, 300}}, {{400, 0}});
+  TEST(!TurnMatcher::FindCrossing(far, At(0, 0), 90, 0, 140, nullptr, false, nullptr, 0, 0, nullptr, 1000), ());
+}
+
 UNIT_TEST(NoGps_TurnMatcher_FindsFarCrossings)
 {
   // The street going east has a side street going north at 100 m. The mark is 46 m past it when the car turns north,

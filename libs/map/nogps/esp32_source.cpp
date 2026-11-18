@@ -64,6 +64,7 @@ void Esp32Source::Stop()
   m_dataTimesMs.clear();
   m_hasLast = false;
   m_lastDataMs.reset();
+  m_speedKmh = -1;
   m_wakingLinkMs.reset();
   m_info.reset();
   m_carSilent = false;
@@ -315,8 +316,8 @@ void Esp32Source::ForgetPhoneRequests()
 void Esp32Source::OnInfo(esp32::Info const & info)
 {
   if (!m_info || m_info->m_firmware != info.m_firmware)
-    LOG(LINFO,
-        ("Box", info.m_id, "firmware =", info.m_firmware, info.m_chip, info.m_board, "updates =", info.m_canUpdate));
+    LOG(LINFO, ("Box", info.m_id, "firmware =", info.m_firmware, info.m_chip, info.m_board, info.m_revision,
+                "updates =", info.m_canUpdate));
   bool const phonesNew = info.m_hasPhones && (!m_info || !m_info->m_hasPhones);
   m_info = info;
   m_update.OnBoxFirmware(info.m_firmware);
@@ -475,6 +476,10 @@ void Esp32Source::OnLine(std::string_view text)
     if (carInfo->m_boxMillivolts >= 0 && carInfo->GetReferenceMillivolts() >= 0)
       m_voltageMismatch = carInfo->m_voltageMismatch;
     m_carInfo = carInfo;
+    // The engine speed on the move is for the check of the speed it gives: the status comes less often than the
+    // speed, this line tells how often.
+    if (carInfo->m_rpm >= 0 && m_speedKmh > 0 && IsConnected())
+      LOG(LINFO, ("RPM", carInfo->m_rpm, "speed =", m_speedKmh));
   }
   auto const obdState = esp32::ParseObdState(*fields);
   if (obdState && obdState != m_obdState)
@@ -505,6 +510,7 @@ void Esp32Source::OnData(esp32::Data const & data)
   while (now - m_dataTimesMs.front() >= kDataTimeoutMs)
     m_dataTimesMs.pop_front();
   m_flags = data.m_flags;
+  m_speedKmh = data.m_speedKmh;
   if (data.m_speedKmh >= 0)
     m_listener.OnSpeed(data.m_speedKmh, now - data.m_speedAgeMs);
   // For the trip log only, see AccelLog.
