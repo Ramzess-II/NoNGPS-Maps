@@ -974,8 +974,10 @@
     <string name="nogps_gps_lost_auto">GPS зник або збився, увімкнено ручний режим</string>
     <!-- Status of the position: the mark of the car stands and waits for the user -->
     <string name="nogps_status_road_lost">Дорогу втрачено</string>
-    <!-- Second line of the status "Road lost" -->
-    <string name="nogps_status_road_lost_hint">натисніть кнопку з пальцем і торкніться дороги, де ви</string>
+    <!-- Second line of the status "Road lost": a tap places the mark by GPS -->
+    <string name="nogps_status_road_lost_gps_hint">натисніть, щоб поставити мітку за GPS</string>
+    <!-- Toast when a tap on the status "Road lost" could not place the mark by GPS: the next tap on the map does -->
+    <string name="nogps_gps_mark_failed">GPS не може поставити мітку: торкніться дороги, де ви</string>
     <!-- State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth" -->
     <string name="nogps_box_bt_searching">шукаю блок через Bluetooth</string>
     <!-- State of the sensor box, shown after its name: the "Nearby devices" permission of Android 12+ is not given -->
