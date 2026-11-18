@@ -294,6 +294,20 @@ UNIT_TEST(NoGps_Engine_PlaceMarkByGpsRefusesBadFix)
   TEST(!env.m_engine.PlaceMarkByGps(), ());
 }
 
+UNIT_TEST(NoGps_Engine_PlaceMarkByGpsTakesFreshFusedFixWhenGpsIsOld)
+{
+  Env env(false /* inertial */);
+  MarkCar(env, 0);
+  env.m_engine.OnFix(GpsAt(env.m_clock, 60, 3, {}, {}, 4));
+  env.m_clock.Advance(Engine::kGpsMaxAgeMs + 5000);
+  // The GPS has stopped in a tunnel, the fused provider still gives a fix.
+  Fix fused = GpsAt(env.m_clock, 62, 3, {}, {}, 8);
+  fused.m_provider = Provider::Fused;
+  env.m_engine.OnFix(fused);
+  TEST(env.m_engine.PlaceMarkByGps(), ());
+  TestAlmostEqualAbs(East(env.Last().m_position), 62, 0.5);
+}
+
 UNIT_TEST(NoGps_Engine_PlaceMarkByGpsSnapsInaccurateFixToRoadFartherThanAccurateOne)
 {
   // The fix is 80 m from the street the car drives along.

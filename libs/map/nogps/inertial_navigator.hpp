@@ -530,6 +530,13 @@ public:
   bool IsRoadLost() const { return m_roadLost; }
   /// \returns meters the car has driven since the road was lost, the mark stands where it was.
   double GetRoadLostDrivenM() const { return m_roadLostDrivenM; }
+  // How far the car has driven from the mark while the user is needed, 0 while the mark follows it.
+  double GetUserNeededDrivenM() const
+  {
+    if (m_roadLost)
+      return m_roadLostDrivenM;
+    return m_offRoadCar && m_fastWithoutRoad ? m_offRoadM : 0;
+  }
   /// \returns true if the mark waits for the user to put it on a road: the road is lost, or the car followed apart
   /// drives fast and no road goes its way around.
   bool IsUserNeeded() const { return m_roadLost || (m_offRoadCar && m_fastWithoutRoad); }

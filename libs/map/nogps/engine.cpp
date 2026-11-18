@@ -1622,7 +1622,9 @@ bool Engine::PlaceMarkByGps()
     LOG(LINFO, ("GPS can't place the mark:", why));
     return false;
   };
-  auto const & fix = m_rawGps ? m_rawGps : m_rawFused;
+  // An old GPS fix does not hide a fresh fused one: the newer of the two is taken.
+  auto const & fix = m_rawGps && m_rawFused ? (m_rawGps->m_timeMs >= m_rawFused->m_timeMs ? m_rawGps : m_rawFused)
+                                            : (m_rawGps ? m_rawGps : m_rawFused);
   if (!fix)
     return fail("no fix");
   if (m_gpsDisabled)
@@ -1635,7 +1637,7 @@ bool Engine::PlaceMarkByGps()
     return fail("the fix accuracy is " + std::to_string(std::lround(fix->m_accuracyM)) + " m");
   if (!m_savedLocation)
     return fail("no mark");
-  double const drivenM = m_inertial && m_inertial->IsRoadLost() ? m_inertial->GetRoadLostDrivenM() : 0;
+  double const drivenM = m_inertial ? m_inertial->GetUserNeededDrivenM() : 0;
   double const maxM = drivenM + m_savedLocation->m_accuracyM + fix->m_accuracyM + kGpsMarkMarginM;
   double const awayM = Distance(m_savedLocation->m_position, fix->m_position);
   if (awayM > maxM)
