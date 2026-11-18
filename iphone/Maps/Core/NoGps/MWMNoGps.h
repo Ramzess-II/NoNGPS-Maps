@@ -327,6 +327,10 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly) BOOL speedLagMeasured;
 @property(nonatomic, readonly) MWMNoGpsCalibrationState calibration;
 @property(nonatomic, readonly) NSInteger calibrationProgress;
+/// The core waits for the car to stand still to calibrate the box, or calibrates it: see +calibrateWhenStill.
+@property(nonatomic, readonly) BOOL calibrationArmed;
+/// The sensor box reports that it stands still.
+@property(nonatomic, readonly) BOOL boxStill;
 /// The user has not seen the offer of bundledFirmware: show it and call +firmwareOfferShown.
 @property(nonatomic, readonly) BOOL firmwareOfferPending;
 /// The sensor box has been powered on since the user calibrated it: it may stand in another way now.
@@ -414,6 +418,13 @@ NS_SWIFT_NAME(NoGps)
 /// NO.
 + (void)searchNewBox:(BOOL)newOnly;
 + (void)calibrate;
+/// Calibrates the box as soon as the car stands still, see MWMNoGpsStatus.calibrationArmed. The core disarms itself
+/// after the calibration, with a lost link or 2 min without a still car.
++ (void)calibrateWhenStill;
++ (void)cancelCalibrateWhenStill;
+/// The shake of the box in the last 3 s, the oldest first, as NSNumber in percent of the limit under which the box
+/// counts the car still. Empty without a box or with an old firmware.
++ (NSArray<NSNumber *> *)boxShake;
 + (void)clearSpeedCalibration;
 /// Sends the firmware of MWMNoGpsStatus.bundledFirmware to the box.
 + (void)startFirmwareUpdate;

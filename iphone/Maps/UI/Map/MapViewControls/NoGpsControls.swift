@@ -64,6 +64,7 @@ final class NoGpsControls: NSObject {
   private let flagRecorder = NoGpsFlagRecorder()
   private let speedView = NoGpsSpeedView()
   private let speedHint = NoGpsSpeedHintView()
+  private let calibrationBar = NoGpsCalibrationBarView()
   private let sprintView = NoGpsSprintView()
   private var sprintBottom = NSLayoutConstraint()
   private var sprintCenterX = NSLayoutConstraint()
@@ -184,6 +185,8 @@ final class NoGpsControls: NSObject {
     // Under the speed: it slides out of it.
     speedHint.addTarget(self, action: #selector(speedHintTapped), for: .touchUpInside)
     superview.addSubview(speedHint)
+    calibrationBar.addTarget(self, action: #selector(calibrationBarTapped), for: .touchUpInside)
+    superview.addSubview(calibrationBar)
     superview.addSubview(speedView)
     superview.addSubview(sprintView)
     speedEdge = Self.isRTL ? speedView.rightAnchor.constraint(equalTo: superview.leftAnchor)
@@ -205,6 +208,9 @@ final class NoGpsControls: NSObject {
       Self.isRTL ? speedHint.rightAnchor.constraint(equalTo: speedView.centerXAnchor)
         : speedHint.leftAnchor.constraint(equalTo: speedView.centerXAnchor),
       speedHint.bottomAnchor.constraint(equalTo: speedView.bottomAnchor),
+      Self.isRTL ? calibrationBar.rightAnchor.constraint(equalTo: speedView.centerXAnchor)
+        : calibrationBar.leftAnchor.constraint(equalTo: speedView.centerXAnchor),
+      calibrationBar.bottomAnchor.constraint(equalTo: speedView.bottomAnchor),
       calibrationBottom, calibrationCenterX, calibrationMaxWidth, sprintBottom, sprintCenterX,
       calibrationButton.heightAnchor.constraint(greaterThanOrEqualToConstant: Constants.statusMinHeight),
       // The panel goes on to the edge of the screen, under the safe area too.
@@ -242,6 +248,7 @@ final class NoGpsControls: NSObject {
       self.speedBottom.constant = area.maxY - Constants.speedMargin
       // From the middle of the speed to the other edge of the free area.
       self.speedHint.setFullWidth(area.width - 2 * Constants.speedMargin - NoGpsSpeedView.side / 2)
+      self.calibrationBar.setFullWidth(area.width - 2 * Constants.speedMargin - NoGpsSpeedView.side / 2)
       // In the middle at the bottom, clear of the speed in the corner.
       let speedWidth = self.speedView.isHidden ? 0 : NoGpsSpeedView.side + 2 * Constants.speedMargin
       self.calibrationBottom.constant = area.maxY - Constants.speedMargin
@@ -333,7 +340,9 @@ final class NoGpsControls: NSObject {
     let status = NoGps.status()
     // Once a second: the status is too heavy for every position.
     speedView.update(status: status, location: LocationManager.lastLocation())
-    speedHint.update(status: status, speedShown: !speedView.isHidden)
+    calibrationBar.update(status: status, speedShown: !speedView.isHidden)
+    // The calibration bar of the box comes first: both slide out of the speed.
+    speedHint.update(status: status, speedShown: !speedView.isHidden && !calibrationBar.isShown)
     // The event came when the app was not active: the offer waits for the user.
     if status.firmwareOfferPending {
       offerFirmwareUpdate()
@@ -352,8 +361,10 @@ final class NoGpsControls: NSObject {
     Self.blink(statusButton, status.roadLost)
     // It replaces the offer to calibrate: an alert is easy to dismiss and forget.
     let needsCalibration = NoGpsBoxPage.needsCalibration(status)
-    calibrationButton.isHidden = !needsCalibration
-    Self.blink(calibrationButton, needsCalibration, duration: Constants.calibrationBlinkDuration,
+    // The bar next to the speed is the calibration now, the warning comes back when it ends without a calibration.
+    let warn = needsCalibration && !calibrationBar.isShown
+    calibrationButton.isHidden = !warn
+    Self.blink(calibrationButton, warn, duration: Constants.calibrationBlinkDuration,
                opacity: Constants.calibrationBlinkOpacity)
 
     // The car is marked by hand only while the position is not from GPS. The button is blue while the next tap on the
@@ -413,6 +424,20 @@ final class NoGpsControls: NSObject {
 
   @objc
   private func calibrationTapped() {
+    // The bar slides out of the speed: without it the user calibrates on the page.
+    guard !speedView.isHidden else {
+      NoGpsBoxSheet.show(.calibration)
+      return
+    }
+    NoGps.calibrateWhenStill()
+    refresh()
+  }
+
+  @objc
+  private func calibrationBarTapped() {
+    NoGps.cancelCalibrateWhenStill()
+    calibrationBar.cancel()
+    refresh()
     NoGpsBoxSheet.show(.calibration)
   }
 

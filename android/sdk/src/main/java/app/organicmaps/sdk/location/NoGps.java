@@ -414,6 +414,12 @@ public final class NoGps
     int calibration;
     @Keep
     public int calibrationProgress;
+    // The core waits for the car to stand still to calibrate the box, or calibrates it, see nativeCalibrateWhenStill().
+    @Keep
+    public boolean calibrationArmed;
+    // The sensor box reports that it stands still.
+    @Keep
+    public boolean boxStill;
     @Keep
     public boolean hasInertialPosition;
     // The mark waits for the user to put it on a road: the road is lost.
@@ -862,6 +868,21 @@ public final class NoGps
   public static native void nativeSetEsp32Source(boolean esp32);
 
   public static native void nativeCalibrate();
+
+  /**
+   * Calibrates the box as soon as the car stands still, see {@link Status#calibrationArmed}. The core disarms itself
+   * after the calibration, with a lost link or 2 min without a still car.
+   */
+  public static native void nativeCalibrateWhenStill();
+
+  public static native void nativeCancelCalibrateWhenStill();
+
+  /**
+   * @return the shake of the box in the last 3 s, the oldest first, in percent of the limit under which the box counts
+   *         the car still. Empty without a box or with an old firmware.
+   */
+  @NonNull
+  public static native int[] nativeGetBoxShake();
 
   /**
    * Sends the firmware that comes with the application to the sensor box, see {@link Status#bundledFirmware}.

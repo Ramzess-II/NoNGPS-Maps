@@ -133,12 +133,14 @@ class SpeedHintView
 
   /**
    * Once a second, after the speed is updated.
+   *
+   * @param calibrationBarShown the bar of the calibration of the box is in its place.
    */
-  void update(@NonNull NoGps.Status status)
+  void update(@NonNull NoGps.Status status, boolean calibrationBarShown)
   {
     if (mCelebrating)
       return;
-    final boolean shown = SpeedHints.isShown(status) && mSpeed.getVisibility() == View.VISIBLE;
+    final boolean shown = SpeedHints.isShown(status) && mSpeed.getVisibility() == View.VISIBLE && !calibrationBarShown;
     if (shown)
     {
       final Context context = mBar.getContext();

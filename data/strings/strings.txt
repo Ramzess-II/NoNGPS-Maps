@@ -46876,6 +46876,34 @@ en = Calibrate the sensor box
 ru = Откалибруйте блок датчиков
 uk = Відкалібруйте блок датчиків
 
+[nogps_calibrate_still_hold]
+comment = Orange bar next to the speed on the map after the tap on nogps_calibration_snackbar: the box is calibrated when the car stands still
+tags = android-app,apple-maps
+en = Hold still: no one gets in or out
+ru = Не двигайтесь: никто не садится и не выходит
+uk = Не рухайтесь: ніхто не сідає й не виходить
+
+[nogps_calibrate_still_calibrating]
+comment = Orange bar next to the speed on the map while the box calibrates
+tags = android-app,apple-maps
+en = Calibrating the sensor box
+ru = Калибруем блок датчиков
+uk = Калібруємо блок датчиків
+
+[nogps_calibrate_still_done]
+comment = Green bar next to the speed on the map for 3 seconds after the box is calibrated
+tags = android-app,apple-maps
+en = Sensor box calibrated
+ru = Блок датчиков откалиброван
+uk = Блок датчиків відкалібровано
+
+[nogps_calibrate_still_moved]
+comment = Orange bar next to the speed on the map: the car moved during the calibration, it starts again when the car is still
+tags = android-app,apple-maps
+en = The car moved
+ru = Машина двигалась
+uk = Машина рухалась
+
 [nogps_share_position]
 comment = Settings item and the switch on its page: the app is the mock location app for other apps
 tags = android-app

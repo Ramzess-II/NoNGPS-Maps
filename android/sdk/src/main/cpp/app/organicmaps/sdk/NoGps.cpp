@@ -298,6 +298,24 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeCalibrate(JNIEnv *,
   NoGpsEngine().Calibrate();
 }
 
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeCalibrateWhenStill(JNIEnv *, jclass)
+{
+  NoGpsEngine().CalibrateWhenStill();
+}
+
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeCancelCalibrateWhenStill(JNIEnv *, jclass)
+{
+  NoGpsEngine().CancelCalibrateWhenStill();
+}
+
+JNIEXPORT jintArray Java_app_organicmaps_sdk_location_NoGps_nativeGetBoxShake(JNIEnv * env, jclass)
+{
+  auto const shake = NoGpsEngine().GetBoxShake();
+  jintArray result = env->NewIntArray(static_cast<jsize>(shake.size()));
+  env->SetIntArrayRegion(result, 0, static_cast<jsize>(shake.size()), shake.data());
+  return result;
+}
+
 JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeStartFirmwareUpdate(JNIEnv *, jclass)
 {
   NoGpsEngine().StartFirmwareUpdate();
@@ -450,6 +468,8 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsField(env, out, "speedLagMeasured", status.m_speedLagMeasured);
   SetNoGpsField(env, out, "calibration", static_cast<int>(status.m_calibration));
   SetNoGpsField(env, out, "calibrationProgress", status.m_calibrationProgress);
+  SetNoGpsField(env, out, "calibrationArmed", status.m_calibrationArmed);
+  SetNoGpsField(env, out, "boxStill", status.m_boxStill);
   SetNoGpsField(env, out, "hasInertialPosition", status.m_hasInertialPosition);
   SetNoGpsField(env, out, "roadLost", status.m_roadLost);
   SetNoGpsField(env, out, "otherMarks", status.m_otherMarks);

@@ -154,4 +154,6 @@
   <color name="speed_hint_accent">#FF2456E0</color>
   <color name="speed_hint_done">#FF15803D</color>
   <color name="speed_hint_gold">#FFFFD54A</color>
+  <!-- The bar of the calibration of the sensor box next to the speed, white text on it: systemOrange of iOS. -->
+  <color name="calibration_bar_accent">#FFFF9500</color>
 </resources>
