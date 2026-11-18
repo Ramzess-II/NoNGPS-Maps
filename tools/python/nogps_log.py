@@ -107,6 +107,7 @@ EVENT_KINDS = [
     ('road', 'back on a road', r'drives along a road again', None),
     ('road', 'put on a road', r'it is put there$', None),
     ('road', 'bend', r'^Bend: ', None),
+    ('road', 'gentle bend', r'^Gentle bend: ', None),
     ('road', 'loop', r'^Loop: ', None),
     ('road', 'other marks dropped', r'^Other marks? (dropped|not added)', None),
     ('road', 'car started', r'^The car has started', None),

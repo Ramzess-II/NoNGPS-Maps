@@ -1472,6 +1472,59 @@ UNIT_TEST(NoGps_Engine_MarkWaitingAtRoundaboutOnGentleBend)
   DriveAroundRoundaboutToExit(env, 32);
 }
 
+// A highway going east: 1 km straight, 600 m bending to the right by 12 degrees, 1 km straight, as pieces of 20 m.
+// \param points the starts of the pieces if needed.
+std::vector<PieceRoads::Piece> HighwayPieces(std::vector<std::pair<double, double>> * points = nullptr)
+{
+  std::vector<PieceRoads::Piece> pieces;
+  double x = -100;
+  double y = 0;
+  double bearing = 90;
+  for (int i = 0; i < 135; ++i)
+  {
+    // The bend is the pieces from 1000 m to 1600 m from the start of the car, which is at 0.
+    double const from = -100 + i * 20.0;
+    if (from >= 1000 && from < 1600)
+      bearing += 12.0 / 30;
+    double const nx = x + 20 * std::sin(math::DegToRad(bearing));
+    double const ny = y + 20 * std::cos(math::DegToRad(bearing));
+    pieces.push_back({x, y, nx, ny});
+    if (points)
+      points->emplace_back(x, y);
+    x = nx;
+    y = ny;
+  }
+  return pieces;
+}
+
+UNIT_TEST(NoGps_Engine_GentleBendRemovesAlongError)
+{
+  std::vector<std::pair<double, double>> points;
+  PieceRoads roads(HighwayPieces(&points), {});
+  Env env(true /* inertial */, &roads);
+  int driven = 0;
+  // The car stands at 0 and is marked there.
+  env.m_engine.SetManualMode(true);
+  env.Drive(500, 0, 0);
+  TEST(env.m_engine.PlaceMarkByTap(At(0, 3)), ());
+  // 50 s to the bend at 72 km/h, 30 s along it, 20 s after it.
+  env.Drive(50'000, 72, 0);
+  auto const alongError = [&]()
+  {
+    // The car is |driven| m from where it stood, the road starts 100 m before.
+    return std::hypot(East(env.Last().m_position) - points[(driven + 100) / 20].first,
+                      North(env.Last().m_position) - points[(driven + 100) / 20].second);
+  };
+  driven = 1000;
+  // The mark runs ahead of the car at the start of the bend: the box speed is taken as 1.2 s old.
+  double const before = alongError();
+  TEST_GREATER(before, 15.0, ());
+  env.Drive(30'000, 72, 0.4);
+  env.Drive(20'000, 72, 0);
+  driven = 2000;
+  TEST_LESS(alongError(), 15.0, (env.m_engine.GetTripLine()));
+}
+
 UNIT_TEST(NoGps_Engine_StopsCarThatLeftRoads)
 {
   Env env(true /* inertial */);

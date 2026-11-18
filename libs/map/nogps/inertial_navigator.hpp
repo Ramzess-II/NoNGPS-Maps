@@ -151,6 +151,23 @@ public:
   static int constexpr kSlowBendCount = 3;
   static double constexpr kSlowBendAgreeM = 3;
   static double constexpr kSlowBendDriveM = 20;
+  // A highway bends by 3-9 degrees per 150 m, the bends above don't see it and the distance error is never reset
+  // there. Where they tell nothing, the rotation of the car over a long way is compared with the road, smoothed so
+  // that a lane change is gone and the arc stays. The comparison takes hundreds of road lookups: it is rare.
+  static int64_t constexpr kGentleBendMatchIntervalMs = 5000;
+  static double constexpr kGentleWindowM = 800;
+  static double constexpr kGentleStepM = 10;
+  static double constexpr kGentleSmoothM = 100;
+  static double constexpr kGentleMinBendDeg = 6;
+  // A larger rotation within the window is a turn, as the road is not followed through a sharper one, see RoadWalker.
+  static double constexpr kGentleMaxBendDeg = 45;
+  static double constexpr kGentleMaxDiffDeg = 2;
+  static double constexpr kGentleClearAsideM = 40;
+  // A bend of 12 degrees per 600 m shifted by 40 m differs by 0.25 degrees: the ordinary floor of 1 would never pass.
+  static double constexpr kGentleMinAsideDiffDeg = 0.1;
+  // A shift this large moves the mark only if two comparisons in a row tell the same place within kGentleAgreeM.
+  static double constexpr kGentleBigShiftM = 20;
+  static double constexpr kGentleAgreeM = 10;
   // What the accelerometer has added to the position fades away in this time.
   static double constexpr kAccelFadeSec = 10;
   // A turn at a crossing rotates the car faster than a bend of a road.
@@ -635,6 +652,12 @@ private:
   // \returns the branch the car drives along by its heading if the road forks at the position.
   std::optional<RoadPoint> ChooseBranch(ms::LatLon const & position, double headingDeg);
   void MatchBend();
+  // Like MatchBend() with the long window, for the roads that bend gently.
+  void MatchGentleBend();
+  // Confirms the position or moves the mark along the road by what the bends told.
+  // \param aheadM how far the mark is ahead of the car, see BendMatcher::Match().
+  // \param gentle the bend was told by the long window: a large shift needs two comparisons, see kGentleBigShiftM.
+  void ApplyBend(double aheadM, bool gentle);
   // \returns true if the car has been moved to where the way of a turn around lies on the roads, see PathMatcher.
   bool MatchLoop(double toBearingDeg);
   // \returns true if the bends of a slow car have told the same place enough times, see kSlowBendCount.
@@ -700,6 +723,7 @@ private:
   // Shows the car on the other road |index|, keeping the road it was shown on as an other one if |keepShown|.
   void TakeOtherMark(size_t index, bool keepShown, std::string const & why);
   // \returns how far across |bearingDeg| the places are apart.
+  static BendMatcher::Params GentleBendParams();
   static double AsideM(ms::LatLon const & a, ms::LatLon const & b, double bearingDeg);
   // Drops the places of a turn the way driven does not lie on the roads at while it lies at another one, see
   // PathMatcher; the chosen one too. |position| is where the car is if it has no road. \returns true if the way was
@@ -763,9 +787,20 @@ private:
   SpeedScale m_speedScale;
   TurnSignChecker m_turnSignChecker;
   BendMatcher m_bendMatcher;
+  BendMatcher m_gentleBendMatcher{GentleBendParams()};
+  int64_t m_lastGentleBendMatchMs = 0;
+  // Where a gentle bend that told nothing was logged: once per window.
+  std::optional<double> m_gentleWhyNotPathM;
+  // The last place told by the gentle bends of the same position, see kGentleBigShiftM.
+  struct GentleBend
+  {
+    int m_fixCount = 0;
+    double m_aheadM = 0;
+  };
+  std::optional<GentleBend> m_lastGentleBend;
   PathMatcher m_pathMatcher;
   int64_t m_lastBendMatchMs = 0;
-  // Where a bend that told nothing was logged: once per BendMatcher::kWindowM.
+  // Where a bend that told nothing was logged: once per window of the matcher.
   std::optional<double> m_bendWhyNotPathM;
   // The places told by the bends of a slow car since the position was set.
   struct SlowBends

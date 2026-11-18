@@ -42,6 +42,7 @@ void InertialNavigator::Start()
   // The source may have changed: a sensor box with another gyroscope or the phone.
   m_turnSignChecker = {};
   m_bendMatcher = {};
+  m_gentleBendMatcher = BendMatcher(GentleBendParams());
   bool const esp32 = m_storage.IsEsp32Source();
   MotionSource::Listener & listener = *this;
   if (esp32)
@@ -1086,6 +1087,7 @@ void InertialNavigator::ForgetWay()
   m_turning = false;
   m_waitAhead.reset();
   m_bendMatcher.Reset();
+  m_gentleBendMatcher.Reset();
   m_pathMatcher.Reset();
 }
 
@@ -1528,6 +1530,7 @@ void InertialNavigator::OnMotion(double yawDeltaDeg, double dtSec, int64_t times
       }
       // The way of the car waited for is the way to the mark: the bends and the way behind it.
       m_bendMatcher.OnMotion(rotatedDeg, distance);
+      m_gentleBendMatcher.OnMotion(rotatedDeg, distance);
       m_pathMatcher.OnMotion(rotatedDeg, distance, m_deadReckoning.GetHeading());
       TrackRoughStretch(step);
     }
@@ -1770,6 +1773,12 @@ void InertialNavigator::SnapToRoad()
   }
 }
 
+BendMatcher::Params InertialNavigator::GentleBendParams()
+{
+  return {kGentleWindowM,    kGentleStepM,       kGentleSmoothM,         kGentleMinBendDeg,
+          kGentleMaxDiffDeg, kGentleClearAsideM, kGentleMinAsideDiffDeg, kGentleMaxBendDeg};
+}
+
 void InertialNavigator::MatchBend()
 {
   // The calculated distance is wrong by tens of meters, and the road bends more often than the car turns at a
@@ -1784,45 +1793,101 @@ void InertialNavigator::MatchBend()
   auto const aheadM = m_bendMatcher.Match(m_roads, position, heading, maxShiftM, &whyNot);
   if (!aheadM)
   {
-    if (!whyNot.empty() && (!m_bendWhyNotPathM || m_pathM - *m_bendWhyNotPathM >= BendMatcher::kWindowM))
+    if (!whyNot.empty() && (!m_bendWhyNotPathM || m_pathM - *m_bendWhyNotPathM >= m_bendMatcher.GetWindowM()))
     {
       m_bendWhyNotPathM = m_pathM;
       LOG(LINFO, ("Bend: tells nothing, searched", std::round(maxShiftM), "m:", whyNot));
     }
+    if (m_clock.NowMs() - m_lastGentleBendMatchMs >= kGentleBendMatchIntervalMs)
+    {
+      m_lastGentleBendMatchMs = m_clock.NowMs();
+      MatchGentleBend();
+    }
     return;
   }
-  if (std::fabs(*aheadM) < kMinBendShiftM)
+  ApplyBend(*aheadM, false /* gentle */);
+}
+
+void InertialNavigator::MatchGentleBend()
+{
+  auto const position = m_deadReckoning.GetPosition();
+  double const heading = m_deadReckoning.GetHeading();
+  // The search reaches farther than the clear-aside distance on both sides of the best fit: the check is empty
+  // otherwise.
+  double const maxShiftM = std::max(2 * kGentleClearAsideM,
+                                    std::min(kMaxBendShiftM, std::max(kMinBendSearchM, m_deadReckoning.GetAccuracy())));
+  std::string whyNot;
+  auto const aheadM = m_gentleBendMatcher.Match(m_roads, position, heading, maxShiftM, &whyNot);
+  if (!aheadM)
   {
-    LOG(LINFO, ("Bend: the position fits the road, ahead by", std::round(*aheadM), "m"));
+    m_lastGentleBend.reset();
+    if (!whyNot.empty() && (!m_gentleWhyNotPathM || m_pathM - *m_gentleWhyNotPathM >= m_gentleBendMatcher.GetWindowM()))
+    {
+      m_gentleWhyNotPathM = m_pathM;
+      LOG(LINFO, ("Gentle bend: tells nothing, searched", std::round(maxShiftM), "m:", whyNot));
+    }
+    return;
+  }
+  ApplyBend(*aheadM, true /* gentle */);
+}
+
+void InertialNavigator::ApplyBend(double aheadM, bool gentle)
+{
+  auto const position = m_deadReckoning.GetPosition();
+  double const heading = m_deadReckoning.GetHeading();
+  std::string const tag = gentle ? "Gentle bend:" : "Bend:";
+  char const * const where = gentle ? "gentle bend" : "bend";
+  // Two gentle comparisons agree only when no ordinary answer comes between them.
+  if (!gentle)
+    m_lastGentleBend.reset();
+  if (std::fabs(aheadM) < kMinBendShiftM)
+  {
+    LOG(LINFO, (tag, "the position fits the road, ahead by", std::round(aheadM), "m"));
+    m_lastGentleBend.reset();
     // The place along the road is confirmed: the distance error is gone as after a move.
     m_deadReckoning.SetPosition(position);
-    if (LearnRoughSpeed(*aheadM, "bend"))
-      StartRoughStretch(*aheadM);
+    // The long window tells the place within some meters: too rough for the speed error of the stretches between
+    // the bends.
+    if (!gentle && LearnRoughSpeed(aheadM, where))
+      StartRoughStretch(aheadM);
     return;
   }
   bool const slow = m_deadReckoning.GetSpeed() < kMinBendMoveSpeedMps;
   // A far place is moved to only when the bends tell it repeatedly: a far road may have a similar bend.
-  bool const far = std::fabs(*aheadM) > kFarBendShiftM;
-  if ((slow || far) && !IsSlowBendConfirmed(*aheadM))
+  bool const far = std::fabs(aheadM) > kFarBendShiftM;
+  if ((slow || far) && !IsSlowBendConfirmed(aheadM))
   {
-    LOG(LINFO, ("Bend: ahead by", std::round(*aheadM), "m, but", slow ? "the car is too slow" : "it is far",
+    LOG(LINFO, (tag, "ahead by", std::round(aheadM), "m, but", slow ? "the car is too slow" : "it is far",
                 "to trust it at once"));
     return;
+  }
+  // The long window is rough: a large shift is moved only when the next comparison tells the same.
+  if (gentle && std::fabs(aheadM) >= kGentleBigShiftM)
+  {
+    auto const previous = m_lastGentleBend;
+    m_lastGentleBend = GentleBend{m_deadReckoning.GetFixCount(), aheadM};
+    if (!previous || previous->m_fixCount != m_deadReckoning.GetFixCount() ||
+        std::fabs(aheadM - previous->m_aheadM) > kGentleAgreeM)
+    {
+      LOG(LINFO, (tag, "ahead by", std::round(aheadM), "m, waits for the next comparison"));
+      return;
+    }
   }
   // Through the crossings on the way: the bends were compared with the road going straight on through them, and
   // they fit it. A car back on a road after a parking lot was 32 m behind its mark by the bends, as GPS told
   // too, and was left there because of a crossing on these 32 m.
-  auto const walked = RoadWalker::Walk(m_roads, position, heading, -*aheadM, false /* stopAtCrossing */);
-  if (!walked || std::fabs(walked->m_appliedM + *aheadM) > 1)
+  auto const walked = RoadWalker::Walk(m_roads, position, heading, -aheadM, false /* stopAtCrossing */);
+  if (!walked || std::fabs(walked->m_appliedM + aheadM) > 1)
   {
-    LOG(LINFO, ("Bend: ahead by", std::round(*aheadM), "m, but the road is not followed that far"));
+    LOG(LINFO, (tag, "ahead by", std::round(aheadM), "m, but the road is not followed that far"));
     return;
   }
   if (slow || far)
-    LOG(LINFO, ("Bend: moved along the road by", std::round(-*aheadM), "m, told repeatedly"));
+    LOG(LINFO, (tag, "moved along the road by", std::round(-aheadM), "m, told repeatedly"));
   else
-    LOG(LINFO, ("Bend: moved along the road by", std::round(-*aheadM), "m"));
-  LearnRoughSpeed(*aheadM, "bend");
+    LOG(LINFO, (tag, "moved along the road by", std::round(-aheadM), "m"));
+  m_lastGentleBend.reset();
+  LearnRoughSpeed(aheadM, where);
   SetRoadPosition(walked->m_position, walked->m_bearingDeg);
 }
 
@@ -2414,6 +2479,7 @@ void InertialNavigator::TakeOtherMark(size_t index, bool keepShown, std::string 
   m_turnFromRoad = taken.m_turnFromRoad;
   m_roadCandidate.reset();
   m_slowBends.reset();
+  m_lastGentleBend.reset();
   m_markTurnLeftDeg.reset();
   m_steadyRoad.reset();
   m_turnSteadyFromBearing.reset();
