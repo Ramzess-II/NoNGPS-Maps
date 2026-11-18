@@ -1207,12 +1207,12 @@
     <string name="nogps_gps_why_spoofed">Далеко від веж і Wi-Fi або стрибає: не використовується.</string>
     <!-- Why, under the state of GPS -->
     <string name="nogps_gps_why_none">Немає позицій GPS 5 секунд.</string>
-    <!-- Switch in the Box sheet: on, GPS is not used for the car -->
-    <string name="nogps_gps_block">Не використовувати GPS для навігації</string>
-    <!-- Under the switch Don't use GPS for navigation in the Box sheet -->
-    <string name="nogps_gps_block_hint">Увімкнено: GPS не використовується, авто ведуть блок і ваші мітки. Для місць, де GPS підмінений, а застосунок цього не бачить.</string>
-    <!-- Under the disabled switch Don't use GPS for navigation in the Box sheet: no box is heard -->
-    <string name="nogps_gps_block_needs_box">GPS можна вимкнути, лише коли блок підключений: інакше авто ніщо не поведе.</string>
+    <!-- Switch in the Box sheet: on, GPS is ignored for the car -->
+    <string name="nogps_gps_block">Ігнорувати GPS</string>
+    <!-- Under the switch Ignore GPS in the Box sheet -->
+    <string name="nogps_gps_block_hint">Авто ведуть блок і ваші мітки. Для місць, де GPS підмінений, а застосунок цього не бачить.</string>
+    <!-- Under the disabled switch Ignore GPS in the Box sheet: no box is heard -->
+    <string name="nogps_gps_block_needs_box">GPS можна ігнорувати, лише коли блок підключений: інакше авто ніщо не поведе.</string>
     <!-- At the top of the Cars page of the Box sheet -->
     <string name="nogps_cars_text">Кожен блок — це одне авто зі своїм калібруванням і місцем паркування. Натисніть на авто, щоб їхати ним, перейменувати чи забути його.</string>
     <!-- On the Add a car page while the box of the new car is searched -->
