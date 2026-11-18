@@ -46224,6 +46224,12 @@ en = found, but not paired with this phone. The box has 4 phones: remove one on 
 ru = найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху, машина). Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны
 uk = знайдено, але не спарено з цим телефоном. Блок має 4 телефони: видаліть один на спареному телефоні («Блок», назва авто вгорі, авто). Немає спареного телефона під рукою? Вимкніть Bluetooth на решті телефонів, спарених з блоком. Вставте блок у роз'єм і вийміть його протягом хвилини, 3 рази, а втретє залиште вставленим: 2 хвилини він приймає цей телефон із кодом 123456, якщо його не змінювали, і забуває решту телефонів
 
+[nogps_box_bt_car_limit]
+comment = State of the sensor box, shown after its name: the box is of no car of the user, and the user has the most cars
+tags = android-app,apple-maps
+en = found, but it is of no car of this phone, and the phone has the most cars. Forget a car first (Box, the car name at the top, the car, Forget the car)
+uk = знайдено, але це блок не жодного з авто цього телефона, а авто вже найбільше. Спершу забудьте авто («Блок», назва авто вгорі, авто, «Забути авто»)
+
 [nogps_car_phones]
 comment = Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car
 tags = android-app,apple-maps

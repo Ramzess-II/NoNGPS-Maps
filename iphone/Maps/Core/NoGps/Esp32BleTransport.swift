@@ -321,7 +321,8 @@ final class Esp32BleTransport: NSObject {
   }
 
   /// Returns false if the box is not to be connected now: of a known car while the user adds one, not of a car at the
-  /// limit of cars, forgotten, or of another car while the box of the current one may be found too.
+  /// limit of cars (the state is told in didDiscover), forgotten, or of another car while the box of the current one
+  /// may be found too.
   private func isBoxWanted(_ id: String, known: Bool) -> Bool {
     if isCarLimitReached, !carIds.contains(id) {
       return false
@@ -371,14 +372,19 @@ final class Esp32BleTransport: NSObject {
 
   /// The box tells in every advertisement that it doesn't accept a new phone: the state is kept while they come.
   private func onPairingClosed(_ flags: UInt8) {
-    pairingClosedTime = ProcessInfo.processInfo.systemUptime
     if flags & Constants.fullFlag != 0 {
-      setState(.pairingFull)
+      onBoxSkipped(.pairingFull)
     } else if flags & Constants.hasPhonesFlag != 0 {
-      setState(.pairingByPhone)
+      onBoxSkipped(.pairingByPhone)
     } else {
-      setState(.pairingClosed)
+      onBoxSkipped(.pairingClosed)
     }
+  }
+
+  /// A box is found that is not connected: |reason| is kept while its advertisements come, then the search goes on.
+  private func onBoxSkipped(_ reason: NoGpsBleState) {
+    pairingClosedTime = ProcessInfo.processInfo.systemUptime
+    setState(reason)
     guard pairingClosedCheck == nil else { return }
     schedulePairingClosedCheck(after: Constants.pairingClosedTimeout)
   }
@@ -387,7 +393,7 @@ final class Esp32BleTransport: NSObject {
     let item = DispatchWorkItem { [weak self] in
       guard let self else { return }
       pairingClosedCheck = nil
-      guard [.pairingClosed, .pairingByPhone, .pairingFull].contains(state) else { return }
+      guard [.pairingClosed, .pairingByPhone, .pairingFull, .carLimit].contains(state) else { return }
       let left = pairingClosedTime + Constants.pairingClosedTimeout - ProcessInfo.processInfo.systemUptime
       if left > 0 {
         schedulePairingClosedCheck(after: left)
@@ -533,6 +539,10 @@ extension Esp32BleTransport: CBCentralManagerDelegate {
     }
     guard self.peripheral == nil else { return }
     let known = knownBoxes.contains(peripheral.identifier.uuidString)
+    if isCarLimitReached, id.map({ !carIds.contains($0) }) ?? !known {
+      onBoxSkipped(.carLimit)
+      return
+    }
     // A known box without its name may be of a car: not while a new one is added.
     guard id.map({ isBoxWanted($0, known: known) }) ?? !((newBoxOnly && known) || (!known && isCarLimitReached))
     else { return }

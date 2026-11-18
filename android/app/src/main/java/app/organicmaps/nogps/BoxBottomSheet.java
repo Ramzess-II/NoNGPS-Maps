@@ -832,6 +832,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       case PAIRING_CLOSED -> R.string.nogps_box_bt_pairing_closed;
       case PAIRING_BY_PHONE -> R.string.nogps_box_bt_pairing_by_phone;
       case PAIRING_FULL -> R.string.nogps_box_bt_pairing_full;
+      case CAR_LIMIT -> R.string.nogps_box_bt_car_limit;
       case PAIRING -> R.string.nogps_box_bt_pairing;
       case PAIRING_FAILED -> R.string.nogps_box_bt_pairing_failed;
       case BOND_LOST -> R.string.nogps_box_bt_bond_lost;
@@ -1476,7 +1477,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final boolean bluetoothFailed = isBluetoothFailed(status);
     showBox(new StatusBar.Look(R.drawable.ic_nogps_box, 0), getString(R.string.nogps_box_searching));
     final boolean searched = ble == NoGps.BleState.SEARCHING || ble == NoGps.BleState.PAIRING_CLOSED
-                          || ble == NoGps.BleState.PAIRING_BY_PHONE || ble == NoGps.BleState.PAIRING_FULL;
+                          || ble == NoGps.BleState.PAIRING_BY_PHONE || ble == NoGps.BleState.PAIRING_FULL
+                          || ble == NoGps.BleState.CAR_LIMIT;
     final boolean connecting = ble == NoGps.BleState.CONNECTING || ble == NoGps.BleState.PAIRING;
     final boolean connected = ble == NoGps.BleState.CONNECTED;
     final boolean linkFailed = ble == NoGps.BleState.PAIRING_FAILED || ble == NoGps.BleState.BOND_LOST;
