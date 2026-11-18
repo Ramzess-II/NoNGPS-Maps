@@ -85,7 +85,7 @@ BoxField constexpr kInfoFields[] = {
     {3, BoxValue::BuildDate}, {4, BoxValue::Chip},       {5, BoxValue::Board},
     {6, BoxValue::Id},        {7, BoxValue::FlashSize},  {8, BoxValue::MaxImageSize, 1024, 0},
     {9, BoxValue::Slot},      {10, BoxValue::SlotState}, {11, BoxValue::Abilities},
-    {12, BoxValue::PowerOns},
+    {12, BoxValue::PowerOns}, {13, BoxValue::Revision},
 };
 
 // An empty or a wrong field is shown as it is.
@@ -240,7 +240,7 @@ std::optional<Event> ParseEvent(Fields const & fields)
 std::optional<Info> ParseInfo(Fields const & fields)
 {
   // Version, firmware, build date, chip, board, id, flash size, largest image, partition, its state, abilities,
-  // power-ons.
+  // power-ons, hardware revision.
   int version;
   if (!IsLine(fields, 6, "NGI") || !strings::to_int(fields[1], version) || version != kVersion)
     return {};
@@ -264,6 +264,8 @@ std::optional<Info> ParseInfo(Fields const & fields)
     info.m_id = fields[6];
   if (int64_t powerOns; fields.size() > 12 && strings::to_int(fields[12], powerOns))
     info.m_powerOns = powerOns;
+  if (fields.size() > 13)
+    info.m_revision = fields[13];
   return info;
 }
 

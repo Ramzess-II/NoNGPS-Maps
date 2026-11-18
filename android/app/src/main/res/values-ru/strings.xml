@@ -1399,6 +1399,8 @@
     <string name="nogps_box_value_chip">Чип</string>
     <!-- Row of the Box values page: the board of the box, e.g. s3zero -->
     <string name="nogps_box_value_board">Плата</string>
+    <!-- Row of the Box values page: the hardware revision of the box board, e.g. R1 -->
+    <string name="nogps_box_value_revision">Ревизия платы</string>
     <!-- Row of the Box values page: the four characters of the box name -->
     <string name="nogps_box_value_id">ID</string>
     <!-- Row of the Box values page: the size of the flash memory of the box -->

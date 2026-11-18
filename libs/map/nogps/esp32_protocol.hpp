@@ -98,6 +98,8 @@ struct Info
   std::string m_id;
   // How many times the box was powered on, nothing from a firmware that doesn't count it.
   std::optional<int64_t> m_powerOns;
+  // The hardware revision of the board, "R1", empty from a firmware that doesn't tell it.
+  std::string m_revision;
 };
 
 /// A value the box sends in its status and info lines, for the page that shows them all. The platforms show them in
@@ -136,6 +138,8 @@ enum class BoxValue
   BuildDate,
   Chip,
   Board,
+  // The hardware revision of the board, "R1".
+  Revision,
   Id,
   // KB.
   FlashSize,

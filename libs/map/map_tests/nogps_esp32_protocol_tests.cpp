@@ -250,6 +250,21 @@ UNIT_TEST(NoGps_Esp32_BoxValues)
                         {V::PowerOns, "0"}}),
              ());
 
+  TEST_EQUAL(ParseBoxValues(*Parse(WithCrc("NGI,1,0.4.3,2026-11-18T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,"
+                                           "BLE OTA,5,R1"))),
+             BoxValues({{V::BuildDate, "2026-11-18T10:00"},
+                        {V::Chip, "esp32s3"},
+                        {V::Board, "s3zero"},
+                        {V::Revision, "R1"},
+                        {V::Id, "C47D"},
+                        {V::FlashSize, "4096"},
+                        {V::MaxImageSize, "1984"},
+                        {V::Slot, "ota_0"},
+                        {V::SlotState, "VALID"},
+                        {V::Abilities, "BLE OTA"},
+                        {V::PowerOns, "5"}}),
+             ());
+
   TEST(ParseBoxValues(*Parse("$NGA,18,OK*461D")).empty(), ());
 }
 
@@ -285,6 +300,13 @@ UNIT_TEST(NoGps_Esp32_ParsesLinesOfFirmware)
   TEST(!countingInfo->m_canStoreCarValues, ());
   TEST(countingInfo->m_powerOns, ());
   TEST_EQUAL(*countingInfo->m_powerOns, 12, ());
+  TEST(countingInfo->m_revision.empty(), ());
+  // A firmware that tells the hardware revision.
+  auto const revisionInfo = ParseInfo(*Parse(
+      WithCrc("NGI,1,0.4.3,2026-11-18T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES,5,R1")));
+  TEST(revisionInfo, ());
+  TEST_EQUAL(revisionInfo->m_revision, "R1", ());
+  TEST_EQUAL(*revisionInfo->m_powerOns, 5, ());
   // A firmware that keeps the values of the car.
   auto const carInfo = ParseInfo(
       *Parse(WithCrc("NGI,1,0.4.1,2026-11-15T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR,3")));

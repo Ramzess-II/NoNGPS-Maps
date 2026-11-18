@@ -47471,6 +47471,13 @@ en = Board
 ru = Плата
 uk = Плата
 
+[nogps_box_value_revision]
+comment = Row of the Box values page: the hardware revision of the box board, e.g. R1
+tags = android-app,apple-maps
+en = Hardware revision
+ru = Ревизия платы
+uk = Ревізія плати
+
 [nogps_box_value_id]
 comment = Row of the Box values page: the four characters of the box name
 tags = android-app,apple-maps
