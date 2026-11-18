@@ -482,7 +482,7 @@ class Esp32BleTransport
     final boolean bonded = device.getBondState() == BluetoothDevice.BOND_BONDED;
     final String id = getBoxId(result);
     // A paired box without its name may be of a car: not while a new one is added.
-    if (id != null ? !isBoxWanted(id, bonded) : mNewBoxOnly && bonded)
+    if (id != null ? !isBoxWanted(id, bonded) : (mNewBoxOnly && bonded) || (!bonded && isOverCarLimit(null)))
       return;
     final boolean forgotten = id != null && getForgottenBoxes().contains(id);
     if (needsPairingWindow(bonded, forgotten, mNewBoxOnly))
@@ -541,11 +541,28 @@ class Esp32BleTransport
   }
 
   /**
-   * @return false if the box is not to be connected now: of a known car while the user adds one, forgotten, or of
-   * another car while the box of the current one may be found too.
+   * The user has the most cars: a box that is not of one of them (id is null if its name is not known) would drive
+   * the mark under the current car's values.
+   */
+  private boolean isOverCarLimit(@Nullable String id)
+  {
+    return isOverCarLimit(mCarIds, NoGps.nativeGetMaxCars(), id);
+  }
+
+  @VisibleForTesting
+  static boolean isOverCarLimit(@NonNull Set<String> carIds, int maxCars, @Nullable String id)
+  {
+    return carIds.size() >= maxCars && (id == null || !carIds.contains(id));
+  }
+
+  /**
+   * @return false if the box is not to be connected now: of a known car while the user adds one, not of a car at the
+   * limit of cars, forgotten, or of another car while the box of the current one may be found too.
    */
   private boolean isBoxWanted(@NonNull String id, boolean bonded)
   {
+    if (isOverCarLimit(id))
+      return false;
     if (mNewBoxOnly)
       return !mCarIds.contains(id);
     // Without cars the box is set up anew, as any box.
