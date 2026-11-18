@@ -1297,6 +1297,20 @@
     <string name="nogps_speed_hint_full">Speed fully calibrated!</string>
     <!-- Bar next to the speed on the map, under nogps_speed_hint_full: the number of all the speed ranges -->
     <string name="nogps_speed_hint_full_hint">All %d ranges: ready to drive without GPS</string>
+    <!-- A run from a standing start up to 100 km/h, timed by the car speed: on the alert on the map, in the car section of the Box sheet, and as the title of its results -->
+    <string name="nogps_sprint_to100">0–100 km/h</string>
+    <!-- A run of a quarter mile (402 m) from a standing start, timed by the car speed: on the alert on the map, in the car section of the Box sheet, and as the title of its results -->
+    <string name="nogps_sprint_quarter_mile">¼ mile</string>
+    <!-- The time of a run from a standing start, e.g. "8.4 s" -->
+    <string name="nogps_sprint_seconds">%s s</string>
+    <!-- Alert on the map: the run from a standing start just timed is the fastest of the car, followed by its time -->
+    <string name="nogps_sprint_record">New record!</string>
+    <!-- Alert on the map, under nogps_sprint_record: the best time of the car before this run, e.g. "Was 9.1 s" -->
+    <string name="nogps_sprint_was">Was %s</string>
+    <!-- Results of the runs from a standing start: marks the fastest run of the car -->
+    <string name="nogps_sprint_best">Best</string>
+    <!-- Results of the runs from a standing start, when the car has none yet -->
+    <string name="nogps_sprint_none">No runs yet: stop, then accelerate hard from a standstill</string>
     <!-- Row of the Box sheet: how late the car tells its speed, the value is on the right -->
     <string name="nogps_speed_lag">Speed delay</string>
     <!-- Value of the speed delay row of the Box sheet, in seconds, e.g. "1.2 s" -->

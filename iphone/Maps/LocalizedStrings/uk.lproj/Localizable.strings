@@ -1757,6 +1757,27 @@
 /* Bar next to the speed on the map, under nogps_speed_hint_full: the number of all the speed ranges */
 "nogps_speed_hint_full_hint" = "Усі %d діапазонів: можна їхати без GPS";
 
+/* A run from a standing start up to 100 km/h, timed by the car speed: on the alert on the map, in the car section of the Box sheet, and as the title of its results */
+"nogps_sprint_to100" = "0–100 км/год";
+
+/* A run of a quarter mile (402 m) from a standing start, timed by the car speed: on the alert on the map, in the car section of the Box sheet, and as the title of its results */
+"nogps_sprint_quarter_mile" = "¼ милі";
+
+/* The time of a run from a standing start, e.g. "8.4 s" */
+"nogps_sprint_seconds" = "%@ с";
+
+/* Alert on the map: the run from a standing start just timed is the fastest of the car, followed by its time */
+"nogps_sprint_record" = "Новий рекорд!";
+
+/* Alert on the map, under nogps_sprint_record: the best time of the car before this run, e.g. "Was 9.1 s" */
+"nogps_sprint_was" = "Було %@";
+
+/* Results of the runs from a standing start: marks the fastest run of the car */
+"nogps_sprint_best" = "Найкращий";
+
+/* Results of the runs from a standing start, when the car has none yet */
+"nogps_sprint_none" = "Заїздів поки немає: зупиніться й різко розженіться з місця";
+
 /* Row of the Box sheet: how late the car tells its speed, the value is on the right */
 "nogps_speed_lag" = "Запізнення швидкості";
 
