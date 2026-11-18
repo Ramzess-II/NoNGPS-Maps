@@ -2573,7 +2573,7 @@ UNIT_TEST(NoGps_Engine_CalibrationWhenStillGivesUpAfterRepeatedFailures)
   {
     TEST(env.m_engine.GetStatus().m_calibrationArmed, (i));
     box.Wait(1000, true, 40);
-    TEST_EQUAL(box.Calibrations(), i + 1, ());
+    TEST_EQUAL(box.Calibrations(), static_cast<size_t>(i + 1), ());
     box.Reply("ERR,MOVING");
     box.Wait(1000, false, 200);
   }
