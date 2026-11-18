@@ -51,9 +51,9 @@ git -C ${FW} worktree remove <path> for firmware.`
 // Replay on macOS: the skill passes args.maps and args.settings only when this machine has them.
 const REPLAY_RULES = REPLAY
   ? `A change to how the mark moves is replayed, not postponed: this machine replays the recorded trips. \
-Maps: ${MAPS}, settings: ${SETTINGS}, logs: ${LOGS}. Build the tool as the docstring of tools/python/nogps_replay.py \
+Maps: ${MAPS}, settings: ${SETTINGS}, logs: ${LOGS}/*.log (the script takes log files, not the folder; other files there are not logs). Build the tool as the docstring of tools/python/nogps_replay.py \
 says, in <worktree>/build-<name>-o2: first from the worktree before your change (copy the binary to \
-nogps_replay_tool.before), then after it. Drive the days of both with nogps_replay.py run <logs> --tool <tool> \
+nogps_replay_tool.before), then after it. Drive the days of both with nogps_replay.py run ${LOGS}/*.log --tool <tool> \
 --data_path ${MAPS} --settings ${SETTINGS} -j 3 -o <folder in the scratchpad>. Put both tables, the held-out days \
 and the others apart, into "tested". Fix a rule that is worse on the held-out days, or postpone when the numbers \
 don't settle what to change. Say "Not replayed" only when the tool fails to build or run, and why.`

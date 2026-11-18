@@ -41,7 +41,8 @@ confirmation at any step.
    For given numbers, take those issues in the given order, with the same fields, and `count` is their number.
 3. **Replay data.** On macOS the slots replay the trips of a change to how the mark moves instead of postponing it.
    They need the maps of one version and the app's `settings.ini`: `maps` and `settings` are the paths the user
-   gave, else `<ws>/replay/maps` and `<ws>/replay/settings.ini` when both exist. Without them leave both out: a
+   gave, else `<ws>/replay/maps` and `<ws>/replay/settings.ini` when both exist. Pass them only when the OS is
+   macOS (`uname` is Darwin), both paths exist and `<ws>/app/trip-logs/*.log` matches some file. Otherwise leave both out: a
    change that needs a replay is postponed, and a PR of a core change says "Not replayed".
 4. **Disk.** `df -g <ws>`: a slot starts an implementation only with 15 GB free. With less, say so: the run will
    wait for slots and may stop early.
