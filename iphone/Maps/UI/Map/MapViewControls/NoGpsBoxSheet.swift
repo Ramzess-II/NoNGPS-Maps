@@ -584,6 +584,7 @@ private final class CarsViewController: MWMTableViewController {
     let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
     var content = UIListContentConfiguration.subtitleCell()
     cell.selectionStyle = .default
+    cell.accessoryView = nil
     switch rows[indexPath.section][indexPath.row] {
     case .car(let carId):
       if let car = cars.first(where: { $0.carId == carId }) {
@@ -592,6 +593,19 @@ private final class CarsViewController: MWMTableViewController {
       }
       content.secondaryTextProperties.color = .secondaryLabel
       cell.accessoryType = .disclosureIndicator
+      if isNearby(carId) {
+        // The box of this car is awake: a button takes the car, a tap on the row opens its page.
+        let button = UIButton(type: .system)
+        button.setTitle(L("nogps_car_switch"), for: .normal)
+        button.addAction(UIAction { [weak self] _ in
+          NoGps.selectCar(carId)
+          NoGpsStatusBar.update(NoGps.status())
+          self?.refresh()
+        }, for: .touchUpInside)
+        button.sizeToFit()
+        cell.accessoryType = .none
+        cell.accessoryView = button
+      }
     case .add:
       cell.accessoryType = .none
       content = UIListContentConfiguration.cell()
@@ -612,10 +626,18 @@ private final class CarsViewController: MWMTableViewController {
     }
   }
 
+  /// The box of another car is awake near the phone.
+  private func isNearby(_ carId: String) -> Bool {
+    carId != status.carId && NoGps.isBoxNearby(carId)
+  }
+
   private func carStateText(_ car: NoGpsCar) -> String? {
     if car.carId == status.carId {
       let connected = NoGpsBoxSheet.isBoxHeard(status) && status.bleState == .connected
       return connected ? L("nogps_car_connected") : L("nogps_car_current")
+    }
+    if isNearby(car.carId) {
+      return L("nogps_car_nearby")
     }
     guard let lastSeen = car.lastSeen else { return nil }
     return String(format: L("nogps_car_last_seen"), RelativeDateTimeFormatter().localizedString(for: lastSeen,

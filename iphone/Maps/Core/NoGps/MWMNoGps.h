@@ -81,6 +81,15 @@ typedef NS_ENUM(NSInteger, MWMNoGpsAddPhone) {
   MWMNoGpsAddPhoneFailed,
 } NS_SWIFT_NAME(NoGpsAddPhone);
 
+/// What the phone does about the place of the car when two phones are on one box: the one that changes the box leads,
+/// the other one follows it.
+typedef NS_ENUM(NSInteger, MWMNoGpsPeerRole) {
+  // The box can't pass the places on, or this phone is alone on it.
+  MWMNoGpsPeerRoleNone,
+  MWMNoGpsPeerRoleLeading,
+  MWMNoGpsPeerRoleFollowing,
+} NS_SWIFT_NAME(NoGpsPeerRole);
+
 typedef NS_ENUM(NSInteger, MWMNoGpsCalibrationState) {
   MWMNoGpsCalibrationStateNone,
   MWMNoGpsCalibrationStateCalibrating,
@@ -139,6 +148,7 @@ typedef NS_ENUM(NSInteger, MWMNoGpsBoxValue) {
   MWMNoGpsBoxValueBuildDate,
   MWMNoGpsBoxValueChip,
   MWMNoGpsBoxValueBoard,
+  MWMNoGpsBoxValueRevision,
   MWMNoGpsBoxValueId,
   // KB.
   MWMNoGpsBoxValueFlashSize,
@@ -317,6 +327,8 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly) BOOL speedLagMeasured;
 @property(nonatomic, readonly) MWMNoGpsCalibrationState calibration;
 @property(nonatomic, readonly) NSInteger calibrationProgress;
+/// The user has not seen the offer of bundledFirmware: show it and call +firmwareOfferShown.
+@property(nonatomic, readonly) BOOL firmwareOfferPending;
 /// The sensor box has been powered on since the user calibrated it: it may stand in another way now.
 @property(nonatomic, readonly) BOOL boxCalibrationAdvised;
 @property(nonatomic, readonly) BOOL hasInertialPosition;
@@ -342,6 +354,9 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly, nullable) NSArray<MWMNoGpsPhone *> * boxPhones;
 /// Another phone has connected to the box first and changes it: this one gets the data only.
 @property(nonatomic, readonly) BOOL boxReadOnly;
+@property(nonatomic, readonly) MWMNoGpsPeerRole peerRole;
+/// The name of the phone this one follows, empty if the box doesn't know it.
+@property(nonatomic, readonly) NSString * peerName;
 @property(nonatomic, readonly) MWMNoGpsAddPhone addPhone;
 /// The code to enter on the new phone while addPhone is Open.
 @property(nonatomic, readonly) NSString * addPhoneCode;
@@ -393,6 +408,8 @@ NS_SWIFT_NAME(NoGps)
 /// Forgets the car with what is learned about it. Its box is not connected until the car is added again. Without cars
 /// left the box is not looked for.
 + (void)forgetCar:(NSString *)carId;
+/// The box of the car, other than the connected one, was seen in the last minute: the car may be switched to.
++ (BOOL)isBoxNearby:(NSString *)carId;
 /// The user adds a car: only a box that is not of a known car is connected, until it is heard or this is called with
 /// NO.
 + (void)searchNewBox:(BOOL)newOnly;
@@ -401,6 +418,8 @@ NS_SWIFT_NAME(NoGps)
 /// Sends the firmware of MWMNoGpsStatus.bundledFirmware to the box.
 + (void)startFirmwareUpdate;
 + (void)cancelFirmwareUpdate;
+/// The user has been offered the firmware, see MWMNoGpsStatus.firmwareOfferPending.
++ (void)firmwareOfferShown;
 /// Asks the box of the car for its phones again, see MWMNoGpsStatus.boxPhones.
 + (void)listBoxPhones;
 /// Removes the phone from the box. Removing this phone ends with MWMNoGpsEventThisPhoneRemoved.

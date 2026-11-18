@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
-"""Drives a recorded trip of NonGPS Maps again in a debug build and tells what has changed.
+"""Drives a recorded trip of NonGPS Maps again and tells what has changed.
 
-A debug build of the Android application drives the file nogps-replay-in.txt put to its folder
-(/sdcard/Android/data/<package>/files/) through a navigation of its own when it starts, and writes the trip log of
-that drive to nogps-replay-out.txt, and nogps-replay-out.txt.done when it is over. See NoGpsReplay.cpp.
-Build it with optimized C++ for replays, about 6 times faster, ASSERTs kept:
-  ./gradlew assembleFdroidDebug -Parm64 -PnativeOptimized
-Compare a change only with a build of the same kind: a few diagnostic values differ in the last digit.
+The trip is driven through a navigation of its own by libs/map/nogps_replay, which writes the trip log of that drive,
+and <output>.done when it is over. Two programs run it:
+- nogps_replay_tool on macOS and Linux, the default: `run` below drives the days with it, a few at a time. Build it
+  with optimized C++, ASSERTs kept, in a build folder of its own:
+    cmake --preset debug -B build-<name>-o2 -DSKIP_QT_GUI=ON "-DCMAKE_CXX_FLAGS_DEBUG=-O2 -g" \
+        "-DCMAKE_C_FLAGS_DEBUG=-O2 -g"
+    cmake --build build-<name>-o2 --target nogps_replay_tool
+  It takes the .mwm files of one version (pull the phone's: adb pull /sdcard/Android/data/<package>/files/260714)
+  and, for what the navigation has learned about the car, settings.ini of the app (of a debug build:
+  adb shell run-as <package> cat files/settings.ini > settings.ini). Without it the car is new.
+- a debug build of the Android application, on Windows: it drives the file nogps-replay-in.txt put to its folder
+  (/sdcard/Android/data/<package>/files/) when it starts, and writes nogps-replay-out.txt. Build it with optimized
+  C++ for replays, about 6 times faster, ASSERTs kept:
+    ./gradlew assembleFdroidDebug -Parm64 -PnativeOptimized
+Compare a change only with a build of the same kind, on the same maps and settings: a few diagnostic values differ
+in the last digit.
 
   nogps_replay.py input log-*.log --day 10-11 -o nogps-replay-in.txt [--no-taps] [--no-route] [--from HH:MM]
       [--to HH:MM]
@@ -17,15 +27,35 @@ Compare a change only with a build of the same kind: a few diagnostic values dif
       a tap: a tap would put it on a road.
 
   nogps_replay.py compare log-*.log --day 10-11 --replay nogps-replay-out.txt
-      how far the mark was from GPS on the trip and how far it is driven again, where GPS was seen.
+      how far the mark was from GPS on the trip and how far it is driven again, where GPS was seen. The first line
+      says which set the day is in.
+
+  nogps_replay.py run log-*.log --tool build-<name>-o2/nogps_replay_tool --data_path <maps> [--settings <ini>]
+      [--day MM-DD ...] [-j N] -o <folder> [--no-taps] [--no-route]
+      makes the input of every day of the logs, or of the days given, drives them with nogps_replay_tool, N at a time,
+      and prints a line of compare a day, the held-out days and the days rules were made from apart, with the
+      seconds of all the days of each set. The inputs, the outputs, the log of the tool and the full compare of
+      every day are written to the folder.
+
+  nogps_replay.py days log-*.log
+      the days of the logs with the seconds of TRIP lines and the set of each: "held out" (listed in
+      nogps_held_out_days.txt, never used to set a rule) or "made from". A change of how the mark moves is replayed
+      on the days of both sets, and the numbers of both go to the PR: better on the days it was made from and not
+      on the held-out ones means the rule fits its case only.
 
 The files made here keep the places of the trip: they are not for git. Nothing printed has coordinates.
 """
 import argparse
 import bisect
 import collections
+import concurrent.futures
+import contextlib
+import io
 import math
+import os
 import re
+import subprocess
+import time
 
 LINE = re.compile(r'^(\d\d-\d\d) (\d\d):(\d\d):(\d\d)\.(\d\d\d) \(([^)]*)\) \w/(\w+): (.*)$')
 FIELD = re.compile(r' (\w+)=(\S+)')
@@ -40,6 +70,40 @@ MAX_STAND_FILL_MS = 600_000
 STAND_TRIP_MS = 35_000
 # The car standing before the first data of the box is driven again for this long at most.
 MAX_STAND_BEFORE_MS = 15_000
+HELD_OUT_DAYS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nogps_held_out_days.txt')
+
+
+def held_out_days(path=HELD_OUT_DAYS_FILE):
+    """The days (MM-DD) of the held-out set: the lines of the file that are not comments."""
+    with open(path, encoding='utf-8') as f:
+        return {line.split('#')[0].strip() for line in f} - {''}
+
+
+def set_of(day, held_out):
+    return 'held out' if day in held_out else 'made from'
+
+
+def trip_days(paths):
+    """The seconds of TRIP lines of every day of the logs."""
+    counts = collections.Counter()
+    for path in paths:
+        seen = set()
+        with open(path, encoding='utf-8', errors='replace') as f:
+            for line in f:
+                m = LINE.match(line.rstrip('\n'))
+                if m and m.group(7) == 'OMcore' and ' TRIP ' in m.group(8) and line not in seen:
+                    seen.add(line)
+                    counts[m.group(1)] += 1
+    return counts
+
+
+def days(args):
+    """Every day of the logs with its seconds of TRIP lines and its set."""
+    held_out = held_out_days()
+    counts = trip_days(args.logs)
+    for day in sorted(counts):
+        print('%s  %6d TRIP lines  %s' % (day, counts[day], set_of(day, held_out)))
+    print('held out %d of %d days' % (sum(day in held_out for day in counts), len(counts)))
 
 
 def read(paths, day):
@@ -52,8 +116,10 @@ def read(paths, day):
     for path in paths:
         with open(path, encoding='utf-8', errors='replace') as f:
             for line in f:
+                if not line.startswith(day):
+                    continue
                 m = LINE.match(line.rstrip('\n'))
-                if not m or m.group(1) != day or line in seen:
+                if not m or line in seen:
                     continue
                 seen.add(line)
                 ms = ((int(m.group(2)) * 60 + int(m.group(3))) * 60 + int(m.group(4))) * 1000 + int(m.group(5))
@@ -522,6 +588,8 @@ EVENTS = [
     ('mark moved to the road of the car', r'the mark is put on the road going its way'),
     ('no road at the tap', r'^No road at the tap'), ('bend moved', r'^Bend: moved'),
     ('bend told nothing', r'^Bend: tells nothing'),
+    ('gentle bend moved', r'^Gentle bend: moved'),
+    ('gentle bend told nothing', r'^Gentle bend: tells nothing'),
     ('seconds on another branch of a fork', r'^FORK '),
     ('route asked for', r'Routing session state: \w+ -> RouteBuilding'),
     ('route rebuilt: the car left it', r'Routing session state: RouteNeedRebuild -> RouteRebuilding'),
@@ -557,6 +625,7 @@ def compare_stats(trips, others, replayed, replayed_others, start, end, change):
         ('the trip, all', error_stats(list(was.values()))),
         ('the trip, same seconds', error_stats([was[s] for s in both])),
         ('driven again', error_stats([now[s] for s in both]))])
+    stats['seconds'] = [(was[s], now[s]) for s in both]
 
     # The mark of the trip against the mark driven again, GPS or not.
     original = {f['ms'] // 1000: lat_lon(f.get('pos')) for f in trips if f.get('src') == 'INERTIAL'}
@@ -612,8 +681,8 @@ def compare(args):
 
 
 def print_compare(stats, day, change):
-    print('the day %s, driven again: %d s of TRIP lines, the trip had %d' % (day, stats['lines'],
-                                                                          stats['trip_lines']))
+    print('the day %s (%s), driven again: %d s of TRIP lines, the trip had %d' % (
+        day, set_of(day, held_out_days()), stats['lines'], stats['trip_lines']))
     for name, errors in stats['errors']:
         summary(name, errors)
     apart = stats['apart']
@@ -636,9 +705,96 @@ def print_compare(stats, day, change):
             clock(x['start'] * 1000), x['to'] - x['start'] + 1, x['kind'], x['was'], x['now']))
 
 
+def run_day(args, day):
+    """Makes the input of the day, drives it with the tool and compares it with the trip: the compare of the day and
+    the seconds the tool took, or None and what went wrong."""
+    base = os.path.join(args.output, day)
+    day_args = argparse.Namespace(logs=args.logs, day=day, start=args.start, end=args.end, output=base + '-in.txt',
+                                  no_taps=args.no_taps, no_route=args.no_route)
+    with contextlib.redirect_stdout(io.StringIO()):
+        make_input(day_args)
+    if not os.path.exists(day_args.output):
+        return day, None, 'no box data'
+    out = base + '-out.txt'
+    command = [args.tool, '--data_path', args.data_path, '--resources_path', args.resources_path]
+    if args.settings:
+        command += ['--settings', args.settings]
+    started = time.monotonic()
+    with open(base + '-tool.log', 'w') as log:
+        code = subprocess.run(command + [day_args.output, out], stdout=log, stderr=subprocess.STDOUT).returncode
+    seconds = time.monotonic() - started
+    # A day the tool has not driven to the end is not compared: the other days are.
+    if code != 0 or not os.path.exists(out + '.done'):
+        return day, None, 'the tool has not driven it to the end, exit code %d: see %s-tool.log' % (code, base)
+    trips, others, _ = read(args.logs, day)
+    replayed, replayed_others, _ = read([out], day)
+    start = parse_clock(args.start) if args.start else 0
+    end = parse_clock(args.end) if args.end else 86_400_000
+    stats = compare_stats(trips, others, replayed, replayed_others, start, end, args.change)
+    with open(base + '-compare.txt', 'w') as f, contextlib.redirect_stdout(f):
+        print_compare(stats, day, args.change)
+    return day, stats, seconds
+
+
+def run(args):
+    """Drives the days with nogps_replay_tool, a few at a time, and prints a line of compare a day."""
+    os.makedirs(args.output, exist_ok=True)
+    held_out = held_out_days()
+    days_to_run = sorted(set(args.day) if args.day else trip_days(args.logs))
+    started = time.monotonic()
+    with concurrent.futures.ProcessPoolExecutor(max_workers=args.jobs) as pool:
+        results = list(pool.map(run_day, [args] * len(days_to_run), days_to_run))
+
+    def median_p90(stats):
+        return '%5.0f %5.0f' % (stats['median'], stats['p90']) if stats else '    -     -'
+
+    print('%-5s %-9s %6s %11s %11s %11s %9s %6s' % ('day', 'set', 'TRIP s', 'trip m', 'again m', 'apart m',
+                                                     'lost', 'tool s'))
+    print('%-5s %-9s %6s %11s %11s %11s %9s %6s' % ('', '', '', 'med   90%', 'med   90%', 'med   90%', 'trip/new',
+                                                     ''))
+    for name in ('held out', 'made from'):
+        seconds = []
+        count = 0
+        for day, stats, tool_seconds in results:
+            if set_of(day, held_out) != name:
+                continue
+            if not stats:
+                print('%-5s %-9s %s' % (day, name, tool_seconds))
+                continue
+            count += 1
+            seconds += stats['seconds']
+            errors = dict(stats['errors'])
+            lost = next((a, b) for event, a, b in stats['events'] if event == 'road lost')
+            print('%-5s %-9s %6d %s %s %s %4d/%-4d %6.0f' % (
+                day, name, stats['lines'], median_p90(errors['the trip, same seconds']),
+                median_p90(errors['driven again']), median_p90(stats['apart']), lost[0], lost[1], tool_seconds))
+        if count:
+            print('%-15s %6d %s %s   (%d days)' % (
+                name + ', all', len(seconds), median_p90(error_stats([was for was, _ in seconds])),
+                median_p90(error_stats([now for _, now in seconds])), count))
+    print('driven in %.0f s, the files are in %s' % (time.monotonic() - started, args.output))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest='command', required=True)
+    sub = commands.add_parser('days')
+    sub.add_argument('logs', nargs='+', help='the trip logs of the application, log-*.log (app*.log before)')
+    sub = commands.add_parser('run')
+    sub.add_argument('logs', nargs='+', help='the trip logs of the application, log-*.log (app*.log before)')
+    sub.add_argument('--tool', required=True, help='nogps_replay_tool of a build with optimized C++')
+    sub.add_argument('--data_path', required=True, help='the .mwm files of one version, or a folder of them')
+    sub.add_argument('--resources_path', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..',
+                                                                  'data'), help='the data folder of the repository')
+    sub.add_argument('--settings', help='settings.ini of the app: what it has learned about the car')
+    sub.add_argument('--day', action='append', help='MM-DD, as the lines of the log begin; all days without it')
+    sub.add_argument('--from', dest='start', help='HH:MM[:SS]')
+    sub.add_argument('--to', dest='end', help='HH:MM[:SS]')
+    sub.add_argument('-j', '--jobs', type=int, default=os.cpu_count(), help='days driven at a time')
+    sub.add_argument('-o', '--output', required=True, help='the folder of the files of the run, not for git')
+    sub.add_argument('--no-taps', action='store_true', help='only the mark every trip starts with')
+    sub.add_argument('--no-route', action='store_true', help='without the routes the user asked for')
+    sub.add_argument('--change', type=float, default=15, help='meters that count as a change')
     for name in ('input', 'compare'):
         sub = commands.add_parser(name)
         sub.add_argument('logs', nargs='+', help='the trip logs of the application, log-*.log (app*.log before)')
@@ -653,7 +809,11 @@ def main():
             sub.add_argument('--replay', required=True, help='nogps-replay-out.txt of the application')
             sub.add_argument('--change', type=float, default=15, help='meters that count as a change')
     args = parser.parse_args()
-    if args.command == 'input':
+    if args.command == 'days':
+        days(args)
+    elif args.command == 'run':
+        run(args)
+    elif args.command == 'input':
         make_input(args)
     else:
         compare(args)

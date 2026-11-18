@@ -334,6 +334,10 @@ final class NoGpsControls: NSObject {
     // Once a second: the status is too heavy for every position.
     speedView.update(status: status, location: LocationManager.lastLocation())
     speedHint.update(status: status, speedShown: !speedView.isHidden)
+    // The event came when the app was not active: the offer waits for the user.
+    if status.firmwareOfferPending {
+      offerFirmwareUpdate()
+    }
     // The mark stands and waits for the user: a toast about it is easy to miss while driving. The bottom bar tells the
     // source and the accuracy.
     statusButton.isHidden = !status.roadLost
@@ -419,11 +423,11 @@ final class NoGpsControls: NSObject {
 
   /// The box works with another firmware than the app is tested with: asks the user to install the one of the app.
   private func offerFirmwareUpdate() {
-    // Not asked in the background: the car may be driving when the user comes back. The Box page still offers the
-    // firmware.
+    // Not asked in the background: the core keeps the offer pending and refresh() asks when the app is active again.
     let status = NoGps.status()
     guard UIApplication.shared.applicationState == .active, firmwareAlert == nil, !status.bundledFirmware.isEmpty
     else { return }
+    NoGps.firmwareOfferShown()
     let alert = UIAlertController(title: L("nogps_firmware_title"),
                                   message: String(format: L("nogps_firmware_offer"), status.boxFirmware,
                                                   status.bundledFirmware),
@@ -575,13 +579,16 @@ final class NoGpsControls: NSObject {
     case .firmwareUpdateDone: text = String(format: L("nogps_firmware_done"), NoGps.status().boxFirmware)
     case .firmwareUpdateFailed:
       text = String(format: L("nogps_firmware_failed"), firmwareErrorText(NoGps.status().firmwareUpdateError))
-    // The box doesn't take this phone any more: its car is forgotten as by the user.
+    // The box doesn't take this phone any more: its car is forgotten as by the user. The old system pairing of the box
+    // only blocks the next connection, and an app can't remove it: the user is told to.
     case .thisPhoneRemoved:
       let carId = NoGps.status().carId
-      if !carId.isEmpty {
+      if carId.isEmpty {
+        text = nil
+      } else {
         NoGps.forgetCar(carId)
+        text = String(format: L("nogps_phone_removed_forget"), carId)
       }
-      text = L("nogps_phone_removed")
     @unknown default: text = nil
     }
     if let text {

@@ -134,9 +134,20 @@ Ukrainian. The app's Russian translations in `data/strings/` stay as they are.
 
 - Core: unit tests `NoGps_*` in `map_tests`. macOS: `cmake --build build-<name> --target map_tests` then
   `build-<name>/map_tests --filter="NoGps_.*"`. Windows: the `C++ tests` CI check on the PR.
-- A change to how the mark moves: replay the recorded trips with `tools/python/nogps_replay.py` (Android debug
-  build, `-PnativeOptimized` for speed; before and after built the same way) and put the before/after numbers in
-  the PR. If nobody replayed it, the PR says so.
+- A change to how the mark moves: replay the recorded trips with `tools/python/nogps_replay.py` and put the
+  before/after numbers in the PR. If nobody replayed it, the PR says so.
+  - macOS and Linux, the default: `nogps_replay.py run <logs> --tool build-<name>-o2/nogps_replay_tool --data_path
+    <maps> --settings <settings.ini> -o <folder>` drives all days in parallel, 13 days in about 80 s. The script's
+    docstring tells how to build the tool and where to take the maps and the settings.
+  - Windows: the Android debug build (`-PnativeOptimized` for speed) drives one day at a time on a phone.
+  - Before and after are built the same way and driven on the same maps and settings.
+- Replay the days of both sets: the held-out days listed in `tools/python/nogps_held_out_days.txt` (never used to set
+  a rule) and the others (`nogps_replay.py days <logs>` tells each day's set). Give the numbers of each set apart: a
+  rule better on the days it was made from and not on the held-out ones fits its case only. Never move a day into the
+  held-out list after a rule was made from it.
+- `nogps_log.py rules <logs>` counts how often each rule fired over the trips and what came next within 300 m. Run it
+  before and after a change of a rule; a rule that fired in one or two trips, or is followed by a loss or a tap
+  more often than not, is a candidate to drop or merge.
 - Every behavior change gets a unit test.
 - Strings: tag a string in `data/strings/strings.txt` only for the platforms whose code uses it. On iOS, write the
   key inside `L("key")`, not in a variable. Check with `python3 tools/python/validate_translation_keys.py`.

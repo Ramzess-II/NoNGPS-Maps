@@ -8,6 +8,8 @@
 
 namespace nogps
 {
+struct PeerPlace;
+
 /// What the sensor box knows about the car besides its speed. The box asks the car for the engine speed and
 /// ELM327 for the voltage only while the car stands, not to delay the speed. -1 is unknown.
 struct CarInfo
@@ -100,6 +102,9 @@ public:
 
     /// The box has removed this phone on its request: it doesn't connect to the box any more.
     virtual void OnThisPhoneRemoved() {}
+
+    /// The other phone on the box has sent its place, carried to now, see PeerSync.
+    virtual void OnPeerPlace(PeerPlace const & /* place */) {}
   };
 
   virtual ~MotionSource() = default;

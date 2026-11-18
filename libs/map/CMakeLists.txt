@@ -76,6 +76,8 @@ set(SRC
   nogps/motion_source.hpp
   nogps/path_matcher.cpp
   nogps/path_matcher.hpp
+  nogps/peer_sync.cpp
+  nogps/peer_sync.hpp
   nogps/phone_motion.cpp
   nogps/phone_motion.hpp
   nogps/road_walker.cpp
@@ -168,6 +170,9 @@ target_link_libraries(${PROJECT_NAME}
     stb_image
 )
 
+# The replay of trip logs, for the Android debug app and nogps_replay_tool. iOS has none.
+add_subdirectory(nogps_replay)
+
 omim_add_test_subdirectory(map_integration_tests)
 omim_add_test_subdirectory(map_tests)
 omim_add_test_subdirectory(mwm_tests)
@@ -176,4 +181,5 @@ omim_add_test_subdirectory(style_tests)
 if (PLATFORM_DESKTOP)
   omim_add_tool_subdirectory(benchmark_tool)
   omim_add_tool_subdirectory(extrapolation_benchmark)
+  omim_add_tool_subdirectory(nogps_replay_tool)
 endif()

@@ -164,6 +164,8 @@ class Esp32BleTransport
   private boolean mNewBoxOnly;
   // The cars and the current one, as the search starts.
   private final Set<String> mCarIds = new HashSet<>();
+  // The boxes seen in the scan, also while one is connected: the Box sheet offers a car whose box is awake.
+  private final NearbyBoxes mNearbyBoxes = new NearbyBoxes();
   @NonNull
   private String mCurrentCar = "";
   // The box connected, null if its name is not known.
@@ -277,12 +279,59 @@ class Esp32BleTransport
       getPrefs().edit().putStringSet(FORGOTTEN_BOXES, forgotten).apply();
   }
 
+  /**
+   * The box has erased this phone: the old system pairing only blocks the next connection. removeBond() is hidden:
+   * it works on many phones, a newer Android may block it.
+   * @return false if the pairing of the box is still there.
+   */
+  @UiThread
+  @SuppressLint("MissingPermission")
+  boolean unpairBox(@NonNull String id)
+  {
+    final BluetoothManager manager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
+    final BluetoothAdapter adapter = manager != null ? manager.getAdapter() : null;
+    if (adapter == null || !hasPermission())
+      return false;
+    boolean removed = true;
+    try
+    {
+      for (BluetoothDevice device : adapter.getBondedDevices())
+      {
+        if (!isBoxOf(device.getName(), id))
+          continue;
+        removed &= Boolean.TRUE.equals(BluetoothDevice.class.getMethod("removeBond").invoke(device));
+      }
+    }
+    catch (ReflectiveOperationException | RuntimeException e)
+    {
+      Logger.w(TAG, "Cannot remove the pairing of the box " + id + ": " + e);
+      return false;
+    }
+    return removed;
+  }
+
+  static boolean isBoxOf(@Nullable String deviceName, @NonNull String id)
+  {
+    return (NAME_PREFIX + id).equals(deviceName);
+  }
+
+  /**
+   * @return true if the box of the car was seen in the scan in the last minute, other than the connected one: it
+   * doesn't advertise.
+   */
+  @UiThread
+  boolean isBoxNearby(@NonNull String id)
+  {
+    return mOpen && !id.equals(mBoxId) && mNearbyBoxes.isNearby(id, SystemClock.elapsedRealtime());
+  }
+
   @UiThread
   void close()
   {
     if (!mOpen)
       return;
     mOpen = false;
+    mNearbyBoxes.clear();
     mMainHandler.removeCallbacks(mStarter);
     mMainHandler.removeCallbacks(mPairingClosedEnd);
     mContext.unregisterReceiver(mReceiver);
@@ -320,8 +369,14 @@ class Esp32BleTransport
   private void start()
   {
     mMainHandler.removeCallbacks(mStarter);
-    if (!mOpen || mGatt != null)
+    if (!mOpen)
       return;
+    if (mGatt != null)
+    {
+      // Android turns a long scan into one that finds nothing, as below.
+      startNearbyScan();
+      return;
+    }
     stopScan();
     final BluetoothManager manager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
     final BluetoothAdapter adapter = manager != null ? manager.getAdapter() : null;
@@ -355,8 +410,12 @@ class Esp32BleTransport
       @Override
       public void onScanResult(int callbackType, ScanResult result)
       {
-        if (this == mScanCallback)
-          onBoxFound(adapter, result);
+        if (this != mScanCallback)
+          return;
+        final String id = getBoxId(result);
+        if (id != null)
+          mNearbyBoxes.onSeen(id, SystemClock.elapsedRealtime());
+        onBoxFound(adapter, result);
       }
 
       @Override
@@ -392,6 +451,44 @@ class Esp32BleTransport
     mMainHandler.postDelayed(mStarter, RESCAN_INTERVAL_MS);
   }
 
+  /**
+   * Keeps looking for the boxes of the other cars while one is connected, slowly: they are not connected, only seen.
+   */
+  @SuppressLint("MissingPermission")
+  private void startNearbyScan()
+  {
+    stopScan();
+    final BluetoothManager manager = (BluetoothManager) mContext.getSystemService(Context.BLUETOOTH_SERVICE);
+    final BluetoothAdapter adapter = manager != null ? manager.getAdapter() : null;
+    final BluetoothLeScanner scanner =
+        adapter != null && adapter.isEnabled() && hasPermission() ? adapter.getBluetoothLeScanner() : null;
+    if (scanner == null)
+      return;
+    final ScanCallback callback = new ScanCallback() {
+      @Override
+      public void onScanResult(int callbackType, ScanResult result)
+      {
+        final String id = this == mScanCallback ? getBoxId(result) : null;
+        if (id != null)
+          mNearbyBoxes.onSeen(id, SystemClock.elapsedRealtime());
+      }
+    };
+    final ScanFilter filter = new ScanFilter.Builder().setServiceUuid(new ParcelUuid(SERVICE)).build();
+    final ScanSettings settings = new ScanSettings.Builder().setScanMode(ScanSettings.SCAN_MODE_LOW_POWER).build();
+    try
+    {
+      scanner.startScan(Collections.singletonList(filter), settings, callback);
+    }
+    catch (SecurityException | IllegalStateException e)
+    {
+      Logger.w(TAG, "Can't scan for the nearby boxes: " + e.getMessage());
+      return;
+    }
+    mScanner = scanner;
+    mScanCallback = callback;
+    mMainHandler.postDelayed(mStarter, RESCAN_INTERVAL_MS);
+  }
+
   @SuppressLint("MissingPermission")
   private void stopScan()
   {
@@ -415,11 +512,13 @@ class Esp32BleTransport
   @SuppressLint("MissingPermission")
   private void onBoxFound(@NonNull BluetoothAdapter adapter, @NonNull ScanResult result)
   {
+    if (mGatt != null)
+      return;
     final BluetoothDevice device = result.getDevice();
     final boolean bonded = device.getBondState() == BluetoothDevice.BOND_BONDED;
     final String id = getBoxId(result);
     // A paired box without its name may be of a car: not while a new one is added.
-    if (id != null ? !isBoxWanted(id, bonded) : mNewBoxOnly && bonded)
+    if (id != null ? !isBoxWanted(id, bonded) : (mNewBoxOnly && bonded) || (!bonded && isOverCarLimit(null)))
       return;
     final boolean forgotten = id != null && getForgottenBoxes().contains(id);
     if (needsPairingWindow(bonded, forgotten, mNewBoxOnly))
@@ -478,11 +577,28 @@ class Esp32BleTransport
   }
 
   /**
-   * @return false if the box is not to be connected now: of a known car while the user adds one, forgotten, or of
-   * another car while the box of the current one may be found too.
+   * The user has the most cars: a box that is not of one of them (id is null if its name is not known) would drive
+   * the mark under the current car's values.
+   */
+  private boolean isOverCarLimit(@Nullable String id)
+  {
+    return isOverCarLimit(mCarIds, NoGps.nativeGetMaxCars(), id);
+  }
+
+  @VisibleForTesting
+  static boolean isOverCarLimit(@NonNull Set<String> carIds, int maxCars, @Nullable String id)
+  {
+    return carIds.size() >= maxCars && (id == null || !carIds.contains(id));
+  }
+
+  /**
+   * @return false if the box is not to be connected now: of a known car while the user adds one, not of a car at the
+   * limit of cars, forgotten, or of another car while the box of the current one may be found too.
    */
   private boolean isBoxWanted(@NonNull String id, boolean bonded)
   {
+    if (isOverCarLimit(id))
+      return false;
     if (mNewBoxOnly)
       return !mCarIds.contains(id);
     // Without cars the box is set up anew, as any box.
@@ -763,6 +879,7 @@ class Esp32BleTransport
     final Set<String> forgotten = getForgottenBoxes();
     if (mBoxId != null && forgotten.remove(mBoxId))
       getPrefs().edit().putStringSet(FORGOTTEN_BOXES, forgotten).apply();
+    startNearbyScan();
   }
 
   @SuppressLint("MissingPermission")

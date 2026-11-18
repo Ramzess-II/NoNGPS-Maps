@@ -6,6 +6,7 @@
 #include "map/nogps/esp32_source.hpp"
 #include "map/nogps/phone_motion.hpp"
 
+#include "base/logging.hpp"
 #include "base/math.hpp"
 #include "base/string_utils.hpp"
 
@@ -579,6 +580,46 @@ UNIT_TEST(NoGps_Esp32Source_TellsWhenBoxWasPoweredOn)
     TEST(source.GetPowerOn(), ());
     TEST_EQUAL(source.GetPowerOn()->m_unixMs, clock.UnixNowMs() - 8000, ());
   }
+}
+
+UNIT_TEST(NoGps_Esp32Source_LogsRpmOnTheMove)
+{
+  static std::vector<std::string> s_rpmLines;
+  static base::LogMessageFn s_saved;
+  s_rpmLines.clear();
+  s_saved = base::SetLogMessageFn([](base::LogLevel level, base::SrcPoint const & src, std::string const & message)
+  {
+    if (message.starts_with("RPM "))
+      s_rpmLines.push_back(message);
+    else
+      s_saved(level, src, message);
+  });
+
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  auto const status = [&source](std::string const & rpm)
+  {
+    source.OnBleBytes(
+        BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,9,RUN," + rpm + ",14100,,"));
+  };
+
+  // Standing: the rpm is in the status but the speed is not there to compare with.
+  source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, kCalibratedFlags));
+  status("812");
+  TEST(s_rpmLines.empty(), (s_rpmLines));
+  source.OnBleBytes(BoxDataLine(2, 5020, 0, 36, kCalibratedFlags));
+  status("");
+  TEST(s_rpmLines.empty(), (s_rpmLines));
+  status("2100");
+  TEST_EQUAL(s_rpmLines.size(), 1, ());
+  TEST(s_rpmLines[0].find("2100") != std::string::npos, (s_rpmLines));
+  TEST(s_rpmLines[0].find("36") != std::string::npos, (s_rpmLines));
+
+  base::SetLogMessageFn(s_saved);
 }
 
 UNIT_TEST(NoGps_Esp32Source_TellsSleepingBox)
@@ -1213,11 +1254,12 @@ UNIT_TEST(NoGps_Esp32Source_BoxValuesWhileConnected)
   TEST_EQUAL(value(values, V::LastEvent), esp32::BoxValues::value_type(V::LastEvent, "9"), ());
   TEST_EQUAL(value(values, V::Id), esp32::BoxValues::value_type(V::Id, ""), ());
 
-  source.OnBleBytes(BoxLine("NGI,1,0.3.5,2026-10-10T10:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA,7"));
+  source.OnBleBytes(BoxLine("NGI,1,0.3.5,2026-10-10T10:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA,7,R1"));
   values = source.GetBoxValues();
   TEST_EQUAL(values.size(), kAll, ());
   TEST_EQUAL(value(values, V::Id), esp32::BoxValues::value_type(V::Id, "C47D"), ());
   TEST_EQUAL(value(values, V::PowerOns), esp32::BoxValues::value_type(V::PowerOns, "7"), ());
+  TEST_EQUAL(value(values, V::Revision), esp32::BoxValues::value_type(V::Revision, "R1"), ());
   TEST_EQUAL(value(values, V::Engine), esp32::BoxValues::value_type(V::Engine, "RUN"), ());
 
   source.OnBleState(BleState::Searching);

@@ -60,7 +60,9 @@ public:
       m_clock.Advance(20);
       m_boxTimeMs += 20;
       m_yawMdeg += yawRateDegS * 20;
-      m_engine.OnEsp32BleBytes(BoxDataLine(++m_seq, m_boxTimeMs, std::llround(m_yawMdeg), speedKmh, flags));
+      m_distMm += speedKmh / 3.6 * 20;
+      m_engine.OnEsp32BleBytes(
+          BoxDataLine(++m_seq, m_boxTimeMs, std::llround(m_yawMdeg), speedKmh, flags, std::llround(m_distMm)));
     }
   }
 
@@ -80,6 +82,7 @@ public:
     m_seq = 0;
     m_boxTimeMs = 0;
     m_yawMdeg = 0;
+    m_distMm = 0;
   }
 
   /// The box sends nothing, |ms| pass by its clock.
@@ -105,6 +108,7 @@ private:
   int64_t m_seq = 0;
   int64_t m_boxTimeMs = 100'000;
   double m_yawMdeg = 0;
+  double m_distMm = 0;
 };
 
 void TestAlmostEqualAbs(double actual, double expected, double eps)
@@ -1158,6 +1162,20 @@ UNIT_TEST(NoGps_Engine_TurnFitsCrossingOtherMarkHasPassed)
   TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
 }
 
+UNIT_TEST(NoGps_Engine_TurnStartedWithoutCrossingIsMatchedLate)
+{
+  // The car turns left 40 m before the crossing at 200 m by the calculation: no crossing is in reach then. It drives
+  // north off the road, and is moved to the crossing when the road is lost, as on October 16 at 17:18.
+  PieceRoads roads({{-300, 0, 600, 0}, {200, 0, 200, 400}}, {{200, 0}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 100);
+  env.Drive(4000, 36, 0);
+  env.Drive(3000, 36, -30);
+  env.Drive(6000, 36, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 200, 3);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+}
+
 UNIT_TEST(NoGps_Engine_TurnDoesNotFitCrossingBeforeKnownPlace)
 {
   // The same, the car marked 30 m past the crossing: it has not passed the crossing since, the road is lost.
@@ -1456,6 +1474,59 @@ UNIT_TEST(NoGps_Engine_MarkWaitingAtRoundaboutOnGentleBend)
   TEST_LESS(East(env.Last().m_position), -25, ());
   env.Drive(5000, 0, 0);
   DriveAroundRoundaboutToExit(env, 32);
+}
+
+// A highway going east: 1 km straight, 600 m bending to the right by 12 degrees, 1 km straight, as pieces of 20 m.
+// \param points the starts of the pieces if needed.
+std::vector<PieceRoads::Piece> HighwayPieces(std::vector<std::pair<double, double>> * points = nullptr)
+{
+  std::vector<PieceRoads::Piece> pieces;
+  double x = -100;
+  double y = 0;
+  double bearing = 90;
+  for (int i = 0; i < 135; ++i)
+  {
+    // The bend is the pieces from 1000 m to 1600 m from the start of the car, which is at 0.
+    double const from = -100 + i * 20.0;
+    if (from >= 1000 && from < 1600)
+      bearing += 12.0 / 30;
+    double const nx = x + 20 * std::sin(math::DegToRad(bearing));
+    double const ny = y + 20 * std::cos(math::DegToRad(bearing));
+    pieces.push_back({x, y, nx, ny});
+    if (points)
+      points->emplace_back(x, y);
+    x = nx;
+    y = ny;
+  }
+  return pieces;
+}
+
+UNIT_TEST(NoGps_Engine_GentleBendRemovesAlongError)
+{
+  std::vector<std::pair<double, double>> points;
+  PieceRoads roads(HighwayPieces(&points), {});
+  Env env(true /* inertial */, &roads);
+  int driven = 0;
+  // The car stands at 0 and is marked there.
+  env.m_engine.SetManualMode(true);
+  env.Drive(500, 0, 0);
+  TEST(env.m_engine.PlaceMarkByTap(At(0, 3)), ());
+  // 50 s to the bend at 72 km/h, 30 s along it, 20 s after it.
+  env.Drive(50'000, 72, 0);
+  auto const alongError = [&]()
+  {
+    // The car is |driven| m from where it stood, the road starts 100 m before.
+    return std::hypot(East(env.Last().m_position) - points[(driven + 100) / 20].first,
+                      North(env.Last().m_position) - points[(driven + 100) / 20].second);
+  };
+  driven = 1000;
+  // The mark runs ahead of the car at the start of the bend: the box speed is taken as 1.2 s old.
+  double const before = alongError();
+  TEST_GREATER(before, 15.0, ());
+  env.Drive(30'000, 72, 0.4);
+  env.Drive(20'000, 72, 0);
+  driven = 2000;
+  TEST_LESS(alongError(), 15.0, (env.m_engine.GetTripLine()));
 }
 
 UNIT_TEST(NoGps_Engine_StopsCarThatLeftRoads)
@@ -2872,6 +2943,27 @@ UNIT_TEST(NoGps_BoxCarValues_ValueChangedByPhoneIsWritten)
   box.Connect(env);
   TEST_EQUAL(box.m_values["car_name"], "Opel", ());
 
+  // Another phone has erased the name, the box keeps the other values: the phone takes the empty name.
+  box.m_values["spd_factor"] = "1.05";
+  box.Connect(env);
+  TEST_EQUAL(box.m_values["spd_factor"], "1.05", ());
+  box.m_values.erase("car_name");
+  box.Connect(env);
+  TEST_EQUAL(env.m_engine.GetCars()[0].m_name, "", ());
+  TEST(!box.m_values.contains("car_name"), ());
+  // A calibration erased by another phone is taken too, while a half of a table is not an erase.
+  env.m_engine.RenameCar("C47D", "Opel");
+  box.Answer(env);
+  box.m_values.erase("spd_factor");
+  box.m_values["spd_table_lo"] = "1";
+  box.Connect(env);
+  TEST(!box.m_values.contains("spd_factor"), ());
+  box.m_values.erase("spd_table_lo");
+  // A name the phone has never seen on the box is written.
+  env.m_engine.RenameCar("C47D", "Opel");
+  box.Answer(env);
+  TEST_EQUAL(box.m_values["car_name"], "Opel", ());
+
   // A name given by the user to the box of another car waits for that box.
   box.Connect(env, "42FD");
   env.m_engine.RenameCar("C47D", "Kia");
@@ -3112,6 +3204,14 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
     TEST_EQUAL(status.m_bundledFirmware, "0.3.3", ());
     TEST_EQUAL(status.m_firmwareUpdate, Esp32Update::State::None, ());
     TEST_EQUAL(reads, 0, ());
+    // The offer stays pending until the application shows it: the event may come when it can't.
+    TEST(status.m_firmwareOfferPending, ());
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs);
+    TEST(env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    env.m_engine.FirmwareOfferShown();
+    TEST(!env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs);
+    TEST(!env.m_engine.GetStatus().m_firmwareOfferPending, ());
 
     env.m_engine.StartFirmwareUpdate();
     TEST_EQUAL(reads, 1, ());
@@ -3161,6 +3261,25 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
     connect(env, "0.3.2");
     drive(Engine::kFirmwareOfferDelayMs + Engine::kTripLogIntervalMs * 2, 0);
     TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 1, ());
+    TEST(env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    // The offer is not kept for a car that drives: the box refuses the update.
+    drive(1500, 36);
+    TEST(!env.m_engine.GetStatus().m_firmwareOfferPending, ());
+  }
+  {
+    // The box is gone before the application shows the offer: it is made again when the box is back.
+    Env env(true /* inertial */);
+    env.m_engine.SetFirmwares(firmwares);
+    connect(env, "0.3.2");
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
+    TEST(env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    env.m_engine.OnEsp32BleState(BleState::Searching);
+    env.m_clock.Advance(Engine::kTripLogIntervalMs);
+    TEST(!env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    connect(env, "0.3.2");
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
+    TEST(env.m_engine.GetStatus().m_firmwareOfferPending, ());
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 2, ());
   }
   {
     // A box of another kind is not updated.
@@ -3599,6 +3718,7 @@ public:
   }
 
   double East() const { return m_east; }
+  double Speed() const { return m_speed; }
   double North() const { return m_north; }
 
   // The gravity the accelerometer feels along the car on a slope.
@@ -3677,6 +3797,97 @@ UNIT_TEST(NoGps_Engine_AccelerometerTellsCarInYardDrivesBack)
     if (accelerometer)
       TestAlmostEqualAbs(North(env.Last().m_position), car.North(), 4);
   }
+}
+
+// The car marked on the street going east drives at 30 km/h along it.
+void DriveAt30(BoxCar & car)
+{
+  car.Drive(25.0 / 3, 1, 0);
+  car.Drive(3, 0, 0);
+}
+
+UNIT_TEST(NoGps_Engine_CarBrakingIntoGasStationIsFollowedApart)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  // It brakes and turns right into a gas station: after it has left the street it reports the speed it drove the
+  // street at, then the speed it brakes with, rising by 1 km/h for a moment or not. It stops 22-27 m off the street.
+  for (bool rises : {false, true})
+  {
+    Env env(true /* inertial */, &roads);
+    MarkCar(env, 0);
+    BoxCar car(env, 0, false /* accelerometer */);
+    DriveAt30(car);
+    if (rises)
+    {
+      car.Drive(1, -0.5, 0);
+      car.Drive(1, -0.5, 90);
+      car.Drive(0.5, -0.5, 0);
+      car.Drive(0.7, 0.4, 0);
+      car.Drive(4.91, -1.5, 0);
+    }
+    else
+    {
+      car.Drive(1, -1, 0);
+      car.Drive(1, -1, 90);
+      car.Drive(6.3, -1, 0);
+    }
+    car.Drive(60, 0, 0);
+    TEST(FollowedApart(env), (rises, env.m_engine.GetTripLine()));
+    // While it brakes it is followed apart by its speed.
+    TEST_LESS_OR_EQUAL(std::stod(TripField(env, "offv")), 20, (rises));
+    // It drives on after refuelling: it maneuvers, its road is not lost.
+    car.Drive(2, 1, 0);
+    car.Drive(7, 0, 0);
+    TEST(FollowedApart(env), (rises, env.m_engine.GetTripLine()));
+    TEST(!env.m_engine.GetStatus().m_roadLost, (rises));
+    TEST(!env.m_delegate.HasEvent(Event::RoadLost), (rises));
+  }
+}
+
+UNIT_TEST(NoGps_Engine_CarLeavingRoadFastIsNotFollowedApart)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  // It turns right off the street at 30 km/h and drives on without braking, or brakes for 2 s and speeds up to
+  // 30 km/h again.
+  for (bool brakes : {false, true})
+  {
+    Env env(true /* inertial */, &roads);
+    MarkCar(env, 0);
+    BoxCar car(env, 0, false /* accelerometer */);
+    DriveAt30(car);
+    car.Drive(1, 0, 90);
+    if (brakes)
+    {
+      car.Drive(2, -1, 0);
+      car.Drive(2, 1, 0);
+    }
+    car.Drive(6, 0, 0);
+    TEST(!FollowedApart(env), (brakes, env.m_engine.GetTripLine()));
+    // The speed it has sped up to counts. Driving on without braking, its speed counts after it has driven 30 m off
+    // the roads: its road is lost first.
+    if (brakes)
+      TEST_GREATER(std::stod(TripField(env, "offv")), 20, ());
+    else
+      TEST(env.m_delegate.HasEvent(Event::RoadLost), ());
+  }
+}
+
+UNIT_TEST(NoGps_Engine_CarTurningLongOffRoadAfterDrivingFastIsNotFollowedApart)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  BoxCar car(env, 0, false /* accelerometer */);
+  car.Drive(25.0 / 3.6, 1, 0);
+  car.Drive(3, 0, 0);
+  // It leaves the street at 25 km/h without braking, and 2.5 s later turns slowly for 10 s, slowing down to 10 km/h.
+  // The speeds it reported before the turn count: on November 7 a car so was followed apart after the turn at the
+  // speed it had then.
+  car.Drive(1, 0, 45);
+  car.Drive(2.5, 0, 0);
+  car.Drive(10, -0.4, 15);
+  car.Drive(3, 0.3, 0);
+  TEST(!FollowedApart(env), (env.m_engine.GetTripLine()));
 }
 
 UNIT_TEST(NoGps_Engine_TurnStartedBeforeCarReportsSpeedIsNotLost)
@@ -3872,7 +4083,21 @@ UNIT_TEST(NoGps_Engine_BoxTurnedAroundDoesNotDriveEveryStartBack)
   TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 15);
 }
 
-UNIT_TEST(NoGps_Engine_BoxCalibrationForgetsAccelerometer)
+UNIT_TEST(NoGps_Engine_BoxCalibrationKeepsAccelerometer)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+  env.m_engine.Calibrate();
+  // The same box: a reverse right after the calibration is told backward.
+  car.Drive(2, -1, 0);
+  car.Drive(2, 0, 0);
+  TEST(env.m_engine.GetTripLine().find(" back=1") != std::string::npos, (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_Engine_BoxCalibrationTurnedBoxIsLearnedAnew)
 {
   // The trip line tells "boxacc=<correlation>/-" while the box accelerometer is not used.
   auto const accelUsed = [](Env & env)
@@ -3889,17 +4114,13 @@ UNIT_TEST(NoGps_Engine_BoxCalibrationForgetsAccelerometer)
   car.SpeedUpAndBrake();
   TEST(accelUsed(env), ());
 
-  // The box is put in turned around and calibrated: the direction learned before is forgotten.
+  // The box is put in turned around and calibrated: the direction learned before is kept, the check of the
+  // accelerometer against the car forgets it while driving, and it is learned the right way.
   env.m_engine.Calibrate();
-  TEST(!accelUsed(env), ());
+  TEST(accelUsed(env), ());
   car.m_accelSign = -1;
-  car.Drive(3, 1, 0);
-  TEST(env.m_engine.GetTripLine().find(" back=0") != std::string::npos, (env.m_engine.GetTripLine()));
-  car.Drive(3, -1, 0);
   car.Drive(3, 0, 0);
-  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 5);
-
-  // It is learned anew, the right way.
+  car.SpeedUpAndBrake();
   car.SpeedUpAndBrake();
   TEST(accelUsed(env), ());
   double const stoppedEast = East(env.Last().m_position);
@@ -4061,6 +4282,84 @@ UNIT_TEST(NoGps_Engine_CarStartingClearlyForwardAndBrakingStaysForward)
   car.m_minReportedKmh = 0;
   car.Drive(3, 0, 0);
   TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 3);
+}
+
+// The car creeps backward from a stand with a start too weak to tell its way, speeds up to |topAccel| * 5 s and brakes.
+// The stop pulls it forward, as on November 15 at 11:23:37.
+static void CreepBackAndBrake(BoxCar & car, double topAccel)
+{
+  car.m_minReportedKmh = 1;
+  car.Drive(4, -0.05, 0);
+  car.Drive(1, 0, 0);
+  car.Drive(5, topAccel, 0);
+  car.Drive(2, 0, 0);
+  car.m_minReportedKmh = 0;
+  car.Drive(-car.Speed() / 1.0, 1, 0);
+  car.Drive(3, 0, 0);
+}
+
+UNIT_TEST(NoGps_Engine_StopPullTurnsSegmentStartedWeakly)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+  double const startEast = car.East();
+
+  CreepBackAndBrake(car, -0.2);
+  TEST_LESS(car.East(), startEast - 5, ());
+  // The start was told forward, the stop tells that the car has backed.
+  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 3);
+}
+
+UNIT_TEST(NoGps_Engine_StopPullKeepsFastSegment)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+  double const startEast = car.East();
+
+  // 12 km/h is faster than a segment that is checked by its stop.
+  CreepBackAndBrake(car, -0.65);
+  TEST_LESS(car.East(), startEast - 5, ());
+  TEST_GREATER(East(env.Last().m_position), startEast, ());
+}
+
+UNIT_TEST(NoGps_Engine_StopPullKeepsClearForwardStart)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+
+  // The car starts clearly forward to 5 km/h and brakes over a curb that pulls it the other way.
+  car.Drive(1.5, 1, 0);
+  car.Drive(2, 0, 0);
+  car.m_slopeMps2 = 2.5;
+  car.Drive(1.5, -1, 0);
+  car.m_slopeMps2 = 0;
+  car.Drive(3, 0, 0);
+  // The pull moves the mark ahead a little. A segment turned would put it 10 m behind.
+  TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 6);
+}
+
+UNIT_TEST(NoGps_Engine_StopPullChangesNothingWithoutAccelerometer)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, false /* accelerometer */);
+  car.SpeedUpAndBrake();
+  double const startEast = East(env.Last().m_position);
+
+  CreepBackAndBrake(car, -0.2);
+  TEST_GREATER(East(env.Last().m_position), startEast, ());
+  // Without the check the segment is not turned: the mark stays far ahead of the car that has backed.
+  TEST_GREATER(East(env.Last().m_position), car.East() + 5, ());
 }
 
 UNIT_TEST(NoGps_Engine_CarCrawlingAfterShortStopStaysForward)
@@ -4920,6 +5219,321 @@ UNIT_TEST(NoGps_SpeedLimitRoadFoundLater)
   TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, -1, ());
   env.m_env.m_map.m_roads = &env.m_roads;
   TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, 50, ());
+}
+
+/// Two phones on one box that passes their places on: the first one leads, the second follows. The box sends the same
+/// lines to both, and tells each the places the other one has sent.
+class TwoPhones
+{
+public:
+  explicit TwoPhones(bool peerAbility = true, bool leaderGpsBox = false)
+  {
+    std::string const abilities = peerAbility ? "BLE OTA CAR PHONES MULTI PEER" : "BLE OTA CAR PHONES MULTI";
+    std::string const info =
+        "NGI,1,0.4.3,2026-11-18T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID," + abilities + ",3";
+    for (auto * env : {&m_leader, &m_follower})
+      env->m_engine.OnEsp32BleBytes(BoxLine(info));
+    Drive(1000, 0, 0);
+    AnswerList(m_leader, "Pixel 8", "iPhone", true);
+    AnswerList(m_follower, "Pixel 8", "iPhone", false);
+  }
+
+  /// The box lists its phones, the first one changes it.
+  void AnswerList(Env & env, std::string const & first, std::string const & second, bool changesBox)
+  {
+    auto const & sent = env.m_delegate.m_esp32BleSent;
+    auto const list = std::find_if(sent.rbegin(), sent.rend(),
+                                   [](auto const & line) { return line.find(",BT_LIST*") != std::string::npos; });
+    TEST(list != sent.rend(), ());
+    auto const id = (*esp32::Parse(*list))[1];
+    // This phone is the one that has asked.
+    std::string const phones = "BC:D0:74:A9:71:92|" + first + "|1794685760|" + (changesBox ? "1" : "0") +
+                               ";BC:D0:74:A9:71:93|" + second + "|1794685761|" + (changesBox ? "0" : "1");
+    env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + id + ",OK," + phones + "," + (changesBox ? "1" : "0")));
+  }
+
+  /// The box counts the same for both phones, the places go between them.
+  void Drive(int64_t ms, int speedKmh, double yawRateDegS)
+  {
+    for (int64_t t = 0; t < ms; t += 20)
+    {
+      m_leader.Drive(20, speedKmh, yawRateDegS);
+      m_follower.Drive(20, speedKmh, yawRateDegS);
+      Relay();
+    }
+  }
+
+  /// Passes on what the phones have sent to the box with PEER since the last time.
+  void Relay()
+  {
+    Relay(m_leader, m_follower, m_leaderRelayed);
+    Relay(m_follower, m_leader, m_followerRelayed);
+  }
+
+  /// What the phone has sent with PEER: the payload.
+  static std::vector<std::string> Sent(Env const & env)
+  {
+    std::vector<std::string> payloads;
+    for (auto const & line : env.m_delegate.m_esp32BleSent)
+    {
+      auto const fields = esp32::Parse(line);
+      if (!fields || fields->size() < 4 || (*fields)[2] != "PEER")
+        continue;
+      std::string payload = (*fields)[3];
+      for (size_t i = 4; i < fields->size(); ++i)
+        payload += "," + (*fields)[i];
+      payloads.push_back(payload);
+    }
+    return payloads;
+  }
+
+  static size_t CountSent(Env const & env, char kind)
+  {
+    auto const sent = Sent(env);
+    return std::count_if(sent.begin(), sent.end(), [kind](auto const & payload) { return payload[0] == kind; });
+  }
+
+  Env m_leader{true /* inertial */};
+  Env m_follower{true /* inertial */};
+
+private:
+  static void Relay(Env & from, Env & to, size_t & done)
+  {
+    auto const & sent = from.m_delegate.m_esp32BleSent;
+    while (done < sent.size())
+    {
+      auto const fields = esp32::Parse(sent[done++]);
+      if (!fields || fields->size() < 4 || (*fields)[2] != "PEER")
+        continue;
+      std::string line = "NGX,1";
+      for (size_t i = 3; i < fields->size(); ++i)
+        line += "," + (*fields)[i];
+      to.m_engine.OnEsp32BleBytes(BoxLine(line));
+    }
+  }
+
+  size_t m_leaderRelayed = 0;
+  size_t m_followerRelayed = 0;
+};
+
+UNIT_TEST(NoGps_Engine_PeerRolesFollowTheBox)
+{
+  TwoPhones phones;
+  auto const leader = phones.m_leader.m_engine.GetStatus();
+  TEST_EQUAL(leader.m_peerRole, PeerRole::Leading, ());
+  auto const follower = phones.m_follower.m_engine.GetStatus();
+  TEST_EQUAL(follower.m_peerRole, PeerRole::Following, ());
+  TEST_EQUAL(follower.m_peerName, "Pixel 8", ());
+  TEST(leader.m_peerName.empty(), ());
+
+  // The leader leaves: the box tells the follower that it changes the box now, the list has one phone more.
+  phones.m_follower.m_engine.OnEsp32BleBytes(BoxLine("NGE,1,5,100,I,PHONE_LOST,BC:D0:74:A9:71:92"));
+  phones.AnswerList(phones.m_follower, "Pixel 8", "iPhone", true);
+  TEST_EQUAL(phones.m_follower.m_engine.GetStatus().m_peerRole, PeerRole::Leading, ());
+}
+
+UNIT_TEST(NoGps_Engine_PeerNothingWithoutAbility)
+{
+  // One of the phones is alone, or the box doesn't pass the places on: as before.
+  TwoPhones phones(false /* peerAbility */);
+  TEST_EQUAL(phones.m_leader.m_engine.GetStatus().m_peerRole, PeerRole::None, ());
+  TEST_EQUAL(phones.m_follower.m_engine.GetStatus().m_peerRole, PeerRole::None, ());
+  MarkCar(phones.m_leader, 50);
+  phones.m_leader.Drive(2 * kPeerSnapshotIntervalMs, 0, 0);
+  phones.m_follower.m_engine.PlaceMarkByTap(At(60, 3));
+  TEST(TwoPhones::Sent(phones.m_leader).empty(), ());
+  TEST(TwoPhones::Sent(phones.m_follower).empty(), ());
+
+  // A phone alone on a box with the ability has nobody to tell.
+  Env alone(true /* inertial */);
+  alone.m_engine.OnEsp32BleBytes(BoxLine(
+      "NGI,1,0.4.3,2026-11-18T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES MULTI PEER,3"));
+  alone.Drive(1000, 0, 0);
+  auto const sent = alone.m_delegate.m_esp32BleSent;
+  auto const list = std::find_if(sent.begin(), sent.end(),
+                                 [](auto const & line) { return line.find(",BT_LIST*") != std::string::npos; });
+  TEST(list != sent.end(), ());
+  alone.m_engine.OnEsp32BleBytes(BoxLine("NGA," + (*esp32::Parse(*list))[1] + ",OK,BC:D0:74:A9:71:92|Pixel 8|1|1,1"));
+  TEST_EQUAL(alone.m_engine.GetStatus().m_peerRole, PeerRole::None, ());
+  MarkCar(alone, 50);
+  alone.Drive(2 * kPeerSnapshotIntervalMs, 0, 0);
+  TEST(TwoPhones::Sent(alone).empty(), ());
+}
+
+UNIT_TEST(NoGps_Engine_PeerLeaderTapReachesFollower)
+{
+  TwoPhones phones;
+  phones.m_leader.m_engine.SetManualMode(true);
+  phones.Drive(500, 0, 0);
+  TEST(phones.m_leader.m_engine.PlaceMarkByTap(At(150, 3)), ());
+  phones.Drive(40, 0, 0);
+
+  auto const sent = TwoPhones::Sent(phones.m_leader);
+  TEST_EQUAL(sent.size(), 1, ());
+  TEST_EQUAL(sent[0][0], 'A', ());
+  TEST_EQUAL(sent[0].back(), 'T', ());
+
+  // The follower had no place: the car is where the leader has put it, in the manual mode as after a tap.
+  auto & follower = phones.m_follower;
+  TEST(follower.m_engine.IsManualMode(), ());
+  TestAlmostEqualAbs(East(follower.Last().m_position), 150, 1);
+  TestAlmostEqualAbs(North(follower.Last().m_position), 0, 1);
+  TEST_EQUAL(follower.Last().m_bearingDeg, 90.0, ());
+  // What it has got it doesn't send on.
+  TEST(TwoPhones::Sent(follower).empty(), ());
+}
+
+UNIT_TEST(NoGps_Engine_PeerAnchorIsCarriedByTheBoxOfTheFollower)
+{
+  TwoPhones phones;
+  phones.m_leader.m_engine.SetManualMode(true);
+  phones.Drive(500, 0, 0);
+  TEST(phones.m_leader.m_engine.PlaceMarkByTap(At(150, 3)), ());
+  // The line of the leader comes to the follower after the car has driven on for 2 s at 36 km/h: 20 m.
+  auto & follower = phones.m_follower;
+  follower.Drive(2000, 36, 0);
+  phones.m_leader.Drive(2000, 36, 0);
+  phones.Relay();
+  follower.Drive(100, 36, 0);
+  // The follower has driven from the place as far as the leader has: 20 m and the 1 m since the line came.
+  TestAlmostEqualAbs(East(follower.Last().m_position), 171, 2);
+}
+
+UNIT_TEST(NoGps_Engine_PeerSnapshotGivesPlaceToFollowerWithout)
+{
+  TwoPhones phones;
+  // The leader has a place and the follower joins later: it has none until a snapshot comes.
+  phones.m_follower.m_engine.Stop();
+  MarkCar(phones.m_leader, 200);
+  phones.m_leader.Drive(500, 0, 0);
+  TEST_EQUAL(TwoPhones::CountSent(phones.m_leader, 'S'), 0, ());
+  phones.m_follower.m_engine.Start();
+  phones.m_follower.ConnectBox();
+  phones.m_follower.m_engine.OnEsp32BleBytes(BoxLine(
+      "NGI,1,0.4.3,2026-11-18T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES MULTI PEER,3"));
+  phones.m_follower.Drive(1000, 0, 0);
+  phones.AnswerList(phones.m_follower, "Pixel 8", "iPhone", false);
+  TEST(!phones.m_follower.m_engine.GetStatus().m_hasInertialPosition, ());
+  size_t const before = phones.m_follower.m_delegate.m_positions.size();
+
+  phones.Drive(kPeerSnapshotIntervalMs, 0, 0);
+  TEST_GREATER_OR_EQUAL(TwoPhones::CountSent(phones.m_leader, 'S'), 1, ());
+  TEST_GREATER(phones.m_follower.m_delegate.m_positions.size(), before, ());
+  TestAlmostEqualAbs(East(phones.m_follower.Last().m_position), 200, 1);
+}
+
+UNIT_TEST(NoGps_Engine_PeerFollowerTapReachesLeaderAndIsAnswered)
+{
+  TwoPhones phones;
+  auto & leader = phones.m_leader;
+  auto & follower = phones.m_follower;
+  MarkCar(leader, 150);
+  MarkCar(follower, 150);
+  phones.Drive(1000, 0, 0);
+  size_t const leaderAnchors = TwoPhones::CountSent(leader, 'A');
+  size_t const corrections = TwoPhones::CountSent(follower, 'C');
+
+  TEST(follower.m_engine.PlaceMarkByTap(At(350, 3)), ());
+  phones.Drive(300, 0, 0);
+  // The follower has applied it at once and told the leader.
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'C'), corrections + 1, ());
+  TestAlmostEqualAbs(East(follower.Last().m_position), 350, 1);
+  // The leader has applied it and answered with an anchor.
+  TestAlmostEqualAbs(East(leader.Last().m_position), 350, 1);
+  TEST_EQUAL(TwoPhones::CountSent(leader, 'A'), leaderAnchors + 1, ());
+  // The anchor is not a correction: the follower has not sent another one.
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'C'), corrections + 1, ());
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'A'), 0, ());
+}
+
+UNIT_TEST(NoGps_Engine_PeerReversalAndSwitchReachTheOtherPhone)
+{
+  TwoPhones phones;
+  auto & leader = phones.m_leader;
+  auto & follower = phones.m_follower;
+  MarkCar(leader, 150);
+  phones.Drive(1000, 0, 0);
+  TestAlmostEqualAbs(East(follower.Last().m_position), 150, 1);
+  TEST_EQUAL(follower.Last().m_bearingDeg, 90.0, ());
+
+  leader.m_engine.ReverseDirection();
+  phones.Drive(300, 0, 0);
+  TEST_EQUAL(leader.Last().m_bearingDeg, 270.0, ());
+  TEST_EQUAL(follower.Last().m_bearingDeg, 270.0, ());
+
+  // The follower turns the car around: the leader does the same.
+  follower.m_engine.ReverseDirection();
+  phones.Drive(300, 0, 0);
+  TEST_EQUAL(follower.Last().m_bearingDeg, 90.0, ());
+  TEST_EQUAL(leader.Last().m_bearingDeg, 90.0, ());
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'C'), 1, ());
+}
+
+UNIT_TEST(NoGps_Engine_PeerFollowerGpsGoesToManualLeaderOnly)
+{
+  TwoPhones phones;
+  auto & leader = phones.m_leader;
+  auto & follower = phones.m_follower;
+  // The leader trusts GPS: the follower keeps its GPS to itself.
+  leader.DriveGps(3, 0, 10);
+  follower.DriveGps(3, 0, 10);
+  phones.Drive(300, 0, 0);
+  TEST(!leader.m_engine.IsManualMode(), ());
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'G'), 0, ());
+  TEST_GREATER_OR_EQUAL(TwoPhones::CountSent(leader, 'A'), 1, ());
+
+  // The leader is in the manual mode, it tells so.
+  leader.m_engine.SetManualMode(true);
+  phones.Drive(500, 0, 0);
+  TEST(leader.m_engine.PlaceMarkByTap(At(50, 3)), ());
+  phones.Drive(300, 0, 0);
+  follower.m_clock.Advance(1000);
+  follower.m_engine.OnFix(GpsAt(follower.m_clock, 31, 0, 90.0, 10));
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'G'), 1, ());
+  // A GPS position that is not good is not sent.
+  follower.m_clock.Advance(1000);
+  follower.m_engine.OnFix(GpsAt(follower.m_clock, 41, 0, 90.0, 10, 80 /* accuracyM */));
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'G'), 1, ());
+  // The leader takes it as its own GPS: the checks are the same, and it is told that GPS works.
+  leader.m_clock.Advance(2000);
+  TEST_GREATER_OR_EQUAL(leader.m_engine.GetStatus().m_lastGoodGpsAgeMs, 2000, ());
+  phones.Relay();
+  TEST_LESS(leader.m_engine.GetStatus().m_lastGoodGpsAgeMs, 1000, ());
+  TEST(leader.m_engine.IsManualMode(), ());
+}
+
+UNIT_TEST(NoGps_Engine_PeerFollowerKeepsItsGps)
+{
+  TwoPhones phones;
+  auto & leader = phones.m_leader;
+  auto & follower = phones.m_follower;
+  leader.DriveGps(3, 0, 10);
+  follower.DriveGps(5, 0, 10);
+  // The snapshot of the leader does not turn the manual mode on for the follower that has GPS.
+  phones.Drive(kPeerSnapshotIntervalMs, 36, 0);
+  TEST_GREATER_OR_EQUAL(TwoPhones::CountSent(leader, 'S'), 1, ());
+  TEST(!follower.m_engine.IsManualMode(), ());
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'A') + TwoPhones::CountSent(follower, 'S'), 0, ());
+}
+
+UNIT_TEST(NoGps_Engine_TripLineHasRpm)
+{
+  Env env(true /* inertial */);
+  env.ConnectBox();
+  env.Drive(2000, 36, 0);
+  auto const status = [&env](std::string const & rpm)
+  {
+    env.m_engine.OnEsp32BleBytes(
+        BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,9,RUN," + rpm + ",14100,,"));
+    env.Drive(1000, 36, 0);
+  };
+  status("");
+  TEST(env.m_engine.GetTripLine().find(" rpm=") == std::string::npos, (env.m_engine.GetTripLine()));
+  status("2100");
+  TEST_EQUAL(TripField(env, "rpm"), "2100", ());
+  // The status without the rpm: it is not kept from the previous one.
+  status("");
+  TEST(env.m_engine.GetTripLine().find(" rpm=") == std::string::npos, (env.m_engine.GetTripLine()));
 }
 
 namespace sprint

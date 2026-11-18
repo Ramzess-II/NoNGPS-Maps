@@ -131,6 +131,18 @@ public final class NoGps
     FAILED,
   }
 
+  /**
+   * What the phone does about the place of the car when two phones are on one box: the one that changes the box
+   * leads, the other one follows it.
+   */
+  public enum PeerRole
+  {
+    // The box can't pass the places on, or this phone is alone on it.
+    NONE,
+    LEADING,
+    FOLLOWING,
+  }
+
   public enum CalibrationState
   {
     NONE,
@@ -182,6 +194,7 @@ public final class NoGps
     BUILD_DATE,
     CHIP,
     BOARD,
+    REVISION,
     ID,
     // KB.
     FLASH_SIZE,
@@ -425,6 +438,9 @@ public final class NoGps
     @Keep
     @NonNull
     public String firmwareUpdateError = "";
+    // The user has not seen the offer of bundledFirmware: show it and call nativeFirmwareOfferShown().
+    @Keep
+    public boolean firmwareOfferPending;
     // The sensor box has been powered on since the user calibrated it.
     @Keep
     public boolean boxCalibrationAdvised;
@@ -442,6 +458,12 @@ public final class NoGps
     public boolean boxReadOnly;
     @Keep
     int addPhone;
+    @Keep
+    int peerRole;
+    // The name of the phone this one follows, empty if the box doesn't know it.
+    @Keep
+    @NonNull
+    public String peerName = "";
     // The code to enter on the new phone while addPhone is OPEN.
     @Keep
     @NonNull
@@ -523,6 +545,12 @@ public final class NoGps
     public AddPhone getAddPhone()
     {
       return AddPhone.values()[addPhone];
+    }
+
+    @NonNull
+    public PeerRole getPeerRole()
+    {
+      return PeerRole.values()[peerRole];
     }
   }
 
@@ -841,6 +869,11 @@ public final class NoGps
   public static native void nativeStartFirmwareUpdate();
 
   public static native void nativeCancelFirmwareUpdate();
+
+  /**
+   * The user has been offered the firmware, see {@link Status#firmwareOfferPending}.
+   */
+  public static native void nativeFirmwareOfferShown();
 
   public static native void nativeClearSpeedCalibration();
 

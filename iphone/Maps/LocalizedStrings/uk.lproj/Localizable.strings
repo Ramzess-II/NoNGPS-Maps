@@ -1408,6 +1408,12 @@
 /* State of a car in the list of the cars: when its box was connected the last time, e.g. "Last connected 2 hours ago" */
 "nogps_car_last_seen" = "Останнє підключення %1$@";
 
+/* State of a car in the list of the cars: its box is awake near the phone, the car may be switched to */
+"nogps_car_nearby" = "Поруч";
+
+/* Button in the row of a car in the list of the cars, next to "Nearby": the app takes this car and connects to its box */
+"nogps_car_switch" = "Перемкнути";
+
 /* Action for a car in the list of the cars: the app takes this car and connects to its box */
 "nogps_car_drive" = "Перемкнутися на це авто";
 
@@ -1427,10 +1433,10 @@
 "nogps_car_add" = "Додати авто";
 
 /* State of the sensor box, shown after its name: the box has phones, a new one is added on one of them */
-"nogps_box_bt_pairing_by_phone" = "знайдено, але не спарено з цим телефоном. На телефоні, спареному з блоком, відкрийте «Блок», натисніть на назву авто вгорі, потім на авто й «Додати телефон» і введіть код тут";
+"nogps_box_bt_pairing_by_phone" = "знайдено, але не спарено з цим телефоном. На телефоні, спареному з блоком, відкрийте «Блок», натисніть на назву авто вгорі, потім на авто й «Додати телефон» і введіть код тут. Немає спареного телефона під рукою? Вимкніть Bluetooth на решті телефонів, спарених з блоком. Вставте блок у роз'єм і вийміть його протягом хвилини, 3 рази, а втретє залиште вставленим: 2 хвилини він приймає цей телефон із кодом 123456, якщо його не змінювали, і забуває решту телефонів";
 
 /* State of the sensor box, shown after its name: the box has 4 phones and takes no new one */
-"nogps_box_bt_pairing_full" = "знайдено, але не спарено з цим телефоном. Блок має 4 телефони: видаліть один на спареному телефоні («Блок», назва авто вгорі, авто)";
+"nogps_box_bt_pairing_full" = "знайдено, але не спарено з цим телефоном. Блок має 4 телефони: видаліть один на спареному телефоні («Блок», назва авто вгорі, авто). Немає спареного телефона під рукою? Вимкніть Bluetooth на решті телефонів, спарених з блоком. Вставте блок у роз'єм і вийміть його протягом хвилини, 3 рази, а втретє залиште вставленим: 2 хвилини він приймає цей телефон із кодом 123456, якщо його не змінювали, і забуває решту телефонів";
 
 /* Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car */
 "nogps_car_phones" = "Телефони";
@@ -1453,8 +1459,8 @@
 /* Asked before this phone is removed from the sensor box */
 "nogps_phone_remove_this_text" = "Цей телефон більше не підключатиметься до блока, а авто на ньому буде забуто.";
 
-/* Message: this phone has been removed from the sensor box on its own request */
-"nogps_phone_removed" = "Цей телефон видалено з блока, авто забуто";
+/* Message on iOS: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and iOS apps cannot remove it */
+"nogps_phone_removed_forget" = "Цей телефон видалено з блока, авто забуто. Видаліть NoGPS-%1$@ у Налаштування > Bluetooth: натисніть кнопку інформації й «Забути цей пристрій»";
 
 /* Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code */
 "nogps_phone_add" = "Додати телефон";
@@ -1479,6 +1485,12 @@
 
 /* Shown in the Box sheet when another phone has connected to the sensor box first: this phone gets the data only */
 "nogps_box_read_only" = "Інший телефон підключився до блока першим: калібрування, прошивку, ім'я авто й телефони блока змінюють на ньому";
+
+/* Shown instead of the source of the position on the phone that follows the other phone on the sensor box, %@ is the name of the other phone: "Position from Pixel 8" */
+"nogps_peer_position_from" = "Позиція від %@";
+
+/* Used in "Position from %@" when the box doesn't know the name of the other phone */
+"nogps_peer_other_phone" = "іншого телефона";
 "nogps_box_stopped" = "Немає даних від блока датчиків, авто на мапі стоїть. Перевірте блок або позначте себе";
 
 /* Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration */
@@ -1891,6 +1903,9 @@
 
 /* Row of the Box values page: the board of the box, e.g. s3zero */
 "nogps_box_value_board" = "Плата";
+
+/* Row of the Box values page: the hardware revision of the box board, e.g. R1 */
+"nogps_box_value_revision" = "Ревізія плати";
 
 /* Row of the Box values page: the four characters of the box name */
 "nogps_box_value_id" = "ID";

@@ -1049,6 +1049,10 @@
     <string name="nogps_car_current">Поточне авто</string>
     <!-- State of a car in the list of the cars: when its box was connected the last time, e.g. "Last connected 2 hours ago" -->
     <string name="nogps_car_last_seen">Останнє підключення %1$s</string>
+    <!-- State of a car in the list of the cars: its box is awake near the phone, the car may be switched to -->
+    <string name="nogps_car_nearby">Поруч</string>
+    <!-- Button in the row of a car in the list of the cars, next to "Nearby": the app takes this car and connects to its box -->
+    <string name="nogps_car_switch">Перемкнути</string>
     <!-- Action for a car in the list of the cars: the app takes this car and connects to its box -->
     <string name="nogps_car_drive">Перемкнутися на це авто</string>
     <!-- Title of the dialog that renames a car -->
@@ -1062,9 +1066,9 @@
     <!-- Button under the list of the cars: search the sensor box of another car -->
     <string name="nogps_car_add">Додати авто</string>
     <!-- State of the sensor box, shown after its name: the box has phones, a new one is added on one of them -->
-    <string name="nogps_box_bt_pairing_by_phone">знайдено, але не спарено з цим телефоном. На телефоні, спареному з блоком, відкрийте «Блок», натисніть на назву авто вгорі, потім на авто й «Додати телефон» і введіть код тут</string>
+    <string name="nogps_box_bt_pairing_by_phone">знайдено, але не спарено з цим телефоном. На телефоні, спареному з блоком, відкрийте «Блок», натисніть на назву авто вгорі, потім на авто й «Додати телефон» і введіть код тут. Немає спареного телефона під рукою? Вимкніть Bluetooth на решті телефонів, спарених з блоком. Вставте блок у роз\'єм і вийміть його протягом хвилини, 3 рази, а втретє залиште вставленим: 2 хвилини він приймає цей телефон із кодом 123456, якщо його не змінювали, і забуває решту телефонів</string>
     <!-- State of the sensor box, shown after its name: the box has 4 phones and takes no new one -->
-    <string name="nogps_box_bt_pairing_full">знайдено, але не спарено з цим телефоном. Блок має 4 телефони: видаліть один на спареному телефоні («Блок», назва авто вгорі, авто)</string>
+    <string name="nogps_box_bt_pairing_full">знайдено, але не спарено з цим телефоном. Блок має 4 телефони: видаліть один на спареному телефоні («Блок», назва авто вгорі, авто). Немає спареного телефона під рукою? Вимкніть Bluetooth на решті телефонів, спарених з блоком. Вставте блок у роз\'єм і вийміть його протягом хвилини, 3 рази, а втретє залиште вставленим: 2 хвилини він приймає цей телефон із кодом 123456, якщо його не змінювали, і забуває решту телефонів</string>
     <!-- Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car -->
     <string name="nogps_car_phones">Телефони</string>
     <!-- Under a phone in the list of the phones of the sensor box: it is the phone the user holds -->
@@ -1081,6 +1085,8 @@
     <string name="nogps_phone_remove_this_text">Цей телефон більше не підключатиметься до блока, а авто на ньому буде забуто.</string>
     <!-- Message: this phone has been removed from the sensor box on its own request -->
     <string name="nogps_phone_removed">Цей телефон видалено з блока, авто забуто</string>
+    <!-- Message on Android: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and the app could not remove it -->
+    <string name="nogps_phone_removed_unpair">Цей телефон видалено з блока, авто забуто. Видаліть NoGPS-%1$s у налаштуваннях Bluetooth</string>
     <!-- Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code -->
     <string name="nogps_phone_add">Додати телефон</string>
     <!-- Shown with a one-time pairing code on the paired phone. %1$@ is the time left, e.g. 1:45 -->
@@ -1097,6 +1103,10 @@
     <string name="nogps_phone_add_failed">Блок не прийняв код. Спробуйте ще раз.</string>
     <!-- Shown in the Box sheet when another phone has connected to the sensor box first: this phone gets the data only -->
     <string name="nogps_box_read_only">Інший телефон підключився до блока першим: калібрування, прошивку, ім\'я авто й телефони блока змінюють на ньому</string>
+    <!-- Shown instead of the source of the position on the phone that follows the other phone on the sensor box, %@ is the name of the other phone: "Position from Pixel 8" -->
+    <string name="nogps_peer_position_from">Позиція від %s</string>
+    <!-- Used in "Position from %@" when the box doesn't know the name of the other phone -->
+    <string name="nogps_peer_other_phone">іншого телефона</string>
     <string name="nogps_obd_stopped">Немає швидкості від OBD-адаптера, авто на мапі стоїть. Перевірте адаптер або позначте себе</string>
     <string name="nogps_box_stopped">Немає даних від блока датчиків, авто на мапі стоїть. Перевірте блок або позначте себе</string>
     <!-- Warning shown while driving without GPS: the sensor box tells it has been moved in the car since its calibration -->
@@ -1229,11 +1239,13 @@
     <string name="nogps_box_version">Версія %1$s</string>
     <!-- Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page -->
     <string name="nogps_calibration_snackbar">Відкалібруйте блок датчиків</string>
-    <!-- Switch in the Box sheet under Use GPS for the car: the app is the mock location app for other apps -->
-    <string name="nogps_share_position">Передавати позицію іншим застосункам</string>
-    <!-- Under the switch Share the position with other apps -->
-    <string name="nogps_share_position_hint">Поки GPS не використовується, Google Карти, Waze та інші застосунки беруть позицію авто звідси. Раз на хвилину GPS перевіряється 10 с.</string>
-    <!-- Under the switch Share the position with other apps, tapped opens Developer options of Android -->
+    <!-- Settings item and the switch on its page: the app is the mock location app for other apps -->
+    <string name="nogps_share_position">Передавати позицію</string>
+    <!-- Share position page of Settings, above the switch -->
+    <string name="nogps_share_position_text">Поки GPS не використовується, позиція, обчислена за блоком, передається іншим застосункам (Google Карти, Waze та іншим) як місцезнаходження телефона через фіктивні місцезнаходження Android. Раз на хвилину GPS перевіряється 10 с.</string>
+    <!-- Share position page of Settings: how to allow the app, the names are the items of Android Developer options -->
+    <string name="nogps_share_position_how">Щоб увімкнути, відкрийте параметри розробника, торкніться «Вибрати застосунок для фіктивних місцезнаходжень» і виберіть NonGPS Maps.</string>
+    <!-- Share position page of Settings, under the switch while the app isn't the mock location app, tapped opens Developer options of Android -->
     <string name="nogps_share_position_needs_mock">Виберіть NonGPS Maps застосунком для фіктивних місцезнаходжень у параметрах розробника. Торкніться, щоб відкрити їх.</string>
     <!-- Under the distance left in navigation: the distance driven since navigation started, e.g. 12.4 km covered -->
     <string name="nogps_nav_covered">пройдено %s</string>
@@ -1407,6 +1419,8 @@
     <string name="nogps_box_value_chip">Чип</string>
     <!-- Row of the Box values page: the board of the box, e.g. s3zero -->
     <string name="nogps_box_value_board">Плата</string>
+    <!-- Row of the Box values page: the hardware revision of the box board, e.g. R1 -->
+    <string name="nogps_box_value_revision">Ревізія плати</string>
     <!-- Row of the Box values page: the four characters of the box name -->
     <string name="nogps_box_value_id">ID</string>
     <!-- Row of the Box values page: the size of the flash memory of the box -->

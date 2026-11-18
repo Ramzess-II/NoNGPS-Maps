@@ -94,10 +94,14 @@ struct Info
   bool m_hasPhones = false;
   // Two phones get the data at once, the one connected first changes the box.
   bool m_twoPhones = false;
+  // The box passes the places of the phones between them, see Peer.
+  bool m_canPeer = false;
   // The four characters of the name of the box, NoGPS-XXXX.
   std::string m_id;
   // How many times the box was powered on, nothing from a firmware that doesn't count it.
   std::optional<int64_t> m_powerOns;
+  // The hardware revision of the board, "R1", empty from a firmware that doesn't tell it.
+  std::string m_revision;
 };
 
 /// A value the box sends in its status and info lines, for the page that shows them all. The platforms show them in
@@ -136,6 +140,8 @@ enum class BoxValue
   BuildDate,
   Chip,
   Board,
+  // The hardware revision of the board, "R1".
+  Revision,
   Id,
   // KB.
   FlashSize,
@@ -158,8 +164,9 @@ struct Phone
   int64_t m_seenUnixS = 0;
   // The phone that has asked.
   bool m_thisPhone = false;
-  // The box takes the commands that change it from this phone. The box tells it only of the phone that has asked:
-  // another phone is known to change it when it is the only other one.
+  // The box takes the commands that change it from this phone. Firmware without the fifth part of a phone in
+  // BT_LIST tells it only of the phone that has asked: another phone is known to change it when it is the only
+  // other one.
   bool m_changesBox = false;
 
   bool operator==(Phone const &) const = default;
@@ -179,6 +186,28 @@ size_t constexpr kMaxPhoneNameSize = 20;
 int constexpr kPairingCodeDigits = 6;
 int64_t constexpr kPairingWindowMs = 120'000;
 
+/// What a phone tells the other phone on the same box about the place of the car, see PeerSync. The box passes the
+/// payload of "PEER,<payload>" on to the other phones as "NGX,1,<payload>".
+struct Peer
+{
+  // A anchor: the place was just set. S snapshot: the place now. C correction: the user has changed the place on the
+  // phone that follows. G GPS fix of the phone that follows.
+  char m_kind = 'A';
+  // The distance counted by the box (Data::m_distMm) at the moment of the place.
+  int64_t m_distMm = 0;
+  int32_t m_latE7 = 0;
+  int32_t m_lonE7 = 0;
+  // Hundredths of a degree clockwise from the north, -1 if the place has no heading.
+  int m_headingCdeg = -1;
+  // Decimeters.
+  int m_accuracyDm = 0;
+  // What set the place, one letter: G GPS, M the manual mode, T a tap on the map, R a reversal, W a switch to
+  // another road.
+  char m_source = 'G';
+
+  bool operator==(Peer const &) const = default;
+};
+
 /// The values as the platforms show them with their units, empty if the box sends the field empty.
 using BoxValues = std::vector<std::pair<BoxValue, std::string>>;
 
@@ -195,6 +224,8 @@ uint16_t Crc16(std::string_view text);
 
 /// \returns the command line to send to the box.
 std::string Command(int id, std::string_view command);
+/// \returns the command that sends the place to the other phone.
+std::string PeerCommand(Peer const & peer);
 /// \returns the hello with the name of the phone and its time, a plain one without the name.
 std::string Hello(std::string_view phoneName, int64_t unixMs);
 /// \returns the name of the phone the way the box takes it: printable ASCII without the separators of the lines and
@@ -214,6 +245,8 @@ std::optional<Event> ParseEvent(Fields const & fields);
 std::optional<Info> ParseInfo(Fields const & fields);
 /// \returns the phones from the reply to BT_LIST.
 std::optional<Phones> ParsePhones(Reply const & reply);
+/// \returns the place of the other phone from an NGX line.
+std::optional<Peer> ParsePeer(Fields const & fields);
 /// \returns the progress of a firmware update from an NGO line.
 std::optional<UpdateProgress> ParseUpdateProgress(Fields const & fields);
 /// \returns the number of the last event of the box from an NGS line, if the box tells it.

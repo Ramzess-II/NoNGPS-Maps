@@ -22,7 +22,9 @@ set(SRC
   nogps_esp32_protocol_tests.cpp
   nogps_gps_detectors_tests.cpp
   nogps_path_matcher_tests.cpp
+  nogps_peer_sync_tests.cpp
   nogps_inertial_tests.cpp
+  nogps_replay_tests.cpp
   nogps_roads_tests.cpp
   nogps_sources_tests.cpp
   nogps_speed_tests.cpp
@@ -54,4 +56,5 @@ target_link_libraries(${PROJECT_NAME}
     generator_tests_support
     platform_tests_support
     map
+    nogps_replay
 )

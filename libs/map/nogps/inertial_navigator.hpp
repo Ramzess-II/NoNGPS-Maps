@@ -9,6 +9,7 @@
 #include "map/nogps/gyro_calibrator.hpp"
 #include "map/nogps/motion_source.hpp"
 #include "map/nogps/path_matcher.hpp"
+#include "map/nogps/peer_sync.hpp"
 #include "map/nogps/speed_lag.hpp"
 #include "map/nogps/speed_scale.hpp"
 #include "map/nogps/speed_table.hpp"
@@ -19,6 +20,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <limits>
 #include <map>
 #include <memory>
 #include <optional>
@@ -86,6 +88,8 @@ public:
     virtual void OnBoxCarValues(std::map<std::string, std::string> const & /* values */) {}
     /// See MotionSource::Listener::OnThisPhoneRemoved().
     virtual void OnThisPhoneRemoved() {}
+    /// See MotionSource::Listener::OnPeerPlace().
+    virtual void OnPeerPlace(PeerPlace const & /* place */) {}
     virtual void OnBoxCarWritten(std::string const & /* key */, std::string const & /* value */,
                                  std::string const & /* error */)
     {}
@@ -143,6 +147,8 @@ public:
   static double constexpr kMaxBendShiftM = 60;
   // Smaller errors are within the accuracy of the bends on the map.
   static double constexpr kMinBendShiftM = 8;
+  // A larger shift is moved to only after the bends have told it repeatedly, as for a slow car.
+  static double constexpr kFarBendShiftM = 20;
   // A slow car weaves around holes and parked cars, that looks like a bend of the road.
   static double constexpr kMinBendMoveSpeedMps = 25 / 3.6;
   // Unless the bends tell the same place several times while the car drives on. On October 14 they told the mark was
@@ -152,6 +158,23 @@ public:
   static int constexpr kSlowBendCount = 3;
   static double constexpr kSlowBendAgreeM = 3;
   static double constexpr kSlowBendDriveM = 20;
+  // A highway bends by 3-9 degrees per 150 m, the bends above don't see it and the distance error is never reset
+  // there. Where they tell nothing, the rotation of the car over a long way is compared with the road, smoothed so
+  // that a lane change is gone and the arc stays. The comparison takes hundreds of road lookups: it is rare.
+  static int64_t constexpr kGentleBendMatchIntervalMs = 5000;
+  static double constexpr kGentleWindowM = 800;
+  static double constexpr kGentleStepM = 10;
+  static double constexpr kGentleSmoothM = 100;
+  static double constexpr kGentleMinBendDeg = 6;
+  // A larger rotation within the window is a turn, as the road is not followed through a sharper one, see RoadWalker.
+  static double constexpr kGentleMaxBendDeg = 45;
+  static double constexpr kGentleMaxDiffDeg = 2;
+  static double constexpr kGentleClearAsideM = 40;
+  // A bend of 12 degrees per 600 m shifted by 40 m differs by 0.25 degrees: the ordinary floor of 1 would never pass.
+  static double constexpr kGentleMinAsideDiffDeg = 0.1;
+  // A shift this large moves the mark only if two comparisons in a row tell the same place within kGentleAgreeM.
+  static double constexpr kGentleBigShiftM = 20;
+  static double constexpr kGentleAgreeM = 10;
   // What the accelerometer has added to the position fades away in this time.
   static double constexpr kAccelFadeSec = 10;
   // A turn at a crossing rotates the car faster than a bend of a road.
@@ -290,6 +313,17 @@ public:
   // A car driving this slowly off the roads maneuvers: it parks, or drives through a yard or a parking lot missing
   // on the map. The calculation gone wrong takes a car off the roads at any speed.
   static double constexpr kMaxManeuverSpeedMps = 20 / 3.6;
+  // The speed of a car off the roads counts from the lag after it has left its road: before that the car reports the
+  // speed it drove its road at, and it is not followed apart. A car braking into a yard or a gas station brakes on
+  // after that: once its speed has fallen by this much before it rises, or this long after the lag, the speeds before
+  // don't count, and while it brakes it is followed apart by its speed. On November 17 a car braking into a gas station
+  // reported 22 km/h after it had left its road and 18 then, it was not followed apart, and its road was lost when it
+  // drove on after refuelling. A car that has not braked keeps its speed: on November 7 a car leaving its road at 25
+  // km/h turned slowly for 14 s, and would have been followed apart after the turn at 14 km/h.
+  static int64_t constexpr kOffRoadBrakeMs = 3000;
+  static int constexpr kOffRoadBrakeKmh = 5;
+  // A rise of the speed by this much from the lowest ends the braking.
+  static int constexpr kOffRoadRiseKmh = 2;
   // A maneuvering car this far off the roads has left them: it is followed apart, the mark waits on the road. On
   // the trips checked a car that was not parking drove so far off the roads that slowly twice an hour, for a few
   // seconds.
@@ -348,6 +382,15 @@ public:
   static int constexpr kCrawlSpeedKmh = 5;
   static int64_t constexpr kCrawlCheckBackMs = 4000;
   static double constexpr kCrawlClearForwardMps = 0.5;
+  // The stop of a slow segment is a clearer pull than its start: a car driving forward brakes with a pull backward,
+  // and one driving backward with a pull forward. Where the start of a segment was not felt clearly, the way told by
+  // the speed felt while it braked, against the stand felt after, turns the segment if it is felt this clearly the
+  // other way. Only a short and slow segment is checked: braking hard on a ramp or over a curb looks like a pull.
+  // On the trips of November 14-15 the sign of the pull matched the way in 6 stops of 6.
+  static double constexpr kStopFeltSpeedMps = 0.5;
+  static int constexpr kStopCheckMaxKmh = 8;
+  static double constexpr kStopCheckMaxM = 30;
+  static int64_t constexpr kStopBrakeMs = 2000;
   // The accelerometer is compared with the last seconds of the car speed, which has no sign: it is not learned
   // from and doesn't tell how much faster the car is while the car drives backwards and for this time after it.
   // A start backward is not always told, so it is learned from at a speed nobody drives backwards at only: a
@@ -531,6 +574,7 @@ private:
   void OnBoxCarValues(std::map<std::string, std::string> const & values) override;
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
   void OnThisPhoneRemoved() override { m_listener.OnThisPhoneRemoved(); }
+  void OnPeerPlace(PeerPlace const & place) override { m_listener.OnPeerPlace(place); }
 
   void CheckTurnSign(Fix const & gps);
   double GetSpeedScale(int speedKmh) const;
@@ -548,6 +592,10 @@ private:
   bool IsSpeedFresh() const;
   void SetRoadPoint(ms::LatLon const & position);
   void TrackOffRoad(double distanceM, int64_t timestampNs);
+  void ResetOffRoadSpeed();
+  // Takes the speed of the car off the roads into the fastest one, see kOffRoadBrakeMs. Returns whether the car may
+  // be followed apart by it.
+  bool TrackOffRoadSpeed();
   // \returns true if the car leaving its road has turned at a crossing, see kLateTurnFromRoadM.
   bool MatchLateTurn(int64_t timestampNs);
   // \returns true if the car driving straight has been put on a road going its way, see kJumpSearchM. The roads farther
@@ -572,6 +620,11 @@ private:
   // Tells by the accelerometer of the box which way the car drives, forward or backward.
   void TrackDirection();
   void SetDirection(int direction);
+  /// Moves the mark and the cars by |turned| times what the car has driven since its start.
+  void MoveStartSegment(int turned);
+  void ForgetWay();
+  void StartStopCheck();
+  void CheckStop();
   // Nothing is known about the way the car drives: it drives forward.
   void ResetDirection();
   // The car speed is not heard from a standing car: what it stood with is kept, see m_unheardStand.
@@ -607,6 +660,12 @@ private:
   // \returns the branch the car drives along by its heading if the road forks at the position.
   std::optional<RoadPoint> ChooseBranch(ms::LatLon const & position, double headingDeg);
   void MatchBend();
+  // Like MatchBend() with the long window, for the roads that bend gently.
+  void MatchGentleBend();
+  // Confirms the position or moves the mark along the road by what the bends told.
+  // \param aheadM how far the mark is ahead of the car, see BendMatcher::Match().
+  // \param gentle the bend was told by the long window: a large shift needs two comparisons, see kGentleBigShiftM.
+  void ApplyBend(double aheadM, bool gentle);
   // \returns true if the car has been moved to where the way of a turn around lies on the roads, see PathMatcher.
   bool MatchLoop(double toBearingDeg);
   // \returns true if the bends of a slow car have told the same place enough times, see kSlowBendCount.
@@ -672,6 +731,7 @@ private:
   // Shows the car on the other road |index|, keeping the road it was shown on as an other one if |keepShown|.
   void TakeOtherMark(size_t index, bool keepShown, std::string const & why);
   // \returns how far across |bearingDeg| the places are apart.
+  static BendMatcher::Params GentleBendParams();
   static double AsideM(ms::LatLon const & a, ms::LatLon const & b, double bearingDeg);
   // Drops the places of a turn the way driven does not lie on the roads at while it lies at another one, see
   // PathMatcher; the chosen one too. |position| is where the car is if it has no road. \returns true if the way was
@@ -735,9 +795,20 @@ private:
   SpeedScale m_speedScale;
   TurnSignChecker m_turnSignChecker;
   BendMatcher m_bendMatcher;
+  BendMatcher m_gentleBendMatcher{GentleBendParams()};
+  int64_t m_lastGentleBendMatchMs = 0;
+  // Where a gentle bend that told nothing was logged: once per window.
+  std::optional<double> m_gentleWhyNotPathM;
+  // The last place told by the gentle bends of the same position, see kGentleBigShiftM.
+  struct GentleBend
+  {
+    int m_fixCount = 0;
+    double m_aheadM = 0;
+  };
+  std::optional<GentleBend> m_lastGentleBend;
   PathMatcher m_pathMatcher;
   int64_t m_lastBendMatchMs = 0;
-  // Where a bend that told nothing was logged: once per BendMatcher::kWindowM.
+  // Where a bend that told nothing was logged: once per window of the matcher.
   std::optional<double> m_bendWhyNotPathM;
   // The places told by the bends of a slow car since the position was set.
   struct SlowBends
@@ -834,6 +905,9 @@ private:
     double m_pathM;
     int64_t m_timeMs;
     double m_rotationDeg;
+    // The speeds of the car since then, for the log of a turn matched late.
+    int m_minKmh;
+    int m_maxKmh;
   };
   std::optional<SteadyRoad> m_steadyRoad;
   // The car has been off the roads during the turn it makes now.
@@ -850,8 +924,13 @@ private:
   bool m_fastWithoutRoad = false;
   // Where the car that has left the roads maneuvering is by the calculation, its mark waits on the road.
   std::optional<ms::LatLon> m_offRoadCar;
-  // The fastest the car has driven off the roads since the last road point.
+  // The fastest the car has driven off the roads since the last road point, see kOffRoadBrakeMs. When its speeds start
+  // to count, whether they count without braking yet, and the speeds it has braked from and to.
   double m_offRoadMaxSpeedMps = 0;
+  std::optional<int64_t> m_offRoadCountsFromMs;
+  bool m_offRoadSpeedCounts = false;
+  int m_offRoadBrakeFromKmh = 0;
+  int m_offRoadBrakeToKmh = std::numeric_limits<int>::max();
   // The road the maneuvering car seems to drive along: its direction, and the path of the car and where the car
   // looked when the road was found.
   struct RoadCandidate
@@ -893,6 +972,21 @@ private:
   // Driven since the start, either way, and how far the mark of the car was moved for that.
   double m_startM = 0;
   double m_startMarkM = 0;
+  // The segment since the start: the speed felt at its start, m/s with the sign, its top speed and when it was
+  // reported.
+  double m_startFeltMps = 0;
+  int m_segMaxKmh = 0;
+  int64_t m_segPeakMs = 0;
+  // A slow segment that has ended is checked by its stop when the stand after it is felt: the way it was told, the
+  // time it has stopped, the time its braking is summed from and its top speed.
+  struct StopCheck
+  {
+    int m_way;
+    int64_t m_stopMs;
+    int64_t m_brakeFromMs;
+    double m_peakMps;
+  };
+  std::optional<StopCheck> m_stopCheck;
   // When it drove backwards the last time.
   std::optional<int64_t> m_lastBackMs;
   // The car speed is not heard since the car stood, e.g. the engine was off. The car may start before it is heard

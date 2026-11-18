@@ -5,6 +5,7 @@
 #include "map/nogps/esp32_protocol.hpp"
 #include "map/nogps/esp32_update.hpp"
 #include "map/nogps/motion_source.hpp"
+#include "map/nogps/peer_sync.hpp"
 #include "map/nogps/scheduler.hpp"
 
 #include <cstdint>
@@ -152,6 +153,21 @@ public:
   /// \returns true if another phone has connected to the box first: the box takes from it the commands that change
   /// the box, this phone gets the data only.
   bool IsReadOnly() const { return HasPhones() && m_readOnly; }
+  /// \returns true if the box passes the places of the phones on: it is connected and has the ability.
+  bool CanPeer() const;
+  /// \returns Leading for the phone that changes the box while the box knows another phone, Following for the phone
+  /// that gets the data only, None if the box can't pass the places on or this phone is alone.
+  PeerRole GetPeerRole() const;
+  /// \returns the name the leader has given the box: the phone that changes it, empty if it has none or this phone
+  /// leads.
+  std::string GetLeaderName() const;
+  /// Sends the place to the other phone if the role of this phone sends it on the trigger, see PeerSync.
+  /// \returns true if it is sent.
+  bool SendPeer(PeerTrigger trigger, PeerOutPlace const & place);
+  /// The leader is in the manual mode: the follower sends its good GPS positions.
+  bool IsPeerLeaderManual() const { return m_peer.IsLeaderManual(); }
+  /// The distance the box has counted by its last data line.
+  std::optional<int64_t> GetDistMm() const { return m_peer.GetDistMm(); }
   /// Makes a new code and lets the box take a new phone with it for esp32::kPairingWindowMs. The code is not kept.
   void StartAddPhone();
   void EndAddPhone() { m_addPhone.reset(); }
@@ -170,6 +186,7 @@ private:
   void OnData(esp32::Data const & data);
   void OnEvent(esp32::Event const & event);
   void OnReply(esp32::Reply const & reply);
+  void OnPeer(esp32::Peer const & peer);
   void OnInfo(esp32::Info const & info);
   void StoreBoxValues(esp32::Fields const & fields);
   void OnLastEventNumber(int64_t lastNumber);
@@ -214,6 +231,8 @@ private:
   bool m_obdAdapterMissing = false;
   // The car hasn't answered (NO_CAR, NO_DATA) since the link was made: the next protocol search changes nothing.
   bool m_carSilent = false;
+  // The speed of the last data line, -1 if the car doesn't tell it.
+  int m_speedKmh = -1;
   // The engine, its speed and the voltage of the car from the status of the box.
   std::optional<CarInfo> m_carInfo;
   // The box has told that its voltage and the one of ELM327 differ. Kept until they come close again.
@@ -234,6 +253,7 @@ private:
   std::optional<int64_t> m_calibrationLinkLostMs;
   std::optional<int64_t> m_calibratedMs;
 
+  PeerSync m_peer;
   std::optional<esp32::Info> m_info;
   // Forgotten with the info: another box may connect.
   std::map<esp32::BoxValue, std::string> m_boxValues;

@@ -3,6 +3,7 @@ package app.organicmaps.nogps;
 import android.content.Context;
 import android.os.Build;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import app.organicmaps.BuildConfig;
 import app.organicmaps.R;
@@ -15,6 +16,20 @@ import java.util.Locale;
 public final class BoxTexts
 {
   private BoxTexts() {}
+
+  /**
+   * The phone follows the other phone on the box: it shows the place of the other phone.
+   * @return "Position from Pixel 8", null if this phone leads or is alone.
+   */
+  @Nullable
+  public static String peerPositionText(@NonNull Context context, @NonNull NoGps.Status status)
+  {
+    if (status.getPeerRole() != NoGps.PeerRole.FOLLOWING)
+      return null;
+    final String name =
+        status.peerName.isEmpty() ? context.getString(R.string.nogps_peer_other_phone) : status.peerName;
+    return context.getString(R.string.nogps_peer_position_from, name);
+  }
 
   /**
    * Also told by the Box button of the bottom bar.
@@ -220,6 +235,7 @@ public final class BoxTexts
       case BUILD_DATE -> R.string.nogps_box_value_build_date;
       case CHIP -> R.string.nogps_box_value_chip;
       case BOARD -> R.string.nogps_box_value_board;
+      case REVISION -> R.string.nogps_box_value_revision;
       case ID -> R.string.nogps_box_value_id;
       case FLASH_SIZE -> R.string.nogps_box_value_flash_size;
       case MAX_IMAGE_SIZE -> R.string.nogps_box_value_max_image_size;

@@ -949,8 +949,23 @@ public class MwmActivity extends BaseMwmFragmentActivity
       final String reason = firmwareError(status.firmwareUpdateError);
       Toast.makeText(this, getString(R.string.nogps_firmware_failed, reason), Toast.LENGTH_LONG).show();
     }
-    else if (!status.bundledFirmware.isEmpty() && !isFinishing() && !getSupportFragmentManager().isStateSaved())
+    else
     {
+      offerFirmwareUpdate();
+    }
+    return 0;
+  }
+
+  /**
+   * The box works with another firmware than the application is tested with. When the activity can't show the offer,
+   * the core keeps it pending and onResumeFragments() asks again.
+   */
+  private void offerFirmwareUpdate()
+  {
+    final NoGps.Status status = NoGps.getStatus();
+    if (!status.bundledFirmware.isEmpty() && !isFinishing() && !getSupportFragmentManager().isStateSaved())
+    {
+      NoGps.nativeFirmwareOfferShown();
       new MaterialAlertDialogBuilder(this, R.style.MwmTheme_AlertDialog)
           .setTitle(R.string.nogps_firmware_title)
           .setMessage(getString(R.string.nogps_firmware_offer, status.boxFirmware, status.bundledFirmware))
@@ -963,7 +978,6 @@ public class MwmActivity extends BaseMwmFragmentActivity
           .setNegativeButton(R.string.later, null)
           .show();
     }
-    return 0;
   }
 
   /**
@@ -972,9 +986,15 @@ public class MwmActivity extends BaseMwmFragmentActivity
   private int onThisPhoneRemoved()
   {
     final String carId = NoGps.getStatus().carId;
-    if (!carId.isEmpty())
-      MwmApplication.from(this).getLocationHelper().forgetCar(carId);
-    return R.string.nogps_phone_removed;
+    if (carId.isEmpty())
+      return R.string.nogps_phone_removed;
+    final LocationHelper helper = MwmApplication.from(this).getLocationHelper();
+    helper.forgetCar(carId);
+    // The box has erased its keys: the old system pairing would only block the next connection.
+    if (helper.unpairBox(carId))
+      return R.string.nogps_phone_removed;
+    Toast.makeText(this, getString(R.string.nogps_phone_removed_unpair, carId), Toast.LENGTH_LONG).show();
+    return 0;
   }
 
   private void showBoxSheet(@NonNull BoxBottomSheet.Page page)
@@ -1222,6 +1242,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
   {
     super.onResumeFragments();
     RoutingController.get().restore();
+    if (NoGps.getStatus().firmwareOfferPending)
+      offerFirmwareUpdate();
   }
 
   @Override

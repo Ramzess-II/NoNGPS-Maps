@@ -46,6 +46,7 @@ public:
   bool IsBoxPairing() const { return m_esp32.isPairing; }
   void ForgetBoxes() { [m_esp32 forgetKnownBoxes]; }
   void ForgetBox(NSString * carId) { [m_esp32 forgetBox:carId]; }
+  bool IsBoxNearby(NSString * carId) const { return [m_esp32 isBoxNearby:carId]; }
   void SearchNewBox(bool newOnly) { [m_esp32 searchNewBox:newOnly]; }
   void RetryBox() { [m_esp32 retry]; }
 
@@ -272,6 +273,7 @@ std::optional<double> NonNegative(double value)
     _speedLagMeasured = status.m_speedLagMeasured;
     _calibration = static_cast<MWMNoGpsCalibrationState>(status.m_calibration);
     _calibrationProgress = status.m_calibrationProgress;
+    _firmwareOfferPending = status.m_firmwareOfferPending;
     _boxCalibrationAdvised = status.m_boxCalibrationAdvised;
     _hasInertialPosition = status.m_hasInertialPosition;
     _roadLost = status.m_roadLost;
@@ -295,6 +297,8 @@ std::optional<double> NonNegative(double value)
       _boxPhones = phones;
     }
     _boxReadOnly = status.m_boxReadOnly;
+    _peerRole = static_cast<MWMNoGpsPeerRole>(status.m_peerRole);
+    _peerName = @(status.m_peerName.c_str());
     _addPhone = static_cast<MWMNoGpsAddPhone>(status.m_addPhone);
     _addPhoneCode = @(status.m_addPhoneCode.c_str());
     _addPhoneSecondsLeft = status.m_addPhoneSecondsLeft;
@@ -465,6 +469,11 @@ static CLLocation * lastPlatformLocation;
   Engine().EndAddPhone();
 }
 
++ (BOOL)isBoxNearby:(NSString *)carId
+{
+  return Delegate().IsBoxNearby(carId);
+}
+
 + (void)searchNewBox:(BOOL)newOnly
 {
   Delegate().SearchNewBox(newOnly);
@@ -483,6 +492,11 @@ static CLLocation * lastPlatformLocation;
 + (void)startFirmwareUpdate
 {
   Engine().StartFirmwareUpdate();
+}
+
++ (void)firmwareOfferShown
+{
+  Engine().FirmwareOfferShown();
 }
 
 + (void)cancelFirmwareUpdate

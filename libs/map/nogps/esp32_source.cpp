@@ -64,11 +64,13 @@ void Esp32Source::Stop()
   m_dataTimesMs.clear();
   m_hasLast = false;
   m_lastDataMs.reset();
+  m_speedKmh = -1;
   m_wakingLinkMs.reset();
   m_info.reset();
   m_carSilent = false;
   m_boxValues.clear();
   m_hellosWithoutInfo = 0;
+  m_peer.Reset();
   m_update.Reset();
   ForgetCarRequests();
   ForgetPhoneRequests();
@@ -315,8 +317,8 @@ void Esp32Source::ForgetPhoneRequests()
 void Esp32Source::OnInfo(esp32::Info const & info)
 {
   if (!m_info || m_info->m_firmware != info.m_firmware)
-    LOG(LINFO,
-        ("Box", info.m_id, "firmware =", info.m_firmware, info.m_chip, info.m_board, "updates =", info.m_canUpdate));
+    LOG(LINFO, ("Box", info.m_id, "firmware =", info.m_firmware, info.m_chip, info.m_board, info.m_revision,
+                "updates =", info.m_canUpdate));
   bool const phonesNew = info.m_hasPhones && (!m_info || !m_info->m_hasPhones);
   m_info = info;
   m_update.OnBoxFirmware(info.m_firmware);
@@ -373,6 +375,7 @@ void Esp32Source::OnBleState(BleState state)
     m_carSilent = false;
     m_boxValues.clear();
     m_hellosWithoutInfo = 0;
+    m_peer.Reset();
     m_update.OnLinkLost();
     ForgetCarRequests();
     ForgetPhoneRequests();
@@ -449,6 +452,11 @@ void Esp32Source::OnLine(std::string_view text)
     OnReply(*reply);
     return;
   }
+  if (auto const peer = esp32::ParsePeer(*fields))
+  {
+    OnPeer(*peer);
+    return;
+  }
   if (auto const event = esp32::ParseEvent(*fields))
   {
     OnEvent(*event);
@@ -475,6 +483,10 @@ void Esp32Source::OnLine(std::string_view text)
     if (carInfo->m_boxMillivolts >= 0 && carInfo->GetReferenceMillivolts() >= 0)
       m_voltageMismatch = carInfo->m_voltageMismatch;
     m_carInfo = carInfo;
+    // The engine speed on the move is for the check of the speed it gives: the status comes less often than the
+    // speed, this line tells how often.
+    if (carInfo->m_rpm >= 0 && m_speedKmh > 0 && IsConnected())
+      LOG(LINFO, ("RPM", carInfo->m_rpm, "speed =", m_speedKmh));
   }
   auto const obdState = esp32::ParseObdState(*fields);
   if (obdState && obdState != m_obdState)
@@ -505,6 +517,11 @@ void Esp32Source::OnData(esp32::Data const & data)
   while (now - m_dataTimesMs.front() >= kDataTimeoutMs)
     m_dataTimesMs.pop_front();
   m_flags = data.m_flags;
+  // The box has restarted, its totals start anew: the places carried by them are lost.
+  if (m_hasLast && data.m_timeMs < m_lastTimeMs && m_lastTimeMs - data.m_timeMs < kBoxTimeWrapMs / 2)
+    m_peer.Reset();
+  m_peer.OnBoxData(now, data.m_distMm, data.m_yawMdeg);
+  m_speedKmh = data.m_speedKmh;
   if (data.m_speedKmh >= 0)
     m_listener.OnSpeed(data.m_speedKmh, now - data.m_speedAgeMs);
   // For the trip log only, see AccelLog.
@@ -571,6 +588,51 @@ void Esp32Source::OnData(esp32::Data const & data)
   m_hasLast = true;
   m_lastTimeMs = data.m_timeMs;
   m_lastYawMdeg = data.m_yawMdeg;
+}
+
+bool Esp32Source::CanPeer() const
+{
+  return HasPhones() && m_info->m_canPeer;
+}
+
+PeerRole Esp32Source::GetPeerRole() const
+{
+  if (!CanPeer())
+    return PeerRole::None;
+  if (m_readOnly)
+    return PeerRole::Following;
+  // The box lists the phones paired with it: with one phone there is nobody to tell the place to.
+  return m_phones && m_phones->m_phones.size() > 1 ? PeerRole::Leading : PeerRole::None;
+}
+
+std::string Esp32Source::GetLeaderName() const
+{
+  if (GetPeerRole() != PeerRole::Following || !m_phones)
+    return {};
+  for (auto const & phone : m_phones->m_phones)
+    if (!phone.m_thisPhone && phone.m_changesBox)
+      return phone.m_name;
+  return {};
+}
+
+bool Esp32Source::SendPeer(PeerTrigger trigger, PeerOutPlace const & place)
+{
+  auto const peer = m_peer.MakeMessage(GetPeerRole(), trigger, m_clock.NowMs(), place);
+  if (!peer)
+    return false;
+  Send(esp32::PeerCommand(*peer), m_nextCommandId++);
+  return true;
+}
+
+void Esp32Source::OnPeer(esp32::Peer const & peer)
+{
+  auto const place = m_peer.OnReceived(GetPeerRole(), peer);
+  if (!place)
+  {
+    LOG(LINFO, ("The place of the other phone is dropped, kind =", peer.m_kind, "dist =", peer.m_distMm));
+    return;
+  }
+  m_listener.OnPeerPlace(*place);
 }
 
 void Esp32Source::OnEvent(esp32::Event const & event)
