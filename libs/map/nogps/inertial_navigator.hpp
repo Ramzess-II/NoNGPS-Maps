@@ -847,6 +847,9 @@ private:
     double m_pathM;
     int64_t m_timeMs;
     double m_rotationDeg;
+    // The speeds of the car since then, for the log of a turn matched late.
+    int m_minKmh;
+    int m_maxKmh;
   };
   std::optional<SteadyRoad> m_steadyRoad;
   // The car has been off the roads during the turn it makes now.

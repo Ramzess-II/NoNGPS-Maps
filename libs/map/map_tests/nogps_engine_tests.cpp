@@ -1158,6 +1158,20 @@ UNIT_TEST(NoGps_Engine_TurnFitsCrossingOtherMarkHasPassed)
   TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
 }
 
+UNIT_TEST(NoGps_Engine_TurnStartedWithoutCrossingIsMatchedLate)
+{
+  // The car turns left 40 m before the crossing at 200 m by the calculation: no crossing is in reach then. It drives
+  // north off the road, and is moved to the crossing when the road is lost, as on October 16 at 17:18.
+  PieceRoads roads({{-300, 0, 600, 0}, {200, 0, 200, 400}}, {{200, 0}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 100);
+  env.Drive(4000, 36, 0);
+  env.Drive(3000, 36, -30);
+  env.Drive(6000, 36, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 200, 3);
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+}
+
 UNIT_TEST(NoGps_Engine_TurnDoesNotFitCrossingBeforeKnownPlace)
 {
   // The same, the car marked 30 m past the crossing: it has not passed the crossing since, the road is lost.
