@@ -542,7 +542,7 @@ void InertialNavigator::SetRoadPoint(ms::LatLon const & position)
 {
   m_roadPoint = position;
   m_offRoadM = 0;
-  m_offRoadMaxSpeedMps = 0;
+  ResetOffRoadSpeed();
   m_roadLost = false;
   m_waitAhead.reset();
 }
@@ -554,9 +554,8 @@ void InertialNavigator::TrackOffRoad(double distanceM, int64_t timestampNs)
   if (m_onRoad || m_turning || m_atRoundabout || !m_roadPoint || m_roadLost)
     return;
   m_offRoadM += distanceM;
-  m_offRoadMaxSpeedMps = std::max(m_offRoadMaxSpeedMps, m_deadReckoning.GetSpeed());
   // A car driving along a road aside is put on it in a moment, see SnapToRoad(): it is not followed apart meanwhile.
-  if (m_offRoadMaxSpeedMps <= kMaxManeuverSpeedMps &&
+  if (TrackOffRoadSpeed() && m_offRoadMaxSpeedMps <= kMaxManeuverSpeedMps &&
       (m_offRoadM >= kLostRoadM || (m_offRoadM >= kManeuverOffRoadM && !m_roadCandidate)))
   {
     StartFollowingApart();
@@ -565,6 +564,44 @@ void InertialNavigator::TrackOffRoad(double distanceM, int64_t timestampNs)
   if (m_offRoadM < kLostRoadM || MatchLateTurn(timestampNs) || JumpToRoadGoingCarWay())
     return;
   LoseRoad(std::to_string(std::lround(m_offRoadM)) + " m");
+}
+
+void InertialNavigator::ResetOffRoadSpeed()
+{
+  m_offRoadMaxSpeedMps = 0;
+  m_offRoadCountsFromMs.reset();
+  m_offRoadSpeedCounts = false;
+  m_offRoadBrakeFromKmh = 0;
+  m_offRoadBrakeToKmh = std::numeric_limits<int>::max();
+}
+
+bool InertialNavigator::TrackOffRoadSpeed()
+{
+  int64_t const now = m_clock.NowMs();
+  if (!m_offRoadCountsFromMs)
+    m_offRoadCountsFromMs = now + std::llround(m_speedLag.Get() * 1000);
+  int64_t const afterLagMs = now - *m_offRoadCountsFromMs;
+  if (afterLagMs < 0)
+    return false;
+  if (!m_offRoadSpeedCounts)
+  {
+    // The rounded speed a car reports at a steady speed changes by 1 km/h.
+    bool const rises = m_speedKmh - kOffRoadRiseKmh >= m_offRoadBrakeToKmh;
+    if (afterLagMs < kOffRoadBrakeMs && !rises)
+    {
+      m_offRoadBrakeFromKmh = std::max(m_offRoadBrakeFromKmh, m_speedKmh);
+      m_offRoadBrakeToKmh = std::min(m_offRoadBrakeToKmh, m_speedKmh);
+    }
+    else
+    {
+      m_offRoadSpeedCounts = true;
+    }
+    // The speeds the car has braked with are dropped: while it brakes, it is followed apart by its speed.
+    if (m_offRoadBrakeFromKmh - m_offRoadBrakeToKmh >= kOffRoadBrakeKmh)
+      m_offRoadMaxSpeedMps = 0;
+  }
+  m_offRoadMaxSpeedMps = std::max(m_offRoadMaxSpeedMps, m_deadReckoning.GetSpeed());
+  return true;
 }
 
 bool InertialNavigator::JumpToRoadGoingCarWay()
@@ -1641,7 +1678,7 @@ void InertialNavigator::SnapToRoad()
   {
     m_roadPoint = snapped->m_point;
     m_offRoadM = 0;
-    m_offRoadMaxSpeedMps = 0;
+    ResetOffRoadSpeed();
     if (std::fabs(*m_lastSnapBearingDiffDeg) <= DeadReckoning::kMaxHeadingPullDiffDeg)
       m_steadyRoad =
           SteadyRoad{Orient(snapped->m_bearingDeg, heading), snapped->m_point, m_pathM, m_clock.NowMs(), m_rotationDeg};
