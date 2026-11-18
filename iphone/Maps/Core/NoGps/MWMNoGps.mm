@@ -125,6 +125,29 @@ std::optional<double> NonNegative(double value)
 
 @end
 
+@interface MWMNoGpsSprint ()
+
+- (instancetype)initWithSprint:(nogps::Sprint const &)sprint;
+
+@end
+
+@implementation MWMNoGpsSprint
+
+- (instancetype)initWithSprint:(nogps::Sprint const &)sprint
+{
+  self = [super init];
+  if (self)
+  {
+    _kind = static_cast<MWMNoGpsSprintKind>(sprint.m_kind);
+    _date = [NSDate dateWithTimeIntervalSince1970:sprint.m_unixTimeMs / 1000.0];
+    _sec = sprint.m_sec;
+    _trapKmh = sprint.m_trapKmh;
+  }
+  return self;
+}
+
+@end
+
 @interface MWMNoGpsCar ()
 
 - (instancetype)initWithCar:(nogps::Car const &)car;
@@ -240,6 +263,11 @@ std::optional<double> NonNegative(double value)
     _speedHintRange = status.m_speedHintRange;
     _speedHintGps = status.m_speedHintGps;
     _speedMilestone = static_cast<MWMNoGpsSpeedMilestone>(status.m_speedMilestone);
+    _sprintKind = static_cast<MWMNoGpsSprintKind>(status.m_sprintKind);
+    _sprintSec = status.m_sprintSec;
+    _sprintTrapKmh = status.m_sprintTrapKmh;
+    _sprintBestSec = status.m_sprintBestSec;
+    _sprintRecord = status.m_sprintRecord;
     _speedLagSec = status.m_speedLagSec;
     _speedLagMeasured = status.m_speedLagMeasured;
     _calibration = static_cast<MWMNoGpsCalibrationState>(status.m_calibration);
@@ -383,6 +411,14 @@ static CLLocation * lastPlatformLocation;
   for (auto const & car : Engine().GetCars())
     [cars addObject:[[MWMNoGpsCar alloc] initWithCar:car]];
   return cars;
+}
+
++ (NSArray<MWMNoGpsSprint *> *)sprints
+{
+  NSMutableArray<MWMNoGpsSprint *> * sprints = [NSMutableArray array];
+  for (auto const & sprint : Engine().GetSprints())
+    [sprints addObject:[[MWMNoGpsSprint alloc] initWithSprint:sprint]];
+  return sprints;
 }
 
 + (NSInteger)maxCars

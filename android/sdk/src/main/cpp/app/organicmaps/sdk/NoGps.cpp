@@ -328,6 +328,17 @@ JNIEXPORT jobjectArray Java_app_organicmaps_sdk_location_NoGps_nativeGetCars(JNI
   });
 }
 
+JNIEXPORT jobjectArray Java_app_organicmaps_sdk_location_NoGps_nativeGetSprints(JNIEnv * env, jclass)
+{
+  static jclass const sprintClass = jni::GetGlobalClassRef(env, "app/organicmaps/sdk/location/NoGps$Sprint");
+  static jmethodID const ctor = jni::GetConstructorID(env, sprintClass, "(IJDI)V");
+  return jni::ToJavaArray(env, sprintClass, NoGpsEngine().GetSprints(), [](JNIEnv * env, nogps::Sprint const & sprint)
+  {
+    return env->NewObject(sprintClass, ctor, static_cast<jint>(sprint.m_kind), static_cast<jlong>(sprint.m_unixTimeMs),
+                          static_cast<jdouble>(sprint.m_sec), static_cast<jint>(sprint.m_trapKmh));
+  });
+}
+
 JNIEXPORT jint Java_app_organicmaps_sdk_location_NoGps_nativeGetMaxCars(JNIEnv *, jclass)
 {
   return static_cast<jint>(nogps::CarStorage::kMaxCars);
@@ -425,6 +436,11 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsField(env, out, "speedHintRange", status.m_speedHintRange);
   SetNoGpsField(env, out, "speedHintGps", status.m_speedHintGps);
   SetNoGpsField(env, out, "speedMilestone", static_cast<int>(status.m_speedMilestone));
+  SetNoGpsField(env, out, "sprintKind", static_cast<int>(status.m_sprintKind));
+  SetNoGpsDouble(env, out, "sprintSec", status.m_sprintSec);
+  SetNoGpsField(env, out, "sprintTrapKmh", status.m_sprintTrapKmh);
+  SetNoGpsDouble(env, out, "sprintBestSec", status.m_sprintBestSec);
+  SetNoGpsField(env, out, "sprintRecord", status.m_sprintRecord);
   SetNoGpsDouble(env, out, "speedLagSec", status.m_speedLagSec);
   SetNoGpsField(env, out, "speedLagMeasured", status.m_speedLagMeasured);
   SetNoGpsField(env, out, "calibration", static_cast<int>(status.m_calibration));
