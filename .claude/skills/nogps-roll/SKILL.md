@@ -39,16 +39,20 @@ confirmation at any step.
    ```
 
    For given numbers, take those issues in the given order, with the same fields, and `count` is their number.
-3. **Disk.** `df -g <ws>`: a slot starts an implementation only with 15 GB free. With less, say so: the run will
+3. **Replay data.** On macOS the slots replay the trips of a change to how the mark moves instead of postponing it.
+   They need the maps of one version and the app's `settings.ini`: `maps` and `settings` are the paths the user
+   gave, else `<ws>/replay/maps` and `<ws>/replay/settings.ini` when both exist. Without them leave both out: a
+   change that needs a replay is postponed, and a PR of a core change says "Not replayed".
+4. **Disk.** `df -g <ws>`: a slot starts an implementation only with 15 GB free. With less, say so: the run will
    wait for slots and may stop early.
-4. **Run.** Show the queue size, the count and the first issues in one line, then start the saved workflow by its
+5. **Run.** Show the queue size, the count and the first issues in one line, then start the saved workflow by its
    path, which works from both `<ws>` and `app/`:
-   `Workflow({scriptPath: "<ws>/app/.claude/workflows/nogps-roll.js", args: {ws, queue, count, dry}})`, with
+   `Workflow({scriptPath: "<ws>/app/.claude/workflows/nogps-roll.js", args: {ws, queue, count, dry, maps, settings}})`, with
    `queue` as a JSON array, not a string. It runs 4 slots, at most one of them on a change that touches iOS. Per
    issue: triage, implement in its own worktree, review in a fresh context, then fix and publish. A postpone
    comments on the issue with what is missing, labels it `postponed`, pushes the WIP branch if it has commits, and
    removes the worktree.
-5. **Report.** Print the table it returns: issue → PR / closed / postponed / skipped, with the reason and links,
+6. **Report.** Print the table it returns: issue → PR / closed / postponed / skipped, with the reason and links,
    and the number of issues not taken. Then run
    `<ws>/app/tools/unix/nogps_worktree.sh list` and `git -C <ws>/firmware worktree list`. Name any worktree a
    failed agent left behind, and don't remove it: it may hold work.
