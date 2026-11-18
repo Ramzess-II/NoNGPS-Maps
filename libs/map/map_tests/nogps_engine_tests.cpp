@@ -2090,6 +2090,177 @@ UNIT_TEST(NoGps_Engine_StatusShowsSpeedTableInUse)
   TestAlmostEqualAbs(status.m_speedTable[5].m_scale, 1.02, 1e-9);
 }
 
+// The car drives east along the street at |kmh| for |seconds| with the GPS of the phone switched off in the sheet:
+// GPS tells the speed of the car, and measures it, but the car is not put where it tells.
+void DriveWithGps(Env & env, int seconds, int kmh)
+{
+  for (int i = 0; i < seconds; ++i)
+  {
+    env.Drive(1000, kmh, 0);
+    auto const & position = env.Last().m_position;
+    env.m_engine.OnFix(GpsAt(env.m_clock, East(position), North(position), 90.0, kmh / 3.6));
+  }
+}
+
+int CountEvents(Env const & env, Event event)
+{
+  return static_cast<int>(std::count(env.m_delegate.m_events.begin(), env.m_delegate.m_events.end(), event));
+}
+
+/// Drives with GPS at |kmh| until GPS measures a range, \returns false if it doesn't within a minute.
+bool DriveUntilRangeCalibrated(Env & env, int kmh)
+{
+  int const before = CountEvents(env, Event::SpeedRangeCalibrated);
+  for (int i = 0; i < 60; ++i)
+  {
+    DriveWithGps(env, 1, kmh);
+    if (CountEvents(env, Event::SpeedRangeCalibrated) > before)
+      return true;
+  }
+  return false;
+}
+
+/// A table GPS has measured |ranges| of, the others are 50 m short of it.
+SpeedTable GpsTable(std::set<int> const & ranges)
+{
+  SpeedTable table;
+  for (int i = 0; i < SpeedTable::kRanges; ++i)
+  {
+    double const carM = ranges.count(i) ? SpeedTable::kMinDistanceM : SpeedTable::kMinDistanceM - 50;
+    table.OnDistance(i * SpeedTable::kRangeKmh + 7, carM, carM);
+  }
+  return table;
+}
+
+UNIT_TEST(NoGps_SpeedHint_ShownAtSpeedGpsHasNotMeasured)
+{
+  // GPS has measured 50-60 km/h.
+  auto const table = GpsTable({5});
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads,
+          [&table](TestStorage & storage) { storage.Set(Storage::kSpeedTable, table.Serialize()); });
+  MarkCar(env, 0);
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+
+  // Not below 5 km/h: the speed is too rough there.
+  env.Drive(5000, SpeedTable::kMinSpeedKmh - 1, 0);
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+
+  // Not at once at 30-40 km/h, which GPS has not measured.
+  env.Drive(Engine::kSpeedHintDelayMs - 200, 36, 0);
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+  env.Drive(2000, 36, 0);
+  auto status = env.m_engine.GetStatus();
+  TEST(status.m_speedHintShown, ());
+  TEST_EQUAL(status.m_speedHintRange, 3, ());
+  TEST(!status.m_speedHintGps, ());
+  TEST_EQUAL(status.m_gpsSpeedTable[3].m_scale, 0, ());
+  TEST_EQUAL(status.m_gpsSpeedTable[3].m_carM, SpeedTable::kMinDistanceM - 50, ());
+  TEST_GREATER(status.m_gpsSpeedTable[5].m_scale, 0, ());
+
+  // It stays a while at the measured 50-60 km/h, telling about 30-40 km/h.
+  env.Drive(Engine::kSpeedHintLingerMs - 1000, 55, 0);
+  status = env.m_engine.GetStatus();
+  TEST(status.m_speedHintShown, ());
+  TEST_EQUAL(status.m_speedHintRange, 3, ());
+  env.Drive(2000, 55, 0);
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+
+  // As when the car slows down.
+  env.Drive(3000, 25, 0);
+  TEST(env.m_engine.GetStatus().m_speedHintShown, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedHintRange, 2, ());
+  env.Drive(Engine::kSpeedHintLingerMs - 1000, 0, 0);
+  TEST(env.m_engine.GetStatus().m_speedHintShown, ());
+  env.Drive(2000, 0, 0);
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+  TEST(!env.m_delegate.HasEvent(Event::SpeedRangeCalibrated), ());
+}
+
+UNIT_TEST(NoGps_SpeedHint_GpsMeasuresRangeOnce)
+{
+  auto const table = GpsTable({});
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads,
+          [&table](TestStorage & storage) { storage.Set(Storage::kSpeedTable, table.Serialize()); });
+  MarkCar(env, 0);
+  env.m_engine.SetGpsDisabled(true);
+  DriveWithGps(env, 3, 36);
+  auto status = env.m_engine.GetStatus();
+  TEST(status.m_speedHintShown, ());
+  TEST_EQUAL(status.m_speedHintRange, 3, ());
+
+  // GPS measures the range: the bar tells it, and doesn't stay.
+  TEST(DriveUntilRangeCalibrated(env, 36), ());
+  status = env.m_engine.GetStatus();
+  TEST_EQUAL(status.m_speedHintRange, 3, ());
+  TEST_EQUAL(status.m_speedMilestone, SpeedMilestone::Range, ());
+  TEST_GREATER(status.m_gpsSpeedTable[3].m_scale, 0, ());
+  TEST(!status.m_speedHintShown, ());
+  TEST(status.m_speedHintGps, ());
+  DriveWithGps(env, 10, 36);
+  TEST_EQUAL(CountEvents(env, Event::SpeedRangeCalibrated), 1, ());
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+
+  // GPS measures nothing a while after its last good position.
+  env.Drive(3000, 25, 0);
+  status = env.m_engine.GetStatus();
+  TEST(status.m_speedHintShown, ());
+  TEST_EQUAL(status.m_speedHintRange, 2, ());
+  TEST(!status.m_speedHintGps, ());
+
+  // A cleared table is measured anew.
+  env.m_engine.ClearSpeedCalibration();
+  env.Drive(3000, 36, 0);
+  TEST(env.m_engine.GetStatus().m_speedHintShown, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedHintRange, 3, ());
+}
+
+UNIT_TEST(NoGps_SpeedHint_TableRestoredIsNotMeasuredAgain)
+{
+  // GPS measured 30-40 km/h on the trip before.
+  auto const table = GpsTable({3});
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads,
+          [&table](TestStorage & storage) { storage.Set(Storage::kSpeedTable, table.Serialize()); });
+  MarkCar(env, 0);
+  env.m_engine.SetGpsDisabled(true);
+  DriveWithGps(env, 20, 36);
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+  TEST(!env.m_delegate.HasEvent(Event::SpeedRangeCalibrated), ());
+}
+
+UNIT_TEST(NoGps_SpeedHint_Milestones)
+{
+  // All but 50-60, 90-100 and 130+ km/h are measured.
+  auto const table = GpsTable({0, 1, 2, 3, 4, 6, 7, 8, 10, 11, 12});
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads,
+          [&table](TestStorage & storage) { storage.Set(Storage::kSpeedTable, table.Serialize()); });
+  MarkCar(env, 0);
+  env.m_engine.SetGpsDisabled(true);
+
+  TEST(DriveUntilRangeCalibrated(env, 55), ());
+  auto status = env.m_engine.GetStatus();
+  TEST_EQUAL(status.m_speedHintRange, 5, ());
+  TEST_EQUAL(status.m_speedMilestone, SpeedMilestone::City, ());
+
+  TEST(DriveUntilRangeCalibrated(env, 95), ());
+  status = env.m_engine.GetStatus();
+  TEST_EQUAL(status.m_speedHintRange, 9, ());
+  TEST_EQUAL(status.m_speedMilestone, SpeedMilestone::OutOfTown, ());
+
+  TEST(DriveUntilRangeCalibrated(env, 135), ());
+  status = env.m_engine.GetStatus();
+  TEST_EQUAL(status.m_speedHintRange, 13, ());
+  TEST_EQUAL(status.m_speedMilestone, SpeedMilestone::Full, ());
+  TEST_EQUAL(CountEvents(env, Event::SpeedRangeCalibrated), 3, ());
+
+  // Nothing is left to measure.
+  DriveWithGps(env, 5, 25);
+  TEST(!env.m_engine.GetStatus().m_speedHintShown, ());
+}
+
 UNIT_TEST(NoGps_Engine_BendsToldRepeatedlyMoveSlowCar)
 {
   // The street going east bends evenly by 30 degrees to the left at 200 m: by 5 degrees in a second at 20 km/h.

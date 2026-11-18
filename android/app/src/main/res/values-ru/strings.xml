@@ -1283,6 +1283,30 @@
     <string name="nogps_speed_table_hint">Машина сообщает скорость немного неточно из-за шин. Приложение поправляет её, чтобы считать путь без GPS.</string>
     <!-- What the user does to calibrate the speed table, shown below nogps_speed_table_hint -->
     <string name="nogps_speed_table_action">Для калибровки проедьте с хорошим GPS около 300 м в каждом диапазоне.</string>
+    <!-- Bar next to the speed on the map: accurate GPS measures the error of the car speed in this range now, e.g. "Calibrating 50–60 km/h" -->
+    <string name="nogps_speed_hint_calibrating">Калибруется %1$d–%2$d км/ч</string>
+    <!-- Bar next to the speed on the map: GPS has not measured the error of the car speed in this range, and there is no accurate GPS now -->
+    <string name="nogps_speed_hint_not_calibrated">%1$d–%2$d км/ч не откалибровано</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_calibrating -->
+    <string name="nogps_speed_hint_keep_gps">Важно для езды без GPS: держите GPS включённым</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_not_calibrated -->
+    <string name="nogps_speed_hint_turn_gps_on">Важно для езды без GPS: включите GPS</string>
+    <!-- Bar next to the speed on the map: GPS has just measured the error of the car speed in this range -->
+    <string name="nogps_speed_hint_done">%1$d–%2$d км/ч откалибровано!</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_done: the speed ranges measured, of all, e.g. "5 of 14 speed ranges" -->
+    <string name="nogps_speed_hint_done_count">%1$d из %2$d диапазонов скорости</string>
+    <!-- Bar next to the speed on the map: GPS has measured all the speeds of 5–60 km/h -->
+    <string name="nogps_speed_hint_city">Городские скорости откалиброваны!</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_city -->
+    <string name="nogps_speed_hint_city_hint">5–60 км/ч: готово к городу без GPS</string>
+    <!-- Bar next to the speed on the map: GPS has measured all the speeds of 5–100 km/h -->
+    <string name="nogps_speed_hint_out_of_town">Загородные скорости откалиброваны!</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_out_of_town -->
+    <string name="nogps_speed_hint_out_of_town_hint">5–100 км/ч: готово к трассе без GPS</string>
+    <!-- Bar next to the speed on the map: GPS has measured all the speed ranges -->
+    <string name="nogps_speed_hint_full">Скорость полностью откалибрована!</string>
+    <!-- Bar next to the speed on the map, under nogps_speed_hint_full: the number of all the speed ranges -->
+    <string name="nogps_speed_hint_full_hint">Все %d диапазонов: можно ехать без GPS</string>
     <!-- Row of the Box sheet: how late the car tells its speed, the value is on the right -->
     <string name="nogps_speed_lag">Опоздание скорости</string>
     <!-- Value of the speed delay row of the Box sheet, in seconds, e.g. "1.2 s" -->

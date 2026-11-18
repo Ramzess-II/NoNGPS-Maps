@@ -150,4 +150,8 @@
   <color name="source_warning">#FFE67700</color>
   <color name="source_sleeping">#FF8E8E93</color>
   <color name="source_inertial">#FF8E44C4</color>
+  <!-- The bar of the speed calibration next to the speed, the same in both themes: white text on it. -->
+  <color name="speed_hint_accent">#FF2456E0</color>
+  <color name="speed_hint_done">#FF15803D</color>
+  <color name="speed_hint_gold">#FFFFD54A</color>
 </resources>

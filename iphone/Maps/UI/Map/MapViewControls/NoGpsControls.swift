@@ -63,6 +63,7 @@ final class NoGpsControls: NSObject {
   private weak var firmwareAlert: UIAlertController?
   private let flagRecorder = NoGpsFlagRecorder()
   private let speedView = NoGpsSpeedView()
+  private let speedHint = NoGpsSpeedHintView()
   private var speedEdge = NSLayoutConstraint()
   private var speedBottom = NSLayoutConstraint()
   private var calibrationBottom = NSLayoutConstraint()
@@ -177,6 +178,9 @@ final class NoGpsControls: NSObject {
     panel.translatesAutoresizingMaskIntoConstraints = false
     superview.addSubview(panel)
     superview.addSubview(buttons)
+    // Under the speed: it slides out of it.
+    speedHint.addTarget(self, action: #selector(speedHintTapped), for: .touchUpInside)
+    superview.addSubview(speedHint)
     superview.addSubview(speedView)
     speedEdge = Self.isRTL ? speedView.rightAnchor.constraint(equalTo: superview.leftAnchor)
       : speedView.leftAnchor.constraint(equalTo: superview.leftAnchor)
@@ -192,6 +196,9 @@ final class NoGpsControls: NSObject {
     calibrationMaxWidth = calibrationButton.widthAnchor.constraint(lessThanOrEqualToConstant: Constants.statusMaxWidth)
     NSLayoutConstraint.activate([
       statusTop, statusCenterX, buttonsEdge, buttonsCenterY, speedEdge, speedBottom,
+      Self.isRTL ? speedHint.rightAnchor.constraint(equalTo: speedView.centerXAnchor)
+        : speedHint.leftAnchor.constraint(equalTo: speedView.centerXAnchor),
+      speedHint.bottomAnchor.constraint(equalTo: speedView.bottomAnchor),
       calibrationBottom, calibrationCenterX, calibrationMaxWidth,
       calibrationButton.heightAnchor.constraint(greaterThanOrEqualToConstant: Constants.statusMinHeight),
       // The panel goes on to the edge of the screen, under the safe area too.
@@ -227,6 +234,8 @@ final class NoGpsControls: NSObject {
       self.buttonsCenterY.constant = panelTop + height / 2 + fraction * max(0, panelArea - height)
       self.speedEdge.constant = Self.isRTL ? area.maxX - Constants.speedMargin : area.minX + Constants.speedMargin
       self.speedBottom.constant = area.maxY - Constants.speedMargin
+      // From the middle of the speed to the other edge of the free area.
+      self.speedHint.setFullWidth(area.width - 2 * Constants.speedMargin - NoGpsSpeedView.side / 2)
       // In the middle at the bottom, clear of the speed in the corner.
       let speedWidth = self.speedView.isHidden ? 0 : NoGpsSpeedView.side + 2 * Constants.speedMargin
       self.calibrationBottom.constant = area.maxY - Constants.speedMargin
@@ -314,6 +323,7 @@ final class NoGpsControls: NSObject {
     let status = NoGps.status()
     // Once a second: the status is too heavy for every position.
     speedView.update(status: status, location: LocationManager.lastLocation())
+    speedHint.update(status: status, speedShown: !speedView.isHidden)
     // The mark stands and waits for the user: a toast about it is easy to miss while driving. The bottom bar tells the
     // source and the accuracy.
     statusButton.isHidden = !status.roadLost
@@ -390,6 +400,11 @@ final class NoGpsControls: NSObject {
   @objc
   private func calibrationTapped() {
     NoGpsBoxSheet.show(.calibration)
+  }
+
+  @objc
+  private func speedHintTapped() {
+    NoGpsBoxSheet.show(.speedCalibration)
   }
 
   /// The box works with another firmware than the app is tested with: asks the user to install the one of the app.
@@ -536,6 +551,11 @@ final class NoGpsControls: NSObject {
       }
     // The bar at the bottom of the map asks for it.
     case .boxCalibrationAdvised: text = nil
+    case .speedRangeCalibrated:
+      if !speedView.isHidden {
+        speedHint.celebrate(status: NoGps.status(), speed: speedView)
+      }
+      text = nil
     case .firmwareUpdateAvailable:
       offerFirmwareUpdate()
       text = nil
