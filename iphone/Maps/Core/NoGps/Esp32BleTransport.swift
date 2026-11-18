@@ -57,6 +57,8 @@ final class Esp32BleTransport: NSObject {
     // The box of another car waits this long for the box of the current car: both may be near, e.g. two cars in the
     // yard with their engines just stopped.
     static let otherCarDelay: TimeInterval = 3
+    // A box is near while its advertisement was seen this recently, see isBoxNearby().
+    static let nearbyTimeout: TimeInterval = 60
     // A paired box answers HELLO at once over an encrypted connection. One that stays silent is connected again: the
     // connection has stayed unencrypted, and the box would drop it only after 60 s (October 13, three times in a row).
     static let silenceTimeout: TimeInterval = 5
@@ -78,6 +80,7 @@ final class Esp32BleTransport: NSObject {
   private var isReady = false
   /// The box has sent data over this connection: it is encrypted, so the box is paired.
   private var isHeard = false
+  private var foregroundObserver: NSObjectProtocol?
   /// The box accepted a new phone when it was found: the user may be entering its code.
   private var acceptsNewPhone = false
   /// The box had sent data before, when it was found.
@@ -109,6 +112,8 @@ final class Esp32BleTransport: NSObject {
   private var currentCar = ""
   /// The box connected, nil if its name is not known.
   private var boxId: String?
+  /// When each box was seen in the search, also while one is connected: the Box sheet offers a car whose box is awake.
+  private var seenTimes: [String: TimeInterval] = [:]
 
   /// The system asks the user for the code of a new box, or is about to: the box asks for it 1.5 s after the
   /// connection. iOS doesn't tell it, and the core is told that the box is connected meanwhile, so it keeps sending
@@ -125,6 +130,13 @@ final class Esp32BleTransport: NSObject {
     isOpen = true
     retryDelay = Constants.retryDelay
     silentConnections = 0
+    // A scan started in the background reports a box once: start it again to see the boxes near now.
+    foregroundObserver = NotificationCenter.default.addObserver(
+      forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
+    ) { [weak self] _ in
+      guard let self, isOpen, isHeard, central?.state == .poweredOn else { return }
+      scan()
+    }
     if central == nil {
       // The user is asked for Bluetooth the first time, centralManagerDidUpdateState() follows.
       central = CBCentralManager(delegate: self, queue: nil)
@@ -193,10 +205,20 @@ final class Esp32BleTransport: NSObject {
     UserDefaults.standard.removeObject(forKey: Constants.knownBoxesKey)
   }
 
+  /// The box of the car, other than the connected one (it doesn't advertise), was seen in the last minute.
+  @objc
+  func isBoxNearby(_ carId: String) -> Bool {
+    guard isOpen, carId != boxId, let seen = seenTimes[carId] else { return false }
+    return ProcessInfo.processInfo.systemUptime - seen <= Constants.nearbyTimeout
+  }
+
   @objc
   func close() {
     guard isOpen else { return }
     isOpen = false
+    foregroundObserver.map(NotificationCenter.default.removeObserver)
+    foregroundObserver = nil
+    seenTimes.removeAll()
     timer?.cancel()
     cancelPairingClosedCheck()
     endBackgroundWait()
@@ -243,9 +265,7 @@ final class Esp32BleTransport: NSObject {
       setState(.searching)
       return
     }
-    // Duplicates are reported: the box tells in every advertisement if it accepts a new phone, and this changes.
-    central.scanForPeripherals(withServices: [Constants.service],
-                               options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
+    scan()
     scanStart = ProcessInfo.processInfo.systemUptime
     carIds = Set(NoGps.cars().map(\.carId))
     currentCar = NoGps.status().carId
@@ -261,6 +281,13 @@ final class Esp32BleTransport: NSObject {
       LOG(.info, "Linked by the system \(linked.identifier) \(Self.boxId(linked, [:]) ?? "-")")
       connect(linked, id: Self.boxId(linked, [:]), known: true, acceptsNewPhone: false)
     }
+  }
+
+  /// Duplicates are reported: the box tells in every advertisement if it accepts a new phone, and this changes. And a
+  /// box seen again is still near.
+  private func scan() {
+    central?.scanForPeripherals(withServices: [Constants.service],
+                                options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
   }
 
   private func isPairingOpen(_ advertisementData: [String: Any]) -> Bool {
@@ -368,6 +395,10 @@ final class Esp32BleTransport: NSObject {
       if central?.state == .poweredOn {
         central?.cancelPeripheralConnection(peripheral)
       }
+    }
+    if central?.state == .poweredOn {
+      // Only the search connects a box.
+      central?.stopScan()
     }
     peripheral = nil
     boxId = nil
@@ -479,9 +510,13 @@ extension Esp32BleTransport: CBCentralManagerDelegate {
 
   func centralManager(_: CBCentralManager, didDiscover peripheral: CBPeripheral,
                       advertisementData: [String: Any], rssi RSSI: NSNumber) {
-    guard isOpen, self.peripheral == nil else { return }
-    let known = knownBoxes.contains(peripheral.identifier.uuidString)
+    guard isOpen else { return }
     let id = Self.boxId(peripheral, advertisementData)
+    if let id {
+      seenTimes[id] = ProcessInfo.processInfo.systemUptime
+    }
+    guard self.peripheral == nil else { return }
+    let known = knownBoxes.contains(peripheral.identifier.uuidString)
     // A known box without its name may be of a car: not while a new one is added.
     guard id.map({ isBoxWanted($0, known: known) }) ?? !(newBoxOnly && known) else { return }
     let pairingOpen = isPairingOpen(advertisementData)
@@ -584,6 +619,8 @@ extension Esp32BleTransport: CBPeripheralDelegate {
       timer?.cancel()
       remember(peripheral)
       onBoxHeard()
+      // The boxes of the other cars are only seen, not connected: the search ended with the connection.
+      scan()
       // The lines waiting for a write with a response go without it now.
       writeNext()
     }

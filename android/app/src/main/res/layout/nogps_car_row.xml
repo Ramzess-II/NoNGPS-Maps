@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A car of the Box sheet, or a phone of its box: its name and its state. A car opens its page: its chevron shows. -->
+<!-- A car of the Box sheet, or a phone of its box: its name and its state. A car opens its page: its chevron shows. The button switches to a car whose box is near. -->
 <LinearLayout
   xmlns:android="http://schemas.android.com/apk/res/android"
   xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -27,6 +27,15 @@
       android:textColor="?android:textColorSecondary"
       android:textSize="14sp" />
   </LinearLayout>
+  <Button
+    android:id="@+id/car_switch"
+    style="?attr/borderlessButtonStyle"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="12dp"
+    android:minWidth="0dp"
+    android:text="@string/nogps_car_switch"
+    android:visibility="gone" />
   <ImageView
     android:id="@+id/car_chevron"
     android:layout_width="24dp"

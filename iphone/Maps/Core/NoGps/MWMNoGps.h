@@ -366,6 +366,8 @@ NS_SWIFT_NAME(NoGps)
 /// Forgets the car with what is learned about it. Its box is not connected until the car is added again. Without cars
 /// left the box is not looked for.
 + (void)forgetCar:(NSString *)carId;
+/// The box of the car, other than the connected one, was seen in the last minute: the car may be switched to.
++ (BOOL)isBoxNearby:(NSString *)carId;
 /// The user adds a car: only a box that is not of a known car is connected, until it is heard or this is called with
 /// NO.
 + (void)searchNewBox:(BOOL)newOnly;
