@@ -153,7 +153,7 @@ UNIT_TEST(NoGps_Replay_DrivesTripLog)
 
 UNIT_TEST(NoGps_Replay_BoxOfTrip)
 {
-  // The box of the trip is told to the navigation, so what it has learned about another box is not taken.
+  // The box of the trip is told to the navigation: its info line is accepted.
   std::string const input =
       "D 11-02\n"
       "S 36000000 2\n"

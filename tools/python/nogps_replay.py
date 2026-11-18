@@ -247,8 +247,8 @@ def make_input(args):
             actions.append((ms, 1, 'S %d 0' % ms, False))
         elif function == 'OnBleState' and text.startswith('Bluetooth = '):
             actions.append((ms, 2, 'L %d %s' % (ms, text.split()[2]), False))
-        elif function == 'OnInfo' and text.startswith('Box '):
-            actions.append((ms, 2, 'I %d %s' % (ms, text.split()[1]), False))
+        elif function == 'OnInfo' and BOX_INFO.match(text):
+            actions.append((ms, 2, 'I %d %s' % (ms, BOX_INFO.match(text).group(1)), False))
         elif function == 'SetGpsDisabled' and text.startswith('disabled = '):
             actions.append((ms, 3, 'X %d %s' % (ms, text.split()[2]), False))
         elif text.startswith('Entering the manual mode') or text.startswith('GPS is trusted again'):
@@ -475,7 +475,8 @@ def make_input(args):
         if state.get('link', '').endswith('/CONNECTED'):
             records.append((first, -3, 'L %d CONNECTED' % first))
             # The box the application has heard before the file begins.
-            box = [text.split()[1] for ms, text, function in others if function == 'OnInfo' and ms <= first]
+            box = [BOX_INFO.match(text).group(1) for ms, text, function in others
+                   if function == 'OnInfo' and ms <= first and BOX_INFO.match(text)]
             if box:
                 records.append((first, -3, 'I %d %s' % (first, box[-1])))
         # GPS switched off stays so: since the choice is kept after a restart too. On October 19 it was switched off
