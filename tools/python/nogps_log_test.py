@@ -399,11 +399,16 @@ class RunTest(unittest.TestCase):
                 f.write('\n'.join(android_drive('10-08', seconds=60, stand=0, header=False, error=lambda s: 40.0) +
                                   android_drive('10-09', seconds=40, stand=0, header=False, error=lambda s: 40.0)))
             tool = os.path.join(folder, 'tool.py')
-            with open(tool, 'w') as f:
-                f.write('#!%s\nimport shutil, sys\nshutil.copy(%r, sys.argv[-1])\n'
-                        'open(sys.argv[-1] + ".args", "w").write(" ".join(sys.argv[1:-2]))\n' % (sys.executable,
-                                                                                                 replayed))
-            os.chmod(tool, 0o755)
+
+            def write_tool(failing_day):
+                with open(tool, 'w') as f:
+                    f.write('#!%s\nimport shutil, sys\nshutil.copy(%r, sys.argv[-1])\n'
+                            'open(sys.argv[-1] + ".args", "w").write(" ".join(sys.argv[1:-2]))\n'
+                            'if %r in sys.argv[-1]:\n    sys.exit(3)\nopen(sys.argv[-1] + ".done", "w")\n'
+                            % (sys.executable, replayed, failing_day))
+                os.chmod(tool, 0o755)
+
+            write_tool('none')
             out = os.path.join(folder, 'out')
             args = argparse.Namespace(logs=[log], tool=tool, data_path='maps', resources_path='data',
                                       settings='settings.ini', day=None, start=None, end=None, jobs=2, output=out,
@@ -421,6 +426,16 @@ class RunTest(unittest.TestCase):
                 self.assertEqual(f.read(), '--data_path maps --resources_path data --settings settings.ini')
             for name in ('in.txt', 'tool.log', 'compare.txt'):
                 self.assertTrue(os.path.exists(os.path.join(out, '10-08-' + name)), name)
+
+            # A day the tool has not driven to the end is told, the other days are compared.
+            write_tool('10-09')
+            lines = io.StringIO()
+            with mock.patch.object(nogps_replay, 'held_out_days', lambda: {'10-09'}), redirect_stdout(lines):
+                nogps_replay.run(args)
+            lines = lines.getvalue().splitlines()
+            self.assertTrue(lines[2].startswith('10-09 held out  the tool has not driven it to the end, exit code 3'),
+                            lines[2])
+            self.assertEqual(lines[3][:15], '10-08 made from')
 
 
 class ReportTest(unittest.TestCase):

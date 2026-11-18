@@ -705,22 +705,25 @@ def print_compare(stats, day, change):
 
 def run_day(args, day):
     """Makes the input of the day, drives it with the tool and compares it with the trip: the compare of the day and
-    the seconds the tool took, or None without any box data."""
+    the seconds the tool took, or None and what went wrong."""
     base = os.path.join(args.output, day)
     day_args = argparse.Namespace(logs=args.logs, day=day, start=args.start, end=args.end, output=base + '-in.txt',
                                   no_taps=args.no_taps, no_route=args.no_route)
     with contextlib.redirect_stdout(io.StringIO()):
         make_input(day_args)
     if not os.path.exists(day_args.output):
-        return day, None, 0
+        return day, None, 'no box data'
     out = base + '-out.txt'
     command = [args.tool, '--data_path', args.data_path, '--resources_path', args.resources_path]
     if args.settings:
         command += ['--settings', args.settings]
     started = time.monotonic()
     with open(base + '-tool.log', 'w') as log:
-        subprocess.run(command + [day_args.output, out], stdout=log, stderr=subprocess.STDOUT, check=True)
+        code = subprocess.run(command + [day_args.output, out], stdout=log, stderr=subprocess.STDOUT).returncode
     seconds = time.monotonic() - started
+    # A day the tool has not driven to the end is not compared: the other days are.
+    if code != 0 or not os.path.exists(out + '.done'):
+        return day, None, 'the tool has not driven it to the end, exit code %d: see %s-tool.log' % (code, base)
     trips, others, _ = read(args.logs, day)
     replayed, replayed_others, _ = read([out], day)
     start = parse_clock(args.start) if args.start else 0
@@ -754,7 +757,7 @@ def run(args):
             if set_of(day, held_out) != name:
                 continue
             if not stats:
-                print('%-5s %-9s no box data' % (day, name))
+                print('%-5s %-9s %s' % (day, name, tool_seconds))
                 continue
             count += 1
             seconds += stats['seconds']
