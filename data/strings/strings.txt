@@ -47184,6 +47184,55 @@ en = All %d ranges: ready to drive without GPS
 ru = Все %d диапазонов: можно ехать без GPS
 uk = Усі %d діапазонів: можна їхати без GPS
 
+[nogps_sprint_to100]
+comment = A run from a standing start up to 100 km/h, timed by the car speed: on the alert on the map, in the car section of the Box sheet, and as the title of its results
+tags = android-app,apple-maps
+en = 0–100 km/h
+ru = 0–100 км/ч
+uk = 0–100 км/год
+
+[nogps_sprint_quarter_mile]
+comment = A run of a quarter mile (402 m) from a standing start, timed by the car speed: on the alert on the map, in the car section of the Box sheet, and as the title of its results
+tags = android-app,apple-maps
+en = ¼ mile
+ru = ¼ мили
+uk = ¼ милі
+
+[nogps_sprint_seconds]
+comment = The time of a run from a standing start, e.g. "8.4 s"
+tags = android-app,apple-maps
+en = %@ s
+ru = %@ с
+uk = %@ с
+
+[nogps_sprint_record]
+comment = Alert on the map: the run from a standing start just timed is the fastest of the car, followed by its time
+tags = android-app,apple-maps
+en = New record!
+ru = Новый рекорд!
+uk = Новий рекорд!
+
+[nogps_sprint_was]
+comment = Alert on the map, under nogps_sprint_record: the best time of the car before this run, e.g. "Was 9.1 s"
+tags = android-app,apple-maps
+en = Was %@
+ru = Было %@
+uk = Було %@
+
+[nogps_sprint_best]
+comment = Results of the runs from a standing start: marks the fastest run of the car
+tags = android-app,apple-maps
+en = Best
+ru = Лучший
+uk = Найкращий
+
+[nogps_sprint_none]
+comment = Results of the runs from a standing start, when the car has none yet
+tags = android-app,apple-maps
+en = No runs yet: stop, then accelerate hard from a standstill
+ru = Заездов пока нет: остановитесь и резко разгонитесь с места
+uk = Заїздів поки немає: зупиніться й різко розженіться з місця
+
 [nogps_speed_lag]
 comment = Row of the Box sheet: how late the car tells its speed, the value is on the right
 tags = android-app,apple-maps

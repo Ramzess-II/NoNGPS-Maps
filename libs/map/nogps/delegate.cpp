@@ -37,6 +37,7 @@ std::string DebugPrint(Event event)
   case Event::BoxCalibrationAdvised: return "BoxCalibrationAdvised";
   case Event::ThisPhoneRemoved: return "ThisPhoneRemoved";
   case Event::SpeedRangeCalibrated: return "SpeedRangeCalibrated";
+  case Event::SprintMeasured: return "SprintMeasured";
   }
   UNREACHABLE();
 }

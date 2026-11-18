@@ -64,6 +64,9 @@ final class NoGpsControls: NSObject {
   private let flagRecorder = NoGpsFlagRecorder()
   private let speedView = NoGpsSpeedView()
   private let speedHint = NoGpsSpeedHintView()
+  private let sprintView = NoGpsSprintView()
+  private var sprintBottom = NSLayoutConstraint()
+  private var sprintCenterX = NSLayoutConstraint()
   private var speedEdge = NSLayoutConstraint()
   private var speedBottom = NSLayoutConstraint()
   private var calibrationBottom = NSLayoutConstraint()
@@ -182,6 +185,7 @@ final class NoGpsControls: NSObject {
     speedHint.addTarget(self, action: #selector(speedHintTapped), for: .touchUpInside)
     superview.addSubview(speedHint)
     superview.addSubview(speedView)
+    superview.addSubview(sprintView)
     speedEdge = Self.isRTL ? speedView.rightAnchor.constraint(equalTo: superview.leftAnchor)
       : speedView.leftAnchor.constraint(equalTo: superview.leftAnchor)
     speedBottom = speedView.bottomAnchor.constraint(equalTo: superview.topAnchor)
@@ -191,6 +195,8 @@ final class NoGpsControls: NSObject {
     buttonsEdge = Self.isRTL ? buttons.rightAnchor.constraint(equalTo: superview.leftAnchor)
       : buttons.leftAnchor.constraint(equalTo: superview.leftAnchor)
     buttonsCenterY = buttons.centerYAnchor.constraint(equalTo: superview.topAnchor)
+    sprintBottom = sprintView.bottomAnchor.constraint(equalTo: superview.topAnchor)
+    sprintCenterX = sprintView.centerXAnchor.constraint(equalTo: superview.leftAnchor)
     calibrationBottom = calibrationButton.bottomAnchor.constraint(equalTo: superview.topAnchor)
     calibrationCenterX = calibrationButton.centerXAnchor.constraint(equalTo: superview.leftAnchor)
     calibrationMaxWidth = calibrationButton.widthAnchor.constraint(lessThanOrEqualToConstant: Constants.statusMaxWidth)
@@ -199,7 +205,7 @@ final class NoGpsControls: NSObject {
       Self.isRTL ? speedHint.rightAnchor.constraint(equalTo: speedView.centerXAnchor)
         : speedHint.leftAnchor.constraint(equalTo: speedView.centerXAnchor),
       speedHint.bottomAnchor.constraint(equalTo: speedView.bottomAnchor),
-      calibrationBottom, calibrationCenterX, calibrationMaxWidth,
+      calibrationBottom, calibrationCenterX, calibrationMaxWidth, sprintBottom, sprintCenterX,
       calibrationButton.heightAnchor.constraint(greaterThanOrEqualToConstant: Constants.statusMinHeight),
       // The panel goes on to the edge of the screen, under the safe area too.
       Self.isRTL ? panel.rightAnchor.constraint(equalTo: superview.rightAnchor)
@@ -241,6 +247,10 @@ final class NoGpsControls: NSObject {
       self.calibrationBottom.constant = area.maxY - Constants.speedMargin
       self.calibrationCenterX.constant = area.midX
       self.calibrationMaxWidth.constant = min(Constants.statusMaxWidth, max(0, area.width - 2 * speedWidth))
+      // In the bottom third, above the speed and the bar of its calibration: the mark and the road ahead stay seen.
+      self.sprintBottom.constant = area.maxY - Constants.speedMargin - speedWidth
+      self.sprintCenterX.constant = area.midX
+      self.sprintView.setMaxWidth(area.width - 2 * Constants.speedMargin)
     }
     if animated, let superview = buttons.superview {
       superview.animateConstraints(animations: place)
@@ -559,6 +569,9 @@ final class NoGpsControls: NSObject {
       if !speedView.isHidden {
         speedHint.celebrate(status: NoGps.status(), speed: speedView)
       }
+      text = nil
+    case .sprintMeasured:
+      sprintView.show(status: NoGps.status())
       text = nil
     case .firmwareUpdateAvailable:
       offerFirmwareUpdate()

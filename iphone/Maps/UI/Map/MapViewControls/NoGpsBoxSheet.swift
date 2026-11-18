@@ -645,6 +645,95 @@ private final class CarsViewController: MWMTableViewController {
   }
 }
 
+/// The results of a kind of the timed runs of the car driven now, newest first, the best one marked.
+private final class SprintResultsViewController: MWMTableViewController {
+  private enum Constants {
+    static let refreshInterval: TimeInterval = 0.5
+    static let cellId = "NoGpsSprintResultCell"
+  }
+
+  private let kind: NoGpsSprintKind
+  private var results: [NoGpsSprint] = []
+  private var best: NoGpsSprint?
+  private var timer: Timer?
+
+  init(kind: NoGpsSprintKind) {
+    self.kind = kind
+    super.init(style: .insetGrouped)
+    title = NoGpsSprintText.kindTitle(kind)
+  }
+
+  @available(*, unavailable)
+  required init?(coder _: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
+  override func viewDidLoad() {
+    super.viewDidLoad()
+    tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
+  }
+
+  override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+    refresh()
+    let timer = Timer(timeInterval: Constants.refreshInterval, repeats: true) { [weak self] _ in self?.refresh() }
+    RunLoop.main.add(timer, forMode: .common)
+    self.timer = timer
+  }
+
+  override func viewWillDisappear(_ animated: Bool) {
+    super.viewWillDisappear(animated)
+    timer?.invalidate()
+    timer = nil
+  }
+
+  /// A new result comes while the list is open.
+  private func refresh() {
+    let sprints = NoGps.sprints()
+    let newResults = NoGpsSprintText.results(of: kind, in: sprints)
+    let newBest = NoGpsSprintText.best(of: kind, in: sprints)
+    // The objects are new every time: the results are told apart by when they were driven.
+    guard newResults.map(\.date) != results.map(\.date) || newBest?.date != best?.date else { return }
+    results = newResults
+    best = newBest
+    tableView.reloadData()
+  }
+
+  override func numberOfSections(in _: UITableView) -> Int {
+    1
+  }
+
+  override func tableView(_: UITableView, numberOfRowsInSection _: Int) -> Int {
+    results.count
+  }
+
+  override func tableView(_: UITableView, titleForFooterInSection _: Int) -> String? {
+    results.isEmpty ? L("nogps_sprint_none") : nil
+  }
+
+  override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+    let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
+    let sprint = results[indexPath.row]
+    var content = UIListContentConfiguration.subtitleCell()
+    content.text = NoGpsSprintText.result(kind: kind, sec: sprint.sec, trapKmh: sprint.trapKmh)
+    content.secondaryText = NoGpsSprintText.dateText(sprint.date)
+    content.secondaryTextProperties.color = .secondaryLabel
+    cell.selectionStyle = .none
+    if sprint.date == best?.date {
+      let label = UILabel()
+      label.text = L("nogps_sprint_best")
+      label.font = .preferredFont(forTextStyle: .subheadline)
+      label.textColor = .systemGreen
+      label.sizeToFit()
+      cell.accessoryView = label
+    } else {
+      cell.accessoryView = nil
+    }
+    cell.contentConfiguration = content
+    return cell
+  }
+}
+
 /// The box of a new car is searched step by step, as the first one: the box connected now is dropped, the other cars
 /// stay. The search ends when the list of the cars grows: the box of a car is heard before, and a box sleeping after
 /// its link was dropped is taken as heard too.
@@ -767,10 +856,14 @@ final class CarPageViewController: MWMTableViewController {
     /// A phone by its Bluetooth address.
     case phone(String)
     case addPhone
+    /// The best time of a kind of the timed runs, a tap opens the results.
+    case sprint(NoGpsSprintKind)
   }
 
   private let carId: String
   private var car: NoGpsCar?
+  /// The timed runs of the car driven now, newest first.
+  private var sprints: [NoGpsSprint] = []
   private var status = NoGps.status()
   private var timer: Timer?
   private var rows: [[Row]] = []
@@ -839,10 +932,13 @@ final class CarPageViewController: MWMTableViewController {
     rows = [
       carId == status.carId ? [.name, .forget] : [.name, .drive, .forget],
       phonesKnown ? phones.map { .phone($0.address) } + [.addPhone] : [],
+      // Kept for the car driven now only.
+      carId == status.carId ? [.sprint(.to100), .sprint(.quarterMile)] : [],
     ]
+    sprints = carId == status.carId ? NoGps.sprints() : []
     addPhoneAlert?.message = addPhoneText()
     // Footers are not updated in place.
-    let footers = [nil, phoneFooter()]
+    let footers = [nil, phoneFooter(), nil]
     if footers != shownFooters {
       shownFooters = footers
       shownRows = []
@@ -901,6 +997,11 @@ final class CarPageViewController: MWMTableViewController {
       content.text = L("nogps_phone_add")
       content.textProperties.color = status.boxReadOnly ? .secondaryLabel : .linkBlue
       cell.selectionStyle = status.boxReadOnly ? .none : .default
+    case .sprint(let kind):
+      content = UIListContentConfiguration.valueCell()
+      content.text = NoGpsSprintText.kindTitle(kind)
+      content.secondaryText = NoGpsSprintText.bestText(of: kind, in: sprints)
+      cell.accessoryType = .disclosureIndicator
     }
     cell.contentConfiguration = content
     return cell
@@ -908,6 +1009,10 @@ final class CarPageViewController: MWMTableViewController {
 
   override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
     tableView.deselectRow(at: indexPath, animated: true)
+    if case .sprint(let kind) = rows[indexPath.section][indexPath.row] {
+      navigationController?.pushViewController(SprintResultsViewController(kind: kind), animated: true)
+      return
+    }
     guard let car else { return }
     switch rows[indexPath.section][indexPath.row] {
     case .name:
@@ -929,6 +1034,8 @@ final class CarPageViewController: MWMTableViewController {
       if !status.boxReadOnly {
         addPhone()
       }
+    case .sprint:
+      break
     }
   }
 

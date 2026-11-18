@@ -180,7 +180,15 @@ typedef NS_ENUM(NSInteger, MWMNoGpsEvent) {
   /// GPS has measured a range of the speed table: speedHintRange and speedMilestone of the status tell which, and what
   /// it has completed.
   MWMNoGpsEventSpeedRangeCalibrated,
+  /// A run from a standing start is timed: sprintKind and the sprint properties of the status tell the result.
+  MWMNoGpsEventSprintMeasured,
 } NS_SWIFT_NAME(NoGpsEvent);
+
+/// The kinds of the runs from a standing start.
+typedef NS_ENUM(NSInteger, MWMNoGpsSprintKind) {
+  MWMNoGpsSprintKindTo100,
+  MWMNoGpsSprintKindQuarterMile,
+} NS_SWIFT_NAME(NoGpsSprintKind);
 
 /// What the last speed range measured by GPS has completed.
 typedef NS_ENUM(NSInteger, MWMNoGpsSpeedMilestone) {
@@ -216,6 +224,18 @@ NS_SWIFT_NAME(NoGpsCar)
 @property(nonatomic, readonly) NSString * firmware;
 /// When the box told about itself the last time.
 @property(nonatomic, readonly, nullable) NSDate * lastSeen;
+
+@end
+
+/// A timed run from a standing start, kept for the car.
+NS_SWIFT_NAME(NoGpsSprint)
+@interface MWMNoGpsSprint : NSObject
+
+@property(nonatomic, readonly) MWMNoGpsSprintKind kind;
+@property(nonatomic, readonly) NSDate * date;
+@property(nonatomic, readonly) double sec;
+/// The speed at the end of the quarter mile, 0 for 0-100 km/h.
+@property(nonatomic, readonly) NSInteger trapKmh;
 
 @end
 
@@ -296,6 +316,13 @@ NS_SWIFT_NAME(NoGpsStatus)
 /// Accurate GPS measures the speed now.
 @property(nonatomic, readonly) BOOL speedHintGps;
 @property(nonatomic, readonly) MWMNoGpsSpeedMilestone speedMilestone;
+/// The result of the last MWMNoGpsEventSprintMeasured: the trap speed of the quarter mile, the best time of the car of
+/// that kind before it, 0 for none, and whether it is faster than that.
+@property(nonatomic, readonly) MWMNoGpsSprintKind sprintKind;
+@property(nonatomic, readonly) double sprintSec;
+@property(nonatomic, readonly) NSInteger sprintTrapKmh;
+@property(nonatomic, readonly) double sprintBestSec;
+@property(nonatomic, readonly) BOOL sprintRecord;
 @property(nonatomic, readonly) double speedLagSec;
 @property(nonatomic, readonly) BOOL speedLagMeasured;
 @property(nonatomic, readonly) MWMNoGpsCalibrationState calibration;
@@ -370,6 +397,8 @@ NS_SWIFT_NAME(NoGps)
 + (void)retryBox;
 /// The cars of the user in the order they were added, a car for each box heard.
 + (NSArray<MWMNoGpsCar *> *)cars;
+/// The timed runs of the current car, newest first.
++ (NSArray<MWMNoGpsSprint *> *)sprints;
 /// No car is added over this many: the user can't add one.
 + (NSInteger)maxCars;
 /// The user drives the car: its values are used, the box of the car is looked for.

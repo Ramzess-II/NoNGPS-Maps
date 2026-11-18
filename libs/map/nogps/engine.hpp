@@ -10,6 +10,7 @@
 #include "map/nogps/inertial_navigator.hpp"
 #include "map/nogps/motion_source.hpp"
 #include "map/nogps/scheduler.hpp"
+#include "map/nogps/sprint_timer.hpp"
 #include "map/nogps/storage.hpp"
 
 #include "geometry/latlon.hpp"
@@ -129,6 +130,13 @@ struct Status
   bool m_speedHintGps = false;
   // What the range of the last Event::SpeedRangeCalibrated has completed.
   SpeedMilestone m_speedMilestone = SpeedMilestone::Range;
+  // The result of the last Event::SprintMeasured: the trap speed of the quarter mile, the best time of the car of that
+  // kind before it, 0 for none, and whether it is faster than that.
+  SprintKind m_sprintKind = SprintKind::To100;
+  double m_sprintSec = 0;
+  int m_sprintTrapKmh = 0;
+  double m_sprintBestSec = 0;
+  bool m_sprintRecord = false;
   double m_speedLagSec = 0;
   bool m_speedLagMeasured = false;
   CalibrationState m_calibration = CalibrationState::None;
@@ -363,6 +371,8 @@ public:
   /// The cars of the user, a car for each sensor box heard. What is learned about a car and where it was left is kept
   /// for each one. The box that connects tells the car: until it does, the car heard the last time is the current one.
   std::vector<Car> GetCars() const { return m_cars.GetCars(); }
+  /// \returns the timed runs of the current car, newest first, see SprintTimer.
+  std::vector<Sprint> GetSprints() const;
   /// The user drives the car, e.g. two boxes are near: the platform connects to its box if it is near too.
   void SelectCar(std::string const & id);
   /// An empty name gives the car its usual name back.
@@ -411,6 +421,7 @@ private:
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
   void OnThisPhoneRemoved() override;
   void OnBoxStopping() override;
+  void OnSprint(SprintTimer::Result const & result) override;
   void OnPeerPlace(PeerPlace const & place) override;
 
   static PositionSource SourceOf(Fix const & fix);
@@ -625,6 +636,10 @@ private:
   std::optional<std::bitset<SpeedTable::kRanges>> m_measuredSpeedRanges;
   // When IsSpeedTableGps() was true the last time.
   std::optional<int64_t> m_speedTableGpsMs;
+  // The last timed run, see Status::m_sprintKind.
+  Sprint m_lastSprint;
+  double m_lastSprintBestSec = 0;
+  bool m_lastSprintRecord = false;
 
   std::vector<Firmware> m_firmwares;
   Esp32Update::State m_firmwareUpdateState = Esp32Update::State::None;

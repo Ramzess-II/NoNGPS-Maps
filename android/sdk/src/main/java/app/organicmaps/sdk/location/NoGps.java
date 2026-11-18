@@ -239,6 +239,15 @@ public final class NoGps
     // GPS has measured a range of the speed table: Status.speedHintRange and getSpeedMilestone() tell which, and what
     // it has completed.
     SPEED_RANGE_CALIBRATED,
+    // A run from a standing start is timed: Status.getSprintKind() and the sprint fields tell the result.
+    SPRINT_MEASURED,
+  }
+
+  // The kinds of the runs from a standing start.
+  public enum SprintKind
+  {
+    TO_100,
+    QUARTER_MILE,
   }
 
   // What the last speed range measured by GPS has completed.
@@ -385,6 +394,18 @@ public final class NoGps
     public boolean speedHintGps;
     @Keep
     int speedMilestone;
+    // The result of the last Event.SPRINT_MEASURED: the trap speed of the quarter mile, the best time of the car of
+    // that kind before it, 0 for none, and whether it is faster than that.
+    @Keep
+    int sprintKind;
+    @Keep
+    public double sprintSec;
+    @Keep
+    public int sprintTrapKmh;
+    @Keep
+    public double sprintBestSec;
+    @Keep
+    public boolean sprintRecord;
     @Keep
     public double speedLagSec;
     @Keep
@@ -503,6 +524,12 @@ public final class NoGps
     }
 
     @NonNull
+    public SprintKind getSprintKind()
+    {
+      return SprintKind.values()[sprintKind];
+    }
+
+    @NonNull
     public FirmwareUpdate getFirmwareUpdate()
     {
       return FirmwareUpdate.values()[firmwareUpdate];
@@ -580,6 +607,29 @@ public final class NoGps
       this.name = name;
       this.firmware = firmware;
       this.lastSeenUnixMs = lastSeenUnixMs;
+    }
+  }
+
+  /**
+   * A timed run from a standing start, kept for the car.
+   */
+  @Keep
+  public static final class Sprint
+  {
+    @NonNull
+    public final SprintKind kind;
+    public final long unixTimeMs;
+    public final double sec;
+    // The speed at the end of the quarter mile, 0 for 0-100 km/h.
+    public final int trapKmh;
+
+    @Keep
+    Sprint(int kind, long unixTimeMs, double sec, int trapKmh)
+    {
+      this.kind = SprintKind.values()[kind];
+      this.unixTimeMs = unixTimeMs;
+      this.sec = sec;
+      this.trapKmh = trapKmh;
     }
   }
 
@@ -832,6 +882,12 @@ public final class NoGps
    */
   @NonNull
   public static native Car[] nativeGetCars();
+
+  /**
+   * The timed runs of the current car, newest first.
+   */
+  @NonNull
+  public static native Sprint[] nativeGetSprints();
 
   /**
    * No car is added over this many: the user can't add one.

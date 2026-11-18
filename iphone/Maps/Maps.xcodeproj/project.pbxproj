@@ -22,6 +22,7 @@
 		34F73FA31E08300E00AC1FD6 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 34F73FA11E08300E00AC1FD6 /* Images.xcassets */; };
 		3A5BEE0D7C1A4F2B9E6D8C01 /* NoGpsSpeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A5BEE0D7C1A4F2B9E6D8C02 /* NoGpsSpeedView.swift */; };
 		183FDFE8CE934746BE36595D /* NoGpsSpeedHintView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64939671DA0B4C42B8CFFB2E /* NoGpsSpeedHintView.swift */; };
+		5C0A7E1B3D2F4A6890B1C2D4 /* NoGpsSprintView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0A7E1B3D2F4A6890B1C2D3 /* NoGpsSprintView.swift */; };
 		3AB2A51C1DF5ED4103358BAF /* MWMNoGps.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7E8C3DE3FE048E6B44D39393 /* MWMNoGps.mm */; };
 		3ADD6F28B1682842E86CAD7C /* NoGpsGpsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0A2E482F0BC3FF3F47D237 /* NoGpsGpsSheet.swift */; };
 		408645FC21495EB1000A4A1D /* categories_cuisines.txt in Resources */ = {isa = PBXBuildFile; fileRef = 408645FB21495EB1000A4A1D /* categories_cuisines.txt */; };
@@ -53,6 +54,7 @@
 		676507611C10559B00830BB3 /* colors.txt in Resources */ = {isa = PBXBuildFile; fileRef = 452FCA3A1B6A3DF7007019AB /* colors.txt */; };
 		6ABF7A5F73FB1F15A8F9C37A /* NavigationSourceButtonTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53CD1FA9DD1A1E3B5ECE5670 /* NavigationSourceButtonTests.swift */; };
 		9DC9A4FCC5894DEAADADDC00 /* NoGpsSpeedHintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2F0A00185F941D49EBD1B60 /* NoGpsSpeedHintTests.swift */; };
+		5C0A7E1B3D2F4A6890B1C2D6 /* NoGpsSprintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0A7E1B3D2F4A6890B1C2D5 /* NoGpsSprintTests.swift */; };
 		6B9978361C89A316003B8AA0 /* editor.config in Resources */ = {isa = PBXBuildFile; fileRef = 6B9978341C89A316003B8AA0 /* editor.config */; };
 		716A012EE67AD0D686628FE0 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C317E5E5F544EEF9E19ADDE8 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		80922D600D3BF8807B842D7F /* NavigationSearchWheel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56B428D46BB4A3B861570920 /* NavigationSearchWheel.swift */; };
@@ -896,6 +898,7 @@
 		3A0A2E482F0BC3FF3F47D237 /* NoGpsGpsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsGpsSheet.swift; sourceTree = "<group>"; };
 		3A5BEE0D7C1A4F2B9E6D8C02 /* NoGpsSpeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsSpeedView.swift; sourceTree = "<group>"; };
 		64939671DA0B4C42B8CFFB2E /* NoGpsSpeedHintView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsSpeedHintView.swift; sourceTree = "<group>"; };
+		5C0A7E1B3D2F4A6890B1C2D3 /* NoGpsSprintView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsSprintView.swift; sourceTree = "<group>"; };
 		408645FB21495EB1000A4A1D /* categories_cuisines.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = categories_cuisines.txt; path = ../../data/categories_cuisines.txt; sourceTree = "<group>"; };
 		44369F0EB71FE889A86AF4F7 /* cy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = cy; path = cy.lproj/Localizable.strings; sourceTree = "<group>"; };
 		451950391B7A3E070085DA05 /* patterns.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = patterns.txt; path = ../../data/patterns.txt; sourceTree = "<group>"; };
@@ -909,6 +912,7 @@
 		4D78F8A0D5C648C585DB2864 /* SearchOnMapViewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchOnMapViewTests.swift; sourceTree = "<group>"; };
 		53CD1FA9DD1A1E3B5ECE5670 /* NavigationSourceButtonTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationSourceButtonTests.swift; sourceTree = "<group>"; };
 		E2F0A00185F941D49EBD1B60 /* NoGpsSpeedHintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsSpeedHintTests.swift; sourceTree = "<group>"; };
+		5C0A7E1B3D2F4A6890B1C2D5 /* NoGpsSprintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsSprintTests.swift; sourceTree = "<group>"; };
 		5605022E1B6211E100169CAD /* sound-strings */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "sound-strings"; path = "../../data/sound-strings"; sourceTree = "<group>"; };
 		56B428D46BB4A3B861570920 /* NavigationSearchWheel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationSearchWheel.swift; sourceTree = "<group>"; };
 		59AD00D34DB2B35248B0A4DE /* TTSVoicePreviewPlayerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSVoicePreviewPlayerTests.swift; sourceTree = "<group>"; };
@@ -2163,6 +2167,7 @@
 				FEE938673CC3D8E7866C20B8 /* NavigationDashboardViewControllerTests.swift */,
 				53CD1FA9DD1A1E3B5ECE5670 /* NavigationSourceButtonTests.swift */,
 				E2F0A00185F941D49EBD1B60 /* NoGpsSpeedHintTests.swift */,
+				5C0A7E1B3D2F4A6890B1C2D5 /* NoGpsSprintTests.swift */,
 			);
 			path = NavigationDashboardTests;
 			sourceTree = "<group>";
@@ -2927,6 +2932,7 @@
 				3A0A2E482F0BC3FF3F47D237 /* NoGpsGpsSheet.swift */,
 				3A5BEE0D7C1A4F2B9E6D8C02 /* NoGpsSpeedView.swift */,
 				64939671DA0B4C42B8CFFB2E /* NoGpsSpeedHintView.swift */,
+				5C0A7E1B3D2F4A6890B1C2D3 /* NoGpsSprintView.swift */,
 				EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */,
 				ED82C3912F90180300FA103D /* SideButtons */,
 				ED82C3952F90180300FA103D /* TrafficButton */,
@@ -4812,6 +4818,7 @@
 				3ADD6F28B1682842E86CAD7C /* NoGpsGpsSheet.swift in Sources */,
 				3A5BEE0D7C1A4F2B9E6D8C01 /* NoGpsSpeedView.swift in Sources */,
 				183FDFE8CE934746BE36595D /* NoGpsSpeedHintView.swift in Sources */,
+				5C0A7E1B3D2F4A6890B1C2D4 /* NoGpsSprintView.swift in Sources */,
 				333A4718BABBBFC6A412D69B /* NoGpsBoxSheet.swift in Sources */,
 				3AB2A51C1DF5ED4103358BAF /* MWMNoGps.mm in Sources */,
 				9B5728946390BF79AAED06E1 /* Esp32BleTransport.swift in Sources */,
@@ -5369,6 +5376,7 @@
 				00A2630ADA97EB2C42945272 /* NavigationDashboardViewControllerTests.swift in Sources */,
 				6ABF7A5F73FB1F15A8F9C37A /* NavigationSourceButtonTests.swift in Sources */,
 				9DC9A4FCC5894DEAADADDC00 /* NoGpsSpeedHintTests.swift in Sources */,
+				5C0A7E1B3D2F4A6890B1C2D6 /* NoGpsSprintTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

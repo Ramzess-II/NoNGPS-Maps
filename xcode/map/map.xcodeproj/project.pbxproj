@@ -148,7 +148,9 @@
 		A7EE0A780B205A4338E83DB3 /* speed_scale.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0C2D6863CE7B7993D3CD36F0 /* speed_scale.cpp */; };
 		2A4F0ED3B9BA4DCD1D021BD2 /* speed_scale.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 84E5685CF48337457CEAFDD5 /* speed_scale.hpp */; };
 		F0FC65A90BEB258C6BA1DEFC /* speed_table.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DB66C7892568C94468ECBE34 /* speed_table.cpp */; };
+		5A17C2D9E83F40B6A1C0E001 /* sprint_timer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5A17C2D9E83F40B6A1C0E003 /* sprint_timer.cpp */; };
 		B42CFD0375AD5867BD532C42 /* speed_table.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 5C843ADD0823FCE255F98D72 /* speed_table.hpp */; };
+		5A17C2D9E83F40B6A1C0E002 /* sprint_timer.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 5A17C2D9E83F40B6A1C0E004 /* sprint_timer.hpp */; };
 		EE696953E78EF779665CE7CC /* turn_matcher.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 46ACCB9020EFB1059444689D /* turn_matcher.cpp */; };
 		88A572F8B0B013C7B52DA7C7 /* turn_matcher.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 504D60F473E5BB1E677C87EF /* turn_matcher.hpp */; };
 		D8FA8798D205EFF4B2C131F7 /* turn_sign_checker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3D7C415F450F2374806C248B /* turn_sign_checker.cpp */; };
@@ -355,6 +357,8 @@
 		84E5685CF48337457CEAFDD5 /* speed_scale.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = speed_scale.hpp; sourceTree = "<group>"; };
 		DB66C7892568C94468ECBE34 /* speed_table.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = speed_table.cpp; sourceTree = "<group>"; };
 		5C843ADD0823FCE255F98D72 /* speed_table.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = speed_table.hpp; sourceTree = "<group>"; };
+		5A17C2D9E83F40B6A1C0E003 /* sprint_timer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = sprint_timer.cpp; sourceTree = "<group>"; };
+		5A17C2D9E83F40B6A1C0E004 /* sprint_timer.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = sprint_timer.hpp; sourceTree = "<group>"; };
 		46ACCB9020EFB1059444689D /* turn_matcher.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = turn_matcher.cpp; sourceTree = "<group>"; };
 		504D60F473E5BB1E677C87EF /* turn_matcher.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = turn_matcher.hpp; sourceTree = "<group>"; };
 		3D7C415F450F2374806C248B /* turn_sign_checker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = turn_sign_checker.cpp; sourceTree = "<group>"; };
@@ -656,6 +660,8 @@
 				84E5685CF48337457CEAFDD5 /* speed_scale.hpp */,
 				DB66C7892568C94468ECBE34 /* speed_table.cpp */,
 				5C843ADD0823FCE255F98D72 /* speed_table.hpp */,
+				5A17C2D9E83F40B6A1C0E003 /* sprint_timer.cpp */,
+				5A17C2D9E83F40B6A1C0E004 /* sprint_timer.hpp */,
 				46ACCB9020EFB1059444689D /* turn_matcher.cpp */,
 				504D60F473E5BB1E677C87EF /* turn_matcher.hpp */,
 				3D7C415F450F2374806C248B /* turn_sign_checker.cpp */,
@@ -702,6 +708,7 @@
 				A5C3E1D07B2F4A6C9D8E0F13 /* accel_speed.hpp in Headers */,
 				2A4F0ED3B9BA4DCD1D021BD2 /* speed_scale.hpp in Headers */,
 				B42CFD0375AD5867BD532C42 /* speed_table.hpp in Headers */,
+				5A17C2D9E83F40B6A1C0E002 /* sprint_timer.hpp in Headers */,
 				88A572F8B0B013C7B52DA7C7 /* turn_matcher.hpp in Headers */,
 				BD19462370CC8C05491A13E9 /* turn_sign_checker.hpp in Headers */,
 				BB4E5F261FCC664A00A77250 /* transit_display.hpp in Headers */,
@@ -922,6 +929,7 @@
 				A5C3E1D07B2F4A6C9D8E0F11 /* accel_speed.cpp in Sources */,
 				A7EE0A780B205A4338E83DB3 /* speed_scale.cpp in Sources */,
 				F0FC65A90BEB258C6BA1DEFC /* speed_table.cpp in Sources */,
+				5A17C2D9E83F40B6A1C0E001 /* sprint_timer.cpp in Sources */,
 				EE696953E78EF779665CE7CC /* turn_matcher.cpp in Sources */,
 				D8FA8798D205EFF4B2C131F7 /* turn_sign_checker.cpp in Sources */,
 				456E1B3A1F9A3C2A009C32E1 /* search_mark.cpp in Sources */,

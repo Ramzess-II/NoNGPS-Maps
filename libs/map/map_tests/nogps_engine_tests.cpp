@@ -5220,6 +5220,7 @@ UNIT_TEST(NoGps_SpeedLimitRoadFoundLater)
   env.m_env.m_map.m_roads = &env.m_roads;
   TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, 50, ());
 }
+
 /// Two phones on one box that passes their places on: the first one leads, the second follows. The box sends the same
 /// lines to both, and tells each the places the other one has sent.
 class TwoPhones
@@ -5533,5 +5534,94 @@ UNIT_TEST(NoGps_Engine_TripLineHasRpm)
   // The status without the rpm: it is not kept from the previous one.
   status("");
   TEST(env.m_engine.GetTripLine().find(" rpm=") == std::string::npos, (env.m_engine.GetTripLine()));
+}
+
+namespace sprint
+{
+/// From a standstill the car speed rises evenly by 100 km/h in |to100Sec| up to |topKmh|, stays there 2 s, and the car
+/// stops.
+void Run(Env & env, double to100Sec, int topKmh)
+{
+  env.Drive(2000, 0, 0);
+  for (int i = 1;; ++i)
+  {
+    int const kmh = std::min(topKmh, static_cast<int>(std::lround(100 * i / 10.0 / to100Sec)));
+    env.Drive(100, kmh, 0);
+    if (kmh == topKmh)
+      break;
+  }
+  env.Drive(2000, topKmh, 0);
+  env.Drive(3000, 0, 0);
+}
+}  // namespace sprint
+
+UNIT_TEST(NoGps_Sprint_RecordsKeptForEachCar)
+{
+  Env env(true /* inertial */);
+  HearBox(env, "C47D");
+  TEST(env.m_engine.GetSprints().empty(), ());
+
+  // The first result of the car is a record, with nothing before it.
+  sprint::Run(env, 9, 105);
+  TEST_EQUAL(CountEvents(env, Event::SprintMeasured), 1, ());
+  auto status = env.m_engine.GetStatus();
+  TEST_EQUAL(status.m_sprintKind, SprintKind::To100, ());
+  TestAlmostEqualAbs(status.m_sprintSec, 9, 0.15);
+  TEST(status.m_sprintRecord, ());
+  TEST_EQUAL(status.m_sprintBestSec, 0, ());
+
+  // Slower: not a record.
+  sprint::Run(env, 10, 105);
+  TEST_EQUAL(CountEvents(env, Event::SprintMeasured), 2, ());
+  status = env.m_engine.GetStatus();
+  TestAlmostEqualAbs(status.m_sprintSec, 10, 0.15);
+  TEST(!status.m_sprintRecord, ());
+  TestAlmostEqualAbs(status.m_sprintBestSec, 9, 0.15);
+
+  sprint::Run(env, 8, 105);
+  status = env.m_engine.GetStatus();
+  TEST(status.m_sprintRecord, ());
+  TestAlmostEqualAbs(status.m_sprintBestSec, 9, 0.15);
+  auto sprints = env.m_engine.GetSprints();
+  TEST_EQUAL(sprints.size(), 3, ());
+  // Newest first.
+  TestAlmostEqualAbs(sprints[0].m_sec, 8, 0.15);
+  TestAlmostEqualAbs(sprints[2].m_sec, 9, 0.15);
+  TEST_GREATER(sprints[0].m_unixTimeMs, sprints[1].m_unixTimeMs, ());
+  TEST_LESS(env.m_clock.UnixNowMs() - sprints[0].m_unixTimeMs, 6000, ());
+
+  // Another car has its own.
+  HearBox(env, "42FD");
+  TEST(env.m_engine.GetSprints().empty(), ());
+  sprint::Run(env, 12, 105);
+  status = env.m_engine.GetStatus();
+  TEST(status.m_sprintRecord, ());
+  TEST_EQUAL(status.m_sprintBestSec, 0, ());
+  TEST_EQUAL(env.m_engine.GetSprints().size(), 1, ());
+
+  // They are kept after a restart, and not on the box.
+  Env after(true /* inertial */, nullptr, SavedBy(env));
+  TEST_EQUAL(after.m_engine.GetSprints().size(), 1, ());
+  HearBox(after, "C47D");
+  sprints = after.m_engine.GetSprints();
+  TEST_EQUAL(sprints.size(), 3, ());
+  TestAlmostEqualAbs(sprints[0].m_sec, 8, 0.15);
+  TEST(std::find(CarStorage::kValuesOnBox.begin(), CarStorage::kValuesOnBox.end(), Storage::kSprints) ==
+           CarStorage::kValuesOnBox.end(),
+       ());
+}
+
+UNIT_TEST(NoGps_Sprint_SpeedTableApplied)
+{
+  // The speedometer shows 95 km/h at the real 104.5.
+  Env slow(true /* inertial */);
+  sprint::Run(slow, 10, 95);
+  TEST(!slow.m_delegate.HasEvent(Event::SprintMeasured), ());
+
+  Env env(true /* inertial */, nullptr, [](TestStorage & storage) { storage.Set(Storage::kSpeedScale, 1.1); });
+  sprint::Run(env, 10, 95);
+  TEST_EQUAL(CountEvents(env, Event::SprintMeasured), 1, ());
+  // The real 100 km/h is 91 km/h by the car.
+  TestAlmostEqualAbs(env.m_engine.GetStatus().m_sprintSec, 9.1, 0.15);
 }
 }  // namespace nogps_engine_tests
