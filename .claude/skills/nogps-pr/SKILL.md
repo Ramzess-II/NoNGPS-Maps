@@ -26,7 +26,9 @@ argument-hint: "[issue number]"
    - `Fixes #<issue>` when there is one;
    - **Why**: the problem and its evidence;
    - **What**: behavior changes, with names of constants and functions;
-   - **Tested**: commands and results, and replay numbers before and after;
+   - **Tested**: commands and results, and replay numbers before and after, for the
+     "made from" days and for the held-out days apart (`nogps_replay.py days <logs>`); better on the first and not on
+     the second means the rule fits its case only;
    - **Other platform**: the links of the issues from step 4, or "Nothing to do" and why. CI fails the PR without
      one of them. Add "Xcode project not verified" when that applies;
    - "Written with Claude Code."
