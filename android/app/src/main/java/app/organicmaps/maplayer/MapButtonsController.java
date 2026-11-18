@@ -126,11 +126,15 @@ public class MapButtonsController extends Fragment
   private SpeedView mSpeedView;
   @Nullable
   private SpeedHintView mSpeedHint;
-  // A range of the speed measured by GPS is celebrated by the bar next to the speed.
+  @Nullable
+  private SprintView mSprint;
+  // A range of the speed measured by GPS is celebrated by the bar next to the speed, a timed run is told by the card.
   private final LocationHelper.NoGpsListener mNoGpsListener = (event) ->
   {
     if (event == NoGps.Event.SPEED_RANGE_CALIBRATED && mSpeedHint != null)
       mSpeedHint.celebrate(NoGps.getStatus());
+    else if (event == NoGps.Event.SPRINT_MEASURED && mSprint != null)
+      mSprint.show(NoGps.getStatus());
   };
   @Nullable
   private FloatingActionButton mManualPositionButton;
@@ -258,6 +262,9 @@ public class MapButtonsController extends Fragment
       mSpeedHint =
           new SpeedHintView(speedHint, mFrame.findViewById(R.id.speed_hint_confetti), speedView,
                             mFrame.findViewById(R.id.right_panel), () -> showBoxSheet(BoxBottomSheet.Page.ITEM_SPEED));
+    final View sprint = mFrame.findViewById(R.id.sprint_frame);
+    if (sprint != null)
+      mSprint = new SprintView(sprint, mFrame.findViewById(R.id.speed_hint_confetti));
     mManualPositionButton.setOnClickListener((v) -> {
       mMapButtonClickListener.onMapButtonClick(MapButtons.manualPosition);
       updatePositionStatus();
@@ -846,6 +853,8 @@ public class MapButtonsController extends Fragment
       mCarButtonsFrame.setTranslationY(mInnerRightButtonsFrame != null ? mInnerRightButtonsFrame.getTranslationY() : 0);
     if (mSpeedHint != null && mCarButtonsFrame != null)
       mSpeedHint.setTranslationY(mCarButtonsFrame.getTranslationY());
+    if (mSprint != null && mCarButtonsFrame != null)
+      mSprint.setTranslationY(mCarButtonsFrame.getTranslationY());
   }
 
   private void moveForSearch(float translationY)
@@ -983,6 +992,8 @@ public class MapButtonsController extends Fragment
     MwmApplication.from(requireContext()).getLocationHelper().removeNoGpsListener(mNoGpsListener);
     if (mSpeedHint != null)
       mSpeedHint.stop();
+    if (mSprint != null)
+      mSprint.stop();
     if (mPositionStatus != null)
       mStatusBlinkingAnimator =
           blink(mPositionStatus, false, mStatusBlinkingAnimator, ROAD_LOST_BLINK_MS, ROAD_LOST_BLINK_ALPHA);

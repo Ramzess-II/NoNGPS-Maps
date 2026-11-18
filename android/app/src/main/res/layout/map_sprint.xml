@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The alert of a timed run (0-100 km/h, quarter mile), see SprintView. The frame lies above the bottom panel, its
+     bottom padding lifts the card into the bottom third of the map clear of the speed. It takes no touches but the
+     card's. -->
+<FrameLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:tools="http://schemas.android.com/tools"
+  android:id="@+id/sprint_frame"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:clipChildren="false"
+  android:clipToPadding="false"
+  android:paddingBottom="@dimen/sprint_margin_bottom"
+  android:paddingHorizontal="@dimen/margin_base"
+  tools:ignore="UselessParent">
+  <LinearLayout
+    android:id="@+id/sprint"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center_horizontal"
+    android:background="@drawable/bg_sprint"
+    android:backgroundTint="@color/speed_hint_accent"
+    android:clickable="true"
+    android:elevation="6dp"
+    android:focusable="true"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingHorizontal="20dp"
+    android:paddingVertical="10dp"
+    android:visibility="gone"
+    tools:visibility="visible">
+    <TextView
+      android:id="@+id/sprint_small"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:alpha="0.9"
+      android:fontFeatureSettings="tnum"
+      android:includeFontPadding="false"
+      android:maxLines="1"
+      android:textColor="@color/white_primary"
+      android:textSize="12sp"
+      android:visibility="gone"
+      tools:text="¼ mile · 142 km/h" />
+    <TextView
+      android:id="@+id/sprint_big"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:fontFeatureSettings="tnum"
+      android:includeFontPadding="false"
+      android:textColor="@color/white_primary"
+      android:textSize="18sp"
+      android:textStyle="bold"
+      tools:text="New record! 15.2 s" />
+    <TextView
+      android:id="@+id/sprint_was"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:alpha="0.9"
+      android:fontFeatureSettings="tnum"
+      android:includeFontPadding="false"
+      android:maxLines="1"
+      android:textColor="@color/white_primary"
+      android:textSize="12sp"
+      android:visibility="gone"
+      tools:text="Was 15.8 s" />
+  </LinearLayout>
+</FrameLayout>

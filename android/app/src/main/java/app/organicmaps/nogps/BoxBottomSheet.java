@@ -11,6 +11,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -57,8 +58,10 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -100,7 +103,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     ITEM_CAR,
     ITEM_SPEED,
     ITEM_IMU,
-    CALIBRATION;
+    CALIBRATION,
+    // The results of the timed runs, opened from the Car item.
+    SPRINT_TO_100,
+    SPRINT_QUARTER_MILE;
 
     /**
      * The Car page has two parents, see BoxBottomSheet.parentOf().
@@ -114,6 +120,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
         case CAR, ADD_CAR -> CARS;
         case ITEM_BOX, ITEM_OBD, ITEM_CAR, ITEM_SPEED, ITEM_IMU -> BOX;
         case CALIBRATION -> ITEM_IMU;
+        case SPRINT_TO_100, SPRINT_QUARTER_MILE -> ITEM_CAR;
       };
     }
   }
@@ -280,6 +287,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private NoGps.BoxValue[] mValueIds = new NoGps.BoxValue[0];
   private String[] mValues = new String[0];
   private TextView[] mValueTexts = new TextView[0];
+
+  private final TextView[] mSprintBest = new TextView[2];
+  private View mSprintPage;
+  private TextView mSprintTitle;
+  private LinearLayout mSprintRows;
+  private View mSprintNone;
 
   private View mCalibrationPage;
   private TextView mCalibrationState;
@@ -520,6 +533,14 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     view.findViewById(R.id.box_clear_speed).setOnClickListener(v -> confirmClearSpeed());
     view.findViewById(R.id.box_calibration_row).setOnClickListener(v -> showPage(Page.CALIBRATION));
     mCalibrationValue = view.findViewById(R.id.box_calibration_value);
+    view.findViewById(R.id.box_sprint_to100_row).setOnClickListener(v -> showPage(Page.SPRINT_TO_100));
+    view.findViewById(R.id.box_sprint_quarter_row).setOnClickListener(v -> showPage(Page.SPRINT_QUARTER_MILE));
+    mSprintBest[0] = view.findViewById(R.id.box_sprint_to100_best);
+    mSprintBest[1] = view.findViewById(R.id.box_sprint_quarter_best);
+    mSprintPage = view.findViewById(R.id.box_sprint_page);
+    mSprintTitle = setUpHeader(view, R.id.box_sprint_header, 0);
+    mSprintRows = view.findViewById(R.id.box_sprint_rows);
+    mSprintNone = view.findViewById(R.id.box_sprint_none);
     mValueGroups[0] = view.findViewById(R.id.box_values_car);
     mValueGroups[1] = view.findViewById(R.id.box_values_imu);
     mValueGroups[2] = view.findViewById(R.id.box_values_obd);
@@ -682,6 +703,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       case ITEM_SPEED -> new View[] {mSpeedItemPage};
       case ITEM_IMU -> new View[] {mImuItemPage};
       case CALIBRATION -> new View[] {mCalibrationPage};
+      case SPRINT_TO_100, SPRINT_QUARTER_MILE -> new View[] {mSprintPage};
     };
   }
 
@@ -745,6 +767,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     case ADD_CAR -> updateSearch(status);
     case BOX, ITEM_BOX, ITEM_OBD, ITEM_CAR, ITEM_SPEED, ITEM_IMU -> updateBoxPage(status);
     case CALIBRATION -> updateCalibration(status);
+    case SPRINT_TO_100, SPRINT_QUARTER_MILE -> updateSprintPage();
     }
   }
 
@@ -1222,6 +1245,44 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
 
     // The speed is learned while the box leads the car.
     mItemSpeed.row.setVisibility(status.inertialStarted ? View.VISIBLE : View.GONE);
+
+    if (mPage == Page.ITEM_CAR)
+    {
+      final NoGps.Sprint[] sprints = NoGps.nativeGetSprints();
+      mSprintBest[0].setText(Sprints.bestText(this::getString, sprints, NoGps.SprintKind.TO_100));
+      mSprintBest[1].setText(Sprints.bestText(this::getString, sprints, NoGps.SprintKind.QUARTER_MILE));
+    }
+  }
+
+  /**
+   * The results of the kind of the page for the car, newest first, the best marked.
+   */
+  private void updateSprintPage()
+  {
+    final NoGps.SprintKind kind = mPage == Page.SPRINT_TO_100 ? NoGps.SprintKind.TO_100 : NoGps.SprintKind.QUARTER_MILE;
+    mSprintTitle.setText(Sprints.titleText(kind));
+    final NoGps.Sprint[] all = NoGps.nativeGetSprints();
+    final NoGps.Sprint best = Sprints.best(all, kind);
+    final NoGps.Sprint[] sprints = Sprints.ofKind(all, kind);
+    mSprintNone.setVisibility(sprints.length == 0 ? View.VISIBLE : View.GONE);
+    final LayoutInflater inflater = LayoutInflater.from(requireContext());
+    final DateFormat dateFormat = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT);
+    while (mSprintRows.getChildCount() < sprints.length)
+      mSprintRows.addView(inflater.inflate(R.layout.nogps_sheet_row, mSprintRows, false));
+    for (int i = 0; i < mSprintRows.getChildCount(); ++i)
+    {
+      final View row = mSprintRows.getChildAt(i);
+      row.setVisibility(i < sprints.length ? View.VISIBLE : View.GONE);
+      if (i >= sprints.length)
+        continue;
+      final boolean isBest = sprints[i] == best;
+      final String date = dateFormat.format(new Date(sprints[i].unixTimeMs));
+      ((TextView) row.findViewById(R.id.row_label))
+          .setText(isBest ? date + " · " + getString(R.string.nogps_sprint_best) : date);
+      final TextView value = row.findViewById(R.id.row_value);
+      value.setText(Sprints.resultText(this::getString, sprints[i]));
+      value.setTypeface(null, isBest ? Typeface.BOLD : Typeface.NORMAL);
+    }
   }
 
   @Nullable

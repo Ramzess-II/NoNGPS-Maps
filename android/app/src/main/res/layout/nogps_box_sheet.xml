@@ -783,6 +783,58 @@
           android:textSize="16sp"
           app:drawableEndCompat="@drawable/ic_nogps_chevron" />
       </LinearLayout>
+      <!-- Its best time, a tap opens the results. -->
+      <LinearLayout
+        android:id="@+id/box_sprint_to100_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:orientation="horizontal">
+        <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="12dp"
+          android:text="@string/nogps_sprint_to100"
+          android:textSize="16sp" />
+        <TextView
+          android:id="@+id/box_sprint_to100_best"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:fontFeatureSettings="tnum"
+          android:gravity="end|center_vertical"
+          android:textColor="?android:textColorSecondary"
+          android:textSize="16sp"
+          app:drawableEndCompat="@drawable/ic_nogps_chevron" />
+      </LinearLayout>
+      <!-- Its best time, a tap opens the results. -->
+      <LinearLayout
+        android:id="@+id/box_sprint_quarter_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:orientation="horizontal">
+        <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="12dp"
+          android:text="@string/nogps_sprint_quarter_mile"
+          android:textSize="16sp" />
+        <TextView
+          android:id="@+id/box_sprint_quarter_best"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:fontFeatureSettings="tnum"
+          android:gravity="end|center_vertical"
+          android:textColor="?android:textColorSecondary"
+          android:textSize="16sp"
+          app:drawableEndCompat="@drawable/ic_nogps_chevron" />
+      </LinearLayout>
       <LinearLayout
         android:id="@+id/box_values_car"
         android:layout_width="match_parent"
@@ -797,6 +849,30 @@
         android:textSize="14sp"
         android:visibility="gone" />
     </LinearLayout>
+  </LinearLayout>
+
+  <!-- The results of one kind of the timed runs of the car, newest first. -->
+  <LinearLayout
+    android:id="@+id/box_sprint_page"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:visibility="gone">
+    <include
+      android:id="@+id/box_sprint_header"
+      layout="@layout/nogps_box_page_header" />
+    <LinearLayout
+      android:id="@+id/box_sprint_rows"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:orientation="vertical" />
+    <TextView
+      android:id="@+id/box_sprint_none"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="@string/nogps_sprint_none"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="15sp" />
   </LinearLayout>
 
   <LinearLayout
