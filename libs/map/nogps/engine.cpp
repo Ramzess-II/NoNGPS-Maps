@@ -185,7 +185,9 @@ void Engine::OnFix(Fix const & location)
   }
   else
   {
-    trusted = m_spoofingDetector.CheckSatellitePosition(location.m_position, location.m_timeMs);
+    trusted = m_spoofingDetector.CheckSatellitePosition(location.m_position, location.m_timeMs, location.m_accuracyM,
+                                                        location.m_speedMps, GetCarSpeedMps(),
+                                                        location.m_provider == Provider::Gps);
   }
 
   bool const spoofed = m_spoofingDetector.IsSpoofed();
@@ -446,11 +448,16 @@ bool Engine::IsGpsBack(Fix const & gps)
         m_manualLocation->m_position,
         m_manualLocation->m_accuracyM + GpsReturnDetector::kMaxSpeedMps * MsSince(m_manualSetTimeMs) / 1000.0};
   }
-  std::optional<double> carSpeedMps;
-  if (m_inertial && IsInertialNavigationEnabled() && m_inertial->GetSpeedKmh() >= 0)
-    carSpeedMps = m_inertial->GetSpeedKmh() / 3.6 * m_inertial->GetSpeedScale();
   return m_gpsReturnDetector.OnGpsPosition(gps.m_position, gps.m_accuracyM, gps.m_timeMs, own, gps.m_speedMps,
-                                           carSpeedMps, IsNearRoad(gps));
+                                           GetCarSpeedMps(), IsNearRoad(gps));
+}
+
+std::optional<double> Engine::GetCarSpeedMps() const
+{
+  // The same speed the inertial count moves the car with, nothing when the box is silent (kSpeedStaleMs).
+  if (!m_inertial || !IsInertialNavigationEnabled() || m_inertial->GetSpeedKmh() < 0)
+    return {};
+  return m_inertial->GetSpeedKmh() / 3.6 * m_inertial->GetSpeedScale();
 }
 
 bool Engine::IsSpeedTableGps(Fix const & gps)
