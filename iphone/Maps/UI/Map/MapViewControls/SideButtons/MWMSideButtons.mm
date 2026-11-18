@@ -31,6 +31,7 @@ CGFloat const kZoomSwipeStartPt = 24;
 // The zoom button the finger is on, and whether its slide has become a zoom.
 @property(weak, nonatomic) MWMButton * pressedZoomButton;
 @property(nonatomic) BOOL zoomSwipeStarted;
+@property(nonatomic) CGFloat zoomSwipeOrigin;
 @property(nonatomic, readonly) BOOL isZoomEnabled;
 
 @property(nonatomic) MWMMyPositionMode locationMode;
@@ -162,10 +163,12 @@ CGFloat const kZoomSwipeStartPt = 24;
       return;
     // The slide is a zoom now: the button must not tap when the finger lifts.
     self.zoomSwipeStarted = YES;
+    // Zoom counts from where the slide became a zoom, so it never jumps when the finger comes back.
+    self.zoomSwipeOrigin = dy;
     [self.pressedZoomButton cancelTrackingWithEvent:nil];
     self.pressedZoomButton = nil;
   }
-  CGFloat const travel = dy > 0 ? dy - kZoomSwipeStartPt : dy + kZoomSwipeStartPt;
+  CGFloat const travel = dy - self.zoomSwipeOrigin;
   GetFramework().Scale(exp(travel / superview.bounds.size.height), false);
 }
 
