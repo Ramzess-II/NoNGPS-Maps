@@ -183,6 +183,10 @@ public class NoGpsBoxService extends Service
     Logger.d(TAG);
     sRunning = false;
     mHandler.removeCallbacks(mCheck);
+    // The share notice stays when the share is on; the system removes this notification after onDestroy.
+    final Context app = getApplicationContext();
+    new Handler(Looper.getMainLooper())
+        .postDelayed(() -> StatusNotification.refresh(app), NavigationService.REPOST_DELAY_MS);
     super.onDestroy();
   }
 }

@@ -215,6 +215,9 @@ public class NavigationService extends Service implements LocationListener
     return mNotificationBuilder;
   }
 
+  /** The system cancels the notification of a stopped service a moment after onDestroy: a repost waits for it. */
+  public static final long REPOST_DELAY_MS = 500;
+
   @Override
   public void onCreate()
   {
@@ -234,7 +237,7 @@ public class NavigationService extends Service implements LocationListener
     // The system removes the notification after this call, unless the sensor box service holds it: then the app posts
     // the content of what runs on.
     if (sStoppedListener != null)
-      new Handler(Looper.getMainLooper()).post(sStoppedListener);
+      new Handler(Looper.getMainLooper()).postDelayed(sStoppedListener, REPOST_DELAY_MS);
     sOrganicMaps.getLocationHelper().removeListener(this);
     TtsPlayer.INSTANCE.stop();
 
