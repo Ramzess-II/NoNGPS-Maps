@@ -17,6 +17,8 @@
 @property(nonatomic, readonly) NSUInteger timeToTarget;
 @property(nonatomic, readonly) UIImage * nextTurnImage;
 @property(nonatomic, readonly) UIImage * turnImage;
+/// The name of the image of the next turn, the Live Activity draws its own arrow by it.
+@property(copy, nonatomic, readonly) NSString * turnImageName;
 
 @property(nonatomic, readonly) NSString * arrival;
 

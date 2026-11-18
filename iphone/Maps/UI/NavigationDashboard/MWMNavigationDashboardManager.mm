@@ -105,6 +105,7 @@
   if (!entity)
     return;
   [self.navigationDashboardView onNavigationInfoUpdated:entity];
+  [MWMNavigationLiveActivity updateNavigation:entity];
 }
 
 - (void)onRoutePrepare
@@ -188,6 +189,7 @@
   if (wasSelectingRoutePoint)
     [self.searchManager close];
   [self.navigationDashboardView stateClosed];
+  [MWMNavigationLiveActivity end];
 }
 
 - (void)stateHidden
@@ -232,6 +234,7 @@
 - (void)stateNavigation
 {
   [self.navigationDashboardView stateNavigation];
+  [MWMNavigationLiveActivity start];
   [self onNavigationInfoUpdated:self.entity];
 }
 

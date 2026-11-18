@@ -721,6 +721,13 @@
 		FA853BEF26BC5BA40026D455 /* libdescriptions.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FA853BEE26BC5BA40026D455 /* libdescriptions.a */; };
 		FA853BF326BC5DE50026D455 /* libshaders.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FA853BF226BC5DE50026D455 /* libshaders.a */; };
 		FAF9DDA32A86DC54000D7037 /* libharfbuzz.a in Frameworks */ = {isa = PBXBuildFile; fileRef = FAF9DDA22A86DC54000D7037 /* libharfbuzz.a */; };
+		AF687392037F6331B2C8E78F /* NavigationLiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFDD95A79747D9FFFF29C15A /* NavigationLiveActivityManager.swift */; };
+		AF3B464834DF1EE73C3B9F74 /* NavigationLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF8D6E5C6D35759471730A37 /* NavigationLiveActivityAttributes.swift */; };
+		AFFE787F518A00EABE013E90 /* NavigationLiveActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF8D6E5C6D35759471730A37 /* NavigationLiveActivityAttributes.swift */; };
+		AF977941287B4A35E999CBBF /* StopNavigationIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF8AA163E2C63DCF4DE8F76D /* StopNavigationIntent.swift */; };
+		AF7FBC18E808B316CCAEB04E /* StopNavigationIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF8AA163E2C63DCF4DE8F76D /* StopNavigationIntent.swift */; };
+		AF6056E6523645CF2799844E /* NavigationLiveActivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF5F9C3164AAFACBFF1D96E7 /* NavigationLiveActivityView.swift */; };
+		AFBAA29365B99E1279628AB9 /* NavigationLiveActivityConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFC73EB5D7B03C7363EE28F1 /* NavigationLiveActivityConfiguration.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -1937,6 +1944,11 @@
 		FB3EB65C13D5083F5AFA02C8 /* NoGpsBoxPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsBoxPage.swift; sourceTree = "<group>"; };
 		FEE938673CC3D8E7866C20B8 /* NavigationDashboardViewControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationDashboardViewControllerTests.swift; sourceTree = "<group>"; };
 		FFB5C171F353C1B71FCA8FC8 /* gl */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = gl; path = gl.lproj/LocalizableTypes.strings; sourceTree = "<group>"; };
+		AFDD95A79747D9FFFF29C15A /* NavigationLiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationLiveActivityManager.swift; sourceTree = "<group>"; };
+		AF8D6E5C6D35759471730A37 /* NavigationLiveActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationLiveActivityAttributes.swift; sourceTree = "<group>"; };
+		AF8AA163E2C63DCF4DE8F76D /* StopNavigationIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StopNavigationIntent.swift; sourceTree = "<group>"; };
+		AF5F9C3164AAFACBFF1D96E7 /* NavigationLiveActivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationLiveActivityView.swift; sourceTree = "<group>"; };
+		AFC73EB5D7B03C7363EE28F1 /* NavigationLiveActivityConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationLiveActivityConfiguration.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -2346,6 +2358,10 @@
 		ED2D74332D14337500660FBF /* LiveActivity */ = {
 			isa = PBXGroup;
 			children = (
+				AFC73EB5D7B03C7363EE28F1 /* NavigationLiveActivityConfiguration.swift */,
+				AF5F9C3164AAFACBFF1D96E7 /* NavigationLiveActivityView.swift */,
+				AF8AA163E2C63DCF4DE8F76D /* StopNavigationIntent.swift */,
+				AF8D6E5C6D35759471730A37 /* NavigationLiveActivityAttributes.swift */,
 				ED2D742C2D14337500660FBF /* AppLogo.swift */,
 				ED2D742D2D14337500660FBF /* LiveActivityManager.swift */,
 				ED2D742E2D14337500660FBF /* StatisticDetailView.swift */,
@@ -3933,6 +3949,7 @@
 		ED82C6D92F90186300FA103D /* Routing */ = {
 			isa = PBXGroup;
 			children = (
+				AFDD95A79747D9FFFF29C15A /* NavigationLiveActivityManager.swift */,
 				ED82C6CD2F90186300FA103D /* MWMCoreRouterType.h */,
 				ED82C6CE2F90186300FA103D /* MWMRoutePoint.h */,
 				ED82C6CF2F90186300FA103D /* MWMRoutePoint.mm */,
@@ -4808,6 +4825,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AF977941287B4A35E999CBBF /* StopNavigationIntent.swift in Sources */,
+				AF3B464834DF1EE73C3B9F74 /* NavigationLiveActivityAttributes.swift in Sources */,
+				AF687392037F6331B2C8E78F /* NavigationLiveActivityManager.swift in Sources */,
 				CF816FBCBE80AAE1FFDC7E66 /* NoGpsControls.swift in Sources */,
 				BA60EAD80CAFC3582BFC4B91 /* NoGpsFlags.swift in Sources */,
 				51CABD39DA78824836C78B13 /* NoGpsFlagsViewController.swift in Sources */,
@@ -5384,6 +5404,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AFBAA29365B99E1279628AB9 /* NavigationLiveActivityConfiguration.swift in Sources */,
+				AF6056E6523645CF2799844E /* NavigationLiveActivityView.swift in Sources */,
+				AF7FBC18E808B316CCAEB04E /* StopNavigationIntent.swift in Sources */,
+				AFFE787F518A00EABE013E90 /* NavigationLiveActivityAttributes.swift in Sources */,
 				ED2D743A2D14337500660FBF /* AppLogo.swift in Sources */,
 				ED2D743B2D14337500660FBF /* LiveActivityManager.swift in Sources */,
 				ED2D743C2D14337500660FBF /* StatisticDetailView.swift in Sources */,
