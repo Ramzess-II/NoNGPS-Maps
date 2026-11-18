@@ -754,7 +754,7 @@ class Trip:
                 return f.read()
 
     def replay(self, data):
-        """The trip driven again by an Android debug build: nogps-replay-out.txt against the trip."""
+        """The trip driven again by nogps_replay_tool or an Android debug build: its trip log against the trip."""
         if self.group.platform != 'android':
             raise ValueError('only an Android trip is driven again')
         day_start = self.start - self.start % 86_400_000
