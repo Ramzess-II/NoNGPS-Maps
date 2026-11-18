@@ -62,6 +62,7 @@ import time
 LINE = re.compile(r'^(\d\d-\d\d) (\d\d):(\d\d):(\d\d)\.(\d\d\d) \(([^)]*)\) \w/(\w+): (.*)$')
 FIELD = re.compile(r' (\w+)=(\S+)')
 SOURCE = re.compile(r'^\S+:\d+ (\w+)\(\): (.*)$')
+BOX_INFO = re.compile(r'^Box (?!firmware\b)(\S+) firmware')
 TAP = re.compile(r'tap = ms::LatLon\((-?[\d.]+), (-?[\d.]+)\) location = ms::LatLon\((-?[\d.]+), (-?[\d.]+)\) '
                  r'bearing = (-?[\d.]+)')
 CHECKPOINT = re.compile(r'ms::LatLon\((-?[\d.]+), (-?[\d.]+)\)')
