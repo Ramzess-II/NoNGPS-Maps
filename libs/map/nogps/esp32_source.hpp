@@ -214,6 +214,8 @@ private:
   bool m_obdAdapterMissing = false;
   // The car hasn't answered (NO_CAR, NO_DATA) since the link was made: the next protocol search changes nothing.
   bool m_carSilent = false;
+  // The speed of the last data line, -1 if the car doesn't tell it.
+  int m_speedKmh = -1;
   // The engine, its speed and the voltage of the car from the status of the box.
   std::optional<CarInfo> m_carInfo;
   // The box has told that its voltage and the one of ELM327 differ. Kept until they come close again.

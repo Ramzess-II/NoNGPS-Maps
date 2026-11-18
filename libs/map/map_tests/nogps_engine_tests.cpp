@@ -5026,4 +5026,23 @@ UNIT_TEST(NoGps_SpeedLimitRoadFoundLater)
   env.m_env.m_map.m_roads = &env.m_roads;
   TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, 50, ());
 }
+UNIT_TEST(NoGps_Engine_TripLineHasRpm)
+{
+  Env env(true /* inertial */);
+  env.ConnectBox();
+  env.Drive(2000, 36, 0);
+  auto const status = [&env](std::string const & rpm)
+  {
+    env.m_engine.OnEsp32BleBytes(
+        BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,9,RUN," + rpm + ",14100,,"));
+    env.Drive(1000, 36, 0);
+  };
+  status("");
+  TEST(env.m_engine.GetTripLine().find(" rpm=") == std::string::npos, (env.m_engine.GetTripLine()));
+  status("2100");
+  TEST_EQUAL(TripField(env, "rpm"), "2100", ());
+  // The status without the rpm: it is not kept from the previous one.
+  status("");
+  TEST(env.m_engine.GetTripLine().find(" rpm=") == std::string::npos, (env.m_engine.GetTripLine()));
+}
 }  // namespace nogps_engine_tests

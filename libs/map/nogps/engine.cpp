@@ -1985,6 +1985,10 @@ std::string Engine::GetTripLine()
       line += buf;
       if (box->GetInfo())
         line += " fw=" + box->GetInfo()->m_firmware;
+      // The engine speed from the last status of the box, to compare with the car speed: the box doesn't ask the car
+      // for it while the car moves, so it is there only if the box does.
+      if (auto const car = box->GetCarInfo(); car && car->m_rpm >= 0)
+        line += " rpm=" + std::to_string(car->m_rpm);
       if (auto const & update = box->GetUpdate(); update.GetState() != Esp32Update::State::None)
         line += " ota=" + DebugPrint(update.GetState()) + "/" + std::to_string(update.GetProgressPercent());
     }
