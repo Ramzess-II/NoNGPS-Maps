@@ -1691,7 +1691,10 @@ void InertialNavigator::MatchBend()
   // crossing: the car is moved along the road to where the bends of the road fit its rotation.
   auto const position = m_deadReckoning.GetPosition();
   double const heading = m_deadReckoning.GetHeading();
-  double const maxShiftM = std::min(kMaxBendShiftM, std::max(kMinBendSearchM, m_deadReckoning.GetAccuracy()));
+  // After a long way the along error is larger than that, see TurnMatcher::kMaxFarSearchM.
+  double const nearShiftM = std::min(kMaxBendShiftM, std::max(kMinBendSearchM, m_deadReckoning.GetAccuracy()));
+  double const maxShiftM =
+      std::max(nearShiftM, std::min(TurnMatcher::kMaxFarSearchM, m_deadReckoning.GetAlongErrorM()));
   std::string whyNot;
   auto const aheadM = m_bendMatcher.Match(m_roads, position, heading, maxShiftM, &whyNot);
   if (!aheadM)
@@ -1713,9 +1716,12 @@ void InertialNavigator::MatchBend()
     return;
   }
   bool const slow = m_deadReckoning.GetSpeed() < kMinBendMoveSpeedMps;
-  if (slow && !IsSlowBendConfirmed(*aheadM))
+  // A far place is moved to only when the bends tell it repeatedly: a far road may have a similar bend.
+  bool const far = std::fabs(*aheadM) > kFarBendShiftM;
+  if ((slow || far) && !IsSlowBendConfirmed(*aheadM))
   {
-    LOG(LINFO, ("Bend: ahead by", std::round(*aheadM), "m, but the car is too slow to trust it"));
+    LOG(LINFO, ("Bend: ahead by", std::round(*aheadM), "m, but", slow ? "the car is too slow" : "it is far",
+                "to trust it at once"));
     return;
   }
   // Through the crossings on the way: the bends were compared with the road going straight on through them, and
@@ -1727,8 +1733,8 @@ void InertialNavigator::MatchBend()
     LOG(LINFO, ("Bend: ahead by", std::round(*aheadM), "m, but the road is not followed that far"));
     return;
   }
-  if (slow)
-    LOG(LINFO, ("Bend: moved along the road by", std::round(-*aheadM), "m, told repeatedly to a slow car"));
+  if (slow || far)
+    LOG(LINFO, ("Bend: moved along the road by", std::round(-*aheadM), "m, told repeatedly"));
   else
     LOG(LINFO, ("Bend: moved along the road by", std::round(-*aheadM), "m"));
   LearnRoughSpeed(*aheadM, "bend");
@@ -1850,9 +1856,9 @@ void InertialNavigator::MatchTurn(int64_t timestampNs)
   std::string whyNot;
   std::vector<ms::LatLon> crossings;
   std::vector<ms::LatLon> far;
-  auto const crossing =
-      TurnMatcher::FindCrossing(m_roads, corner, m_turnFromBearing, toBearing, m_deadReckoning.GetAccuracy(), &whyNot,
-                                !m_turnFromRoad /* onlyOne */, &crossings, farAheadM, farBehindM, &far);
+  auto const crossing = TurnMatcher::FindCrossing(
+      m_roads, corner, m_turnFromBearing, toBearing, m_deadReckoning.GetAccuracy(), &whyNot,
+      !m_turnFromRoad /* onlyOne */, &crossings, farAheadM, farBehindM, &far, m_deadReckoning.GetAlongErrorM());
   // The whole turn is moved to a crossing: the car has driven the same way after it. The way of the turn is moved as
   // it was driven: the snapping may have taken the car to a road aside meanwhile, on October 16 to a street 38 m from
   // the right one, and the turn moved from there was not on the right one either.
@@ -2203,9 +2209,9 @@ std::optional<size_t> InertialNavigator::TurnOtherMarks(double toBearingDeg, boo
       auto const [farAheadM, farBehindM] =
           mark.m_turnFromRoad ? GetFarCrossingM(reckoning, mark.m_roadSincePathM) : std::pair<double, double>();
       std::vector<ms::LatLon> far;
-      if (auto const crossing =
-              TurnMatcher::FindCrossing(m_roads, corner, mark.m_turnFromBearing, toBearingDeg, reckoning.GetAccuracy(),
-                                        nullptr, !mark.m_turnFromRoad, nullptr, farAheadM, farBehindM, &far))
+      if (auto const crossing = TurnMatcher::FindCrossing(
+              m_roads, corner, mark.m_turnFromBearing, toBearingDeg, reckoning.GetAccuracy(), nullptr,
+              !mark.m_turnFromRoad, nullptr, farAheadM, farBehindM, &far, reckoning.GetAlongErrorM()))
       {
         road = movedTo(*crossing);
         // As the shown one: a mark that has followed the roads is where they have taken it.
