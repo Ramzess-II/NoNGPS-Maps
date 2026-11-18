@@ -196,6 +196,12 @@ public:
   static double constexpr kManualAccuracyM = 50;
   // The car stands on a road, not between houses, but a farther road is not the road the user means.
   static double constexpr kManualSnapRadiusM = 30;
+  // A tap on the road lost panel places the mark by GPS: its fix may be this inaccurate, the mark snaps to a road
+  // within the fix accuracy clamped to the manual snap radius and this one, and the fix may lie this far beyond
+  // the distance driven since the road was lost, the mark accuracy and the fix accuracy.
+  static double constexpr kGpsMarkMaxAccuracyM = 300;
+  static double constexpr kGpsMarkMaxSnapM = 100;
+  static double constexpr kGpsMarkMarginM = 50;
   // A road going another way is a crossing road: the car is on it, but it does not drive along it.
   static double constexpr kMaxRoadBearingDiffDeg = 45;
   // A point of the route closer than this to a road is on it, and goes along it within the angle.
@@ -339,6 +345,11 @@ public:
   /// manual mode, which is left by itself when GPS is trusted again. Ends SetMarkByTap().
   /// \returns false if there is no road at the position.
   bool PlaceMarkByTap(ms::LatLon const & position);
+  /// The user has tapped the road lost panel: the mark goes to the road nearest the last GPS fix along the car's
+  /// heading, if the fix is fresh, accurate, trusted and not farther from the mark than the car could drive.
+  /// The platform tells the user and arms SetMarkByTap() when it fails, the log tells which condition.
+  /// \returns false if GPS can't place the mark.
+  bool PlaceMarkByGps();
   /// Moves the position along the route, or along the road if there is no route, e.g. when the calculated
   /// position lags behind the car. The position never leaves the road and stops at the closest crossing.
   /// \param distanceM meters to move forward, negative to move back.
@@ -441,8 +452,9 @@ private:
                                           std::optional<Fix> const & turnedFrom);
   /// The road the car is put on by a mark at the position, nothing if there is none.
   /// \param heading the way the car looks, nothing if it is not known.
-  std::optional<RoadPoint> FindMarkRoad(ms::LatLon const & position, std::optional<double> heading);
-  void PutMark(ms::LatLon const & position, RoadPoint const & road);
+  std::optional<RoadPoint> FindMarkRoad(ms::LatLon const & position, std::optional<double> heading,
+                                        double radiusM = kManualSnapRadiusM);
+  void PutMark(ms::LatLon const & position, RoadPoint const & road, double accuracyM = kManualAccuracyM);
   void EnterManualModeByItself(std::string const & reason);
   void CheckGpsLost();
   void CheckMotionSourceStopped();

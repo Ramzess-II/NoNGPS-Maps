@@ -262,6 +262,11 @@ JNIEXPORT jboolean Java_app_organicmaps_sdk_location_NoGps_nativePlaceMark(JNIEn
   return g_framework->NativeFramework()->PlaceNoGpsMark(mercator::FromLatLon(lat, lon));
 }
 
+JNIEXPORT jboolean Java_app_organicmaps_sdk_location_NoGps_nativePlaceMarkByGps(JNIEnv *, jclass)
+{
+  return g_framework->NativeFramework()->PlaceNoGpsMarkByGps();
+}
+
 JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeReverseDirection(JNIEnv *, jclass)
 {
   NoGpsEngine().ReverseDirection();

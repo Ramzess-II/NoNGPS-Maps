@@ -241,6 +241,73 @@ UNIT_TEST(NoGps_Engine_MarkIsOnRoadAndShowsCarHeading)
   TEST_EQUAL(env.Last().m_bearingDeg, 270.0, ());
 }
 
+// The car is marked at 0 m of the east street, GPS gives a fix at |eastM|, |northM| from the origin. The fix is
+// |ageMs| old when the user taps the panel.
+bool PlaceByGpsFix(Env & env, double eastM, double northM, double accuracyM, int64_t ageMs = 0)
+{
+  env.m_engine.OnFix(GpsAt(env.m_clock, eastM, northM, {}, {}, accuracyM));
+  env.m_clock.Advance(ageMs);
+  return env.m_engine.PlaceMarkByGps();
+}
+
+UNIT_TEST(NoGps_Engine_PlaceMarkByGpsTakesAccurateFixNearMark)
+{
+  Env env(false /* inertial */);
+  MarkCar(env, 0);
+  TEST(PlaceByGpsFix(env, 60, 3, 4), ());
+  TEST(env.m_engine.IsManualMode(), ());
+  TestAlmostEqualAbs(East(env.Last().m_position), 60, 0.5);
+  TestAlmostEqualAbs(North(env.Last().m_position), 0, 0.5);
+  TEST_EQUAL(env.Last().m_bearingDeg, 90.0, ());
+  TEST_EQUAL(env.Last().m_accuracyM, Engine::kManualAccuracyM, ());
+}
+
+UNIT_TEST(NoGps_Engine_PlaceMarkByGpsRefusesFarFixAndKeepsTapArmed)
+{
+  Env env(false /* inertial */);
+  MarkCar(env, 0);
+  env.m_engine.SetMarkByTap(true);
+  // A fix 360 m from a mark tapped just before is wrong, not the car.
+  TEST(!PlaceByGpsFix(env, 360, 3, 2.5), ());
+  TestAlmostEqualAbs(East(env.Last().m_position), 0, 0.5);
+  TEST(env.m_engine.IsMarkByTap(), ());
+}
+
+UNIT_TEST(NoGps_Engine_PlaceMarkByGpsRefusesBadFix)
+{
+  Env env(false /* inertial */);
+  MarkCar(env, 0);
+  TEST(!PlaceByGpsFix(env, 60, 3, 4, Engine::kGpsMaxAgeMs + 1000), ());
+  TEST(PlaceByGpsFix(env, 60, 3, 4, Engine::kGpsMaxAgeMs - 1000), ());
+  TEST(!PlaceByGpsFix(env, 62, 3, 400), ());
+  env.m_engine.SetGpsDisabled(true);
+  TEST(!PlaceByGpsFix(env, 62, 3, 4), ());
+  env.m_engine.SetGpsDisabled(false);
+  TEST(PlaceByGpsFix(env, 62, 3, 4), ());
+
+  // GPS is on another continent.
+  env.m_clock.Advance(1000);
+  Fix spoofed = GpsAt(env.m_clock, 0, 0, 90.0, 10.0);
+  spoofed.m_position = {-12.0453, -77.0569};
+  env.m_engine.OnFix(spoofed);
+  TEST(env.m_engine.GetStatus().m_gpsSpoofed, ());
+  TEST(!env.m_engine.PlaceMarkByGps(), ());
+}
+
+UNIT_TEST(NoGps_Engine_PlaceMarkByGpsSnapsInaccurateFixToRoadFartherThanAccurateOne)
+{
+  // The fix is 80 m from the street the car drives along.
+  PieceRoads roads({{-500, 0, 500, 0}}, {});
+  Env env(false /* inertial */, &roads);
+  MarkCar(env, -20);
+  TEST(PlaceByGpsFix(env, 30, 80, 150), ());
+  TestAlmostEqualAbs(North(env.Last().m_position), 0, 0.5);
+  TestAlmostEqualAbs(East(env.Last().m_position), 30, 0.5);
+  TEST_EQUAL(env.Last().m_accuracyM, 150.0, ());
+  // An accurate fix has a road within 30 m only.
+  TEST(!PlaceByGpsFix(env, 60, 80, 5), ());
+}
+
 UNIT_TEST(NoGps_Engine_ButtonLetsNextTapMarkCar)
 {
   Env env(false /* inertial */);
@@ -892,6 +959,20 @@ UNIT_TEST(NoGps_Engine_SlowTurnWithoutRoadThatWayIsLost)
   TurnLeftSlowly(env, 46);
   TEST(env.m_delegate.HasEvent(Event::RoadLost), ());
   TEST_EQUAL(TripField(env, "turn"), "NaN", ());
+}
+
+UNIT_TEST(NoGps_Engine_PlaceMarkByGpsRadiusGrowsWithDistanceDrivenWhenRoadIsLost)
+{
+  auto roads = StreetWithSideRoad(90);
+  Env env(true /* inertial */, &roads);
+  TurnLeftSlowly(env, 46);
+  TEST(env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+  double const markEastM = East(env.Last().m_position);
+  // The car stands at the mark when the road is lost: a fix 250 m behind it is too far.
+  TEST(!PlaceByGpsFix(env, markEastM - 250, 3, 4), ());
+  // The car drives on, the mark stands: the fix may be that far from it now.
+  env.Drive(20'000, 25, 0);
+  TEST(PlaceByGpsFix(env, markEastM - 250, 3, 4), (env.m_engine.GetTripLine()));
 }
 
 UNIT_TEST(NoGps_Engine_SlowDriftOffRoadIsNotTurn)

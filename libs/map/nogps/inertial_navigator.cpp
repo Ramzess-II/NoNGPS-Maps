@@ -542,6 +542,7 @@ void InertialNavigator::SetRoadPoint(ms::LatLon const & position)
   m_offRoadM = 0;
   ResetOffRoadSpeed();
   m_roadLost = false;
+  m_roadLostDrivenM = 0;
   m_waitAhead.reset();
 }
 
@@ -703,6 +704,7 @@ void InertialNavigator::LoseRoad(std::string const & after)
   }
   LOG(LINFO, ("The road is lost after", after + ",", "stopping at", *m_roadPoint));
   m_roadLost = true;
+  m_roadLostDrivenM = 0;
   m_roughStretch.reset();
   m_deadReckoning.MoveTo(*m_roadPoint);
   NotifyRoadLost();
@@ -1544,7 +1546,11 @@ void InertialNavigator::OnMotion(double yawDeltaDeg, double dtSec, int64_t times
     // The way of a car not followed is not known.
     m_pathMatcher.Reset();
     if (speedFresh)
+    {
       othersDistanceM = othersStepM = m_deadReckoning.GetSpeed() * dtSec;
+      if (m_roadLost)
+        m_roadLostDrivenM += othersStepM;
+    }
   }
   MoveOtherMarks(rotatedDeg, othersDistanceM, othersStepM);
 

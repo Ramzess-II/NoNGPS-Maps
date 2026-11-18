@@ -122,20 +122,23 @@ final class NoGpsControls: NSObject {
     return button
   }
 
-  private static func stylePill(_ button: UIButton) {
+  private static func stylePill(_ button: UIButton, verticalInset: CGFloat = 3) {
     button.translatesAutoresizingMaskIntoConstraints = false
     button.layer.cornerRadius = Constants.statusMinHeight / 2
     button.layer.shadowColor = UIColor.black.cgColor
     button.layer.shadowOpacity = 0.25
     button.layer.shadowOffset = CGSize(width: 0, height: 1)
-    button.contentEdgeInsets = UIEdgeInsets(top: 3, left: 14, bottom: 3, right: 14)
+    button.contentEdgeInsets = UIEdgeInsets(top: verticalInset, left: 14, bottom: verticalInset, right: 14)
     button.titleLabel?.numberOfLines = 3
     button.titleLabel?.textAlignment = .center
     button.titleLabel?.lineBreakMode = .byTruncatingTail
   }
 
   private func setupViews(in superview: UIView) {
-    Self.stylePill(statusButton)
+    Self.stylePill(statusButton, verticalInset: 10)
+    statusButton.setImage(UIImage(systemName: "location.viewfinder"), for: .normal)
+    statusButton.tintColor = .white
+    statusButton.imageEdgeInsets = UIEdgeInsets(top: 0, left: -4, bottom: 0, right: 4)
     statusButton.addTarget(self, action: #selector(statusTapped), for: .touchUpInside)
     superview.addSubview(statusButton)
     Self.stylePill(calibrationButton)
@@ -344,7 +347,7 @@ final class NoGpsControls: NSObject {
     let title = NSMutableAttributedString(string: L("nogps_status_road_lost"),
                                           attributes: [.font: UIFont.boldSystemFont(ofSize: 15),
                                                        .foregroundColor: UIColor.white])
-    title.append(NSAttributedString(string: "\n" + L("nogps_status_road_lost_hint"),
+    title.append(NSAttributedString(string: "\n" + L("nogps_status_road_lost_gps_hint"),
                                     attributes: [.font: UIFont.boldSystemFont(ofSize: 12),
                                                  .foregroundColor: UIColor.white]))
     statusButton.setAttributedTitle(title, for: .normal)
@@ -408,7 +411,10 @@ final class NoGpsControls: NSObject {
 
   @objc
   private func statusTapped() {
-    NoGpsBoxSheet.show(.box(firmware: false))
+    guard !NoGps.placeMarkByGps() else { return }
+    NoGps.setMarkByTap(true)
+    Toast.show(withText: L("nogps_gps_mark_failed"))
+    refresh()
   }
 
   @objc

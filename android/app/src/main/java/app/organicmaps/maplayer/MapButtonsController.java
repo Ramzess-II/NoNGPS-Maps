@@ -403,7 +403,7 @@ public class MapButtonsController extends Fragment
       {
         final String text = getString(R.string.nogps_status_road_lost);
         final SpannableString withHint =
-            new SpannableString(text + '\n' + getString(R.string.nogps_status_road_lost_hint));
+            new SpannableString(text + '\n' + getString(R.string.nogps_status_road_lost_gps_hint));
         withHint.setSpan(new RelativeSizeSpan(0.8f), text.length() + 1, withHint.length(),
                          Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         mPositionStatus.setText(withHint);

@@ -1614,14 +1614,53 @@ bool Engine::PlaceMarkByTap(ms::LatLon const & position)
   return true;
 }
 
-std::optional<RoadPoint> Engine::FindMarkRoad(ms::LatLon const & position, std::optional<double> heading)
+bool Engine::PlaceMarkByGps()
+{
+  CHECK_THREAD_CHECKER(m_threadChecker, ());
+  auto const fail = [](std::string const & why)
+  {
+    LOG(LINFO, ("GPS can't place the mark:", why));
+    return false;
+  };
+  auto const & fix = m_rawGps ? m_rawGps : m_rawFused;
+  if (!fix)
+    return fail("no fix");
+  if (m_gpsDisabled)
+    return fail("GPS is turned off");
+  if (m_spoofingDetector.IsSpoofed())
+    return fail("GPS is spoofed");
+  if (AgeMs(*fix) > kGpsMaxAgeMs)
+    return fail("the fix is " + std::to_string(AgeMs(*fix)) + " ms old");
+  if (fix->m_accuracyM > kGpsMarkMaxAccuracyM)
+    return fail("the fix accuracy is " + std::to_string(std::lround(fix->m_accuracyM)) + " m");
+  if (!m_savedLocation)
+    return fail("no mark");
+  double const drivenM = m_inertial && m_inertial->IsRoadLost() ? m_inertial->GetRoadLostDrivenM() : 0;
+  double const maxM = drivenM + m_savedLocation->m_accuracyM + fix->m_accuracyM + kGpsMarkMarginM;
+  double const awayM = Distance(m_savedLocation->m_position, fix->m_position);
+  if (awayM > maxM)
+    return fail("the fix is " + std::to_string(std::lround(awayM)) + " m from the mark, up to " +
+                std::to_string(std::lround(maxM)) + " m");
+
+  double const radiusM = std::clamp(fix->m_accuracyM, kManualSnapRadiusM, kGpsMarkMaxSnapM);
+  auto const road = FindMarkRoad(fix->m_position, GetCarBearing(), radiusM);
+  if (!road)
+    return fail("no road near the fix");
+  SetManualMode(true);
+  PutMark(fix->m_position, *road, std::max(kManualAccuracyM, fix->m_accuracyM));
+  m_markByTap = false;
+  return true;
+}
+
+std::optional<RoadPoint> Engine::FindMarkRoad(ms::LatLon const & position, std::optional<double> heading,
+                                              double radiusM)
 {
   // The car stands on the axis of a road and looks one of its two ways: the way it has looked before, the
   // user turns it around with the reverse button. The gyroscope has followed the turns since.
   // While navigating, the car is on the route and drives the way the route goes.
   std::optional<RoadPoint> road;
   if (m_map.IsNavigating())
-    road = m_map.ProjectToRoute(position, kManualSnapRadiusM);
+    road = m_map.ProjectToRoute(position, radiusM);
   // The car goes against the route: it has turned around, the road is taken the way the car goes.
   if (road && heading && std::fabs(AngleDiff(road->m_bearingDeg, *heading)) > 90)
     road.reset();
@@ -1630,18 +1669,18 @@ std::optional<RoadPoint> Engine::FindMarkRoad(ms::LatLon const & position, std::
   if (road && !IsAlongRoad(road->m_point, road->m_bearingDeg))
     road.reset();
   if (!road)
-    road = SnapMarkToRoad(position, heading, kManualSnapRadiusM, m_savedLocation);
+    road = SnapMarkToRoad(position, heading, radiusM, m_savedLocation);
   if (!road)
     LOG(LINFO, ("No road at the tap =", position));
   return road;
 }
 
-void Engine::PutMark(ms::LatLon const & position, RoadPoint const & road)
+void Engine::PutMark(ms::LatLon const & position, RoadPoint const & road, double accuracyM)
 {
   Fix location;
   location.m_provider = Provider::Manual;
   location.m_position = road.m_point;
-  location.m_accuracyM = kManualAccuracyM;
+  location.m_accuracyM = accuracyM;
   location.m_bearingDeg = road.m_bearingDeg;
   location.m_timeMs = m_clock.NowMs();
   location.m_unixTimeMs = m_clock.UnixNowMs();

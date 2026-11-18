@@ -528,6 +528,8 @@ public:
   double GetDistanceSinceFix() const { return m_deadReckoning.GetDistanceSinceFix(); }
   /// \returns true if the car has left the roads and stands where it was on a road the last time.
   bool IsRoadLost() const { return m_roadLost; }
+  /// \returns meters the car has driven since the road was lost, the mark stands where it was.
+  double GetRoadLostDrivenM() const { return m_roadLostDrivenM; }
   /// \returns true if the mark waits for the user to put it on a road: the road is lost, or the car followed apart
   /// drives fast and no road goes its way around.
   bool IsUserNeeded() const { return m_roadLost || (m_offRoadCar && m_fastWithoutRoad); }
@@ -770,6 +772,7 @@ private:
   std::optional<double> m_roundaboutPathM;
   // The car has left the roads and stands at the last road point until it is marked or GPS comes back.
   bool m_roadLost = false;
+  double m_roadLostDrivenM = 0;
   int64_t m_roadLostNotifiedMs = 0;
   // The mark waits at the last road point for the car, see kMaxWaitAheadM: how far the car may drive, has driven and
   // has rotated since.
