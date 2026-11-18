@@ -1,5 +1,6 @@
 package app.organicmaps.nogps;
 
+import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -7,16 +8,22 @@ import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.text.format.Formatter;
+import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.BaseAdapter;
 import android.widget.CheckBox;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import app.organicmaps.BuildConfig;
 import app.organicmaps.R;
 import app.organicmaps.base.BaseMwmFragment;
@@ -36,7 +43,8 @@ import java.util.Set;
 
 /**
  * The flags of the test drives by day, newest first, see NoGpsFlags. The tester ticks some and sends them by email
- * with the logs of their days. A tap plays the voice note of a flag.
+ * with the logs of their days. A tap on a row ticks it, the play button plays the voice note of a flag and a tap on the
+ * screenshot opens it full screen.
  */
 public class NoGpsFlagsFragment extends BaseMwmFragment
 {
@@ -69,10 +77,7 @@ public class NoGpsFlagsFragment extends BaseMwmFragment
     list.setOnItemClickListener((parent, view, position, id) -> {
       if (!(mRows.get(position) instanceof NoGpsFlags.Flag flag))
         return;
-      if (flag.voiceS > 0)
-        play(flag.name);
-      else
-        toggle(flag.name);
+      toggle(flag.name);
     });
     return root;
   }
@@ -137,7 +142,7 @@ public class NoGpsFlagsFragment extends BaseMwmFragment
   // A second tap stops the voice.
   private void play(@NonNull String name)
   {
-    final boolean again = mPlayer != null && mPlayer.isPlaying() && mPlaying.equals(name);
+    final boolean again = mPlaying.equals(name);
     stopPlaying();
     if (again)
       return;
@@ -145,6 +150,11 @@ public class NoGpsFlagsFragment extends BaseMwmFragment
     try
     {
       player.setDataSource(NoGpsFlags.file(requireContext(), name, NoGpsFlags.VOICE).getPath());
+      player.setOnCompletionListener((p) -> {
+        if (mPlayer != p)
+          return;
+        stopPlaying();
+      });
       player.prepare();
       player.start();
     }
@@ -156,14 +166,46 @@ public class NoGpsFlagsFragment extends BaseMwmFragment
     }
     mPlayer = player;
     mPlaying = name;
+    mAdapter.notifyDataSetChanged();
   }
 
   private void stopPlaying()
   {
-    if (mPlayer == null)
-      return;
-    mPlayer.release();
+    if (mPlayer != null)
+      mPlayer.release();
     mPlayer = null;
+    mPlaying = "";
+    mAdapter.notifyDataSetChanged();
+  }
+
+  private void showScreenshot(@NonNull String name)
+  {
+    final File file = NoGpsFlags.file(requireContext(), name, NoGpsFlags.PNG);
+    if (!file.exists())
+      return;
+    final Dialog dialog = new Dialog(requireContext(), android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+    dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+    dialog.setContentView(R.layout.dialog_nogps_flag_screenshot);
+    final View root = dialog.findViewById(android.R.id.content);
+    final ImageButton close = dialog.findViewById(R.id.close);
+    close.setOnClickListener((v) -> dialog.dismiss());
+    // Edge to edge: keep the close button out of the status bar.
+    ViewCompat.setOnApplyWindowInsetsListener(root, (v, windowInsets) -> {
+      final Insets bars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+      v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+      return windowInsets;
+    });
+    final DisplayMetrics screen = getResources().getDisplayMetrics();
+    final BitmapFactory.Options bounds = new BitmapFactory.Options();
+    bounds.inJustDecodeBounds = true;
+    BitmapFactory.decodeFile(file.getPath(), bounds);
+    final BitmapFactory.Options options = new BitmapFactory.Options();
+    options.inSampleSize =
+        Math.max(1, Integer.highestOneBit(Math.max(bounds.outWidth / Math.max(1, screen.widthPixels),
+                                                   bounds.outHeight / Math.max(1, screen.heightPixels))));
+    final ImageView image = dialog.findViewById(R.id.image);
+    image.setImageBitmap(BitmapFactory.decodeFile(file.getPath(), options));
+    dialog.show();
   }
 
   @Nullable
@@ -307,11 +349,18 @@ public class NoGpsFlagsFragment extends BaseMwmFragment
       final TextView detailsView = view.findViewById(R.id.details);
       detailsView.setText(TextUtils.join(" · ", details));
       detailsView.setVisibility(details.isEmpty() ? View.GONE : View.VISIBLE);
-      ((ImageView) view.findViewById(R.id.screenshot)).setImageBitmap(thumbnail(flag.name));
-      final CheckBox check = view.findViewById(R.id.check);
-      check.setOnCheckedChangeListener(null);
-      check.setChecked(mSelected.contains(flag.name));
-      check.setOnCheckedChangeListener((button, checked) -> toggle(flag.name));
+      final ImageView screenshot = view.findViewById(R.id.screenshot);
+      final Bitmap thumbnail = thumbnail(flag.name);
+      screenshot.setImageBitmap(thumbnail);
+      screenshot.setClickable(thumbnail != null);
+      screenshot.setOnClickListener(thumbnail == null ? null : (v) -> showScreenshot(flag.name));
+      final ImageButton playButton = view.findViewById(R.id.play);
+      final boolean playing = mPlaying.equals(flag.name);
+      playButton.setVisibility(flag.voiceS > 0 ? View.VISIBLE : View.GONE);
+      playButton.setImageResource(playing ? R.drawable.ic_stop : R.drawable.ic_play);
+      playButton.setContentDescription(getString(playing ? R.string.nogps_flag_stop : R.string.nogps_flag_play));
+      playButton.setOnClickListener((v) -> play(flag.name));
+      ((CheckBox) view.findViewById(R.id.check)).setChecked(mSelected.contains(flag.name));
       return view;
     }
   }

@@ -10,11 +10,18 @@
               android:paddingEnd="@dimen/margin_half"
               android:paddingTop="@dimen/margin_quarter"
               android:paddingBottom="@dimen/margin_quarter">
+  <CheckBox android:id="@+id/check"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:clickable="false"
+            android:focusable="false"/>
+
   <ImageView android:id="@+id/screenshot"
              android:layout_width="48dp"
              android:layout_height="64dp"
+             android:layout_marginStart="@dimen/margin_half"
              android:scaleType="fitCenter"
-             android:importantForAccessibility="no"/>
+             android:contentDescription="@string/nogps_flag_screenshot"/>
 
   <LinearLayout android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -35,7 +42,11 @@
               tools:text="Voice note 12 s · Sent"/>
   </LinearLayout>
 
-  <CheckBox android:id="@+id/check"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"/>
+  <ImageButton android:id="@+id/play"
+               android:layout_width="48dp"
+               android:layout_height="48dp"
+               android:background="?attr/selectableItemBackgroundBorderless"
+               android:contentDescription="@string/nogps_flag_play"
+               android:src="@drawable/ic_play"
+               android:visibility="gone"/>
 </LinearLayout>
