@@ -374,6 +374,7 @@ void Esp32Source::OnBleState(BleState state)
     m_info.reset();
     m_carSilent = false;
     m_boxValues.clear();
+    m_shake.clear();
     m_hellosWithoutInfo = 0;
     m_peer.Reset();
     m_update.OnLinkLost();
@@ -517,6 +518,12 @@ void Esp32Source::OnData(esp32::Data const & data)
   while (now - m_dataTimesMs.front() >= kDataTimeoutMs)
     m_dataTimesMs.pop_front();
   m_flags = data.m_flags;
+  if (data.m_shakePct >= 0)
+  {
+    m_shake.push_back(data.m_shakePct);
+    if (m_shake.size() > kShakeLines)
+      m_shake.pop_front();
+  }
   // The box has restarted, its totals start anew: the places carried by them are lost.
   if (m_hasLast && data.m_timeMs < m_lastTimeMs && m_lastTimeMs - data.m_timeMs < kBoxTimeWrapMs / 2)
     m_peer.Reset();
