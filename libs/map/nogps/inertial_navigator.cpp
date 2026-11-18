@@ -1980,7 +1980,8 @@ void InertialNavigator::MatchTurn(int64_t timestampNs)
   auto const [farAheadM, farBehindM] =
       m_turnFromRoad ? GetFarCrossingM(m_deadReckoning, m_roadSincePathM) : std::pair<double, double>();
   // The road the car came by ends at a turn, a bend goes on along it.
-  if (turnDeg >= TurnMatcher::kMinTurnDeg)
+  bool const turned = turnDeg >= TurnMatcher::kMinTurnDeg;
+  if (turned)
     m_roadSincePathM = m_pathM;
   // For the trip log, to try other rules on real trips: the turn with the second the car went straight after it,
   // and the crossings around where it has started by the calculation.
@@ -1995,6 +1996,8 @@ void InertialNavigator::MatchTurn(int64_t timestampNs)
   {
     LOG(LINFO, ("Turn from", std::round(m_turnFromBearing), "to", std::round(toBearing), "rotating by",
                 std::round(m_turnRotationDeg), "is a roundabout or a winding road"));
+    if (turned)
+      ResetOtherRoadSince();
     return;
   }
   // A car maneuvering off the roads turns where it is, in a yard or at a parking place, not at a crossing of the
@@ -2004,7 +2007,10 @@ void InertialNavigator::MatchTurn(int64_t timestampNs)
   bool const maneuvering = !m_turnFromRoad && m_turnMaxKmh / 3.6 <= kMaxManeuverSpeedMps;
   // A turn around has no crossing: the car turns on its road, or a ramp loops onto another one.
   if (!maneuvering && turnDeg > TurnMatcher::kMaxTurnDeg && MatchLoop(toBearing))
+  {
+    ResetOtherRoadSince();
     return;
+  }
 
   auto const position = m_deadReckoning.GetPosition();
   auto const here = RoadGoing(position, toBearing);
@@ -2100,7 +2106,7 @@ void InertialNavigator::MatchTurn(int64_t timestampNs)
 
   // The other marks turn too, a mark whose road has no road the new way is not where the car is.
   bool const atCrossing = !maneuvering && turnDeg >= TurnMatcher::kMinTurnDeg && turnDeg <= TurnMatcher::kMaxTurnDeg;
-  auto const otherWithRoad = TurnOtherMarks(toBearing, atCrossing);
+  auto const otherWithRoad = TurnOtherMarks(toBearing, atCrossing, turned);
   if (!places.m_chosen && atCrossing && otherWithRoad)
   {
     TakeOtherMark(*otherWithRoad, false /* keepShown */,
@@ -2340,7 +2346,13 @@ std::optional<size_t> InertialNavigator::FindOtherMarkOnRoad() const
   return found;
 }
 
-std::optional<size_t> InertialNavigator::TurnOtherMarks(double toBearingDeg, bool atCrossing)
+void InertialNavigator::ResetOtherRoadSince()
+{
+  for (auto & mark : m_otherMarks)
+    mark.m_roadSincePathM = m_pathM;
+}
+
+std::optional<size_t> InertialNavigator::TurnOtherMarks(double toBearingDeg, bool atCrossing, bool turned)
 {
   std::optional<size_t> withRoad;
   // The roads after the far crossings of the marks, they are other marks then.
@@ -2381,8 +2393,10 @@ std::optional<size_t> InertialNavigator::TurnOtherMarks(double toBearingDeg, boo
           farRoads.push_back(*farRoad);
         }
       }
-      mark.m_roadSincePathM = m_pathM;
     }
+    // As the shown one, on every turn: after a U-turn the road behind is the road the car has left.
+    if (turned)
+      mark.m_roadSincePathM = m_pathM;
     if (road)
     {
       reckoning.MoveTo(road->m_point);

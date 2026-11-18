@@ -193,6 +193,19 @@ UNIT_TEST(NoGps_TurnMatcher_FindsFarCrossings)
   TestAt(100, 0, far[0]);
 }
 
+UNIT_TEST(NoGps_TurnMatcher_LogCountsOnlyCrossingsNearSearch)
+{
+  // Two side streets at 100 m and 200 m, the mark is 60 m past the first: the far search reaches both, the log counts
+  // only the crossings within the search, none here.
+  PieceRoads roads({{-300, 0, 400, 0}, {100, 0, 100, 300}, {200, 0, 200, 300}}, {{100, 0}, {200, 0}});
+  std::string whyNot;
+  std::vector<ms::LatLon> far;
+  TEST(!TurnMatcher::FindCrossing(roads, At(160, 0), 90, 0, 21, &whyNot, false, nullptr, 150, 150, &far), ());
+  TEST_EQUAL(far.size(), 2, ());
+  TEST(whyNot.find("crossings around 0, farther than 25 m along the road or aside of it 0") != std::string::npos,
+       (whyNot));
+}
+
 UNIT_TEST(NoGps_TurnMatcher_DescribesCrossingsAround)
 {
   // The car going east has turned north at 160 m: the crossings of its street are 40 m ahead and 60 m behind.
