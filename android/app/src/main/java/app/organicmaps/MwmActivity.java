@@ -984,9 +984,15 @@ public class MwmActivity extends BaseMwmFragmentActivity
   private int onThisPhoneRemoved()
   {
     final String carId = NoGps.getStatus().carId;
-    if (!carId.isEmpty())
-      MwmApplication.from(this).getLocationHelper().forgetCar(carId);
-    return R.string.nogps_phone_removed;
+    if (carId.isEmpty())
+      return R.string.nogps_phone_removed;
+    final LocationHelper helper = MwmApplication.from(this).getLocationHelper();
+    helper.forgetCar(carId);
+    // The box has erased its keys: the old system pairing would only block the next connection.
+    if (helper.unpairBox(carId))
+      return R.string.nogps_phone_removed;
+    Toast.makeText(this, getString(R.string.nogps_phone_removed_unpair, carId), Toast.LENGTH_LONG).show();
+    return 0;
   }
 
   private void showBoxSheet(@NonNull BoxBottomSheet.Page page)

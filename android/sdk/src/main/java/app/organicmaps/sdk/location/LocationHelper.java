@@ -287,6 +287,16 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   /**
+   * Removes the system pairing of the box of the car after the box has erased this phone.
+   * @return false if the user has to remove it in the Bluetooth settings.
+   */
+  @UiThread
+  public boolean unpairBox(@NonNull String carId)
+  {
+    return mEsp32Ble.unpairBox(carId);
+  }
+
+  /**
    * @return MapObject.MY_POSITION, null if location is not yet determined or "My position" button is switched off.
    */
   @Nullable

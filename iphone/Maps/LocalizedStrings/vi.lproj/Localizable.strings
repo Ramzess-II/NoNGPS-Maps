@@ -1433,10 +1433,10 @@
 "nogps_car_add" = "Add a car";
 
 /* State of the sensor box, shown after its name: the box has phones, a new one is added on one of them */
-"nogps_box_bt_pairing_by_phone" = "found, but not paired with this phone. On a phone paired with the box, open Box, tap the car name at the top, then the car and Add a phone, and enter the code here";
+"nogps_box_bt_pairing_by_phone" = "found, but not paired with this phone. On a phone paired with the box, open Box, tap the car name at the top, then the car and Add a phone, and enter the code here. No paired phone at hand? Turn Bluetooth off on the other phones that were paired with the box. Plug the box in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts this phone for 2 minutes with the code 123456, unless it was changed, and forgets the other phones";
 
 /* State of the sensor box, shown after its name: the box has 4 phones and takes no new one */
-"nogps_box_bt_pairing_full" = "found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car name at the top, the car)";
+"nogps_box_bt_pairing_full" = "found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car name at the top, the car). No paired phone at hand? Turn Bluetooth off on the other phones that were paired with the box. Plug the box in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts this phone for 2 minutes with the code 123456, unless it was changed, and forgets the other phones";
 
 /* Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car */
 "nogps_car_phones" = "Phones";
@@ -1459,8 +1459,8 @@
 /* Asked before this phone is removed from the sensor box */
 "nogps_phone_remove_this_text" = "This phone will not connect to the box any more, and the car will be forgotten on it.";
 
-/* Message: this phone has been removed from the sensor box on its own request */
-"nogps_phone_removed" = "This phone is removed from the box, the car is forgotten";
+/* Message on iOS: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and iOS apps cannot remove it */
+"nogps_phone_removed_forget" = "This phone is removed from the box, the car is forgotten. Remove NoGPS-%1$@ in Settings > Bluetooth: tap its info button, then Forget This Device";
 
 /* Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code */
 "nogps_phone_add" = "Add a phone";

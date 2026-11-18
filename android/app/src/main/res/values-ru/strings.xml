@@ -1066,9 +1066,9 @@
     <!-- Button under the list of the cars: search the sensor box of another car -->
     <string name="nogps_car_add">Добавить машину</string>
     <!-- State of the sensor box, shown after its name: the box has phones, a new one is added on one of them -->
-    <string name="nogps_box_bt_pairing_by_phone">найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на имя машины вверху, затем на машину и «Добавить телефон» и введите код здесь</string>
+    <string name="nogps_box_bt_pairing_by_phone">найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на имя машины вверху, затем на машину и «Добавить телефон» и введите код здесь. Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны</string>
     <!-- State of the sensor box, shown after its name: the box has 4 phones and takes no new one -->
-    <string name="nogps_box_bt_pairing_full">найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху, машина)</string>
+    <string name="nogps_box_bt_pairing_full">найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху, машина). Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны</string>
     <!-- Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car -->
     <string name="nogps_car_phones">Телефоны</string>
     <!-- Under a phone in the list of the phones of the sensor box: it is the phone the user holds -->
@@ -1085,6 +1085,8 @@
     <string name="nogps_phone_remove_this_text">Этот телефон больше не будет подключаться к блоку, а машина на нём будет забыта.</string>
     <!-- Message: this phone has been removed from the sensor box on its own request -->
     <string name="nogps_phone_removed">Этот телефон удалён из блока, машина забыта</string>
+    <!-- Message on Android: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and the app could not remove it -->
+    <string name="nogps_phone_removed_unpair">Этот телефон удалён из блока, машина забыта. Удалите NoGPS-%1$s в настройках Bluetooth</string>
     <!-- Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code -->
     <string name="nogps_phone_add">Добавить телефон</string>
     <!-- Shown with a one-time pairing code on the paired phone. %1$@ is the time left, e.g. 1:45 -->
