@@ -1252,6 +1252,15 @@
 /* In the list of the flags of test drives: the flag has been sent by email already */
 "nogps_flag_sent" = "Sent";
 
+/* Accessibility label of the button in the list of the flags of test drives that plays the voice note of a flag */
+"nogps_flag_play" = "Play voice note";
+
+/* Accessibility label of the button in the list of the flags of test drives that stops the voice note of a flag */
+"nogps_flag_stop" = "Stop";
+
+/* Accessibility label of the screenshot of a flag in the list of the flags of test drives, a tap opens it full screen */
+"nogps_flag_screenshot" = "Screenshot";
+
 /* Alert before the flags are sent: the attachments take more than the limit, a mail server may refuse the mail. The first value is the size, e.g. 25 MB, the second one the limit in MB. */
 "nogps_flags_too_big" = "The files take %1$@, a mail over %2$d MB may not go through. Send anyway?";
 
