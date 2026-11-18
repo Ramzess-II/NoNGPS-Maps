@@ -1239,6 +1239,14 @@
     <string name="nogps_box_version">Версія %1$s</string>
     <!-- Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page -->
     <string name="nogps_calibration_snackbar">Відкалібруйте блок датчиків</string>
+    <!-- Orange bar next to the speed on the map after the tap on nogps_calibration_snackbar: the box is calibrated when the car stands still -->
+    <string name="nogps_calibrate_still_hold">Не рухайтесь: ніхто не сідає й не виходить</string>
+    <!-- Orange bar next to the speed on the map while the box calibrates -->
+    <string name="nogps_calibrate_still_calibrating">Калібруємо блок датчиків</string>
+    <!-- Green bar next to the speed on the map for 3 seconds after the box is calibrated -->
+    <string name="nogps_calibrate_still_done">Блок датчиків відкалібровано</string>
+    <!-- Orange bar next to the speed on the map: the car moved during the calibration, it starts again when the car is still -->
+    <string name="nogps_calibrate_still_moved">Машина рухалась</string>
     <!-- Settings item and the switch on its page: the app is the mock location app for other apps -->
     <string name="nogps_share_position">Передавати позицію</string>
     <!-- Share position page of Settings, above the switch -->
