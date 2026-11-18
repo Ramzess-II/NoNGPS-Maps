@@ -1232,7 +1232,9 @@ void Engine::CalibrateWhenStill()
     return;
   LOG(LINFO, ("Calibrate when the car stands still"));
   m_calibrationArmed = true;
-  m_calibrationSent = false;
+  m_calibrationFailures = 0;
+  // A calibration started from the page is followed, not started again.
+  m_calibrationSent = box->GetCalibrationState() == CalibrationState::Calibrating;
   m_calibrateWaitMs = m_clock.NowMs();
   CheckCalibrateWhenStill();
 }
@@ -1272,9 +1274,10 @@ void Engine::CheckCalibrateWhenStill()
       }
       LOG(LINFO, ("The car has moved during the calibration, wait for it to stand"));
       m_calibrateWaitMs = now;
+      ++m_calibrationFailures;
     }
   }
-  if (lost || (!m_calibrationSent && now - m_calibrateWaitMs >= kCalibrateWhenStillTimeoutMs))
+  if (lost || m_calibrationFailures >= kCalibrateWhenStillMaxFailures || (!m_calibrationSent && now - m_calibrateWaitMs >= kCalibrateWhenStillTimeoutMs))
   {
     LOG(LINFO, ("The calibration of the box when still is cancelled, lost =", lost));
     CancelCalibrateWhenStill();

@@ -2563,6 +2563,23 @@ UNIT_TEST(NoGps_Engine_CalibrationWhenStillStartsAgainAfterMoving)
   TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
 }
 
+UNIT_TEST(NoGps_Engine_CalibrationWhenStillGivesUpAfterRepeatedFailures)
+{
+  // A box that cannot calibrate on a still car (bad mounting) is reported as moving each time.
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env);
+  env.m_engine.CalibrateWhenStill();
+  for (int i = 0; i < Engine::kCalibrateWhenStillMaxFailures; ++i)
+  {
+    TEST(env.m_engine.GetStatus().m_calibrationArmed, (i));
+    box.Wait(1000, true, 40);
+    TEST_EQUAL(box.Calibrations(), i + 1, ());
+    box.Reply("ERR,MOVING");
+    box.Wait(1000, false, 200);
+  }
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+}
+
 UNIT_TEST(NoGps_Engine_CalibrationWhenStillIsCancelled)
 {
   {

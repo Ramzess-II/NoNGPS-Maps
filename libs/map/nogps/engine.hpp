@@ -289,6 +289,8 @@ public:
   static int64_t constexpr kNotCalibratedDelayMs = 5000;
   // The car must stand still within this time after the user has asked to calibrate the box.
   static int64_t constexpr kCalibrateWhenStillTimeoutMs = 120'000;
+  /// The box reports every failed calibration as the car moving: a still car that keeps failing is a bad mounting.
+  static int constexpr kCalibrateWhenStillMaxFailures = 5;
   static int64_t constexpr kCalibrateWhenStillIntervalMs = 200;
   // The bar of the speed calibration slides out after this long at a speed GPS has not measured, and stays this long
   // after the speed leaves for a measured one or slows down below SpeedTable::kMinSpeedKmh: 49-51 km/h doesn't make
@@ -690,6 +692,7 @@ private:
   // Since when the car is waited to stand still, and whether the box calibrates now.
   int64_t m_calibrateWaitMs = 0;
   bool m_calibrationSent = false;
+  int m_calibrationFailures = 0;
   bool m_calibrationArmed = false;
   // The platform forgets the car on Event::ThisPhoneRemoved: not while the box is being read.
   Timer m_phoneRemovedTimer;
