@@ -1027,6 +1027,32 @@ void Engine::OnThisPhoneRemoved()
   m_phoneRemovedTimer.Start(0, [this] { m_delegate.OnEvent(Event::ThisPhoneRemoved); });
 }
 
+std::vector<Sprint> Engine::GetSprints() const
+{
+  auto sprints = ParseSprints(m_storage.Get<std::string>(Storage::kSprints, ""));
+  std::reverse(sprints.begin(), sprints.end());
+  return sprints;
+}
+
+void Engine::OnSprint(SprintTimer::Result const & result)
+{
+  Sprint const sprint{result.m_kind, m_clock.UnixNowMs(), std::round(result.m_sec * 100) / 100,
+                      static_cast<int>(std::lround(result.m_trapKmh))};
+  auto const saved = m_storage.Get<std::string>(Storage::kSprints, "");
+  std::optional<double> best;
+  for (auto const & before : ParseSprints(saved))
+    if (before.m_kind == sprint.m_kind && (!best || before.m_sec < *best))
+      best = before.m_sec;
+  m_storage.Set(Storage::kSprints, (saved.empty() ? "" : saved + ",") + SerializeSprint(sprint));
+  m_lastSprint = sprint;
+  m_lastSprintBestSec = best.value_or(0);
+  m_lastSprintRecord = !best || sprint.m_sec < *best;
+  LOG(LINFO, ("SPRINT", "kind=" + DebugPrint(sprint.m_kind), "sec=" + strings::to_string_dac(sprint.m_sec, 2),
+              "trap=" + std::to_string(sprint.m_trapKmh), std::string("record=") + (m_lastSprintRecord ? "1" : "0"),
+              "best=" + (best ? strings::to_string_dac(*best, 2) : std::string("-"))));
+  Notify(Event::SprintMeasured);
+}
+
 void Engine::ListBoxPhones()
 {
   if (auto * box = m_inertial ? m_inertial->GetEsp32() : nullptr)
@@ -1807,6 +1833,11 @@ Status Engine::GetStatus()
     status.m_speedHintRange = m_speedHintRange;
     status.m_speedHintGps = MsSince(m_speedTableGpsMs) < kSpeedHintGpsMs;
     status.m_speedMilestone = m_speedMilestone;
+    status.m_sprintKind = m_lastSprint.m_kind;
+    status.m_sprintSec = m_lastSprint.m_sec;
+    status.m_sprintTrapKmh = m_lastSprint.m_trapKmh;
+    status.m_sprintBestSec = m_lastSprintBestSec;
+    status.m_sprintRecord = m_lastSprintRecord;
     status.m_speedLagSec = m_inertial->GetSpeedLag();
     status.m_speedLagMeasured = m_inertial->IsSpeedLagMeasured();
     status.m_calibration = m_inertial->GetCalibrationState();

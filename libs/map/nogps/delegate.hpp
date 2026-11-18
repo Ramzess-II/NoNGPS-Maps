@@ -73,6 +73,8 @@ enum class Event
   // GPS has measured a range of the speed table, see Status::m_speedHintRange and m_speedMilestone. Told once for the
   // ranges measured since the last check, not for the ranges of a table restored or taken from the box.
   SpeedRangeCalibrated,
+  // A run from a standing start is timed, see Status::m_sprintKind. Told once for every result.
+  SprintMeasured,
 };
 
 /// What the platform does about the ESP32 sensor box over Bluetooth LE, told to Engine::OnEsp32BleState().

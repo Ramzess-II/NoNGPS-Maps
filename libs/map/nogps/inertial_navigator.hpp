@@ -12,6 +12,7 @@
 #include "map/nogps/speed_lag.hpp"
 #include "map/nogps/speed_scale.hpp"
 #include "map/nogps/speed_table.hpp"
+#include "map/nogps/sprint_timer.hpp"
 #include "map/nogps/turn_sign_checker.hpp"
 
 #include "geometry/latlon.hpp"
@@ -91,10 +92,13 @@ public:
     /// The link to the box closes when the navigation stops, the calibration is saved: the last moment to write to the
     /// box.
     virtual void OnBoxStopping() {}
+    /// A run from a standing start is timed, see SprintTimer.
+    virtual void OnSprint(SprintTimer::Result const & /* result */) {}
   };
 
   // Without fresh speed the position can't be calculated.
   static int64_t constexpr kSpeedStaleMs = 2000;
+  static_assert(kSpeedStaleMs == SprintTimer::kSpeedStaleMs);
   static int64_t constexpr kOutputIntervalMs = 200;
   static double constexpr kMovingSpeedMps = 0.5;
   // GPS bearing is noisy at low speeds, unless GPS tells it is accurate: it is so from a walking speed on.
@@ -746,6 +750,7 @@ private:
   std::optional<SlowBends> m_slowBends;
   // The speed errors measured by trusted GPS at different speeds.
   SpeedTable m_speedTable;
+  SprintTimer m_sprintTimer;
   // The speed errors told by the roads until GPS has measured them, see kMinRoughStretchM.
   SpeedTable m_roughSpeedTable{false /* learnsOffset */};
   // The change of the GPS table told by GPS and the roads, see kMinRoadFactorStretchM.

@@ -1269,6 +1269,9 @@ void InertialNavigator::OnSpeed(int speedKmh, int64_t timeMs)
   // The time the position is calculated with this speed since, not the time the car measured it at.
   int64_t const now = m_clock.NowMs();
   double const speedMps = speedKmh / 3.6 * GetSpeedScale(speedKmh);
+  // The runs are timed by the time the car measured the speed at: the lag is the same for the whole run.
+  for (auto const & result : m_sprintTimer.OnSample(speedMps * 3.6, timeMs))
+    m_listener.OnSprint(result);
   m_speedLag.OnCarSpeed(now, speedMps);
   CheckBoxAccel();
   for (AccelSpeed * accelSpeed : {&m_boxAccelSpeed, &m_phoneAccelSpeed})

@@ -43,6 +43,8 @@ public:
   static std::string_view constexpr kBoxPowerOns = "NoGpsBoxPowerOns";
   // The box has been powered on since the user calibrated it.
   static std::string_view constexpr kBoxCalibrationAdvised = "NoGpsBoxCalibrationAdvised";
+  // The timed runs of the car, "kind:unixMs:centisec:trapKmh,...", oldest first, see SerializeSprint().
+  static std::string_view constexpr kSprints = "NoGpsSprints";
   // The identifiers of the boxes of the cars of the user, "C47D,42FD", see CarStorage.
   static std::string_view constexpr kCars = "NoGpsCars";
   // The car of the box heard the last time or chosen by the user.
@@ -113,9 +115,9 @@ std::string DebugPrint(Car const & car);
 class CarStorage : public Storage
 {
 public:
-  static std::array<std::string_view, 10> constexpr kCarValues = {
-      kSpeedScale, kSpeedTable,  kRoughSpeedTable, kSpeedFactor, kSpeedLag,
-      kBoxAccel,   kCarPosition, kBoxPowerOnTime,  kBoxPowerOns, kBoxCalibrationAdvised,
+  static std::array<std::string_view, 11> constexpr kCarValues = {
+      kSpeedScale,  kSpeedTable,     kRoughSpeedTable, kSpeedFactor,           kSpeedLag, kBoxAccel,
+      kCarPosition, kBoxPowerOnTime, kBoxPowerOns,     kBoxCalibrationAdvised, kSprints,
   };
   // The name the user has given the car, kept by the keys of the car as its values: NoGpsCar.C47D.Name.
   static std::string_view constexpr kCarName = "NoGpsName";
