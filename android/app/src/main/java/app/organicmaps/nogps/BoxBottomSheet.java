@@ -183,6 +183,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   // The code for a new phone, shown while the box takes it.
   @Nullable
   private AlertDialog mAddPhoneDialog;
+  private TextView mAddPhoneCode;
+  private TextView mAddPhoneMessage;
   // The user has turned the share on before the app is picked as the mock location app.
   // The car of the Car page, and if the page was opened from the Car item of the Box page, not from the cars.
   @NonNull
@@ -1116,9 +1118,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private void addPhone()
   {
     NoGps.nativeStartAddPhone();
+    final View content = getLayoutInflater().inflate(R.layout.dialog_nogps_add_phone, null);
+    mAddPhoneCode = content.findViewById(R.id.add_phone_code);
+    mAddPhoneMessage = content.findViewById(R.id.add_phone_message);
     mAddPhoneDialog = new MaterialAlertDialogBuilder(requireContext())
                           .setTitle(R.string.nogps_phone_add)
-                          .setMessage(R.string.nogps_phone_add_opening)
+                          .setView(content)
                           .setPositiveButton(R.string.close, null)
                           .setOnDismissListener(dialog -> {
                             mAddPhoneDialog = null;
@@ -1136,14 +1141,16 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     {
       case NONE, OPENING -> getString(R.string.nogps_phone_add_opening);
       case OPEN ->
-        status.addPhoneCode + "\n\n"
-            + getString(R.string.nogps_phone_add_code, DateUtils.formatElapsedTime(status.addPhoneSecondsLeft));
+        getString(R.string.nogps_phone_add_code, DateUtils.formatElapsedTime(status.addPhoneSecondsLeft));
       case ADDED -> getString(R.string.nogps_phone_added);
       case EXPIRED -> getString(R.string.nogps_phone_add_expired);
       case FULL -> getString(R.string.nogps_phone_add_full);
       case FAILED -> getString(R.string.nogps_phone_add_failed);
     };
-    mAddPhoneDialog.setMessage(text);
+    final boolean open = status.getAddPhone() == NoGps.AddPhone.OPEN;
+    mAddPhoneCode.setText(open ? status.addPhoneCode : "");
+    mAddPhoneCode.setVisibility(open ? View.VISIBLE : View.GONE);
+    mAddPhoneMessage.setText(text);
   }
 
   private void updateBoxPage(@NonNull NoGps.Status status)

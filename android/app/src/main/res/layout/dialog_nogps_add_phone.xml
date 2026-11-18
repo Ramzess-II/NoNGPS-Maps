@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:orientation="vertical"
+              android:paddingStart="24dp"
+              android:paddingEnd="24dp"
+              android:paddingTop="8dp">
+
+  <!-- Sized in sp-free dp so a large font scale does not wrap the digits. -->
+  <TextView
+    android:id="@+id/add_phone_code"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:letterSpacing="0.15"
+    android:maxLines="1"
+    android:textColor="?colorAccent"
+    android:textSize="40dp"
+    android:textStyle="bold"
+    android:visibility="gone"
+    tools:ignore="SpUsage"
+    xmlns:tools="http://schemas.android.com/tools" />
+
+  <TextView
+    android:id="@+id/add_phone_message"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="16dp"
+    android:gravity="center"
+    android:text="@string/nogps_phone_add_opening"
+    android:textAppearance="?attr/textAppearanceBodyMedium" />
+</LinearLayout>
