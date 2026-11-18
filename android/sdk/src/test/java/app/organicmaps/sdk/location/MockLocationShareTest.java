@@ -144,4 +144,42 @@ public class MockLocationShareTest
     schedule.reset();
     assertFalse(schedule.dropsFix(true));
   }
+
+  @Test
+  public void activeWhileSharingAndWhileItPausesToHearGps()
+  {
+    assertFalse(MockLocationShare.isActive(State.OFF, false));
+    assertTrue(MockLocationShare.isActive(State.SHARING, true));
+    assertTrue(MockLocationShare.isActive(State.PROBING, false));
+    // The providers could not be added.
+    assertFalse(MockLocationShare.isActive(State.SHARING, false));
+  }
+
+  @Test
+  public void tellsTheListenerOncePerChange()
+  {
+    final int[] calls = {0};
+    final boolean[] last = {false};
+    MockLocationShare.setListener(active -> {
+      calls[0]++;
+      last[0] = active;
+    });
+    try
+    {
+      MockLocationShare.setActive(true);
+      MockLocationShare.setActive(true);
+      assertEquals(1, calls[0]);
+      assertTrue(last[0]);
+      assertTrue(MockLocationShare.isActive());
+      MockLocationShare.setActive(false);
+      MockLocationShare.setActive(false);
+      assertEquals(2, calls[0]);
+      assertFalse(last[0]);
+    }
+    finally
+    {
+      MockLocationShare.setListener(null);
+      MockLocationShare.setActive(false);
+    }
+  }
 }
