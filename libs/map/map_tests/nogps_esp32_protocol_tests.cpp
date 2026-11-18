@@ -403,6 +403,48 @@ UNIT_TEST(NoGps_Esp32_ParsesPhones)
   TEST(!ParsePhones(reply("OK,D0:56:FB:11:00:88|x,1")), ());
 }
 
+UNIT_TEST(NoGps_PeerSync_PeerLineFormat)
+{
+  Peer peer;
+  peer.m_kind = 'A';
+  peer.m_distMm = 123456;
+  peer.m_latE7 = 501234567;
+  peer.m_lonE7 = -301234567;
+  peer.m_headingCdeg = 9050;
+  peer.m_accuracyDm = 50;
+  peer.m_source = 'T';
+  TEST_EQUAL(PeerCommand(peer), "PEER,A,123456,501234567,-301234567,9050,50,T", ());
+  // The box passes the payload on as it is.
+  auto const fields = Parse(WithCrc("NGX,1,A,123456,501234567,-301234567,9050,50,T"));
+  TEST(fields, ());
+  auto const parsed = ParsePeer(*fields);
+  TEST(parsed, ());
+  TEST(*parsed == peer, ());
+
+  // No heading.
+  peer.m_headingCdeg = -1;
+  TEST(*ParsePeer(*Parse(WithCrc("NGX,1,A,123456,501234567,-301234567,-1,50,T"))) == peer, ());
+
+  // What is not a place of a phone.
+  for (auto const body : {"NGX,1,X,1,5,5,100,10,G", "NGX,2,A,1,5,5,100,10,G", "NGX,1,A,1,5,5,100,10",
+                          "NGX,1,A,x,5,5,100,10,G", "NGX,1,A,1,910000000,5,100,10,G", "NGX,1,A,1,5,5,36000,10,G",
+                          "NGX,1,A,1,5,5,100,10,GG", "NGD,1,A,1,5,5,100,10,G"})
+  {
+    TEST(!ParsePeer(*Parse(WithCrc(body))), (body));
+  }
+}
+
+UNIT_TEST(NoGps_PeerSync_InfoHasPeerAbility)
+{
+  auto const info = [](std::string const & abilities)
+  {
+    return ParseInfo(*Parse(
+        WithCrc("NGI,1,0.4.3,2026-11-18T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID," + abilities + ",3")));
+  };
+  TEST(info("BLE OTA CAR PHONES MULTI PEER")->m_canPeer, ());
+  TEST(!info("BLE OTA CAR PHONES MULTI")->m_canPeer, ());
+}
+
 UNIT_TEST(NoGps_Esp32_HelloWithNameOfPhone)
 {
   TEST_EQUAL(Hello("", 1794685760123), "HELLO", ());

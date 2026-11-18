@@ -463,6 +463,8 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
         phones.get());
   }
   SetNoGpsField(env, out, "boxReadOnly", status.m_boxReadOnly);
+  SetNoGpsField(env, out, "peerRole", static_cast<int>(status.m_peerRole));
+  SetNoGpsString(env, out, "peerName", status.m_peerName);
   SetNoGpsField(env, out, "addPhone", static_cast<int>(status.m_addPhone));
   SetNoGpsString(env, out, "addPhoneCode", status.m_addPhoneCode);
   SetNoGpsField(env, out, "addPhoneSecondsLeft", status.m_addPhoneSecondsLeft);

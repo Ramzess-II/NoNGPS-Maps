@@ -9,6 +9,7 @@
 #include "map/nogps/gyro_calibrator.hpp"
 #include "map/nogps/motion_source.hpp"
 #include "map/nogps/path_matcher.hpp"
+#include "map/nogps/peer_sync.hpp"
 #include "map/nogps/speed_lag.hpp"
 #include "map/nogps/speed_scale.hpp"
 #include "map/nogps/speed_table.hpp"
@@ -86,6 +87,8 @@ public:
     virtual void OnBoxCarValues(std::map<std::string, std::string> const & /* values */) {}
     /// See MotionSource::Listener::OnThisPhoneRemoved().
     virtual void OnThisPhoneRemoved() {}
+    /// See MotionSource::Listener::OnPeerPlace().
+    virtual void OnPeerPlace(PeerPlace const & /* place */) {}
     virtual void OnBoxCarWritten(std::string const & /* key */, std::string const & /* value */,
                                  std::string const & /* error */)
     {}
@@ -567,6 +570,7 @@ private:
   void OnBoxCarValues(std::map<std::string, std::string> const & values) override;
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
   void OnThisPhoneRemoved() override { m_listener.OnThisPhoneRemoved(); }
+  void OnPeerPlace(PeerPlace const & place) override { m_listener.OnPeerPlace(place); }
 
   void CheckTurnSign(Fix const & gps);
   double GetSpeedScale(int speedKmh) const;

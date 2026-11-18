@@ -117,8 +117,20 @@ final class NoGpsStatusBar: UIView {
     }
   }
 
+  /// The phone follows the other phone on the box: it shows the place of the other phone, "Position from Pixel 8".
+  /// Nil if this phone leads or is alone.
+  static func peerPositionText(_ status: NoGpsStatus) -> String? {
+    guard status.peerRole == .following else { return nil }
+    let name = status.peerName.isEmpty ? L("nogps_peer_other_phone") : status.peerName
+    return String(format: L("nogps_peer_position_from"), name)
+  }
+
   static func sourceText(_ status: NoGpsStatus) -> (word: String, accuracy: String?) {
     let word: String
+    // Without its own GPS the follower shows the place of the other phone.
+    if status.source == .manual || status.source == .inertial, let peer = peerPositionText(status) {
+      return (peer, "±" + NoGpsControls.formatAccuracy(status.accuracyM))
+    }
     switch status.source {
     case .gps: word = L("nogps_status_gps")
     case .network: word = L("nogps_bar_network")

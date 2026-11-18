@@ -1140,6 +1140,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
                       : getString(R.string.nogps_box_version, status.boxFirmware) + ", " + BoxTexts.capitalize(state));
     // Another phone calibrates and updates the box.
     mReadOnly.setVisibility(connected && status.boxReadOnly ? View.VISIBLE : View.GONE);
+    // The phone that follows the other one shows its place.
+    final String peer = BoxTexts.peerPositionText(requireContext(), status);
+    mReadOnly.setText(peer == null ? getString(R.string.nogps_box_read_only)
+                                   : getString(R.string.nogps_box_read_only) + "\n" + peer);
     final NoGps.FirmwareUpdate update = status.getFirmwareUpdate();
     final boolean updating = BoxTexts.isUpdating(update);
     mFirmwareRow.setVisibility(updating || !status.boxFirmware.isEmpty() ? View.VISIBLE : View.GONE);

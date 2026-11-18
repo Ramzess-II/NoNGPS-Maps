@@ -22,6 +22,7 @@ set(SRC
   nogps_esp32_protocol_tests.cpp
   nogps_gps_detectors_tests.cpp
   nogps_path_matcher_tests.cpp
+  nogps_peer_sync_tests.cpp
   nogps_inertial_tests.cpp
   nogps_replay_tests.cpp
   nogps_roads_tests.cpp

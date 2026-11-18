@@ -203,7 +203,9 @@ final class NoGpsBoxPage: MWMTableViewController {
       cell.accessoryType = .disclosureIndicator
       cell.selectionStyle = .default
     case .readOnly:
-      content.text = L("nogps_box_read_only")
+      // The phone that follows the other one shows its place.
+      content.text = [L("nogps_box_read_only"), NoGpsStatusBar.peerPositionText(status)].compactMap { $0 }
+        .joined(separator: "\n")
       content.textProperties.color = .secondaryLabel
     case .fixHint:
       content.text = L("nogps_sensors_hint_box")

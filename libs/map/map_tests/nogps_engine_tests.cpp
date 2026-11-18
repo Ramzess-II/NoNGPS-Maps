@@ -60,7 +60,9 @@ public:
       m_clock.Advance(20);
       m_boxTimeMs += 20;
       m_yawMdeg += yawRateDegS * 20;
-      m_engine.OnEsp32BleBytes(BoxDataLine(++m_seq, m_boxTimeMs, std::llround(m_yawMdeg), speedKmh, flags));
+      m_distMm += speedKmh / 3.6 * 20;
+      m_engine.OnEsp32BleBytes(
+          BoxDataLine(++m_seq, m_boxTimeMs, std::llround(m_yawMdeg), speedKmh, flags, std::llround(m_distMm)));
     }
   }
 
@@ -80,6 +82,7 @@ public:
     m_seq = 0;
     m_boxTimeMs = 0;
     m_yawMdeg = 0;
+    m_distMm = 0;
   }
 
   /// The box sends nothing, |ms| pass by its clock.
@@ -105,6 +108,7 @@ private:
   int64_t m_seq = 0;
   int64_t m_boxTimeMs = 100'000;
   double m_yawMdeg = 0;
+  double m_distMm = 0;
 };
 
 void TestAlmostEqualAbs(double actual, double expected, double eps)
@@ -5216,6 +5220,301 @@ UNIT_TEST(NoGps_SpeedLimitRoadFoundLater)
   env.m_env.m_map.m_roads = &env.m_roads;
   TEST_EQUAL(env.m_env.m_engine.GetStatus().m_speedLimitKmh, 50, ());
 }
+/// Two phones on one box that passes their places on: the first one leads, the second follows. The box sends the same
+/// lines to both, and tells each the places the other one has sent.
+class TwoPhones
+{
+public:
+  explicit TwoPhones(bool peerAbility = true, bool leaderGpsBox = false)
+  {
+    std::string const abilities = peerAbility ? "BLE OTA CAR PHONES MULTI PEER" : "BLE OTA CAR PHONES MULTI";
+    std::string const info =
+        "NGI,1,0.4.3,2026-11-18T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID," + abilities + ",3";
+    for (auto * env : {&m_leader, &m_follower})
+      env->m_engine.OnEsp32BleBytes(BoxLine(info));
+    Drive(1000, 0, 0);
+    AnswerList(m_leader, "Pixel 8", "iPhone", true);
+    AnswerList(m_follower, "Pixel 8", "iPhone", false);
+  }
+
+  /// The box lists its phones, the first one changes it.
+  void AnswerList(Env & env, std::string const & first, std::string const & second, bool changesBox)
+  {
+    auto const & sent = env.m_delegate.m_esp32BleSent;
+    auto const list = std::find_if(sent.rbegin(), sent.rend(),
+                                   [](auto const & line) { return line.find(",BT_LIST*") != std::string::npos; });
+    TEST(list != sent.rend(), ());
+    auto const id = (*esp32::Parse(*list))[1];
+    // This phone is the one that has asked.
+    std::string const phones = "BC:D0:74:A9:71:92|" + first + "|1794685760|" + (changesBox ? "1" : "0") +
+                               ";BC:D0:74:A9:71:93|" + second + "|1794685761|" + (changesBox ? "0" : "1");
+    env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + id + ",OK," + phones + "," + (changesBox ? "1" : "0")));
+  }
+
+  /// The box counts the same for both phones, the places go between them.
+  void Drive(int64_t ms, int speedKmh, double yawRateDegS)
+  {
+    for (int64_t t = 0; t < ms; t += 20)
+    {
+      m_leader.Drive(20, speedKmh, yawRateDegS);
+      m_follower.Drive(20, speedKmh, yawRateDegS);
+      Relay();
+    }
+  }
+
+  /// Passes on what the phones have sent to the box with PEER since the last time.
+  void Relay()
+  {
+    Relay(m_leader, m_follower, m_leaderRelayed);
+    Relay(m_follower, m_leader, m_followerRelayed);
+  }
+
+  /// What the phone has sent with PEER: the payload.
+  static std::vector<std::string> Sent(Env const & env)
+  {
+    std::vector<std::string> payloads;
+    for (auto const & line : env.m_delegate.m_esp32BleSent)
+    {
+      auto const fields = esp32::Parse(line);
+      if (!fields || fields->size() < 4 || (*fields)[2] != "PEER")
+        continue;
+      std::string payload = (*fields)[3];
+      for (size_t i = 4; i < fields->size(); ++i)
+        payload += "," + (*fields)[i];
+      payloads.push_back(payload);
+    }
+    return payloads;
+  }
+
+  static size_t CountSent(Env const & env, char kind)
+  {
+    auto const sent = Sent(env);
+    return std::count_if(sent.begin(), sent.end(), [kind](auto const & payload) { return payload[0] == kind; });
+  }
+
+  Env m_leader{true /* inertial */};
+  Env m_follower{true /* inertial */};
+
+private:
+  static void Relay(Env & from, Env & to, size_t & done)
+  {
+    auto const & sent = from.m_delegate.m_esp32BleSent;
+    while (done < sent.size())
+    {
+      auto const fields = esp32::Parse(sent[done++]);
+      if (!fields || fields->size() < 4 || (*fields)[2] != "PEER")
+        continue;
+      std::string line = "NGX,1";
+      for (size_t i = 3; i < fields->size(); ++i)
+        line += "," + (*fields)[i];
+      to.m_engine.OnEsp32BleBytes(BoxLine(line));
+    }
+  }
+
+  size_t m_leaderRelayed = 0;
+  size_t m_followerRelayed = 0;
+};
+
+UNIT_TEST(NoGps_Engine_PeerRolesFollowTheBox)
+{
+  TwoPhones phones;
+  auto const leader = phones.m_leader.m_engine.GetStatus();
+  TEST_EQUAL(leader.m_peerRole, PeerRole::Leading, ());
+  auto const follower = phones.m_follower.m_engine.GetStatus();
+  TEST_EQUAL(follower.m_peerRole, PeerRole::Following, ());
+  TEST_EQUAL(follower.m_peerName, "Pixel 8", ());
+  TEST(leader.m_peerName.empty(), ());
+
+  // The leader leaves: the box tells the follower that it changes the box now, the list has one phone more.
+  phones.m_follower.m_engine.OnEsp32BleBytes(BoxLine("NGE,1,5,100,I,PHONE_LOST,BC:D0:74:A9:71:92"));
+  phones.AnswerList(phones.m_follower, "Pixel 8", "iPhone", true);
+  TEST_EQUAL(phones.m_follower.m_engine.GetStatus().m_peerRole, PeerRole::Leading, ());
+}
+
+UNIT_TEST(NoGps_Engine_PeerNothingWithoutAbility)
+{
+  // One of the phones is alone, or the box doesn't pass the places on: as before.
+  TwoPhones phones(false /* peerAbility */);
+  TEST_EQUAL(phones.m_leader.m_engine.GetStatus().m_peerRole, PeerRole::None, ());
+  TEST_EQUAL(phones.m_follower.m_engine.GetStatus().m_peerRole, PeerRole::None, ());
+  MarkCar(phones.m_leader, 50);
+  phones.m_leader.Drive(2 * kPeerSnapshotIntervalMs, 0, 0);
+  phones.m_follower.m_engine.PlaceMarkByTap(At(60, 3));
+  TEST(TwoPhones::Sent(phones.m_leader).empty(), ());
+  TEST(TwoPhones::Sent(phones.m_follower).empty(), ());
+
+  // A phone alone on a box with the ability has nobody to tell.
+  Env alone(true /* inertial */);
+  alone.m_engine.OnEsp32BleBytes(BoxLine(
+      "NGI,1,0.4.3,2026-11-18T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES MULTI PEER,3"));
+  alone.Drive(1000, 0, 0);
+  auto const sent = alone.m_delegate.m_esp32BleSent;
+  auto const list = std::find_if(sent.begin(), sent.end(),
+                                 [](auto const & line) { return line.find(",BT_LIST*") != std::string::npos; });
+  TEST(list != sent.end(), ());
+  alone.m_engine.OnEsp32BleBytes(BoxLine("NGA," + (*esp32::Parse(*list))[1] + ",OK,BC:D0:74:A9:71:92|Pixel 8|1|1,1"));
+  TEST_EQUAL(alone.m_engine.GetStatus().m_peerRole, PeerRole::None, ());
+  MarkCar(alone, 50);
+  alone.Drive(2 * kPeerSnapshotIntervalMs, 0, 0);
+  TEST(TwoPhones::Sent(alone).empty(), ());
+}
+
+UNIT_TEST(NoGps_Engine_PeerLeaderTapReachesFollower)
+{
+  TwoPhones phones;
+  phones.m_leader.m_engine.SetManualMode(true);
+  phones.Drive(500, 0, 0);
+  TEST(phones.m_leader.m_engine.PlaceMarkByTap(At(150, 3)), ());
+  phones.Drive(40, 0, 0);
+
+  auto const sent = TwoPhones::Sent(phones.m_leader);
+  TEST_EQUAL(sent.size(), 1, ());
+  TEST_EQUAL(sent[0][0], 'A', ());
+  TEST_EQUAL(sent[0].back(), 'T', ());
+
+  // The follower had no place: the car is where the leader has put it, in the manual mode as after a tap.
+  auto & follower = phones.m_follower;
+  TEST(follower.m_engine.IsManualMode(), ());
+  TestAlmostEqualAbs(East(follower.Last().m_position), 150, 1);
+  TestAlmostEqualAbs(North(follower.Last().m_position), 0, 1);
+  TEST_EQUAL(follower.Last().m_bearingDeg, 90.0, ());
+  // What it has got it doesn't send on.
+  TEST(TwoPhones::Sent(follower).empty(), ());
+}
+
+UNIT_TEST(NoGps_Engine_PeerAnchorIsCarriedByTheBoxOfTheFollower)
+{
+  TwoPhones phones;
+  phones.m_leader.m_engine.SetManualMode(true);
+  phones.Drive(500, 0, 0);
+  TEST(phones.m_leader.m_engine.PlaceMarkByTap(At(150, 3)), ());
+  // The line of the leader comes to the follower after the car has driven on for 2 s at 36 km/h: 20 m.
+  auto & follower = phones.m_follower;
+  follower.Drive(2000, 36, 0);
+  phones.m_leader.Drive(2000, 36, 0);
+  phones.Relay();
+  follower.Drive(100, 36, 0);
+  // The follower has driven from the place as far as the leader has: 20 m and the 1 m since the line came.
+  TestAlmostEqualAbs(East(follower.Last().m_position), 171, 2);
+}
+
+UNIT_TEST(NoGps_Engine_PeerSnapshotGivesPlaceToFollowerWithout)
+{
+  TwoPhones phones;
+  // The leader has a place and the follower joins later: it has none until a snapshot comes.
+  phones.m_follower.m_engine.Stop();
+  MarkCar(phones.m_leader, 200);
+  phones.m_leader.Drive(500, 0, 0);
+  TEST_EQUAL(TwoPhones::CountSent(phones.m_leader, 'S'), 0, ());
+  phones.m_follower.m_engine.Start();
+  phones.m_follower.ConnectBox();
+  phones.m_follower.m_engine.OnEsp32BleBytes(BoxLine(
+      "NGI,1,0.4.3,2026-11-18T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES MULTI PEER,3"));
+  phones.m_follower.Drive(1000, 0, 0);
+  phones.AnswerList(phones.m_follower, "Pixel 8", "iPhone", false);
+  TEST(!phones.m_follower.m_engine.GetStatus().m_hasInertialPosition, ());
+  size_t const before = phones.m_follower.m_delegate.m_positions.size();
+
+  phones.Drive(kPeerSnapshotIntervalMs, 0, 0);
+  TEST_GREATER_OR_EQUAL(TwoPhones::CountSent(phones.m_leader, 'S'), 1, ());
+  TEST_GREATER(phones.m_follower.m_delegate.m_positions.size(), before, ());
+  TestAlmostEqualAbs(East(phones.m_follower.Last().m_position), 200, 1);
+}
+
+UNIT_TEST(NoGps_Engine_PeerFollowerTapReachesLeaderAndIsAnswered)
+{
+  TwoPhones phones;
+  auto & leader = phones.m_leader;
+  auto & follower = phones.m_follower;
+  MarkCar(leader, 150);
+  MarkCar(follower, 150);
+  phones.Drive(1000, 0, 0);
+  size_t const leaderAnchors = TwoPhones::CountSent(leader, 'A');
+  size_t const corrections = TwoPhones::CountSent(follower, 'C');
+
+  TEST(follower.m_engine.PlaceMarkByTap(At(350, 3)), ());
+  phones.Drive(300, 0, 0);
+  // The follower has applied it at once and told the leader.
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'C'), corrections + 1, ());
+  TestAlmostEqualAbs(East(follower.Last().m_position), 350, 1);
+  // The leader has applied it and answered with an anchor.
+  TestAlmostEqualAbs(East(leader.Last().m_position), 350, 1);
+  TEST_EQUAL(TwoPhones::CountSent(leader, 'A'), leaderAnchors + 1, ());
+  // The anchor is not a correction: the follower has not sent another one.
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'C'), corrections + 1, ());
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'A'), 0, ());
+}
+
+UNIT_TEST(NoGps_Engine_PeerReversalAndSwitchReachTheOtherPhone)
+{
+  TwoPhones phones;
+  auto & leader = phones.m_leader;
+  auto & follower = phones.m_follower;
+  MarkCar(leader, 150);
+  phones.Drive(1000, 0, 0);
+  TestAlmostEqualAbs(East(follower.Last().m_position), 150, 1);
+  TEST_EQUAL(follower.Last().m_bearingDeg, 90.0, ());
+
+  leader.m_engine.ReverseDirection();
+  phones.Drive(300, 0, 0);
+  TEST_EQUAL(leader.Last().m_bearingDeg, 270.0, ());
+  TEST_EQUAL(follower.Last().m_bearingDeg, 270.0, ());
+
+  // The follower turns the car around: the leader does the same.
+  follower.m_engine.ReverseDirection();
+  phones.Drive(300, 0, 0);
+  TEST_EQUAL(follower.Last().m_bearingDeg, 90.0, ());
+  TEST_EQUAL(leader.Last().m_bearingDeg, 90.0, ());
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'C'), 1, ());
+}
+
+UNIT_TEST(NoGps_Engine_PeerFollowerGpsGoesToManualLeaderOnly)
+{
+  TwoPhones phones;
+  auto & leader = phones.m_leader;
+  auto & follower = phones.m_follower;
+  // The leader trusts GPS: the follower keeps its GPS to itself.
+  leader.DriveGps(3, 0, 10);
+  follower.DriveGps(3, 0, 10);
+  phones.Drive(300, 0, 0);
+  TEST(!leader.m_engine.IsManualMode(), ());
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'G'), 0, ());
+  TEST_GREATER_OR_EQUAL(TwoPhones::CountSent(leader, 'A'), 1, ());
+
+  // The leader is in the manual mode, it tells so.
+  leader.m_engine.SetManualMode(true);
+  phones.Drive(500, 0, 0);
+  TEST(leader.m_engine.PlaceMarkByTap(At(50, 3)), ());
+  phones.Drive(300, 0, 0);
+  follower.m_clock.Advance(1000);
+  follower.m_engine.OnFix(GpsAt(follower.m_clock, 31, 0, 90.0, 10));
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'G'), 1, ());
+  // A GPS position that is not good is not sent.
+  follower.m_clock.Advance(1000);
+  follower.m_engine.OnFix(GpsAt(follower.m_clock, 41, 0, 90.0, 10, 80 /* accuracyM */));
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'G'), 1, ());
+  // The leader takes it as its own GPS: the checks are the same, and it is told that GPS works.
+  leader.m_clock.Advance(2000);
+  TEST_GREATER_OR_EQUAL(leader.m_engine.GetStatus().m_lastGoodGpsAgeMs, 2000, ());
+  phones.Relay();
+  TEST_LESS(leader.m_engine.GetStatus().m_lastGoodGpsAgeMs, 1000, ());
+  TEST(leader.m_engine.IsManualMode(), ());
+}
+
+UNIT_TEST(NoGps_Engine_PeerFollowerKeepsItsGps)
+{
+  TwoPhones phones;
+  auto & leader = phones.m_leader;
+  auto & follower = phones.m_follower;
+  leader.DriveGps(3, 0, 10);
+  follower.DriveGps(5, 0, 10);
+  // The snapshot of the leader does not turn the manual mode on for the follower that has GPS.
+  phones.Drive(kPeerSnapshotIntervalMs, 36, 0);
+  TEST_GREATER_OR_EQUAL(TwoPhones::CountSent(leader, 'S'), 1, ());
+  TEST(!follower.m_engine.IsManualMode(), ());
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'A') + TwoPhones::CountSent(follower, 'S'), 0, ());
+}
+
 UNIT_TEST(NoGps_Engine_TripLineHasRpm)
 {
   Env env(true /* inertial */);
