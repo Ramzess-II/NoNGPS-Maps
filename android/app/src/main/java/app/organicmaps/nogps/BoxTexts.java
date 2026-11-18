@@ -235,6 +235,7 @@ public final class BoxTexts
       case BUILD_DATE -> R.string.nogps_box_value_build_date;
       case CHIP -> R.string.nogps_box_value_chip;
       case BOARD -> R.string.nogps_box_value_board;
+      case REVISION -> R.string.nogps_box_value_revision;
       case ID -> R.string.nogps_box_value_id;
       case FLASH_SIZE -> R.string.nogps_box_value_flash_size;
       case MAX_IMAGE_SIZE -> R.string.nogps_box_value_max_image_size;

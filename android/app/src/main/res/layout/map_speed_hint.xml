@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The bar of the speed calibration, slides out of the speed to the end, see SpeedHintView. The frame lies under the
+     speed and moves with it, its bottom padding is the margin of the speed. It is needed: the bar has a shadow, and a
+     view with an elevation in the layout of the map buttons would be drawn over the speed. -->
+<FrameLayout
+  xmlns:android="http://schemas.android.com/apk/res/android"
+  xmlns:app="http://schemas.android.com/apk/res-auto"
+  xmlns:tools="http://schemas.android.com/tools"
+  android:id="@+id/speed_hint_frame"
+  android:layout_width="match_parent"
+  android:layout_height="wrap_content"
+  android:clipChildren="false"
+  android:clipToPadding="false"
+  android:paddingBottom="@dimen/margin_half"
+  tools:ignore="UselessParent">
+  <FrameLayout
+    android:id="@+id/speed_hint"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/speed_view_size"
+    android:layout_marginStart="@dimen/speed_hint_margin_start"
+    android:layout_marginEnd="@dimen/margin_half"
+    android:background="@drawable/bg_speed_hint"
+    android:backgroundTint="@color/speed_hint_accent"
+    android:clickable="true"
+    android:elevation="4dp"
+    android:focusable="true"
+    android:visibility="invisible"
+    tools:visibility="visible">
+    <!-- A range is measured: the bar flashes. -->
+    <View
+      android:id="@+id/speed_hint_flash"
+      android:layout_width="match_parent"
+      android:layout_height="match_parent"
+      android:alpha="0"
+      android:background="@drawable/bg_speed_hint"
+      android:importantForAccessibility="no" />
+    <LinearLayout
+      android:id="@+id/speed_hint_body"
+      android:layout_width="match_parent"
+      android:layout_height="match_parent"
+      android:gravity="center_vertical"
+      android:importantForAccessibility="noHideDescendants"
+      android:orientation="vertical"
+      android:paddingStart="@dimen/speed_hint_padding_start"
+      android:paddingEnd="14dp">
+      <LinearLayout
+        android:id="@+id/speed_hint_line"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <ImageView
+          android:id="@+id/speed_hint_gps_off"
+          android:layout_width="15dp"
+          android:layout_height="15dp"
+          android:layout_marginEnd="6dp"
+          android:visibility="gone"
+          app:srcCompat="@drawable/ic_nogps_gps_off"
+          tools:ignore="ContentDescription" />
+        <ImageView
+          android:id="@+id/speed_hint_star"
+          android:layout_width="17dp"
+          android:layout_height="17dp"
+          android:layout_marginEnd="6dp"
+          android:visibility="gone"
+          app:srcCompat="@drawable/ic_nogps_star"
+          tools:ignore="ContentDescription" />
+        <TextView
+          android:id="@+id/speed_hint_title"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:ellipsize="end"
+          android:includeFontPadding="false"
+          android:maxLines="1"
+          android:textColor="@color/white_primary"
+          android:textSize="14sp"
+          android:textStyle="bold"
+          tools:text="Calibrating 50–60 km/h" />
+        <TextView
+          android:id="@+id/speed_hint_left"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="6dp"
+          android:fontFeatureSettings="tnum"
+          android:includeFontPadding="false"
+          android:maxLines="1"
+          android:textColor="@color/white_primary"
+          android:textSize="12sp"
+          android:textStyle="bold"
+          tools:text="180 m to go" />
+      </LinearLayout>
+      <TextView
+        android:id="@+id/speed_hint_subtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
+        android:alpha="0.9"
+        android:ellipsize="end"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:textColor="@color/white_primary"
+        android:textSize="12sp"
+        tools:text="Vital for driving without GPS: keep GPS on" />
+      <!-- Taller than its segments: the one just measured grows. -->
+      <app.organicmaps.maplayer.SpeedHintMeterView
+        android:id="@+id/speed_hint_meter"
+        android:layout_width="match_parent"
+        android:layout_height="14dp" />
+    </LinearLayout>
+  </FrameLayout>
+</FrameLayout>

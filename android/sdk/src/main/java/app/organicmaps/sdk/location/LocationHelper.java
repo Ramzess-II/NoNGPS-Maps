@@ -266,6 +266,16 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   /**
+   * @return true if the box of the car, other than the connected one, was seen in the last minute: the car may be
+   * switched to.
+   */
+  @UiThread
+  public boolean isBoxNearby(@NonNull String id)
+  {
+    return mEsp32Ble.isBoxNearby(id);
+  }
+
+  /**
    * Forgets the car with what is learned about it. Its box, still paired, is not connected until the car is added
    * again. Without cars left the box is not looked for.
    */
@@ -274,6 +284,16 @@ public class LocationHelper implements BaseLocationProvider.Listener
   {
     mEsp32Ble.forgetBox(id);
     NoGps.nativeForgetCar(id);
+  }
+
+  /**
+   * Removes the system pairing of the box of the car after the box has erased this phone.
+   * @return false if the user has to remove it in the Bluetooth settings.
+   */
+  @UiThread
+  public boolean unpairBox(@NonNull String carId)
+  {
+    return mEsp32Ble.unpairBox(carId);
   }
 
   /**
@@ -662,7 +682,7 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   @RequiresPermission(anyOf = {ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION})
-  private void resumeSystemLocation()
+  public void resumeSystemLocation()
   {
     if (!mSystemLocationPaused)
       return;

@@ -1408,6 +1408,12 @@
 /* State of a car in the list of the cars: when its box was connected the last time, e.g. "Last connected 2 hours ago" */
 "nogps_car_last_seen" = "Последнее подключение %1$@";
 
+/* State of a car in the list of the cars: its box is awake near the phone, the car may be switched to */
+"nogps_car_nearby" = "Рядом";
+
+/* Button in the row of a car in the list of the cars, next to "Nearby": the app takes this car and connects to its box */
+"nogps_car_switch" = "Переключить";
+
 /* Action for a car in the list of the cars: the app takes this car and connects to its box */
 "nogps_car_drive" = "Переключиться на эту машину";
 
@@ -1427,10 +1433,10 @@
 "nogps_car_add" = "Добавить машину";
 
 /* State of the sensor box, shown after its name: the box has phones, a new one is added on one of them */
-"nogps_box_bt_pairing_by_phone" = "найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на имя машины вверху, затем на машину и «Добавить телефон» и введите код здесь";
+"nogps_box_bt_pairing_by_phone" = "найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на имя машины вверху, затем на машину и «Добавить телефон» и введите код здесь. Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны";
 
 /* State of the sensor box, shown after its name: the box has 4 phones and takes no new one */
-"nogps_box_bt_pairing_full" = "найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху, машина)";
+"nogps_box_bt_pairing_full" = "найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху, машина). Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны";
 
 /* Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car */
 "nogps_car_phones" = "Телефоны";
@@ -1453,8 +1459,8 @@
 /* Asked before this phone is removed from the sensor box */
 "nogps_phone_remove_this_text" = "Этот телефон больше не будет подключаться к блоку, а машина на нём будет забыта.";
 
-/* Message: this phone has been removed from the sensor box on its own request */
-"nogps_phone_removed" = "Этот телефон удалён из блока, машина забыта";
+/* Message on iOS: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and iOS apps cannot remove it */
+"nogps_phone_removed_forget" = "Этот телефон удалён из блока, машина забыта. Удалите NoGPS-%1$@ в Настройки > Bluetooth: нажмите кнопку информации и «Забыть это устройство»";
 
 /* Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code */
 "nogps_phone_add" = "Добавить телефон";
@@ -1727,6 +1733,42 @@
 /* What the user does to calibrate the speed table, shown below nogps_speed_table_hint */
 "nogps_speed_table_action" = "Для калибровки проедьте с хорошим GPS около 300 м в каждом диапазоне.";
 
+/* Bar next to the speed on the map: accurate GPS measures the error of the car speed in this range now, e.g. "Calibrating 50–60 km/h" */
+"nogps_speed_hint_calibrating" = "Калибруется %1$d–%2$d км/ч";
+
+/* Bar next to the speed on the map: GPS has not measured the error of the car speed in this range, and there is no accurate GPS now */
+"nogps_speed_hint_not_calibrated" = "%1$d–%2$d км/ч не откалибровано";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_calibrating */
+"nogps_speed_hint_keep_gps" = "Важно для езды без GPS: держите GPS включённым";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_not_calibrated */
+"nogps_speed_hint_turn_gps_on" = "Важно для езды без GPS: включите GPS";
+
+/* Bar next to the speed on the map: GPS has just measured the error of the car speed in this range */
+"nogps_speed_hint_done" = "%1$d–%2$d км/ч откалибровано!";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_done: the speed ranges measured, of all, e.g. "5 of 14 speed ranges" */
+"nogps_speed_hint_done_count" = "%1$d из %2$d диапазонов скорости";
+
+/* Bar next to the speed on the map: GPS has measured all the speeds of 5–60 km/h */
+"nogps_speed_hint_city" = "Городские скорости откалиброваны!";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_city */
+"nogps_speed_hint_city_hint" = "5–60 км/ч: готово к городу без GPS";
+
+/* Bar next to the speed on the map: GPS has measured all the speeds of 5–100 km/h */
+"nogps_speed_hint_out_of_town" = "Загородные скорости откалиброваны!";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_out_of_town */
+"nogps_speed_hint_out_of_town_hint" = "5–100 км/ч: готово к трассе без GPS";
+
+/* Bar next to the speed on the map: GPS has measured all the speed ranges */
+"nogps_speed_hint_full" = "Скорость полностью откалибрована!";
+
+/* Bar next to the speed on the map, under nogps_speed_hint_full: the number of all the speed ranges */
+"nogps_speed_hint_full_hint" = "Все %d диапазонов: можно ехать без GPS";
+
 /* Row of the Box sheet: how late the car tells its speed, the value is on the right */
 "nogps_speed_lag" = "Опоздание скорости";
 
@@ -1840,6 +1882,9 @@
 
 /* Row of the Box values page: the board of the box, e.g. s3zero */
 "nogps_box_value_board" = "Плата";
+
+/* Row of the Box values page: the hardware revision of the box board, e.g. R1 */
+"nogps_box_value_revision" = "Ревизия платы";
 
 /* Row of the Box values page: the four characters of the box name */
 "nogps_box_value_id" = "ID";

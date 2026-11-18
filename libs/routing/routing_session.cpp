@@ -616,13 +616,14 @@ bool RoutingSession::SwapActiveAlternative(size_t idx)
   route->SetRoutingSettings(m_routingSettings);
   m_route = route;
 
+  // m_passedDistanceOnRouteMeters stays: the alternative starts where the active route started, so the distance
+  // driven before the last rebuild is still covered.
   // Reset all per-route state tied to the previous active's geometry so the new alternative
   // starts with a clean follow/match/notify pipeline. Mirrors RemoveRoute() + AssignRoute()
   // for the bits that matter when m_lastResult itself is reused.
   m_lastDistance = 0.0;
   m_moveAwayCounter = 0;
   m_lastCompletionPercent = 0;
-  m_passedDistanceOnRouteMeters = 0.0;
   m_turnNotificationsMgr.Reset();
   m_checkpoints.SetPointFrom(m_route->GetPoly().Front());
 

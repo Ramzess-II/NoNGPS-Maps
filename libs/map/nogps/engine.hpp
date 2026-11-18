@@ -16,6 +16,7 @@
 
 #include "base/thread_checker.hpp"
 
+#include <bitset>
 #include <cstdint>
 #include <functional>
 #include <limits>
@@ -57,8 +58,22 @@ enum class GpsState
   Good,
 };
 
+/// What the last speed range measured by GPS has completed, see Status::m_speedMilestone.
+enum class SpeedMilestone
+{
+  // A range only.
+  Range,
+  // All the ranges of 5-60 km/h.
+  City,
+  // All of 5-100 km/h.
+  OutOfTown,
+  // All the ranges.
+  Full,
+};
+
 std::string DebugPrint(PositionSource source);
 std::string DebugPrint(GpsState state);
+std::string DebugPrint(SpeedMilestone milestone);
 
 /// Everything the UI shows about the navigation without GPS, taken at once.
 struct Status
@@ -104,6 +119,16 @@ struct Status
   int m_roughSpeedTableRanges = 0;
   // The ranges of the table in use, the rough one while m_speedTableRanges is 0.
   SpeedTable::Ranges m_speedTable{};
+  // The ranges GPS has measured, the rough table never: a range is measured when its m_scale is not 0.
+  SpeedTable::Ranges m_gpsSpeedTable{};
+  // The bar next to the speed tells that GPS has not measured the speed of the car, see Engine::UpdateSpeedHint().
+  bool m_speedHintShown = false;
+  // The range of the speed the bar tells about. At Event::SpeedRangeCalibrated, the range just measured.
+  int m_speedHintRange = 0;
+  // Accurate GPS measures the speed now.
+  bool m_speedHintGps = false;
+  // What the range of the last Event::SpeedRangeCalibrated has completed.
+  SpeedMilestone m_speedMilestone = SpeedMilestone::Range;
   double m_speedLagSec = 0;
   bool m_speedLagMeasured = false;
   CalibrationState m_calibration = CalibrationState::None;
@@ -126,6 +151,9 @@ struct Status
   int m_firmwareUpdateProgress = 0;
   // Why the update has failed, see Esp32Update::GetError().
   std::string m_firmwareUpdateError;
+  // The user has not seen the offer of m_bundledFirmware yet: the event came when the application could not show it.
+  // The application shows the offer and calls Engine::FirmwareOfferShown().
+  bool m_firmwareOfferPending = false;
   // The sensor box has been powered on since the user calibrated it: it may stand in another way now.
   bool m_boxCalibrationAdvised = false;
 
@@ -246,6 +274,15 @@ public:
   // a couple of seconds after it wakes up.
   static int constexpr kNotCalibratedSpeedKmh = 10;
   static int64_t constexpr kNotCalibratedDelayMs = 5000;
+  // The bar of the speed calibration slides out after this long at a speed GPS has not measured, and stays this long
+  // after the speed leaves for a measured one or slows down below SpeedTable::kMinSpeedKmh: 49-51 km/h doesn't make
+  // it flicker. GPS measures the speed now if it was good for that this recently.
+  static int64_t constexpr kSpeedHintDelayMs = 1200;
+  static int64_t constexpr kSpeedHintLingerMs = 5000;
+  static int64_t constexpr kSpeedHintGpsMs = 3000;
+  // The milestones of the speed table: the ranges of 5-60 and 5-100 km/h.
+  static int constexpr kCitySpeedRanges = 6;
+  static int constexpr kOutOfTownSpeedRanges = 10;
   // A new firmware is offered when the sensor box has been heard for this long: it tells the car speed by then.
   static int64_t constexpr kFirmwareOfferDelayMs = 5000;
   // Two power-ons of the sensor box are the same one if their times differ less than this and this part of the
@@ -352,6 +389,8 @@ public:
   /// Sends the firmware of Status::m_bundledFirmware to the box.
   void StartFirmwareUpdate();
   void CancelFirmwareUpdate();
+  /// The user has been offered the firmware, see Status::m_firmwareOfferPending.
+  void FirmwareOfferShown();
 
   /// \returns true if the position arrow must show the car direction instead of the compass.
   bool IsCarHeadingShown() const;
@@ -382,6 +421,7 @@ private:
   GpsState GetGpsState() const;
   bool IsGpsBack(Fix const & gps);
   bool IsSpeedTableGps(Fix const & gps);
+  std::optional<double> GetCarSpeedMps() const;
   bool ContradictsInertial(Fix const & gps) const;
   bool IsOffRoadWhileDriving(Fix const & gps);
   bool IsNearRoad(Fix const & gps);
@@ -396,7 +436,11 @@ private:
   void CheckGpsLost();
   void CheckMotionSourceStopped();
   void CheckNotCalibrated();
+  /// Shows the bar of the speed calibration while the car speed comes from the box at a speed GPS has not measured, and
+  /// tells Event::SpeedRangeCalibrated when GPS has measured a range. Called every second.
+  void UpdateSpeedHint();
   void CheckFirmwareUpdate();
+  void DropFirmwareOffer();
   void CheckBoxCalibration();
   /// \returns the firmware for the connected sensor box, nullptr if there is none or the box can't take it now.
   Firmware const * FindBoxFirmware();
@@ -569,11 +613,24 @@ private:
   // Since when the car drives with the gyroscope not calibrated, and when the user was told about it.
   std::optional<int64_t> m_notCalibratedSinceMs;
   std::optional<int64_t> m_notCalibratedWarnedMs;
+  // The bar of the speed calibration, see UpdateSpeedHint(): since when the car drives at a speed GPS has not measured,
+  // and since when it doesn't while the bar is shown.
+  bool m_speedHintShown = false;
+  int m_speedHintRange = 0;
+  std::optional<int64_t> m_speedHintSinceMs;
+  std::optional<int64_t> m_speedHintLeftMs;
+  SpeedMilestone m_speedMilestone = SpeedMilestone::Range;
+  // The ranges GPS had measured at the last check, nothing after the start and when the table is taken from elsewhere:
+  // a range the table had is not told as measured.
+  std::optional<std::bitset<SpeedTable::kRanges>> m_measuredSpeedRanges;
+  // When IsSpeedTableGps() was true the last time.
+  std::optional<int64_t> m_speedTableGpsMs;
 
   std::vector<Firmware> m_firmwares;
   Esp32Update::State m_firmwareUpdateState = Esp32Update::State::None;
   // The firmware of the box and of the application the user was asked about, not to ask again.
   std::string m_offeredFirmware;
+  bool m_firmwareOfferPending = false;
   // Since when the box is known, and if the car has driven since: the update is offered before a trip, not at
   // a traffic light.
   std::optional<int64_t> m_boxKnownSinceMs;

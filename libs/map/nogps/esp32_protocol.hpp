@@ -100,6 +100,8 @@ struct Info
   std::string m_id;
   // How many times the box was powered on, nothing from a firmware that doesn't count it.
   std::optional<int64_t> m_powerOns;
+  // The hardware revision of the board, "R1", empty from a firmware that doesn't tell it.
+  std::string m_revision;
 };
 
 /// A value the box sends in its status and info lines, for the page that shows them all. The platforms show them in
@@ -138,6 +140,8 @@ enum class BoxValue
   BuildDate,
   Chip,
   Board,
+  // The hardware revision of the board, "R1".
+  Revision,
   Id,
   // KB.
   FlashSize,
@@ -160,8 +164,9 @@ struct Phone
   int64_t m_seenUnixS = 0;
   // The phone that has asked.
   bool m_thisPhone = false;
-  // The box takes the commands that change it from this phone. The box tells it only of the phone that has asked:
-  // another phone is known to change it when it is the only other one.
+  // The box takes the commands that change it from this phone. Firmware without the fifth part of a phone in
+  // BT_LIST tells it only of the phone that has asked: another phone is known to change it when it is the only
+  // other one.
   bool m_changesBox = false;
 
   bool operator==(Phone const &) const = default;

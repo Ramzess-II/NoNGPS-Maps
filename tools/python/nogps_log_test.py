@@ -4,10 +4,13 @@
   python3 tools/python/nogps_log_test.py
 """
 
+import argparse
 import io
 import os
 import sys
+import tempfile
 import unittest
+from unittest import mock
 import zipfile
 from contextlib import redirect_stdout
 
@@ -312,6 +315,127 @@ class ExportTest(unittest.TestCase):
     def test_error_stats(self):
         self.assertEqual(nogps_replay.error_stats([]), None)
         self.assertEqual(nogps_replay.error_stats([10, 40, 60, 120])['over50'], 50)
+
+
+class RulesTest(unittest.TestCase):
+    def trip(self, lines, fields=lambda s: {}):
+        log = android_drive(seconds=120, stand=0, fields=fields)
+        log += [core('10-08', 18 * 3600 + sec, 'F', text) for sec, text in lines]
+        return analyse(('app.log', log)).trips[0]
+
+    def test_counts_and_what_came_next(self):
+        trip = self.trip(
+            [(10, 'Turn from 10 to 100 is moved to the crossing by 12 m'),
+             (50, 'Bend: moved along the road by 20 m'),
+             (51, 'Bend: moved along the road by 9 m, told repeatedly to a slow car'),
+             (70, 'Turn from 10 to 100 has followed the roads, the crossing 40 m away would move the car by 50 m'),
+             (72, 'tap = ms::LatLon(10.0, 20.0) location = ms::LatLon(10.0, 20.0) bearing = 0'),
+             (105, 'FORK the car goes along the branch 5 m aside')],
+            lambda s: dict(lost='1') if 55 <= s < 60 else {})
+        counts = trip.rule_counts()
+        self.assertEqual(counts['turn moved to a crossing'], dict(fired=1, ok=1, lost=0, tap=0))
+        # 10 m/s: 300 m take 30 s, the loss at 55 s is within them.
+        self.assertEqual(counts['bend moved'], dict(fired=1, ok=0, lost=1, tap=0))
+        self.assertEqual(counts['bend moved, slow car'], dict(fired=1, ok=0, lost=1, tap=0))
+        self.assertEqual(counts['turn left by "followed the roads"'], dict(fired=1, ok=0, lost=0, tap=1))
+        self.assertEqual(counts['fork branch chosen'], dict(fired=1, ok=1, lost=0, tap=0))
+        self.assertNotIn('loop', counts)
+
+    def test_a_road_already_lost_is_not_a_new_loss(self):
+        trip = self.trip([(30, 'Loop: the way driven lies on the roads 20 m away, moved there')],
+                         lambda s: dict(lost='1') if 20 <= s < 60 else {})
+        self.assertEqual(trip.rule_counts()['loop'], dict(fired=1, ok=1, lost=0, tap=0))
+
+    def test_report(self):
+        log = android_drive(seconds=120, stand=0) + [
+            core('10-08', 18 * 3600 + 10, 'F', 'Loop: the way driven lies on the roads 20 m away, moved there')]
+        out = io.StringIO()
+        with redirect_stdout(out):
+            nogps_log.print_rules(analyse(('app.log', log)))
+        loop = next(line for line in out.getvalue().splitlines() if line.startswith('loop'))
+        self.assertIn('rare: 1 trips', loop)
+
+
+class HeldOutTest(unittest.TestCase):
+    def test_days_and_sets(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, 'days.txt')
+            with open(path, 'w') as f:
+                f.write('# comment\n10-09  # another car\n\n')
+            held_out = nogps_replay.held_out_days(path)
+            self.assertEqual(held_out, {'10-09'})
+            self.assertEqual([nogps_replay.set_of(d, held_out) for d in ('10-08', '10-09')],
+                             ['made from', 'held out'])
+            log = os.path.join(folder, 'log.log')
+            with open(log, 'w') as f:
+                f.write('\n'.join(android_drive('10-08', seconds=3, stand=0) + android_drive('10-09', seconds=2,
+                                                                                            stand=0)) + '\n')
+            out = io.StringIO()
+            with redirect_stdout(out):
+                nogps_replay.days(argparse.Namespace(logs=[log]))
+            self.assertEqual(out.getvalue().splitlines()[:2], ['10-08       3 TRIP lines  made from',
+                                                               '10-09       2 TRIP lines  made from'])
+
+    def test_file_of_the_repo_parses(self):
+        self.assertIsInstance(nogps_replay.held_out_days(), set)
+
+
+class RunTest(unittest.TestCase):
+    @staticmethod
+    def drive(day, seconds):
+        """A drive with the rotation and the speed of the box, which the input is made from."""
+        return android_drive(day, seconds=seconds, stand=0) + [
+            core(day, 18 * 3600 + 2 + s, 'OnMotion', 'GYRO 0.0 0 0 0 0 0 36 36 36 36 36', ms=600,
+                 file='nogps/inertial_navigator.cpp:1001') for s in range(seconds)]
+
+    def test_days_driven_by_the_tool(self):
+        with tempfile.TemporaryDirectory() as folder:
+            log = os.path.join(folder, 'log.log')
+            with open(log, 'w') as f:
+                f.write('\n'.join(self.drive('10-08', 60) + self.drive('10-09', 40)) + '\n')
+            # The tool drives every day 40 m ahead of GPS, and tells what it was given.
+            replayed = os.path.join(folder, 'replayed.log')
+            with open(replayed, 'w') as f:
+                f.write('\n'.join(android_drive('10-08', seconds=60, stand=0, header=False, error=lambda s: 40.0) +
+                                  android_drive('10-09', seconds=40, stand=0, header=False, error=lambda s: 40.0)))
+            tool = os.path.join(folder, 'tool.py')
+
+            def write_tool(failing_day):
+                with open(tool, 'w') as f:
+                    f.write('#!%s\nimport shutil, sys\nshutil.copy(%r, sys.argv[-1])\n'
+                            'open(sys.argv[-1] + ".args", "w").write(" ".join(sys.argv[1:-2]))\n'
+                            'if %r in sys.argv[-1]:\n    sys.exit(3)\nopen(sys.argv[-1] + ".done", "w")\n'
+                            % (sys.executable, replayed, failing_day))
+                os.chmod(tool, 0o755)
+
+            write_tool('none')
+            out = os.path.join(folder, 'out')
+            args = argparse.Namespace(logs=[log], tool=tool, data_path='maps', resources_path='data',
+                                      settings='settings.ini', day=None, start=None, end=None, jobs=2, output=out,
+                                      no_taps=False, no_route=False, change=15)
+            lines = io.StringIO()
+            with mock.patch.object(nogps_replay, 'held_out_days', lambda: {'10-09'}), redirect_stdout(lines):
+                nogps_replay.run(args)
+            lines = lines.getvalue().splitlines()
+            # The held-out days come first, each set with its seconds of all days.
+            self.assertEqual([line[:15] for line in lines[2:6]],
+                             ['10-09 held out ', 'held out, all  ', '10-08 made from', 'made from, all '])
+            self.assertEqual(lines[2].split()[3:11], ['40', '3', '3', '40', '40', '37', '37', '0/0'])
+            self.assertEqual(lines[5].split()[3:7], ['59', '3', '3', '40'])
+            with open(os.path.join(out, '10-08-out.txt.args')) as f:
+                self.assertEqual(f.read(), '--data_path maps --resources_path data --settings settings.ini')
+            for name in ('in.txt', 'tool.log', 'compare.txt'):
+                self.assertTrue(os.path.exists(os.path.join(out, '10-08-' + name)), name)
+
+            # A day the tool has not driven to the end is told, the other days are compared.
+            write_tool('10-09')
+            lines = io.StringIO()
+            with mock.patch.object(nogps_replay, 'held_out_days', lambda: {'10-09'}), redirect_stdout(lines):
+                nogps_replay.run(args)
+            lines = lines.getvalue().splitlines()
+            self.assertTrue(lines[2].startswith('10-09 held out  the tool has not driven it to the end, exit code 3'),
+                            lines[2])
+            self.assertEqual(lines[3][:15], '10-08 made from')
 
 
 class ReportTest(unittest.TestCase):

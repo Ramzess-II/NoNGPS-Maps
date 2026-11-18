@@ -12,7 +12,8 @@ namespace nogps
 {
 /// Detects jammed/spoofed GNSS positions (e.g. electronic warfare moves the phone to another continent).
 /// A satellite position is not trusted when it contradicts the network (cell towers and Wi-Fi) position,
-/// or when it jumps farther than any car could drive since the last trusted satellite position.
+/// or when it jumps farther than any car could drive since the last trusted satellite position, or when its speed
+/// disagrees with the car speed for several points in a row.
 /// After a detection, satellite positions are trusted again only after several consecutive consistent ones.
 /// All the times are monotonic, e.g. elapsed realtime.
 class GpsSpoofingDetector
@@ -42,6 +43,17 @@ public:
   // A Wi-Fi position (tens of meters) is used at once after a coarse cell tower one (hundreds of meters).
   static double constexpr kMoreAccurateFactor = 2;
 
+  // A GPS speed is compared with the car speed when it differs by more than both of these: the car speed lags
+  // behind GPS by about a second, so a smaller difference is just an acceleration.
+  static double constexpr kSpeedMismatchKmh = 15;
+  static double constexpr kSpeedMismatchFactor = 0.3;
+  static int constexpr kSpeedMismatchFixes = 5;
+  // Less accurate points are not compared: their speed is noise.
+  static double constexpr kSpeedMaxAccuracyM = 30;
+  // The speed from two points is taken when they are this far apart in time.
+  static int64_t constexpr kSpeedMinGapMs = 500;
+  static int64_t constexpr kSpeedMaxGapMs = 3000;
+
   struct Trusted
   {
     ms::LatLon m_position;
@@ -65,8 +77,14 @@ public:
   bool OnNetworkPosition(ms::LatLon const & position, double accuracyM, int64_t timeMs);
 
   /// Checks a satellite (or fused) position.
+  /// \param gpsSpeedMps the speed of the point, or nothing: then it is taken from the previous point.
+  /// \param carSpeedMps the fresh car speed, or nothing if it is unknown: then the speed is not checked.
+  /// \param checkSpeed false for a provider whose points are not one chain with the others (Fused next to Gps): the
+  /// speed derived from the previous point would be wrong, and the speed counter stays as it is.
   /// \returns true if the position can be trusted.
-  bool CheckSatellitePosition(ms::LatLon const & position, int64_t timeMs);
+  bool CheckSatellitePosition(ms::LatLon const & position, int64_t timeMs, double accuracyM = 0,
+                              std::optional<double> gpsSpeedMps = {}, std::optional<double> carSpeedMps = {},
+                              bool checkSpeed = true);
 
 private:
   struct Network
@@ -87,9 +105,14 @@ private:
   bool IsConsistent(ms::LatLon const & position, int64_t timeMs) const;
   bool HasFreshNetwork(int64_t timeMs) const;
   void SetTrusted(ms::LatLon const & position, int64_t timeMs);
+  void CheckSpeed(ms::LatLon const & position, int64_t timeMs, double accuracyM, std::optional<double> gpsSpeedMps,
+                  std::optional<double> carSpeedMps);
 
   std::optional<Network> m_network;
   std::optional<Trusted> m_trusted;
+  // The previous satellite point, trusted or not.
+  std::optional<Trusted> m_previous;
+  int m_speedMismatchCount = 0;
   bool m_spoofed = false;
   int m_consistentCount = 0;
   // The first network position of a jump away from the last trusted one, waiting for a confirmation.

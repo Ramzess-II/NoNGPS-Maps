@@ -148,6 +148,7 @@ typedef NS_ENUM(NSInteger, MWMNoGpsBoxValue) {
   MWMNoGpsBoxValueBuildDate,
   MWMNoGpsBoxValueChip,
   MWMNoGpsBoxValueBoard,
+  MWMNoGpsBoxValueRevision,
   MWMNoGpsBoxValueId,
   // KB.
   MWMNoGpsBoxValueFlashSize,
@@ -176,7 +177,20 @@ typedef NS_ENUM(NSInteger, MWMNoGpsEvent) {
   MWMNoGpsEventBoxCalibrationAdvised,
   // The box has removed this phone on the request of the user: the car of the box is forgotten.
   MWMNoGpsEventThisPhoneRemoved,
+  /// GPS has measured a range of the speed table: speedHintRange and speedMilestone of the status tell which, and what
+  /// it has completed.
+  MWMNoGpsEventSpeedRangeCalibrated,
 } NS_SWIFT_NAME(NoGpsEvent);
+
+/// What the last speed range measured by GPS has completed.
+typedef NS_ENUM(NSInteger, MWMNoGpsSpeedMilestone) {
+  MWMNoGpsSpeedMilestoneRange,
+  /// All of 5-60 km/h.
+  MWMNoGpsSpeedMilestoneCity,
+  /// All of 5-100 km/h.
+  MWMNoGpsSpeedMilestoneOutOfTown,
+  MWMNoGpsSpeedMilestoneFull,
+} NS_SWIFT_NAME(NoGpsSpeedMilestone);
 
 /// Posted on the main queue, the MWMNoGpsEvent is in the userInfo by MWMNoGpsEventKey.
 extern NSNotificationName const MWMNoGpsEventNotification NS_SWIFT_NAME(NoGps.eventNotification);
@@ -272,10 +286,22 @@ NS_SWIFT_NAME(NoGpsStatus)
 /// and the ratio, 0 until the range is measured.
 @property(nonatomic, readonly) NSArray<NSNumber *> * speedTableCarM;
 @property(nonatomic, readonly) NSArray<NSNumber *> * speedTableScale;
+/// The table GPS has measured, without the rough one.
+@property(nonatomic, readonly) NSArray<NSNumber *> * gpsSpeedTableCarM;
+@property(nonatomic, readonly) NSArray<NSNumber *> * gpsSpeedTableScale;
+/// The bar next to the speed: GPS has not measured the speed of the car. The range it tells about, at
+/// MWMNoGpsEventSpeedRangeCalibrated the one just measured.
+@property(nonatomic, readonly) BOOL speedHintShown;
+@property(nonatomic, readonly) NSInteger speedHintRange;
+/// Accurate GPS measures the speed now.
+@property(nonatomic, readonly) BOOL speedHintGps;
+@property(nonatomic, readonly) MWMNoGpsSpeedMilestone speedMilestone;
 @property(nonatomic, readonly) double speedLagSec;
 @property(nonatomic, readonly) BOOL speedLagMeasured;
 @property(nonatomic, readonly) MWMNoGpsCalibrationState calibration;
 @property(nonatomic, readonly) NSInteger calibrationProgress;
+/// The user has not seen the offer of bundledFirmware: show it and call +firmwareOfferShown.
+@property(nonatomic, readonly) BOOL firmwareOfferPending;
 /// The sensor box has been powered on since the user calibrated it: it may stand in another way now.
 @property(nonatomic, readonly) BOOL boxCalibrationAdvised;
 @property(nonatomic, readonly) BOOL hasInertialPosition;
@@ -353,6 +379,8 @@ NS_SWIFT_NAME(NoGps)
 /// Forgets the car with what is learned about it. Its box is not connected until the car is added again. Without cars
 /// left the box is not looked for.
 + (void)forgetCar:(NSString *)carId;
+/// The box of the car, other than the connected one, was seen in the last minute: the car may be switched to.
++ (BOOL)isBoxNearby:(NSString *)carId;
 /// The user adds a car: only a box that is not of a known car is connected, until it is heard or this is called with
 /// NO.
 + (void)searchNewBox:(BOOL)newOnly;
@@ -361,6 +389,8 @@ NS_SWIFT_NAME(NoGps)
 /// Sends the firmware of MWMNoGpsStatus.bundledFirmware to the box.
 + (void)startFirmwareUpdate;
 + (void)cancelFirmwareUpdate;
+/// The user has been offered the firmware, see MWMNoGpsStatus.firmwareOfferPending.
++ (void)firmwareOfferShown;
 /// Asks the box of the car for its phones again, see MWMNoGpsStatus.boxPhones.
 + (void)listBoxPhones;
 /// Removes the phone from the box. Removing this phone ends with MWMNoGpsEventThisPhoneRemoved.
