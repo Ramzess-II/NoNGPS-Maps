@@ -22,6 +22,10 @@ const SLOTS = 4
 const MIN_FREE_GB = 15
 const APP_REPO = 'Ramzess-II/NoNGPS-Maps'
 const FW_REPO = 'Ramzess-II/ELMandIMU'
+const MAPS = A.maps || ''
+const SETTINGS = A.settings || ''
+const REPLAY = !!(MAPS && SETTINGS)
+const LOGS = `${APP}/trip-logs`
 const queue = [...(A.queue || [])]
 if (!WS) throw new Error('args.ws is required: the folder that holds app/ and firmware/')
 
@@ -43,6 +47,18 @@ prints the path (${WS}/worktrees/<name>), the branch is feature/<name>. Firmware
 origin && git -C ${FW} worktree add --no-track -b feature/<name> ${WS}/worktrees/fw-<name> origin/main. Remove: \
 ${APP}/tools/unix/nogps_worktree.sh remove <path> (it refuses uncommitted changes: commit or drop them first), and \
 git -C ${FW} worktree remove <path> for firmware.`
+
+// Replay on macOS: the skill passes args.maps and args.settings only when this machine has them.
+const REPLAY_RULES = REPLAY
+  ? `A change to how the mark moves is replayed, not postponed: this machine replays the recorded trips. \
+Maps: ${MAPS}, settings: ${SETTINGS}, logs: ${LOGS}/*.log (the script takes log files, not the folder; other files there are not logs). Build the tool as the docstring of tools/python/nogps_replay.py \
+says, in <worktree>/build-<name>-o2: first from the worktree before your change (copy the binary to \
+nogps_replay_tool.before), then after it. Drive the days of both with nogps_replay.py run ${LOGS}/*.log --tool <tool> \
+--data_path ${MAPS} --settings ${SETTINGS} -j 3 -o <folder in the scratchpad>. Put both tables, the held-out days \
+and the others apart, into "tested". Fix a rule that is worse on the held-out days, or postpone when the numbers \
+don't settle what to change. Say "Not replayed" only when the tool fails to build or run, and why.`
+  : `This run has no replay data (args.maps, args.settings): a change to how the mark moves is replayed by nobody, \
+so its PR says "Not replayed".`
 
 const ref = (it) => `${it.repo}#${it.number}`
 const isFw = (it) => it.repo === FW_REPO
@@ -146,8 +162,8 @@ ${it.number} -R ${it.repo} --reason completed, or --reason "not planned" when a 
 5. "postponed" when it only looks outdated (the code moved, its plan names things that changed) and nothing \
 clearly covers it; when only a drive, a phone, a flashed box or a trip replay can show what to change or that the \
 change works; when it needs a decision of a person or the expected behavior is unclear; or when the work is outside \
-both repos (e.g. the web site). A core change that unit tests can show is not postponed for a missing replay: its \
-PR says "Not replayed". ${POSTPONE}
+both repos (e.g. the web site). A core change that unit tests can show is not postponed for a missing replay. ${REPLAY_RULES} \
+${POSTPONE}
 6. Otherwise "implement". Give a short kebab-case name for the branch feature/<name> that no branch (git -C ${APP} \
 branch -a, git -C ${FW} branch -a) or ${WS}/worktrees/<name> uses yet. Say which repos it touches, and whether it \
 touches iOS: iphone/ or xcode/, which includes a behavior both apps show, a change of a bridge, and a new file in \
@@ -171,8 +187,9 @@ ${FW}/README.md says (". ~/esp/esp-idf/export.sh" on the Mac); build unsigned wh
 - Commits: the "Commit messages" format of CLAUDE.md, git commit -s. Run the formatters and checks CI gates for \
 the files you changed (clang-format 23: uvx --from clang-format==23.1.3 clang-format -i <files>; swiftformat; \
 ktlint).
+- ${REPLAY_RULES}
 - When tests fail, make up to 3 attempts to fix them, then postpone.
-- Postpone when you can't finish: it needs a drive, a phone, a flashed box or a replay to know what to change; the \
+- Postpone when you can't finish: it needs a drive, a phone, a flashed box or a replay you can't run to know what to change; the \
 expected behavior turns out unclear; tests still fail after 3 attempts. Then: commit the WIP, push the branch \
 (app: git push -u origin feature/${t.name}; firmware: git push -u koloboid feature/${t.name}) if it has commits, \
 ${POSTPONE} Then remove the worktrees and report "postponed".
