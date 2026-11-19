@@ -58,6 +58,7 @@ std::string DebugPrint(BleState state)
   case BleState::BondLost: return "BOND_LOST";
   case BleState::PairingByPhone: return "PAIRING_BY_PHONE";
   case BleState::PairingFull: return "PAIRING_FULL";
+  case BleState::CarLimit: return "CAR_LIMIT";
   }
   UNREACHABLE();
 }

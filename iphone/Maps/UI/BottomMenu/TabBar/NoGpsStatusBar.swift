@@ -192,7 +192,7 @@ final class NoGpsStatusBar: UIView {
     case .connected: return Look(image: UIImage(systemName: Constants.boxSymbol), color: .systemBlue, pulsing: true)
     case .off, .noPermission, .disabled:
       return Look(image: UIImage(resource: .icNogpsBluetoothOff), color: .secondaryLabel)
-    case .searching, .pairingClosed, .pairingByPhone, .pairingFull, .connecting, .pairing:
+    case .searching, .pairingClosed, .pairingByPhone, .pairingFull, .carLimit, .connecting, .pairing:
       return Look(image: UIImage(resource: .icNogpsBluetooth), color: .systemBlue, pulsing: true)
     // Not searched until the user acts.
     case .pairingFailed, .bondLost:

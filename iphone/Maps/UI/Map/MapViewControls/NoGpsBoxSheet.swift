@@ -353,6 +353,7 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     case .pairingClosed: text = L("nogps_box_bt_pairing_closed")
     case .pairingByPhone: text = L("nogps_box_bt_pairing_by_phone")
     case .pairingFull: text = L("nogps_box_bt_pairing_full")
+    case .carLimit: text = L("nogps_box_bt_car_limit")
     case .pairing: text = L("nogps_box_bt_pairing")
     case .pairingFailed: text = L("nogps_box_bt_pairing_failed")
     case .bondLost: text = L("nogps_box_bt_bond_lost")
@@ -1227,7 +1228,7 @@ private final class BoxSearchView: UIView {
     let states: [StepState] = [
       bluetoothFailed ? .failed : .done,
       [.connecting, .pairing, .connected, .pairingFailed, .bondLost].contains(ble) ? .done
-        : [.searching, .pairingClosed, .pairingByPhone, .pairingFull].contains(ble) ? .current : .waiting,
+        : [.searching, .pairingClosed, .pairingByPhone, .pairingFull, .carLimit].contains(ble) ? .current : .waiting,
       ble == .connected ? .done : linkFailed ? .failed : [.connecting, .pairing].contains(ble) ? .current : .waiting,
       ble == .connected ? .current : .waiting,
     ]

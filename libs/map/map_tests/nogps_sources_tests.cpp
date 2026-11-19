@@ -329,9 +329,9 @@ UNIT_TEST(NoGps_Esp32Source_CallsBoxWhileConnectedOnly)
 
 UNIT_TEST(NoGps_Esp32Source_FailedPairingIsNotLinked)
 {
-  // A failed pairing and a box that has forgotten the phone end the link: no HELLO, no calibration, the box is
-  // not taken for a sleeping one.
-  for (auto const state : {BleState::PairingFailed, BleState::BondLost})
+  // A failed pairing, a box that has forgotten the phone and a box over the limit of cars end the link: no HELLO, no
+  // calibration, the box is not taken for a sleeping one.
+  for (auto const state : {BleState::PairingFailed, BleState::BondLost, BleState::CarLimit})
   {
     TestClock clock;
     TestDelegate delegate;

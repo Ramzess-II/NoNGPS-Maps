@@ -509,6 +509,7 @@ final class NoGpsBoxPage: MWMTableViewController {
     case .pairingClosed: return L("nogps_box_bt_pairing_closed")
     case .pairingByPhone: return L("nogps_box_bt_pairing_by_phone")
     case .pairingFull: return L("nogps_box_bt_pairing_full")
+    case .carLimit: return L("nogps_box_bt_car_limit")
     case .connecting: return L("nogps_box_bt_connecting")
     case .pairing: return L("nogps_box_bt_pairing")
     case .connected: return L("nogps_box_bt_waiting")

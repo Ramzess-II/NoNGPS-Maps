@@ -1438,6 +1438,9 @@
 /* State of the sensor box, shown after its name: the box has 4 phones and takes no new one */
 "nogps_box_bt_pairing_full" = "found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car name at the top, the car). No paired phone at hand? Turn Bluetooth off on the other phones that were paired with the box. Plug the box in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts this phone for 2 minutes with the code 123456, unless it was changed, and forgets the other phones";
 
+/* State of the sensor box, shown after its name: the box is of no car of the user, and the user has the most cars */
+"nogps_box_bt_car_limit" = "found, but it is of no car of this phone, and the phone has the most cars. Forget a car first (Box, the car name at the top, the car, Forget the car)";
+
 /* Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car */
 "nogps_car_phones" = "Phones";
 

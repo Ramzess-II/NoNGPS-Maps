@@ -64,6 +64,8 @@ typedef NS_ENUM(NSInteger, MWMNoGpsBleState) {
   MWMNoGpsBleStatePairingByPhone,
   // The same, and the box has no room: a phone is removed on one of them first.
   MWMNoGpsBleStatePairingFull,
+  // A box of no car of the user is found, and the user has the most cars: a car is forgotten first.
+  MWMNoGpsBleStateCarLimit,
 } NS_SWIFT_NAME(NoGpsBleState);
 
 /// What the box does about a new phone, see startAddPhone.

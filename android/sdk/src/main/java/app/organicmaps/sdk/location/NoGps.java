@@ -111,6 +111,8 @@ public final class NoGps
     PAIRING_BY_PHONE,
     // The same, and the box has no room: a phone is removed on one of them first.
     PAIRING_FULL,
+    // A box of no car of the user is found, and the user has the most cars: a car is forgotten first.
+    CAR_LIMIT,
   }
 
   /**
