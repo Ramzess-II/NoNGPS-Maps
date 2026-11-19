@@ -15,7 +15,9 @@ import android.graphics.Bitmap;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresPermission;
@@ -46,13 +48,34 @@ public class NavigationService extends Service implements LocationListener
   private static final String STOP_NAVIGATION = "STOP_NAVIGATION";
 
   private static final String CHANNEL_ID = "NAVIGATION";
-  private static final int NOTIFICATION_ID = 12345678;
+  /**
+   * The notification ID of the navigation, shared with the sensor box service and the share notice: the system shows
+   * one notification of the app for them at a time.
+   */
+  public static final int NOTIFICATION_ID = 12345678;
+
+  /**
+   * Adds what the routing library doesn't know to the notification of the navigation: the look of the position source,
+   * the texts, the position share notice.
+   */
+  public interface NotificationDecorator
+  {
+    void decorate(@NonNull Context context, @NonNull NotificationCompat.Builder builder,
+                  @NonNull RoutingInfo routingInfo);
+  }
 
   private static OrganicMaps sOrganicMaps;
   @Nullable
   private static NotificationCompat.Extender sCarNotificationExtender;
   @Nullable
   private static PendingIntent sOpenAppPendingIntent;
+  @Nullable
+  private static NotificationDecorator sNotificationDecorator;
+  @Nullable
+  private static Runnable sStoppedListener;
+  @Nullable
+  private static NotificationCompat.Action sStopAction;
+  private static boolean sRunning;
 
   @SuppressWarnings("NotNullFieldNotInitialized")
   @NonNull
@@ -63,9 +86,9 @@ public class NavigationService extends Service implements LocationListener
   private static NotificationCompat.Builder mNotificationBuilder;
 
   // Cached turn direction bitmap to avoid re-creating on every location update.
-  private int mLastTurnResId;
+  private static int sLastTurnResId;
   @Nullable
-  private Bitmap mLastTurnBitmap;
+  private static Bitmap sLastTurnBitmap;
 
   public static void setOrganicMaps(@NonNull OrganicMaps organicMaps)
   {
@@ -75,6 +98,27 @@ public class NavigationService extends Service implements LocationListener
   public static void setCarNotificationExtender(@Nullable NotificationCompat.Extender carNotificationExtender)
   {
     sCarNotificationExtender = carNotificationExtender;
+  }
+
+  public static void setNotificationDecorator(@Nullable NotificationDecorator notificationDecorator)
+  {
+    sNotificationDecorator = notificationDecorator;
+  }
+
+  /**
+   * Called after the service has stopped, so that the app can post the notification of what runs on.
+   */
+  public static void setStoppedListener(@Nullable Runnable stoppedListener)
+  {
+    sStoppedListener = stoppedListener;
+  }
+
+  /**
+   * The service shows its notification now.
+   */
+  public static boolean isRunning()
+  {
+    return sRunning;
   }
 
   public static void setOpenAppPendingIntent(@NonNull PendingIntent openAppPendingIntent)
@@ -149,6 +193,8 @@ public class NavigationService extends Service implements LocationListener
     final PendingIntent exitPendingIntent =
         PendingIntent.getService(appContext, 0, exitIntent, PendingIntent.FLAG_UPDATE_CURRENT | FLAG_IMMUTABLE);
 
+    sStopAction =
+        new NotificationCompat.Action(0, context.getString(R.string.navigation_stop_button), exitPendingIntent);
     mNotificationBuilder = new NotificationCompat.Builder(appContext, CHANNEL_ID)
                                .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
                                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -156,7 +202,7 @@ public class NavigationService extends Service implements LocationListener
                                .setShowWhen(false)
                                .setOnlyAlertOnce(true)
                                .setSmallIcon(app.organicmaps.branding.R.drawable.ic_splash)
-                               .addAction(0, context.getString(R.string.navigation_stop_button), exitPendingIntent)
+                               .addAction(sStopAction)
                                .setColorized(isColorizedSupported())
                                .setColor(ContextCompat.getColor(context, R.color.notification));
 
@@ -168,6 +214,9 @@ public class NavigationService extends Service implements LocationListener
 
     return mNotificationBuilder;
   }
+
+  /** The system cancels the notification of a stopped service a moment after onDestroy: a repost waits for it. */
+  public static final long REPOST_DELAY_MS = 500;
 
   @Override
   public void onCreate()
@@ -184,6 +233,11 @@ public class NavigationService extends Service implements LocationListener
     Logger.i(TAG);
 
     mNotificationBuilder = null;
+    sRunning = false;
+    // The system removes the notification after this call, unless the sensor box service holds it: then the app posts
+    // the content of what runs on.
+    if (sStoppedListener != null)
+      new Handler(Looper.getMainLooper()).postDelayed(sStoppedListener, REPOST_DELAY_MS);
     sOrganicMaps.getLocationHelper().removeListener(this);
     TtsPlayer.INSTANCE.stop();
 
@@ -247,6 +301,7 @@ public class NavigationService extends Service implements LocationListener
       return START_NOT_STICKY;
     }
 
+    sRunning = true;
     final LocationHelper locationHelper = sOrganicMaps.getLocationHelper();
 
     // Subscribe to location updates. This call is idempotent.
@@ -298,35 +353,61 @@ public class NavigationService extends Service implements LocationListener
     if (routingInfo.shouldPlayWarningSignal())
       mPlayer.playback(R.raw.speed_cams_beep);
 
+    postNotification(this, routingInfo);
+  }
+
+  /**
+   * Posts the notification again, e.g. when the position share notice appears.
+   */
+  public static void refreshNotification(@NonNull Context context)
+  {
+    if (!sRunning)
+      return;
+    final RoutingInfo routingInfo = Framework.nativeGetRouteFollowingInfo();
+    if (routingInfo != null)
+      postNotification(context, routingInfo);
+  }
+
+  private static void postNotification(@NonNull Context context, @NonNull RoutingInfo routingInfo)
+  {
     // Don't spend time on updating RemoteView if notifications are not allowed.
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
-        && ActivityCompat.checkSelfPermission(this, POST_NOTIFICATIONS) != PERMISSION_GRANTED)
+        && ActivityCompat.checkSelfPermission(context, POST_NOTIFICATIONS) != PERMISSION_GRANTED)
       return;
 
-    final NotificationCompat.Builder notificationBuilder = getNotificationBuilder(this)
-                                                               .setContentTitle(routingInfo.distToTurn.toString(this))
-                                                               .setContentText(routingInfo.nextStreet);
+    final NotificationCompat.Builder notificationBuilder = getNotificationBuilder(context);
+    // The decorator adds its actions again on every update.
+    notificationBuilder.clearActions();
+    if (sStopAction != null)
+      notificationBuilder.addAction(sStopAction);
+    if (sNotificationDecorator == null)
+      notificationBuilder.setContentTitle(routingInfo.distToTurn.toString(context))
+          .setContentText(routingInfo.nextStreet);
 
     final int turnResId = routingInfo.carDirection.getTurnRes(routingInfo.exitNum);
-    if (turnResId != mLastTurnResId || mLastTurnBitmap == null)
+    if (turnResId != sLastTurnResId || sLastTurnBitmap == null)
     {
-      final Drawable drawable = AppCompatResources.getDrawable(this, turnResId);
+      final Drawable drawable = AppCompatResources.getDrawable(context, turnResId);
       if (drawable != null)
       {
-        mLastTurnBitmap = isColorizedSupported()
-                            ? Graphics.drawableToBitmap(drawable)
-                            : Graphics.drawableToBitmapWithTint(
-                                  drawable, ContextCompat.getColor(this, app.organicmaps.branding.R.color.base_accent));
-        mLastTurnResId = turnResId;
+        sLastTurnBitmap =
+            isColorizedSupported()
+                ? Graphics.drawableToBitmap(drawable)
+                : Graphics.drawableToBitmapWithTint(
+                      drawable, ContextCompat.getColor(context, app.organicmaps.branding.R.color.base_accent));
+        sLastTurnResId = turnResId;
       }
     }
-    if (mLastTurnBitmap != null)
-      notificationBuilder.setLargeIcon(mLastTurnBitmap);
+    if (sLastTurnBitmap != null)
+      notificationBuilder.setLargeIcon(sLastTurnBitmap);
+
+    if (sNotificationDecorator != null)
+      sNotificationDecorator.decorate(context, notificationBuilder, routingInfo);
 
     if (sCarNotificationExtender != null)
       notificationBuilder.extend(sCarNotificationExtender);
 
     // The notification object must be re-created for every update.
-    NotificationManagerCompat.from(this).notify(NOTIFICATION_ID, notificationBuilder.build());
+    NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notificationBuilder.build());
   }
 }

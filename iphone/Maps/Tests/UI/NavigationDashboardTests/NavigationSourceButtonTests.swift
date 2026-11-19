@@ -168,7 +168,80 @@ extension NavigationSourceButtonTests {
   }
 }
 
-private final class FakeStatus: NoGpsStatus {
+/// The Live Activity of the navigation shows the look of the bottom sheet.
+@available(iOS 16.2, *)
+final class NavigationLiveActivityTests: XCTestCase {
+  private let info = NavigationLiveActivityInfo(turnImageName: "simple_right", distanceToTurn: "500 m",
+                                                street: "Main Street", distanceLeft: "12.4 km", timeLeft: "18 min",
+                                                arrival: Date(timeIntervalSince1970: 1_800_000_000))
+
+  func test_GivenStatus_WhenStateIsBuilt_ThenItHasTheSymbolsAndColorOfTheBarLook() {
+    let cases: [FakeStatus] = [
+      FakeStatus(source: .gps, gpsState: .good, inertialEnabled: true, sourceState: .connected),
+      FakeStatus(source: .gps, gpsState: .coarse, inertialEnabled: false, sourceState: .connected),
+      FakeStatus(source: .inertial, gpsState: .none, inertialEnabled: true, sourceState: .connected),
+      FakeStatus(source: .inertial, gpsState: .spoofed, inertialEnabled: true, sourceState: .noCarData),
+    ]
+    for status in cases {
+      let look = NoGpsStatusBar.barLook(status)
+      let state = NavigationLiveActivityManager.makeState(status: status, info: info)
+      XCTAssertEqual(state.source.symbol, look.symbol)
+      XCTAssertEqual(state.source.color.uiColor, look.color)
+      XCTAssertEqual(state.source.hasBadge, look.badge != nil)
+      XCTAssertEqual(state.source.badgeSymbol, look.badge?.symbol)
+      XCTAssertEqual(state.distanceToTurn, "500 m")
+      XCTAssertEqual(state.street, "Main Street")
+      XCTAssertEqual(state.turnSymbol, "arrow.turn.up.right")
+    }
+    let box = NavigationLiveActivityManager.makeState(status: cases[2], info: info)
+    XCTAssertEqual(box.source.color, .inertial)
+    XCTAssertEqual(box.source.symbol, .system("cpu"))
+  }
+
+  func test_GivenColor_WhenKeyIsMade_ThenItRoundTrips() {
+    for key: NavigationLiveActivityColor in [.good, .inertial, .blue, .orange, .red, .gray, .secondary] {
+      XCTAssertEqual(NavigationLiveActivityColor(key.uiColor), key)
+    }
+  }
+
+  func test_GivenStateUnchanged_WhenPushing_ThenItIsPushedOnlyAfterTheRefreshInterval() {
+    let state = NavigationLiveActivityManager.makeState(status: FakeStatus(source: .gps, gpsState: .good,
+                                                                           inertialEnabled: true,
+                                                                           sourceState: .connected), info: info)
+    XCTAssertTrue(NavigationLiveActivityManager.shouldPush(state, last: nil, sinceLastPush: 0))
+    XCTAssertFalse(NavigationLiveActivityManager.shouldPush(state, last: state, sinceLastPush: 1))
+    XCTAssertFalse(NavigationLiveActivityManager.shouldPush(state, last: state, sinceLastPush: 59))
+    XCTAssertTrue(NavigationLiveActivityManager.shouldPush(state, last: state, sinceLastPush: 60))
+    var other = info
+    other.distanceToTurn = "400 m"
+    let changed = NavigationLiveActivityManager.makeState(status: FakeStatus(source: .gps, gpsState: .good,
+                                                                             inertialEnabled: true,
+                                                                             sourceState: .connected), info: other)
+    XCTAssertTrue(NavigationLiveActivityManager.shouldPush(changed, last: state, sinceLastPush: 1))
+  }
+
+  func test_GivenSeconds_WhenArrivalIsMade_ThenItIsToTheMinute() {
+    let now = Date(timeIntervalSince1970: 1_800_000_000 + 25)
+    let a = NavigationLiveActivityInfo.arrival(now: now, secondsLeft: 10)
+    let b = NavigationLiveActivityInfo.arrival(now: now.addingTimeInterval(3), secondsLeft: 10)
+    XCTAssertEqual(a, b)
+    XCTAssertEqual(a.timeIntervalSince1970.truncatingRemainder(dividingBy: 60), 0)
+  }
+
+  func test_GivenTurnImages_WhenSymbolIsMade_ThenEveryTurnHasOne() {
+    XCTAssertEqual(NavigationLiveActivityAttributes.ContentState.turnSymbol(imageName: "uturn_left"), "arrow.uturn.left")
+    XCTAssertEqual(NavigationLiveActivityAttributes.ContentState.turnSymbol(imageName: "finish_point"), "flag.checkered")
+    XCTAssertEqual(NavigationLiveActivityAttributes.ContentState.turnSymbol(imageName: nil), "arrow.up")
+    for name in ["simple_right", "simple_left", "slight_right", "slight_left", "sharp_right", "sharp_left",
+                 "uturn_left", "uturn_right", "round", "finish_point", "straight", "ic_exit_highway_to_right",
+                 "ic_exit_highway_to_left"] {
+      XCTAssertNotNil(UIImage(systemName: NavigationLiveActivityAttributes.ContentState.turnSymbol(imageName: name)),
+                      name)
+    }
+  }
+}
+
+final class FakeStatus: NoGpsStatus {
   let fakeSource: NoGpsPositionSource
   let fakeGpsState: NoGpsGpsState
   let fakeInertialEnabled: Bool

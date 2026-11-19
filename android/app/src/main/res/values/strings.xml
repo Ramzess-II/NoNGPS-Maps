@@ -1175,6 +1175,10 @@
     <string name="nogps_background_channel">Navigation without GPS</string>
     <!-- The notification shown while the app is hidden and the car is followed by the sensor box -->
     <string name="nogps_background_following">Following the car by the sensor box</string>
+    <!-- The line of a notification while the position of the car is given to other apps through the mock location -->
+    <string name="nogps_share_notice">Your position is given to other apps</string>
+    <!-- The button of a notification: stops giving the position of the car to other apps -->
+    <string name="nogps_share_turn_off">Turn off sharing</string>
     <!-- Source word in the bottom bar: the car is placed by the sensor box -->
     <string name="nogps_bar_inertial">Inertial</string>
     <!-- Source word in the bottom bar: the position is from cell towers and Wi-Fi -->

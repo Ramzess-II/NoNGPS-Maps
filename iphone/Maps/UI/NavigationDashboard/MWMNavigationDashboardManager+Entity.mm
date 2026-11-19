@@ -20,11 +20,8 @@
 
 namespace
 {
-UIImage * image(routing::turns::CarDirection t, bool isNextTurn)
+NSString * imageName(routing::turns::CarDirection t, bool isNextTurn)
 {
-  if (![MWMLocationManager lastLocation])
-    return nil;
-
   using namespace routing::turns;
   NSString * imageName;
   switch (t)
@@ -48,16 +45,22 @@ UIImage * image(routing::turns::CarDirection t, bool isNextTurn)
   case CarDirection::Count:
   case CarDirection::None: imageName = isNextTurn ? nil : @"straight"; break;
   }
-  if (!imageName)
-    return nil;
-  return [UIImage imageNamed:isNextTurn ? [imageName stringByAppendingString:@"_then"] : imageName];
+  return imageName;
 }
 
-UIImage * image(routing::turns::PedestrianDirection t)
+UIImage * image(routing::turns::CarDirection t, bool isNextTurn)
 {
   if (![MWMLocationManager lastLocation])
     return nil;
 
+  NSString * name = imageName(t, isNextTurn);
+  if (!name)
+    return nil;
+  return [UIImage imageNamed:isNextTurn ? [name stringByAppendingString:@"_then"] : name];
+}
+
+NSString * imageName(routing::turns::PedestrianDirection t)
+{
   using namespace routing::turns;
   NSString * imageName;
   switch (t)
@@ -69,9 +72,15 @@ UIImage * image(routing::turns::PedestrianDirection t)
   case PedestrianDirection::Count:
   case PedestrianDirection::None: imageName = @"straight"; break;
   }
-  if (!imageName)
+  return imageName;
+}
+
+UIImage * image(routing::turns::PedestrianDirection t)
+{
+  if (![MWMLocationManager lastLocation])
     return nil;
-  return [UIImage imageNamed:imageName];
+
+  return [UIImage imageNamed:imageName(t)];
 }
 
 NSArray<MWMRouterTransitStepInfo *> * buildRouteTransitSteps(NSArray<MWMRoutePoint *> * points)
@@ -164,12 +173,14 @@ NSTextAttachment * walkAttachment(UIFont * font)
     if (type == MWMRouterTypePedestrian)
     {
       _turnImage = image(info.m_pedestrianTurn);
+      _turnImageName = imageName(info.m_pedestrianTurn);
     }
     else
     {
       using namespace routing::turns;
       CarDirection const turn = info.m_turn;
       _turnImage = image(turn, false);
+      _turnImageName = imageName(turn, false);
       _nextTurnImage = image(info.m_nextTurn, true);
       BOOL const isRound = turn == CarDirection::EnterRoundAbout || turn == CarDirection::StayOnRoundAbout ||
                            turn == CarDirection::LeaveRoundAbout;

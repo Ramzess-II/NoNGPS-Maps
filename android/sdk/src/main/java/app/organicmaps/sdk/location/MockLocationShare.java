@@ -30,6 +30,18 @@ public final class MockLocationShare
   private static final String TAG = MockLocationShare.class.getSimpleName();
   private static final long TICK_MS = 1000;
 
+  /**
+   * Hears when the share turns on or off: a pause to hear GPS is not an end, so the user sees one steady notice.
+   */
+  public interface Listener
+  {
+    void onShareChanged(boolean active);
+  }
+
+  @Nullable
+  private static Listener sListener;
+  private static boolean sActive;
+
   enum State
   {
     OFF,
@@ -134,6 +146,34 @@ public final class MockLocationShare
     Config.setNoGpsSharePositionEnabled(enabled);
   }
 
+  public static void setListener(@Nullable Listener listener)
+  {
+    sListener = listener;
+  }
+
+  /**
+   * The position is given to other apps now, or the share only pauses to hear GPS.
+   */
+  public static boolean isActive()
+  {
+    return sActive;
+  }
+
+  static boolean isActive(@NonNull State state, boolean shared)
+  {
+    return shared || state == State.PROBING;
+  }
+
+  // Tells the listener once per change.
+  static void setActive(boolean active)
+  {
+    if (active == sActive)
+      return;
+    sActive = active;
+    if (sListener != null)
+      sListener.onShareChanged(active);
+  }
+
   /**
    * The app is picked as the mock location app in Developer options.
    */
@@ -209,6 +249,12 @@ public final class MockLocationShare
   }
 
   private void apply(@NonNull State state)
+  {
+    applyProviders(state);
+    setActive(isActive(state, mShared));
+  }
+
+  private void applyProviders(@NonNull State state)
   {
     final boolean share = state == State.SHARING;
     if (share == mShared)
@@ -304,5 +350,6 @@ public final class MockLocationShare
     removeProviders();
     mShared = false;
     mSchedule.reset();
+    setActive(false);
   }
 }

@@ -152,6 +152,8 @@ using namespace osm_auth_ios;
   [MWMThemeManager invalidate];
 
   [self commonInit];
+  // An activity of a killed run is still on the screen.
+  [MWMNavigationLiveActivity end];
 
   if ([FirstSession isFirstSession])
     [self firstLaunchSetup];
@@ -187,6 +189,7 @@ using namespace osm_auth_ios;
 - (void)applicationWillTerminate:(UIApplication *)application
 {
   [self.mapViewController onTerminate];
+  [MWMNavigationLiveActivity end];
   // Global cleanup
   DeleteFramework();
 }

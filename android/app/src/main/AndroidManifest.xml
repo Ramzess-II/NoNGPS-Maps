@@ -58,6 +58,8 @@
     Services (FGS)) notifications from an app.
   //-->
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <!-- Android 16+: the navigation notification is a Live Update, a chip in the status bar. -->
+  <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
   <!-- ELM327 OBD-II adapter and the ESP32 sensor box for the inertial navigation. -->
   <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
   <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
@@ -579,6 +581,10 @@
       android:exported="false"
       android:stopWithTask="true"
       />
+
+    <!-- The "Turn off sharing" button of the notification, see StatusNotification. -->
+    <receiver android:name=".nogps.ShareOffReceiver"
+      android:exported="false" />
 
     <activity
       android:name=".widget.TrackRecordingStartActivity"

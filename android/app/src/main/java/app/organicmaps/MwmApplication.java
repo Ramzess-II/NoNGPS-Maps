@@ -24,6 +24,7 @@ import app.organicmaps.downloader.DownloaderNotifier;
 import app.organicmaps.location.NoGpsBoxService;
 import app.organicmaps.location.TrackRecordingService;
 import app.organicmaps.nogps.NoGpsFlags;
+import app.organicmaps.nogps.StatusNotification;
 import app.organicmaps.routing.NavigationService;
 import app.organicmaps.sdk.Map;
 import app.organicmaps.sdk.OrganicMaps;
@@ -31,6 +32,7 @@ import app.organicmaps.sdk.display.DisplayManager;
 import app.organicmaps.sdk.location.LocationHelper;
 import app.organicmaps.sdk.location.LocationState;
 import app.organicmaps.sdk.location.LocationUtils;
+import app.organicmaps.sdk.location.MockLocationShare;
 import app.organicmaps.sdk.location.SensorHelper;
 import app.organicmaps.sdk.location.TrackRecorder;
 import app.organicmaps.sdk.maplayer.isolines.IsolinesManager;
@@ -145,6 +147,10 @@ public class MwmApplication extends Application implements Application.ActivityL
       if (!navigating)
         onNavigationOrRecordingStopped();
     });
+    // One notification at a time: the navigation, the car followed by the box, the position share notice. A notice
+    // left by a killed run goes away here.
+    MockLocationShare.setListener(active -> StatusNotification.refresh(this));
+    StatusNotification.refresh(this);
     TrackRecordingService.createNotificationChannel(this);
     NoGpsBoxService.createNotificationChannel(this);
     NoGpsFlags.deleteExpired(this);
@@ -324,6 +330,9 @@ public class MwmApplication extends Application implements Application.ActivityL
   {
     NavigationService.createNotificationChannel(this);
     NavigationService.setOrganicMaps(getOrganicMaps());
+    NavigationService.setNotificationDecorator(StatusNotification::decorate);
+    // What runs on takes the notification when the navigation ends in the background.
+    NavigationService.setStoppedListener(() -> StatusNotification.refresh(this));
 
     final int FLAG_IMMUTABLE = Build.VERSION.SDK_INT < Build.VERSION_CODES.M ? 0 : PendingIntent.FLAG_IMMUTABLE;
     final Intent contentIntent = new Intent(this, MwmActivity.class);

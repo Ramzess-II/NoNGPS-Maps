@@ -5,5 +5,6 @@ import WidgetKit
 struct OMapsWidgetExtensionBundle: WidgetBundle {
   var body: some Widget {
     TrackRecordingLiveActivityConfiguration()
+    NavigationLiveActivityConfiguration()
   }
 }

@@ -7,24 +7,21 @@ final class NoGpsStatusBar: UIView {
   }
 
   /// GPS moves the mark.
-  static let goodColor = UIColor { $0.userInterfaceStyle == .dark
-    ? UIColor(red: 0x32 / 255, green: 0xD7 / 255, blue: 0x4B / 255, alpha: 1)
-    : UIColor(red: 0x1E / 255, green: 0x8E / 255, blue: 0x3E / 255, alpha: 1)
-  }
+  static let goodColor = NavigationLiveActivityColor.goodColor
 
   /// The box moves the mark.
-  static let inertialColor = UIColor { $0.userInterfaceStyle == .dark
-    ? UIColor(red: 0xBF / 255, green: 0x5A / 255, blue: 0xF2 / 255, alpha: 1)
-    : UIColor(red: 0x8E / 255, green: 0x44 / 255, blue: 0xC4 / 255, alpha: 1)
-  }
+  static let inertialColor = NavigationLiveActivityColor.inertialColor
 
   /// How a state is drawn: the icon, its color, a badge and if it pulses while something is in progress. A badge
-  /// without a symbol is a dot.
+  /// without a symbol is a dot. The names of the symbols and the color key let the Live Activity draw the same look.
   struct Look {
-    let image: UIImage?
+    let symbol: NavigationLiveActivitySymbol
     let color: UIColor
     var badge: (symbol: String?, color: UIColor)?
     var pulsing = false
+
+    var image: UIImage? { symbol.image }
+    var colorKey: NavigationLiveActivityColor { NavigationLiveActivityColor(color) }
   }
 
   private weak static var shared: NoGpsStatusBar?
@@ -55,6 +52,7 @@ final class NoGpsStatusBar: UIView {
   static func update(_ status: NoGpsStatus) {
     shared?.button.show(status)
     navSheetButton?.show(status)
+    NavigationLiveActivity.update(status)
   }
 
   /// Where the position comes from: the box when the car follows it, or when the mark is set by hand with a box set up,
@@ -143,19 +141,19 @@ final class NoGpsStatusBar: UIView {
   }
 
   static func gpsLook(_ status: NoGpsStatus) -> Look {
-    let antenna = UIImage(systemName: Constants.gpsSymbol)
-    let slashed = UIImage(systemName: Constants.gpsSymbol + ".slash") ?? antenna
+    let antenna = NavigationLiveActivitySymbol.system(Constants.gpsSymbol)
+    let slashed = NavigationLiveActivitySymbol.system(Constants.gpsSymbol + ".slash")
     if LocationManager.isLocationProhibited() {
-      return Look(image: slashed, color: .secondaryLabel)
+      return Look(symbol: slashed, color: .secondaryLabel)
     }
     var look: Look
     switch status.gpsState {
-    case .good: look = Look(image: antenna, color: goodColor)
-    case .checking: look = Look(image: antenna, color: .systemBlue, pulsing: true)
-    case .coarse: look = Look(image: antenna, color: .systemOrange)
-    case .spoofed: look = Look(image: antenna, color: .systemOrange, badge: ("exclamationmark", .systemOrange))
-    case .none: look = Look(image: slashed, color: .systemRed)
-    @unknown default: look = Look(image: slashed, color: .systemRed)
+    case .good: look = Look(symbol: antenna, color: goodColor)
+    case .checking: look = Look(symbol: antenna, color: .systemBlue, pulsing: true)
+    case .coarse: look = Look(symbol: antenna, color: .systemOrange)
+    case .spoofed: look = Look(symbol: antenna, color: .systemOrange, badge: ("exclamationmark", .systemOrange))
+    case .none: look = Look(symbol: slashed, color: .systemRed)
+    @unknown default: look = Look(symbol: slashed, color: .systemRed)
     }
     // The car doesn't follow GPS: the badge tells it, the color still tells the signal.
     if status.gpsDisabled, look.badge == nil {
@@ -165,12 +163,12 @@ final class NoGpsStatusBar: UIView {
   }
 
   static func boxLook(_ status: NoGpsStatus) -> Look {
-    let chip = UIImage(systemName: Constants.boxSymbol)
+    let chip = NavigationLiveActivitySymbol.system(Constants.boxSymbol)
     // No box: the button calls to set one up or to buy it.
-    guard status.inertialEnabled else { return Look(image: chip, color: .secondaryLabel, badge: ("plus", .systemBlue)) }
+    guard status.inertialEnabled else { return Look(symbol: chip, color: .secondaryLabel, badge: ("plus", .systemBlue)) }
     switch status.sourceState {
-    case .connected: return Look(image: chip, color: inertialColor)
-    case .updating: return Look(image: chip, color: .systemBlue, badge: ("arrow.down", .systemBlue), pulsing: true)
+    case .connected: return Look(symbol: chip, color: inertialColor)
+    case .updating: return Look(symbol: chip, color: .systemBlue, badge: ("arrow.down", .systemBlue), pulsing: true)
     case .boxSleeping:
       // The box is away or its radio is off: the phone keeps looking for it.
       var look = boxSearchLook(status)
@@ -178,9 +176,9 @@ final class NoGpsStatusBar: UIView {
         look.badge = ("moon.fill", .systemGray)
       }
       return look
-    case .obdSleeping: return Look(image: chip, color: .secondaryLabel, badge: ("moon.fill", .systemGray))
+    case .obdSleeping: return Look(symbol: chip, color: .secondaryLabel, badge: ("moon.fill", .systemGray))
     case .noCarData, .obdDisabled, .obdConnecting, .obdError, .noAdapter:
-      return Look(image: chip, color: .systemOrange, badge: ("exclamationmark", .systemOrange))
+      return Look(symbol: chip, color: .systemOrange, badge: ("exclamationmark", .systemOrange))
     case .disconnected, .connecting: return boxSearchLook(status)
     @unknown default: return boxSearchLook(status)
     }
@@ -189,16 +187,16 @@ final class NoGpsStatusBar: UIView {
   /// The box is not heard yet: the phone looks for it by Bluetooth, then waits for its data.
   private static func boxSearchLook(_ status: NoGpsStatus) -> Look {
     switch status.bleState {
-    case .connected: return Look(image: UIImage(systemName: Constants.boxSymbol), color: .systemBlue, pulsing: true)
+    case .connected: return Look(symbol: NavigationLiveActivitySymbol.system(Constants.boxSymbol), color: .systemBlue, pulsing: true)
     case .off, .noPermission, .disabled:
-      return Look(image: UIImage(resource: .icNogpsBluetoothOff), color: .secondaryLabel)
+      return Look(symbol: NavigationLiveActivitySymbol.asset("ic_nogps_bluetooth_off"), color: .secondaryLabel)
     case .searching, .pairingClosed, .pairingByPhone, .pairingFull, .carLimit, .connecting, .pairing:
-      return Look(image: UIImage(resource: .icNogpsBluetooth), color: .systemBlue, pulsing: true)
+      return Look(symbol: NavigationLiveActivitySymbol.asset("ic_nogps_bluetooth"), color: .systemBlue, pulsing: true)
     // Not searched until the user acts.
     case .pairingFailed, .bondLost:
-      return Look(image: UIImage(systemName: Constants.boxSymbol), color: .systemOrange,
+      return Look(symbol: NavigationLiveActivitySymbol.system(Constants.boxSymbol), color: .systemOrange,
                   badge: ("exclamationmark", .systemOrange))
-    @unknown default: return Look(image: UIImage(resource: .icNogpsBluetooth), color: .systemBlue, pulsing: true)
+    @unknown default: return Look(symbol: NavigationLiveActivitySymbol.asset("ic_nogps_bluetooth"), color: .systemBlue, pulsing: true)
     }
   }
 
