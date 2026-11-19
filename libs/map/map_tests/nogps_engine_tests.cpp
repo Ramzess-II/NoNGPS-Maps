@@ -53,7 +53,7 @@ public:
 
   /// The ESP32 box sends its data 50 times a second for |ms|: the car drives at |speedKmh| turning at |yawRateDegS|,
   /// clockwise is positive.
-  void Drive(int64_t ms, int speedKmh, double yawRateDegS, int flags = kCalibratedFlags)
+  void Drive(int64_t ms, int speedKmh, double yawRateDegS, int flags = kCalibratedFlags, int shakePct = -1)
   {
     for (int64_t t = 0; t < ms; t += 20)
     {
@@ -61,8 +61,8 @@ public:
       m_boxTimeMs += 20;
       m_yawMdeg += yawRateDegS * 20;
       m_distMm += speedKmh / 3.6 * 20;
-      m_engine.OnEsp32BleBytes(
-          BoxDataLine(++m_seq, m_boxTimeMs, std::llround(m_yawMdeg), speedKmh, flags, std::llround(m_distMm)));
+      m_engine.OnEsp32BleBytes(BoxDataLine(++m_seq, m_boxTimeMs, std::llround(m_yawMdeg), speedKmh, flags,
+                                           std::llround(m_distMm), shakePct));
     }
   }
 
@@ -2611,6 +2611,178 @@ UNIT_TEST(NoGps_Engine_AdvisesToCalibratePluggedBox)
   TEST(advised(), ());
   env.Drive(2000, 0, 0);
   TEST_EQUAL(count(), 2, ());
+}
+
+// The box is connected and shakes at |shakePct|; the user asks to calibrate it when the car stands still.
+class CalibrateWhenStillBox
+{
+public:
+  explicit CalibrateWhenStillBox(Env & env) : m_env(env)
+  {
+    env.ConnectBox();
+    env.Drive(1000, 0, 0, kCalibratedFlags, 150);
+  }
+
+  void Wait(int64_t ms, bool still, int shakePct)
+  {
+    int const flags = kCalibratedFlags | (still ? esp32::kFlagStill : 0);
+    m_env.Drive(ms, 0, 0, flags, shakePct);
+  }
+
+  size_t Calibrations() const
+  {
+    auto const & sent = m_env.m_delegate.m_esp32BleSent;
+    return std::count_if(sent.begin(), sent.end(),
+                         [](std::string const & line) { return line.find(",CAL_UP*") != std::string::npos; });
+  }
+
+  void Reply(std::string const & reply)
+  {
+    // The phone says hello to the box every second, the calibration is not the last command.
+    auto const & sent = m_env.m_delegate.m_esp32BleSent;
+    auto const it = std::find_if(sent.rbegin(), sent.rend(),
+                                 [](std::string const & line) { return line.find(",CAL_UP*") != std::string::npos; });
+    TEST(it != sent.rend(), ());
+    auto const idEnd = it->find(",CAL_UP*");
+    m_env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + it->substr(5, idEnd - 5) + "," + reply));
+  }
+
+  Env & m_env;
+};
+
+UNIT_TEST(NoGps_Engine_CalibratesBoxWhenCarStands)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env);
+  env.m_engine.CalibrateWhenStill();
+  TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
+  // The car shakes, then it stands for a while, but the box has not told it is still.
+  box.Wait(2000, false, 150);
+  TEST_EQUAL(box.Calibrations(), 0, ());
+  TEST(!env.m_engine.GetStatus().m_boxStill, ());
+  TEST_EQUAL(env.m_engine.GetBoxShake().size(), Esp32Source::kShakeLines, ());
+  TEST_EQUAL(env.m_engine.GetBoxShake().back(), 150, ());
+  // The box tells it: the calibration is sent once.
+  box.Wait(1000, true, 40);
+  TEST_EQUAL(box.Calibrations(), 1, ());
+  TEST(env.m_engine.GetStatus().m_boxStill, ());
+  TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
+  TEST_EQUAL(env.m_engine.GetBoxShake().back(), 40, ());
+  box.Wait(1000, true, 40);
+  TEST_EQUAL(box.Calibrations(), 1, ());
+  // The box has calibrated: the core is not armed any more.
+  box.Reply("OK");
+  box.Wait(500, true, 40);
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibration, CalibrationState::Done, ());
+  box.Wait(1000, true, 40);
+  TEST_EQUAL(box.Calibrations(), 1, ());
+}
+
+UNIT_TEST(NoGps_Engine_CalibrationWhenStillStartsAgainAfterMoving)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env);
+  env.m_engine.CalibrateWhenStill();
+  box.Wait(1000, true, 40);
+  TEST_EQUAL(box.Calibrations(), 1, ());
+  // Someone gets into the car.
+  box.Reply("ERR,MOVING");
+  box.Wait(1000, false, 200);
+  TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibration, CalibrationState::FailedMoving, ());
+  TEST_EQUAL(box.Calibrations(), 1, ());
+  box.Wait(1000, true, 40);
+  TEST_EQUAL(box.Calibrations(), 2, ());
+  box.Reply("OK");
+  box.Wait(500, true, 40);
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+}
+
+UNIT_TEST(NoGps_Engine_CalibrationWhenStillGivesUpAfterRepeatedFailures)
+{
+  // A box that cannot calibrate on a still car (bad mounting) is reported as moving each time.
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env);
+  env.m_engine.CalibrateWhenStill();
+  for (int i = 0; i < Engine::kCalibrateWhenStillMaxFailures; ++i)
+  {
+    TEST(env.m_engine.GetStatus().m_calibrationArmed, (i));
+    box.Wait(1000, true, 40);
+    TEST_EQUAL(box.Calibrations(), static_cast<size_t>(i + 1), ());
+    box.Reply("ERR,MOVING");
+    box.Wait(1000, false, 200);
+  }
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+}
+
+UNIT_TEST(NoGps_Engine_CalibrationWhenStillIsCancelled)
+{
+  {
+    // The car does not stand for 2 min.
+    Env env(true /* inertial */);
+    CalibrateWhenStillBox box(env);
+    env.m_engine.CalibrateWhenStill();
+    box.Wait(Engine::kCalibrateWhenStillTimeoutMs - 2000, false, 150);
+    TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
+    box.Wait(3000, false, 150);
+    TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+    box.Wait(2000, true, 40);
+    TEST_EQUAL(box.Calibrations(), 0, ());
+  }
+  {
+    // The link is lost.
+    Env env(true /* inertial */);
+    CalibrateWhenStillBox box(env);
+    env.m_engine.CalibrateWhenStill();
+    box.Wait(1000, false, 150);
+    env.m_engine.OnEsp32BleState(BleState::Searching);
+    env.m_clock.Advance(500);
+    TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  }
+  {
+    // The link is lost while the box calibrates.
+    Env env(true /* inertial */);
+    CalibrateWhenStillBox box(env);
+    env.m_engine.CalibrateWhenStill();
+    box.Wait(1000, true, 40);
+    TEST_EQUAL(box.Calibrations(), 1, ());
+    env.m_engine.OnEsp32BleState(BleState::Searching);
+    env.m_clock.Advance(500);
+    TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  }
+  {
+    // The user cancels.
+    Env env(true /* inertial */);
+    CalibrateWhenStillBox box(env);
+    env.m_engine.CalibrateWhenStill();
+    env.m_engine.CancelCalibrateWhenStill();
+    TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+    box.Wait(2000, true, 40);
+    TEST_EQUAL(box.Calibrations(), 0, ());
+  }
+  {
+    // A box without the connection can't calibrate.
+    Env env(true /* inertial */);
+    env.m_engine.OnEsp32BleState(BleState::Searching);
+    env.m_engine.CalibrateWhenStill();
+    TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  }
+}
+
+UNIT_TEST(NoGps_Engine_CalibrationWhenStillIsNotForReadOnlyBox)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env);
+  // The box knows its phones, another phone changes it: it refuses a command of this one.
+  env.m_engine.OnEsp32BleBytes(
+      BoxLine("NGI,1,0.4.1,2026-11-15T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA PHONES"));
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA,99,ERR,BUSY"));
+  TEST(env.m_engine.GetStatus().m_boxReadOnly, ());
+  env.m_engine.CalibrateWhenStill();
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  box.Wait(2000, true, 40);
+  TEST_EQUAL(box.Calibrations(), 0, ());
 }
 
 UNIT_TEST(NoGps_Engine_AdvisesToCalibrateBoxByItsPowerOns)

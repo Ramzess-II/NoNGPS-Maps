@@ -54,6 +54,9 @@ struct Data
   double m_accelH2 = 0;
   double m_accelUp = 0;
   double m_jolt = 0;
+  // How much the box shakes during the line, in percent of the limit under which the box counts itself still: 100 is
+  // at the limit. -1 if the box doesn't tell it, see Esp32Source::GetShake().
+  int m_shakePct = -1;
 };
 
 /// An event of the box: an error, its end or a calibration.

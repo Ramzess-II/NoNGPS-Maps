@@ -198,6 +198,8 @@ std::optional<Data> ParseData(Fields const & fields)
     data.m_jolt = jolt / 1000.0;
     data.m_hasAccel = true;
   }
+  if (fields.size() >= 15 && !fields[14].empty() && !strings::to_int(fields[14], data.m_shakePct))
+    return {};
   return data;
 }
 

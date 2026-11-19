@@ -141,6 +141,11 @@ struct Status
   bool m_speedLagMeasured = false;
   CalibrationState m_calibration = CalibrationState::None;
   int m_calibrationProgress = 0;
+  // The core waits for the car to stand still to calibrate the box, see Engine::CalibrateWhenStill(): it has not sent
+  // the calibration yet or it runs.
+  bool m_calibrationArmed = false;
+  // The sensor box reports that it stands still.
+  bool m_boxStill = false;
   bool m_hasInertialPosition = false;
   // The mark waits for the user to put it on a road: the road is lost. It is to be noticed at once.
   bool m_roadLost = false;
@@ -288,6 +293,11 @@ public:
   // a couple of seconds after it wakes up.
   static int constexpr kNotCalibratedSpeedKmh = 10;
   static int64_t constexpr kNotCalibratedDelayMs = 5000;
+  // The car must stand still within this time after the user has asked to calibrate the box.
+  static int64_t constexpr kCalibrateWhenStillTimeoutMs = 120'000;
+  /// The box reports every failed calibration as the car moving: a still car that keeps failing is a bad mounting.
+  static int constexpr kCalibrateWhenStillMaxFailures = 5;
+  static int64_t constexpr kCalibrateWhenStillIntervalMs = 200;
   // The bar of the speed calibration slides out after this long at a speed GPS has not measured, and stays this long
   // after the speed leaves for a measured one or slows down below SpeedTable::kMinSpeedKmh: 49-51 km/h doesn't make
   // it flicker. GPS measures the speed now if it was good for that this recently.
@@ -376,6 +386,16 @@ public:
   /// Chooses where the car movement comes from: the ESP32 sensor box or the phone with an ELM327 adapter.
   void SetEsp32Source(bool esp32);
   void Calibrate();
+  /// Calibrates the box as soon as it reports that the car stands still, see Status::m_calibrationArmed. If the car
+  /// moves during the calibration, it starts again when the car is still. It stops when the box is not connected, is
+  /// changed by another phone, or for kCalibrateWhenStillTimeoutMs without a still car. Nothing happens for a box
+  /// that can't be calibrated now.
+  void CalibrateWhenStill();
+  void CancelCalibrateWhenStill();
+  /// \returns the shake of the box in the last 3 s, the oldest first, in percent of the limit under which the box
+  /// counts the car still. Empty without a box or with an old firmware. Cheap: the user interface polls it while it
+  /// shows the shake.
+  std::vector<int> GetBoxShake() const;
   /// Forgets the car speed errors, e.g. after new tyres.
   void ClearSpeedCalibration();
 
@@ -459,6 +479,8 @@ private:
   void CheckGpsLost();
   void CheckMotionSourceStopped();
   void CheckNotCalibrated();
+  /// Sends the calibration to the box when the car stands still, ends the wait. Called while the user waits.
+  void CheckCalibrateWhenStill();
   /// Shows the bar of the speed calibration while the car speed comes from the box at a speed GPS has not measured, and
   /// tells Event::SpeedRangeCalibrated when GPS has measured a range. Called every second.
   void UpdateSpeedHint();
@@ -678,6 +700,12 @@ private:
   // The place is set by the other phone: it is not told to it again.
   bool m_applyingPeer = false;
   Timer m_tripLogTimer;
+  Timer m_calibrateTimer;
+  // Since when the car is waited to stand still, and whether the box calibrates now.
+  int64_t m_calibrateWaitMs = 0;
+  bool m_calibrationSent = false;
+  int m_calibrationFailures = 0;
+  bool m_calibrationArmed = false;
   // The platform forgets the car on Event::ThisPhoneRemoved: not while the box is being read.
   Timer m_phoneRemovedTimer;
 

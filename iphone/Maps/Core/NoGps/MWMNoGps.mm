@@ -273,6 +273,8 @@ std::optional<double> NonNegative(double value)
     _speedLagMeasured = status.m_speedLagMeasured;
     _calibration = static_cast<MWMNoGpsCalibrationState>(status.m_calibration);
     _calibrationProgress = status.m_calibrationProgress;
+    _calibrationArmed = status.m_calibrationArmed;
+    _boxStill = status.m_boxStill;
     _firmwareOfferPending = status.m_firmwareOfferPending;
     _boxCalibrationAdvised = status.m_boxCalibrationAdvised;
     _hasInertialPosition = status.m_hasInertialPosition;
@@ -488,6 +490,25 @@ static CLLocation * lastPlatformLocation;
 + (void)calibrate
 {
   Engine().Calibrate();
+}
+
++ (void)calibrateWhenStill
+{
+  Engine().CalibrateWhenStill();
+}
+
++ (void)cancelCalibrateWhenStill
+{
+  Engine().CancelCalibrateWhenStill();
+}
+
++ (NSArray<NSNumber *> *)boxShake
+{
+  auto const shake = Engine().GetBoxShake();
+  NSMutableArray<NSNumber *> * result = [NSMutableArray arrayWithCapacity:shake.size()];
+  for (int const value : shake)
+    [result addObject:@(value)];
+  return result;
 }
 
 + (void)clearSpeedCalibration

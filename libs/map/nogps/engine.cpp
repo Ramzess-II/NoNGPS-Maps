@@ -101,6 +101,7 @@ Engine::Engine(Delegate & delegate, MapApi & map, Storage & storage, Clock const
   , m_manualRepeatTimer(scheduler)
   , m_peerTimer(scheduler)
   , m_tripLogTimer(scheduler)
+  , m_calibrateTimer(scheduler)
   , m_phoneRemovedTimer(scheduler)
 {}
 
@@ -144,6 +145,7 @@ void Engine::Stop()
   m_manualRepeatTimer.Stop();
   m_peerTimer.Stop();
   m_tripLogTimer.Stop();
+  CancelCalibrateWhenStill();
   m_active = false;
 }
 
@@ -1223,6 +1225,73 @@ void Engine::Calibrate()
     m_inertial->Calibrate();
 }
 
+void Engine::CalibrateWhenStill()
+{
+  auto * box = m_inertial ? m_inertial->GetEsp32() : nullptr;
+  if (!box || box->GetBleState() != BleState::Connected || box->IsReadOnly())
+    return;
+  LOG(LINFO, ("Calibrate when the car stands still"));
+  m_calibrationArmed = true;
+  m_calibrationFailures = 0;
+  // A calibration started from the page is followed, not started again.
+  m_calibrationSent = box->GetCalibrationState() == CalibrationState::Calibrating;
+  m_calibrateWaitMs = m_clock.NowMs();
+  CheckCalibrateWhenStill();
+}
+
+void Engine::CancelCalibrateWhenStill()
+{
+  m_calibrationArmed = false;
+  m_calibrateTimer.Stop();
+}
+
+std::vector<int> Engine::GetBoxShake() const
+{
+  auto const * box = m_inertial ? m_inertial->GetEsp32() : nullptr;
+  return box ? box->GetShake() : std::vector<int>{};
+}
+
+void Engine::CheckCalibrateWhenStill()
+{
+  if (!m_calibrationArmed)
+    return;
+  auto * box = m_inertial ? m_inertial->GetEsp32() : nullptr;
+  int64_t const now = m_clock.NowMs();
+  bool lost = !box || box->GetBleState() != BleState::Connected || box->IsReadOnly();
+  if (!lost && m_calibrationSent)
+  {
+    auto const state = box->GetCalibrationState();
+    if (state == CalibrationState::LinkLost)
+      lost = true;
+    else if (state != CalibrationState::Calibrating)
+    {
+      m_calibrationSent = false;
+      if (state != CalibrationState::FailedMoving)
+      {
+        LOG(LINFO, ("The calibration of the box has ended:", state));
+        CancelCalibrateWhenStill();
+        return;
+      }
+      LOG(LINFO, ("The car has moved during the calibration, wait for it to stand"));
+      m_calibrateWaitMs = now;
+      ++m_calibrationFailures;
+    }
+  }
+  if (lost || m_calibrationFailures >= kCalibrateWhenStillMaxFailures ||
+      (!m_calibrationSent && now - m_calibrateWaitMs >= kCalibrateWhenStillTimeoutMs))
+  {
+    LOG(LINFO, ("The calibration of the box when still is cancelled, lost =", lost));
+    CancelCalibrateWhenStill();
+    return;
+  }
+  if (!m_calibrationSent && box->IsStill())
+  {
+    m_inertial->Calibrate();
+    m_calibrationSent = true;
+  }
+  m_calibrateTimer.Start(kCalibrateWhenStillIntervalMs, [this] { CheckCalibrateWhenStill(); });
+}
+
 void Engine::ClearSpeedCalibration()
 {
   if (!m_inertial)
@@ -1988,6 +2057,7 @@ Status Engine::GetStatus()
     status.m_speedLagMeasured = m_inertial->IsSpeedLagMeasured();
     status.m_calibration = m_inertial->GetCalibrationState();
     status.m_calibrationProgress = m_inertial->GetCalibrationProgressPercent();
+    status.m_calibrationArmed = m_calibrationArmed;
     status.m_hasInertialPosition = m_inertial->HasPosition();
     status.m_roadLost = m_inertial->IsUserNeeded();
     status.m_otherMarks = static_cast<int>(m_inertial->GetOtherMarksCount());
@@ -2007,6 +2077,7 @@ Status Engine::GetStatus()
       if (box->GetPhones())
         status.m_boxPhones = box->GetPhones()->m_phones;
       status.m_boxReadOnly = box->IsReadOnly();
+      status.m_boxStill = box->IsStill();
       status.m_peerRole = box->GetPeerRole();
       status.m_peerName = box->GetLeaderName();
       status.m_addPhone = box->GetAddPhoneState();
