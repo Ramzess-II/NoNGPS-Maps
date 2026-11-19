@@ -25,7 +25,7 @@ class ZipLogsTask implements Runnable
   private final String mZipPath;
   @Nullable
   private final LogsManager.OnZipCompletedListener mOnCompletedListener;
-  // Only the daily files of these days, "dd-MM-yy", without the logcat. All files when null.
+  // Only the files of these days, "yyyy-MM-dd", without the logcat. All files when null.
   @Nullable
   private final Collection<String> mDays;
 
@@ -57,10 +57,25 @@ class ZipLogsTask implements Runnable
     File sourceFile = new File(sourcePath);
     if (!sourceFile.isDirectory())
       return false;
+    final List<File> files = mDays == null ? LogFiles.all(sourceFile) : LogFiles.ofDays(sourceFile, mDays);
     try (FileOutputStream dest = new FileOutputStream(toLocation, false);
          ZipOutputStream out = new ZipOutputStream(new BufferedOutputStream(dest)))
     {
-      zipSubFolder(out, sourceFile, sourceFile.getPath().length());
+      final int bufSize = 8 * 1024;
+      final byte[] data = new byte[bufSize];
+      for (File file : files)
+      {
+        // As the zip of iOS: unpacked into one folder, the zips of any phones and days make one tree.
+        final String relativePath = file.getPath().substring(sourceFile.getPath().length() + 1);
+        try (FileInputStream fi = new FileInputStream(file);
+             BufferedInputStream origin = new BufferedInputStream(fi, bufSize))
+        {
+          out.putNextEntry(new ZipEntry("logs/" + relativePath.replace(File.separatorChar, '/')));
+          int count;
+          while ((count = origin.read(data, 0, bufSize)) != -1)
+            out.write(data, 0, count);
+        }
+      }
     }
     catch (Exception e)
     {
@@ -68,49 +83,6 @@ class ZipLogsTask implements Runnable
       return false;
     }
     return true;
-  }
-
-  private void zipSubFolder(ZipOutputStream out, File folder, int basePathLength) throws IOException
-  {
-    File[] fileList = folder.listFiles();
-    if (fileList == null)
-      throw new IOException("Can't get files list of " + folder.getPath());
-    if (mDays != null)
-    {
-      final String[] names = new String[fileList.length];
-      for (int i = 0; i < fileList.length; ++i)
-        names[i] = fileList[i].getName();
-      final List<String> picked = LogFiles.ofDays(names, mDays);
-      fileList = new File[picked.size()];
-      for (int i = 0; i < fileList.length; ++i)
-        fileList[i] = new File(folder, picked.get(i));
-    }
-
-    for (File file : fileList)
-    {
-      if (file.isDirectory())
-      {
-        zipSubFolder(out, file, basePathLength);
-      }
-      else
-      {
-        final int bufSize = 8 * 1024;
-        byte[] data = new byte[bufSize];
-        String unmodifiedFilePath = file.getPath();
-        String relativePath = unmodifiedFilePath.substring(basePathLength);
-        try (FileInputStream fi = new FileInputStream(unmodifiedFilePath);
-             BufferedInputStream origin = new BufferedInputStream(fi, bufSize))
-        {
-          ZipEntry entry = new ZipEntry(relativePath);
-          out.putNextEntry(entry);
-          int count;
-          while ((count = origin.read(data, 0, bufSize)) != -1)
-          {
-            out.write(data, 0, count);
-          }
-        }
-      }
-    }
   }
 
   private void saveSystemLogcat(String path)
@@ -128,8 +100,13 @@ class ZipLogsTask implements Runnable
       return;
     }
 
-    path += File.separator + "logcat.log";
-    final File file = new File(path);
+    // The one saved before the phones had their folders: it would be sent as of now.
+    new File(path, "logcat.log").delete();
+    // In the folder of the phone: unpacked together, the logcats of several phones don't replace each other.
+    final File folder = new File(path, LogsManager.INSTANCE.getPhoneId());
+    folder.mkdirs();
+    final File file = new File(folder, "logcat.log");
+    path = file.getPath();
     try (InputStreamReader reader = new InputStreamReader(process.getInputStream());
          FileWriter writer = new FileWriter(file))
     {

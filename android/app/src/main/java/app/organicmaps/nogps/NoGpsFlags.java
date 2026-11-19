@@ -99,20 +99,22 @@ public final class NoGpsFlags
     }
   }
 
-  // "dd-MM-yy" of the log file names, see LogFiles.
+  // "yyyy-MM-dd" of the folders of the log files, see LogFiles.
   @NonNull
   static String logDay(@NonNull String name)
   {
     if (name.length() < 8)
       return "";
-    return name.substring(6, 8) + "-" + name.substring(4, 6) + "-" + name.substring(2, 4);
+    return name.substring(0, 4) + "-" + name.substring(4, 6) + "-" + name.substring(6, 8);
   }
 
   // "dd.MM.yy" for the mail subject.
   @NonNull
   static String mailDay(@NonNull String name)
   {
-    return logDay(name).replace('-', '.');
+    if (name.length() < 8)
+      return "";
+    return name.substring(6, 8) + "." + name.substring(4, 6) + "." + name.substring(2, 4);
   }
 
   // "HH:mm:ss" as the log tools take it.

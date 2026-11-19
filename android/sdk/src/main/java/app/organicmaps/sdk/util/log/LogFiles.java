@@ -2,6 +2,7 @@ package app.organicmaps.sdk.util.log;
 
 import android.util.Log;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -13,7 +14,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 
-/// Names of the log files: one a day per phone, "log-dd-MM-yy-<phone>[.<part>].log".
+/// The log files under the logs folder: "<phone>/<yyyy-MM-dd>/<HHmmss>.log", one per launch and per drive, so that
+/// the folders of any phones and days merge into one tree.
 final class LogFiles
 {
   private static final String TAG = LogFiles.class.getSimpleName();
@@ -35,54 +37,82 @@ final class LogFiles
     return sanitizeModel(model) + String.format(Locale.US, "-%04x", random.nextInt(0x10000));
   }
 
-  /// The day is taken in the default time zone.
+  /// The path of a log file under the logs folder. A file is named by the time it was started at, and is in the
+  /// folder of the day it is written on: over midnight it goes on in the next folder under the same name. Both are
+  /// taken in the default time zone.
   @NonNull
-  static String fileName(@NonNull Date day, @NonNull String phoneId, int part)
+  static String fileName(@NonNull String phoneId, @NonNull Date started, @NonNull Date now)
   {
-    final String name = "log-" + new SimpleDateFormat("dd-MM-yy", Locale.US).format(day) + "-" + phoneId;
-    return part == 0 ? name + ".log" : name + "." + part + ".log";
+    final String day = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(now);
+    final String name = new SimpleDateFormat("HHmmss", Locale.US).format(started);
+    return phoneId + File.separator + day + File.separator + name + ".log";
   }
 
-  /// The files of the days, "dd-MM-yy": all their parts, of another phone id too.
+  /// The log files of the days, "yyyy-MM-dd", of every phone of the folder.
   @NonNull
-  static List<String> ofDays(@NonNull String[] names, @NonNull Collection<String> days)
+  static List<File> ofDays(@NonNull File folder, @NonNull Collection<String> days)
   {
-    final List<String> files = new ArrayList<>();
-    for (String name : names)
+    final List<File> files = new ArrayList<>();
+    for (File phone : sorted(folder.listFiles(File::isDirectory)))
     {
-      if (!name.endsWith(".log"))
-        continue;
-      for (String day : days)
-      {
-        if (name.startsWith("log-" + day + "-"))
-        {
-          files.add(name);
-          break;
-        }
-      }
+      for (File day : sorted(phone.listFiles(dir -> dir.isDirectory() && days.contains(dir.getName()))))
+        files.addAll(Arrays.asList(sorted(day.listFiles(file -> file.isFile() && file.getName().endsWith(".log")))));
     }
     return files;
   }
 
-  /// Deletes the oldest files of the folder until all of them together take at most maxTotalSize.
+  /// Every file of the folder and its subfolders: the files named as before the tree too.
+  @NonNull
+  static List<File> all(@NonNull File folder)
+  {
+    final List<File> files = new ArrayList<>();
+    for (File file : sorted(folder.listFiles()))
+    {
+      if (file.isDirectory())
+        files.addAll(all(file));
+      else
+        files.add(file);
+    }
+    return files;
+  }
+
+  /// Deletes the oldest files of the tree until all of them together take at most maxTotalSize, then the folders
+  /// left empty.
   static void deleteOldest(@NonNull File folder, long maxTotalSize)
   {
-    final File[] files = folder.listFiles(File::isFile);
-    if (files == null)
-      return;
-
+    final List<File> files = all(folder);
     long total = 0;
     for (File file : files)
       total += file.length();
 
-    Arrays.sort(files, Comparator.comparingLong(File::lastModified));
-    for (int i = 0; i < files.length && total > maxTotalSize; ++i)
+    files.sort(Comparator.comparingLong(File::lastModified));
+    for (int i = 0; i < files.size() && total > maxTotalSize; ++i)
     {
-      final long size = files[i].length();
-      if (files[i].delete())
+      final long size = files.get(i).length();
+      if (files.get(i).delete())
         total -= size;
       else
-        Log.e(TAG, "Failed to delete old log file " + files[i].getPath());
+        Log.e(TAG, "Failed to delete old log file " + files.get(i).getPath());
     }
+    deleteEmptyFolders(folder);
+  }
+
+  private static void deleteEmptyFolders(@NonNull File folder)
+  {
+    for (File subfolder : sorted(folder.listFiles(File::isDirectory)))
+    {
+      deleteEmptyFolders(subfolder);
+      // Fails when the folder has files.
+      subfolder.delete();
+    }
+  }
+
+  @NonNull
+  private static File[] sorted(@Nullable File[] files)
+  {
+    if (files == null)
+      return new File[0];
+    Arrays.sort(files);
+    return files;
   }
 }

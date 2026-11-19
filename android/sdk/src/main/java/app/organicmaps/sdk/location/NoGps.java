@@ -243,6 +243,9 @@ public final class NoGps
     SPEED_RANGE_CALIBRATED,
     // A run from a standing start is timed: Status.getSprintKind() and the sprint fields tell the result.
     SPRINT_MEASURED,
+    // The box has connected after 5 minutes or more without it: a drive starts. LocationHelper starts a new file of
+    // the trip log.
+    TRIP_STARTED,
   }
 
   // The kinds of the runs from a standing start.
