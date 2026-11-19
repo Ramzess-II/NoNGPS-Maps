@@ -62,16 +62,18 @@ enum NoGpsFlags {
     nameFormatter.date(from: name)
   }
 
-  /// "dd-MM-yy" of the log file names, see Logger.
+  /// "yyyy-MM-dd" of the folders of the log files, see Logger.
   static func logDay(of name: String) -> String {
     let digits = Array(name.prefix(8))
     guard digits.count == 8 else { return "" }
-    return "\(String(digits[6 ..< 8]))-\(String(digits[4 ..< 6]))-\(String(digits[2 ..< 4]))"
+    return "\(String(digits[0 ..< 4]))-\(String(digits[4 ..< 6]))-\(String(digits[6 ..< 8]))"
   }
 
   /// "dd.MM.yy" for the mail subject.
   static func mailDay(of name: String) -> String {
-    logDay(of: name).replacingOccurrences(of: "-", with: ".")
+    let digits = Array(name.prefix(8))
+    guard digits.count == 8 else { return "" }
+    return "\(String(digits[6 ..< 8])).\(String(digits[4 ..< 6])).\(String(digits[2 ..< 4]))"
   }
 
   /// "HH:mm:ss" as the log tools take it.
@@ -79,11 +81,6 @@ enum NoGpsFlags {
     let digits = Array(name.dropFirst(9).prefix(6))
     guard digits.count == 6 else { return "" }
     return "\(String(digits[0 ..< 2])):\(String(digits[2 ..< 4])):\(String(digits[4 ..< 6]))"
-  }
-
-  /// The log files of the days, all their parts and those of another phone id too: "log-dd-MM-yy-<phone>[.<part>].log".
-  static func logFiles(_ files: [String], days: Set<String>) -> [String] {
-    files.filter { file in file.hasSuffix(".log") && days.contains { file.hasPrefix("log-\($0)-") } }
   }
 
   static func isExpired(_ name: String, now: Date) -> Bool {

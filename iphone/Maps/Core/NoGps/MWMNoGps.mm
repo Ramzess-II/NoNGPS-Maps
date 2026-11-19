@@ -4,6 +4,7 @@
 
 #import <CoreApi/AppInfo.h>
 #include <CoreApi/Framework.h>
+#import <CoreApi/Logger.h>
 
 #include "map/nogps/clock.hpp"
 #include "map/nogps/delegate.hpp"
@@ -67,6 +68,9 @@ public:
 
   void OnEvent(nogps::Event event) override
   {
+    // Here and not in an observer: the core logs the calibration of the car right after the event.
+    if (event == nogps::Event::TripStarted)
+      [Logger startTrip];
     [NSNotificationCenter.defaultCenter postNotificationName:MWMNoGpsEventNotification
                                                       object:nil
                                                     userInfo:@{

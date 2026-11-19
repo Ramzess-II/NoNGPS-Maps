@@ -17,8 +17,10 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 + (void)setFileLoggingEnabled:(BOOL)fileLoggingEnabled;
 + (nullable NSURL *)getLogFileURL;
 + (uint64_t)getLogFileSize;
-/// Zips the log files whose names pass the test, nil when none does.
-+ (nullable NSURL *)zipLogFilesPassingTest:(BOOL (^)(NSString * name))test NS_SWIFT_NAME(zipLogFiles(passingTest:));
+/// Zips the log files of the days, "yyyy-MM-dd", nil when there is none.
++ (nullable NSURL *)zipLogFilesOfDays:(NSSet<NSString *> *)days NS_SWIFT_NAME(zipLogFiles(days:));
+/// A drive starts: the lines logged after this go to a new file.
++ (void)startTrip;
 
 @end
 

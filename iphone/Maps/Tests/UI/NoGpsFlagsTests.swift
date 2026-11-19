@@ -7,7 +7,7 @@ final class NoGpsFlagsTests: XCTestCase {
     XCTAssertEqual(NoGpsFlags.name(of: date), "20261102-090507")
     XCTAssertEqual(NoGpsFlags.date(of: "20261102-090507"), date)
     XCTAssertEqual(NoGpsFlags.time(of: "20261102-090507"), "09:05:07")
-    XCTAssertEqual(NoGpsFlags.logDay(of: "20261102-090507"), "02-11-26")
+    XCTAssertEqual(NoGpsFlags.logDay(of: "20261102-090507"), "2026-11-02")
     XCTAssertEqual(NoGpsFlags.mailDay(of: "20261102-090507"), "02.11.26")
   }
 
@@ -18,17 +18,6 @@ final class NoGpsFlagsTests: XCTestCase {
     XCTAssertTrue(NoGpsFlags.isExpired("20261102-090507", now: flag.addingTimeInterval(7 * day + 1)))
     // Not a flag of this app: left alone.
     XCTAssertFalse(NoGpsFlags.isExpired("notes", now: flag.addingTimeInterval(30 * day)))
-  }
-
-  func testLogFilesOfTheDays() {
-    let files = ["log-02-11-26-iPhone15_2-a3f9.log", "log-02-11-26-iPhone15_2-a3f9.1.log",
-                 "log-02-11-26-iPhone14_7-0b12.log", "log-01-11-26-iPhone15_2-a3f9.log",
-                 "log-03-11-26-iPhone15_2-a3f9.log", "log-02-11-26-iPhone15_2-a3f9.log.zip", "log.txt"]
-    XCTAssertEqual(NoGpsFlags.logFiles(files, days: ["02-11-26"]),
-                   ["log-02-11-26-iPhone15_2-a3f9.log", "log-02-11-26-iPhone15_2-a3f9.1.log",
-                    "log-02-11-26-iPhone14_7-0b12.log"])
-    XCTAssertEqual(NoGpsFlags.logFiles(files, days: ["01-11-26", "03-11-26"]),
-                   ["log-01-11-26-iPhone15_2-a3f9.log", "log-03-11-26-iPhone15_2-a3f9.log"])
   }
 
   func testMail() {

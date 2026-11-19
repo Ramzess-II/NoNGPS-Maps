@@ -9,10 +9,10 @@
 @interface Logger ()
 
 @property(nullable, nonatomic) NSFileHandle * fileHandle;
-@property(nonnull, nonatomic) NSDate * day;
-/// The first moment of the next day: a line written at it or later goes to a new file.
+/// When the file was started, its name: at the first line since the launch or since startTrip.
+@property(nullable, nonatomic) NSDate * started;
+/// The first moment of the next day: a line written at it or later goes on in the folder of that day.
 @property(nullable, nonatomic) NSDate * dayEnd;
-@property(nonatomic) NSUInteger part;
 @property(nonnull, nonatomic) os_log_t osLogger;
 /// This property is introduced to avoid the CoreApi => Maps target dependency and stores the
 /// MWMSettings.isFileLoggingEnabled value.
@@ -25,13 +25,13 @@
 + (void)runSyncOnFileLoggingQueue:(dispatch_block_t)block;
 + (void)logMessageWithLevel:(base::LogLevel)level src:(base::SrcPoint const &)src message:(std::string const &)message;
 + (void)tryWriteToFile:(std::string const &)logString;
-+ (BOOL)openFileIfNeeded:(NSUInteger)nextSize;
++ (BOOL)openFileIfNeeded;
 + (void)closeFile;
 + (void)deleteOldestFiles;
-+ (NSArray<NSURL *> *)logFiles;
-+ (NSString *)logFileNameForDay:(NSDate *)day part:(NSUInteger)part;
++ (NSArray<NSString *> *)logFiles;
++ (NSString *)logFileNameStarted:(NSDate *)started now:(NSDate *)now;
 + (NSString *)phoneId;
-+ (nullable NSURL *)zipLogFiles:(NSArray<NSURL *> *)files;
++ (nullable NSURL *)zipLogFiles:(NSArray<NSString *> *)names inFolder:(NSString *)folder;
 + (void)removeFileAtPath:(NSString *)filePath;
 + (base::LogLevel)baseLevel:(LogLevel)level;
 
@@ -42,26 +42,21 @@ NSString * const kLoggerSubsystem = [[NSBundle mainBundle] bundleIdentifier];
 NSString * const kLoggerCategory = @"OM";
 NSString * const kDocumentsPath =
     [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-// One file a day per phone in it: "log-dd-MM-yy-<phone>[.<part>].log".
+// "<phone>/<yyyy-MM-dd>/<HHmmss>.log" in it, one file per launch and per drive, so that the folders of any phones
+// and days merge into one tree.
 NSString * const kLogsFolderPath = [kDocumentsPath stringByAppendingPathComponent:@"logs"];
 // The single log file of the earlier versions.
 NSString * const kOldLogFilePath = [kDocumentsPath stringByAppendingPathComponent:@"log.txt"];
 NSString * const kZipLogsFileName = @"logs.zip";
 NSString * const kPhoneIdKey = @"LogsPhoneId";
-unsigned long long const kMaxLogFileSize = 3'000'000;
 // A day of driving, 20 hours and more at about 6.5 MB an hour: the log of a drive is analysed afterwards.
 unsigned long long const kMaxLogsTotalSize = 150'000'000;
 
-static unsigned long long FileSize(NSURL * file)
+// A file of the logs folder by its path in it.
+static NSDictionary<NSFileAttributeKey, id> * FileAttributes(NSString * name)
 {
-  NSNumber * size;
-  [file getResourceValue:&size forKey:NSURLFileSizeKey error:nil];
-  return size.unsignedLongLongValue;
-}
-
-static NSString * LogFilePath(NSDate * day, NSUInteger part)
-{
-  return [kLogsFolderPath stringByAppendingPathComponent:[Logger logFileNameForDay:day part:part]];
+  return [NSFileManager.defaultManager attributesOfItemAtPath:[kLogsFolderPath stringByAppendingPathComponent:name]
+                                                        error:nil];
 }
 
 @implementation Logger
@@ -142,12 +137,12 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
   if ([self fileLoggingEnabled])
   {
     // On the queue: no file is switched or deleted while it is zipped.
-    __block NSArray<NSURL *> * files;
+    __block NSArray<NSString *> * files;
     __block NSURL * zipURL;
     [self runSyncOnFileLoggingQueue:^{
       files = [self logFiles];
       if (files.count > 0)
-        zipURL = [self zipLogFiles:files];
+        zipURL = [self zipLogFiles:files inFolder:kLogsFolderPath];
     }];
     if (files.count == 0)
       LOG(LERROR, ("No log files while file logging is enabled:", kLogsFolderPath.UTF8String));
@@ -198,12 +193,19 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
         return nil;
       }
 
-      NSURL * logURL = [NSFileManager.defaultManager.temporaryDirectory
-          URLByAppendingPathComponent:[self logFileNameForDay:NSDate.date part:0]];
-      [NSFileManager.defaultManager createFileAtPath:logURL.path
-                                            contents:[logString dataUsingEncoding:NSUTF8StringEncoding]
-                                          attributes:nil];
-      return [self zipLogFiles:@[logURL]];
+      // Named as a log file started now, in the same tree.
+      NSFileManager * fileManager = NSFileManager.defaultManager;
+      NSString * folder = [fileManager.temporaryDirectory URLByAppendingPathComponent:@"logs"].path;
+      NSString * name = [self logFileNameStarted:NSDate.date now:NSDate.date];
+      NSString * path = [folder stringByAppendingPathComponent:name];
+      [fileManager createDirectoryAtPath:path.stringByDeletingLastPathComponent
+             withIntermediateDirectories:YES
+                              attributes:nil
+                                   error:nil];
+      [fileManager createFileAtPath:path contents:[logString dataUsingEncoding:NSUTF8StringEncoding] attributes:nil];
+      NSURL * zipURL = [self zipLogFiles:@[name] inFolder:folder];
+      [self removeFileAtPath:folder];
+      return zipURL;
     }
     else
     {
@@ -212,27 +214,40 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
   }
 }
 
-+ (nullable NSURL *)zipLogFilesPassingTest:(BOOL (^)(NSString * name))test
++ (nullable NSURL *)zipLogFilesOfDays:(NSSet<NSString *> *)days
 {
   // On the queue: no file is switched or deleted while it is zipped.
   __block NSURL * zipURL;
   [self runSyncOnFileLoggingQueue:^{
-    NSMutableArray<NSURL *> * files = [NSMutableArray array];
-    for (NSURL * file in [self logFiles])
-      if (test(file.lastPathComponent))
-        [files addObject:file];
+    NSMutableArray<NSString *> * files = [NSMutableArray array];
+    for (NSString * name in [self logFiles])
+    {
+      // "<phone>/<yyyy-MM-dd>/<HHmmss>.log": of every phone id.
+      NSArray<NSString *> * parts = name.pathComponents;
+      if (parts.count == 3 && [days containsObject:parts[1]] && [name.pathExtension isEqualToString:@"log"])
+        [files addObject:name];
+    }
     if (files.count > 0)
-      zipURL = [self zipLogFiles:files];
+      zipURL = [self zipLogFiles:files inFolder:kLogsFolderPath];
   }];
   return zipURL;
+}
+
++ (void)startTrip
+{
+  // On the queue: the lines logged before it are of the file before.
+  [self runSyncOnFileLoggingQueue:^{
+    [self closeFile];
+    [self logger].started = nil;
+  }];
 }
 
 + (uint64_t)getLogFileSize
 {
   __block uint64_t size = 0;
   [self runSyncOnFileLoggingQueue:^{
-    for (NSURL * file in [self logFiles])
-      size += FileSize(file);
+    for (NSString * name in [self logFiles])
+      size += FileAttributes(name).fileSize;
   }];
   return size;
 }
@@ -260,7 +275,7 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
                                  withIntermediateDirectories:YES
                                                   attributes:nil
                                                        error:nil] ||
-        ![self openFileIfNeeded:0])
+        ![self openFileIfNeeded])
     {
       LOG(LERROR, ("Failed to open a log file in", kLogsFolderPath.UTF8String));
       [self disableFileLogging];
@@ -306,7 +321,7 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
 + (void)tryWriteToFile:(std::string const &)logString
 {
   dispatch_assert_queue([self fileLoggingQueue]);
-  if (!_fileLoggingEnabled || ![self openFileIfNeeded:logString.length()])
+  if (!_fileLoggingEnabled || ![self openFileIfNeeded])
     return;
 
   NSFileHandle * fileHandle = [self logger].fileHandle;
@@ -314,47 +329,42 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
   [fileHandle writeData:[NSData dataWithBytes:logString.c_str() length:logString.length()]];
 }
 
-/// Opens the file of today with room for nextSize more bytes: a new one on a new day or when the last one is full.
-/// Reports errors to the system log only: LOG() would come back here.
-+ (BOOL)openFileIfNeeded:(NSUInteger)nextSize
+/// Opens the file to write to: a new one after the launch and after startTrip, the same one in the folder of the new
+/// day after midnight. Reports errors to the system log only: LOG() would come back here.
++ (BOOL)openFileIfNeeded
 {
   dispatch_assert_queue([self fileLoggingQueue]);
   Logger * logger = [self logger];
   NSFileManager * fileManager = NSFileManager.defaultManager;
   NSDate * now = NSDate.date;
+  if (logger.started == nil)
+  {
+    logger.started = now;
+    logger.dayEnd = nil;
+  }
   if (logger.dayEnd == nil || [now compare:logger.dayEnd] != NSOrderedAscending)
   {
-    // Goes on in the last file of today, if there is one.
     [self closeFile];
     NSCalendar * calendar = NSCalendar.currentCalendar;
-    logger.day = now;
     logger.dayEnd = [calendar dateByAddingUnit:NSCalendarUnitDay
                                          value:1
                                         toDate:[calendar startOfDayForDate:now]
                                        options:0];
-    logger.part = 0;
-    while ([fileManager fileExistsAtPath:LogFilePath(logger.day, logger.part + 1)])
-      ++logger.part;
   }
 
   if (logger.fileHandle != nil)
-  {
-    if (logger.fileHandle.offsetInFile + nextSize <= kMaxLogFileSize)
-      return YES;
-    [self closeFile];
-  }
+    return YES;
 
-  NSString * path = LogFilePath(logger.day, logger.part);
-  unsigned long long size = [fileManager attributesOfItemAtPath:path error:nil].fileSize;
-  while (size > 0 && size + nextSize > kMaxLogFileSize)
-  {
-    path = LogFilePath(logger.day, ++logger.part);
-    size = [fileManager attributesOfItemAtPath:path error:nil].fileSize;
-  }
-
+  NSString * path = [kLogsFolderPath stringByAppendingPathComponent:[self logFileNameStarted:logger.started now:now]];
+  unsigned long long const size = [fileManager attributesOfItemAtPath:path error:nil].fileSize;
   if (size == 0)
   {
+    // Before the folder of the file is made: it is empty yet.
     [self deleteOldestFiles];
+    [fileManager createDirectoryAtPath:path.stringByDeletingLastPathComponent
+           withIntermediateDirectories:YES
+                            attributes:nil
+                                 error:nil];
     [fileManager createFileAtPath:path contents:nil attributes:nil];
   }
   NSFileHandle * fileHandle = [NSFileHandle fileHandleForWritingAtPath:path];
@@ -387,59 +397,85 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
   logger.fileHandle = nil;
 }
 
-/// Deletes the oldest log files until all of them together take at most kMaxLogsTotalSize.
+/// Deletes the oldest log files until all of them together take at most kMaxLogsTotalSize, then the folders left
+/// empty.
 + (void)deleteOldestFiles
 {
-  NSArray<NSURL *> * files = [[self logFiles] sortedArrayUsingComparator:^NSComparisonResult(NSURL * a, NSURL * b) {
-    NSDate * dateA;
-    NSDate * dateB;
-    [a getResourceValue:&dateA forKey:NSURLContentModificationDateKey error:nil];
-    [b getResourceValue:&dateB forKey:NSURLContentModificationDateKey error:nil];
-    return [dateA compare:dateB];
-  }];
+  NSArray<NSString *> * files =
+      [[self logFiles] sortedArrayUsingComparator:^NSComparisonResult(NSString * a, NSString * b) {
+        return [FileAttributes(a).fileModificationDate compare:FileAttributes(b).fileModificationDate];
+      }];
 
   unsigned long long total = 0;
-  for (NSURL * file in files)
-    total += FileSize(file);
+  for (NSString * name in files)
+    total += FileAttributes(name).fileSize;
 
-  for (NSURL * file in files)
+  NSFileManager * fileManager = NSFileManager.defaultManager;
+  for (NSString * name in files)
   {
     if (total <= kMaxLogsTotalSize)
       break;
-    unsigned long long const size = FileSize(file);
+    unsigned long long const size = FileAttributes(name).fileSize;
     NSError * error;
-    if ([NSFileManager.defaultManager removeItemAtURL:file error:&error])
+    if ([fileManager removeItemAtPath:[kLogsFolderPath stringByAppendingPathComponent:name] error:&error])
       total -= size;
     else
       os_log_error([self logger].osLogger, "Failed to delete old log file %{public}s",
                    error.localizedDescription.UTF8String);
   }
+
+  // The deepest first: a folder of a phone after the folders of its days.
+  NSArray<NSString *> * paths =
+      [[fileManager subpathsOfDirectoryAtPath:kLogsFolderPath error:nil] sortedArrayUsingSelector:@selector(compare:)];
+  for (NSString * name in paths.reverseObjectEnumerator)
+  {
+    NSString * path = [kLogsFolderPath stringByAppendingPathComponent:name];
+    BOOL isFolder = NO;
+    if ([fileManager fileExistsAtPath:path isDirectory:&isFolder] && isFolder &&
+        [fileManager contentsOfDirectoryAtPath:path error:nil].count == 0)
+      [fileManager removeItemAtPath:path error:nil];
+  }
 }
 
-+ (NSArray<NSURL *> *)logFiles
+/// The files of the logs folder and its subfolders by their paths in it, sorted: the files named as before the tree
+/// too.
++ (NSArray<NSString *> *)logFiles
 {
-  NSArray<NSURL *> * files =
-      [NSFileManager.defaultManager contentsOfDirectoryAtURL:[NSURL fileURLWithPath:kLogsFolderPath]
-                                  includingPropertiesForKeys:@[NSURLContentModificationDateKey, NSURLFileSizeKey]
-                                                     options:NSDirectoryEnumerationSkipsHiddenFiles
-                                                       error:nil];
-  return files ?: @[];
+  NSFileManager * fileManager = NSFileManager.defaultManager;
+  NSMutableArray<NSString *> * files = [NSMutableArray array];
+  for (NSString * name in [[fileManager subpathsOfDirectoryAtPath:kLogsFolderPath
+                                                            error:nil] sortedArrayUsingSelector:@selector(compare:)])
+  {
+    BOOL isFolder = NO;
+    if (![name.lastPathComponent hasPrefix:@"."] &&
+        [fileManager fileExistsAtPath:[kLogsFolderPath stringByAppendingPathComponent:name] isDirectory:&isFolder] &&
+        !isFolder)
+      [files addObject:name];
+  }
+  return files;
 }
 
-+ (NSString *)logFileNameForDay:(NSDate *)day part:(NSUInteger)part
+/// The path of a log file under the logs folder. A file is named by the time it was started at, and is in the folder
+/// of the day it is written on: over midnight it goes on in the next folder under the same name.
++ (NSString *)logFileNameStarted:(NSDate *)started now:(NSDate *)now
 {
-  static NSDateFormatter * formatter;
+  static NSDateFormatter * dayFormatter;
+  static NSDateFormatter * timeFormatter;
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
-    formatter = [[NSDateFormatter alloc] init];
-    formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
-    formatter.dateFormat = @"dd-MM-yy";
-    // Follows a change of the time zone, as NSCalendar.currentCalendar of the day end does.
-    formatter.timeZone = NSTimeZone.localTimeZone;
+    dayFormatter = [[NSDateFormatter alloc] init];
+    dayFormatter.dateFormat = @"yyyy-MM-dd";
+    timeFormatter = [[NSDateFormatter alloc] init];
+    timeFormatter.dateFormat = @"HHmmss";
+    for (NSDateFormatter * formatter in @[dayFormatter, timeFormatter])
+    {
+      formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+      // Follows a change of the time zone, as NSCalendar.currentCalendar of the day end does.
+      formatter.timeZone = NSTimeZone.localTimeZone;
+    }
   });
-  NSString * name = [NSString stringWithFormat:@"log-%@-%@", [formatter stringFromDate:day], [self phoneId]];
-  return part == 0 ? [name stringByAppendingString:@".log"]
-                   : [name stringByAppendingFormat:@".%lu.log", static_cast<unsigned long>(part)];
+  return [NSString stringWithFormat:@"%@/%@/%@.log", [self phoneId], [dayFormatter stringFromDate:now],
+                                    [timeFormatter stringFromDate:started]];
 }
 
 /// The model and a random id made once per install.
@@ -473,19 +509,20 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
     dispatch_sync([self fileLoggingQueue], block);
 }
 
-+ (nullable NSURL *)zipLogFiles:(NSArray<NSURL *> *)files
+/// Zips the files of the folder, given by their paths in it, as "logs/<path>": the same tree as the logs.zip of
+/// Android, so that the zips of any phones and days unpack into one tree.
++ (nullable NSURL *)zipLogFiles:(NSArray<NSString *> *)names inFolder:(NSString *)folder
 {
-  // The same layout as the logs.zip of Android.
   std::vector<std::string> paths;
-  std::vector<std::string> names;
-  for (NSURL * file in files)
+  std::vector<std::string> entries;
+  for (NSString * name in names)
   {
-    paths.push_back(file.path.UTF8String);
-    names.push_back(std::string("logs/") + file.lastPathComponent.UTF8String);
+    paths.push_back([folder stringByAppendingPathComponent:name].UTF8String);
+    entries.push_back(std::string("logs/") + name.UTF8String);
   }
   NSString * zipPath =
       [NSFileManager.defaultManager.temporaryDirectory URLByAppendingPathComponent:kZipLogsFileName].path;
-  if (!CreateZipFromFiles(paths, names, zipPath.UTF8String))
+  if (!CreateZipFromFiles(paths, entries, zipPath.UTF8String))
   {
     LOG(LERROR, ("Failed to zip log files to", zipPath.UTF8String));
     return nil;

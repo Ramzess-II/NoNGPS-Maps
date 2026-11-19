@@ -184,6 +184,9 @@ typedef NS_ENUM(NSInteger, MWMNoGpsEvent) {
   MWMNoGpsEventSpeedRangeCalibrated,
   /// A run from a standing start is timed: sprintKind and the sprint properties of the status tell the result.
   MWMNoGpsEventSprintMeasured,
+  /// The box has connected after 5 minutes or more without it: a drive starts. A new file of the trip log is started
+  /// before the notification is posted.
+  MWMNoGpsEventTripStarted,
 } NS_SWIFT_NAME(NoGpsEvent);
 
 /// The kinds of the runs from a standing start.
