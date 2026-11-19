@@ -1140,8 +1140,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final String text = switch (status.getAddPhone())
     {
       case NONE, OPENING -> getString(R.string.nogps_phone_add_opening);
-      case OPEN ->
-        getString(R.string.nogps_phone_add_code, DateUtils.formatElapsedTime(status.addPhoneSecondsLeft));
+      case OPEN -> getString(R.string.nogps_phone_add_code, DateUtils.formatElapsedTime(status.addPhoneSecondsLeft));
       case ADDED -> getString(R.string.nogps_phone_added);
       case EXPIRED -> getString(R.string.nogps_phone_add_expired);
       case FULL -> getString(R.string.nogps_phone_add_full);
