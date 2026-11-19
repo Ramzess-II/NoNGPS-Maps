@@ -1631,14 +1631,14 @@
 /* Why, under the state of GPS */
 "nogps_gps_why_none" = "Нет позиций GPS 5 секунд.";
 
-/* Switch in the Box sheet: on, GPS is not used for the car */
-"nogps_gps_block" = "Не использовать GPS для навигации";
+/* Switch in the Box sheet: on, GPS is ignored for the car */
+"nogps_gps_block" = "Игнорировать GPS";
 
-/* Under the switch Don't use GPS for navigation in the Box sheet */
-"nogps_gps_block_hint" = "Включено: GPS не используется, машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.";
+/* Under the switch Ignore GPS in the Box sheet */
+"nogps_gps_block_hint" = "Машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.";
 
-/* Under the disabled switch Don't use GPS for navigation in the Box sheet: no box is heard */
-"nogps_gps_block_needs_box" = "GPS можно отключить, только когда подключён блок: иначе машину ничто не поведёт.";
+/* Under the disabled switch Ignore GPS in the Box sheet: no box is heard */
+"nogps_gps_block_needs_box" = "GPS можно игнорировать, только когда подключён блок: иначе машину ничто не поведёт.";
 
 /* At the top of the Cars page of the Box sheet */
 "nogps_cars_text" = "Каждый блок — это одна машина со своей калибровкой и местом парковки. Нажмите на машину, чтобы ехать на ней, переименовать или забыть её.";

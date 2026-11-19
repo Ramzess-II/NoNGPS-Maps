@@ -1215,12 +1215,12 @@
     <string name="nogps_gps_why_spoofed">Далеко от вышек и Wi-Fi или прыгает: не используется.</string>
     <!-- Why, under the state of GPS -->
     <string name="nogps_gps_why_none">Нет позиций GPS 5 секунд.</string>
-    <!-- Switch in the Box sheet: on, GPS is not used for the car -->
-    <string name="nogps_gps_block">Не использовать GPS для навигации</string>
-    <!-- Under the switch Don't use GPS for navigation in the Box sheet -->
-    <string name="nogps_gps_block_hint">Включено: GPS не используется, машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.</string>
-    <!-- Under the disabled switch Don't use GPS for navigation in the Box sheet: no box is heard -->
-    <string name="nogps_gps_block_needs_box">GPS можно отключить, только когда подключён блок: иначе машину ничто не поведёт.</string>
+    <!-- Switch in the Box sheet: on, GPS is ignored for the car -->
+    <string name="nogps_gps_block">Игнорировать GPS</string>
+    <!-- Under the switch Ignore GPS in the Box sheet -->
+    <string name="nogps_gps_block_hint">Машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.</string>
+    <!-- Under the disabled switch Ignore GPS in the Box sheet: no box is heard -->
+    <string name="nogps_gps_block_needs_box">GPS можно игнорировать, только когда подключён блок: иначе машину ничто не поведёт.</string>
     <!-- At the top of the Cars page of the Box sheet -->
     <string name="nogps_cars_text">Каждый блок — это одна машина со своей калибровкой и местом парковки. Нажмите на машину, чтобы ехать на ней, переименовать или забыть её.</string>
     <!-- On the Add a car page while the box of the new car is searched -->
