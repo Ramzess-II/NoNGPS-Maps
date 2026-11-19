@@ -1255,6 +1255,28 @@ UNIT_TEST(NoGps_Engine_LostRoadTakesFarMark)
   TEST_GREATER(North(env.Last().m_position), 150, ());
 }
 
+UNIT_TEST(NoGps_Engine_LostRoadTakesNearMarkBeforeFarOne)
+{
+  // The car turns north at the crossing at 246 m and is shown on the street at 262 m, the other one is at 240 m, a far
+  // one at 200 m. The user switches the mark to 240 m: the marks are the far one first, the street at 262 m after it.
+  // The street at 240 m ends 150 m to the north: the car stands lost and the near mark is taken, not the far one that
+  // comes first.
+  PieceRoads roads({{-300, 0, 600, 0}, {262, 0, 262, 400}, {240, 0, 240, 150}, {200, 0, 200, 400}},
+                   {{262, 0}, {240, 0}, {200, 0}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 246 - 112);
+  env.Drive(10'000, 36, 0);
+  env.Drive(1000, 36, -90);
+  env.Drive(2000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 2, (env.m_engine.GetTripLine()));
+  env.m_engine.SwitchMark();
+  env.Drive(1000, 36, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 240, 3);
+  env.Drive(20'000, 36, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 262, 3);
+  TEST_GREATER(North(env.Last().m_position), 150, ());
+}
+
 UNIT_TEST(NoGps_Engine_OtherMarkSearchesNoFarCrossingBehindAfterUTurn)
 {
   // The car turns north at a crossing, the other mark is on the street 46 m aside. It makes a U-turn 100 m to the
