@@ -95,15 +95,18 @@ first or use `adb install -r -d`.
 ## Work you don't do now goes to an issue
 
 IMPORTANT: anything you notice that this session won't finish goes into a GitHub issue before the session ends or
-its PR opens: a platform part left for later, a bug or risk you noticed, a TODO, a check on a device, a step left for
-later. Not into docs, PR text, code comments or memory: nobody tracks those.
+its PR opens: a platform part left for later, a bug or risk you noticed, a TODO, a step left for later. Not into
+docs, PR text, code comments or memory: nobody tracks those.
+
+Don't open an issue to check or test a PR on a device, before or after it merges. Write in the PR's **Tested** what
+was not checked on a device. Whoever drives it opens a bug issue when something is wrong.
 
 - Look for an open issue first (`gh issue list --state open`) and comment there instead of opening a duplicate.
 - Label it `core`, `ios`, `android` or `firmware`, and assign whoever will do it (`@me` if it is you). Say what to do
   and where, and which PR caused it.
 - Link it from the PR's **Other platform** section. CI fails a PR whose **Other platform** section has neither an
   issue link nor "Nothing to do" and why. When the PR changes both platforms, write "Nothing to do: both platforms
-  are changed here" and list what is left to check on a device as issues.
+  are changed here".
 - Give the user the links of the issues you opened.
 
 ## Shared interface
