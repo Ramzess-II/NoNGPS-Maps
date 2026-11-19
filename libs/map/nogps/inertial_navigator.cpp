@@ -237,6 +237,12 @@ double InertialNavigator::GetSpeedScale() const
   return GetSpeedScale(std::max(0, m_speedKmh));
 }
 
+bool InertialNavigator::IsSpeedScaleMeasured() const
+{
+  int const speedKmh = std::max(0, m_speedKmh);
+  return m_speedTable.GetScale(speedKmh) || m_roughSpeedTable.GetScale(speedKmh);
+}
+
 double InertialNavigator::GetSpeedScale(int speedKmh) const
 {
   if (auto const scale = m_speedTable.GetScale(speedKmh))

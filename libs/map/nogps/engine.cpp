@@ -463,8 +463,12 @@ bool Engine::IsGpsBack(Fix const & gps)
 std::optional<double> Engine::GetCarSpeedMps() const
 {
   // The same speed the inertial count moves the car with, nothing when the box is silent (kSpeedStaleMs).
-  if (!m_inertial || !IsInertialNavigationEnabled() || m_inertial->GetSpeedKmh() < 0)
+  // The default scale may be far off (a new car, mph): GPS is right then, and the table learns only within 15 %.
+  if (!m_inertial || !IsInertialNavigationEnabled() || m_inertial->GetSpeedKmh() < 0 ||
+      !m_inertial->IsSpeedScaleMeasured())
+  {
     return {};
+  }
   return m_inertial->GetSpeedKmh() / 3.6 * m_inertial->GetSpeedScale();
 }
 
