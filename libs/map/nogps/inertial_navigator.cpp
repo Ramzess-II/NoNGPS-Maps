@@ -380,6 +380,30 @@ void InertialNavigator::LogSpeedCalibration() const
        "measured =", m_speedLag.IsMeasured(), "scale =", m_speedScale.Get(), "rough =", m_roughSpeedTable.ToString()));
 }
 
+std::string InertialNavigator::GetCalibrationLine() const
+{
+  auto const car = m_storage.IsEsp32Source() ? m_storage.Get<std::string>(Storage::kCurrentCar, "") : std::string();
+  std::string line = "CALIBRATION car=" + (car.empty() ? "-" : car);
+  auto const add = [&line](char const * name, std::string const & value, std::string const & notLearned)
+  {
+    if (value != notLearned)
+      line += std::string(" ") + name + "=" + value;
+  };
+  add("scale", settings::ToString(m_speedScale.Get()), settings::ToString(SpeedScale().Get()));
+  add("table", m_speedTable.Serialize(), SpeedTable().Serialize());
+  add("rough", m_roughSpeedTable.Serialize(), SpeedTable().Serialize());
+  add("factor", m_speedFactor.Serialize(), SpeedFactor().Serialize());
+  add("lag", m_speedLag.Serialize(), SpeedLag().Serialize());
+  if (!m_boxAccelId.empty() && m_boxAccelSpeed.GetSamples() > 0)
+    line += " accel=" + m_boxAccelId + ":" + m_boxAccelSpeed.Serialize();
+  return line;
+}
+
+void InertialNavigator::LogCalibration() const
+{
+  LOG(LINFO, (GetCalibrationLine()));
+}
+
 void InertialNavigator::ClearSpeedCalibration()
 {
   LOG(LINFO, ("Speed table was", m_speedTable.ToString(), "factor", m_speedFactor.Get(), "rough",
@@ -394,6 +418,7 @@ void InertialNavigator::ClearSpeedCalibration()
   SaveSpeedTable();
   m_speedScale.Reset();
   m_storage.Set(Storage::kSpeedScale, 1.0);
+  LogCalibration();
 }
 
 void InertialNavigator::SaveCalibration()
@@ -427,6 +452,7 @@ void InertialNavigator::RestoreSpeedCalibration()
   // Measured with another table.
   m_roughStretch.reset();
   LogSpeedCalibration();
+  LogCalibration();
 }
 
 void InertialNavigator::OnBoxHeard(std::string const & id, std::string const & firmware)

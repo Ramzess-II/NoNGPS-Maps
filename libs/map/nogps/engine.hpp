@@ -271,6 +271,10 @@ public:
   static int64_t constexpr kTripLogStandIntervalMs = 30'000;
   // GPS of a standing car gives 0-1 km/h.
   static double constexpr kTripLogMovingGpsKmh = 3;
+  // A box that connects this long or more after the link to it has ended, or after the launch, starts a new file of
+  // the trip log, see Event::TripStarted: the pause nogps_log.py ends a trip at. A Bluetooth dropout and a short stop
+  // don't: the box sleeps a minute after the engine stops.
+  static int64_t constexpr kTripFileLinkGapMs = 300'000;
   // GPS gives a position every second, a longer pause means it is lost.
   static int64_t constexpr kGpsStatusMaxAgeMs = 10'000;
   // GPS works when it gives a position every second, every 3 while the map does not follow it. The fused provider
@@ -452,6 +456,8 @@ private:
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
   void OnThisPhoneRemoved() override;
   void OnBoxStopping() override;
+  /// The link to the box is made or has ended: one made after kTripFileLinkGapMs without it starts a trip.
+  void OnBoxLink(bool linked);
   void OnSprint(SprintTimer::Result const & result) override;
   void OnPeerPlace(PeerPlace const & place) override;
 
@@ -566,6 +572,9 @@ private:
   bool m_gpsDisabled = false;
   // A box is searched for and not saved until it is heard.
   bool m_boxSearched = false;
+  // The box is connected over Bluetooth, and when it stopped to be: the creation of the engine before it ever was.
+  bool m_boxLinked = false;
+  int64_t m_boxLinkEndedMs;
   std::optional<Fix> m_manualLocation;
   // The next tap on the map shows where the car is.
   bool m_markByTap = false;

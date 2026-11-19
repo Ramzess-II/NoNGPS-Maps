@@ -38,6 +38,7 @@ std::string DebugPrint(Event event)
   case Event::ThisPhoneRemoved: return "ThisPhoneRemoved";
   case Event::SpeedRangeCalibrated: return "SpeedRangeCalibrated";
   case Event::SprintMeasured: return "SprintMeasured";
+  case Event::TripStarted: return "TripStarted";
   }
   UNREACHABLE();
 }

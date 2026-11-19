@@ -75,6 +75,9 @@ enum class Event
   SpeedRangeCalibrated,
   // A run from a standing start is timed, see Status::m_sprintKind. Told once for every result.
   SprintMeasured,
+  // The box has connected Engine::kTripFileLinkGapMs or more after the link to it has ended: a drive starts. The
+  // platform starts a new file of the trip log before it returns, the calibration of the car is logged next.
+  TripStarted,
 };
 
 /// What the platform does about the ESP32 sensor box over Bluetooth LE, told to Engine::OnEsp32BleState().
