@@ -873,7 +873,7 @@ final class CarPageViewController: MWMTableViewController {
   /// The phones are asked for once the box of the car can tell them.
   private var phonesListed = false
   /// Shows the code for a new phone while the box takes it.
-  private weak var addPhoneAlert: UIAlertController?
+  private weak var addPhoneAlert: AddPhoneViewController?
 
   init(carId: String) {
     self.carId = carId
@@ -937,7 +937,7 @@ final class CarPageViewController: MWMTableViewController {
       carId == status.carId ? [.sprint(.to100), .sprint(.quarterMile)] : [],
     ]
     sprints = carId == status.carId ? NoGps.sprints() : []
-    addPhoneAlert?.message = addPhoneText()
+    addPhoneAlert?.update(code: addPhoneCode(), message: addPhoneText())
     // Footers are not updated in place.
     let footers = [nil, phoneFooter(), nil]
     if footers != shownFooters {
@@ -1090,22 +1090,107 @@ final class CarPageViewController: MWMTableViewController {
   private func addPhone() {
     NoGps.startAddPhone()
     status = NoGps.status()
-    let alert = UIAlertController(title: L("nogps_phone_add"), message: addPhoneText(), preferredStyle: .alert)
-    alert.addAction(UIAlertAction(title: L("close"), style: .cancel) { _ in NoGps.endAddPhone() })
-    addPhoneAlert = alert
-    present(alert, animated: true)
+    let sheet = AddPhoneViewController(code: addPhoneCode(), message: addPhoneText())
+    addPhoneAlert = sheet
+    present(sheet, animated: true)
+  }
+
+  /// The code is shown large only while it is open.
+  private func addPhoneCode() -> String? {
+    status.addPhone == .open ? status.addPhoneCode : nil
   }
 
   private func addPhoneText() -> String {
     switch status.addPhone {
     case .open:
       let left = String(format: "%d:%02d", status.addPhoneSecondsLeft / 60, status.addPhoneSecondsLeft % 60)
-      return status.addPhoneCode + "\n\n" + String(format: L("nogps_phone_add_code"), left)
+      return String(format: L("nogps_phone_add_code"), left)
     case .added: return L("nogps_phone_added")
     case .expired: return L("nogps_phone_add_expired")
     case .full: return L("nogps_phone_add_full")
     case .failed: return L("nogps_phone_add_failed")
     default: return L("nogps_phone_add_opening")
+    }
+  }
+}
+
+/// The one-time code of a new phone: large, so it is read from arm's length while it is typed on the new phone.
+/// Closing it, by the button or a swipe down, ends the add.
+private final class AddPhoneViewController: UIViewController {
+  private enum Constants {
+    static let codeFontSize = CGFloat(40)
+    static let codeKern = CGFloat(6)
+    static let margin = CGFloat(24)
+    static let spacing = CGFloat(16)
+  }
+
+  private let codeLabel = UILabel()
+  private let messageLabel = UILabel()
+
+  init(code: String?, message: String) {
+    super.init(nibName: nil, bundle: nil)
+    modalPresentationStyle = .pageSheet
+    sheetPresentationController?.detents = [.medium()]
+    update(code: code, message: message)
+  }
+
+  @available(*, unavailable)
+  required init?(coder _: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+  override func viewDidLoad() {
+    super.viewDidLoad()
+    view.backgroundColor = .systemBackground
+
+    let title = UILabel()
+    title.text = L("nogps_phone_add")
+    title.font = .preferredFont(forTextStyle: .headline)
+    title.textAlignment = .center
+    title.numberOfLines = 0
+
+    // A fixed size: a large Dynamic Type must not wrap the digits.
+    codeLabel.font = .monospacedDigitSystemFont(ofSize: Constants.codeFontSize, weight: .bold)
+    codeLabel.textColor = view.tintColor
+    codeLabel.textAlignment = .center
+    codeLabel.adjustsFontSizeToFitWidth = true
+    codeLabel.minimumScaleFactor = 0.5
+
+    messageLabel.font = .preferredFont(forTextStyle: .body)
+    messageLabel.textAlignment = .center
+    messageLabel.numberOfLines = 0
+
+    let close = UIButton(type: .system)
+    close.setTitle(L("close"), for: .normal)
+    close.titleLabel?.font = .preferredFont(forTextStyle: .headline)
+    close.addTarget(self, action: #selector(closeTapped), for: .touchUpInside)
+
+    let stack = UIStackView(arrangedSubviews: [title, codeLabel, messageLabel, close])
+    stack.axis = .vertical
+    stack.spacing = Constants.spacing
+    stack.translatesAutoresizingMaskIntoConstraints = false
+    view.addSubview(stack)
+    NSLayoutConstraint.activate([
+      stack.topAnchor.constraint(equalTo: view.topAnchor, constant: Constants.margin),
+      stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: Constants.margin),
+      stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -Constants.margin),
+    ])
+  }
+
+  func update(code: String?, message: String) {
+    codeLabel.attributedText = code.map {
+      NSAttributedString(string: $0, attributes: [.kern: Constants.codeKern])
+    }
+    codeLabel.isHidden = code == nil
+    messageLabel.text = message
+  }
+
+  @objc private func closeTapped() {
+    dismiss(animated: true)
+  }
+
+  override func viewDidDisappear(_ animated: Bool) {
+    super.viewDidDisappear(animated)
+    if isBeingDismissed || presentingViewController == nil {
+      NoGps.endAddPhone()
     }
   }
 }
