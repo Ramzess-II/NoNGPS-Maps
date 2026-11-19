@@ -302,6 +302,7 @@ def allowedPermissions = [
     "name='android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE'",
     // notifications
     "name='android.permission.POST_NOTIFICATIONS'",
+    "name='android.permission.POST_PROMOTED_NOTIFICATIONS'",
     // wake lock
     "name='android.permission.WAKE_LOCK'",
     // the voice notes of the flags of test drives
