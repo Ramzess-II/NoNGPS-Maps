@@ -151,6 +151,23 @@ UNIT_TEST(NoGps_Replay_DrivesTripLog)
   TEST(trips.back().find(" link=BLE/CONNECTED ") != std::string::npos, (trips.back()));
 }
 
+UNIT_TEST(NoGps_Replay_BoxOfTrip)
+{
+  // The box of the trip is told to the navigation: its info line is accepted.
+  std::string const input =
+      "D 11-02\n"
+      "S 36000000 2\n"
+      "C 36000000 53.9040184 27.5567595 90.0 1 60000\n"
+      "S 36000000 1\n"
+      "L 36000000 CONNECTED\n"
+      "I 36000000 42FD\n"
+      "J 36001000\n" +
+      Standing(36001000, 36003000) + "S 36003000 0\n";
+  auto const log = Drive(input);
+  TEST(log.find("I/OMcore: nogps/esp32_source.cpp:") != std::string::npos, (log));
+  TEST(log.find("Box 42FD firmware") != std::string::npos, (log));
+}
+
 UNIT_TEST(NoGps_Replay_KeptCarOfDriveWins)
 {
   // The drive keeps the car it has shown when the application is started anew: the car the application kept on
