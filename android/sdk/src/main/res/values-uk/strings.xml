@@ -52,4 +52,6 @@
     <!-- SECTION: NonGPS Maps -->
     <!-- Name of a car the user hasn't named, by the four characters of the name of its sensor box: "Car C47D" -->
     <string name="nogps_car_default_name">Авто %1$s</string>
+    <!-- Title of the place page of a pothole on the map: the car has hit it, how hard (percent of what the sensor box measures) and how many times -->
+    <string name="nogps_pothole_name">Яма %1$d%%, ударів: %2$d</string>
 </resources>
