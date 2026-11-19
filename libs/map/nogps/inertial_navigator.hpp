@@ -716,8 +716,11 @@ private:
   /// \returns true if the position is on the road of the shown mark, ahead of it or behind.
   bool IsOnShownRoad(ms::LatLon const & position);
   // Moves the other marks through the turn the car has made, dropping the ones without a road going the new way
-  // |atCrossing|. \returns the first one not far with a road going the new way.
-  std::optional<size_t> TurnOtherMarks(double toBearingDeg, bool atCrossing);
+  // |atCrossing|. A |turned| mark searches far crossings from the turn on only. \returns the first one not far with a
+  // road going the new way.
+  std::optional<size_t> TurnOtherMarks(double toBearingDeg, bool atCrossing, bool turned);
+  // A turn that doesn't go through TurnOtherMarks() still ends the road the other marks came by.
+  void ResetOtherRoadSince();
   // \returns how far ahead and behind the corner of the turn the car makes now the far crossings of a mark are, see
   // kMaxFarCrossingM, by the mark's calculation and when it came onto its road.
   std::pair<double, double> GetFarCrossingM(DeadReckoning const & reckoning, double roadSincePathM) const;

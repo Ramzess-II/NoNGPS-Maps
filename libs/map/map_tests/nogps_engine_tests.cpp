@@ -1144,6 +1144,47 @@ UNIT_TEST(NoGps_Engine_TurnIntoYardTakesNoFarMark)
   TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
 }
 
+UNIT_TEST(NoGps_Engine_LostRoadTakesFarMark)
+{
+  // As in the test above the car is shown at the crossing at 246 m, the far one is 46 m behind, its street goes on. The
+  // street of the shown mark ends 150 m to the north: it stands lost while the car drives on along the far street.
+  PieceRoads roads({{-300, 0, 600, 0}, {200, 0, 200, 400}, {246, 0, 246, 150}}, {{200, 0}, {246, 0}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 246 - 112);
+  env.Drive(10'000, 36, 0);
+  env.Drive(1000, 36, -90);
+  env.Drive(2000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+  env.Drive(20'000, 36, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 200, 3);
+  TEST_GREATER(North(env.Last().m_position), 150, ());
+}
+
+UNIT_TEST(NoGps_Engine_OtherMarkSearchesNoFarCrossingBehindAfterUTurn)
+{
+  // The car turns north at a crossing, the other mark is on the street 46 m aside. It makes a U-turn 100 m to the
+  // north and drives back: the street it has left 145 m from the crossing is not the road the marks came by, so a
+  // street going west there is not a far crossing behind when the car turns west at the main street.
+  PieceRoads roads({{-300, 0, 600, 0}, {200, 0, 200, 400}, {246, 0, 246, 400}, {100, 145, 200, 145}},
+                   {{200, 0}, {246, 0}, {200, 145}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 246 - 112);
+  env.Drive(10'000, 36, 0);
+  env.Drive(1000, 36, -90);
+  env.Drive(2000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+  while (North(env.Last().m_position) < 100)
+    env.Drive(100, 36, 0);
+  env.Drive(2000, 18, -90);
+  env.Drive(2000, 36, 0);
+  while (North(env.Last().m_position) > 12)
+    env.Drive(100, 36, 0);
+  env.Drive(1000, 18, 90);
+  env.Drive(3000, 36, 0);
+  // The other mark is on the road of the shown one, no far one is added at the street.
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 0, (env.m_engine.GetTripLine()));
+}
+
 UNIT_TEST(NoGps_Engine_TurnFitsCrossingOtherMarkHasPassed)
 {
   // After the turn the car may be on either street going north. A street goes east from the one 40 m to the east,
