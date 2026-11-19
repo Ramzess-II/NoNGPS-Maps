@@ -1277,7 +1277,8 @@ void Engine::CheckCalibrateWhenStill()
       ++m_calibrationFailures;
     }
   }
-  if (lost || m_calibrationFailures >= kCalibrateWhenStillMaxFailures || (!m_calibrationSent && now - m_calibrateWaitMs >= kCalibrateWhenStillTimeoutMs))
+  if (lost || m_calibrationFailures >= kCalibrateWhenStillMaxFailures ||
+      (!m_calibrationSent && now - m_calibrateWaitMs >= kCalibrateWhenStillTimeoutMs))
   {
     LOG(LINFO, ("The calibration of the box when still is cancelled, lost =", lost));
     CancelCalibrateWhenStill();
