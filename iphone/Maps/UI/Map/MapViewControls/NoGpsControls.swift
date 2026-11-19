@@ -37,13 +37,13 @@ final class NoGpsControls: NSObject {
   /// The bottom of the turns of the navigation in the window, 0 without them. They are at the edge of the panel.
   private static var turnsBottom = CGFloat(0)
 
-  private let statusButton = UIButton(type: .custom)
+  private let statusButton = NoGpsPillButton(type: .custom)
   /// At the bottom of the map until the box is calibrated.
-  private let calibrationButton = UIButton(type: .custom)
+  private let calibrationButton = NoGpsPillButton(type: .custom)
   // The side buttons are on the left in right-to-left languages.
   private static let isRTL = UIApplication.shared.userInterfaceLayoutDirection == .rightToLeft
   private let panel = MapControlsPanel(edge: NoGpsControls.isRTL ? .right : .left)
-  private let buttons = UIStackView()
+  private let buttons = NoGpsButtonStack()
   private var dragger: MapPanelDragger?
   // Of every button but the first one.
   private var dividers = [UIView: UIView]()
@@ -110,8 +110,8 @@ final class NoGpsControls: NSObject {
 
   // MARK: - Views
 
-  private static func makeButton(_ symbol: String) -> BottomTabBarButton {
-    let button = BottomTabBarButton()
+  private static func makeButton(_ symbol: String) -> NoGpsPanelButton {
+    let button = NoGpsPanelButton()
     button.setStyleAndApply(.mapPanelButton)
     button.translatesAutoresizingMaskIntoConstraints = false
     button.setImage(UIImage(systemName: symbol), for: .normal)
@@ -365,8 +365,8 @@ final class NoGpsControls: NSObject {
     if !canMark, status.markByTap {
       NoGps.setMarkByTap(false)
     }
-    manualButton.tintColor = canMark && status.markByTap ? .linkBlue : .blackSecondaryText
-    voiceFlagButton.tintColor = flagRecorder.isRecording ? Constants.noneColor : .blackSecondaryText
+    manualButton.stateTint = canMark && status.markByTap ? .linkBlue : .blackSecondaryText
+    voiceFlagButton.stateTint = flagRecorder.isRecording ? Constants.noneColor : .blackSecondaryText
     let logging = Settings.isFileLoggingEnabled()
     buttonsHidden = [reverseButton: !status.movedByHand,
                      switchMarkButton: !(status.movedByHand && status.otherMarks > 0),

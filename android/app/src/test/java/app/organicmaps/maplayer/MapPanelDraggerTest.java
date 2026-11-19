@@ -11,6 +11,12 @@ public class MapPanelDraggerTest
   private static final float DT = 1f / 60;
 
   @Test
+  public void liftsAfterEightHundredMs()
+  {
+    assertEquals(800, MapPanelDragger.LIFT_PRESS_MS);
+  }
+
+  @Test
   public void flingSlowsToStop()
   {
     float y = 0;

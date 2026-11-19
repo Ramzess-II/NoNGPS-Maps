@@ -34,6 +34,8 @@ public class MapPanelDragger
   static final float BOUNCE = 0.6f;
   // A fling stops below it, dp/s.
   static final float STOP_SPEED = 30;
+  // A press this long lifts the panel, ms: a tap while driving is slower than the system long press.
+  static final long LIFT_PRESS_MS = 800;
   // The middle of the frame.
   static final float DEFAULT_FRACTION = 0.5f;
   private static final float LIFTED_SCALE = 1.08f;
@@ -167,7 +169,7 @@ public class MapPanelDragger
       endTouch();
       mTracker = VelocityTracker.obtain();
       addMovement(event);
-      mHandler.postDelayed(mLift, ViewConfiguration.getLongPressTimeout());
+      mHandler.postDelayed(mLift, LIFT_PRESS_MS);
       break;
     case MotionEvent.ACTION_MOVE:
       addMovement(event);

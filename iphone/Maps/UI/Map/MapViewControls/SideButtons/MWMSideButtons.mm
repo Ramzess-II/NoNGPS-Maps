@@ -11,6 +11,8 @@ namespace
 {
 NSString * const kMWMSideButtonsViewNibName = @"MWMSideButtonsView";
 NSString * const kUDDidShowLongTapToShowSideButtonsToast = @"kUDDidShowLongTapToShowSideButtonsToast";
+// A slide shorter than this is a tap, pt.
+CGFloat const kZoomSwipeStartPt = 24;
 }  // namespace
 
 @interface MWMMapViewControlsManager ()
@@ -19,14 +21,17 @@ NSString * const kUDDidShowLongTapToShowSideButtonsToast = @"kUDDidShowLongTapTo
 
 @end
 
-@interface MWMSideButtons ()
+@interface MWMSideButtons () <UIGestureRecognizerDelegate>
 
 @property(nonatomic) IBOutlet MWMSideButtonsView * sideView;
 @property(weak, nonatomic) IBOutlet MWMButton * zoomInButton;
 @property(weak, nonatomic) IBOutlet MWMButton * zoomOutButton;
 @property(weak, nonatomic) IBOutlet MWMButton * locationButton;
 
-@property(nonatomic) BOOL zoomSwipeEnabled;
+// The zoom button the finger is on, and whether its slide has become a zoom.
+@property(weak, nonatomic) MWMButton * pressedZoomButton;
+@property(nonatomic) BOOL zoomSwipeStarted;
+@property(nonatomic) CGFloat zoomSwipeOrigin;
 @property(nonatomic, readonly) BOOL isZoomEnabled;
 
 @property(nonatomic) MWMMyPositionMode locationMode;
@@ -55,7 +60,15 @@ NSString * const kUDDidShowLongTapToShowSideButtonsToast = @"kUDDidShowLongTapTo
     [self.locationButton setStyleNameAndApply:@"mapPanelButton"];
     [view addSubview:self.sideView];
     [self.sideView setNeedsLayout];
-    self.zoomSwipeEnabled = NO;
+    // The pan zooms only from the zoom buttons, and lets the touch through until it does.
+    for (UIGestureRecognizer * recognizer in self.sideView.gestureRecognizers)
+    {
+      if ([recognizer isKindOfClass:UIPanGestureRecognizer.class])
+      {
+        recognizer.delegate = self;
+        recognizer.cancelsTouchesInView = NO;
+      }
+    }
     self.zoomHidden = NO;
   }
   return self;
@@ -115,13 +128,13 @@ NSString * const kUDDidShowLongTapToShowSideButtonsToast = @"kUDDidShowLongTapTo
 
 #pragma mark - Actions
 
-- (IBAction)zoomTouchDown:(UIButton *)sender
+- (IBAction)zoomTouchDown:(MWMButton *)sender
 {
-  self.zoomSwipeEnabled = YES;
+  self.pressedZoomButton = sender;
 }
 - (IBAction)zoomTouchUpInside:(UIButton *)sender
 {
-  self.zoomSwipeEnabled = NO;
+  self.pressedZoomButton = nil;
   if ([sender isEqual:self.zoomInButton])
     [self zoomIn];
   else
@@ -130,17 +143,33 @@ NSString * const kUDDidShowLongTapToShowSideButtonsToast = @"kUDDidShowLongTapTo
 
 - (IBAction)zoomTouchUpOutside:(UIButton *)sender
 {
-  self.zoomSwipeEnabled = NO;
+  self.pressedZoomButton = nil;
 }
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
+{
+  return [touch.view isDescendantOfView:self.zoomInButton] || [touch.view isDescendantOfView:self.zoomOutButton];
+}
+
 - (IBAction)zoomSwipe:(UIPanGestureRecognizer *)sender
 {
-  if (!self.zoomSwipeEnabled)
-    return;
   UIView * const superview = self.sideView.superview;
-  CGFloat const translation = -[sender translationInView:superview].y / superview.bounds.size.height;
-
-  CGFloat const scaleFactor = exp(translation);
-  GetFramework().Scale(scaleFactor, false);
+  CGFloat const dy = -[sender translationInView:superview].y;
+  if (sender.state == UIGestureRecognizerStateBegan)
+    self.zoomSwipeStarted = NO;
+  if (!self.zoomSwipeStarted)
+  {
+    if (!self.pressedZoomButton || fabs(dy) < kZoomSwipeStartPt)
+      return;
+    // The slide is a zoom now: the button must not tap when the finger lifts.
+    self.zoomSwipeStarted = YES;
+    // Zoom counts from where the slide became a zoom, so it never jumps when the finger comes back.
+    self.zoomSwipeOrigin = dy;
+    [self.pressedZoomButton cancelTrackingWithEvent:nil];
+    self.pressedZoomButton = nil;
+  }
+  CGFloat const travel = dy - self.zoomSwipeOrigin;
+  GetFramework().Scale(exp(travel / superview.bounds.size.height), false);
 }
 
 - (IBAction)locationTouchUpInside

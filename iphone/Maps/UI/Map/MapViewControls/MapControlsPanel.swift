@@ -181,3 +181,75 @@ final class MapControlsPanel: UIView {
     }
   }
 }
+
+extension MapControlsPanel {
+  /// A button takes taps this far beyond its drawn edge, pt.
+  static let tapMargin = CGFloat(12)
+  /// A pill takes taps at least this high, pt.
+  static let minTapHeight = CGFloat(48)
+
+  /// The visible button a tap at the point goes to: the nearest one whose edge is within tapMargin of it, the upper one
+  /// when they are equally near. The point and the frames are in the coordinates of the buttons' superview.
+  @objc(buttonAt:inButtons:)
+  static func button(at point: CGPoint, in buttons: [UIView]) -> UIView? {
+    var best: (button: UIView, distance: CGFloat)?
+    for button in buttons where !button.isHidden && button.alpha > 0.01 {
+      let frame = button.frame
+      let dx = max(frame.minX - point.x, 0, point.x - frame.maxX)
+      let dy = max(frame.minY - point.y, 0, point.y - frame.maxY)
+      guard dx <= tapMargin, dy <= tapMargin else { continue }
+      let distance = dx * dx + dy * dy
+      if distance < best?.distance ?? .infinity {
+        best = (button, distance)
+      }
+    }
+    return best?.button
+  }
+}
+
+/// A button of a panel. Its tint shows its state: UIKit resets the tint when the press ends, so it is set again then.
+@objc
+final class NoGpsPanelButton: MWMButton {
+  var stateTint: UIColor? {
+    didSet { applyStateTint() }
+  }
+
+  override var isHighlighted: Bool {
+    didSet {
+      if !isHighlighted {
+        applyStateTint()
+      }
+    }
+  }
+
+  @objc override func applyTheme() {
+    super.applyTheme()
+    applyStateTint()
+  }
+
+  private func applyStateTint() {
+    if let stateTint {
+      tintColor = stateTint
+    }
+  }
+}
+
+/// A pill over the map: taps up to minTapHeight high, as it is drawn lower.
+final class NoGpsPillButton: UIButton {
+  override func point(inside point: CGPoint, with _: UIEvent?) -> Bool {
+    let extra = max(0, (MapControlsPanel.minTapHeight - bounds.height) / 2)
+    return bounds.insetBy(dx: 0, dy: -extra).contains(point)
+  }
+}
+
+/// The buttons of a panel: its taps go to the button nearest to them, see MapControlsPanel.button(at:in:).
+final class NoGpsButtonStack: UIStackView {
+  override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+    super.point(inside: point, with: event) || MapControlsPanel.button(at: point, in: arrangedSubviews) != nil
+  }
+
+  override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+    guard !isHidden, isUserInteractionEnabled, alpha > 0.01 else { return nil }
+    return MapControlsPanel.button(at: point, in: arrangedSubviews) ?? super.hitTest(point, with: event)
+  }
+}
