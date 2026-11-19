@@ -70,14 +70,71 @@ bool GpsSpoofingDetector::OnNetworkPosition(ms::LatLon const & position, double 
   if (m_lastNetworkTimeMs == timeMs)
     return m_lastNetworkAccepted;
   m_lastNetworkTimeMs = timeMs;
+  bool const hadNetwork = m_network.has_value();
+  bool const farFromNetwork = hadNetwork && Distance(position, m_network->m_position) > kSamePointM;
   m_lastNetworkAccepted = AcceptNetworkPosition(position, accuracyM, timeMs);
   if (m_lastNetworkAccepted)
+  {
+    // Another point near the first one confirms it, while the same point again proves nothing.
+    if (!hadNetwork)
+      m_networkUnconfirmed = !(m_trusted && std::abs(timeMs - m_trusted->m_timeMs) <= kNetworkMaxAgeMs);
+    else if (farFromNetwork)
+      m_networkUnconfirmed = false;
     m_network = Network{position, accuracyM, timeMs};
+  }
   return m_lastNetworkAccepted;
+}
+
+bool GpsSpoofingDetector::AgreesWithSatellite(ms::LatLon const & position, double accuracyM, int64_t timeMs) const
+{
+  return m_trusted && std::abs(timeMs - m_trusted->m_timeMs) <= kNetworkMaxAgeMs &&
+         Distance(position, m_trusted->m_position) <= std::max(accuracyM, kSamePointM);
+}
+
+bool GpsSpoofingDetector::ContradictsSatellite(ms::LatLon const & position, double accuracyM, int64_t timeMs) const
+{
+  if (!m_jump || !m_trusted || m_trusted->m_timeMs <= m_jump->m_timeMs ||
+      timeMs - m_trusted->m_timeMs > kNetworkMaxAgeMs)
+  {
+    return false;
+  }
+  return Distance(position, m_trusted->m_position) > NetworkTolerance(accuracyM, timeMs - m_trusted->m_timeMs);
+}
+
+void GpsSpoofingDetector::CheckUnconfirmedNetwork(ms::LatLon const & position, int64_t timeMs)
+{
+  if (!m_networkUnconfirmed || !HasFreshNetwork(timeMs))
+    return;
+  double const distanceM = Distance(position, m_network->m_position);
+  if (distanceM <= NetworkTolerance(m_network->m_accuracyM, timeMs - m_network->m_timeMs))
+  {
+    m_networkUnconfirmed = false;
+  }
+  else if (distanceM <= kUnconfirmedNetworkToleranceM)
+  {
+    // Satellites against one network point: the point is the wrong one, as such points are kilometers off.
+    LOG(LWARNING, ("The first network position is", distanceM, "m from GPS: ignored"));
+    m_network.reset();
+    m_networkUnconfirmed = false;
+  }
 }
 
 bool GpsSpoofingDetector::AcceptNetworkPosition(ms::LatLon const & position, double accuracyM, int64_t timeMs)
 {
+  // The right place of the phone is not a wrong point, even if it was taken for one.
+  if (AgreesWithSatellite(position, accuracyM, timeMs))
+  {
+    std::erase_if(m_phantoms, [&](ms::LatLon const & phantom) { return Distance(position, phantom) <= kSamePointM; });
+    // Back from a jump soon: the jump point is wrong.
+    if (m_jump && timeMs - m_jump->m_timeMs < kJumpConfirmMs &&
+        !AgreesWithSatellite(m_jump->m_position, m_jump->m_accuracyM, timeMs))
+    {
+      AddPhantom(m_jump->m_position);
+    }
+    m_jump.reset();
+    return true;
+  }
+
   if (std::any_of(m_phantoms.cbegin(), m_phantoms.cend(),
                   [&](ms::LatLon const & phantom) { return Distance(position, phantom) <= kSamePointM; }))
   {
@@ -90,8 +147,11 @@ bool GpsSpoofingDetector::AcceptNetworkPosition(ms::LatLon const & position, dou
   {
     if (timeMs - m_jump->m_timeMs < kJumpConfirmMs)
       return false;
+    bool const wrong = ContradictsSatellite(position, accuracyM, timeMs);
+    if (wrong)
+      AddPhantom(m_jump->m_position);
     m_jump.reset();
-    return true;
+    return !wrong;
   }
 
   // The most recent trusted position: satellite or network.
@@ -105,7 +165,8 @@ bool GpsSpoofingDetector::AcceptNetworkPosition(ms::LatLon const & position, dou
   if (Distance(position, ref) <= NetworkTolerance(std::max(accuracyM, refAccuracyM), timeMs - refTimeMs))
   {
     // Back from a jump soon: the jump point is wrong.
-    if (m_jump && timeMs - m_jump->m_timeMs < kJumpConfirmMs)
+    if (m_jump && timeMs - m_jump->m_timeMs < kJumpConfirmMs &&
+        !AgreesWithSatellite(m_jump->m_position, m_jump->m_accuracyM, timeMs))
       AddPhantom(m_jump->m_position);
     m_jump.reset();
     return true;
@@ -119,19 +180,21 @@ bool GpsSpoofingDetector::AcceptNetworkPosition(ms::LatLon const & position, dou
 
   if (!m_jump)
   {
-    m_jump = Jump{position, timeMs};
+    m_jump = Jump{position, accuracyM, timeMs};
     return false;
   }
 
   bool const confirmed =
       Distance(position, m_jump->m_position) <= NetworkTolerance(accuracyM, timeMs - m_jump->m_timeMs);
-  if (confirmed || timeMs - m_jump->m_timeMs >= kJumpConfirmMs)
+  // Trusted satellite positions that are farther from the point than its tolerance win over the time.
+  if (confirmed || (timeMs - m_jump->m_timeMs >= kJumpConfirmMs && !ContradictsSatellite(position, accuracyM, timeMs)))
   {
     m_jump.reset();
     return true;
   }
   // Another jump, but the time since the first one counts.
   m_jump->m_position = position;
+  m_jump->m_accuracyM = accuracyM;
   return false;
 }
 
@@ -174,6 +237,7 @@ bool GpsSpoofingDetector::CheckSatellitePosition(ms::LatLon const & position, in
 {
   if (checkSpeed)
     CheckSpeed(position, timeMs, accuracyM, gpsSpeedMps, carSpeedMps);
+  CheckUnconfirmedNetwork(position, timeMs);
   bool const consistent = IsConsistent(position, timeMs) && m_speedMismatchCount < kSpeedMismatchFixes;
   if (!m_spoofed)
   {
