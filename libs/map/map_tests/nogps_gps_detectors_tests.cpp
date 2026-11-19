@@ -347,6 +347,20 @@ UNIT_TEST(NoGps_Spoofing_AgreeingCountRestartsAfterDisagreement)
   TEST(detector.IsSpoofed(), ());
 }
 
+UNIT_TEST(NoGps_Spoofing_AgreeingCountRestartsAfterGap)
+{
+  GpsSpoofingDetector detector;
+  auto position = kKyiv;
+  int64_t time = 0;
+  TEST(detector.CheckSatellitePosition(position, time), ());
+  ConfirmWrongNetwork(detector, position, time + 500);
+  int const half = GpsSpoofingDetector::kAgreeingFixesToTrust / 2 + 1;
+  FeedDrive(detector, position, time, half, true);
+  time += GpsSpoofingDetector::kAgreeingMaxGapMs + 1000;
+  FeedDrive(detector, position, time, half + GpsSpoofingDetector::kConsistentPositionsToRecover, true);
+  TEST(detector.IsSpoofed(), ());
+}
+
 UNIT_TEST(NoGps_Spoofing_TakesGpsSpeedFromPreviousPoint)
 {
   GpsSpoofingDetector detector;

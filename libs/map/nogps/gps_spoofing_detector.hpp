@@ -62,6 +62,8 @@ public:
   // many points in a row while the car drives: the network point is wrong, a car can't fake both.
   static int constexpr kAgreeingFixesToTrust = 30;
   static double constexpr kAgreeingMinSpeedMps = 5;
+  // A longer break between satellite points (a tunnel, no GPS) restarts the count.
+  static int64_t constexpr kAgreeingMaxGapMs = 10000;
 
   struct Trusted
   {

@@ -239,6 +239,8 @@ bool GpsSpoofingDetector::CheckSatellitePosition(ms::LatLon const & position, in
 {
   if (checkSpeed)
   {
+    if (m_previous && timeMs - m_previous->m_timeMs > kAgreeingMaxGapMs)
+      m_agreeingCount = 0;
     auto const agrees = CheckSpeed(position, timeMs, accuracyM, gpsSpeedMps, carSpeedMps);
     // A point with nothing to compare neither grows the count nor drops it.
     if (agrees)
