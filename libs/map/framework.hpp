@@ -420,8 +420,14 @@ public:
   /// The user shows where the car is: a tap after the button for it, or the button of the place page. The map
   /// follows the car from there. \returns false if there is no road at the point.
   bool PlaceNoGpsMark(m2::PointD const & mercator);
+  /// The user taps the status "Road lost": the mark goes by the last GPS fix, see nogps::Engine::PlaceMarkByGps().
+  /// \returns false if GPS can't place it.
+  bool PlaceNoGpsMarkByGps();
 
 private:
+  /// Brings the map back to the car after the user has put its mark.
+  bool FollowNoGpsMark();
+
   /// Draws where the other cars were left, see nogps::Engine::GetParkedCars().
   void UpdateNoGpsCarMarks();
 

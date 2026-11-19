@@ -846,6 +846,10 @@ public final class NoGps
   /// @return false if there is no road near, the core sends MARK_NO_ROAD then.
   public static native boolean nativePlaceMark(double lat, double lon);
 
+  /// The mark goes by the last GPS fix near the car, see nogps::Engine::PlaceMarkByGps().
+  /// @return false if GPS can't place it: the caller tells the user and arms the tap with nativeSetMarkByTap().
+  public static native boolean nativePlaceMarkByGps();
+
   public static native void nativeReverseDirection();
 
   /// Shows the car on the next of the other roads it may be on, see Status.otherMarks.

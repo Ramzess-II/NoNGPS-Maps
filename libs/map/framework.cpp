@@ -294,8 +294,17 @@ nogps::Engine * Framework::GetNoGps()
 bool Framework::PlaceNoGpsMark(m2::PointD const & mercator)
 {
   CHECK(m_noGps, ());
-  if (!m_noGps->GetEngine().PlaceMarkByTap(mercator::ToLatLon(mercator)))
-    return false;
+  return m_noGps->GetEngine().PlaceMarkByTap(mercator::ToLatLon(mercator)) && FollowNoGpsMark();
+}
+
+bool Framework::PlaceNoGpsMarkByGps()
+{
+  CHECK(m_noGps, ());
+  return m_noGps->GetEngine().PlaceMarkByGps() && FollowNoGpsMark();
+}
+
+bool Framework::FollowNoGpsMark()
+{
   // The map moved away by the user comes back to the car by itself in a while, and the car seems to drive along
   // the road then. It comes back at once instead, the user has just shown where the car is.
   if (GetMyPositionMode() == location::NotFollow)

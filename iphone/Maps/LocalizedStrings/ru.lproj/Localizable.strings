@@ -1301,8 +1301,11 @@
 /* Status of the position: the mark of the car stands and waits for the user */
 "nogps_status_road_lost" = "Дорога потеряна";
 
-/* Second line of the status "Road lost" */
-"nogps_status_road_lost_hint" = "нажмите кнопку с пальцем и коснитесь дороги, где вы";
+/* Second line of the status "Road lost": a tap places the mark by GPS */
+"nogps_status_road_lost_gps_hint" = "нажмите, чтобы поставить метку по GPS";
+
+/* Toast when a tap on the status "Road lost" could not place the mark by GPS: the next tap on the map does */
+"nogps_gps_mark_failed" = "GPS не может поставить метку: коснитесь дороги, где вы";
 
 /* State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth" */
 "nogps_box_bt_searching" = "ищу блок по Bluetooth";

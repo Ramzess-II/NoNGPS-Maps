@@ -378,6 +378,12 @@ static CLLocation * lastPlatformLocation;
   return GetFramework().PlaceNoGpsMark(mercator::FromLatLon(coordinate.latitude, coordinate.longitude));
 }
 
++ (BOOL)placeMarkByGps
+{
+  Engine();
+  return GetFramework().PlaceNoGpsMarkByGps();
+}
+
 + (void)reverseDirection
 {
   Engine().ReverseDirection();
