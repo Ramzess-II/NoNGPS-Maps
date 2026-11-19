@@ -595,6 +595,9 @@ void Esp32Source::OnData(esp32::Data const & data)
   m_hasLast = true;
   m_lastTimeMs = data.m_timeMs;
   m_lastYawMdeg = data.m_yawMdeg;
+  // For the potholes, after the motion: a hit is placed where this line has moved the car. A line without the
+  // accelerations gives 0, which still ends a hit.
+  m_listener.OnJolt(data.m_jolt, data.m_speedKmh);
 }
 
 bool Esp32Source::CanPeer() const

@@ -66,6 +66,19 @@ public:
     }
   }
 
+  /// A line of the box with the accelerations: the car at |speedKmh| feels the jolt along `up`.
+  void Jolt(int speedKmh, double joltMs2)
+  {
+    m_clock.Advance(20);
+    m_boxTimeMs += 20;
+    m_distMm += speedKmh / 3.6 * 20;
+    char body[160];
+    std::snprintf(body, sizeof(body), "NGD,1,%lld,%lld,%lld,0,%lld,%d,0,%X,0,0,0,%d", static_cast<long long>(++m_seq),
+                  static_cast<long long>(m_boxTimeMs), std::llround(m_yawMdeg), std::llround(m_distMm), speedKmh,
+                  kCalibratedFlags, static_cast<int>(joltMs2 * 1000));
+    m_engine.OnEsp32BleBytes(BoxLine(body));
+  }
+
   /// GPS positions every second for |seconds| at |speedMps| from the point, going east along the street.
   void DriveGps(int seconds, double eastM, double speedMps)
   {
@@ -3098,6 +3111,46 @@ UNIT_TEST(NoGps_Engine_ParkedCarsAreOtherCarsWithPlace)
   TEST(env.m_engine.GetParkedCars().empty(), ());
 }
 
+UNIT_TEST(NoGps_Engine_PotholeIsWhereTheMarkHitsIt)
+{
+  Env env(true /* inertial */);
+  int changes = 0;
+  env.m_engine.SetPotholesListener([&changes] { ++changes; });
+  MarkCar(env, 50);
+  env.Drive(2000, 36, 0);
+  env.Jolt(36, 12);
+  double const hitAt = East(env.Last().m_position);
+  // The front and the rear axle.
+  env.Drive(200, 36, 0);
+  env.Jolt(36, 8);
+  TEST(env.m_engine.GetPotholes().empty(), ());
+  env.Drive(1000, 36, 0);
+  TEST_EQUAL(changes, 1, ());
+  auto const & potholes = env.m_engine.GetPotholes();
+  TEST_EQUAL(potholes.size(), 1, ());
+  TestAlmostEqualAbs(East(potholes[0].m_place), hitAt, 0.5);
+  TEST_EQUAL(potholes[0].m_pct, 31, ());
+  TEST_EQUAL(potholes[0].m_hits, 1, ());
+
+  // A standing car feels a door slam.
+  env.Drive(3000, 0, 0);
+  env.Jolt(0, 12);
+  env.Drive(1500, 0, 0);
+  TEST_EQUAL(env.m_engine.GetPotholes().size(), 1, ());
+}
+
+UNIT_TEST(NoGps_Engine_NoPotholeWhileRoadIsLost)
+{
+  Env env(true /* inertial */);
+  MarkCar(env, 50);
+  env.Drive(12'000, 36, -5);
+  env.Drive(5000, 36, 0);
+  TEST(env.m_engine.GetStatus().m_roadLost, ());
+  env.Jolt(36, 12);
+  env.Drive(1500, 36, 0);
+  TEST(env.m_engine.GetPotholes().empty(), ());
+}
+
 UNIT_TEST(NoGps_Engine_CarDrivenIsLeftWhereItIsShown)
 {
   Env env(true /* inertial */);
@@ -5226,6 +5279,22 @@ UNIT_TEST(NoGps_Engine_InertialMovesMarkBetweenGpsPositions)
   size_t const slow = env.m_delegate.m_positions.size();
   env.Drive(600, 7, 0);
   TEST_EQUAL(env.m_delegate.m_positions.size(), slow, ());
+}
+
+UNIT_TEST(NoGps_Engine_PotholeWithGpsIsWhereTheMarkIsShown)
+{
+  Env env(true /* inertial */);
+  DriveWithGps(env, 3, true /* box */);
+  // GPS comes once a second: the hole is where the mark is shown between its positions, not at the last one.
+  env.Drive(600, 36, 0);
+  TEST_EQUAL(env.Last().m_provider, Provider::Inertial, ());
+  env.Jolt(36, 9);
+  double const shownAt = East(env.Last().m_position);
+  env.Drive(1000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_source, PositionSource::Gps, ());
+  auto const & potholes = env.m_engine.GetPotholes();
+  TEST_EQUAL(potholes.size(), 1, ());
+  TestAlmostEqualAbs(East(potholes[0].m_place), shownAt, 0.5);
 }
 
 UNIT_TEST(NoGps_Engine_InertialMovesMarkUntilGpsIsLost)

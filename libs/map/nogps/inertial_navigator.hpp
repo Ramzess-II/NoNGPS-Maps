@@ -99,6 +99,8 @@ public:
     virtual void OnBoxStopping() {}
     /// A run from a standing start is timed, see SprintTimer.
     virtual void OnSprint(SprintTimer::Result const & /* result */) {}
+    /// See MotionSource::Listener::OnJolt().
+    virtual void OnJolt(double /* joltMs2 */, int /* speedKmh */) {}
   };
 
   // Without fresh speed the position can't be calculated.
@@ -525,6 +527,7 @@ private:
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
   void OnThisPhoneRemoved() override { m_listener.OnThisPhoneRemoved(); }
   void OnPeerPlace(PeerPlace const & place) override { m_listener.OnPeerPlace(place); }
+  void OnJolt(double joltMs2, int speedKmh) override { m_listener.OnJolt(joltMs2, speedKmh); }
 
   void CheckTurnSign(Fix const & gps);
   double GetSpeedScale(int speedKmh) const;

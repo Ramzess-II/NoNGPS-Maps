@@ -430,6 +430,8 @@ private:
 
   /// Draws where the other cars were left, see nogps::Engine::GetParkedCars().
   void UpdateNoGpsCarMarks();
+  /// Draws the potholes the car has hit, see nogps::Engine::GetPotholes().
+  void UpdateNoGpsPotholeMarks();
 
   void OnUserPositionChanged(m2::PointD const & position, bool hasPosition);
 

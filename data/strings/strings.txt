@@ -46161,6 +46161,13 @@ en = Car %1$@
 ru = Машина %1$@
 uk = Авто %1$@
 
+[nogps_pothole_name]
+comment = Title of the place page of a pothole on the map: the car has hit it, how hard (percent of what the sensor box measures) and how many times
+tags = android-sdk,apple-maps
+en = Pothole %1$d%%, hits: %2$d
+ru = Яма %1$d%%, ударов: %2$d
+uk = Яма %1$d%%, ударів: %2$d
+
 [nogps_car_connected]
 comment = State of a car in the list of the cars: its box is connected now
 tags = android-app,apple-maps

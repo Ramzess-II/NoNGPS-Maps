@@ -229,5 +229,6 @@ Service::Service(Delegate & delegate, SessionRoute & route, DataSource const & d
   , m_engine(delegate, m_map, m_storage, m_clock, m_scheduler)
 {
   m_engine.SetFirmwares(LoadFirmwares());
+  m_engine.SetPotholesFile(GetPlatform().WritablePathForFile(kPotholesFile));
 }
 }  // namespace nogps

@@ -263,6 +263,8 @@ nogps::Engine & Framework::CreateNoGps(nogps::Delegate & delegate)
   });
   m_noGps->GetEngine().SetParkedCarsListener([this] { UpdateNoGpsCarMarks(); });
   UpdateNoGpsCarMarks();
+  m_noGps->GetEngine().SetPotholesListener([this] { UpdateNoGpsPotholeMarks(); });
+  UpdateNoGpsPotholeMarks();
   return m_noGps->GetEngine();
 }
 
@@ -283,6 +285,23 @@ void Framework::UpdateNoGpsCarMarks()
     if (auto const pos = name.find("%s"); pos != std::string::npos)
       name.replace(pos, 2, car.m_id);
     mark->SetName(name);
+  }
+}
+
+void Framework::UpdateNoGpsPotholeMarks()
+{
+  // "Pothole %1$d%%, hits: %2$d" as the platforms put it.
+  auto const format = m_stringsBundle.GetString("nogps_pothole_name");
+  auto editSession = GetBookmarkManager().GetEditSession();
+  editSession.ClearGroup(UserMark::Type::NOGPS_POTHOLE);
+  for (auto const & pothole : m_noGps->GetEngine().GetPotholes())
+  {
+    auto name = format;
+    strings::ReplaceFirst(name, "%1$d", std::to_string(pothole.m_pct));
+    strings::ReplaceFirst(name, "%2$d", std::to_string(pothole.m_hits));
+    strings::ReplaceFirst(name, "%%", "%");
+    editSession.CreateUserMark<NoGpsPotholeMark>(mercator::FromLatLon(pothole.m_place))
+        ->SetPothole(pothole.m_pct, name);
   }
 }
 
@@ -425,6 +444,7 @@ Framework::Framework(FrameworkParams const & params, bool loadMaps)
   m_stringsBundle.SetDefaultString("core_my_places", "My Places");
   m_stringsBundle.SetDefaultString("core_my_position", "My Position");
   m_stringsBundle.SetDefaultString("nogps_car_default_name", "Car %s");
+  m_stringsBundle.SetDefaultString("nogps_pothole_name", "Pothole %1$d%%, hits: %2$d");
   m_stringsBundle.SetDefaultString("open_in_app", "Open in Another App");
   m_stringsBundle.SetDefaultString("postal_code", "Postal Code");
   // Placeholder-free labels used by GetShareData; platforms override with localized values.
@@ -734,6 +754,10 @@ bool Framework::FillUserMarkInfo(UserMark const * mark, place_page::Info & outIn
   case UserMark::Type::NOGPS_CAR:
     GetSelectionProcessor().FillPointInfo(outInfo, mark->GetPivot(),
                                           static_cast<NoGpsCarMark const *>(mark)->GetName());
+    break;
+  case UserMark::Type::NOGPS_POTHOLE:
+    GetSelectionProcessor().FillPointInfo(outInfo, mark->GetPivot(),
+                                          static_cast<NoGpsPotholeMark const *>(mark)->GetName());
     break;
   case UserMark::Type::TRACK_INFO:
   {
@@ -2757,7 +2781,8 @@ UserMark const * Framework::FindUserMarkInTapPosition(place_page::BuildInfo cons
     if (buildInfo.m_source != place_page::BuildInfo::Source::User)
       return df::TapInfo::GetPreciseTapRect(buildInfo.m_mercator, kEps);
 
-    if (type == UserMark::Type::BOOKMARK || type == UserMark::Type::TRACK_INFO || type == UserMark::Type::NOGPS_CAR)
+    if (type == UserMark::Type::BOOKMARK || type == UserMark::Type::TRACK_INFO || type == UserMark::Type::NOGPS_CAR ||
+        type == UserMark::Type::NOGPS_POTHOLE)
       return df::TapInfo::GetBookmarkTapRect(buildInfo.m_mercator, m_currentModelView);
 
     if (type == UserMark::Type::ROUTING || type == UserMark::Type::ROAD_WARNING)

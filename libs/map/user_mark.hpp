@@ -50,8 +50,9 @@ public:
     TRACK_SELECTION,
     DEBUG_MARK,  // Plain "DEBUG" results in a name collision.
     COLORED,
-    ROUTE_ALT,  // ETA balloon attached to a route variant (active or alternative).
-    NOGPS_CAR,  // Where another car of NonGPS Maps was left.
+    ROUTE_ALT,      // ETA balloon attached to a route variant (active or alternative).
+    NOGPS_CAR,      // Where another car of NonGPS Maps was left.
+    NOGPS_POTHOLE,  // A pothole the car of NonGPS Maps has hit.
     USER_MARK_TYPES_COUNT,
     USER_MARK_TYPES_COUNT_MAX = 1000,
   };
@@ -172,6 +173,29 @@ public:
   drape_ptr<TitlesInfo> GetTitleDeclEx(settings::Placement, dp::Color outlineColor) const override;
 
 private:
+  std::string m_name;
+};
+
+/// A pothole the car of the navigation without GPS has hit: nogps::Engine::GetPotholes().
+class NoGpsPotholeMark : public UserMark
+{
+public:
+  // A city has hundreds of them: they are shown on the streets only.
+  static int constexpr kMinZoom = 12;
+
+  explicit NoGpsPotholeMark(m2::PointD const & ptOrg);
+
+  std::string const & GetName() const { return m_name; }
+  /// \param pct the strength of the pothole, see nogps::Pothole::m_pct.
+  void SetPothole(int pct, std::string const & name);
+
+  dp::Anchor GetAnchor() const override { return dp::Bottom; }
+  int GetMinZoom() const override { return kMinZoom; }
+  drape_ptr<SymbolNameZoomInfo> GetSymbolNames() const override;
+  df::ColorConstant GetColorConstant() const override;
+
+private:
+  int m_pct = 0;
   std::string m_name;
 };
 

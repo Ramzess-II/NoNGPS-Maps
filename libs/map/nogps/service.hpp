@@ -83,6 +83,8 @@ public:
   // tools/make_release.py of the firmware writes it, and its files next to it.
   static constexpr char const * kFirmwareDir = "nogps-firmware/";
   static constexpr char const * kFirmwareList = "firmware.json";
+  // In the writable folder, see PotholeStore.
+  static constexpr char const * kPotholesFile = "nogps_potholes.csv";
 
 private:
   SystemClock m_clock;

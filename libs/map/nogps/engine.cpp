@@ -984,6 +984,49 @@ std::vector<Car> Engine::GetParkedCars() const
   return cars;
 }
 
+void Engine::SetPotholesFile(std::string const & path)
+{
+  m_potholesFile = path;
+  m_potholes.Load(path);
+  if (m_potholesListener)
+    m_potholesListener();
+}
+
+std::optional<ms::LatLon> Engine::GetPotholePlace() const
+{
+  switch (GetPositionSource())
+  {
+  // GPS comes once a second: the mark is shown between its positions too, see ShowBetweenGpsPositions().
+  case PositionSource::Gps: return m_shownPosition;
+  case PositionSource::Inertial:
+    // The mark waits on the road while the car is elsewhere.
+    if (m_inertial->IsRoadLost() || m_inertial->GetOffRoadCar())
+      return {};
+    return m_shownPosition;
+  case PositionSource::None:
+  case PositionSource::Network:
+  case PositionSource::Manual: return {};
+  }
+  UNREACHABLE();
+}
+
+void Engine::OnJolt(double joltMs2, int speedKmh)
+{
+  auto const hit = m_potholeDetector.OnSample(m_clock.NowMs(), joltMs2, speedKmh, GetPotholePlace());
+  if (!hit)
+    return;
+  int const pct = PotholeStore::ToPct(hit->m_joltMs2);
+  auto const added = m_potholes.Add(hit->m_place, pct, m_clock.UnixNowMs());
+  char buf[128];
+  std::snprintf(buf, sizeof(buf), "%d %.1f %.6f,%.6f %d %s %d", pct, hit->m_joltMs2, hit->m_place.m_lat,
+                hit->m_place.m_lon, hit->m_speedKmh, added.m_merged ? "merged" : "new", added.m_pothole.m_hits);
+  LOG(LINFO, ("POTHOLE", buf));
+  if (!m_potholesFile.empty() && !m_potholes.Save(m_potholesFile))
+    LOG(LWARNING, ("Can't save the potholes to", m_potholesFile));
+  if (m_potholesListener)
+    m_potholesListener();
+}
+
 bool Engine::MoveParkedCar()
 {
   // The mark has moved since the start: the car is there, whatever box it has. A phone that shows no car yet, e.g. one
@@ -1451,6 +1494,7 @@ void Engine::NotifyLocationUpdated()
 {
   CHECK(m_savedLocation, ());
   m_delegate.OnPosition(*m_savedLocation);
+  m_shownPosition = m_savedLocation->m_position;
   ShowCarHeading();
 }
 
@@ -1475,6 +1519,7 @@ void Engine::ShowBetweenGpsPositions(Fix const & inertial)
   location.m_unixTimeMs = UnixTimeAfterGps(location.m_timeMs);
   ++m_positionsBetweenGps;
   m_delegate.OnPosition(location);
+  m_shownPosition = location.m_position;
 }
 
 int64_t Engine::UnixTimeAfterGps(int64_t timeMs) const
