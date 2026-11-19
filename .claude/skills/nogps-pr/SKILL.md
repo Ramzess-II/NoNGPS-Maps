@@ -16,8 +16,8 @@ argument-hint: "[issue number]"
 4. **Both platforms and follow-ups.** A change that both apps show is made on iOS and Android in this PR; if one
    platform is missing, do it now unless the user says otherwise. Then open an issue for everything this change still
    leaves to do, as "Work you don't do now goes to an issue" in the rule says. That covers a platform part
-   deliberately left out, a bug noticed on the way, a check on a device. Generated strings go in
-   their own `[strings] Regenerated` commit, as `CLAUDE.md` says.
+   deliberately left out and a bug noticed on the way, not a check on a device: that goes in **Tested**. Generated
+   strings go in their own `[strings] Regenerated` commit, as `CLAUDE.md` says.
 5. **Review.** Run `/code-review medium` on the branch. It works in a fresh context; without a level it reuses the
    last one typed, which can be costly. Fix the correctness findings. Skip style preferences and defensive code for
    cases that can't happen.
@@ -28,7 +28,7 @@ argument-hint: "[issue number]"
    - **What**: behavior changes, with names of constants and functions;
    - **Tested**: commands and results, and replay numbers before and after, for the
      "made from" days and for the held-out days apart (`nogps_replay.py days <logs>`); better on the first and not on
-     the second means the rule fits its case only;
+     the second means the rule fits its case only. Last, what was not checked on a device;
    - **Other platform**: the links of the issues from step 4, or "Nothing to do" and why. CI fails the PR without
      one of them. Add "Xcode project not verified" when that applies;
    - "Written with Claude Code."
