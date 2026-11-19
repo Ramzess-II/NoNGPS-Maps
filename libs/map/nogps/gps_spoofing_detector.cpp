@@ -198,8 +198,9 @@ bool GpsSpoofingDetector::AcceptNetworkPosition(ms::LatLon const & position, dou
   return false;
 }
 
-void GpsSpoofingDetector::CheckSpeed(ms::LatLon const & position, int64_t timeMs, double accuracyM,
-                                     std::optional<double> gpsSpeedMps, std::optional<double> carSpeedMps)
+std::optional<bool> GpsSpoofingDetector::CheckSpeed(ms::LatLon const & position, int64_t timeMs, double accuracyM,
+                                                    std::optional<double> gpsSpeedMps,
+                                                    std::optional<double> carSpeedMps)
 {
   if (!gpsSpeedMps && m_previous)
   {
@@ -212,11 +213,11 @@ void GpsSpoofingDetector::CheckSpeed(ms::LatLon const & position, int64_t timeMs
   if (!carSpeedMps)
   {
     m_speedMismatchCount = 0;
-    return;
+    return false;
   }
   // Nothing to compare: the count neither grows nor drops.
   if (!gpsSpeedMps || accuracyM > kSpeedMaxAccuracyM)
-    return;
+    return {};
 
   double const diffMps = std::abs(*gpsSpeedMps - *carSpeedMps);
   bool const mismatch =
@@ -229,16 +230,23 @@ void GpsSpoofingDetector::CheckSpeed(ms::LatLon const & position, int64_t timeMs
     LOG(LWARNING, (isMismatch ? "GPS speed disagrees with the car speed:" : "GPS speed agrees with the car speed:",
                    "gps =", *gpsSpeedMps * 3.6, "km/h, car =", *carSpeedMps * 3.6, "km/h"));
   }
+  return !mismatch && *carSpeedMps >= kAgreeingMinSpeedMps;
 }
 
 bool GpsSpoofingDetector::CheckSatellitePosition(ms::LatLon const & position, int64_t timeMs, double accuracyM,
                                                  std::optional<double> gpsSpeedMps, std::optional<double> carSpeedMps,
-                                                 bool checkSpeed)
+                                                 bool checkSpeed, bool nearInertial)
 {
   if (checkSpeed)
-    CheckSpeed(position, timeMs, accuracyM, gpsSpeedMps, carSpeedMps);
+  {
+    auto const agrees = CheckSpeed(position, timeMs, accuracyM, gpsSpeedMps, carSpeedMps);
+    // A point with nothing to compare neither grows the count nor drops it.
+    if (agrees)
+      m_agreeingCount = *agrees && nearInertial ? m_agreeingCount + 1 : 0;
+  }
   CheckUnconfirmedNetwork(position, timeMs);
-  bool const consistent = IsConsistent(position, timeMs) && m_speedMismatchCount < kSpeedMismatchFixes;
+  bool const followsCar = m_agreeingCount >= kAgreeingFixesToTrust;
+  bool const consistent = (followsCar || IsConsistent(position, timeMs)) && m_speedMismatchCount < kSpeedMismatchFixes;
   if (!m_spoofed)
   {
     if (consistent)
