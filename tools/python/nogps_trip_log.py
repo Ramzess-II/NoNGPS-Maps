@@ -7,19 +7,22 @@ Android) and the state of the inertial navigation. The error of the shown positi
 there is one, at the same moment (the two have different ages): along the course of the car (+ the mark is ahead)
 and across it (+ the mark is to the right). With "Disable GPS" on, the platform position is the car itself.
 
-Logs: log-dd-MM-yy-<phone>[.N].log, written with "Enable logging" on in the settings.
-  iOS: Documents/logs/ (log.txt before). Times are UTC.
-  Android: Android/data/<app id>/files/logs/ (app*.log before), or the zip of "Report a bug". Times are the local
-  time of the phone, the log has no year: --year.
+Logs: logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, written with "Enable logging" on in the settings: a file per launch
+of the app and per drive. A folder given is read with its subfolders: give the folder of one phone, or of one day
+of it. The names of the earlier versions are read too: log-dd-MM-yy-<phone>[.N].log, iOS log.txt, Android app*.log.
+  iOS: Documents/logs/. Times are UTC.
+  Android: Android/data/<app id>/files/logs/, or the zip of "Report a bug" unpacked. Times are the local time of
+  the phone, the log has no year: --year.
 
 Usage:
-  nogps_trip_log.py log-01-11-26-iPhone15_2-a3f9.log [more logs] > trip.csv
-  nogps_trip_log.py log-*.log --gpx trip.gpx > trip.csv    # the shown and the platform tracks to see on a map
+  nogps_trip_log.py logs/iPhone15_2-a3f9/2026-11-01 [more logs] > trip.csv
+  nogps_trip_log.py logs/iPhone15_2-a3f9 --gpx trip.gpx > trip.csv    # the shown and the platform tracks to see on a map
 """
 
 import argparse
 import csv
 import math
+import os
 import re
 import sys
 from datetime import datetime, timedelta, timezone
@@ -32,7 +35,35 @@ ANDROID_PREFIX = re.compile(r'(\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}) ')
 # gps= and fused= are "lat,lon/accuracy/km/h/course/age".
 PLATFORM_FIELDS = ('acc', 'kmh', 'bear', 'age')
 EARTH_RADIUS_M = 6371000
+LOG_NAME = re.compile(r'\.(log|txt)$', re.I)
+# Android "Report a bug" saves the system log next to the logs of the app; a replay writes its files.
+NOT_LOG_NAME = re.compile(r'^(logcat|nogps-replay)', re.I)
+# "logs/Pixel_7-a3f9/2026-11-01/081500.log": the phone, the day and when the file was started.
+PHONE_FOLDER = re.compile(r'(?:^|/)([^/]+)/\d{4}-\d\d-\d\d/\d{6}\.log$')
+# The name of the earlier versions, "log-01-11-26-Pixel_7-a3f9.2.log": the day, the phone and the part.
+PHONE_NAME = re.compile(r'^log-\d\d-\d\d-\d\d-(.+?)(?:\.\d+)?\.log$')
 FIRST_COLUMNS = ['time', 'src', 'lat', 'lon', 'acc', 'bear', 'age', 'ref', 'err_m', 'along_m', 'across_m']
+
+
+def log_files(paths, log_name=LOG_NAME):
+    """The files of the paths: a folder gives the logs in it and in its subfolders in the order of their names, as
+    logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log are kept."""
+    result = []
+    for path in paths:
+        if os.path.isdir(path):
+            for folder, _, files in sorted(os.walk(path)):
+                result += [os.path.join(folder, f) for f in sorted(files)
+                           if log_name.search(f) and not NOT_LOG_NAME.match(f)]
+        else:
+            result.append(path)
+    return result
+
+
+def phone_of(name):
+    """The <phone> of a log file: its folder, or of its name as the earlier versions had it. '' when neither tells."""
+    name = name.replace('\\', '/')
+    m = PHONE_FOLDER.search(name) or PHONE_NAME.match(os.path.basename(name))
+    return m.group(1) if m else ''
 
 
 def parse_time(line, launch, year):
@@ -153,7 +184,7 @@ def main():
     parser.add_argument('--gpx', help='also write the shown and the platform positions as GPX tracks')
     args = parser.parse_args()
 
-    rows = read_rows(args.logs, args.year)
+    rows = read_rows(log_files(args.logs), args.year)
     columns = FIRST_COLUMNS + list(dict.fromkeys(k for row in rows for k in row if k not in FIRST_COLUMNS))
     out = csv.DictWriter(sys.stdout, columns)
     out.writeheader()

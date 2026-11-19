@@ -8,10 +8,11 @@ nogps_log_viewer.py and as a text report:
   nogps_log.py --help    for all the commands
 
 Logs:
-  Both platforms write one file a day per phone, log-dd-MM-yy-<phone>[.N].log, to a logs/ folder: iOS
-  Documents/logs/, Android Android/data/<app id>/files/logs/. "Report a bug" sends logs.zip of that folder. The logs
-  of each platform and <phone> form a group of their own. The names of the earlier versions are read too: iOS
-  log.txt or log.zip, Android app*.log.
+  Both platforms write a file per launch of the app and per drive, logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log: iOS in
+  Documents/, Android in Android/data/<app id>/files/. "Report a bug" sends logs.zip of that folder, "Send logs" of
+  the days of the flags: unpacked into one folder, the zips of any phones and days make one tree. The logs of each
+  platform and <phone> form a group of their own. The names of the earlier versions are read too:
+  log-dd-MM-yy-<phone>[.N].log, iOS log.txt or log.zip, Android app*.log.
   iOS times are UTC. Android times are the local time of the phone; the year is taken from the header of a file.
 
 A trip is the car driving with stops shorter than STAND_SPLIT_S. The lines of a phone that stands are kept as
@@ -43,10 +44,7 @@ LAT_LON = re.compile(r'ms::LatLon\((-?[\d.]+), (-?[\d.]+)\)')
 LEVELS = {'V': 'D', 'D': 'D', 'I': 'I', 'W': 'W', 'E': 'E', 'C': 'E'}
 EPOCH = datetime(1970, 1, 1)
 LOG_NAME = re.compile(r'\.(log|txt|zip)$', re.I)
-NOT_LOG_NAME = re.compile(r'^(logcat|nogps-replay)', re.I)
-# "log-01-11-26-Pixel_7-a3f9.2.log": the day, the phone and the part.
-PHONE_NAME = re.compile(r'^log-\d\d-\d\d-\d\d-(.+?)(?:\.\d+)?\.log$')
-
+NOT_LOG_NAME = nogps_trip_log.NOT_LOG_NAME
 # A pause of the car or of the log this long ends a trip.
 STAND_SPLIT_S = 300
 # Standing kept before and after a trip.
@@ -125,6 +123,7 @@ EVENT_KINDS = [
     ('box', 'Bluetooth', r'^Bluetooth = ', None),
     ('box', 'OBD state', r'^OBD state = |^ELM327|^Connected to', None),
     ('box', 'gyroscope not calibrated', r'gyroscope is not calibrated', None),
+    ('box', 'car calibration', r'^CALIBRATION ', None),
     ('box', 'calibration', r'^Calibrat|calibrat', None),
     ('box', 'box accelerometer', r'^BOXACC |accelerometer of the box|accelerometer was learned', None),
     ('box', 'firmware', r'[Ff]irmware|sending again', None),
@@ -212,17 +211,11 @@ def unpack(name, data):
 
 
 def load_paths(paths):
-    """(name, bytes) of the logs in files, folders and zips."""
+    """(name, bytes) of the logs in files, folders and zips. The name is the path: its folders tell the phone."""
     result = []
-    for path in paths:
-        if os.path.isdir(path):
-            for folder, _, files in sorted(os.walk(path)):
-                for f in sorted(files):
-                    if LOG_NAME.search(f) and not NOT_LOG_NAME.match(f):
-                        result += load_paths([os.path.join(folder, f)])
-        else:
-            with open(path, 'rb') as f:
-                result += unpack(os.path.basename(path), f.read())
+    for path in nogps_trip_log.log_files(paths, LOG_NAME):
+        with open(path, 'rb') as f:
+            result += unpack(path, f.read())
     return result
 
 
@@ -301,12 +294,6 @@ def parse_ios(lines):
             last[0] = round(launch + last[0])
             result.append(last)
     return result, unknown + len(pending)
-
-
-def phone_of(name):
-    """The <phone> of a log file name, '' for the names of the earlier versions."""
-    m = PHONE_NAME.match(os.path.basename(name))
-    return m.group(1) if m else ''
 
 
 def parse_file(name, data, year):
@@ -659,6 +646,18 @@ class Trip:
                                    bisect.bisect_right(group.event_times, self.end)]
         self.anomalies = anomalies(self.rows, self.events)
 
+    def calibration(self):
+        """What the navigation had learned about the car when the trip started, "car=C47D scale=1.04 table=…": the
+        last CALIBRATION line before the car moves, before the first TRIP line of a trip that stands. The lines
+        written after the box connects, when its car is another one or its values are taken, come while the car
+        still stands. None if the log has none."""
+        start = next((row['t'] for row in self.rows if is_moving(row)), self.start)
+        events = self.group.events
+        for e in reversed(events[:bisect.bisect_right(self.group.event_times, start)]):
+            if e['name'] == 'car calibration':
+                return e['text'][len('CALIBRATION '):]
+        return None
+
     def summary(self):
         sources = {}
         # A line stands for the seconds until the next one: a standing car is written once in STAND_TRIP_S.
@@ -795,7 +794,7 @@ class Analysis:
                 if not platform:
                     self.notes.append('%s: not a log of the app' % log_name)
                     continue
-                phone = phone_of(log_name)
+                phone = nogps_trip_log.phone_of(log_name)
                 self.files.append(dict(name=log_name, platform=platform, phone=phone, lines=len(lines)))
                 if unknown:
                     self.notes.append('%s: %d lines of a run without "Local time:", their time is unknown'
@@ -883,6 +882,7 @@ def print_trip(trip):
     print('%s – %s, %s, %.2f km, max %s km/h, %d TRIP lines, choice switches %d' % (
         from_ms(trip.start).strftime('%Y-%m-%d %H:%M:%S'), clock(trip.end), duration(trip.end - trip.start), d['km'],
         d['max_kmh'], d['lines'], d['choice_switches']))
+    print('calibration:', trip.calibration() or 'not in the log')
     total = sum(d['sources'].values())
     print('sources:', ', '.join('%s %d s %.0f%%' % (k, v, v * 100 / total) for k, v in d['sources'].items()))
     for e in d['errors']:
@@ -995,8 +995,8 @@ def main():
   replay  the trip against a nogps-replay-out.txt: --replay file''',
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('command', choices=['trips', 'rules', 'trip', 'events', 'state', 'rows', 'replay'])
-    parser.add_argument('logs', nargs='+', help='log-*.log, logs.zip or a folder of them; app*.log, log.txt and '
-                        'log.zip of the earlier versions')
+    parser.add_argument('logs', nargs='+', help='the logs folder, logs.zip or log files; log-*.log, app*.log, '
+                        'log.txt and log.zip of the earlier versions too')
     parser.add_argument('--year', type=int, help='the year of an Android log without its header')
     parser.add_argument('--trip', type=int, help='the id the trips command shows')
     parser.add_argument('--all', action='store_true', help='with the stationary trips')

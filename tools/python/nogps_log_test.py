@@ -18,6 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import nogps_log  # noqa: E402
 import nogps_replay  # noqa: E402
+import nogps_trip_log  # noqa: E402
 
 DEG_PER_M = 1 / 111320.0
 START_LAT, START_LON = 10.0, 20.0
@@ -259,6 +260,57 @@ class EventsTest(unittest.TestCase):
         self.assertEqual((events[2]['lat'], events[2]['lon']), (10.0001, 20.0002))
 
 
+class CalibrationTest(unittest.TestCase):
+    def test_trip_starts_with_the_last_line_before_the_car_moves(self):
+        day = '10-08'
+        log = android_drive(seconds=60, stand=10)
+        log.append(core(day, 17 * 3600, 'LogCalibration', 'CALIBRATION car=42FD'))
+        # The box of the trip is of another car: told while the car still stands, after the first TRIP lines.
+        log.append(core(day, 18 * 3600 + 5, 'LogCalibration', 'CALIBRATION car=C47D scale=1.04', ms=500))
+        # The values taken from the box on the way are of the next trip.
+        log.append(core(day, 18 * 3600 + 30, 'LogCalibration', 'CALIBRATION car=C47D scale=1.04 table=1:2:3'))
+        log += android_drive(start=19 * 3600, seconds=60, stand=0, header=False)
+        analysis = analyse(('app.log', log))
+        self.assertEqual([t.calibration() for t in analysis.trips], ['car=C47D scale=1.04',
+                                                                    'car=C47D scale=1.04 table=1:2:3'])
+        # A trip that only stands: the last line before it.
+        stand = android_drive(seconds=8, stand=8)
+        stand.append(core(day, 17 * 3600, 'LogCalibration', 'CALIBRATION car=42FD'))
+        stand.append(core(day, 18 * 3600 + 5, 'LogCalibration', 'CALIBRATION car=C47D scale=1.04', ms=500))
+        standing = analyse(('app.log', stand)).trips[0]
+        self.assertFalse(standing.driven)
+        self.assertEqual(standing.calibration(), 'car=42FD')
+        events = [e for e in analysis.groups[0].events if e['text'].startswith('CALIBRATION')]
+        self.assertEqual({(e['cat'], e['name']) for e in events}, {('box', 'car calibration')})
+        out = io.StringIO()
+        with redirect_stdout(out):
+            nogps_log.print_trip(analysis.trips[1])
+        self.assertIn('calibration: car=C47D scale=1.04 table=1:2:3\n', out.getvalue())
+
+    def test_log_without_the_line(self):
+        trip = analyse(('app.log', android_drive(seconds=30, stand=0))).trips[0]
+        self.assertIsNone(trip.calibration())
+
+
+class ReplayLogsTest(unittest.TestCase):
+    def test_logs_of_two_phones_are_refused(self):
+        log = '\n'.join(android_drive(seconds=20, stand=0))
+        with tempfile.TemporaryDirectory() as folder:
+            for phone in ('Pixel_7-a3f9', 'SM_S918B-0b1c'):
+                os.makedirs(os.path.join(folder, phone, '2026-10-08'))
+                with open(os.path.join(folder, phone, '2026-10-08', '180000.log'), 'w', encoding='utf-8') as f:
+                    f.write(log)
+            out, err = io.StringIO(), io.StringIO()
+            with mock.patch.object(sys, 'argv', ['nogps_replay.py', 'days', os.path.join(folder, 'Pixel_7-a3f9')]), \
+                    redirect_stdout(out):
+                nogps_replay.main()
+            self.assertIn('10-08      20 TRIP lines', out.getvalue())
+            with mock.patch.object(sys, 'argv', ['nogps_replay.py', 'days', folder]), \
+                    mock.patch.object(sys, 'stderr', err), self.assertRaises(SystemExit):
+                nogps_replay.main()
+            self.assertIn('Pixel_7-a3f9, SM_S918B-0b1c: give the logs of one phone', err.getvalue())
+
+
 class InputTest(unittest.TestCase):
     def test_zip_of_rotated_files(self):
         log = android_drive(seconds=60)
@@ -282,10 +334,44 @@ class InputTest(unittest.TestCase):
         self.assertEqual(sorted(t.summary()['phone'] for t in analysis.trips), ['', 'Pixel_7-a3f9', 'SM_S918B-0b1c'])
 
     def test_phone_of_name(self):
-        self.assertEqual(nogps_log.phone_of('logs.zip/logs/log-01-11-26-iPhone15_2-a3f9.12.log'), 'iPhone15_2-a3f9')
-        self.assertEqual(nogps_log.phone_of('log-01-11-26-Pixel_7-a3f9.log'), 'Pixel_7-a3f9')
-        self.assertEqual(nogps_log.phone_of('logs/app.1.log'), '')
-        self.assertEqual(nogps_log.phone_of('log.txt'), '')
+        self.assertEqual(nogps_trip_log.phone_of('logs.zip/logs/log-01-11-26-iPhone15_2-a3f9.12.log'), 'iPhone15_2-a3f9')
+        self.assertEqual(nogps_trip_log.phone_of('log-01-11-26-Pixel_7-a3f9.log'), 'Pixel_7-a3f9')
+        self.assertEqual(nogps_trip_log.phone_of('logs/app.1.log'), '')
+        self.assertEqual(nogps_trip_log.phone_of('log.txt'), '')
+
+    def test_phone_of_folder(self):
+        self.assertEqual(nogps_trip_log.phone_of('logs.zip/logs/iPhone15_2-a3f9/2026-11-01/081500.log'), 'iPhone15_2-a3f9')
+        self.assertEqual(nogps_trip_log.phone_of('trip-logs/Pixel_7-a3f9/2026-11-01/235907.log'), 'Pixel_7-a3f9')
+        self.assertEqual(nogps_trip_log.phone_of('Pixel_7-a3f9/2026-11-01/235907.log'), 'Pixel_7-a3f9')
+        self.assertEqual(nogps_trip_log.phone_of('C:\\logs\\Pixel_7-a3f9\\2026-11-01\\235907.log'), 'Pixel_7-a3f9')
+        # A file taken out of its folders, the system log of "Report a bug", a folder that is not a day.
+        self.assertEqual(nogps_trip_log.phone_of('235907.log'), '')
+        self.assertEqual(nogps_trip_log.phone_of('logs/Pixel_7-a3f9/logcat.log'), '')
+        self.assertEqual(nogps_trip_log.phone_of('logs/Pixel_7-a3f9/notes/235907.log'), '')
+
+    def test_tree_of_two_phones(self):
+        """The zips of two phones unpacked into one folder, and a zip of the same tree."""
+        first, second = android_drive(seconds=30, stand=0), android_drive(seconds=40, stand=0)
+        files = {'Pixel_7-a3f9/2026-10-08/180000.log': first[:20], 'Pixel_7-a3f9/2026-10-08/180019.log': first[20:],
+                 'SM_S918B-0b1c/2026-10-08/180000.log': second, 'Pixel_7-a3f9/logcat.log': ['not read'],
+                 'log-08-10-26-Pixel_7-a3f9.log': first}
+        data = io.BytesIO()
+        with tempfile.TemporaryDirectory() as folder, zipfile.ZipFile(data, 'w') as z:
+            for name, lines in files.items():
+                path = os.path.join(folder, 'logs', *name.split('/'))
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with open(path, 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(lines))
+                z.writestr('logs/' + name, '\n'.join(lines))
+            sources = nogps_log.load_paths([os.path.join(folder, 'logs')])
+            # The same files in the order of their names.
+            self.assertEqual(nogps_trip_log.log_files([folder]), [name for name, _ in sources])
+        for analysis in (nogps_log.Analysis(sources), nogps_log.Analysis([('logs.zip', data.getvalue())])):
+            self.assertEqual(sorted(f['phone'] for f in analysis.files),
+                             ['Pixel_7-a3f9', 'Pixel_7-a3f9', 'Pixel_7-a3f9', 'SM_S918B-0b1c'])
+            # The file named as before the tree has the lines of the phone again: read once.
+            self.assertEqual([(g.platform, g.phone, len(g.rows)) for g in analysis.groups],
+                             [('android', 'Pixel_7-a3f9', 30), ('android', 'SM_S918B-0b1c', 40)])
 
     def test_not_a_log(self):
         analysis = nogps_log.Analysis([('notes.txt', b'hello')])
