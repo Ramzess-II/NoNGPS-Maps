@@ -76,6 +76,7 @@ public final class BoxTexts
       case PAIRING_CLOSED -> R.string.nogps_box_bt_pairing_closed;
       case PAIRING_BY_PHONE -> R.string.nogps_box_bt_pairing_by_phone;
       case PAIRING_FULL -> R.string.nogps_box_bt_pairing_full;
+      case CAR_LIMIT -> R.string.nogps_box_bt_car_limit;
       case CONNECTING -> R.string.nogps_box_bt_connecting;
       case PAIRING -> R.string.nogps_box_bt_pairing;
       case CONNECTED -> R.string.nogps_box_bt_waiting;

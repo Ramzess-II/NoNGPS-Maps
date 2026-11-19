@@ -64,6 +64,8 @@ typedef NS_ENUM(NSInteger, MWMNoGpsBleState) {
   MWMNoGpsBleStatePairingByPhone,
   // The same, and the box has no room: a phone is removed on one of them first.
   MWMNoGpsBleStatePairingFull,
+  // A box of no car of the user is found, and the user has the most cars: a car is forgotten first.
+  MWMNoGpsBleStateCarLimit,
 } NS_SWIFT_NAME(NoGpsBleState);
 
 /// What the box does about a new phone, see startAddPhone.
@@ -327,6 +329,10 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly) BOOL speedLagMeasured;
 @property(nonatomic, readonly) MWMNoGpsCalibrationState calibration;
 @property(nonatomic, readonly) NSInteger calibrationProgress;
+/// The core waits for the car to stand still to calibrate the box, or calibrates it: see +calibrateWhenStill.
+@property(nonatomic, readonly) BOOL calibrationArmed;
+/// The sensor box reports that it stands still.
+@property(nonatomic, readonly) BOOL boxStill;
 /// The user has not seen the offer of bundledFirmware: show it and call +firmwareOfferShown.
 @property(nonatomic, readonly) BOOL firmwareOfferPending;
 /// The sensor box has been powered on since the user calibrated it: it may stand in another way now.
@@ -383,6 +389,9 @@ NS_SWIFT_NAME(NoGps)
 
 /// The next single tap on the map shows where the car is, the core handles it. Pass NO to take it back.
 + (void)setMarkByTap:(BOOL)armed;
+/// The mark goes by the last GPS fix near the car, see nogps::Engine::PlaceMarkByGps().
+/// @return NO if GPS can't place it: the caller tells the user and arms the tap with setMarkByTap:.
++ (BOOL)placeMarkByGps;
 /// The car is at the point: the mark goes to the nearest road, the map follows the car.
 /// @return NO if there is no road near, MWMNoGpsEventMarkNoRoad is posted then.
 + (BOOL)placeMarkAt:(CLLocationCoordinate2D)coordinate;
@@ -414,6 +423,13 @@ NS_SWIFT_NAME(NoGps)
 /// NO.
 + (void)searchNewBox:(BOOL)newOnly;
 + (void)calibrate;
+/// Calibrates the box as soon as the car stands still, see MWMNoGpsStatus.calibrationArmed. The core disarms itself
+/// after the calibration, with a lost link or 2 min without a still car.
++ (void)calibrateWhenStill;
++ (void)cancelCalibrateWhenStill;
+/// The shake of the box in the last 3 s, the oldest first, as NSNumber in percent of the limit under which the box
+/// counts the car still. Empty without a box or with an old firmware.
++ (NSArray<NSNumber *> *)boxShake;
 + (void)clearSpeedCalibration;
 /// Sends the firmware of MWMNoGpsStatus.bundledFirmware to the box.
 + (void)startFirmwareUpdate;

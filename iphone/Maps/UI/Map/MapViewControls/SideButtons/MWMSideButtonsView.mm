@@ -188,12 +188,29 @@ NSString * const kPanelPlaceKey = @"NoGpsRightPanelY";
     [self fadeLocationButtonShow:!willLocationHide];
 }
 
-// The open wheel lies out of the panel.
+// Top to bottom: a tap between two buttons goes to the upper one when they are equally near.
+- (NSArray<UIView *> *)tapButtons
+{
+  return @[self.searchWheel.button, self.zoomIn, self.zoomOut, self.location];
+}
+
+// The open wheel lies out of the panel, and the buttons take taps beyond their edges.
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event
 {
   if (self.searchWheel.isOpen && CGRectContainsPoint(self.searchWheel.frame, point))
     return YES;
-  return [super pointInside:point withEvent:event];
+  return [MapControlsPanel buttonAt:point inButtons:self.tapButtons] != nil || [super pointInside:point
+                                                                                        withEvent:event];
+}
+
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
+{
+  if (self.hidden || !self.userInteractionEnabled || self.alpha < 0.01)
+    return nil;
+  if (self.searchWheel.isOpen && CGRectContainsPoint(self.searchWheel.frame, point))
+    return [super hitTest:point withEvent:event];
+  UIView * button = [MapControlsPanel buttonAt:point inButtons:self.tapButtons];
+  return button ?: [super hitTest:point withEvent:event];
 }
 
 #pragma mark - Properties

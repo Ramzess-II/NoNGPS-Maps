@@ -329,9 +329,9 @@ UNIT_TEST(NoGps_Esp32Source_CallsBoxWhileConnectedOnly)
 
 UNIT_TEST(NoGps_Esp32Source_FailedPairingIsNotLinked)
 {
-  // A failed pairing and a box that has forgotten the phone end the link: no HELLO, no calibration, the box is
-  // not taken for a sleeping one.
-  for (auto const state : {BleState::PairingFailed, BleState::BondLost})
+  // A failed pairing, a box that has forgotten the phone and a box over the limit of cars end the link: no HELLO, no
+  // calibration, the box is not taken for a sleeping one.
+  for (auto const state : {BleState::PairingFailed, BleState::BondLost, BleState::CarLimit})
   {
     TestClock clock;
     TestDelegate delegate;
@@ -414,6 +414,31 @@ UNIT_TEST(NoGps_Esp32Source_CalibratesAndTimesOut)
   source.Calibrate();
   clock.Advance(Esp32Source::kCalibrationTimeoutMs + 1);
   TEST_EQUAL(source.GetCalibrationState(), CalibrationState::FailedMoving, ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_KeepsShakeOfThreeSeconds)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  // An old box tells nothing.
+  source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, kCalibratedFlags));
+  TEST(source.GetShake().empty(), ());
+  for (int i = 0; i < 200; ++i)
+  {
+    clock.Advance(20);
+    source.OnBleBytes(BoxDataLine(2 + i, 5020 + 20 * i, 0, 0, kCalibratedFlags, 0, i));
+  }
+  auto const shake = source.GetShake();
+  TEST_EQUAL(shake.size(), Esp32Source::kShakeLines, ());
+  TEST_EQUAL(shake.front(), 50, ());
+  TEST_EQUAL(shake.back(), 199, ());
+  // The link is lost: the next connection starts anew.
+  source.OnBleState(BleState::Searching);
+  TEST(source.GetShake().empty(), ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_CalibrationEndsWhenLinkIsLost)

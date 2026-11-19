@@ -884,7 +884,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     case help -> showHelp();
     case trackRecordingStatus -> toggleTrackRecordingPP();
     case manualPosition -> toggleMarkByTap();
-    case positionStatus -> showBoxSheet(BoxBottomSheet.Page.BOX);
+    case positionStatus -> placeMarkByGps();
     case reverseDirection -> NoGps.nativeReverseDirection();
     case switchMark -> NoGps.nativeSwitchMark();
     }
@@ -900,6 +900,15 @@ public class MwmActivity extends BaseMwmFragmentActivity
     NoGps.nativeSetMarkByTap(armed);
     if (armed)
       Toast.makeText(this, R.string.nogps_mark_by_tap, Toast.LENGTH_SHORT).show();
+  }
+
+  /** The status "Road lost" is tapped: GPS places the mark, or the next tap on the map does. */
+  private void placeMarkByGps()
+  {
+    if (NoGps.nativePlaceMarkByGps())
+      return;
+    NoGps.nativeSetMarkByTap(true);
+    Toast.makeText(this, R.string.nogps_gps_mark_failed, Toast.LENGTH_LONG).show();
   }
 
   private void onNoGpsEvent(@NonNull NoGps.Event event)

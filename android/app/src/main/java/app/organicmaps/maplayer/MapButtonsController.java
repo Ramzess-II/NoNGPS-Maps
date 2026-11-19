@@ -127,6 +127,8 @@ public class MapButtonsController extends Fragment
   @Nullable
   private SpeedHintView mSpeedHint;
   @Nullable
+  private CalibrationBarView mCalibrationBar;
+  @Nullable
   private SprintView mSprint;
   // A range of the speed measured by GPS is celebrated by the bar next to the speed, a timed run is told by the card.
   private final LocationHelper.NoGpsListener mNoGpsListener = (event) ->
@@ -253,7 +255,7 @@ public class MapButtonsController extends Fragment
       mStatusBar = new StatusBar(statusBar, () -> showBoxSheet(BoxBottomSheet.Page.MAIN));
     mCalibrationStatus = mFrame.findViewById(R.id.calibration_status);
     if (mCalibrationStatus != null)
-      mCalibrationStatus.setOnClickListener(v -> showBoxSheet(BoxBottomSheet.Page.CALIBRATION));
+      mCalibrationStatus.setOnClickListener(v -> onCalibrationWarningClick());
     final View speedView = mFrame.findViewById(R.id.speed_view);
     if (speedView != null)
       mSpeedView = new SpeedView(speedView);
@@ -262,6 +264,9 @@ public class MapButtonsController extends Fragment
       mSpeedHint =
           new SpeedHintView(speedHint, mFrame.findViewById(R.id.speed_hint_confetti), speedView,
                             mFrame.findViewById(R.id.right_panel), () -> showBoxSheet(BoxBottomSheet.Page.ITEM_SPEED));
+    if (speedHint != null && speedView != null)
+      mCalibrationBar = new CalibrationBarView(speedHint, speedView, mFrame.findViewById(R.id.right_panel),
+                                               () -> showBoxSheet(BoxBottomSheet.Page.CALIBRATION));
     final View sprint = mFrame.findViewById(R.id.sprint_frame);
     if (sprint != null)
       mSprint = new SprintView(sprint, mFrame.findViewById(R.id.speed_hint_confetti));
@@ -403,7 +408,7 @@ public class MapButtonsController extends Fragment
       {
         final String text = getString(R.string.nogps_status_road_lost);
         final SpannableString withHint =
-            new SpannableString(text + '\n' + getString(R.string.nogps_status_road_lost_hint));
+            new SpannableString(text + '\n' + getString(R.string.nogps_status_road_lost_gps_hint));
         withHint.setSpan(new RelativeSizeSpan(0.8f), text.length() + 1, withHint.length(),
                          Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         mPositionStatus.setText(withHint);
@@ -414,7 +419,9 @@ public class MapButtonsController extends Fragment
     // Until the user calibrates the box: an alert would be easy to miss or to put off.
     if (mCalibrationStatus != null)
     {
-      final boolean calibrate = BoxBottomSheet.needsCalibration(status);
+      // The bar next to the speed is the calibration now, the warning comes back when it ends without a calibration.
+      final boolean calibrate =
+          BoxBottomSheet.needsCalibration(status) && (mCalibrationBar == null || !mCalibrationBar.isShown());
       UiUtils.showIf(calibrate, mCalibrationStatus);
       mCalibrationBlinkingAnimator = blink(mCalibrationStatus, calibrate, mCalibrationBlinkingAnimator,
                                            CALIBRATION_BLINK_MS, CALIBRATION_BLINK_ALPHA);
@@ -465,8 +472,24 @@ public class MapButtonsController extends Fragment
     final RoutingController routing = RoutingController.get();
     final RoutingInfo info = routing.isNavigating() ? routing.getCachedRoutingInfo() : null;
     mSpeedView.update(status, location, info != null && info.isSpeedCamLimitExceeded());
+    if (mCalibrationBar != null)
+      mCalibrationBar.update(status);
+    // The calibration bar of the box comes first: both slide out of the speed.
     if (mSpeedHint != null)
-      mSpeedHint.update(status);
+      mSpeedHint.update(status, mCalibrationBar != null && mCalibrationBar.isShown());
+  }
+
+  private void onCalibrationWarningClick()
+  {
+    // The bar slides out of the speed: without it the user calibrates on the page.
+    final View speed = mFrame.findViewById(R.id.speed_view);
+    if (mCalibrationBar == null || speed == null || speed.getVisibility() != View.VISIBLE)
+    {
+      showBoxSheet(BoxBottomSheet.Page.CALIBRATION);
+      return;
+    }
+    NoGps.nativeCalibrateWhenStill();
+    updateSpeedView(NoGps.getStatus());
   }
 
   /**
@@ -992,6 +1015,8 @@ public class MapButtonsController extends Fragment
     MwmApplication.from(requireContext()).getLocationHelper().removeNoGpsListener(mNoGpsListener);
     if (mSpeedHint != null)
       mSpeedHint.stop();
+    if (mCalibrationBar != null)
+      mCalibrationBar.stop();
     if (mSprint != null)
       mSprint.stop();
     if (mPositionStatus != null)

@@ -166,12 +166,15 @@ public:
 
 /// A data line of the ESP32 box with the totals since its start.
 inline std::string BoxDataLine(int64_t seq, int64_t timeMs, int64_t yawMdeg, int speedKmh, int flags,
-                               int64_t distMm = 0)
+                               int64_t distMm = 0, int shakePct = -1)
 {
   char body[160];
-  std::snprintf(body, sizeof(body), "NGD,1,%lld,%lld,%lld,0,%lld,%d,0,%X", static_cast<long long>(seq),
-                static_cast<long long>(timeMs), static_cast<long long>(yawMdeg), static_cast<long long>(distMm),
-                speedKmh, flags);
+  int len = std::snprintf(body, sizeof(body), "NGD,1,%lld,%lld,%lld,0,%lld,%d,0,%X", static_cast<long long>(seq),
+                          static_cast<long long>(timeMs), static_cast<long long>(yawMdeg),
+                          static_cast<long long>(distMm), speedKmh, flags);
+  // The accelerations are empty before the calibration.
+  if (shakePct >= 0)
+    std::snprintf(body + len, sizeof(body) - len, ",,,,,%d", shakePct);
   char crc[8];
   std::snprintf(crc, sizeof(crc), "%04X", nogps::esp32::Crc16(body));
   return std::string("$") + body + "*" + crc + "\r\n";

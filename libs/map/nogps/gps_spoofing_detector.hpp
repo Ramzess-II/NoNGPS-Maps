@@ -43,6 +43,10 @@ public:
   // A Wi-Fi position (tens of meters) is used at once after a coarse cell tower one (hundreds of meters).
   static double constexpr kMoreAccurateFactor = 2;
 
+  // Network positions are wrong by kilometers, up to several tens: so the first one after the start, that nothing
+  // has confirmed, is believed over a satellite position only when they are farther apart than this.
+  static double constexpr kUnconfirmedNetworkToleranceM = 50'000;
+
   // A GPS speed is compared with the car speed when it differs by more than both of these: the car speed lags
   // behind GPS by about a second, so a smaller difference is just an acceleration.
   static double constexpr kSpeedMismatchKmh = 15;
@@ -97,11 +101,19 @@ private:
   struct Jump
   {
     ms::LatLon m_position;
+    double m_accuracyM = 0;
     int64_t m_timeMs = 0;
   };
 
   void AddPhantom(ms::LatLon const & position);
   bool AcceptNetworkPosition(ms::LatLon const & position, double accuracyM, int64_t timeMs);
+  /// \returns true if a trusted satellite position, fresh at timeMs, is within the accuracy of the point.
+  bool AgreesWithSatellite(ms::LatLon const & position, double accuracyM, int64_t timeMs) const;
+  /// \returns true if a trusted satellite position, newer than the jump and fresh at timeMs, is farther from the
+  /// point than the network tolerance: the point is wrong, whatever the time says.
+  bool ContradictsSatellite(ms::LatLon const & position, double accuracyM, int64_t timeMs) const;
+  /// Drops the network position that a satellite position contradicts, or confirms it.
+  void CheckUnconfirmedNetwork(ms::LatLon const & position, int64_t timeMs);
   bool IsConsistent(ms::LatLon const & position, int64_t timeMs) const;
   bool HasFreshNetwork(int64_t timeMs) const;
   void SetTrusted(ms::LatLon const & position, int64_t timeMs);
@@ -117,6 +129,8 @@ private:
   int m_consistentCount = 0;
   // The first network position of a jump away from the last trusted one, waiting for a confirmation.
   std::optional<Jump> m_jump;
+  // m_network is the first one since the start: no other network point or satellite position has confirmed it.
+  bool m_networkUnconfirmed = false;
   std::vector<ms::LatLon> m_phantoms;
   // Several providers report the same network position.
   std::optional<int64_t> m_lastNetworkTimeMs;

@@ -924,6 +924,12 @@
     <string name="nogps_flag_voice">Voice note %d s</string>
     <!-- In the list of the flags of test drives: the flag has been sent by email already -->
     <string name="nogps_flag_sent">Sent</string>
+    <!-- Accessibility label of the button in the list of the flags of test drives that plays the voice note of a flag -->
+    <string name="nogps_flag_play">Play voice note</string>
+    <!-- Accessibility label of the button in the list of the flags of test drives that stops the voice note of a flag -->
+    <string name="nogps_flag_stop">Stop</string>
+    <!-- Accessibility label of the screenshot of a flag in the list of the flags of test drives, a tap opens it full screen -->
+    <string name="nogps_flag_screenshot">Screenshot</string>
     <!-- Alert before the flags are sent: the attachments take more than the limit, a mail server may refuse the mail. The first value is the size, e.g. 25 MB, the second one the limit in MB. -->
     <string name="nogps_flags_too_big">The files take %1$s, a mail over %2$d MB may not go through. Send anyway?</string>
     <!-- The user has pressed the button to show on the map where the car is -->
@@ -964,8 +970,10 @@
     <string name="nogps_gps_lost_auto">GPS is lost or wrong, the manual mode is on</string>
     <!-- Status of the position: the mark of the car stands and waits for the user -->
     <string name="nogps_status_road_lost">Road lost</string>
-    <!-- Second line of the status "Road lost" -->
-    <string name="nogps_status_road_lost_hint">press the finger button and tap the road where you are</string>
+    <!-- Second line of the status "Road lost": a tap places the mark by GPS -->
+    <string name="nogps_status_road_lost_gps_hint">tap here to place it by GPS</string>
+    <!-- Toast when a tap on the status "Road lost" could not place the mark by GPS: the next tap on the map does -->
+    <string name="nogps_gps_mark_failed">GPS can\'t place the mark: tap the road where you are</string>
     <!-- State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth" -->
     <string name="nogps_box_bt_searching">searching by Bluetooth</string>
     <!-- State of the sensor box, shown after its name: the "Nearby devices" permission of Android 12+ is not given -->
@@ -1059,6 +1067,8 @@
     <string name="nogps_box_bt_pairing_by_phone">found, but not paired with this phone. On a phone paired with the box, open Box, tap the car name at the top, then the car and Add a phone, and enter the code here. No paired phone at hand? Turn Bluetooth off on the other phones that were paired with the box. Plug the box in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts this phone for 2 minutes with the code 123456, unless it was changed, and forgets the other phones</string>
     <!-- State of the sensor box, shown after its name: the box has 4 phones and takes no new one -->
     <string name="nogps_box_bt_pairing_full">found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car name at the top, the car). No paired phone at hand? Turn Bluetooth off on the other phones that were paired with the box. Plug the box in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts this phone for 2 minutes with the code 123456, unless it was changed, and forgets the other phones</string>
+    <!-- State of the sensor box, shown after its name: the box is of no car of the user, and the user has the most cars -->
+    <string name="nogps_box_bt_car_limit">found, but it is of no car of this phone, and the phone has the most cars. Forget a car first (Box, the car name at the top, the car, Forget the car)</string>
     <!-- Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car -->
     <string name="nogps_car_phones">Phones</string>
     <!-- Under a phone in the list of the phones of the sensor box: it is the phone the user holds -->
@@ -1201,12 +1211,12 @@
     <string name="nogps_gps_why_spoofed">Far from cell towers and Wi-Fi, or jumps: not used.</string>
     <!-- Why, under the state of GPS -->
     <string name="nogps_gps_why_none">No position from GPS for 5 seconds.</string>
-    <!-- Switch in the Box sheet: on, GPS is not used for the car -->
-    <string name="nogps_gps_block">Don\'t use GPS for navigation</string>
-    <!-- Under the switch Don't use GPS for navigation in the Box sheet -->
-    <string name="nogps_gps_block_hint">On: GPS is ignored, the box and your marks place the car. For places where GPS is spoofed but the app doesn\'t see it.</string>
-    <!-- Under the disabled switch Don't use GPS for navigation in the Box sheet: no box is heard -->
-    <string name="nogps_gps_block_needs_box">GPS can be turned off only while a box is connected: nothing else would move the car.</string>
+    <!-- Switch in the Box sheet: on, GPS is ignored for the car -->
+    <string name="nogps_gps_block">Ignore GPS</string>
+    <!-- Under the switch Ignore GPS in the Box sheet -->
+    <string name="nogps_gps_block_hint">The box and your marks place the car. For places where GPS is spoofed but the app doesn\'t see it.</string>
+    <!-- Under the disabled switch Ignore GPS in the Box sheet: no box is heard -->
+    <string name="nogps_gps_block_needs_box">GPS can be ignored only while a box is connected: nothing else would move the car.</string>
     <!-- At the top of the Cars page of the Box sheet -->
     <string name="nogps_cars_text">Each box is one car with its own calibration and parking spot. Tap a car to drive it, rename it or forget it.</string>
     <!-- On the Add a car page while the box of the new car is searched -->
@@ -1233,6 +1243,14 @@
     <string name="nogps_box_version">Ver %1$s</string>
     <!-- Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page -->
     <string name="nogps_calibration_snackbar">Calibrate the sensor box</string>
+    <!-- Orange bar next to the speed on the map after the tap on nogps_calibration_snackbar: the box is calibrated when the car stands still -->
+    <string name="nogps_calibrate_still_hold">Hold still: no one gets in or out</string>
+    <!-- Orange bar next to the speed on the map while the box calibrates -->
+    <string name="nogps_calibrate_still_calibrating">Calibrating the sensor box</string>
+    <!-- Green bar next to the speed on the map for 3 seconds after the box is calibrated -->
+    <string name="nogps_calibrate_still_done">Sensor box calibrated</string>
+    <!-- Orange bar next to the speed on the map: the car moved during the calibration, it starts again when the car is still -->
+    <string name="nogps_calibrate_still_moved">The car moved</string>
     <!-- Settings item and the switch on its page: the app is the mock location app for other apps -->
     <string name="nogps_share_position">Share position</string>
     <!-- Share position page of Settings, above the switch -->

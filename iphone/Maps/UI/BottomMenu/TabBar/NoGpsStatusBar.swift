@@ -190,7 +190,7 @@ final class NoGpsStatusBar: UIView {
     case .connected: return Look(symbol: NavigationLiveActivitySymbol.system(Constants.boxSymbol), color: .systemBlue, pulsing: true)
     case .off, .noPermission, .disabled:
       return Look(symbol: NavigationLiveActivitySymbol.asset("ic_nogps_bluetooth_off"), color: .secondaryLabel)
-    case .searching, .pairingClosed, .pairingByPhone, .pairingFull, .connecting, .pairing:
+    case .searching, .pairingClosed, .pairingByPhone, .pairingFull, .carLimit, .connecting, .pairing:
       return Look(symbol: NavigationLiveActivitySymbol.asset("ic_nogps_bluetooth"), color: .systemBlue, pulsing: true)
     // Not searched until the user acts.
     case .pairingFailed, .bondLost:

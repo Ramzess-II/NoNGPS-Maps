@@ -63,6 +63,7 @@ class Esp32BleTransport
   static final int STATE_BOND_LOST = 9;
   static final int STATE_PAIRING_BY_PHONE = 10;
   static final int STATE_PAIRING_FULL = 11;
+  static final int STATE_CAR_LIMIT = 12;
 
   private static final String TAG = Esp32BleTransport.class.getSimpleName();
   private static final UUID SERVICE = UUID.fromString("02CB0001-C0C3-40D0-819C-5A85998DCD99");
@@ -145,7 +146,8 @@ class Esp32BleTransport
   private final Runnable mWatchdog = this::onWatchdog;
   private final Runnable mPairingClosedEnd = () ->
   {
-    if (mState == STATE_PAIRING_CLOSED || mState == STATE_PAIRING_BY_PHONE || mState == STATE_PAIRING_FULL)
+    if (mState == STATE_PAIRING_CLOSED || mState == STATE_PAIRING_BY_PHONE || mState == STATE_PAIRING_FULL
+        || mState == STATE_CAR_LIMIT)
       setState(STATE_SEARCHING);
   };
   // The box was paired when it was found.
@@ -518,7 +520,15 @@ class Esp32BleTransport
     final boolean bonded = device.getBondState() == BluetoothDevice.BOND_BONDED;
     final String id = getBoxId(result);
     // A paired box without its name may be of a car: not while a new one is added.
-    if (id != null ? !isBoxWanted(id, bonded) : (mNewBoxOnly && bonded) || (!bonded && isOverCarLimit(null)))
+    if (id != null ? isOverCarLimit(id) : !bonded && isOverCarLimit(null))
+    {
+      // Told while its advertisements come, as for a box that takes no new phone.
+      setState(STATE_CAR_LIMIT);
+      mMainHandler.removeCallbacks(mPairingClosedEnd);
+      mMainHandler.postDelayed(mPairingClosedEnd, PAIRING_CLOSED_TIMEOUT_MS);
+      return;
+    }
+    if (id != null ? !isBoxWanted(id, bonded) : mNewBoxOnly && bonded)
       return;
     final boolean forgotten = id != null && getForgottenBoxes().contains(id);
     if (needsPairingWindow(bonded, forgotten, mNewBoxOnly))
@@ -592,13 +602,11 @@ class Esp32BleTransport
   }
 
   /**
-   * @return false if the box is not to be connected now: of a known car while the user adds one, not of a car at the
-   * limit of cars, forgotten, or of another car while the box of the current one may be found too.
+   * @return false if the box is not to be connected now: of a known car while the user adds one, forgotten, or of
+   *     another car while the box of the current one may be found too.
    */
   private boolean isBoxWanted(@NonNull String id, boolean bonded)
   {
-    if (isOverCarLimit(id))
-      return false;
     if (mNewBoxOnly)
       return !mCarIds.contains(id);
     // Without cars the box is set up anew, as any box.

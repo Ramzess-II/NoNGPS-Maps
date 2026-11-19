@@ -101,6 +101,8 @@ std::optional<ms::LatLon> TurnMatcher::FindCrossing(Roads & roads, ms::LatLon co
   bool const all = onlyOne || fittingOut;
   auto const crossings =
       roads.FindCrossings(corner, std::max(radius, std::hypot(std::max(farAheadM, farBehindM), kMaxSideOffsetM)));
+  // The counts for the trip log are of the crossings near the search only, not of the whole far radius.
+  size_t around = 0;
   size_t aside = 0;
   size_t noRoadBack = 0;
   size_t noRoadAhead = 0;
@@ -113,21 +115,23 @@ std::optional<ms::LatLon> TurnMatcher::FindCrossing(Roads & roads, ms::LatLon co
     double const along = std::fabs(ahead);
     double const side = std::fabs(distance * std::sin(angle));
     bool const isFar = along > radius && along <= (ahead > 0 ? farAheadM : farBehindM);
+    if (distance <= radius)
+      ++around;
     if ((along > radius && !isFar) || side > kMaxSideOffsetM)
     {
-      ++aside;
+      aside += distance <= radius;
       continue;
     }
     if (along >= bestAlong && !all && !isFar)
       continue;
     if (!HasRoadFromCrossing(roads, crossing, fromBearingDeg + 180))
     {
-      ++noRoadBack;
+      noRoadBack += !isFar;
       continue;
     }
     if (!HasRoadFromCrossing(roads, crossing, toBearingDeg, fromBearingDeg))
     {
-      ++noRoadAhead;
+      noRoadAhead += !isFar;
       continue;
     }
     if (isFar)
@@ -159,10 +163,9 @@ std::optional<ms::LatLon> TurnMatcher::FindCrossing(Roads & roads, ms::LatLon co
   }
   if (!best)
   {
-    return no("crossings around " + std::to_string(crossings.size()) + ", farther than " +
-              std::to_string(std::lround(radius)) + " m along the road or aside of it " + std::to_string(aside) +
-              ", without the road the car came by " + std::to_string(noRoadBack) +
-              ", without a road going the new way " + std::to_string(noRoadAhead) +
+    return no("crossings around " + std::to_string(around) + ", farther than " + std::to_string(std::lround(radius)) +
+              " m along the road or aside of it " + std::to_string(aside) + ", without the road the car came by " +
+              std::to_string(noRoadBack) + ", without a road going the new way " + std::to_string(noRoadAhead) +
               (far.empty() ? "" : ", farther the car may be at " + std::to_string(far.size())));
   }
   return best;

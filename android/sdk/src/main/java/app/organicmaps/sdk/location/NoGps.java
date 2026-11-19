@@ -111,6 +111,8 @@ public final class NoGps
     PAIRING_BY_PHONE,
     // The same, and the box has no room: a phone is removed on one of them first.
     PAIRING_FULL,
+    // A box of no car of the user is found, and the user has the most cars: a car is forgotten first.
+    CAR_LIMIT,
   }
 
   /**
@@ -414,6 +416,12 @@ public final class NoGps
     int calibration;
     @Keep
     public int calibrationProgress;
+    // The core waits for the car to stand still to calibrate the box, or calibrates it, see nativeCalibrateWhenStill().
+    @Keep
+    public boolean calibrationArmed;
+    // The sensor box reports that it stands still.
+    @Keep
+    public boolean boxStill;
     @Keep
     public boolean hasInertialPosition;
     // The mark waits for the user to put it on a road: the road is lost.
@@ -844,6 +852,10 @@ public final class NoGps
   /// @return false if there is no road near, the core sends MARK_NO_ROAD then.
   public static native boolean nativePlaceMark(double lat, double lon);
 
+  /// The mark goes by the last GPS fix near the car, see nogps::Engine::PlaceMarkByGps().
+  /// @return false if GPS can't place it: the caller tells the user and arms the tap with nativeSetMarkByTap().
+  public static native boolean nativePlaceMarkByGps();
+
   public static native void nativeReverseDirection();
 
   /// Shows the car on the next of the other roads it may be on, see Status.otherMarks.
@@ -862,6 +874,21 @@ public final class NoGps
   public static native void nativeSetEsp32Source(boolean esp32);
 
   public static native void nativeCalibrate();
+
+  /**
+   * Calibrates the box as soon as the car stands still, see {@link Status#calibrationArmed}. The core disarms itself
+   * after the calibration, with a lost link or 2 min without a still car.
+   */
+  public static native void nativeCalibrateWhenStill();
+
+  public static native void nativeCancelCalibrateWhenStill();
+
+  /**
+   * @return the shake of the box in the last 3 s, the oldest first, in percent of the limit under which the box counts
+   *         the car still. Empty without a box or with an old firmware.
+   */
+  @NonNull
+  public static native int[] nativeGetBoxShake();
 
   /**
    * Sends the firmware that comes with the application to the sensor box, see {@link Status#bundledFirmware}.

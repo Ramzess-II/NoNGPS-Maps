@@ -71,6 +71,24 @@ UNIT_TEST(NoGps_Esp32_ParsesAccel)
   TEST(!data->m_hasAccel, ());
 }
 
+UNIT_TEST(NoGps_Esp32_ParsesShake)
+{
+  // The shake comes with the accelerations and without them, before the calibration.
+  auto data = ParseData(*Parse(WithCrc("NGD,1,5022,945253,-21882,-2100,812584,43,100,1F,-180,95,2350,6800,135")));
+  TEST(data, ());
+  TEST(data->m_hasAccel, ());
+  TEST_EQUAL(data->m_shakePct, 135, ());
+  data = ParseData(*Parse(WithCrc("NGD,1,77,12345,0,0,0,-1,-1,223,,,,,40")));
+  TEST(data, ());
+  TEST(!data->m_hasAccel, ());
+  TEST_EQUAL(data->m_shakePct, 40, ());
+  // An older box doesn't tell it, a damaged field is a damaged line.
+  data = ParseData(*Parse(WithCrc("NGD,1,5022,945253,-21882,-2100,812584,43,100,1F,-180,95,2350,6800")));
+  TEST(data, ());
+  TEST_EQUAL(data->m_shakePct, -1, ());
+  TEST(!ParseData(*Parse(WithCrc("NGD,1,77,12345,0,0,0,-1,-1,223,,,,,x"))), ());
+}
+
 UNIT_TEST(NoGps_Esp32_RejectsBadChecksum)
 {
   TEST(!Parse("$NGD,1,15230,845213,-1234567,-15300,5021345,43,80,1F*1BDF"), ());

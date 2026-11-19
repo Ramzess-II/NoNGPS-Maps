@@ -42,6 +42,8 @@ public:
   static int64_t constexpr kWakingLinkGapMs = 30'000;
   // The seconds of the accelerometer written to the trip log from before the car has reported that it moves.
   static size_t constexpr kAccelLinesBeforeStart = 3;
+  // The shake of the box shown to the user is this many lines long: 3 s of the lines.
+  static size_t constexpr kShakeLines = 150;
   // A calibration takes ~3 s on the box.
   static int64_t constexpr kCalibrationTimeoutMs = 10'000;
   // The events missed are asked again not more often than this.
@@ -127,6 +129,11 @@ public:
   esp32::BoxValues GetBoxValues() const;
   /// \returns the flags of the last data line of the box, see esp32::kFlag*.
   int GetFlags() const { return m_flags; }
+  /// \returns true if the box reports that it has stood still for its 2 s.
+  bool IsStill() const { return IsConnected() && (m_flags & esp32::kFlagStill); }
+  /// \returns the shake of the box of the last kShakeLines data lines, the oldest first, see esp32::Data::m_shakePct.
+  /// Empty while not connected and for a box that doesn't tell it.
+  std::vector<int> GetShake() const { return {m_shake.begin(), m_shake.end()}; }
   /// \returns true if the box takes a firmware now: it is connected over Bluetooth and its firmware knows how.
   bool CanUpdate() const;
   void StartUpdate(Firmware const & firmware);
@@ -218,6 +225,7 @@ private:
   // When the box was last connected over Bluetooth after its last data line: its radio is on, it is not sleeping.
   std::optional<int64_t> m_wakingLinkMs;
   int m_flags = 0;
+  std::deque<int> m_shake;
   AccelLog m_accelLog;
   // The lines of the accelerometer while the car reports that it stands.
   std::deque<std::string> m_accelLinesBeforeStart;

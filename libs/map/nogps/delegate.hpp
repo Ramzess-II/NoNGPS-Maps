@@ -106,6 +106,9 @@ enum class BleState
   // A box is found, but it doesn't know the phone and has esp32::kMaxPhones phones: one of them is removed on a
   // paired phone first.
   PairingFull,
+  // A box is found that is not of one of the CarStorage::kMaxCars cars of the user: it is not connected, a car is
+  // forgotten first.
+  CarLimit,
 };
 
 std::string DebugPrint(Provider provider);

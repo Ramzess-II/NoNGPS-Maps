@@ -935,6 +935,12 @@
     <string name="nogps_flag_voice">Голосовая заметка %d с</string>
     <!-- In the list of the flags of test drives: the flag has been sent by email already -->
     <string name="nogps_flag_sent">Отправлен</string>
+    <!-- Accessibility label of the button in the list of the flags of test drives that plays the voice note of a flag -->
+    <string name="nogps_flag_play">Воспроизвести голосовую заметку</string>
+    <!-- Accessibility label of the button in the list of the flags of test drives that stops the voice note of a flag -->
+    <string name="nogps_flag_stop">Остановить</string>
+    <!-- Accessibility label of the screenshot of a flag in the list of the flags of test drives, a tap opens it full screen -->
+    <string name="nogps_flag_screenshot">Снимок экрана</string>
     <!-- Alert before the flags are sent: the attachments take more than the limit, a mail server may refuse the mail. The first value is the size, e.g. 25 MB, the second one the limit in MB. -->
     <string name="nogps_flags_too_big">Файлы занимают %1$s, письмо больше %2$d МБ может не дойти. Всё равно отправить?</string>
     <!-- The user has pressed the button to show on the map where the car is -->
@@ -974,8 +980,10 @@
     <string name="nogps_gps_lost_auto">GPS пропал или сбился, включён ручной режим</string>
     <!-- Status of the position: the mark of the car stands and waits for the user -->
     <string name="nogps_status_road_lost">Дорога потеряна</string>
-    <!-- Second line of the status "Road lost" -->
-    <string name="nogps_status_road_lost_hint">нажмите кнопку с пальцем и коснитесь дороги, где вы</string>
+    <!-- Second line of the status "Road lost": a tap places the mark by GPS -->
+    <string name="nogps_status_road_lost_gps_hint">нажмите, чтобы поставить метку по GPS</string>
+    <!-- Toast when a tap on the status "Road lost" could not place the mark by GPS: the next tap on the map does -->
+    <string name="nogps_gps_mark_failed">GPS не может поставить метку: коснитесь дороги, где вы</string>
     <!-- State of the sensor box, shown after its name: "Box: ESP32 · searching by Bluetooth" -->
     <string name="nogps_box_bt_searching">ищу блок по Bluetooth</string>
     <!-- State of the sensor box, shown after its name: the "Nearby devices" permission of Android 12+ is not given -->
@@ -1211,12 +1219,12 @@
     <string name="nogps_gps_why_spoofed">Далеко от вышек и Wi-Fi или прыгает: не используется.</string>
     <!-- Why, under the state of GPS -->
     <string name="nogps_gps_why_none">Нет позиций GPS 5 секунд.</string>
-    <!-- Switch in the Box sheet: on, GPS is not used for the car -->
-    <string name="nogps_gps_block">Не использовать GPS для навигации</string>
-    <!-- Under the switch Don't use GPS for navigation in the Box sheet -->
-    <string name="nogps_gps_block_hint">Включено: GPS не используется, машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.</string>
-    <!-- Under the disabled switch Don't use GPS for navigation in the Box sheet: no box is heard -->
-    <string name="nogps_gps_block_needs_box">GPS можно отключить, только когда подключён блок: иначе машину ничто не поведёт.</string>
+    <!-- Switch in the Box sheet: on, GPS is ignored for the car -->
+    <string name="nogps_gps_block">Игнорировать GPS</string>
+    <!-- Under the switch Ignore GPS in the Box sheet -->
+    <string name="nogps_gps_block_hint">Машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.</string>
+    <!-- Under the disabled switch Ignore GPS in the Box sheet: no box is heard -->
+    <string name="nogps_gps_block_needs_box">GPS можно игнорировать, только когда подключён блок: иначе машину ничто не поведёт.</string>
     <!-- At the top of the Cars page of the Box sheet -->
     <string name="nogps_cars_text">Каждый блок — это одна машина со своей калибровкой и местом парковки. Нажмите на машину, чтобы ехать на ней, переименовать или забыть её.</string>
     <!-- On the Add a car page while the box of the new car is searched -->
@@ -1243,6 +1251,14 @@
     <string name="nogps_box_version">Версия %1$s</string>
     <!-- Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page -->
     <string name="nogps_calibration_snackbar">Откалибруйте блок датчиков</string>
+    <!-- Orange bar next to the speed on the map after the tap on nogps_calibration_snackbar: the box is calibrated when the car stands still -->
+    <string name="nogps_calibrate_still_hold">Не двигайтесь: никто не садится и не выходит</string>
+    <!-- Orange bar next to the speed on the map while the box calibrates -->
+    <string name="nogps_calibrate_still_calibrating">Калибруем блок датчиков</string>
+    <!-- Green bar next to the speed on the map for 3 seconds after the box is calibrated -->
+    <string name="nogps_calibrate_still_done">Блок датчиков откалиброван</string>
+    <!-- Orange bar next to the speed on the map: the car moved during the calibration, it starts again when the car is still -->
+    <string name="nogps_calibrate_still_moved">Машина двигалась</string>
     <!-- Settings item and the switch on its page: the app is the mock location app for other apps -->
     <string name="nogps_share_position">Передавать позицию</string>
     <!-- Share position page of Settings, above the switch -->

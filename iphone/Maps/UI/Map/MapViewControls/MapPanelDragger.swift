@@ -14,6 +14,8 @@ final class MapPanelDragger: NSObject {
     static let stopSpeed = CGFloat(30)
     /// The release speed is taken from the movement of the finger in this time before it.
     static let speedWindow: CFTimeInterval = 0.1
+    /// A press this long lifts the panel, s: a tap while driving is slower than the system long press.
+    static let liftPressS: TimeInterval = 0.8
     /// The middle of the area.
     static let defaultFraction = CGFloat(0.5)
   }
@@ -88,6 +90,7 @@ final class MapPanelDragger: NSObject {
     super.init()
     // The touch is taken from the button under the finger, it does not fire.
     gesture.addTarget(self, action: #selector(onPress))
+    gesture.minimumPressDuration = Constants.liftPressS
     gesture.delegate = self
     view.addGestureRecognizer(gesture)
   }

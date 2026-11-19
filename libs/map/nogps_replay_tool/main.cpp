@@ -3,6 +3,7 @@
 
 #include "map/framework.hpp"
 #include "map/nogps_replay/replay.hpp"
+#include "map/nogps_replay_tool/fixed_locale.hpp"
 
 #include "platform/local_country_file.hpp"
 #include "platform/platform.hpp"
@@ -94,6 +95,7 @@ int main(int argc, char ** argv)
       "<in.txt> is made by tools/python/nogps_replay.py input. The trip log is written to <out.txt>, and\n"
       "<out.txt>.done when the trip is over.");
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  nogps::UseFixedLocale();
   if (argc != 3 || FLAGS_data_path.empty() || FLAGS_resources_path.empty())
   {
     gflags::ShowUsageWithFlagsRestrict(argv[0], "nogps_replay_tool");

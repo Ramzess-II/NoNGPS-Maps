@@ -11,6 +11,8 @@ and <output>.done when it is over. Two programs run it:
   It takes the .mwm files of one version (pull the phone's: adb pull /sdcard/Android/data/<package>/files/260714)
   and, for what the navigation has learned about the car, settings.ini of the app (of a debug build:
   adb shell run-as <package> cat files/settings.ini > settings.ini). Without it the car is new.
+  The accelerometer of a box is taken only for the box the trip was driven with (the logs tell it): the settings of
+  another box give the same replay as without them.
 - a debug build of the Android application, on Windows: it drives the file nogps-replay-in.txt put to its folder
   (/sdcard/Android/data/<package>/files/) when it starts, and writes nogps-replay-out.txt. Build it with optimized
   C++ for replays, about 6 times faster, ASSERTs kept:
@@ -60,6 +62,7 @@ import time
 LINE = re.compile(r'^(\d\d-\d\d) (\d\d):(\d\d):(\d\d)\.(\d\d\d) \(([^)]*)\) \w/(\w+): (.*)$')
 FIELD = re.compile(r' (\w+)=(\S+)')
 SOURCE = re.compile(r'^\S+:\d+ (\w+)\(\): (.*)$')
+BOX_INFO = re.compile(r'^Box (?!firmware\b)(\S+) firmware')
 TAP = re.compile(r'tap = ms::LatLon\((-?[\d.]+), (-?[\d.]+)\) location = ms::LatLon\((-?[\d.]+), (-?[\d.]+)\) '
                  r'bearing = (-?[\d.]+)')
 CHECKPOINT = re.compile(r'ms::LatLon\((-?[\d.]+), (-?[\d.]+)\)')
@@ -245,6 +248,8 @@ def make_input(args):
             actions.append((ms, 1, 'S %d 0' % ms, False))
         elif function == 'OnBleState' and text.startswith('Bluetooth = '):
             actions.append((ms, 2, 'L %d %s' % (ms, text.split()[2]), False))
+        elif function == 'OnInfo' and BOX_INFO.match(text):
+            actions.append((ms, 2, 'I %d %s' % (ms, BOX_INFO.match(text).group(1)), False))
         elif function == 'SetGpsDisabled' and text.startswith('disabled = '):
             actions.append((ms, 3, 'X %d %s' % (ms, text.split()[2]), False))
         elif text.startswith('Entering the manual mode') or text.startswith('GPS is trusted again'):
@@ -470,6 +475,11 @@ def make_input(args):
         records.append((first, -3, 'S %d 1' % first))
         if state.get('link', '').endswith('/CONNECTED'):
             records.append((first, -3, 'L %d CONNECTED' % first))
+            # The box the application has heard before the file begins.
+            box = [BOX_INFO.match(text).group(1) for ms, text, function in others
+                   if function == 'OnInfo' and ms <= first and BOX_INFO.match(text)]
+            if box:
+                records.append((first, -3, 'I %d %s' % (first, box[-1])))
         # GPS switched off stays so: since the choice is kept after a restart too. On October 19 it was switched off
         # the day before, and the first GPS position came minutes after the file begins.
         disabled = None

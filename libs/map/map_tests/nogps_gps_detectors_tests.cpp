@@ -112,6 +112,66 @@ UNIT_TEST(NoGps_Spoofing_AcceptsJumpNothingContradicts)
   TEST(detector.OnNetworkPosition(North(kKyiv, 70 * kStep), 200, time += GpsSpoofingDetector::kJumpConfirmMs), ());
 }
 
+UNIT_TEST(NoGps_Spoofing_FirstWrongNetworkPointDoesNotSpoilGps)
+{
+  // After a start, the trusted position is hours old and the first network point is 8 km off.
+  GpsSpoofingDetector detector;
+  detector.RestoreTrusted(kKyiv, -3'600'000);
+  TEST(detector.OnNetworkPosition(North(kKyiv, 70 * kStep), 200, 0), ());
+  TEST(detector.CheckSatellitePosition(kKyiv, 3000, 4), ());
+  TEST(!detector.IsSpoofed(), ());
+  // The network point is forgotten: it does not make the next GPS point spoofed, and as a jump it is refused.
+  TEST(detector.CheckSatellitePosition(North(kKyiv, kStep), 4000, 4), ());
+  TEST(!detector.OnNetworkPosition(North(kKyiv, 70 * kStep), 200, 5000), ());
+  TEST(!detector.IsSpoofed(), ());
+}
+
+UNIT_TEST(NoGps_Spoofing_SecondNetworkPointConfirmsTheFirst)
+{
+  GpsSpoofingDetector detector;
+  TEST(detector.OnNetworkPosition(kKyiv, 200, 0), ());
+  // The same point again proves nothing.
+  TEST(detector.OnNetworkPosition(kKyiv, 200, 5000), ());
+  TEST(detector.OnNetworkPosition(North(kKyiv, kStep), 200, 10'000), ());
+  // Now it is a normal 3 km check.
+  TEST(!detector.CheckSatellitePosition(North(kKyiv, 70 * kStep), 11'000), ());
+  TEST(detector.IsSpoofed(), ());
+}
+
+UNIT_TEST(NoGps_Spoofing_JumpIsNotConfirmedByTimeAgainstGps)
+{
+  GpsSpoofingDetector detector;
+  TEST(detector.OnNetworkPosition(kKyiv, 90, 0), ());
+  TEST(detector.CheckSatellitePosition(kKyiv, 1000), ());
+  auto const wrong = North(kKyiv, 40 * kStep);
+  int64_t time = 2000;
+  TEST(!detector.OnNetworkPosition(wrong, 200, time), ());
+  // GPS comes every second all the time, 4.4 km from the point.
+  for (int i = 0; i < 4; ++i)
+  {
+    time += GpsSpoofingDetector::kJumpConfirmMs / 3;
+    TEST(detector.CheckSatellitePosition(kKyiv, time), ());
+    TEST(!detector.OnNetworkPosition(wrong, 200, time + 500), ());
+  }
+  TEST(detector.CheckSatellitePosition(kKyiv, time + 1000), ());
+  TEST(!detector.IsSpoofed(), ());
+}
+
+UNIT_TEST(NoGps_Spoofing_RightNetworkPointIsNotWrong)
+{
+  // The right place of the phone was taken for a wrong point.
+  GpsSpoofingDetector detector;
+  detector.DeserializePhantoms("50.4501000,30.5234000");
+  TEST_EQUAL(detector.GetPhantomsCount(), 1, ());
+  TEST(!detector.OnNetworkPosition(kKyiv, 15, 0), ());
+  // GPS says that the phone is there: the point is the right one.
+  TEST(detector.CheckSatellitePosition(kKyiv, 1000, 4), ());
+  TEST(detector.OnNetworkPosition(kKyiv, 15, 2000), ());
+  TEST_EQUAL(detector.GetPhantomsCount(), 0, ());
+  TEST(detector.CheckSatellitePosition(kKyiv, 3000, 4), ());
+  TEST(!detector.IsSpoofed(), ());
+}
+
 UNIT_TEST(NoGps_Spoofing_FollowsNetworkPositionsOfMovingCar)
 {
   GpsSpoofingDetector detector;

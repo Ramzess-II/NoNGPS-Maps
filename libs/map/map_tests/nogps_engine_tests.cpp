@@ -53,7 +53,7 @@ public:
 
   /// The ESP32 box sends its data 50 times a second for |ms|: the car drives at |speedKmh| turning at |yawRateDegS|,
   /// clockwise is positive.
-  void Drive(int64_t ms, int speedKmh, double yawRateDegS, int flags = kCalibratedFlags)
+  void Drive(int64_t ms, int speedKmh, double yawRateDegS, int flags = kCalibratedFlags, int shakePct = -1)
   {
     for (int64_t t = 0; t < ms; t += 20)
     {
@@ -61,8 +61,8 @@ public:
       m_boxTimeMs += 20;
       m_yawMdeg += yawRateDegS * 20;
       m_distMm += speedKmh / 3.6 * 20;
-      m_engine.OnEsp32BleBytes(
-          BoxDataLine(++m_seq, m_boxTimeMs, std::llround(m_yawMdeg), speedKmh, flags, std::llround(m_distMm)));
+      m_engine.OnEsp32BleBytes(BoxDataLine(++m_seq, m_boxTimeMs, std::llround(m_yawMdeg), speedKmh, flags,
+                                           std::llround(m_distMm), shakePct));
     }
   }
 
@@ -239,6 +239,87 @@ UNIT_TEST(NoGps_Engine_MarkIsOnRoadAndShowsCarHeading)
 
   env.m_engine.ReverseDirection();
   TEST_EQUAL(env.Last().m_bearingDeg, 270.0, ());
+}
+
+// The car is marked at 0 m of the east street, GPS gives a fix at |eastM|, |northM| from the origin. The fix is
+// |ageMs| old when the user taps the panel.
+bool PlaceByGpsFix(Env & env, double eastM, double northM, double accuracyM, int64_t ageMs = 0)
+{
+  env.m_engine.OnFix(GpsAt(env.m_clock, eastM, northM, {}, {}, accuracyM));
+  env.m_clock.Advance(ageMs);
+  return env.m_engine.PlaceMarkByGps();
+}
+
+UNIT_TEST(NoGps_Engine_PlaceMarkByGpsTakesAccurateFixNearMark)
+{
+  Env env(false /* inertial */);
+  MarkCar(env, 0);
+  TEST(PlaceByGpsFix(env, 60, 3, 4), ());
+  TEST(env.m_engine.IsManualMode(), ());
+  TestAlmostEqualAbs(East(env.Last().m_position), 60, 0.5);
+  TestAlmostEqualAbs(North(env.Last().m_position), 0, 0.5);
+  TEST_EQUAL(env.Last().m_bearingDeg, 90.0, ());
+  TEST_EQUAL(env.Last().m_accuracyM, Engine::kManualAccuracyM, ());
+}
+
+UNIT_TEST(NoGps_Engine_PlaceMarkByGpsRefusesFarFixAndKeepsTapArmed)
+{
+  Env env(false /* inertial */);
+  MarkCar(env, 0);
+  env.m_engine.SetMarkByTap(true);
+  // A fix 360 m from a mark tapped just before is wrong, not the car.
+  TEST(!PlaceByGpsFix(env, 360, 3, 2.5), ());
+  TestAlmostEqualAbs(East(env.Last().m_position), 0, 0.5);
+  TEST(env.m_engine.IsMarkByTap(), ());
+}
+
+UNIT_TEST(NoGps_Engine_PlaceMarkByGpsRefusesBadFix)
+{
+  Env env(false /* inertial */);
+  MarkCar(env, 0);
+  TEST(!PlaceByGpsFix(env, 60, 3, 4, Engine::kGpsMaxAgeMs + 1000), ());
+  TEST(PlaceByGpsFix(env, 60, 3, 4, Engine::kGpsMaxAgeMs - 1000), ());
+  TEST(!PlaceByGpsFix(env, 62, 3, 400), ());
+  env.m_engine.SetGpsDisabled(true);
+  TEST(!PlaceByGpsFix(env, 62, 3, 4), ());
+  env.m_engine.SetGpsDisabled(false);
+  TEST(PlaceByGpsFix(env, 62, 3, 4), ());
+
+  // GPS is on another continent.
+  env.m_clock.Advance(1000);
+  Fix spoofed = GpsAt(env.m_clock, 0, 0, 90.0, 10.0);
+  spoofed.m_position = {-12.0453, -77.0569};
+  env.m_engine.OnFix(spoofed);
+  TEST(env.m_engine.GetStatus().m_gpsSpoofed, ());
+  TEST(!env.m_engine.PlaceMarkByGps(), ());
+}
+
+UNIT_TEST(NoGps_Engine_PlaceMarkByGpsTakesFreshFusedFixWhenGpsIsOld)
+{
+  Env env(false /* inertial */);
+  MarkCar(env, 0);
+  env.m_engine.OnFix(GpsAt(env.m_clock, 60, 3, {}, {}, 4));
+  env.m_clock.Advance(Engine::kGpsMaxAgeMs + 5000);
+  // The GPS has stopped in a tunnel, the fused provider still gives a fix.
+  Fix fused = GpsAt(env.m_clock, 62, 3, {}, {}, 8);
+  fused.m_provider = Provider::Fused;
+  env.m_engine.OnFix(fused);
+  TEST(env.m_engine.PlaceMarkByGps(), ());
+  TestAlmostEqualAbs(East(env.Last().m_position), 62, 0.5);
+}
+
+UNIT_TEST(NoGps_Engine_PlaceMarkByGpsSnapsInaccurateFixToRoadFartherThanAccurateOne)
+{
+  // The fix is 80 m from the street the car drives along.
+  PieceRoads roads({{-500, 0, 500, 0}}, {});
+  Env env(false /* inertial */, &roads);
+  MarkCar(env, -20);
+  TEST(PlaceByGpsFix(env, 30, 80, 150), ());
+  TestAlmostEqualAbs(North(env.Last().m_position), 0, 0.5);
+  TestAlmostEqualAbs(East(env.Last().m_position), 30, 0.5);
+  TEST_EQUAL(env.Last().m_accuracyM, 150.0, ());
+  // An accurate fix has a road within 30 m only.
+  TEST(!PlaceByGpsFix(env, 60, 80, 5), ());
 }
 
 UNIT_TEST(NoGps_Engine_ButtonLetsNextTapMarkCar)
@@ -894,6 +975,20 @@ UNIT_TEST(NoGps_Engine_SlowTurnWithoutRoadThatWayIsLost)
   TEST_EQUAL(TripField(env, "turn"), "NaN", ());
 }
 
+UNIT_TEST(NoGps_Engine_PlaceMarkByGpsRadiusGrowsWithDistanceDrivenWhenRoadIsLost)
+{
+  auto roads = StreetWithSideRoad(90);
+  Env env(true /* inertial */, &roads);
+  TurnLeftSlowly(env, 46);
+  TEST(env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+  double const markEastM = East(env.Last().m_position);
+  // The car stands at the mark when the road is lost: a fix 250 m behind it is too far.
+  TEST(!PlaceByGpsFix(env, markEastM - 250, 3, 4), ());
+  // The car drives on, the mark stands: the fix may be that far from it now.
+  env.Drive(20'000, 25, 0);
+  TEST(PlaceByGpsFix(env, markEastM - 250, 3, 4), (env.m_engine.GetTripLine()));
+}
+
 UNIT_TEST(NoGps_Engine_SlowDriftOffRoadIsNotTurn)
 {
   // The heading drifts by 34 degrees, less than a turn: the road is lost as before, no turn is matched.
@@ -1142,6 +1237,47 @@ UNIT_TEST(NoGps_Engine_TurnIntoYardTakesNoFarMark)
   TEST_GREATER(East(env.Last().m_position), 240, (env.m_engine.GetTripLine()));
   // The far one stays another mark: the way may still tell the car is there.
   TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_Engine_LostRoadTakesFarMark)
+{
+  // As in the test above the car is shown at the crossing at 246 m, the far one is 46 m behind, its street goes on. The
+  // street of the shown mark ends 150 m to the north: it stands lost while the car drives on along the far street.
+  PieceRoads roads({{-300, 0, 600, 0}, {200, 0, 200, 400}, {246, 0, 246, 150}}, {{200, 0}, {246, 0}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 246 - 112);
+  env.Drive(10'000, 36, 0);
+  env.Drive(1000, 36, -90);
+  env.Drive(2000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+  env.Drive(20'000, 36, 0);
+  TestAlmostEqualAbs(East(env.Last().m_position), 200, 3);
+  TEST_GREATER(North(env.Last().m_position), 150, ());
+}
+
+UNIT_TEST(NoGps_Engine_OtherMarkSearchesNoFarCrossingBehindAfterUTurn)
+{
+  // The car turns north at a crossing, the other mark is on the street 46 m aside. It makes a U-turn 100 m to the
+  // north and drives back: the street it has left 145 m from the crossing is not the road the marks came by, so a
+  // street going west there is not a far crossing behind when the car turns west at the main street.
+  PieceRoads roads({{-300, 0, 600, 0}, {200, 0, 200, 400}, {246, 0, 246, 400}, {100, 145, 200, 145}},
+                   {{200, 0}, {246, 0}, {200, 145}});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 246 - 112);
+  env.Drive(10'000, 36, 0);
+  env.Drive(1000, 36, -90);
+  env.Drive(2000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+  while (North(env.Last().m_position) < 100)
+    env.Drive(100, 36, 0);
+  env.Drive(2000, 18, -90);
+  env.Drive(2000, 36, 0);
+  while (North(env.Last().m_position) > 12)
+    env.Drive(100, 36, 0);
+  env.Drive(1000, 18, 90);
+  env.Drive(3000, 36, 0);
+  // The other mark is on the road of the shown one, no far one is added at the street.
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 0, (env.m_engine.GetTripLine()));
 }
 
 UNIT_TEST(NoGps_Engine_TurnFitsCrossingOtherMarkHasPassed)
@@ -2475,6 +2611,178 @@ UNIT_TEST(NoGps_Engine_AdvisesToCalibratePluggedBox)
   TEST(advised(), ());
   env.Drive(2000, 0, 0);
   TEST_EQUAL(count(), 2, ());
+}
+
+// The box is connected and shakes at |shakePct|; the user asks to calibrate it when the car stands still.
+class CalibrateWhenStillBox
+{
+public:
+  explicit CalibrateWhenStillBox(Env & env) : m_env(env)
+  {
+    env.ConnectBox();
+    env.Drive(1000, 0, 0, kCalibratedFlags, 150);
+  }
+
+  void Wait(int64_t ms, bool still, int shakePct)
+  {
+    int const flags = kCalibratedFlags | (still ? esp32::kFlagStill : 0);
+    m_env.Drive(ms, 0, 0, flags, shakePct);
+  }
+
+  size_t Calibrations() const
+  {
+    auto const & sent = m_env.m_delegate.m_esp32BleSent;
+    return std::count_if(sent.begin(), sent.end(),
+                         [](std::string const & line) { return line.find(",CAL_UP*") != std::string::npos; });
+  }
+
+  void Reply(std::string const & reply)
+  {
+    // The phone says hello to the box every second, the calibration is not the last command.
+    auto const & sent = m_env.m_delegate.m_esp32BleSent;
+    auto const it = std::find_if(sent.rbegin(), sent.rend(),
+                                 [](std::string const & line) { return line.find(",CAL_UP*") != std::string::npos; });
+    TEST(it != sent.rend(), ());
+    auto const idEnd = it->find(",CAL_UP*");
+    m_env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + it->substr(5, idEnd - 5) + "," + reply));
+  }
+
+  Env & m_env;
+};
+
+UNIT_TEST(NoGps_Engine_CalibratesBoxWhenCarStands)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env);
+  env.m_engine.CalibrateWhenStill();
+  TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
+  // The car shakes, then it stands for a while, but the box has not told it is still.
+  box.Wait(2000, false, 150);
+  TEST_EQUAL(box.Calibrations(), 0, ());
+  TEST(!env.m_engine.GetStatus().m_boxStill, ());
+  TEST_EQUAL(env.m_engine.GetBoxShake().size(), Esp32Source::kShakeLines, ());
+  TEST_EQUAL(env.m_engine.GetBoxShake().back(), 150, ());
+  // The box tells it: the calibration is sent once.
+  box.Wait(1000, true, 40);
+  TEST_EQUAL(box.Calibrations(), 1, ());
+  TEST(env.m_engine.GetStatus().m_boxStill, ());
+  TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
+  TEST_EQUAL(env.m_engine.GetBoxShake().back(), 40, ());
+  box.Wait(1000, true, 40);
+  TEST_EQUAL(box.Calibrations(), 1, ());
+  // The box has calibrated: the core is not armed any more.
+  box.Reply("OK");
+  box.Wait(500, true, 40);
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibration, CalibrationState::Done, ());
+  box.Wait(1000, true, 40);
+  TEST_EQUAL(box.Calibrations(), 1, ());
+}
+
+UNIT_TEST(NoGps_Engine_CalibrationWhenStillStartsAgainAfterMoving)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env);
+  env.m_engine.CalibrateWhenStill();
+  box.Wait(1000, true, 40);
+  TEST_EQUAL(box.Calibrations(), 1, ());
+  // Someone gets into the car.
+  box.Reply("ERR,MOVING");
+  box.Wait(1000, false, 200);
+  TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibration, CalibrationState::FailedMoving, ());
+  TEST_EQUAL(box.Calibrations(), 1, ());
+  box.Wait(1000, true, 40);
+  TEST_EQUAL(box.Calibrations(), 2, ());
+  box.Reply("OK");
+  box.Wait(500, true, 40);
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+}
+
+UNIT_TEST(NoGps_Engine_CalibrationWhenStillGivesUpAfterRepeatedFailures)
+{
+  // A box that cannot calibrate on a still car (bad mounting) is reported as moving each time.
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env);
+  env.m_engine.CalibrateWhenStill();
+  for (int i = 0; i < Engine::kCalibrateWhenStillMaxFailures; ++i)
+  {
+    TEST(env.m_engine.GetStatus().m_calibrationArmed, (i));
+    box.Wait(1000, true, 40);
+    TEST_EQUAL(box.Calibrations(), static_cast<size_t>(i + 1), ());
+    box.Reply("ERR,MOVING");
+    box.Wait(1000, false, 200);
+  }
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+}
+
+UNIT_TEST(NoGps_Engine_CalibrationWhenStillIsCancelled)
+{
+  {
+    // The car does not stand for 2 min.
+    Env env(true /* inertial */);
+    CalibrateWhenStillBox box(env);
+    env.m_engine.CalibrateWhenStill();
+    box.Wait(Engine::kCalibrateWhenStillTimeoutMs - 2000, false, 150);
+    TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
+    box.Wait(3000, false, 150);
+    TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+    box.Wait(2000, true, 40);
+    TEST_EQUAL(box.Calibrations(), 0, ());
+  }
+  {
+    // The link is lost.
+    Env env(true /* inertial */);
+    CalibrateWhenStillBox box(env);
+    env.m_engine.CalibrateWhenStill();
+    box.Wait(1000, false, 150);
+    env.m_engine.OnEsp32BleState(BleState::Searching);
+    env.m_clock.Advance(500);
+    TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  }
+  {
+    // The link is lost while the box calibrates.
+    Env env(true /* inertial */);
+    CalibrateWhenStillBox box(env);
+    env.m_engine.CalibrateWhenStill();
+    box.Wait(1000, true, 40);
+    TEST_EQUAL(box.Calibrations(), 1, ());
+    env.m_engine.OnEsp32BleState(BleState::Searching);
+    env.m_clock.Advance(500);
+    TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  }
+  {
+    // The user cancels.
+    Env env(true /* inertial */);
+    CalibrateWhenStillBox box(env);
+    env.m_engine.CalibrateWhenStill();
+    env.m_engine.CancelCalibrateWhenStill();
+    TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+    box.Wait(2000, true, 40);
+    TEST_EQUAL(box.Calibrations(), 0, ());
+  }
+  {
+    // A box without the connection can't calibrate.
+    Env env(true /* inertial */);
+    env.m_engine.OnEsp32BleState(BleState::Searching);
+    env.m_engine.CalibrateWhenStill();
+    TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  }
+}
+
+UNIT_TEST(NoGps_Engine_CalibrationWhenStillIsNotForReadOnlyBox)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env);
+  // The box knows its phones, another phone changes it: it refuses a command of this one.
+  env.m_engine.OnEsp32BleBytes(
+      BoxLine("NGI,1,0.4.1,2026-11-15T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA PHONES"));
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA,99,ERR,BUSY"));
+  TEST(env.m_engine.GetStatus().m_boxReadOnly, ());
+  env.m_engine.CalibrateWhenStill();
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  box.Wait(2000, true, 40);
+  TEST_EQUAL(box.Calibrations(), 0, ());
 }
 
 UNIT_TEST(NoGps_Engine_AdvisesToCalibrateBoxByItsPowerOns)

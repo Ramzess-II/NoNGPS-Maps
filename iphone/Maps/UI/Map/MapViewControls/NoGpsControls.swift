@@ -37,13 +37,13 @@ final class NoGpsControls: NSObject {
   /// The bottom of the turns of the navigation in the window, 0 without them. They are at the edge of the panel.
   private static var turnsBottom = CGFloat(0)
 
-  private let statusButton = UIButton(type: .custom)
+  private let statusButton = NoGpsPillButton(type: .custom)
   /// At the bottom of the map until the box is calibrated.
-  private let calibrationButton = UIButton(type: .custom)
+  private let calibrationButton = NoGpsPillButton(type: .custom)
   // The side buttons are on the left in right-to-left languages.
   private static let isRTL = UIApplication.shared.userInterfaceLayoutDirection == .rightToLeft
   private let panel = MapControlsPanel(edge: NoGpsControls.isRTL ? .right : .left)
-  private let buttons = UIStackView()
+  private let buttons = NoGpsButtonStack()
   private var dragger: MapPanelDragger?
   // Of every button but the first one.
   private var dividers = [UIView: UIView]()
@@ -64,6 +64,7 @@ final class NoGpsControls: NSObject {
   private let flagRecorder = NoGpsFlagRecorder()
   private let speedView = NoGpsSpeedView()
   private let speedHint = NoGpsSpeedHintView()
+  private let calibrationBar = NoGpsCalibrationBarView()
   private let sprintView = NoGpsSprintView()
   private var sprintBottom = NSLayoutConstraint()
   private var sprintCenterX = NSLayoutConstraint()
@@ -110,8 +111,8 @@ final class NoGpsControls: NSObject {
 
   // MARK: - Views
 
-  private static func makeButton(_ symbol: String) -> BottomTabBarButton {
-    let button = BottomTabBarButton()
+  private static func makeButton(_ symbol: String) -> NoGpsPanelButton {
+    let button = NoGpsPanelButton()
     button.setStyleAndApply(.mapPanelButton)
     button.translatesAutoresizingMaskIntoConstraints = false
     button.setImage(UIImage(systemName: symbol), for: .normal)
@@ -122,20 +123,23 @@ final class NoGpsControls: NSObject {
     return button
   }
 
-  private static func stylePill(_ button: UIButton) {
+  private static func stylePill(_ button: UIButton, verticalInset: CGFloat = 3) {
     button.translatesAutoresizingMaskIntoConstraints = false
     button.layer.cornerRadius = Constants.statusMinHeight / 2
     button.layer.shadowColor = UIColor.black.cgColor
     button.layer.shadowOpacity = 0.25
     button.layer.shadowOffset = CGSize(width: 0, height: 1)
-    button.contentEdgeInsets = UIEdgeInsets(top: 3, left: 14, bottom: 3, right: 14)
+    button.contentEdgeInsets = UIEdgeInsets(top: verticalInset, left: 14, bottom: verticalInset, right: 14)
     button.titleLabel?.numberOfLines = 3
     button.titleLabel?.textAlignment = .center
     button.titleLabel?.lineBreakMode = .byTruncatingTail
   }
 
   private func setupViews(in superview: UIView) {
-    Self.stylePill(statusButton)
+    Self.stylePill(statusButton, verticalInset: 10)
+    statusButton.setImage(UIImage(systemName: "location.viewfinder"), for: .normal)
+    statusButton.tintColor = .white
+    statusButton.imageEdgeInsets = UIEdgeInsets(top: 0, left: -4, bottom: 0, right: 4)
     statusButton.addTarget(self, action: #selector(statusTapped), for: .touchUpInside)
     superview.addSubview(statusButton)
     Self.stylePill(calibrationButton)
@@ -184,6 +188,8 @@ final class NoGpsControls: NSObject {
     // Under the speed: it slides out of it.
     speedHint.addTarget(self, action: #selector(speedHintTapped), for: .touchUpInside)
     superview.addSubview(speedHint)
+    calibrationBar.addTarget(self, action: #selector(calibrationBarTapped), for: .touchUpInside)
+    superview.addSubview(calibrationBar)
     superview.addSubview(speedView)
     superview.addSubview(sprintView)
     speedEdge = Self.isRTL ? speedView.rightAnchor.constraint(equalTo: superview.leftAnchor)
@@ -205,6 +211,9 @@ final class NoGpsControls: NSObject {
       Self.isRTL ? speedHint.rightAnchor.constraint(equalTo: speedView.centerXAnchor)
         : speedHint.leftAnchor.constraint(equalTo: speedView.centerXAnchor),
       speedHint.bottomAnchor.constraint(equalTo: speedView.bottomAnchor),
+      Self.isRTL ? calibrationBar.rightAnchor.constraint(equalTo: speedView.centerXAnchor)
+        : calibrationBar.leftAnchor.constraint(equalTo: speedView.centerXAnchor),
+      calibrationBar.bottomAnchor.constraint(equalTo: speedView.bottomAnchor),
       calibrationBottom, calibrationCenterX, calibrationMaxWidth, sprintBottom, sprintCenterX,
       calibrationButton.heightAnchor.constraint(greaterThanOrEqualToConstant: Constants.statusMinHeight),
       // The panel goes on to the edge of the screen, under the safe area too.
@@ -242,6 +251,7 @@ final class NoGpsControls: NSObject {
       self.speedBottom.constant = area.maxY - Constants.speedMargin
       // From the middle of the speed to the other edge of the free area.
       self.speedHint.setFullWidth(area.width - 2 * Constants.speedMargin - NoGpsSpeedView.side / 2)
+      self.calibrationBar.setFullWidth(area.width - 2 * Constants.speedMargin - NoGpsSpeedView.side / 2)
       // In the middle at the bottom, clear of the speed in the corner.
       let speedWidth = self.speedView.isHidden ? 0 : NoGpsSpeedView.side + 2 * Constants.speedMargin
       self.calibrationBottom.constant = area.maxY - Constants.speedMargin
@@ -333,7 +343,9 @@ final class NoGpsControls: NSObject {
     let status = NoGps.status()
     // Once a second: the status is too heavy for every position.
     speedView.update(status: status, location: LocationManager.lastLocation())
-    speedHint.update(status: status, speedShown: !speedView.isHidden)
+    calibrationBar.update(status: status, speedShown: !speedView.isHidden)
+    // The calibration bar of the box comes first: both slide out of the speed.
+    speedHint.update(status: status, speedShown: !speedView.isHidden && !calibrationBar.isShown)
     // The event came when the app was not active: the offer waits for the user.
     if status.firmwareOfferPending {
       offerFirmwareUpdate()
@@ -344,7 +356,7 @@ final class NoGpsControls: NSObject {
     let title = NSMutableAttributedString(string: L("nogps_status_road_lost"),
                                           attributes: [.font: UIFont.boldSystemFont(ofSize: 15),
                                                        .foregroundColor: UIColor.white])
-    title.append(NSAttributedString(string: "\n" + L("nogps_status_road_lost_hint"),
+    title.append(NSAttributedString(string: "\n" + L("nogps_status_road_lost_gps_hint"),
                                     attributes: [.font: UIFont.boldSystemFont(ofSize: 12),
                                                  .foregroundColor: UIColor.white]))
     statusButton.setAttributedTitle(title, for: .normal)
@@ -352,8 +364,10 @@ final class NoGpsControls: NSObject {
     Self.blink(statusButton, status.roadLost)
     // It replaces the offer to calibrate: an alert is easy to dismiss and forget.
     let needsCalibration = NoGpsBoxPage.needsCalibration(status)
-    calibrationButton.isHidden = !needsCalibration
-    Self.blink(calibrationButton, needsCalibration, duration: Constants.calibrationBlinkDuration,
+    // The bar next to the speed is the calibration now, the warning comes back when it ends without a calibration.
+    let warn = needsCalibration && !calibrationBar.isShown
+    calibrationButton.isHidden = !warn
+    Self.blink(calibrationButton, warn, duration: Constants.calibrationBlinkDuration,
                opacity: Constants.calibrationBlinkOpacity)
 
     // The car is marked by hand only while the position is not from GPS. The button is blue while the next tap on the
@@ -362,8 +376,8 @@ final class NoGpsControls: NSObject {
     if !canMark, status.markByTap {
       NoGps.setMarkByTap(false)
     }
-    manualButton.tintColor = canMark && status.markByTap ? .linkBlue : .blackSecondaryText
-    voiceFlagButton.tintColor = flagRecorder.isRecording ? Constants.noneColor : .blackSecondaryText
+    manualButton.stateTint = canMark && status.markByTap ? .linkBlue : .blackSecondaryText
+    voiceFlagButton.stateTint = flagRecorder.isRecording ? Constants.noneColor : .blackSecondaryText
     let logging = Settings.isFileLoggingEnabled()
     buttonsHidden = [reverseButton: !status.movedByHand,
                      switchMarkButton: !(status.movedByHand && status.otherMarks > 0),
@@ -408,11 +422,28 @@ final class NoGpsControls: NSObject {
 
   @objc
   private func statusTapped() {
-    NoGpsBoxSheet.show(.box(firmware: false))
+    guard !NoGps.placeMarkByGps() else { return }
+    NoGps.setMarkByTap(true)
+    Toast.show(withText: L("nogps_gps_mark_failed"))
+    refresh()
   }
 
   @objc
   private func calibrationTapped() {
+    // The bar slides out of the speed: without it the user calibrates on the page.
+    guard !speedView.isHidden else {
+      NoGpsBoxSheet.show(.calibration)
+      return
+    }
+    NoGps.calibrateWhenStill()
+    refresh()
+  }
+
+  @objc
+  private func calibrationBarTapped() {
+    NoGps.cancelCalibrateWhenStill()
+    calibrationBar.cancel()
+    refresh()
     NoGpsBoxSheet.show(.calibration)
   }
 
