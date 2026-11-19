@@ -47,6 +47,8 @@ set(SRC
   nogps/clock.hpp
   nogps/dead_reckoning.cpp
   nogps/dead_reckoning.hpp
+  nogps/direction_tracker.cpp
+  nogps/direction_tracker.hpp
   nogps/delegate.cpp
   nogps/delegate.hpp
   nogps/elm327_parser.cpp

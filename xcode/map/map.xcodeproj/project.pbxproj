@@ -124,7 +124,9 @@
 		50FE7E3A2B506C1AEA4C7157 /* path_matcher.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A1445C1765FE4012AD055290 /* path_matcher.hpp */; };
 		7E1A4C0B5D2F4A60B8C13E92 /* peer_sync.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 7E1A4C0B5D2F4A60B8C13E94 /* peer_sync.hpp */; };
 		631DBB0128269BF8F49D6D44 /* dead_reckoning.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FECAD6707B90A21905BC90D6 /* dead_reckoning.cpp */; };
+		A1D3C0DE5E0A4B7C91F2A001 /* direction_tracker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A1D3C0DE5E0A4B7C91F2A003 /* direction_tracker.cpp */; };
 		8899F827303964D4582FA0BB /* dead_reckoning.hpp in Headers */ = {isa = PBXBuildFile; fileRef = CDC6C24320D7C660D4791D0B /* dead_reckoning.hpp */; };
+		A1D3C0DE5E0A4B7C91F2A002 /* direction_tracker.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A1D3C0DE5E0A4B7C91F2A004 /* direction_tracker.hpp */; };
 		76C515A3D75338DBFBC05AF2 /* elm327_parser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 49BA0CF1A436396F918DE650 /* elm327_parser.cpp */; };
 		FD3191F55B06E9157D82073E /* elm327_parser.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 597D159FCFE5CBF66F3AE54D /* elm327_parser.hpp */; };
 		7D77BBB551C774A1356AC624 /* esp32_protocol.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A41B15702095B5E94B20C0A /* esp32_protocol.cpp */; };
@@ -333,6 +335,8 @@
 		7E1A4C0B5D2F4A60B8C13E94 /* peer_sync.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = peer_sync.hpp; sourceTree = "<group>"; };
 		FECAD6707B90A21905BC90D6 /* dead_reckoning.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = dead_reckoning.cpp; sourceTree = "<group>"; };
 		CDC6C24320D7C660D4791D0B /* dead_reckoning.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = dead_reckoning.hpp; sourceTree = "<group>"; };
+		A1D3C0DE5E0A4B7C91F2A003 /* direction_tracker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = direction_tracker.cpp; sourceTree = "<group>"; };
+		A1D3C0DE5E0A4B7C91F2A004 /* direction_tracker.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = direction_tracker.hpp; sourceTree = "<group>"; };
 		49BA0CF1A436396F918DE650 /* elm327_parser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = elm327_parser.cpp; sourceTree = "<group>"; };
 		597D159FCFE5CBF66F3AE54D /* elm327_parser.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = elm327_parser.hpp; sourceTree = "<group>"; };
 		1A41B15702095B5E94B20C0A /* esp32_protocol.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = esp32_protocol.cpp; sourceTree = "<group>"; };
@@ -636,6 +640,8 @@
 				7E1A4C0B5D2F4A60B8C13E94 /* peer_sync.hpp */,
 				FECAD6707B90A21905BC90D6 /* dead_reckoning.cpp */,
 				CDC6C24320D7C660D4791D0B /* dead_reckoning.hpp */,
+				A1D3C0DE5E0A4B7C91F2A003 /* direction_tracker.cpp */,
+				A1D3C0DE5E0A4B7C91F2A004 /* direction_tracker.hpp */,
 				49BA0CF1A436396F918DE650 /* elm327_parser.cpp */,
 				597D159FCFE5CBF66F3AE54D /* elm327_parser.hpp */,
 				1A41B15702095B5E94B20C0A /* esp32_protocol.cpp */,
@@ -695,6 +701,7 @@
 				50FE7E3A2B506C1AEA4C7157 /* path_matcher.hpp in Headers */,
 				7E1A4C0B5D2F4A60B8C13E92 /* peer_sync.hpp in Headers */,
 				8899F827303964D4582FA0BB /* dead_reckoning.hpp in Headers */,
+				A1D3C0DE5E0A4B7C91F2A002 /* direction_tracker.hpp in Headers */,
 				FD3191F55B06E9157D82073E /* elm327_parser.hpp in Headers */,
 				56147852772837136A4FB8CF /* esp32_protocol.hpp in Headers */,
 				C3EE67F9D59E7C5367F7965A /* geo.hpp in Headers */,
@@ -918,6 +925,7 @@
 				A5067CD687F88D5F126A3197 /* path_matcher.cpp in Sources */,
 				7E1A4C0B5D2F4A60B8C13E91 /* peer_sync.cpp in Sources */,
 				631DBB0128269BF8F49D6D44 /* dead_reckoning.cpp in Sources */,
+				A1D3C0DE5E0A4B7C91F2A001 /* direction_tracker.cpp in Sources */,
 				76C515A3D75338DBFBC05AF2 /* elm327_parser.cpp in Sources */,
 				7D77BBB551C774A1356AC624 /* esp32_protocol.cpp in Sources */,
 				02D188929BAE7FB641DAA5BE /* geo.cpp in Sources */,

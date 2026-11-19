@@ -18,6 +18,7 @@ set(SRC
   kmz_unarchive_test.cpp
   mwm_url_tests.cpp
   nogps_bend_matcher_tests.cpp
+  nogps_direction_tracker_tests.cpp
   nogps_engine_tests.cpp
   nogps_esp32_protocol_tests.cpp
   nogps_gps_detectors_tests.cpp
