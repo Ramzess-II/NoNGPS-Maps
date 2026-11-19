@@ -45672,6 +45672,27 @@ en = Sent
 ru = Отправлен
 uk = Надіслано
 
+[nogps_flag_play]
+comment = Accessibility label of the button in the list of the flags of test drives that plays the voice note of a flag
+tags = android-app,apple-maps
+en = Play voice note
+ru = Воспроизвести голосовую заметку
+uk = Відтворити голосову нотатку
+
+[nogps_flag_stop]
+comment = Accessibility label of the button in the list of the flags of test drives that stops the voice note of a flag
+tags = android-app,apple-maps
+en = Stop
+ru = Остановить
+uk = Зупинити
+
+[nogps_flag_screenshot]
+comment = Accessibility label of the screenshot of a flag in the list of the flags of test drives, a tap opens it full screen
+tags = android-app,apple-maps
+en = Screenshot
+ru = Снимок экрана
+uk = Знімок екрана
+
 [nogps_flags_too_big]
 comment = Alert before the flags are sent: the attachments take more than the limit, a mail server may refuse the mail. The first value is the size, e.g. 25 MB, the second one the limit in MB.
 tags = android-app,apple-maps

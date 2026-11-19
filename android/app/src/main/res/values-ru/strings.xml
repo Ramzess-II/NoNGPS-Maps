@@ -935,6 +935,12 @@
     <string name="nogps_flag_voice">Голосовая заметка %d с</string>
     <!-- In the list of the flags of test drives: the flag has been sent by email already -->
     <string name="nogps_flag_sent">Отправлен</string>
+    <!-- Accessibility label of the button in the list of the flags of test drives that plays the voice note of a flag -->
+    <string name="nogps_flag_play">Воспроизвести голосовую заметку</string>
+    <!-- Accessibility label of the button in the list of the flags of test drives that stops the voice note of a flag -->
+    <string name="nogps_flag_stop">Остановить</string>
+    <!-- Accessibility label of the screenshot of a flag in the list of the flags of test drives, a tap opens it full screen -->
+    <string name="nogps_flag_screenshot">Снимок экрана</string>
     <!-- Alert before the flags are sent: the attachments take more than the limit, a mail server may refuse the mail. The first value is the size, e.g. 25 MB, the second one the limit in MB. -->
     <string name="nogps_flags_too_big">Файлы занимают %1$s, письмо больше %2$d МБ может не дойти. Всё равно отправить?</string>
     <!-- The user has pressed the button to show on the map where the car is -->
