@@ -1692,10 +1692,11 @@ UNIT_TEST(NoGps_Engine_TurnAfterLongWayIsMovedToFarCrossing)
 
 UNIT_TEST(NoGps_Engine_TurnAfterLongWayIsNotMovedFartherThanAlongError)
 {
-  PieceRoads roads({{-300, 0, 40'000, 0}, {25'400, 0, 25'400, 400}}, {{25'400, 0}});
+  PieceRoads roads({{-300, 0, 40'000, 0}, {25'320, 0, 25'320, 400}}, {{25'320, 0}});
   Env env(true /* inertial */, &roads);
   DriveLongWayAndTurnLeft(env);
-  // The crossing is 330 m ahead, farther than the along error of 190 m: the car has turned somewhere else.
+  // The crossing is 250 m ahead: farther than the along error of 190 m, but within TurnMatcher::kMaxFarSearchM, so
+  // the test fails if the search takes the cap instead of the along error. The car has turned somewhere else.
   TEST_EQUAL(TripField(env, "turn"), "NaN", ());
   TEST_LESS(East(env.Last().m_position), 25'200, ());
 }
