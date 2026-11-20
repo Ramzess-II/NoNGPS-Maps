@@ -92,8 +92,9 @@ public:
   /// \param carSpeedMps the fresh car speed, or nothing if it is unknown: then the speed is not checked.
   /// \param checkSpeed false for a provider whose points are not one chain with the others (Fused next to Gps): the
   /// speed derived from the previous point would be wrong, and the speed counter stays as it is.
-  /// \param nearInertial the position is near the inertial one: with the speed agreeing it makes GPS right whatever
-  /// the network tells (kAgreeingFixesToTrust).
+  /// \param nearInertial the position is near the inertial one: with the speed agreeing for kAgreeingFixesToTrust
+  /// points it makes GPS right whatever the network tells. A point away from the inertial one drops that count and
+  /// is never trusted by it, as a coarse point's speed is not compared at all.
   /// \returns true if the position can be trusted.
   bool CheckSatellitePosition(ms::LatLon const & position, int64_t timeMs, double accuracyM = 0,
                               std::optional<double> gpsSpeedMps = {}, std::optional<double> carSpeedMps = {},
