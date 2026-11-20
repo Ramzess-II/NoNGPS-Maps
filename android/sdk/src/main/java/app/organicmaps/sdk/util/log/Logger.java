@@ -243,6 +243,8 @@ public final class Logger
     private static final int QUEUE_CAPACITY = 4096;
     private static final int MAX_BATCH_SIZE = 256;
     private static final int FLUSH_TIMEOUT_SECONDS = 2;
+    // Opening a file walks the whole log tree to keep it under the limit, so a failure is not retried at once.
+    private static final long OPEN_RETRY_MS = 5000;
 
     @NonNull
     private final ArrayBlockingQueue<LogEntry> mQueue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
@@ -264,6 +266,8 @@ public final class Logger
     private String mFileName = "";
     // The first moment of the next day: a line written at it or later goes on in the folder of that day.
     private long mDayEndMs;
+    // When a failed open may be tried again, 0 when the last one worked.
+    private long mRetryOpenMs;
 
     LogFileWriter()
     {
@@ -444,6 +448,9 @@ public final class Logger
       }
       catch (IOException e)
       {
+        // Opening the file walks the whole tree to keep it under the limit: a full disk or a folder that can't be
+        // made would do it for every line until the writer opens again.
+        mRetryOpenMs = System.currentTimeMillis() + OPEN_RETRY_MS;
         Log.e(TAG, "Failed to write to " + mFilePath + ": " + data, e);
         closeWriterLocked();
       }
@@ -452,6 +459,8 @@ public final class Logger
     private void ensureWriterLocked(@NonNull String logsFolder) throws IOException
     {
       final long now = System.currentTimeMillis();
+      if (mWriter == null && now < mRetryOpenMs)
+        return;
       if (mStarted == null)
       {
         mStarted = new Date(now);
@@ -467,7 +476,8 @@ public final class Logger
         calendar.set(Calendar.MILLISECOND, 0);
         calendar.add(Calendar.DAY_OF_MONTH, 1);
         mDayEndMs = calendar.getTimeInMillis();
-        mFileName = LogFiles.fileName(LogsManager.INSTANCE.getPhoneId(), mStarted, new Date(now));
+        mFileName =
+            LogFiles.freeFileName(new File(logsFolder), LogsManager.INSTANCE.getPhoneId(), mStarted, new Date(now));
       }
 
       final File file = new File(logsFolder, mFileName);
@@ -488,6 +498,7 @@ public final class Logger
 
       mWriter = new BufferedWriter(new FileWriter(file, true));
       mFilePath = file.getPath();
+      mRetryOpenMs = 0;
 
       if (isNewFile)
         mWriter.write(LogsManager.INSTANCE.getSystemInformation());
@@ -497,6 +508,8 @@ public final class Logger
     {
       closeWriterLocked();
       mStarted = null;
+      // A new drive is worth an attempt even if the last open failed.
+      mRetryOpenMs = 0;
     }
 
     private void flushLocked()

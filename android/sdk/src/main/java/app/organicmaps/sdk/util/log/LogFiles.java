@@ -48,6 +48,26 @@ final class LogFiles
     return phoneId + File.separator + day + File.separator + name + ".log";
   }
 
+  /// The path of a log file that no drive has written yet: two drives started in the same second would share
+  /// "<HHmmss>.log" and be read as one, so the second one gets "<HHmmss>-2.log".
+  @NonNull
+  static String freeFileName(@NonNull File logsFolder, @NonNull String phoneId, @NonNull Date started,
+                             @NonNull Date now)
+  {
+    final String name = fileName(phoneId, started, now);
+    if (!new File(logsFolder, name).exists())
+      return name;
+    final String base = name.substring(0, name.length() - ".log".length());
+    // A file per second of a drive is far more than the app can start: the name is shared only if they all exist.
+    for (int i = 2; i < 100; ++i)
+    {
+      final String next = base + "-" + i + ".log";
+      if (!new File(logsFolder, next).exists())
+        return next;
+    }
+    return name;
+  }
+
   /// The log files of the days, "yyyy-MM-dd", of every phone of the folder.
   @NonNull
   static List<File> ofDays(@NonNull File folder, @NonNull Collection<String> days)

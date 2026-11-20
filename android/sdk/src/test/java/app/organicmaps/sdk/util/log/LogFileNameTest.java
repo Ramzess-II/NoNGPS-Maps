@@ -40,6 +40,37 @@ public class LogFileNameTest
   }
 
   @Test
+  public void freeFileName_takesTheNameWhileNoDriveHasWrittenIt() throws IOException
+  {
+    final Date started = new GregorianCalendar(2026, Calendar.NOVEMBER, 1, 23, 59, 7).getTime();
+    final String name = path("Pixel_7-a3f9", "2026-11-01", "235907.log");
+    assertEquals(name, LogFiles.freeFileName(mFolder.getRoot(), "Pixel_7-a3f9", started, started));
+  }
+
+  @Test
+  public void freeFileName_givesASecondDriveOfTheSameSecondItsOwnFile() throws IOException
+  {
+    final Date started = new GregorianCalendar(2026, Calendar.NOVEMBER, 1, 23, 59, 7).getTime();
+    makeFile(path("Pixel_7-a3f9", "2026-11-01", "235907.log"), 10, 1);
+    assertEquals(path("Pixel_7-a3f9", "2026-11-01", "235907-2.log"),
+                 LogFiles.freeFileName(mFolder.getRoot(), "Pixel_7-a3f9", started, started));
+    makeFile(path("Pixel_7-a3f9", "2026-11-01", "235907-2.log"), 10, 1);
+    assertEquals(path("Pixel_7-a3f9", "2026-11-01", "235907-3.log"),
+                 LogFiles.freeFileName(mFolder.getRoot(), "Pixel_7-a3f9", started, started));
+  }
+
+  @Test
+  public void freeFileName_takesTheNextDayFolderOfAFileThatGoesOn() throws IOException
+  {
+    final Date started = new GregorianCalendar(2026, Calendar.NOVEMBER, 1, 23, 59, 7).getTime();
+    final Date now = new GregorianCalendar(2026, Calendar.NOVEMBER, 2, 0, 0, 1).getTime();
+    makeFile(path("Pixel_7-a3f9", "2026-11-01", "235907.log"), 10, 1);
+    // The file of the day before does not take the name of the continuation in the new day's folder.
+    assertEquals(path("Pixel_7-a3f9", "2026-11-02", "235907.log"),
+                 LogFiles.freeFileName(mFolder.getRoot(), "Pixel_7-a3f9", started, now));
+  }
+
+  @Test
   public void sanitizeModel_keepsOnlyLettersAndDigits()
   {
     assertEquals("Pixel_7", LogFiles.sanitizeModel("Pixel 7"));

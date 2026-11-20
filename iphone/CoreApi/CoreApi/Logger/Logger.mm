@@ -13,6 +13,11 @@
 @property(nullable, nonatomic) NSDate * started;
 /// The first moment of the next day: a line written at it or later goes on in the folder of that day.
 @property(nullable, nonatomic) NSDate * dayEnd;
+/// The file under the logs folder, see freeLogFileNameStarted:now:. It is chosen once per file, as the name of a
+/// file that is written already would be taken for a shared one.
+@property(nullable, nonatomic) NSString * fileName;
+/// When a failed open may be tried again, nil when the last one worked.
+@property(nullable, nonatomic) NSDate * retryOpen;
 @property(nonnull, nonatomic) os_log_t osLogger;
 /// This property is introduced to avoid the CoreApi => Maps target dependency and stores the
 /// MWMSettings.isFileLoggingEnabled value.
@@ -30,6 +35,7 @@
 + (void)deleteOldestFiles;
 + (NSArray<NSString *> *)logFiles;
 + (NSString *)logFileNameStarted:(NSDate *)started now:(NSDate *)now;
++ (NSString *)freeLogFileNameStarted:(NSDate *)started now:(NSDate *)now;
 + (NSString *)phoneId;
 + (nullable NSURL *)zipLogFiles:(NSArray<NSString *> *)names inFolder:(NSString *)folder;
 + (void)removeFileAtPath:(NSString *)filePath;
@@ -51,6 +57,8 @@ NSString * const kZipLogsFileName = @"logs.zip";
 NSString * const kPhoneIdKey = @"LogsPhoneId";
 // A day of driving, 20 hours and more at about 6.5 MB an hour: the log of a drive is analysed afterwards.
 unsigned long long const kMaxLogsTotalSize = 150'000'000;
+// Opening a file walks the whole log tree to keep it under the limit, so a failure is not retried at once.
+NSTimeInterval const kOpenRetrySeconds = 5;
 
 // A file of the logs folder by its path in it.
 static NSDictionary<NSFileAttributeKey, id> * FileAttributes(NSString * name)
@@ -239,6 +247,8 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
   [self runSyncOnFileLoggingQueue:^{
     [self closeFile];
     [self logger].started = nil;
+    // A new drive is worth an attempt even if the last open failed.
+    [self logger].retryOpen = nil;
   }];
 }
 
@@ -337,6 +347,9 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
   Logger * logger = [self logger];
   NSFileManager * fileManager = NSFileManager.defaultManager;
   NSDate * now = NSDate.date;
+  // Opening a file walks the whole tree to keep it under the limit: a full disk would do it for every line.
+  if (logger.fileHandle == nil && logger.retryOpen != nil && [now compare:logger.retryOpen] == NSOrderedAscending)
+    return NO;
   if (logger.started == nil)
   {
     logger.started = now;
@@ -350,12 +363,13 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
                                          value:1
                                         toDate:[calendar startOfDayForDate:now]
                                        options:0];
+    logger.fileName = [self freeLogFileNameStarted:logger.started now:now];
   }
 
   if (logger.fileHandle != nil)
     return YES;
 
-  NSString * path = [kLogsFolderPath stringByAppendingPathComponent:[self logFileNameStarted:logger.started now:now]];
+  NSString * path = [kLogsFolderPath stringByAppendingPathComponent:logger.fileName];
   unsigned long long const size = [fileManager attributesOfItemAtPath:path error:nil].fileSize;
   if (size == 0)
   {
@@ -370,11 +384,13 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
   NSFileHandle * fileHandle = [NSFileHandle fileHandleForWritingAtPath:path];
   if (fileHandle == nil)
   {
+    logger.retryOpen = [now dateByAddingTimeInterval:kOpenRetrySeconds];
     os_log_error(logger.osLogger, "Failed to open log file for writing %{public}s", path.UTF8String);
     return NO;
   }
   [fileHandle seekToEndOfFile];
   logger.fileHandle = fileHandle;
+  logger.retryOpen = nil;
 
   if (size == 0)
   {
@@ -476,6 +492,25 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
   });
   return [NSString stringWithFormat:@"%@/%@/%@.log", [self phoneId], [dayFormatter stringFromDate:now],
                                     [timeFormatter stringFromDate:started]];
+}
+
+/// The name of a log file that no drive has written yet: two drives started in the same second would share
+/// "<HHmmss>.log" and be read as one, so the second one gets "<HHmmss>-2.log".
++ (NSString *)freeLogFileNameStarted:(NSDate *)started now:(NSDate *)now
+{
+  NSString * name = [self logFileNameStarted:started now:now];
+  NSFileManager * fileManager = NSFileManager.defaultManager;
+  if (![fileManager fileExistsAtPath:[kLogsFolderPath stringByAppendingPathComponent:name]])
+    return name;
+  NSString * base = [name substringToIndex:name.length - @".log".length];
+  // A file per second of a drive is far more than the app can start: the name is shared only if they all exist.
+  for (int i = 2; i < 100; ++i)
+  {
+    NSString * next = [NSString stringWithFormat:@"%@-%d.log", base, i];
+    if (![fileManager fileExistsAtPath:[kLogsFolderPath stringByAppendingPathComponent:next]])
+      return next;
+  }
+  return name;
 }
 
 /// The model and a random id made once per install.
