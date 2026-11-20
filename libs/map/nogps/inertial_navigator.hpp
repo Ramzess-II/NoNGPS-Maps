@@ -425,8 +425,9 @@ public:
   HeadingSource GetHeadingSource() const { return m_headingSource; }
   /// \returns the ratio the current speed from the car is multiplied by, 1 if it is not corrected yet.
   double GetSpeedScale() const;
-  /// \returns true if GPS or the roads have measured the scale of the current speed range: only then the car speed
-  /// is exact enough to tell GPS wrong by it.
+  /// \returns true if the scale of the current speed comes from a range GPS or the roads have measured: the table
+  /// interpolates and extends the measured ranges, so one measured range is enough for any speed. Only then the car
+  /// speed is exact enough to tell GPS wrong by it.
   bool IsSpeedScaleMeasured() const;
   /// \returns how late the car reports its speed, seconds: measured by GPS, or the usual one until then.
   double GetSpeedLag() const { return m_speedLag.Get(); }
