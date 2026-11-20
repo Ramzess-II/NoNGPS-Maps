@@ -285,11 +285,14 @@ class CalibrationTest(unittest.TestCase):
         out = io.StringIO()
         with redirect_stdout(out):
             nogps_log.print_trip(analysis.trips[1])
-        self.assertIn('calibration: car=C47D scale=1.04 table=1:2:3\n', out.getvalue())
+        # The time of the line comes with it: written before the trip, it misses what the drive before learned.
+        self.assertIn('calibration: car=C47D scale=1.04 table=1:2:3 (written 18:00:30)\n', out.getvalue())
+        self.assertEqual(analysis.trips[1].calibration_at(), analysis.trips[1].calibration_event()['t'])
 
     def test_log_without_the_line(self):
         trip = analyse(('app.log', android_drive(seconds=30, stand=0))).trips[0]
         self.assertIsNone(trip.calibration())
+        self.assertIsNone(trip.calibration_at())
 
 
 class ReplayLogsTest(unittest.TestCase):

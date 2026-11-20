@@ -647,15 +647,29 @@ class Trip:
         self.anomalies = anomalies(self.rows, self.events)
 
     def calibration(self):
-        """What the navigation had learned about the car when the trip started, "car=C47D scale=1.04 table=…": the
-        last CALIBRATION line before the car moves, before the first TRIP line of a trip that stands. The lines
-        written after the box connects, when its car is another one or its values are taken, come while the car
-        still stands. None if the log has none."""
+        """The calibration of the car the log last wrote before this trip moved, "car=C47D scale=1.04 table=…":
+        the last CALIBRATION line before the car moves, before the first TRIP line of a trip that stands. The
+        lines written after the box connects, when its car is another one or its values are taken, come while the
+        car still stands. None if the log has none.
+
+        It is what the trip started with only when the line is of this trip: the core writes it at a launch and at
+        a TripStarted (a link gap of 5 minutes), and learning writes nothing. A second drive after a shorter stand
+        is one trip to the core and another one here, so it reports the values of the drive before it, without what
+        that drive learned. calibration_at() tells which, so compare it with the start of the trip."""
+        e = self.calibration_event()
+        return e['text'][len('CALIBRATION '):] if e else None
+
+    def calibration_at(self):
+        """When the line of calibration() was written, None if the log has none."""
+        e = self.calibration_event()
+        return e['t'] if e else None
+
+    def calibration_event(self):
         start = next((row['t'] for row in self.rows if is_moving(row)), self.start)
         events = self.group.events
         for e in reversed(events[:bisect.bisect_right(self.group.event_times, start)]):
             if e['name'] == 'car calibration':
-                return e['text'][len('CALIBRATION '):]
+                return e
         return None
 
     def summary(self):
@@ -882,7 +896,9 @@ def print_trip(trip):
     print('%s – %s, %s, %.2f km, max %s km/h, %d TRIP lines, choice switches %d' % (
         from_ms(trip.start).strftime('%Y-%m-%d %H:%M:%S'), clock(trip.end), duration(trip.end - trip.start), d['km'],
         d['max_kmh'], d['lines'], d['choice_switches']))
-    print('calibration:', trip.calibration() or 'not in the log')
+    calibration, at = trip.calibration(), trip.calibration_at()
+    # The time tells whether the line is of this trip: written before it, it misses what the drive before learned.
+    print('calibration:', '%s (written %s)' % (calibration, clock(at)) if calibration else 'not in the log')
     total = sum(d['sources'].values())
     print('sources:', ', '.join('%s %d s %.0f%%' % (k, v, v * 100 / total) for k, v in d['sources'].items()))
     for e in d['errors']:
