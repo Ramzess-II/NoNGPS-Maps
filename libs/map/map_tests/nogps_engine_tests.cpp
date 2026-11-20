@@ -1259,8 +1259,8 @@ UNIT_TEST(NoGps_Engine_LostRoadTakesNearMarkBeforeFarOne)
 {
   // The car turns north at the crossing at 246 m and is shown on the street at 262 m, the other one is at 240 m, a far
   // one at 200 m. The user switches the mark to 240 m: the marks are the far one first, the street at 262 m after it.
-  // The street at 240 m ends 150 m to the north: the car stands lost and the near mark is taken, not the far one that
-  // comes first.
+  // The street at 240 m ends 150 m to the north: the car stands lost and the mark that is not a far one is taken,
+  // not the far one that comes first. FindOtherMarkOnRoad() goes by the far flag, not by the distance.
   PieceRoads roads({{-300, 0, 600, 0}, {262, 0, 262, 400}, {240, 0, 240, 150}, {200, 0, 200, 400}},
                    {{262, 0}, {240, 0}, {200, 0}});
   Env env(true /* inertial */, &roads);
