@@ -58,6 +58,13 @@ public:
   static int64_t constexpr kSpeedMinGapMs = 500;
   static int64_t constexpr kSpeedMaxGapMs = 3000;
 
+  // The network is not believed over GPS that has agreed with the car speed and the inertial position for this
+  // many points in a row while the car drives: the network point is wrong, a car can't fake both.
+  static int constexpr kAgreeingFixesToTrust = 30;
+  static double constexpr kAgreeingMinSpeedMps = 5;
+  // A longer break between satellite points (a tunnel, no GPS) restarts the count.
+  static int64_t constexpr kAgreeingMaxGapMs = 10000;
+
   struct Trusted
   {
     ms::LatLon m_position;
@@ -85,10 +92,13 @@ public:
   /// \param carSpeedMps the fresh car speed, or nothing if it is unknown: then the speed is not checked.
   /// \param checkSpeed false for a provider whose points are not one chain with the others (Fused next to Gps): the
   /// speed derived from the previous point would be wrong, and the speed counter stays as it is.
+  /// \param nearInertial the position is near the inertial one: with the speed agreeing for kAgreeingFixesToTrust
+  /// points it makes GPS right whatever the network tells. A point away from the inertial one drops that count and
+  /// is never trusted by it, as a coarse point's speed is not compared at all.
   /// \returns true if the position can be trusted.
   bool CheckSatellitePosition(ms::LatLon const & position, int64_t timeMs, double accuracyM = 0,
                               std::optional<double> gpsSpeedMps = {}, std::optional<double> carSpeedMps = {},
-                              bool checkSpeed = true);
+                              bool checkSpeed = true, bool nearInertial = false);
 
 private:
   struct Network
@@ -117,14 +127,16 @@ private:
   bool IsConsistent(ms::LatLon const & position, int64_t timeMs) const;
   bool HasFreshNetwork(int64_t timeMs) const;
   void SetTrusted(ms::LatLon const & position, int64_t timeMs);
-  void CheckSpeed(ms::LatLon const & position, int64_t timeMs, double accuracyM, std::optional<double> gpsSpeedMps,
-                  std::optional<double> carSpeedMps);
+  /// \returns whether the speed agrees with a drive of the car, nothing if there was nothing to compare.
+  std::optional<bool> CheckSpeed(ms::LatLon const & position, int64_t timeMs, double accuracyM,
+                                 std::optional<double> gpsSpeedMps, std::optional<double> carSpeedMps);
 
   std::optional<Network> m_network;
   std::optional<Trusted> m_trusted;
   // The previous satellite point, trusted or not.
   std::optional<Trusted> m_previous;
   int m_speedMismatchCount = 0;
+  int m_agreeingCount = 0;
   bool m_spoofed = false;
   int m_consistentCount = 0;
   // The first network position of a jump away from the last trusted one, waiting for a confirmation.

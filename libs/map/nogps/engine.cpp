@@ -191,9 +191,9 @@ void Engine::OnFix(Fix const & location)
   }
   else
   {
-    trusted = m_spoofingDetector.CheckSatellitePosition(location.m_position, location.m_timeMs, location.m_accuracyM,
-                                                        location.m_speedMps, GetCarSpeedMps(),
-                                                        location.m_provider == Provider::Gps);
+    trusted = m_spoofingDetector.CheckSatellitePosition(
+        location.m_position, location.m_timeMs, location.m_accuracyM, location.m_speedMps, GetCarSpeedMps(),
+        location.m_provider == Provider::Gps, AgreesWithInertial(location));
   }
 
   bool const spoofed = m_spoofingDetector.IsSpoofed();
@@ -509,6 +509,14 @@ bool Engine::IsSpeedTableGps(Fix const & gps)
   if (good)
     m_speedTableGpsMs = m_clock.NowMs();
   return good;
+}
+
+bool Engine::AgreesWithInertial(Fix const & gps) const
+{
+  if (!m_inertial || !m_inertial->IsReady())
+    return false;
+  auto const inertial = m_inertial->GetLocation();
+  return inertial && Distance(inertial->m_position, gps.m_position) <= kMaxGpsInertialDiffM + gps.m_accuracyM;
 }
 
 bool Engine::ContradictsInertial(Fix const & gps) const

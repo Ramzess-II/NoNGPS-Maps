@@ -286,6 +286,119 @@ UNIT_TEST(NoGps_Spoofing_DetectsStandingPointWhileCarDrives)
   TEST(detector.IsSpoofed(), ());
 }
 
+bool FeedDrive(GpsSpoofingDetector & detector, ms::LatLon & position, int64_t & time, int count, bool nearInertial)
+{
+  bool trusted = true;
+  for (int i = 0; i < count; ++i)
+  {
+    time += 1000;
+    position = North(position, 60 / 3.6 / 111'195.0);
+    trusted = detector.CheckSatellitePosition(position, time, 5, 60 / 3.6, 60 / 3.6, true, nearInertial) && trusted;
+  }
+  return trusted;
+}
+
+// A network point 22 km away, confirmed by a second one: it calls GPS spoofed. The tolerance grows by 300 km/h, so
+// it is far enough for a minute of driving.
+void ConfirmWrongNetwork(GpsSpoofingDetector & detector, ms::LatLon const & position, int64_t time)
+{
+  detector.OnNetworkPosition(North(position, 200 * kStep), 200, time);
+  detector.OnNetworkPosition(North(position, 201 * kStep), 200, time + 1);
+}
+
+UNIT_TEST(NoGps_Spoofing_NetworkOverridesGpsNotFollowingInertial)
+{
+  GpsSpoofingDetector detector;
+  auto position = kKyiv;
+  int64_t time = 0;
+  TEST(detector.CheckSatellitePosition(position, time), ());
+  ConfirmWrongNetwork(detector, position, time + 500);
+  TEST(!FeedDrive(detector, position, time, 2 * GpsSpoofingDetector::kAgreeingFixesToTrust, false), ());
+  TEST(detector.IsSpoofed(), ());
+}
+
+UNIT_TEST(NoGps_Spoofing_GpsAgreeingWithCarAndInertialBeatsNetwork)
+{
+  GpsSpoofingDetector detector;
+  auto position = kKyiv;
+  int64_t time = 0;
+  TEST(detector.CheckSatellitePosition(position, time), ());
+  ConfirmWrongNetwork(detector, position, time + 500);
+  // Not long enough yet.
+  FeedDrive(detector, position, time, GpsSpoofingDetector::kAgreeingFixesToTrust - 1, true);
+  TEST(detector.IsSpoofed(), ());
+  // The count goes on and GPS is trusted after the usual number of points.
+  FeedDrive(detector, position, time, GpsSpoofingDetector::kConsistentPositionsToRecover, true);
+  TEST(!detector.IsSpoofed(), ());
+  TEST(FeedDrive(detector, position, time, 10, true), ());
+}
+
+UNIT_TEST(NoGps_Spoofing_AgreeingCountRestartsAfterDisagreement)
+{
+  GpsSpoofingDetector detector;
+  auto position = kKyiv;
+  int64_t time = 0;
+  TEST(detector.CheckSatellitePosition(position, time), ());
+  ConfirmWrongNetwork(detector, position, time + 500);
+  int const half = GpsSpoofingDetector::kAgreeingFixesToTrust / 2 + 1;
+  FeedDrive(detector, position, time, half, true);
+  FeedDrive(detector, position, time, 1, false);
+  FeedDrive(detector, position, time, half + GpsSpoofingDetector::kConsistentPositionsToRecover, true);
+  TEST(detector.IsSpoofed(), ());
+}
+
+UNIT_TEST(NoGps_Spoofing_AgreeingCountRestartsAfterGap)
+{
+  GpsSpoofingDetector detector;
+  auto position = kKyiv;
+  int64_t time = 0;
+  TEST(detector.CheckSatellitePosition(position, time), ());
+  ConfirmWrongNetwork(detector, position, time + 500);
+  int const half = GpsSpoofingDetector::kAgreeingFixesToTrust / 2 + 1;
+  FeedDrive(detector, position, time, half, true);
+  time += GpsSpoofingDetector::kAgreeingMaxGapMs + 1000;
+  FeedDrive(detector, position, time, half + GpsSpoofingDetector::kConsistentPositionsToRecover, true);
+  TEST(detector.IsSpoofed(), ());
+}
+
+UNIT_TEST(NoGps_Spoofing_CoarsePointAwayFromInertialIsNotTrustedByTheCount)
+{
+  GpsSpoofingDetector detector;
+  auto position = kKyiv;
+  int64_t time = 0;
+  TEST(detector.CheckSatellitePosition(position, time), ());
+  ConfirmWrongNetwork(detector, position, time + 500);
+  FeedDrive(detector, position, time,
+            GpsSpoofingDetector::kAgreeingFixesToTrust + GpsSpoofingDetector::kConsistentPositionsToRecover, true);
+  TEST(!detector.IsSpoofed(), ());
+  // A coarse point 100 km away: its speed is not compared with the car at all, so the agreeing points before it
+  // must not make it trusted.
+  time += 1000;
+  TEST(!detector.CheckSatellitePosition(North(position, 900 * kStep), time, 100 /* accuracyM */, {}, 60 / 3.6, true,
+                                        false /* nearInertial */),
+       ());
+  TEST(detector.IsSpoofed(), ());
+}
+
+UNIT_TEST(NoGps_Spoofing_WrongNetworkIsDroppedByGpsFollowingTheCar)
+{
+  GpsSpoofingDetector detector;
+  auto position = kKyiv;
+  int64_t time = 0;
+  TEST(detector.CheckSatellitePosition(position, time), ());
+  ConfirmWrongNetwork(detector, position, time + 500);
+  FeedDrive(detector, position, time,
+            GpsSpoofingDetector::kAgreeingFixesToTrust + GpsSpoofingDetector::kConsistentPositionsToRecover, true);
+  TEST(!detector.IsSpoofed(), ());
+  // The car stops at a light: the agreeing count drops, and the wrong network point is not believed again.
+  for (int i = 0; i < 10; ++i)
+  {
+    time += 1000;
+    TEST(detector.CheckSatellitePosition(position, time, 5, 0.0, 0.0, true, true), (i));
+  }
+  TEST(!detector.IsSpoofed(), ());
+}
+
 UNIT_TEST(NoGps_Spoofing_TakesGpsSpeedFromPreviousPoint)
 {
   GpsSpoofingDetector detector;

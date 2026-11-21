@@ -198,8 +198,9 @@ bool GpsSpoofingDetector::AcceptNetworkPosition(ms::LatLon const & position, dou
   return false;
 }
 
-void GpsSpoofingDetector::CheckSpeed(ms::LatLon const & position, int64_t timeMs, double accuracyM,
-                                     std::optional<double> gpsSpeedMps, std::optional<double> carSpeedMps)
+std::optional<bool> GpsSpoofingDetector::CheckSpeed(ms::LatLon const & position, int64_t timeMs, double accuracyM,
+                                                    std::optional<double> gpsSpeedMps,
+                                                    std::optional<double> carSpeedMps)
 {
   if (!gpsSpeedMps && m_previous)
   {
@@ -212,11 +213,11 @@ void GpsSpoofingDetector::CheckSpeed(ms::LatLon const & position, int64_t timeMs
   if (!carSpeedMps)
   {
     m_speedMismatchCount = 0;
-    return;
+    return false;
   }
   // Nothing to compare: the count neither grows nor drops.
   if (!gpsSpeedMps || accuracyM > kSpeedMaxAccuracyM)
-    return;
+    return {};
 
   double const diffMps = std::abs(*gpsSpeedMps - *carSpeedMps);
   bool const mismatch =
@@ -229,20 +230,49 @@ void GpsSpoofingDetector::CheckSpeed(ms::LatLon const & position, int64_t timeMs
     LOG(LWARNING, (isMismatch ? "GPS speed disagrees with the car speed:" : "GPS speed agrees with the car speed:",
                    "gps =", *gpsSpeedMps * 3.6, "km/h, car =", *carSpeedMps * 3.6, "km/h"));
   }
+  return !mismatch && *carSpeedMps >= kAgreeingMinSpeedMps;
 }
 
 bool GpsSpoofingDetector::CheckSatellitePosition(ms::LatLon const & position, int64_t timeMs, double accuracyM,
                                                  std::optional<double> gpsSpeedMps, std::optional<double> carSpeedMps,
-                                                 bool checkSpeed)
+                                                 bool checkSpeed, bool nearInertial)
 {
   if (checkSpeed)
-    CheckSpeed(position, timeMs, accuracyM, gpsSpeedMps, carSpeedMps);
+  {
+    if (m_previous && timeMs - m_previous->m_timeMs > kAgreeingMaxGapMs)
+      m_agreeingCount = 0;
+    auto const agrees = CheckSpeed(position, timeMs, accuracyM, gpsSpeedMps, carSpeedMps);
+    // A point with nothing to compare neither grows the count nor drops it, while one away from the inertial
+    // position drops it whatever its speed tells.
+    if (!nearInertial)
+      m_agreeingCount = 0;
+    else if (agrees)
+      m_agreeingCount = *agrees ? m_agreeingCount + 1 : 0;
+  }
   CheckUnconfirmedNetwork(position, timeMs);
-  bool const consistent = IsConsistent(position, timeMs) && m_speedMismatchCount < kSpeedMismatchFixes;
+  // The count of the points before is not enough: the point at hand has to be near the inertial position too. A
+  // coarse point is not compared by speed, and would otherwise be trusted however far it jumped.
+  bool const followsCar = m_agreeingCount >= kAgreeingFixesToTrust && nearInertial;
+  // A car and its inertial count can't both be faked, so a fresh network point that such GPS contradicts is one of
+  // the wrong ones. It is dropped and remembered once the position is trusted: left as it is, it would call GPS
+  // spoofed again at every stop, where the agreeing count drops. The recovery still counts it as a network to
+  // compare with, so trust comes back after kConsistentPositionsToRecover points as without this rule.
+  bool const wrongNetwork = followsCar && HasFreshNetwork(timeMs) && !IsConsistent(position, timeMs);
+  auto const dropWrongNetwork = [this, &position, wrongNetwork]()
+  {
+    if (!wrongNetwork)
+      return;
+    LOG(LWARNING, ("The network position is", Distance(position, m_network->m_position),
+                   "m from GPS that follows the car: ignored"));
+    AddPhantom(m_network->m_position);
+    m_network.reset();
+  };
+  bool const consistent = (followsCar || IsConsistent(position, timeMs)) && m_speedMismatchCount < kSpeedMismatchFixes;
   if (!m_spoofed)
   {
     if (consistent)
     {
+      dropWrongNetwork();
       SetTrusted(position, timeMs);
       return true;
     }
@@ -258,6 +288,7 @@ bool GpsSpoofingDetector::CheckSatellitePosition(ms::LatLon const & position, in
     return false;
 
   m_spoofed = false;
+  dropWrongNetwork();
   SetTrusted(position, timeMs);
   return true;
 }
