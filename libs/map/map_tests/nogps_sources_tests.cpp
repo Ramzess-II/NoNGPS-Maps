@@ -1086,6 +1086,92 @@ UNIT_TEST(NoGps_Esp32Update_CancelWhileRestartingDoesNothing)
   TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
 }
 
+UNIT_TEST(NoGps_Esp32Update_CancelWhileVerifyingDoesNothing)
+{
+  UpdatedBox box;
+  box.StartUpdate();
+  box.Accept(",240,4096");
+  box.Line("NGO,1,1000,RECV");
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Verifying, ());
+  auto const commands = box.m_delegate.m_esp32BleSent.size();
+
+  // The box ignores OTA_ABORT after OTA_END and restarts with the new firmware.
+  box.m_source.CancelUpdate();
+  TEST_EQUAL(box.m_delegate.m_esp32BleSent.size(), commands, ());
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Verifying, ());
+}
+
+UNIT_TEST(NoGps_Esp32Update_AbortsWhenBoxDoesNotAnswerBegin)
+{
+  UpdatedBox box;
+  box.StartUpdate();
+  box.m_clock.Advance(Esp32Update::kReplyTimeoutMs + Esp32Update::kCheckIntervalMs);
+  TEST_EQUAL(box.Update().GetError(), "NO_REPLY", ());
+  TEST_EQUAL(box.LastCommand().second, "OTA_ABORT", ());
+}
+
+UNIT_TEST(NoGps_Esp32Update_LateNewFirmwareAfterTimeoutIsDone)
+{
+  {
+    // The box took longer than the application waited for it to restart.
+    UpdatedBox box;
+    box.SendAllAndRestart();
+    box.m_clock.Advance(Esp32Update::kRestartTimeoutMs + Esp32Update::kCheckIntervalMs);
+    TEST_EQUAL(box.Update().GetError(), "NO_RESTART", ());
+    box.Connect("0.3.3");
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
+    TEST(box.Update().GetError().empty(), ());
+  }
+  {
+    // The verification took longer than the application waited for the reply.
+    UpdatedBox box;
+    box.StartUpdate();
+    box.Accept(",240,4096");
+    box.Line("NGO,1,1000,RECV");
+    box.m_clock.Advance(Esp32Update::kVerifyTimeoutMs + Esp32Update::kCheckIntervalMs);
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Failed, ());
+    box.m_source.OnBleState(BleState::Searching);
+    box.Connect("0.3.3");
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
+  }
+  {
+    // The previous firmware stays a failure, and a failure before OTA_END is not turned into success.
+    UpdatedBox box;
+    box.SendAllAndRestart();
+    box.m_clock.Advance(Esp32Update::kRestartTimeoutMs + Esp32Update::kCheckIntervalMs);
+    box.Connect("0.3.2");
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Failed, ());
+    TEST_EQUAL(box.Update().GetError(), "NO_RESTART", ());
+
+    UpdatedBox early;
+    early.StartUpdate();
+    early.Refuse("MOVING");
+    early.m_source.OnBleState(BleState::Searching);
+    early.Connect("0.3.3");
+    TEST_EQUAL(early.Update().GetError(), "MOVING", ());
+
+    // An error of the box after OTA_END stays a failure even when the same version is reported later.
+    UpdatedBox rejected;
+    rejected.StartUpdate();
+    rejected.Accept(",240,4096");
+    rejected.Line("NGO,1," + std::to_string(rejected.m_image.size()) + ",RECV");
+    TEST_EQUAL(rejected.LastCommand().second, "OTA_END", ());
+    rejected.Line("NGO,1," + std::to_string(rejected.m_image.size()) + ",ERR_SIGNATURE");
+    TEST_EQUAL(rejected.Update().GetState(), Esp32Update::State::Failed, ());
+    rejected.m_source.OnBleState(BleState::Searching);
+    rejected.Connect("0.3.3");
+    TEST_EQUAL(rejected.Update().GetState(), Esp32Update::State::Failed, ());
+  }
+}
+
+UNIT_TEST(NoGps_Esp32Update_IgnoresSuffixOfVersion)
+{
+  UpdatedBox box;
+  box.SendAllAndRestart();
+  box.Connect("0.3.3-dirty");
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
+}
+
 UNIT_TEST(NoGps_Esp32Update_TellsSizeAndHashOfFirmware)
 {
   UpdatedBox box;
