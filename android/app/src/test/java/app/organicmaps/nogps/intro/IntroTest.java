@@ -21,7 +21,7 @@ public class IntroTest
   {
     final IntroSequence sequence = new IntroSequence();
     assertEquals(IntroStep.MODAL, sequence.step());
-    // The modal is not typed: the checkbox opens the first balloon at once.
+    // The modal is not typed: the accent button opens the first balloon at once.
     assertFalse(sequence.isTyping(TEXT, 0));
     sequence.tap(TEXT, 0);
     assertEquals(IntroStep.BOTTOM, sequence.step());

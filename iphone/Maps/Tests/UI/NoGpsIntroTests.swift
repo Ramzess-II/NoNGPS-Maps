@@ -10,7 +10,7 @@ final class NoGpsIntroTests: XCTestCase {
   func testStepsFollowTheModal() {
     let sequence = NoGpsIntroSequence()
     XCTAssertEqual(sequence.step, .modal)
-    // The modal is not typed: the checkbox opens the first balloon at once.
+    // The modal is not typed: the accent button opens the first balloon at once.
     XCTAssertFalse(sequence.isTyping(text, 0))
     sequence.tap(text, 0)
     XCTAssertEqual(sequence.step, .bottom)
