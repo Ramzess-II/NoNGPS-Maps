@@ -1689,6 +1689,42 @@ UNIT_TEST(NoGps_Engine_GentleBendRemovesAlongError)
   TEST_LESS(alongError(), 15.0, (env.m_engine.GetTripLine()));
 }
 
+// The car marked at 0 drives east at 108 km/h for 25 km without a known place on a road with no bends: the along error
+// is 15 + 0.007 * 25000 = 190 m, a crossing 150 m ahead of the mark is within it, one 330 m ahead is not.
+void DriveLongWayAndTurnLeft(Env & env)
+{
+  MarkCar(env, 0);
+  for (int i = 0; i < 25; ++i)
+    env.Drive(33'333, 108, 0);
+  TEST_EQUAL(TripField(env, "turn"), "NaN", ());
+  TEST_GREATER(env.Last().m_accuracyM, 100, ());
+  env.Drive(3000, 36, -30);
+  env.Drive(3000, 36, 0);
+}
+
+UNIT_TEST(NoGps_Engine_TurnAfterLongWayIsMovedToFarCrossing)
+{
+  PieceRoads roads({{-300, 0, 40'000, 0}, {25'225, 0, 25'225, 400}}, {{25'225, 0}});
+  Env env(true /* inertial */, &roads);
+  DriveLongWayAndTurnLeft(env);
+  // The crossing is 150 m ahead, within the along error: the turn is moved to it, and the place is known there.
+  TestAlmostEqualAbs(East(env.Last().m_position), 25'225, 3);
+  TEST_GREATER(North(env.Last().m_position), 20, ());
+  TEST_LESS(env.Last().m_accuracyM, DeadReckoning::kBaseAccuracyM + 1, ());
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_Engine_TurnAfterLongWayIsNotMovedFartherThanAlongError)
+{
+  PieceRoads roads({{-300, 0, 40'000, 0}, {25'320, 0, 25'320, 400}}, {{25'320, 0}});
+  Env env(true /* inertial */, &roads);
+  DriveLongWayAndTurnLeft(env);
+  // The crossing is 250 m ahead: farther than the along error of 190 m, but within TurnMatcher::kMaxFarSearchM, so
+  // the test fails if the search takes the cap instead of the along error. The car has turned somewhere else.
+  TEST_EQUAL(TripField(env, "turn"), "NaN", ());
+  TEST_LESS(East(env.Last().m_position), 25'200, ());
+}
+
 UNIT_TEST(NoGps_Engine_StopsCarThatLeftRoads)
 {
   Env env(true /* inertial */);
