@@ -853,9 +853,11 @@ class Esp32BleTransport
   {
     final BluetoothGatt gatt = mGatt;
     // The user has removed the pairing of the box in the settings, as the hint about a lost bond asks.
-    if (gatt == null && mState == STATE_BOND_LOST && bondState == BluetoothDevice.BOND_NONE && device != null
+    if (mState == STATE_BOND_LOST && bondState == BluetoothDevice.BOND_NONE && device != null
         && device.equals(mBondLostBox))
     {
+      // A search connection may be open: it is dropped, the hint stays until retry() starts the search.
+      closeGatt();
       retry();
       return;
     }
@@ -869,7 +871,6 @@ class Esp32BleTransport
     }
     else if (bondState == BluetoothDevice.BOND_BONDED)
     {
-      mBonded = true;
       if (!mHeard)
         startWatchdog(CONNECT_WATCHDOG_MS);
       if (mReady)
