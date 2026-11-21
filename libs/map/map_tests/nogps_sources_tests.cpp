@@ -1000,10 +1000,12 @@ UNIT_TEST(NoGps_Esp32Source_SecondPhoneOnlyGetsData)
   box.Line("NGE,1,1,9500,I,PHONE_CONNECTED,ble");
   box.List(false);
   TEST(box.m_source.IsReadOnly(), ());
-  // The events are not asked for more often than once in kListIntervalMs.
+  // The role passes again at once: the event is not throttled.
   size_t const sentBefore = box.SentCount();
   box.Line("NGE,1,2,9600,I,PHONE_LOST,ble");
-  TEST_EQUAL(box.SentCount(), sentBefore, ());
+  TEST_EQUAL(box.SentCount(), sentBefore + 1, ());
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  box.List(true);
 
   // Another link, another order of the phones.
   box.m_source.OnBleState(BleState::Searching);
