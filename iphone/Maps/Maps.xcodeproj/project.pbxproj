@@ -138,6 +138,7 @@
 		D48A5E31FA0C45748F11AD48 /* MWMRoutePointSelectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9C7250731AB471A81905386 /* MWMRoutePointSelectionTests.swift */; };
 		D51CECE188BA883AE1DC41E8 /* MapPanelDraggerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 269EA85AB77A3B550B66E5E2 /* MapPanelDraggerTests.swift */; };
 		D560CC6FC73D20258FF65C5E /* NoGpsFlagsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E779A1A71BDFB9F9F1BA779 /* NoGpsFlagsTests.swift */; };
+		E4B1C0DE7A52C3F100A1B2C3 /* Esp32BleTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B1C0DE7A52C3F100A1B2C4 /* Esp32BleTransportTests.swift */; };
 		A0C47D010000000000000002 /* NoGpsCarMenuTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C47D010000000000000001 /* NoGpsCarMenuTests.swift */; };
 		DB05F1CC1BF340DE002C974C /* drules_default.bin in Resources */ = {isa = PBXBuildFile; fileRef = DB05F1BC1BF340DE002C974C /* drules_default.bin */; };
 		DB05F1CD1BF340DE002C974C /* drules_outdoors.bin in Resources */ = {isa = PBXBuildFile; fileRef = DB05F1BD1BF340DE002C974C /* drules_outdoors.bin */; };
@@ -837,6 +838,7 @@
 		0D79C475750E015F66C8DCC2 /* hr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hr; path = hr.lproj/LocalizableTypes.strings; sourceTree = "<group>"; };
 		0E4F1ADEAB4383C259A9DCEB /* Esp32BleTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Esp32BleTransport.swift; sourceTree = "<group>"; };
 		0E779A1A71BDFB9F9F1BA779 /* NoGpsFlagsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsFlagsTests.swift; sourceTree = "<group>"; };
+		E4B1C0DE7A52C3F100A1B2C4 /* Esp32BleTransportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Esp32BleTransportTests.swift; sourceTree = "<group>"; };
 		A0C47D010000000000000001 /* NoGpsCarMenuTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsCarMenuTests.swift; sourceTree = "<group>"; };
 		0F13484A0000000000000001 /* UITableViewCell+SeparatorInset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UITableViewCell+SeparatorInset.swift"; sourceTree = "<group>"; };
 		165953732CB1D83700CFED7C /* fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = fonts; path = ../../data/fonts; sourceTree = "<group>"; };
@@ -2423,6 +2425,7 @@
 				1A4D381982BD4FCD9308F4D1 /* RoutePointCollectionViewCellTests.swift */,
 				269EA85AB77A3B550B66E5E2 /* MapPanelDraggerTests.swift */,
 				0E779A1A71BDFB9F9F1BA779 /* NoGpsFlagsTests.swift */,
+				E4B1C0DE7A52C3F100A1B2C4 /* Esp32BleTransportTests.swift */,
 				N0GPS1A00000000000000006 /* NoGpsIntroTests.swift */,
 				A0C47D010000000000000001 /* NoGpsCarMenuTests.swift */,
 				6DCDADA4CA235047EE2F0639 /* NavigationSearchWheelTests.swift */,
@@ -5425,6 +5428,7 @@
 				5A07CF7460A24F6BBCA9F174 /* RoutePointCollectionViewCellTests.swift in Sources */,
 				D51CECE188BA883AE1DC41E8 /* MapPanelDraggerTests.swift in Sources */,
 				D560CC6FC73D20258FF65C5E /* NoGpsFlagsTests.swift in Sources */,
+				E4B1C0DE7A52C3F100A1B2C3 /* Esp32BleTransportTests.swift in Sources */,
 				5C0A7E1B3D2F4A6890B1D007 /* BottomMenuPresenterTests.swift in Sources */,
 				N0GPS1B00000000000000006 /* NoGpsIntroTests.swift in Sources */,
 				A0C47D010000000000000002 /* NoGpsCarMenuTests.swift in Sources */,
