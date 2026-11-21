@@ -1073,7 +1073,7 @@ zh-Hant = 關於 Organic Maps
 
 [about_headline]
 comment = Text in About screen
-tags = apple-maps
+tags = android-app,apple-maps
 en = Free for everyone, made with love
 af = Gratis vir almal, gemaak met liefde
 ar = مجاني للجميع ، مصنوع من الحب
@@ -1131,7 +1131,7 @@ zh-Hant = 對每個人都免費，用愛製成
 
 [about_proposition_1]
 comment = Text in About screen
-tags = apple-maps
+tags = android-app,apple-maps
 en = • No ads, no tracking, no data collection
 af = • Geen advertensies, geen nasporing, geen dataversameling
 ar = • لا إعلانات ، لا تتبع ، لا جمع البيانات
@@ -1190,7 +1190,7 @@ zh-Hant = • 沒有廣告，不會跟蹤您，更不會收集您的數據
 
 [about_proposition_2]
 comment = Text in About screen
-tags = apple-maps
+tags = android-app,apple-maps
 en = • No battery drain, works offline
 af = • Geen battery dreineer, werk vanlyn
 ar = • لا يوجد استنزاف للبطارية، يعمل دون اتصال بالإنترنت
@@ -1249,7 +1249,7 @@ zh-Hant = • 無需耗費太多電量，可離線工作
 
 [about_proposition_3]
 comment = Text in About screen
-tags = apple-maps
+tags = android-app,apple-maps
 en = • Fast, minimalist, developed by the community
 af = • Vinnig, minimalisties, ontwikkel deur die gemeenskap
 ar = • سريع وبسيط، تم تطويره بواسطة المجتمع
@@ -37170,7 +37170,7 @@ zh-Hant = 地圖語言
 
 [telegram_url]
 comment = Telegram group url for the "?" About page
-tags = apple-maps
+tags = android-app,apple-maps
 en = https://t.me/OrganicMapsApp
 ar = https://t.me/OrganicMapsApp
 az = https://t.me/OrganicMapsTR
@@ -37213,7 +37213,7 @@ zh-Hant = https://t.me/OrganicMapsApp
 
 [instagram_url]
 comment = Instagram account url for the "?" About page
-tags = apple-maps
+tags = android-app,apple-maps
 en = https://www.instagram.com/organicmaps.app
 ar = https://www.instagram.com/organicmaps.app
 be = https://www.instagram.com/organicmaps.app
@@ -46575,26 +46575,34 @@ en = The speed corrections learned from GPS at different speeds and from your co
 ru = Поправки скорости, измеренные по GPS на разных скоростях и по вашим сдвигам, будут забыты. Делайте это после смены шин или машины. Пока работает GPS, они измеряются заново.
 uk = Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або авто. Поки працює GPS, вони вимірюються наново.
 
+[nogps_menu_profile]
+comment = Main menu row opening the account of the user on the site
+tags = android-app,apple-maps
+en = Profile
+ru = Профиль
+uk = Профіль
+
 [nogps_about_title]
 tags = android-app,apple-maps
 en = About NonGPS Maps
 ru = О NonGPS Maps
 uk = Про NonGPS Maps
 
-[nogps_about_menu]
-tags = android-app
-en = About · Organic Maps
-ru = О приложении · Organic Maps
-uk = Про застосунок · Organic Maps
+[nogps_about_om_menu]
+comment = Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on
+tags = android-app,apple-maps
+en = About Organic Maps
+ru = О приложении Organic Maps
+uk = Про застосунок Organic Maps
 
 [nogps_about_headline]
-tags = android-app
+tags = android-app,apple-maps
 en = Navigation when GPS is jammed or spoofed
 ru = Навигация, когда GPS глушат или подменяют
 uk = Навігація, коли GPS глушать або підміняють
 
 [nogps_about_description]
-tags = android-app
+tags = android-app,apple-maps
 en = Without GPS the car is driven by the inertial navigation: the turns come from the gyroscope, the distance from the car speed via OBD-II. The car is kept on the roads of the offline map.
 ru = Без GPS машину ведёт инерциальная навигация: повороты — по гироскопу, расстояние — по скорости автомобиля из OBD-II. Машина держится дорог офлайн-карты.
 uk = Без GPS авто веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю авто з OBD-II. Авто тримається доріг офлайн-карти.
@@ -46614,13 +46622,13 @@ ru = На основе Organic Maps %@
 uk = На основі Organic Maps %@
 
 [nogps_map_data]
-tags = android-app
+tags = android-app,apple-maps
 en = Map data © OpenStreetMap and Organic Maps
 ru = Данные карт © OpenStreetMap и Organic Maps
 uk = Дані карт © OpenStreetMap і Organic Maps
 
 [nogps_source_code]
-tags = android-app
+tags = android-app,apple-maps
 en = Source code on GitHub
 ru = Исходный код на GitHub
 uk = Вихідний код на GitHub

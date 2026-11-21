@@ -15,7 +15,7 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
   private enum Constants {
     static let refreshInterval: TimeInterval = 0.5
     static let cellId = "NoGpsBoxCell"
-    static let shopURL = URL(string: "https://non-gps.com")!
+    static let shopURL = URL(string: NoGpsLinks.shop)!
     static let fitDetent = "fit"
   }
 

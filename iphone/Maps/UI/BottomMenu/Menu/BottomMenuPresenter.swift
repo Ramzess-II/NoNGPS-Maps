@@ -4,16 +4,28 @@ protocol BottomMenuPresenterProtocol: UITableViewDelegate, UITableViewDataSource
 }
 
 class BottomMenuPresenter: NSObject {
+  /// In the order the sheet shows them, see groups below.
   enum CellType: Int, CaseIterable {
-    case bookmarks
-    case addPlace
-    case recordTrack
-    case downloadMaps
-    case donate
+    case profile
     case settings
     case share
+    case bookmarks
+    case downloadMaps
+    case recordTrack
+    case addPlace
     case about
+    case aboutOrganicMaps
+    case buyBox
+    case donate
   }
+
+  /// What the driver taps on a trip stays apart from what is set up once. The map styles cell above is the first
+  /// group; the first cell of every other group draws a line above itself. Mirrors MainMenuItems on Android.
+  private static let groups: [[CellType]] = [
+    [.profile, .settings, .share],
+    [.bookmarks, .downloadMaps, .recordTrack, .addPlace],
+    [.about, .aboutOrganicMaps, .buyBox, .donate],
+  ]
 
   enum Sections: Int {
     case layers
@@ -23,7 +35,10 @@ class BottomMenuPresenter: NSObject {
   private weak var view: BottomMenuViewProtocol?
   private let interactor: BottomMenuInteractorProtocol
   private let sections: [Sections]
-  private let menuCells: [CellType]
+  /// Internal, not private, so BottomMenuPresenterTests can check the order of the rows.
+  let menuCells: [CellType]
+  /// The rows of menuCells that start a group.
+  let groupStarts: Set<Int>
   private let trackRecorder = TrackRecordingManager.shared
   private let mapsStorage: Storage
   private let countryId: String?
@@ -36,7 +51,19 @@ class BottomMenuPresenter: NSObject {
     self.interactor = interactor
     self.sections = sections
     let disableDonate = Settings.donateUrl() == nil
-    menuCells = CellType.allCases.filter { disableDonate ? $0 != .donate : true }
+    var cells: [CellType] = []
+    var starts: Set<Int> = []
+    for (index, group) in Self.groups.enumerated() {
+      let rows = disableDonate ? group.filter { $0 != .donate } : group
+      guard !rows.isEmpty else { continue }
+      // The map styles cell draws a line under itself, so the first group needs none of its own.
+      if index > 0 {
+        starts.insert(cells.count)
+      }
+      cells.append(contentsOf: rows)
+    }
+    menuCells = cells
+    groupStarts = starts
     let mapsStorage = Storage.shared()
     self.mapsStorage = mapsStorage
     countryId = mapsStorage.countryForViewportCenter()
@@ -98,7 +125,10 @@ extension BottomMenuPresenter {
       return cell
     case .items:
       let cell = tableView.dequeueReusableCell(cell: BottomMenuItemCell.self)!
+      cell.setStartsGroup(groupStarts.contains(indexPath.row))
       switch menuCells[indexPath.row] {
+      case .profile:
+        cell.configure(image: UIImage(systemName: "person.crop.circle")!, title: L("nogps_menu_profile"))
       case .bookmarks:
         cell.configure(image: UIImage(resource: .icMenuBookmarkList), title: L("bookmarks"))
       case .addPlace:
@@ -128,6 +158,10 @@ extension BottomMenuPresenter {
                        title: L("share_my_location"))
       case .about:
         cell.configure(image: UIImage(systemName: "info.circle")!, title: L("nogps_about_title"))
+      case .aboutOrganicMaps:
+        cell.configure(image: UIImage(resource: .icMenuQuestion), title: L("nogps_about_om_menu"))
+      case .buyBox:
+        cell.configure(image: UIImage(systemName: "cart")!, title: L("nogps_box_buy"))
       }
       return cell
     }
@@ -151,6 +185,8 @@ extension BottomMenuPresenter {
       return;
     case .items:
       switch menuCells[indexPath.row] {
+      case .profile:
+        interactor.openProfile()
       case .bookmarks:
         interactor.openBookmarks()
       case .addPlace:
@@ -184,6 +220,10 @@ extension BottomMenuPresenter {
         }
       case .about:
         interactor.openAbout()
+      case .aboutOrganicMaps:
+        interactor.openAboutOrganicMaps()
+      case .buyBox:
+        interactor.buyBox()
       }
     }
   }

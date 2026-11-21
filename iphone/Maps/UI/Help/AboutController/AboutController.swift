@@ -18,16 +18,10 @@ final class AboutController: MWMViewController {
     static let socialMediaCollectionViewSpacing: CGFloat = 25
     static let socialMediaCollectionNumberOfItemsInRowCompact: CGFloat = 5
     static let socialMediaCollectionNumberOfItemsInRowRegular: CGFloat = 10
-    static let versionSpacing: CGFloat = 4
-    static let organicMapsURL = "https://organicmaps.app"
   }
 
   private let scrollView = UIScrollView()
   private let stackView = UIStackView()
-  private let logoImageView = UIImageView()
-  private let appNameLabel = UILabel()
-  private let versionLabel = UILabel()
-  private let upstreamVersionLabel = UILabel()
   private let headerTitleLabel = UILabel()
   private let additionalInfoStackView = UIStackView()
   private var donationView: DonationView?
@@ -84,29 +78,7 @@ final class AboutController: MWMViewController {
 private extension AboutController {
   func setupViews() {
     func setupTitle() {
-      title = L("nogps_about_title")
-    }
-
-    // NonGPS Maps and its version first, the Organic Maps it is based on below with less accent.
-    func setupVersions() {
-      appNameLabel.setFontStyle(.bold22, color: .blackPrimary)
-      appNameLabel.text = "NonGPS Maps"
-      appNameLabel.textAlignment = .center
-
-      // Strong left-to-right unicode direction characters keep the versions readable in RTL languages.
-      versionLabel.setFontStyle(.regular16, color: .blackPrimary)
-      versionLabel.text = String(format: L("nogps_version"), "\u{2066}\(AppInfo.shared().appVersion)\u{2069}")
-      versionLabel.textAlignment = .center
-      versionLabel.numberOfLines = 0
-      versionLabel.isUserInteractionEnabled = true
-      versionLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(versionTapped)))
-
-      upstreamVersionLabel.setFontStyle(.regular13, color: .blackSecondary)
-      upstreamVersionLabel.text = String(format: L("nogps_based_on"), "\u{2066}\(AppInfo.shared().upstreamVersion)\u{2069}")
-      upstreamVersionLabel.textAlignment = .center
-      upstreamVersionLabel.numberOfLines = 0
-      upstreamVersionLabel.isUserInteractionEnabled = true
-      upstreamVersionLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(upstreamVersionTapped)))
+      title = L("nogps_about_om_menu")
     }
 
     func setupScrollAndStack() {
@@ -117,11 +89,6 @@ private extension AboutController {
       stackView.distribution = .fill
       stackView.alignment = .center
       stackView.spacing = 15
-    }
-
-    func setupLogo() {
-      logoImageView.contentMode = .scaleAspectFit
-      logoImageView.image = UIImage(named: "logo")
     }
 
     func setupHeaderTitle() {
@@ -192,9 +159,7 @@ private extension AboutController {
     view.setStyle(.pressBackground)
 
     setupTitle()
-    setupVersions()
     setupScrollAndStack()
-    setupLogo()
     setupHeaderTitle()
     setupAdditionalInfo()
     setupDonation()
@@ -210,12 +175,6 @@ private extension AboutController {
   func arrangeViews() {
     view.addSubview(scrollView)
     scrollView.addSubview(stackView)
-    stackView.addArrangedSubview(logoImageView)
-    stackView.addArrangedSubview(appNameLabel)
-    stackView.addArrangedSubview(versionLabel)
-    stackView.addArrangedSubview(upstreamVersionLabel)
-    stackView.setCustomSpacing(Constants.versionSpacing, after: appNameLabel)
-    stackView.setCustomSpacing(Constants.versionSpacing, after: versionLabel)
     stackView.addArrangedSubview(headerTitleLabel)
     stackView.addArrangedSubviewWithSeparator(additionalInfoStackView)
     if let donationView {
@@ -231,7 +190,6 @@ private extension AboutController {
   func layoutViews() {
     scrollView.translatesAutoresizingMaskIntoConstraints = false
     stackView.translatesAutoresizingMaskIntoConstraints = false
-    logoImageView.translatesAutoresizingMaskIntoConstraints = false
     additionalInfoStackView.translatesAutoresizingMaskIntoConstraints = false
     infoTableView.translatesAutoresizingMaskIntoConstraints = false
     socialMediaCollectionView.translatesAutoresizingMaskIntoConstraints = false
@@ -248,9 +206,6 @@ private extension AboutController {
       stackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -20),
       stackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
       stackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
-
-      logoImageView.heightAnchor.constraint(equalToConstant: 64),
-      logoImageView.widthAnchor.constraint(equalTo: logoImageView.heightAnchor),
 
       additionalInfoStackView.widthAnchor.constraint(equalTo: stackView.widthAnchor),
 
@@ -359,15 +314,6 @@ private extension AboutController {
 // MARK: - Actions
 
 private extension AboutController {
-  /// With the commit of the build and the Organic Maps version: the line tells which build was tested.
-  @objc func versionTapped() {
-    copyToClipboard("NonGPS Maps \u{2066}\(AppInfo.shared().fullVersion)\u{2069}")
-  }
-
-  @objc func upstreamVersionTapped() {
-    openUrl(Constants.organicMapsURL)
-  }
-
   @objc func osmMapsDataButtonTapped() {
     copyToClipboard(Self.formattedMapsDataVersion())
   }
