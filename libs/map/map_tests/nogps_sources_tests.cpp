@@ -1149,6 +1149,18 @@ UNIT_TEST(NoGps_Esp32Update_LateNewFirmwareAfterTimeoutIsDone)
     early.m_source.OnBleState(BleState::Searching);
     early.Connect("0.3.3");
     TEST_EQUAL(early.Update().GetError(), "MOVING", ());
+
+    // An error of the box after OTA_END stays a failure even when the same version is reported later.
+    UpdatedBox rejected;
+    rejected.StartUpdate();
+    rejected.Accept(",240,4096");
+    rejected.Line("NGO,1," + std::to_string(rejected.m_image.size()) + ",RECV");
+    TEST_EQUAL(rejected.LastCommand().second, "OTA_END", ());
+    rejected.Line("NGO,1," + std::to_string(rejected.m_image.size()) + ",ERR_SIGNATURE");
+    TEST_EQUAL(rejected.Update().GetState(), Esp32Update::State::Failed, ());
+    rejected.m_source.OnBleState(BleState::Searching);
+    rejected.Connect("0.3.3");
+    TEST_EQUAL(rejected.Update().GetState(), Esp32Update::State::Failed, ());
   }
 }
 

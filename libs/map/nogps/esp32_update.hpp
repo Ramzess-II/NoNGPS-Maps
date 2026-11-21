@@ -96,6 +96,7 @@ public:
 
 private:
   void SendPieces();
+  bool IsLateTimeout() const;
   void Fail(std::string const & error);
   void Check();
   void StartCheckTimer();

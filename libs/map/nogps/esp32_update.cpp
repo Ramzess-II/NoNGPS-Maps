@@ -175,7 +175,7 @@ void Esp32Update::OnLinkLost()
   if (m_state == State::Verifying)
     SetState(State::Restarting);
   // A box that has taken the whole firmware restarts even when the update is given up.
-  if (m_state == State::Restarting || (m_state == State::Failed && m_endSent))
+  if (m_state == State::Restarting || (m_state == State::Failed && IsLateTimeout()))
     m_linkLost = true;
   else if (IsActive())
     Fail("LINK");
@@ -184,7 +184,7 @@ void Esp32Update::OnLinkLost()
 void Esp32Update::OnBoxFirmware(std::string const & version)
 {
   // A slow update that was given up as failed may still have worked.
-  if (!m_linkLost || (m_state != State::Restarting && !(m_state == State::Failed && m_endSent)))
+  if (!m_linkLost || (m_state != State::Restarting && !(m_state == State::Failed && IsLateTimeout())))
     return;
   if (VersionNumbers(version) != VersionNumbers(m_version))
   {
@@ -229,6 +229,12 @@ void Esp32Update::SendPieces()
     m_link.SendFirmwarePiece(piece);
     m_sent += size;
   }
+}
+
+// Only a timeout after OTA_END leaves it open that the box took the firmware: an error of the box says it didn't.
+bool Esp32Update::IsLateTimeout() const
+{
+  return m_endSent && (m_error == "NO_REPLY" || m_error == "NO_RESTART");
 }
 
 void Esp32Update::Fail(std::string const & error)
