@@ -45,6 +45,7 @@ import app.organicmaps.R;
 import app.organicmaps.nogps.BoxBottomSheet;
 import app.organicmaps.nogps.NoGpsFlagRecorder;
 import app.organicmaps.nogps.NoGpsFlags;
+import app.organicmaps.nogps.intro.IntroStep;
 import app.organicmaps.routing.RoutingPlanViewModel;
 import app.organicmaps.sdk.Framework;
 import app.organicmaps.sdk.downloader.MapManager;
@@ -110,6 +111,8 @@ public class MapButtonsController extends Fragment
   // Of every car button but the first one.
   private final Map<View, View> mCarDividers = new HashMap<>();
   private boolean mCarPanelShown = true;
+  // The intro of the first start points at the panels: they are held open while it runs, see IntroOverlay.
+  private boolean mIntroMode;
   private final NoGpsFlagRecorder mFlagRecorder = new NoGpsFlagRecorder();
   private final ActivityResultLauncher<String> mMicPermission =
       registerForActivityResult(new ActivityResultContracts.RequestPermission(), (granted) -> {
@@ -457,6 +460,15 @@ public class MapButtonsController extends Fragment
       mCarButtonsShown.put(mVoiceFlagButton, logging);
     updateVoiceFlagButton();
 
+    if (mIntroMode)
+    {
+      // The panel is slid out on a fresh install, and the balloon of the intro would point at nothing. The buttons it
+      // talks about are held visible; the flags of the testers keep their own rule.
+      if (mReverseButton != null)
+        mCarButtonsShown.put(mReverseButton, true);
+      if (mManualPositionButton != null)
+        mCarButtonsShown.put(mManualPositionButton, true);
+    }
     final boolean hasCarButtons = mCarButtonsShown.containsValue(true);
     // Nothing to correct: the panel slides out as it is, its buttons are hidden after that.
     if (hasCarButtons || !mCarPanelShown)
@@ -624,6 +636,36 @@ public class MapButtonsController extends Fragment
       if (!mCarPanelShown)
         applyCarButtons();
     });
+  }
+
+  /**
+   * Holds the panels the intro of the first start points at open with their buttons, and gives them back to their own
+   * rules when it ends.
+   */
+  public void setIntroMode(boolean intro)
+  {
+    mIntroMode = intro;
+    // The intro ends with the fragment, e.g. when the navigation replaces it: nothing to give back.
+    if (!isAdded() || mFrame == null)
+      return;
+    if (intro)
+    {
+      showButton(true, MapButtons.zoom);
+      if (mNavMyPosition != null)
+        mNavMyPosition.showButton(true);
+    }
+    updatePositionStatus();
+    if (!intro)
+      updateButtonsVisibility();
+  }
+
+  /**
+   * The panel a balloon of the intro points at, null in the layout of the navigation.
+   */
+  @Nullable
+  public View getIntroAnchor(@NonNull IntroStep step)
+  {
+    return mFrame == null ? null : mFrame.findViewById(step.getAnchorId());
   }
 
   private void showBoxSheet(@NonNull BoxBottomSheet.Page page)
@@ -906,7 +948,7 @@ public class MapButtonsController extends Fragment
 
   private void updateButtonsVisibility(final float translation, @Nullable View parent)
   {
-    if (parent == null)
+    if (parent == null || mIntroMode)
       return;
     for (Map.Entry<MapButtons, View> entry : mButtonsMap.entrySet())
     {

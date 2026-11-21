@@ -74,7 +74,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   public static final String RESULT_CLOSED = TAG + ".closed";
   private static final long UPDATE_INTERVAL_MS = 500;
   private static final long RING_DURATION_MS = 2400;
-  private static final String SHOP_URL = "https://non-gps.com";
   private static final String BOX_NAME = "NonGPS-OBD";
   private static final String ARG_PAGE = "page";
   private static final String STATE_PAGE = "page";
@@ -422,7 +421,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mShop = view.findViewById(R.id.box_shop);
     mBuyText = view.findViewById(R.id.box_buy_text);
     mSearchBuyText = view.findViewById(R.id.box_search_buy_text);
-    view.findViewById(R.id.box_buy).setOnClickListener(v -> Utils.openUrl(requireContext(), SHOP_URL));
+    view.findViewById(R.id.box_buy).setOnClickListener(v -> Utils.openUrl(requireContext(), NoGpsLinks.SHOP_URL));
 
     mSearch = view.findViewById(R.id.box_search);
     final int[] dots = {R.id.box_step0_dot, R.id.box_step1_dot, R.id.box_step2_dot, R.id.box_step3_dot};

@@ -1978,3 +1978,27 @@
 
 /* Toast after another app, e.g. Google Maps, shares a link to the app, but the link has no place: usually a short link while offline */
 "nogps_shared_no_place" = "The shared link has no place. Connect to the internet and share it again.";
+
+/* Title of the dialog shown once, on the first start of the app */
+"nogps_intro_title" = "Navigation without GPS";
+
+/* Text of the dialog of the first start: what the app is and that it needs the sensor box */
+"nogps_intro_text" = "This app drives your car on the map without GPS. The NonGPS sensor box takes the speed from the car and the turns from its own sensors, and the app draws the car from them: in a tunnel, in a yard, under a bridge, where GPS is lost. Without the box this is an ordinary offline map.";
+
+/* Button of the dialog of the first start, opens the video about the app */
+"nogps_intro_video" = "Watch the video";
+
+/* Checkbox that closes the dialog of the first start */
+"nogps_intro_understand" = "Yes, I understand";
+
+/* Balloon of the first start pointing at the bottom bar */
+"nogps_intro_bottom" = "The cars, the box and GPS are here.";
+
+/* Balloon of the first start pointing at the panel with the zoom buttons */
+"nogps_intro_right" = "Zoom and the direction of the map. Hold to move it.";
+
+/* Appended to nogps_intro_right on iOS only, where the zoom buttons also take a slide */
+"nogps_intro_right_swipe" = "Slide +/− to zoom.";
+
+/* Balloon of the first start pointing at the panel with the car buttons */
+"nogps_intro_left" = "Turn the car or point it by hand. Hold to move it.";

@@ -69,6 +69,10 @@ public final class Config
    * True if the first start animation has been seen.
    */
   private static final String KEY_MISC_FIRST_START_DIALOG_SEEN = "FirstStartDialogSeen";
+  /**
+   * True once the intro of the first start has been shown, see nogps.intro.IntroSequence.
+   */
+  private static final String KEY_MISC_NOGPS_INTRO_SHOWN = "NoGpsIntroShown";
 
   private Config() {}
 
@@ -467,6 +471,20 @@ public final class Config
   public static void setFirstStartDialogSeen(@NonNull Context context)
   {
     mPrefs.edit().putBoolean(KEY_MISC_FIRST_START_DIALOG_SEEN, true).apply();
+  }
+
+  /**
+   * Config.isFirstLaunch() is consumed in SplashActivity, so the intro of the map has its own key. It is set as soon
+   * as the intro is shown, so an app killed halfway through it does not show it again.
+   */
+  public static boolean isNoGpsIntroShown()
+  {
+    return getBool(KEY_MISC_NOGPS_INTRO_SHOWN);
+  }
+
+  public static void setNoGpsIntroShown()
+  {
+    setBool(KEY_MISC_NOGPS_INTRO_SHOWN);
   }
 
   public static boolean isSearchHistoryEnabled()

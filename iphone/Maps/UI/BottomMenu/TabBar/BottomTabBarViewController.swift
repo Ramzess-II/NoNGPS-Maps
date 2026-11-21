@@ -29,6 +29,10 @@ class BottomTabBarViewController: UIViewController {
 
   @objc static var controller: BottomTabBarViewController? { MWMMapViewControlsManager.manager()?.tabBarController }
 
+  /// What the bottom bar tells about: the cars, the box and GPS. The balloon of the intro of the first start points at
+  /// it, see NoGpsIntroController.
+  var introAnchor: UIView { statusBar }
+
   override func viewDidLoad() {
     super.viewDidLoad()
     view.alpha = 0 // Hide the view until it receives a first available area update.
