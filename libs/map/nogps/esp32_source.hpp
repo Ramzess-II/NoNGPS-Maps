@@ -60,6 +60,8 @@ public:
   static int constexpr kMaxInfoRequests = 3;
   // The box answers a command at once, a lost reply ends the reading of the values of the car.
   static int64_t constexpr kCarReplyTimeoutMs = 5000;
+  // The list of the phones is asked again because of BUSY or an event not more often than this.
+  static int64_t constexpr kListIntervalMs = 2000;
 
   /// What the box does about a new phone, see StartAddPhone().
   enum class AddPhone
@@ -153,6 +155,7 @@ public:
   bool HasPhones() const;
   /// Asks the box for its phones again.
   void ListPhones();
+  void ListPhonesThrottled();
   /// The phones of the box from its last list in this connection.
   std::optional<esp32::Phones> const & GetPhones() const { return m_phones; }
   /// Removes a phone from the box, this one too: the listener is told then.
@@ -285,7 +288,7 @@ private:
   std::optional<esp32::Phones> m_phones;
   // The list of the phones asked, 0 if none.
   int m_listId = 0;
-  int64_t m_listSentMs = 0;
+  int64_t m_listSentMs = -kListIntervalMs;
   struct ForgetRequest
   {
     int m_id = 0;
@@ -294,12 +297,13 @@ private:
     int64_t m_sentMs = 0;
   };
   std::optional<ForgetRequest> m_forget;
-  // The box has answered BUSY: another phone came first. Until the list tells otherwise or the link is lost.
+  // The last list says another phone changes the box. Not set without the list or a link.
   bool m_readOnly = false;
   struct AddPhoneRequest
   {
     std::string m_code;
     int m_id = 0;
+    int64_t m_sentMs = 0;
     AddPhone m_state = AddPhone::Opening;
     int64_t m_openMs = 0;
     // The last event of the box before the code was sent: the box tells it has opened the window by a newer one,
