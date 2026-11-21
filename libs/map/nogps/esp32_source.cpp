@@ -695,7 +695,7 @@ void Esp32Source::OnEvent(esp32::Event const & event)
   else if ((event.m_code == "PHONE_LOST" || event.m_code == "PHONE_CONNECTED") && m_phones &&
            m_phones->m_phones.size() >= 2)
   {
-    ListPhonesThrottled();
+    ListPhones();
   }
   if (event.m_number > lastNumber + 1)
     RequestLostEvents(lastNumber + 1);
