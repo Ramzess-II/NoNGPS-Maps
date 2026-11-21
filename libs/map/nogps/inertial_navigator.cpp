@@ -94,6 +94,7 @@ void InertialNavigator::Stop()
   m_esp32 = nullptr;
   m_source.reset();
   m_speedKmh = -1;
+  m_rawSpeedKmh = -1;
 }
 
 void InertialNavigator::Calibrate()
@@ -352,6 +353,15 @@ void InertialNavigator::OnSpeedTableGps(Fix const & gps)
   {
     double const dt = (gps.m_timeMs - *m_speedTableGpsMs) / 1000.0;
     double const accelerationMps2 = (*gps.m_speedMps - m_speedTableGpsSpeedMps) / dt;
+    SpeedUnit const was = m_speedUnit;
+    m_speedUnit.OnSample(m_rawSpeedKmh, *gps.m_speedMps, dt, accelerationMps2);
+    if (was.Get() != m_speedUnit.Get())
+    {
+      LOG(LINFO, ("Speed unit factor", was.Get(), "->", m_speedUnit.Get()));
+      // Learned in the other unit.
+      ClearSpeedCalibration();
+      m_speedKmh = static_cast<int>(std::lround(m_rawSpeedKmh * m_speedUnit.Get()));
+    }
     // Compared with the table before the sample is in it.
     if (auto const scale = m_speedTable.GetScale(m_speedKmh);
         scale && SpeedTable::IsGoodSample(m_speedKmh, *gps.m_speedMps, dt, accelerationMps2) &&
@@ -374,6 +384,7 @@ void InertialNavigator::SaveSpeedTable()
   m_unsavedSpeedSamples = 0;
   m_storage.Set(Storage::kSpeedTable, m_speedTable.Serialize());
   m_storage.Set(Storage::kSpeedFactor, m_speedFactor.Serialize());
+  m_storage.Set(Storage::kSpeedUnit, m_speedUnit.Serialize());
   m_storage.Set(Storage::kSpeedLag, m_speedLag.Serialize());
   LogSpeedCalibration();
 }
@@ -381,9 +392,9 @@ void InertialNavigator::SaveSpeedTable()
 void InertialNavigator::LogSpeedCalibration() const
 {
   // For the trip log: the path of a trip is calculated again with these.
-  LOG(LINFO,
-      ("Speed table =", m_speedTable.ToString(), "factor =", m_speedFactor.Get(), "lag =", m_speedLag.Get(),
-       "measured =", m_speedLag.IsMeasured(), "scale =", m_speedScale.Get(), "rough =", m_roughSpeedTable.ToString()));
+  LOG(LINFO, ("Speed table =", m_speedTable.ToString(), "factor =", m_speedFactor.Get(), "unit =", m_speedUnit.Get(),
+              "lag =", m_speedLag.Get(), "measured =", m_speedLag.IsMeasured(), "scale =", m_speedScale.Get(),
+              "rough =", m_roughSpeedTable.ToString()));
 }
 
 std::string InertialNavigator::GetCalibrationLine() const
@@ -399,6 +410,7 @@ std::string InertialNavigator::GetCalibrationLine() const
   add("table", m_speedTable.Serialize(), SpeedTable().Serialize());
   add("rough", m_roughSpeedTable.Serialize(), SpeedTable().Serialize());
   add("factor", m_speedFactor.Serialize(), SpeedFactor().Serialize());
+  add("unit", m_speedUnit.Serialize(), SpeedUnit().Serialize());
   add("lag", m_speedLag.Serialize(), SpeedLag().Serialize());
   if (!m_boxAccelId.empty() && m_boxAccelSpeed.GetSamples() > 0)
     line += " accel=" + m_boxAccelId + ":" + m_boxAccelSpeed.Serialize();
@@ -451,6 +463,10 @@ void InertialNavigator::RestoreSpeedCalibration()
   m_speedTable.Deserialize(m_storage.Get<std::string>(Storage::kSpeedTable, ""));
   m_roughSpeedTable.Deserialize(m_storage.Get<std::string>(Storage::kRoughSpeedTable, ""));
   m_speedFactor.Deserialize(m_storage.Get<std::string>(Storage::kSpeedFactor, ""));
+  m_speedUnit.Deserialize(m_storage.Get<std::string>(Storage::kSpeedUnit, ""));
+  // Another car may have another unit.
+  if (m_rawSpeedKmh >= 0)
+    m_speedKmh = static_cast<int>(std::lround(m_rawSpeedKmh * m_speedUnit.Get()));
   m_speedLag.Deserialize(m_storage.Get<std::string>(Storage::kSpeedLag, ""));
   // The speedometer error is the same on every trip.
   m_speedScale.Set(m_storage.Get<double>(Storage::kSpeedScale, 1));
@@ -1175,8 +1191,10 @@ std::optional<Esp32Source::DataRate> InertialNavigator::GetEsp32DataRate() const
   return m_esp32->GetDataRate();
 }
 
-void InertialNavigator::OnSpeed(int speedKmh, int64_t timeMs)
+void InertialNavigator::OnSpeed(int rawSpeedKmh, int64_t timeMs)
 {
+  m_rawSpeedKmh = rawSpeedKmh;
+  int const speedKmh = static_cast<int>(std::lround(rawSpeedKmh * m_speedUnit.Get()));
   m_speedKmh = speedKmh;
   m_speedTimeMs = timeMs;
   m_moving = speedKmh > 0;

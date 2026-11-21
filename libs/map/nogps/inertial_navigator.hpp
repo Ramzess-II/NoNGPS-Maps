@@ -747,7 +747,9 @@ private:
   DeadReckoning m_deadReckoning;
   HeadingSource m_headingSource = HeadingSource::None;
   int64_t m_lastOutputMs = 0;
+  // The speed of the car converted by m_speedUnit, and as the car told it.
   int m_speedKmh = -1;
+  int m_rawSpeedKmh = -1;
   int64_t m_speedTimeMs = 0;
 
   // The speed error estimated from the corrections of the user, used until GPS measures it.
@@ -785,6 +787,7 @@ private:
   SpeedTable m_roughSpeedTable{false /* learnsOffset */};
   // The change of the GPS table told by GPS and the roads, see kMinRoadFactorStretchM.
   SpeedFactor m_speedFactor;
+  SpeedUnit m_speedUnit;
   // The distance driven since the place known along the road, in the ranges of the speed table: by the car speed
   // and as calculated, by the car speed and the GPS table, and the error of the calculated distance at that place. The
   // snapping moves the position along the road too, e.g. onto the next branch at a bend, which takes away a part of the

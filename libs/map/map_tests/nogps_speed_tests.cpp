@@ -315,6 +315,61 @@ UNIT_TEST(NoGps_SpeedFactor_LimitsAndKeepsBetweenTrips)
   restored.Deserialize("broken");
   TEST_EQUAL(restored.Get(), 1, ());
 }
+UNIT_TEST(NoGps_SpeedUnit_LearnsMph)
+{
+  SpeedUnit unit;
+  TEST_EQUAL(unit.Get(), 1, ());
+  // The box says 62 mph while GPS drives 100 km/h: 27.8 m/s for 1 s.
+  for (int i = 0; i < 40; ++i)
+    unit.OnSample(62, 100 / 3.6, 1, 0);
+  // 1100 m: too short yet.
+  TEST_EQUAL(unit.Get(), 1, ());
+  for (int i = 0; i < 20; ++i)
+    unit.OnSample(62, 100 / 3.6, 1, 0);
+  TEST_EQUAL(unit.Get(), SpeedUnit::kMph, ());
+
+  SpeedUnit restored;
+  restored.Deserialize(unit.Serialize());
+  TEST_EQUAL(restored.Get(), SpeedUnit::kMph, ());
+  restored.Deserialize("broken");
+  TEST_EQUAL(restored.Get(), 1, ());
+}
+
+UNIT_TEST(NoGps_SpeedUnit_HasHysteresis)
+{
+  SpeedUnit unit;
+  for (int i = 0; i < 60; ++i)
+    unit.OnSample(62, 100 / 3.6, 1, 0);
+  TEST_EQUAL(unit.Get(), SpeedUnit::kMph, ());
+  // 25 % of km/h: the share is 75 %, below kMphShare, but mph stays.
+  for (int i = 0; i < 20; ++i)
+    unit.OnSample(100, 100 / 3.6, 1, 0);
+  TEST_EQUAL(unit.Get(), SpeedUnit::kMph, ());
+  for (int i = 0; i < 60; ++i)
+    unit.OnSample(100, 100 / 3.6, 1, 0);
+  TEST_EQUAL(unit.Get(), 1, ());
+}
+
+UNIT_TEST(NoGps_SpeedUnit_KeepsKmhCarsAndIgnoresBadSamples)
+{
+  SpeedUnit unit;
+  // A car with the scale 1.2 is km/h.
+  for (int i = 0; i < 100; ++i)
+    unit.OnSample(83, 100 / 3.6, 1, 0);
+  TEST_EQUAL(unit.Get(), 1, ());
+  // Accelerating, slow, or a break between samples tell nothing.
+  for (int i = 0; i < 100; ++i)
+  {
+    unit.OnSample(62, 100 / 3.6, 1, 2);
+    unit.OnSample(10, 100 / 3.6 / 10, 1, 0);
+    unit.OnSample(62, 100 / 3.6, 5, 0);
+  }
+  TEST_EQUAL(unit.Get(), 1, ());
+  // Some mph-like spoofed GPS among the km/h ones is not a unit.
+  for (int i = 0; i < 20; ++i)
+    unit.OnSample(62, 100 / 3.6, 1, 0);
+  TEST_EQUAL(unit.Get(), 1, ());
+}
 // An accelerometer fixed in a car somehow: its axes are turned against the car, the gravity is in it.
 struct CarAccelerometer
 {

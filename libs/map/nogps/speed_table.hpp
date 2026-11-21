@@ -104,6 +104,48 @@ private:
   std::array<double, kRanges> m_sec{};
 };
 
+/// The unit of the car speed: a box of a car with mph tells 62 where the real speed is 100 km/h. The scale of the table
+/// is clamped to 0.8-1.25 and its samples are filtered within 15 %, so a ratio of 1.61 is learned here, from GPS, and
+/// the car speed is converted before anything else uses it.
+class SpeedUnit
+{
+public:
+  static double constexpr kMph = 1.609344;
+  // Used after this distance only, older distances are forgotten gradually.
+  static double constexpr kMinDistanceM = 1500;
+  static double constexpr kMaxDistanceM = 20'000;
+  // Samples at a steady, not too slow speed only: the ratio is rounded and the car reports its speed later than GPS.
+  static int constexpr kMinSpeedKmh = 20;
+  static double constexpr kMaxAccelerationMps2 = 1;
+  static double constexpr kMaxSampleDtSec = 2;
+  // A ratio of GPS to the car speed within this of 1 is km/h with the scale of the car, within this of kMph is mph.
+  static double constexpr kMaxScaleRatio = 1.25;
+  static double constexpr kMinMphRatio = 1.4;
+  static double constexpr kMaxMphRatio = 1.85;
+  // mph is told when most of the distance, not a part of it, is driven so.
+  static double constexpr kMphShare = 0.8;
+  // km/h is back when the share falls below this: a share near kMphShare must not flip the unit, it clears the tables.
+  static double constexpr kKmhShare = 0.5;
+
+  /// Takes into account the raw car speed and the real one measured at the same time.
+  void OnSample(double carSpeedKmh, double gpsSpeedMps, double dtSec, double accelerationMps2);
+
+  /// \returns the ratio the raw car speed is multiplied by: 1 or kMph.
+  double Get() const;
+
+  void Clear();
+  std::string Serialize() const;
+  /// Restores the distances kept before, a broken one is ignored.
+  void Deserialize(std::string_view unit);
+
+private:
+  void UpdateUnit();
+
+  double m_mphM = 0;
+  double m_kmhM = 0;
+  bool m_mph = false;
+};
+
 /// A change of the speed error common to all speeds, e.g. other tyres or the cold: the table keeps the error of every
 /// speed over 5-10 km of it, which a rarely driven speed takes weeks to drive, and this follows the last kilometers
 /// at any speed. On November 6, 2026 the error changed by 1.2% overnight, and the table still ran 1% ahead a day later.
