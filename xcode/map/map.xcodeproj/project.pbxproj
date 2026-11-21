@@ -175,6 +175,8 @@
 		61FF3CDF8DFAE152B84F53D1 /* motion_source.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 346B03C4DEFF198B6A2CD9ED /* motion_source.cpp */; };
 		F48364C194A6810D714F1A43 /* phone_motion.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D5C9B356A2EA74A26578D42 /* phone_motion.cpp */; };
 		31020396F993FF96B99D52BF /* phone_motion.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 9E7DD5AE4FB416223BD36BED /* phone_motion.hpp */; };
+		13F3B58730D45887B5F8700A /* potholes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DC958851DC5E84CC8BAF8BEE /* potholes.cpp */; };
+		84003B391BCAFDA6B02EB0DB /* potholes.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 1B6E13182C13338C8A4080D9 /* potholes.hpp */; };
 		5EE2F1681AC2B4DC80AD1155 /* scheduler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A1CF93AD7F8DDBF8B8D3C815 /* scheduler.cpp */; };
 		E7495B394376D44DBF6279E2 /* scheduler.hpp in Headers */ = {isa = PBXBuildFile; fileRef = DF541F14DFD115B823F247F5 /* scheduler.hpp */; };
 		A9222C817F624200328C7E07 /* service.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EB4778F3BD4DF6A709ABAB09 /* service.cpp */; };
@@ -385,6 +387,8 @@
 		346B03C4DEFF198B6A2CD9ED /* motion_source.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = motion_source.cpp; sourceTree = "<group>"; };
 		9D5C9B356A2EA74A26578D42 /* phone_motion.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = phone_motion.cpp; sourceTree = "<group>"; };
 		9E7DD5AE4FB416223BD36BED /* phone_motion.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = phone_motion.hpp; sourceTree = "<group>"; };
+		DC958851DC5E84CC8BAF8BEE /* potholes.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = potholes.cpp; sourceTree = "<group>"; };
+		1B6E13182C13338C8A4080D9 /* potholes.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = potholes.hpp; sourceTree = "<group>"; };
 		A1CF93AD7F8DDBF8B8D3C815 /* scheduler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = scheduler.cpp; sourceTree = "<group>"; };
 		DF541F14DFD115B823F247F5 /* scheduler.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = scheduler.hpp; sourceTree = "<group>"; };
 		EB4778F3BD4DF6A709ABAB09 /* service.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = service.cpp; sourceTree = "<group>"; };
@@ -622,6 +626,8 @@
 				346B03C4DEFF198B6A2CD9ED /* motion_source.cpp */,
 				9D5C9B356A2EA74A26578D42 /* phone_motion.cpp */,
 				9E7DD5AE4FB416223BD36BED /* phone_motion.hpp */,
+				DC958851DC5E84CC8BAF8BEE /* potholes.cpp */,
+				1B6E13182C13338C8A4080D9 /* potholes.hpp */,
 				A1CF93AD7F8DDBF8B8D3C815 /* scheduler.cpp */,
 				DF541F14DFD115B823F247F5 /* scheduler.hpp */,
 				EB4778F3BD4DF6A709ABAB09 /* service.cpp */,
@@ -692,6 +698,7 @@
 				7FE05A6E13EC417A84352102 /* inertial_navigator.hpp in Headers */,
 				8A50E93EC62CB714D9C23487 /* map_api.hpp in Headers */,
 				31020396F993FF96B99D52BF /* phone_motion.hpp in Headers */,
+				84003B391BCAFDA6B02EB0DB /* potholes.hpp in Headers */,
 				E7495B394376D44DBF6279E2 /* scheduler.hpp in Headers */,
 				AA78EC1F862F0EEC92E4FEB5 /* service.hpp in Headers */,
 				4E42F6DDF67564ACC056C267 /* storage.hpp in Headers */,
@@ -916,6 +923,7 @@
 				1C5409F39F6C18B09C389D00 /* inertial_navigator.cpp in Sources */,
 				61FF3CDF8DFAE152B84F53D1 /* motion_source.cpp in Sources */,
 				F48364C194A6810D714F1A43 /* phone_motion.cpp in Sources */,
+				13F3B58730D45887B5F8700A /* potholes.cpp in Sources */,
 				5EE2F1681AC2B4DC80AD1155 /* scheduler.cpp in Sources */,
 				A9222C817F624200328C7E07 /* service.cpp in Sources */,
 				32B3B035A2469E95B32D3678 /* storage.cpp in Sources */,

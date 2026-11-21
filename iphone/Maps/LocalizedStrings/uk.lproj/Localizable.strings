@@ -1411,6 +1411,9 @@
 /* Name of a car the user hasn't named, by the four characters of the name of its sensor box: "Car C47D" */
 "nogps_car_default_name" = "Авто %1$@";
 
+/* Title of the place page of a pothole on the map: the car has hit it, how hard (percent of what the sensor box measures) and how many times */
+"nogps_pothole_name" = "Яма %1$d%%, ударів: %2$d";
+
 /* State of a car in the list of the cars: its box is connected now */
 "nogps_car_connected" = "Підключена";
 

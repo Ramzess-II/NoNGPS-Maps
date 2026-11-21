@@ -22,9 +22,9 @@ namespace nogps
 //                                 the car there, unless the trip driven again has kept a car of its own by then
 //   J <ms>                        the time jumps on: nothing has happened meanwhile
 //   L <ms> <state>                Bluetooth of the box, as DebugPrint(BleState) tells it
-//   B <ms> <duration ms> <yaw mdeg> <km/h> <flags hex> <h1> <h2> <up>
+//   B <ms> <duration ms> <yaw mdeg> <km/h> <flags hex> <h1> <h2> <up> [<jolt>]
 //                                 a part of a second of the box that ends at the time: its rotation, the speed of
-//                                 the car, the acceleration in mm/s2 or "-" without it
+//                                 the car, the acceleration and its jolt in mm/s2 or "-" without it
 //   G <ms> <lat> <lon> <accuracy m> <m/s or -> <bearing or -> <its accuracy or ->     a position of GPS
 //   X <ms> <0|1>   A <ms> <0|1>   the user turns GPS off or on, the manual mode on or off
 //   T <ms> <lat> <lon>            the user taps the map

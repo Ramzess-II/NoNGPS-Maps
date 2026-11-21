@@ -120,6 +120,29 @@ drape_ptr<df::UserPointMark::TitlesInfo> NoGpsCarMark::GetTitleDeclEx(settings::
   return titles;
 }
 
+NoGpsPotholeMark::NoGpsPotholeMark(m2::PointD const & ptOrg) : UserMark(ptOrg, UserMark::Type::NOGPS_POTHOLE) {}
+
+void NoGpsPotholeMark::SetPothole(int pct, std::string const & name)
+{
+  SetDirty();
+  m_pct = pct;
+  m_name = name;
+}
+
+drape_ptr<df::UserPointMark::SymbolNameZoomInfo> NoGpsPotholeMark::GetSymbolNames() const
+{
+  auto symbol = make_unique_dp<SymbolNameZoomInfo>();
+  symbol->insert(std::make_pair(kMinZoom, "bookmark-pothole-m"));
+  return symbol;
+}
+
+df::ColorConstant NoGpsPotholeMark::GetColorConstant() const
+{
+  if (m_pct >= 50)
+    return "BookmarkRed";
+  return m_pct >= 25 ? "BookmarkOrange" : "BookmarkYellow";
+}
+
 std::string DebugPrint(UserMark::Type type)
 {
   switch (type)
@@ -138,6 +161,7 @@ std::string DebugPrint(UserMark::Type type)
   case UserMark::Type::COLORED: return "COLORED";
   case UserMark::Type::ROUTE_ALT: return "ROUTE_ALT";
   case UserMark::Type::NOGPS_CAR: return "NOGPS_CAR";
+  case UserMark::Type::NOGPS_POTHOLE: return "NOGPS_POTHOLE";
   case UserMark::Type::USER_MARK_TYPES_COUNT: return "USER_MARK_TYPES_COUNT";
   case UserMark::Type::USER_MARK_TYPES_COUNT_MAX: return "USER_MARK_TYPES_COUNT_MAX";
   }

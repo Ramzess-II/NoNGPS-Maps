@@ -361,10 +361,10 @@ def make_input(args):
 
     def accel_value(text):
         try:
-            h1, h2, up, _ = [float(v) for v in text.split(',')]
+            h1, h2, up, jolt = [float(v) for v in text.split(',')]
         except ValueError:
             return None
-        return round(h1 * 1000), round(h2 * 1000), round(up * 1000)
+        return round(h1 * 1000), round(h2 * 1000), round(up * 1000), round(jolt * 1000)
 
     gyro = slices_of(gyro_lines, lambda v: v)
     accel = slices_of(accel_lines, accel_value)
@@ -387,6 +387,14 @@ def make_input(args):
             if 0 <= j < len(accel) and (best is None or abs(accel[j][0] - ms) < abs(best[0] - ms)):
                 best = accel[j]
         return best[2] if best and abs(best[0] - ms) <= window else None
+
+    def accel_field(ms):
+        """The acceleration of the part nearest in 3 s. Its jolt only if the part is of this time: a part taken for
+        other times too would drive one hit of a pothole again."""
+        a = accel_at(ms, 3000)
+        if not a:
+            return '-'
+        return '%d %d %d %d' % (a[:3] + (a[3] if accel_at(ms, 150) else 0,))
 
     def flags_at(ms):
         i = bisect.bisect_right(trip_times, ms) - 1
@@ -432,9 +440,8 @@ def make_input(args):
             count = round((begin - stood_from) / SLICE_MS)
             for k in range(count):
                 t = stood_from + (begin - stood_from) * (k + 1) / count
-                a = accel_at(t, 3000)
                 records.append((t, 5, 'B %d %d 0 0 %s %s' % (round(t), round((begin - stood_from) / count),
-                                                             flags_at(t), '%d %d %d' % a if a else '-')))
+                                                             flags_at(t), accel_field(t))))
         elif gap > SLICE_MS / 2:
             # Nothing is written about the box while the car stands. A second of a driving car is lost from the
             # log now and then: the car has driven on with the speed of the trip line of that second, and has
@@ -443,13 +450,11 @@ def make_input(args):
             moves = gap <= 10_000 and any(speed_at(previous + gap * (i + 1) / count) > 0 for i in range(count))
             for i in range(count):
                 t = previous + gap * (i + 1) / count
-                a = accel_at(t, 3000)
                 records.append((t, 5, 'B %d %d %d %d %s %s' % (
                     round(t), round(gap / count), round(between * 1000 / count) if moves else 0,
-                    speed_at(t) if moves else 0, flags_at(t), '%d %d %d' % a if a else '-')))
-        a = accel_at(at, 150) or accel_at(at, 3000)
+                    speed_at(t) if moves else 0, flags_at(t), accel_field(t))))
         records.append((at, 5, 'B %d %d %d %d %s %s' % (round(at), round(duration), round(delta * 1000), speed,
-                                                        flags_at(at), '%d %d %d' % a if a else '-')))
+                                                        flags_at(at), accel_field(at))))
         previous = at
     if not records:
         print('no box data in the logs of', args.day)

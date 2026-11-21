@@ -229,6 +229,8 @@ public final class OrganicMaps implements DefaultLifecycleObserver
     nativeAddLocalization("core_my_position", mContext.getString(R.string.core_my_position));
     // The core puts the id of the box for %s.
     nativeAddLocalization("nogps_car_default_name", mContext.getString(R.string.nogps_car_default_name, "%s"));
+    // The core puts the numbers into the text as it is.
+    nativeAddLocalization("nogps_pothole_name", mContext.getString(R.string.nogps_pothole_name));
     nativeAddLocalization("core_placepage_unknown_place", mContext.getString(R.string.core_placepage_unknown_place));
     nativeAddLocalization("open_in_app", mContext.getString(R.string.open_in_app));
     nativeAddLocalization("postal_code", mContext.getString(R.string.postal_code));

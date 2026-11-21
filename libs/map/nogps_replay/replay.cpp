@@ -597,7 +597,11 @@ private:
       return;
     int h2 = 0;
     int up = 0;
+    int jolt = 0;
     bool const hasAccel = h1 != "-" && (in >> h2 >> up);
+    // Older inputs have no jolt.
+    if (hasAccel && !(in >> jolt))
+      jolt = 0;
     int64_t const startMdeg = m_yawMdeg;
     for (int i = 1; i <= kLines; ++i)
     {
@@ -610,7 +614,7 @@ private:
                         static_cast<long long>(boxMs), static_cast<long long>(startMdeg + yawMdeg * i / kLines),
                         speedKmh, flags.c_str());
       if (hasAccel)
-        std::snprintf(body + length, sizeof(body) - length, ",%s,%d,%d,0", h1.c_str(), h2, up);
+        std::snprintf(body + length, sizeof(body) - length, ",%s,%d,%d,%d", h1.c_str(), h2, up, jolt);
       char crc[8];
       std::snprintf(crc, sizeof(crc), "%04X", esp32::Crc16(body));
       m_engine->OnEsp32BleBytes(std::string("$") + body + "*" + crc + "\r\n");

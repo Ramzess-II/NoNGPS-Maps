@@ -9,6 +9,7 @@
 #include "map/nogps/gyro_calibrator.hpp"
 #include "map/nogps/inertial_navigator.hpp"
 #include "map/nogps/motion_source.hpp"
+#include "map/nogps/potholes.hpp"
 #include "map/nogps/scheduler.hpp"
 #include "map/nogps/sprint_timer.hpp"
 #include "map/nogps/storage.hpp"
@@ -419,6 +420,13 @@ public:
   /// Called when GetParkedCars() may have changed, e.g. to draw them on the map.
   void SetParkedCarsListener(std::function<void()> listener) { m_parkedCarsListener = std::move(listener); }
 
+  /// Keeps the potholes in the file and loads them from it. Without a file they are kept while the engine lives.
+  void SetPotholesFile(std::string const & path);
+  /// The potholes the car has hit, see PotholeDetector.
+  std::vector<Pothole> const & GetPotholes() const { return m_potholes.Get(); }
+  /// Called when GetPotholes() has changed, e.g. to draw them on the map.
+  void SetPotholesListener(std::function<void()> listener) { m_potholesListener = std::move(listener); }
+
   /// The firmwares of the ESP32 sensor box that come with the application: the box should work with the one
   /// for it, the application is tested with it.
   void SetFirmwares(std::vector<Firmware> firmwares);
@@ -460,6 +468,7 @@ private:
   void OnBoxLink(bool linked);
   void OnSprint(SprintTimer::Result const & result) override;
   void OnPeerPlace(PeerPlace const & place) override;
+  void OnJolt(double joltMs2, int speedKmh) override;
 
   static PositionSource SourceOf(Fix const & fix);
   int64_t AgeMs(Fix const & fix) const;
@@ -513,6 +522,8 @@ private:
   /// \returns true if it is shown there.
   bool MoveParkedCar();
   void OnParkedCarsChanged();
+  /// Where a pothole hit now is: the trusted GPS position or the mark on a road, nothing otherwise.
+  std::optional<ms::LatLon> GetPotholePlace() const;
   /// Writes the values of the car the phone has changed to its box, see BoxCarValues.
   /// \param now at once, else not more often than BoxCarValues::kSaveIntervalMs.
   void SaveBoxCarValues(bool now);
@@ -559,6 +570,10 @@ private:
   Delegate & m_delegate;
   MapApi & m_map;
   std::function<void()> m_parkedCarsListener;
+  std::function<void()> m_potholesListener;
+  PotholeDetector m_potholeDetector;
+  PotholeStore m_potholes;
+  std::string m_potholesFile;
   // The storage of the application with the values of the current car: m_storage.
   CarStorage m_cars;
   Storage & m_storage;
@@ -568,6 +583,8 @@ private:
   bool m_active = false;
   // The position passed to the platform the last time.
   std::optional<Fix> m_savedLocation;
+  // The position shown the last time: m_savedLocation, or the car between GPS positions.
+  std::optional<ms::LatLon> m_shownPosition;
   // In the manual mode GPS is ignored (it is jammed or spoofed) and the position is set by the user.
   bool m_manualMode = false;
   bool m_gpsDisabled = false;

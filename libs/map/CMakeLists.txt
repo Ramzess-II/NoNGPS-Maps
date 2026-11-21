@@ -82,6 +82,8 @@ set(SRC
   nogps/peer_sync.hpp
   nogps/phone_motion.cpp
   nogps/phone_motion.hpp
+  nogps/potholes.cpp
+  nogps/potholes.hpp
   nogps/road_walker.cpp
   nogps/road_walker.hpp
   nogps/roads.hpp

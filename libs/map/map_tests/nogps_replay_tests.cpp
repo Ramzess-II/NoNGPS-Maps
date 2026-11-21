@@ -151,6 +151,24 @@ UNIT_TEST(NoGps_Replay_DrivesTripLog)
   TEST(trips.back().find(" link=BLE/CONNECTED ") != std::string::npos, (trips.back()));
 }
 
+UNIT_TEST(NoGps_Replay_DrivesJolt)
+{
+  // The car drives on from where it was kept and hits a pothole: the jolt of the part is the one of the box lines.
+  std::string input =
+      "D 11-02\n"
+      "S 36000000 2\n"
+      "C 36000000 53.9040184 27.5567595 90.0 1 60000\n"
+      "S 36000000 1\n"
+      "L 36000000 CONNECTED\n"
+      "J 36001000\n" +
+      Standing(36001000, 36002000);
+  for (int64_t ms = 36002200; ms <= 36005000; ms += 200)
+    input += "B " + std::to_string(ms) + " 200 0 36 17 0 0 9810 " + (ms == 36003000 ? "12000" : "500") + "\n";
+  input += "S 36005000 0\n";
+  auto const log = Drive(input);
+  TEST(log.find("POTHOLE 31 12.0 53.904") != std::string::npos, (log));
+}
+
 UNIT_TEST(NoGps_Replay_BoxOfTrip)
 {
   // The box of the trip is told to the navigation: its info line is accepted.
