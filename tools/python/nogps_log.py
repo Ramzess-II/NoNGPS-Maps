@@ -20,6 +20,7 @@ stationary trips.
 """
 
 import bisect
+import collections
 import csv
 import io
 import math
@@ -162,6 +163,10 @@ RULES = [(name, re.compile(pattern)) for name, pattern in RULES]
 RULE_FOLLOW_M = 300
 # A rule that fired in so few trips was made for one case: to drop or merge.
 RULE_RARE_TRIPS = 2
+# What Engine::PlaceMarkByGps wants of the fix: kGpsMaxAgeMs, kGpsMarkMaxAccuracyM, kGpsMarkMarginM.
+GPS_MARK_MAX_AGE_S = 5
+GPS_MARK_MAX_ACCURACY_M = 300
+GPS_MARK_MARGIN_M = 50
 SENSORS = ('ACCB', 'ACCB_BEFORE', 'ACC', 'GYRO')
 SLICES = 5
 
@@ -631,6 +636,28 @@ def anomalies(rows, events):
     return result
 
 
+def gps_mark_failure(row, driven_m):
+    """Why a tap on the road lost panel could not place the mark by the GPS of the TRIP line, None if it could:
+    Engine::PlaceMarkByGps without the road search."""
+    fixes = [(num(row, key + '_age'), key) for key in ('gps', 'fused') if key + '_lat' in row]
+    fixes = [(age, key) for age, key in fixes if age is not None]
+    if not fixes:
+        return 'no fix in the line'
+    age, key = min(fixes)
+    accuracy = num(row, key + '_acc') or 0
+    if row.get('spoofed') == '1':
+        return 'GPS is spoofed'
+    if age > GPS_MARK_MAX_AGE_S:
+        return 'fix older than %d s' % GPS_MARK_MAX_AGE_S
+    if accuracy > GPS_MARK_MAX_ACCURACY_M:
+        return 'fix accuracy over %d m' % GPS_MARK_MAX_ACCURACY_M
+    mark = (float(row['lat']), float(row['lon']))
+    away = nogps_replay.meters(mark, (float(row[key + '_lat']), float(row[key + '_lon'])))
+    if away > driven_m + (num(row, 'acc') or 0) + accuracy + GPS_MARK_MARGIN_M:
+        return 'fix too far from the mark'
+    return None
+
+
 class Trip:
     def __init__(self, number, group, first, after, driven):
         self.id = number
@@ -721,6 +748,45 @@ class Trip:
                 counts['tap'] += 1
             else:
                 counts['ok'] += 1
+        return result
+
+    def road_losses(self):
+        """The road losses of the trip (a row with lost=1 after one without), each as a dict: t, seconds, taps (the
+        user tapped the map before the loss ended), fixable_s (seconds after the loss when the GPS tap of the road
+        lost panel would first have worked, None if never) and why (what stopped it most often).
+
+        The check is that of Engine::PlaceMarkByGps on the TRIP line: the newer of the GPS and fused fixes is not
+        older than GPS_MARK_MAX_AGE_S, is accurate to GPS_MARK_MAX_ACCURACY_M, GPS is not spoofed, and the fix is
+        not farther from the mark than the distance driven since the loss, the accuracies of the mark and of the fix
+        and GPS_MARK_MARGIN_M. The road near the fix is not checked: the log has no map, so "fixable" is an upper
+        bound. A tap on the map or the end of the loss ends the time the GPS tap could be used in."""
+        taps = [e['t'] for e in self.events if e['cat'] == 'user' and e['name'] == 'tap']
+        # iOS writes a line of the network location between the lines of the mark, with lost=0.
+        rows = [row for row in self.rows if row.get('src') != 'NETWORK']
+        result = []
+        for i, row in enumerate(rows):
+            if row.get('lost') != '1' or (i and rows[i - 1].get('lost') == '1'):
+                continue
+            end = next((j for j in range(i, len(rows)) if rows[j].get('lost') != '1'), len(rows))
+            ended = rows[end]['t'] if end < len(rows) else rows[-1]['t']
+            tap = next((t for t in taps if row['t'] < t <= ended), None)
+            fixable, reasons, driven = None, collections.Counter(), 0.0
+            for j in range(i, end):
+                current = rows[j]
+                if tap is not None and current['t'] > tap:
+                    break
+                if j > i:
+                    before = rows[j - 1]
+                    kmh = num(before, 'speed') or num(before, 'gps_kmh') or 0
+                    driven += kmh / 3.6 * min(5, (current['t'] - before['t']) / 1000)
+                why = gps_mark_failure(current, driven)
+                if not why:
+                    fixable = (current['t'] - row['t']) / 1000
+                    break
+                reasons[why] += 1
+            why = reasons.most_common(1)[0][0] if reasons else 'no fix in the line'
+            result.append(dict(t=row['t'], seconds=(ended - row['t']) / 1000, taps=tap is not None,
+                               fixable_s=fixable, why=why))
         return result
 
     def details(self):
@@ -945,6 +1011,35 @@ def print_rules(analysis):
                                                 '; '.join(notes)))
 
 
+def print_losses(analysis):
+    """The road losses of all the driven trips: for each, whether a tap on the road lost panel would have placed
+    the mark by GPS (see Trip.road_losses), and the totals per set of nogps_replay.py days. The trip logs have no
+    taps on the panel, so a replay can't tell it."""
+    held_out = nogps_replay.held_out_days()
+    totals = {}
+    print('%-6s %-8s %8s  %-8s %-9s  %s' % ('day', 'at', 'lasted', 'ended by', 'GPS tap', 'why not'))
+    for trip in analysis.trips:
+        if not trip.driven:
+            continue
+        for loss in trip.road_losses():
+            day = from_ms(loss['t']).strftime('%m-%d')
+            fixed = loss['fixable_s'] is not None
+            print('%-6s %s %8s  %-8s %-9s  %s' % (day, clock(loss['t']), duration(loss['seconds'] * 1000),
+                                                  'map tap' if loss['taps'] else 'no tap',
+                                                  'after %ds' % loss['fixable_s'] if fixed else 'no',
+                                                  '' if fixed else loss['why']))
+            t = totals.setdefault(nogps_replay.set_of(day, held_out), collections.Counter())
+            t['losses'] += 1
+            t['fixable'] += fixed
+            t['taps'] += loss['taps']
+            t['tap_fixable'] += fixed and loss['taps']
+    print()
+    print('%-10s %7s %9s %9s %17s' % ('set', 'losses', 'fixable', 'map taps', 'map taps fixable'))
+    for name in ('made from', 'held out'):
+        t = totals.get(name, collections.Counter())
+        print('%-10s %7d %9d %9d %17d' % (name, t['losses'], t['fixable'], t['taps'], t['tap_fixable']))
+
+
 def print_events(trip, start, end, category, text, full):
     rx = re.compile(text, re.I) if text else None
     for e in trip.events:
@@ -1003,6 +1098,7 @@ def main():
         description='What the trip log viewer shows, as text: for a terminal and for Claude Code.',
         epilog='''commands:
   trips   the trips of the logs, --all with the stationary ones
+  losses  the road losses: would a tap on the road lost panel have placed the mark by GPS
   rules   how often each rule of the core fired over all the trips, and what came next
   trip    a trip: stats, error from GPS, counts, events, anomalies
   events  the events of a trip, --from/--to HH:MM[:SS], --cat road, --grep regex, --full
@@ -1010,7 +1106,7 @@ def main():
   rows    TRIP fields second by second: --fields a,b,c, --every N s, --from/--to
   replay  the trip against a nogps-replay-out.txt: --replay file''',
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('command', choices=['trips', 'rules', 'trip', 'events', 'state', 'rows', 'replay'])
+    parser.add_argument('command', choices=['trips', 'losses', 'rules', 'trip', 'events', 'state', 'rows', 'replay'])
     parser.add_argument('logs', nargs='+', help='the logs folder, logs.zip or log files; log-*.log, app*.log, '
                         'log.txt and log.zip of the earlier versions too')
     parser.add_argument('--year', type=int, help='the year of an Android log without its header')
@@ -1030,6 +1126,8 @@ def main():
     analysis = Analysis(load_paths(args.logs), args.year)
     if args.command == 'trips':
         return print_trips(analysis, args.all)
+    if args.command == 'losses':
+        return print_losses(analysis)
     if args.command == 'rules':
         return print_rules(analysis)
     if args.trip is None or not 0 <= args.trip < len(analysis.trips):
