@@ -335,6 +335,21 @@ UNIT_TEST(NoGps_SpeedUnit_LearnsMph)
   TEST_EQUAL(restored.Get(), 1, ());
 }
 
+UNIT_TEST(NoGps_SpeedUnit_HasHysteresis)
+{
+  SpeedUnit unit;
+  for (int i = 0; i < 60; ++i)
+    unit.OnSample(62, 100 / 3.6, 1, 0);
+  TEST_EQUAL(unit.Get(), SpeedUnit::kMph, ());
+  // 25 % of km/h: the share is 75 %, below kMphShare, but mph stays.
+  for (int i = 0; i < 20; ++i)
+    unit.OnSample(100, 100 / 3.6, 1, 0);
+  TEST_EQUAL(unit.Get(), SpeedUnit::kMph, ());
+  for (int i = 0; i < 60; ++i)
+    unit.OnSample(100, 100 / 3.6, 1, 0);
+  TEST_EQUAL(unit.Get(), 1, ());
+}
+
 UNIT_TEST(NoGps_SpeedUnit_KeepsKmhCarsAndIgnoresBadSamples)
 {
   SpeedUnit unit;

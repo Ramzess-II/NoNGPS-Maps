@@ -464,6 +464,9 @@ void InertialNavigator::RestoreSpeedCalibration()
   m_roughSpeedTable.Deserialize(m_storage.Get<std::string>(Storage::kRoughSpeedTable, ""));
   m_speedFactor.Deserialize(m_storage.Get<std::string>(Storage::kSpeedFactor, ""));
   m_speedUnit.Deserialize(m_storage.Get<std::string>(Storage::kSpeedUnit, ""));
+  // Another car may have another unit.
+  if (m_rawSpeedKmh >= 0)
+    m_speedKmh = static_cast<int>(std::lround(m_rawSpeedKmh * m_speedUnit.Get()));
   m_speedLag.Deserialize(m_storage.Get<std::string>(Storage::kSpeedLag, ""));
   // The speedometer error is the same on every trip.
   m_speedScale.Set(m_storage.Get<double>(Storage::kSpeedScale, 1));
