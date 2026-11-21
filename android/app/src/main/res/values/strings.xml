@@ -1037,10 +1037,8 @@
     <string name="nogps_box_buy_text">The NonGPS box with motion sensors keeps the car on the map where GPS is jammed or lost.</string>
     <!-- Button opening the page of the shop -->
     <string name="nogps_box_buy">Buy the box</string>
-    <!-- Header of the list of the cars on the box screen: each car has its own sensor box -->
-    <string name="nogps_cars">Cars</string>
-    <!-- Under the current car's name at the top of the box screen: tapping the name opens the list of the cars, where the user switches, renames or forgets them -->
-    <string name="nogps_cars_subtitle">Switch or manage cars</string>
+    <!-- Under the current car's name at the top of the box screen: tapping the name opens the page of that car, where the user sets it up or switches to another car -->
+    <string name="nogps_cars_subtitle">Set up the car or switch cars</string>
     <!-- State of a car in the list of the cars: its box is connected now -->
     <string name="nogps_car_connected">Connected</string>
     <!-- State of a car in the list of the cars: the app takes this car until a box connects -->
@@ -1049,10 +1047,6 @@
     <string name="nogps_car_last_seen">Last connected %1$s</string>
     <!-- State of a car in the list of the cars: its box is awake near the phone, the car may be switched to -->
     <string name="nogps_car_nearby">Nearby</string>
-    <!-- Button in the row of a car in the list of the cars, next to "Nearby": the app takes this car and connects to its box -->
-    <string name="nogps_car_switch">Switch</string>
-    <!-- Action for a car in the list of the cars: the app takes this car and connects to its box -->
-    <string name="nogps_car_drive">Switch to this car</string>
     <!-- Title of the dialog that renames a car -->
     <string name="nogps_car_name">Car name</string>
     <!-- Action for a car in the list of the cars, and the button that confirms it -->
@@ -1064,12 +1058,14 @@
     <!-- Button under the list of the cars: search the sensor box of another car -->
     <string name="nogps_car_add">Add a car</string>
     <!-- State of the sensor box, shown after its name: the box has phones, a new one is added on one of them -->
-    <string name="nogps_box_bt_pairing_by_phone">found, but not paired with this phone. On a phone paired with the box, open Box, tap the car name at the top, then the car and Add a phone, and enter the code here. No paired phone at hand? Turn Bluetooth off on the other phones that were paired with the box. Plug the box in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts this phone for 2 minutes with the code 123456, unless it was changed, and forgets the other phones</string>
+    <string name="nogps_box_bt_pairing_by_phone">found, but not paired with this phone. On a phone paired with the box, open Box, tap the car name at the top, then Add a phone, and enter the code here. No paired phone at hand? Turn Bluetooth off on the other phones that were paired with the box. Plug the box in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts this phone for 2 minutes with the code 123456, unless it was changed, and forgets the other phones</string>
     <!-- State of the sensor box, shown after its name: the box has 4 phones and takes no new one -->
-    <string name="nogps_box_bt_pairing_full">found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car name at the top, the car). No paired phone at hand? Turn Bluetooth off on the other phones that were paired with the box. Plug the box in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts this phone for 2 minutes with the code 123456, unless it was changed, and forgets the other phones</string>
+    <string name="nogps_box_bt_pairing_full">found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car name at the top). No paired phone at hand? Turn Bluetooth off on the other phones that were paired with the box. Plug the box in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts this phone for 2 minutes with the code 123456, unless it was changed, and forgets the other phones</string>
     <!-- State of the sensor box, shown after its name: the box is of no car of the user, and the user has the most cars -->
-    <string name="nogps_box_bt_car_limit">found, but it is of no car of this phone, and the phone has the most cars. Forget a car first (Box, the car name at the top, the car, Forget the car)</string>
-    <!-- Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car -->
+    <string name="nogps_box_bt_car_limit">found, but it is of no car of this phone, and the phone has the most cars. Forget a car first (Box, the car name at the top, Forget the car)</string>
+    <!-- Heading of the group of the best timed runs on the page of a car -->
+    <string name="nogps_car_records">Records</string>
+    <!-- Heading of the group of the phones paired with the sensor box of the car on the page of a car -->
     <string name="nogps_car_phones">Phones</string>
     <!-- Under a phone in the list of the phones of the sensor box: it is the phone the user holds -->
     <string name="nogps_phone_this">this phone</string>
@@ -1217,8 +1213,8 @@
     <string name="nogps_gps_block_hint">The box and your marks place the car. For places where GPS is spoofed but the app doesn\'t see it.</string>
     <!-- Under the disabled switch Ignore GPS in the Box sheet: no box is heard -->
     <string name="nogps_gps_block_needs_box">GPS can be ignored only while a box is connected: nothing else would move the car.</string>
-    <!-- At the top of the Cars page of the Box sheet -->
-    <string name="nogps_cars_text">Each box is one car with its own calibration and parking spot. Tap a car to drive it, rename it or forget it.</string>
+    <!-- At the top of the page of a car in the Box sheet -->
+    <string name="nogps_cars_text">Each box is one car with its own calibration and parking spot.</string>
     <!-- On the Add a car page while the box of the new car is searched -->
     <string name="nogps_car_add_text">Power on the box of the new car near the phone: the car is added together with the box in it.</string>
     <!-- Section of the Box page: how the car speed is corrected -->

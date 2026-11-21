@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The top of a page of the Box sheet: Back and the title, set by BoxBottomSheet. -->
+<!-- The top of a page of the Box sheet: Back and the title, set by BoxBottomSheet. On the car page the title is a
+     drop-down of the cars: BoxBottomSheet makes it clickable and gives it a chevron. -->
 <LinearLayout
   xmlns:android="http://schemas.android.com/apk/res/android"
   xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -18,9 +19,12 @@
     app:srcCompat="?homeAsUpIndicator" />
   <TextView
     android:id="@+id/page_title"
-    android:layout_width="0dp"
+    android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:layout_weight="1"
+    android:background="?selectableItemBackground"
+    android:drawablePadding="4dp"
+    android:gravity="center_vertical"
+    android:minHeight="48dp"
     android:textAppearance="?android:textAppearanceLarge"
     android:textStyle="bold" />
 </LinearLayout>

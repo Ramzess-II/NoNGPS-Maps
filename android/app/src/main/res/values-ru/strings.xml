@@ -1047,10 +1047,8 @@
     <string name="nogps_box_buy_text">Блок NonGPS с датчиками движения держит машину на карте там, где GPS глушат или он пропал.</string>
     <!-- Button opening the page of the shop -->
     <string name="nogps_box_buy">Купить блок</string>
-    <!-- Header of the list of the cars on the box screen: each car has its own sensor box -->
-    <string name="nogps_cars">Машины</string>
-    <!-- Under the current car's name at the top of the box screen: tapping the name opens the list of the cars, where the user switches, renames or forgets them -->
-    <string name="nogps_cars_subtitle">Сменить или настроить машины</string>
+    <!-- Under the current car's name at the top of the box screen: tapping the name opens the page of that car, where the user sets it up or switches to another car -->
+    <string name="nogps_cars_subtitle">Настроить машину или сменить её</string>
     <!-- State of a car in the list of the cars: its box is connected now -->
     <string name="nogps_car_connected">Подключена</string>
     <!-- State of a car in the list of the cars: the app takes this car until a box connects -->
@@ -1059,10 +1057,6 @@
     <string name="nogps_car_last_seen">Последнее подключение %1$s</string>
     <!-- State of a car in the list of the cars: its box is awake near the phone, the car may be switched to -->
     <string name="nogps_car_nearby">Рядом</string>
-    <!-- Button in the row of a car in the list of the cars, next to "Nearby": the app takes this car and connects to its box -->
-    <string name="nogps_car_switch">Переключить</string>
-    <!-- Action for a car in the list of the cars: the app takes this car and connects to its box -->
-    <string name="nogps_car_drive">Переключиться на эту машину</string>
     <!-- Title of the dialog that renames a car -->
     <string name="nogps_car_name">Название машины</string>
     <!-- Action for a car in the list of the cars, and the button that confirms it -->
@@ -1074,10 +1068,12 @@
     <!-- Button under the list of the cars: search the sensor box of another car -->
     <string name="nogps_car_add">Добавить машину</string>
     <!-- State of the sensor box, shown after its name: the box has phones, a new one is added on one of them -->
-    <string name="nogps_box_bt_pairing_by_phone">найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на имя машины вверху, затем на машину и «Добавить телефон» и введите код здесь. Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны</string>
+    <string name="nogps_box_bt_pairing_by_phone">найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на имя машины вверху, затем «Добавить телефон» и введите код здесь. Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны</string>
     <!-- State of the sensor box, shown after its name: the box has 4 phones and takes no new one -->
-    <string name="nogps_box_bt_pairing_full">найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху, машина). Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны</string>
-    <!-- Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car -->
+    <string name="nogps_box_bt_pairing_full">найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху). Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны</string>
+    <!-- Heading of the group of the best timed runs on the page of a car -->
+    <string name="nogps_car_records">Рекорды</string>
+    <!-- Heading of the group of the phones paired with the sensor box of the car on the page of a car -->
     <string name="nogps_car_phones">Телефоны</string>
     <!-- Under a phone in the list of the phones of the sensor box: it is the phone the user holds -->
     <string name="nogps_phone_this">этот телефон</string>
@@ -1225,8 +1221,8 @@
     <string name="nogps_gps_block_hint">Машину ведут блок и ваши метки. Для мест, где GPS подменён, а приложение этого не видит.</string>
     <!-- Under the disabled switch Ignore GPS in the Box sheet: no box is heard -->
     <string name="nogps_gps_block_needs_box">GPS можно игнорировать, только когда подключён блок: иначе машину ничто не поведёт.</string>
-    <!-- At the top of the Cars page of the Box sheet -->
-    <string name="nogps_cars_text">Каждый блок — это одна машина со своей калибровкой и местом парковки. Нажмите на машину, чтобы ехать на ней, переименовать или забыть её.</string>
+    <!-- At the top of the page of a car in the Box sheet -->
+    <string name="nogps_cars_text">Каждый блок — это одна машина со своей калибровкой и местом парковки.</string>
     <!-- On the Add a car page while the box of the new car is searched -->
     <string name="nogps_car_add_text">Включите блок новой машины рядом с телефоном: машина добавится вместе с блоком в ней.</string>
     <!-- Section of the Box page: how the car speed is corrected -->

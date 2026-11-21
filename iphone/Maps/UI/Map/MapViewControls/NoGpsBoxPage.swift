@@ -145,7 +145,7 @@ final class NoGpsBoxPage: MWMTableViewController {
       return Section(rows: valueRows(.obdState, .obdBaud))
     case .car:
       let mismatch = status.boxValues.contains { $0.kind == .voltageMismatch && $0.value == "1" }
-      // The name opens the page of the car: its name, its phones.
+      // The car leads to its box now, not the box to the car: the name is told here, nothing more.
       var rows: [Row] = [.speed]
       if currentCar != nil {
         rows.append(.carName)
@@ -235,8 +235,7 @@ final class NoGpsBoxPage: MWMTableViewController {
       content = UIListContentConfiguration.valueCell()
       content.text = L("nogps_car_name")
       content.secondaryText = currentCar.map { NoGpsBoxSheet.carName($0) }
-      cell.accessoryType = .disclosureIndicator
-      cell.selectionStyle = .default
+      cell.selectionStyle = .none
     case .speedLag:
       content = UIListContentConfiguration.subtitleCell()
       content.text = L("nogps_speed_lag")
@@ -291,10 +290,6 @@ final class NoGpsBoxPage: MWMTableViewController {
       Self.confirmClearSpeed(from: self) { [weak self] in self?.refresh() }
     case .calibration:
       navigationController?.pushViewController(NoGpsCalibrationPage(), animated: true)
-    case .carName:
-      if let car = currentCar {
-        navigationController?.pushViewController(CarPageViewController(carId: car.carId), animated: true)
-      }
     default:
       break
     }

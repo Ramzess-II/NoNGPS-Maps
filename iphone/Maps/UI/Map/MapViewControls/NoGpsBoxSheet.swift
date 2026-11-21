@@ -1,6 +1,6 @@
-/// The sensor box and GPS of the car side by side: each tile opens its page, the title opens the cars. GPS is blocked
-/// for the car here. Without a box it is searched while the sheet is open, step by step, and the sheet offers to buy
-/// one.
+/// The sensor box and GPS of the car side by side: each tile opens its page, the title opens the page of the car driven
+/// now. GPS is blocked for the car here. Without a box it is searched while the sheet is open, step by step, and the
+/// sheet offers to buy one.
 final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegate {
   /// Where the sheet opens: the map leads the user to the Box page or to the calibration.
   enum Page: Equatable {
@@ -130,17 +130,17 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     root.selectDetent(for: navigation.topViewController)
   }
 
-  /// The sheet fits the tiles and the few rows under them, the calibration, and the cars: at least half the window, it
+  /// The sheet fits the tiles and the few rows under them, the calibration, and the car: at least half the window, it
   /// is a list. The other pages take the whole height.
   private var sheetHeight: CGFloat {
     let page = navigationController?.topViewController as? UITableViewController ?? self
     let content = Self.barBottom + page.tableView.contentSize.height
-    guard page is CarsViewController else { return content }
+    guard page is CarPageViewController else { return content }
     return max(content, (view.window?.bounds.height ?? UIScreen.main.bounds.height) / 2)
   }
 
   private static func fitsContent(_ controller: UIViewController?) -> Bool {
-    controller is NoGpsBoxSheet || controller is NoGpsCalibrationPage || controller is CarsViewController
+    controller is NoGpsBoxSheet || controller is NoGpsCalibrationPage || controller is CarPageViewController
   }
 
   private func selectDetent(for controller: UIViewController?) {
@@ -165,7 +165,7 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     navigationItem.backButtonDisplayMode = .minimal
     navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .close, target: self,
                                                         action: #selector(close))
-    titleButton.addTarget(self, action: #selector(openCars), for: .touchUpInside)
+    titleButton.addTarget(self, action: #selector(openCar), for: .touchUpInside)
     navigationItem.titleView = titleButton
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
     tableView.tableHeaderView = header
@@ -293,12 +293,12 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     tableView.reloadData(keepingRows: sections.map(\.rows), &shownRows)
   }
 
-  /// The car driven now opens the cars. Without a box set up there are none.
+  /// The car driven now opens its page. Without a box set up, or with an adapter that is not a box, there is no car.
   private func updateTitle() {
-    let opensCars = status.inertialEnabled && !searching
-    let car = opensCars ? NoGps.cars().first { $0.carId == status.carId } : nil
-    let title = !opensCars ? L("nogps_box_title") : car.map { Self.carName($0) } ?? L("nogps_cars")
-    guard title != shownTitle || titleButton.isUserInteractionEnabled != opensCars else { return }
+    let car = status.inertialEnabled && !searching ? NoGps.cars().first { $0.carId == status.carId } : nil
+    let opensCar = car != nil
+    let title = car.map { Self.carName($0) } ?? L("nogps_box_title")
+    guard title != shownTitle || titleButton.isUserInteractionEnabled != opensCar else { return }
     shownTitle = title
     var config = UIButton.Configuration.plain()
     config.title = title
@@ -308,7 +308,7 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
       attributes.font = .preferredFont(forTextStyle: .headline)
       return attributes
     }
-    if opensCars {
+    if opensCar {
       config.subtitle = L("nogps_cars_subtitle")
       config.subtitleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
         var attributes = attributes
@@ -323,8 +323,8 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
       config.imagePadding = 4
     }
     titleButton.configuration = config
-    titleButton.isUserInteractionEnabled = opensCars
-    titleButton.accessibilityTraits = opensCars ? .button : .header
+    titleButton.isUserInteractionEnabled = opensCar
+    titleButton.accessibilityTraits = opensCar ? .button : .header
     titleButton.sizeToFit()
   }
 
@@ -498,8 +498,8 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
   }
 
   @objc
-  private func openCars() {
-    navigationController?.pushViewController(CarsViewController(style: .insetGrouped), animated: true)
+  private func openCar() {
+    navigationController?.pushViewController(CarPageViewController(style: .insetGrouped), animated: true)
   }
 
   @objc
@@ -515,133 +515,77 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
   }
 }
 
-/// The cars of the user, one for each box: each opens its page, the last row adds a new one.
-private final class CarsViewController: MWMTableViewController {
-  private enum Constants {
-    static let refreshInterval: TimeInterval = 0.5
-    static let cellId = "NoGpsCarCell"
+/// The drop-down of the title of the page of a car: every car with its state, and Add a car while the user may add
+/// one. Internal, not private: its tests build the cars, which only the core can make as NoGpsCar.
+enum NoGpsCarMenu {
+  /// A car as the drop-down shows it.
+  struct Car: Equatable {
+    let carId: String
+    /// Already the name shown, see NoGpsBoxSheet.carName().
+    let name: String
+    let lastSeen: Date?
   }
 
-  private enum Row: Equatable {
-    /// A car by the id of its box.
-    case car(String)
+  /// Under the name of a car, nil when its box was never heard.
+  enum State: Equatable {
+    /// The car driven now, its box connected.
+    case connected
+    /// The car driven now, its box out of reach.
+    case current
+    /// The box of another car is awake near the phone.
+    case nearby
+    case lastSeen(Date)
+  }
+
+  enum Entry: Equatable {
+    case car(carId: String, name: String, state: State?)
     case add
   }
 
-  private var status = NoGps.status()
-  private var cars: [NoGpsCar] = []
-  private var rows: [[Row]] = []
-  private var shownRows: [[Row]] = []
-  private var timer: Timer?
-
-  override func viewDidLoad() {
-    super.viewDidLoad()
-    title = L("nogps_cars")
-    navigationItem.backButtonDisplayMode = .minimal
-    tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
-  }
-
-  /// The sheet follows the cars: one is added or forgotten.
-  override func viewDidLayoutSubviews() {
-    super.viewDidLayoutSubviews()
-    (navigationController?.viewControllers.first as? NoGpsBoxSheet)?.refit()
-  }
-
-  override func viewWillAppear(_ animated: Bool) {
-    super.viewWillAppear(animated)
-    refresh()
-    let timer = Timer(timeInterval: Constants.refreshInterval, repeats: true) { [weak self] _ in self?.refresh() }
-    RunLoop.main.add(timer, forMode: .common)
-    self.timer = timer
-  }
-
-  override func viewWillDisappear(_ animated: Bool) {
-    super.viewWillDisappear(animated)
-    timer?.invalidate()
-    timer = nil
-  }
-
-  private func refresh() {
-    status = NoGps.status()
-    cars = NoGps.cars()
-    rows = [cars.map { .car($0.carId) }, cars.count < NoGps.maxCars() ? [.add] : []]
-    tableView.reloadData(keepingRows: rows, &shownRows)
-  }
-
-  override func numberOfSections(in _: UITableView) -> Int {
-    rows.count
-  }
-
-  override func tableView(_: UITableView, numberOfRowsInSection section: Int) -> Int {
-    rows[section].count
-  }
-
-  override func tableView(_: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-    section == 0 ? NoGpsBoxPage.textHeader(L("nogps_cars_text")) : nil
-  }
-
-  override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-    let cell = tableView.dequeueReusableCell(withIdentifier: Constants.cellId, for: indexPath)
-    var content = UIListContentConfiguration.subtitleCell()
-    cell.selectionStyle = .default
-    cell.accessoryView = nil
-    switch rows[indexPath.section][indexPath.row] {
-    case .car(let carId):
-      if let car = cars.first(where: { $0.carId == carId }) {
-        content.text = NoGpsBoxSheet.carName(car)
-        content.secondaryText = carStateText(car)
-      }
-      content.secondaryTextProperties.color = .secondaryLabel
-      cell.accessoryType = .disclosureIndicator
-      if isNearby(carId) {
-        // The box of this car is awake: a button takes the car, a tap on the row opens its page.
-        let button = UIButton(type: .system)
-        button.setTitle(L("nogps_car_switch"), for: .normal)
-        button.addAction(UIAction { [weak self] _ in
-          NoGps.selectCar(carId)
-          NoGpsStatusBar.update(NoGps.status())
-          self?.refresh()
-        }, for: .touchUpInside)
-        button.sizeToFit()
-        cell.accessoryType = .none
-        cell.accessoryView = button
-      }
-    case .add:
-      cell.accessoryType = .none
-      content = UIListContentConfiguration.cell()
-      content.text = L("nogps_car_add")
-      content.textProperties.color = .linkBlue
+  /// The cars in the order they were added, the car driven now in its place, then Add a car under the limit.
+  static func entries(cars: [Car], currentId: String, connected: Bool, nearby: (String) -> Bool,
+                      maxCars: Int) -> [Entry] {
+    var entries = cars.map { car -> Entry in
+      .car(carId: car.carId, name: car.name,
+           state: state(car, currentId: currentId, connected: connected, nearby: nearby))
     }
-    cell.contentConfiguration = content
-    return cell
+    if cars.count < maxCars {
+      entries.append(.add)
+    }
+    return entries
   }
 
-  override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-    tableView.deselectRow(at: indexPath, animated: true)
-    switch rows[indexPath.section][indexPath.row] {
-    case .car(let carId):
-      navigationController?.pushViewController(CarPageViewController(carId: carId), animated: true)
-    case .add:
-      navigationController?.pushViewController(AddCarViewController(style: .insetGrouped), animated: true)
+  static func isCurrent(_ state: State?) -> Bool {
+    state == .connected || state == .current
+  }
+
+  static func stateText(_ state: State?, now: Date = Date()) -> String? {
+    switch state {
+    case .connected: L("nogps_car_connected")
+    case .current: L("nogps_car_current")
+    case .nearby: L("nogps_car_nearby")
+    case .lastSeen(let date):
+      String(format: L("nogps_car_last_seen"),
+             RelativeDateTimeFormatter().localizedString(for: date, relativeTo: now))
+    case nil: nil
     }
   }
 
-  /// The box of another car is awake near the phone.
-  private func isNearby(_ carId: String) -> Bool {
-    carId != status.carId && NoGps.isBoxNearby(carId)
+  /// The cars of the core as the drop-down takes them.
+  static func cars(_ cars: [NoGpsCar]) -> [Car] {
+    cars.map { Car(carId: $0.carId, name: NoGpsBoxSheet.carName($0), lastSeen: $0.lastSeen) }
   }
 
-  private func carStateText(_ car: NoGpsCar) -> String? {
-    if car.carId == status.carId {
-      let connected = NoGpsBoxSheet.isBoxHeard(status) && status.bleState == .connected
-      return connected ? L("nogps_car_connected") : L("nogps_car_current")
+  private static func state(_ car: Car, currentId: String, connected: Bool,
+                            nearby: (String) -> Bool) -> State? {
+    if car.carId == currentId {
+      return connected ? .connected : .current
     }
-    if isNearby(car.carId) {
-      return L("nogps_car_nearby")
+    if nearby(car.carId) {
+      return .nearby
     }
     guard let lastSeen = car.lastSeen else { return nil }
-    return String(format: L("nogps_car_last_seen"), RelativeDateTimeFormatter().localizedString(for: lastSeen,
-                                                                                                relativeTo: Date()))
+    return .lastSeen(lastSeen)
   }
 }
 
@@ -841,7 +785,8 @@ private final class AddCarViewController: MWMTableViewController {
   }
 }
 
-/// A car: its name, switching to it and forgetting it, then the phones its box takes. The phones are known while the box
+/// The car driven now: its name, its box, forgetting it, then the phones its box takes and the records of the car. The
+/// title is a drop-down of every car: picking one drives it and the page shows it. The phones are known while the box
 /// of the car is connected: a tap removes one, the last row adds a new one with a one-time code.
 final class CarPageViewController: MWMTableViewController {
   private enum Constants {
@@ -851,16 +796,17 @@ final class CarPageViewController: MWMTableViewController {
 
   private enum Row: Equatable {
     case name
-    case drive
+    case box
     case forget
     /// A phone by its Bluetooth address.
     case phone(String)
     case addPhone
+    /// The box is out of reach: it alone tells its phones.
+    case phonesUnknown
     /// The best time of a kind of the timed runs, a tap opens the results.
     case sprint(NoGpsSprintKind)
   }
 
-  private let carId: String
   private var car: NoGpsCar?
   /// The timed runs of the car driven now, newest first.
   private var sprints: [NoGpsSprint] = []
@@ -873,20 +819,26 @@ final class CarPageViewController: MWMTableViewController {
   private var phonesListed = false
   /// Shows the code for a new phone while the box takes it.
   private weak var addPhoneAlert: AddPhoneViewController?
-
-  init(carId: String) {
-    self.carId = carId
-    super.init(style: .insetGrouped)
-  }
-
-  @available(*, unavailable)
-  required init?(coder _: NSCoder) {
-    fatalError("init(coder:) has not been implemented")
-  }
+  private let titleButton = UIButton(type: .system)
+  private var shownTitle: String?
 
   override func viewDidLoad() {
     super.viewDidLoad()
+    navigationItem.backButtonDisplayMode = .minimal
+    titleButton.showsMenuAsPrimaryAction = true
+    // Built when the drop-down is opened: the page is refreshed twice a second, the menu would be rebuilt under the
+    // finger.
+    titleButton.menu = UIMenu(children: [UIDeferredMenuElement.uncached { [weak self] completion in
+      completion(self?.carActions() ?? [])
+    }])
+    navigationItem.titleView = titleButton
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
+  }
+
+  /// The sheet follows the rows: a car is picked, the box tells its phones.
+  override func viewDidLayoutSubviews() {
+    super.viewDidLayoutSubviews()
+    (navigationController?.viewControllers.first as? NoGpsBoxSheet)?.refit()
   }
 
   override func viewWillAppear(_ animated: Bool) {
@@ -903,19 +855,17 @@ final class CarPageViewController: MWMTableViewController {
     timer = nil
   }
 
-  /// The box of this car is connected and knows its phones.
-  private var phonesKnown: Bool {
-    carId == status.carId && status.boxHasPhones
-  }
+  /// The box of the car is connected and knows its phones.
+  private var phonesKnown: Bool { status.boxHasPhones }
 
   private var phones: [NoGpsPhone] { phonesKnown ? status.boxPhones ?? [] : [] }
 
   /// The box takes the name from the phone connected first only, the note under the phones tells it.
-  private var canRename: Bool { carId != status.carId || !status.boxReadOnly }
+  private var canRename: Bool { !status.boxReadOnly }
 
   private func refresh() {
     status = NoGps.status()
-    car = NoGps.cars().first { $0.carId == carId }
+    car = NoGps.cars().first { $0.carId == status.carId }
     // Forgotten, e.g. this phone was removed from its box.
     guard let car else {
       if navigationController?.topViewController === self {
@@ -923,19 +873,18 @@ final class CarPageViewController: MWMTableViewController {
       }
       return
     }
-    title = NoGpsBoxSheet.carName(car)
+    updateTitle(car)
     if phonesKnown, !phonesListed {
       phonesListed = true
       NoGps.listBoxPhones()
     }
     phonesListed = phonesListed && phonesKnown
     rows = [
-      carId == status.carId ? [.name, .forget] : [.name, .drive, .forget],
-      phonesKnown ? phones.map { .phone($0.address) } + [.addPhone] : [],
-      // Kept for the car driven now only.
-      carId == status.carId ? [.sprint(.to100), .sprint(.quarterMile)] : [],
+      [.name, .box, .forget],
+      phonesKnown ? phones.map { .phone($0.address) } + [.addPhone] : [.phonesUnknown],
+      [.sprint(.to100), .sprint(.quarterMile)],
     ]
-    sprints = carId == status.carId ? NoGps.sprints() : []
+    sprints = NoGps.sprints()
     addPhoneAlert?.update(code: addPhoneCode(), message: addPhoneText())
     // Footers are not updated in place.
     let footers = [nil, phoneFooter(), nil]
@@ -947,8 +896,58 @@ final class CarPageViewController: MWMTableViewController {
   }
 
   private func phoneFooter() -> String? {
-    guard phonesKnown else { return L("nogps_car_phones_unknown") }
-    return status.boxReadOnly ? L("nogps_box_read_only") : nil
+    phonesKnown && status.boxReadOnly ? L("nogps_box_read_only") : nil
+  }
+
+  /// Every car with its state: picking one drives it, Add a car looks for the box of a new one.
+  private func carActions() -> [UIMenuElement] {
+    // Taken again: the drop-down is opened long after the last refresh.
+    let shown = NoGps.status()
+    let connected = NoGpsBoxSheet.isBoxHeard(shown) && shown.bleState == .connected
+    let entries = NoGpsCarMenu.entries(cars: NoGpsCarMenu.cars(NoGps.cars()), currentId: shown.carId,
+                                       connected: connected, nearby: { NoGps.isBoxNearby($0) },
+                                       maxCars: NoGps.maxCars())
+    return entries.map { entry -> UIMenuElement in
+      switch entry {
+      case .car(let carId, let name, let state):
+        let stateText = NoGpsCarMenu.stateText(state)
+        let on: UIMenuElement.State = NoGpsCarMenu.isCurrent(state) ? .on : .off
+        let drive: UIActionHandler = { [weak self] _ in
+          NoGps.selectCar(carId)
+          NoGpsStatusBar.update(NoGps.status())
+          self?.refresh()
+        }
+        if #available(iOS 16.0, *) {
+          return UIAction(title: name, subtitle: stateText, state: on, handler: drive)
+        }
+        // An entry of a menu has no subtitle before iOS 16: the state follows the name.
+        return UIAction(title: stateText.map { name + " · " + $0 } ?? name, state: on, handler: drive)
+      case .add:
+        return UIAction(title: L("nogps_car_add"), image: UIImage(systemName: "plus")) { [weak self] _ in
+          self?.navigationController?.pushViewController(AddCarViewController(style: .insetGrouped), animated: true)
+        }
+      }
+    }
+  }
+
+  private func updateTitle(_ car: NoGpsCar) {
+    let title = NoGpsBoxSheet.carName(car)
+    guard title != shownTitle else { return }
+    shownTitle = title
+    var config = UIButton.Configuration.plain()
+    config.title = title
+    config.baseForegroundColor = .label
+    config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+      var attributes = attributes
+      attributes.font = .preferredFont(forTextStyle: .headline)
+      return attributes
+    }
+    config.image = UIImage(systemName: "chevron.down",
+                           withConfiguration: UIImage.SymbolConfiguration(pointSize: 11, weight: .semibold))
+    config.imagePlacement = .trailing
+    config.imagePadding = 4
+    titleButton.configuration = config
+    titleButton.sizeToFit()
   }
 
   override func numberOfSections(in _: UITableView) -> Int {
@@ -959,8 +958,16 @@ final class CarPageViewController: MWMTableViewController {
     rows[section].count
   }
 
+  override func tableView(_: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+    section == 0 ? NoGpsBoxPage.textHeader(L("nogps_cars_text")) : nil
+  }
+
   override func tableView(_: UITableView, titleForHeaderInSection section: Int) -> String? {
-    section == 1 ? L("nogps_car_phones") : nil
+    switch section {
+    case 1: L("nogps_car_phones")
+    case 2: L("nogps_car_records")
+    default: nil
+    }
   }
 
   override func tableView(_: UITableView, titleForFooterInSection section: Int) -> String? {
@@ -979,9 +986,11 @@ final class CarPageViewController: MWMTableViewController {
       content.secondaryText = car.map { NoGpsBoxSheet.carName($0) }
       content.textProperties.color = canRename ? .label : .secondaryLabel
       cell.selectionStyle = canRename ? .default : .none
-    case .drive:
-      content.text = L("nogps_car_drive")
-      content.textProperties.color = .linkBlue
+    case .box:
+      content = UIListContentConfiguration.valueCell()
+      content.text = L("nogps_box_title")
+      content.secondaryText = NoGpsBoxPage.sentenceCase(NoGpsBoxPage.boxStateText(status))
+      cell.accessoryType = .disclosureIndicator
     case .forget:
       content.text = L("nogps_car_forget")
       content.textProperties.color = .buttonRed
@@ -997,6 +1006,11 @@ final class CarPageViewController: MWMTableViewController {
       content.text = L("nogps_phone_add")
       content.textProperties.color = status.boxReadOnly ? .secondaryLabel : .linkBlue
       cell.selectionStyle = status.boxReadOnly ? .none : .default
+    case .phonesUnknown:
+      content.text = L("nogps_car_phones_unknown")
+      content.textProperties.numberOfLines = 0
+      content.textProperties.color = .secondaryLabel
+      cell.selectionStyle = .none
     case .sprint(let kind):
       content = UIListContentConfiguration.valueCell()
       content.text = NoGpsSprintText.kindTitle(kind)
@@ -1019,10 +1033,8 @@ final class CarPageViewController: MWMTableViewController {
       if canRename {
         NoGpsBoxSheet.renameCar(car, from: self) { [weak self] in self?.refresh() }
       }
-    case .drive:
-      NoGps.selectCar(carId)
-      NoGpsStatusBar.update(NoGps.status())
-      refresh()
+    case .box:
+      navigationController?.pushViewController(NoGpsBoxPage(), animated: true)
     case .forget:
       confirmForget(car)
     case .phone(let address):
@@ -1034,7 +1046,7 @@ final class CarPageViewController: MWMTableViewController {
       if !status.boxReadOnly {
         addPhone()
       }
-    case .sprint:
+    case .phonesUnknown, .sprint:
       break
     }
   }
