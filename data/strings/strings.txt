@@ -46140,19 +46140,12 @@ en = Buy the box
 ru = Купить блок
 uk = Купити блок
 
-[nogps_cars]
-comment = Header of the list of the cars on the box screen: each car has its own sensor box
-tags = android-app,apple-maps
-en = Cars
-ru = Машины
-uk = Авто
-
 [nogps_cars_subtitle]
-comment = Under the current car's name at the top of the box screen: tapping the name opens the list of the cars, where the user switches, renames or forgets them
+comment = Under the current car's name at the top of the box screen: tapping the name opens the page of that car, where the user sets it up or switches to another car
 tags = android-app,apple-maps
-en = Switch or manage cars
-ru = Сменить или настроить машины
-uk = Змінити або налаштувати авто
+en = Set up the car or switch cars
+ru = Настроить машину или сменить её
+uk = Налаштувати авто або змінити його
 
 [nogps_car_default_name]
 comment = Name of a car the user hasn't named, by the four characters of the name of its sensor box: "Car C47D"
@@ -46196,20 +46189,6 @@ en = Nearby
 ru = Рядом
 uk = Поруч
 
-[nogps_car_switch]
-comment = Button in the row of a car in the list of the cars, next to "Nearby": the app takes this car and connects to its box
-tags = android-app,apple-maps
-en = Switch
-ru = Переключить
-uk = Перемкнути
-
-[nogps_car_drive]
-comment = Action for a car in the list of the cars: the app takes this car and connects to its box
-tags = android-app,apple-maps
-en = Switch to this car
-ru = Переключиться на эту машину
-uk = Перемкнутися на це авто
-
 [nogps_car_name]
 comment = Title of the dialog that renames a car
 tags = android-app,apple-maps
@@ -46248,25 +46227,32 @@ uk = Додати авто
 [nogps_box_bt_pairing_by_phone]
 comment = State of the sensor box, shown after its name: the box has phones, a new one is added on one of them
 tags = android-app,apple-maps
-en = found, but not paired with this phone. On a phone paired with the box, open Box, tap the car name at the top, then the car and Add a phone, and enter the code here. No paired phone at hand? Turn Bluetooth off on the other phones that were paired with the box. Plug the box in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts this phone for 2 minutes with the code 123456, unless it was changed, and forgets the other phones
-ru = найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на имя машины вверху, затем на машину и «Добавить телефон» и введите код здесь. Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны
-uk = знайдено, але не спарено з цим телефоном. На телефоні, спареному з блоком, відкрийте «Блок», натисніть на назву авто вгорі, потім на авто й «Додати телефон» і введіть код тут. Немає спареного телефона під рукою? Вимкніть Bluetooth на решті телефонів, спарених з блоком. Вставте блок у роз'єм і вийміть його протягом хвилини, 3 рази, а втретє залиште вставленим: 2 хвилини він приймає цей телефон із кодом 123456, якщо його не змінювали, і забуває решту телефонів
+en = found, but not paired with this phone. On a phone paired with the box, open Box, tap the car name at the top, then Add a phone, and enter the code here. No paired phone at hand? Turn Bluetooth off on the other phones that were paired with the box. Plug the box in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts this phone for 2 minutes with the code 123456, unless it was changed, and forgets the other phones
+ru = найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на имя машины вверху, затем «Добавить телефон» и введите код здесь. Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны
+uk = знайдено, але не спарено з цим телефоном. На телефоні, спареному з блоком, відкрийте «Блок», натисніть на назву авто вгорі, потім «Додати телефон» і введіть код тут. Немає спареного телефона під рукою? Вимкніть Bluetooth на решті телефонів, спарених з блоком. Вставте блок у роз'єм і вийміть його протягом хвилини, 3 рази, а втретє залиште вставленим: 2 хвилини він приймає цей телефон із кодом 123456, якщо його не змінювали, і забуває решту телефонів
 
 [nogps_box_bt_pairing_full]
 comment = State of the sensor box, shown after its name: the box has 4 phones and takes no new one
 tags = android-app,apple-maps
-en = found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car name at the top, the car). No paired phone at hand? Turn Bluetooth off on the other phones that were paired with the box. Plug the box in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts this phone for 2 minutes with the code 123456, unless it was changed, and forgets the other phones
-ru = найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху, машина). Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны
-uk = знайдено, але не спарено з цим телефоном. Блок має 4 телефони: видаліть один на спареному телефоні («Блок», назва авто вгорі, авто). Немає спареного телефона під рукою? Вимкніть Bluetooth на решті телефонів, спарених з блоком. Вставте блок у роз'єм і вийміть його протягом хвилини, 3 рази, а втретє залиште вставленим: 2 хвилини він приймає цей телефон із кодом 123456, якщо його не змінювали, і забуває решту телефонів
+en = found, but not paired with this phone. The box has 4 phones: remove one on a paired phone (Box, the car name at the top). No paired phone at hand? Turn Bluetooth off on the other phones that were paired with the box. Plug the box in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts this phone for 2 minutes with the code 123456, unless it was changed, and forgets the other phones
+ru = найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху). Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны
+uk = знайдено, але не спарено з цим телефоном. Блок має 4 телефони: видаліть один на спареному телефоні («Блок», назва авто вгорі). Немає спареного телефона під рукою? Вимкніть Bluetooth на решті телефонів, спарених з блоком. Вставте блок у роз'єм і вийміть його протягом хвилини, 3 рази, а втретє залиште вставленим: 2 хвилини він приймає цей телефон із кодом 123456, якщо його не змінювали, і забуває решту телефонів
 
 [nogps_box_bt_car_limit]
 comment = State of the sensor box, shown after its name: the box is of no car of the user, and the user has the most cars
 tags = android-app,apple-maps
-en = found, but it is of no car of this phone, and the phone has the most cars. Forget a car first (Box, the car name at the top, the car, Forget the car)
-uk = знайдено, але це не блок жодного з авто цього телефона, а авто вже максимум. Спершу забудьте авто («Блок», назва авто вгорі, авто, «Забути авто»)
+en = found, but it is of no car of this phone, and the phone has the most cars. Forget a car first (Box, the car name at the top, Forget the car)
+uk = знайдено, але це не блок жодного з авто цього телефона, а авто вже максимум. Спершу забудьте авто («Блок», назва авто вгорі, «Забути авто»)
+
+[nogps_car_records]
+comment = Heading of the group of the best timed runs on the page of a car
+tags = android-app,apple-maps
+en = Records
+ru = Рекорды
+uk = Рекорди
 
 [nogps_car_phones]
-comment = Item of the menu of a car and the title of its page: the phones paired with the sensor box of the car
+comment = Heading of the group of the phones paired with the sensor box of the car on the page of a car
 tags = android-app,apple-maps
 en = Phones
 ru = Телефоны
@@ -46841,11 +46827,11 @@ ru = GPS можно игнорировать, только когда подкл
 uk = GPS можна ігнорувати, лише коли блок підключений: інакше авто ніщо не поведе.
 
 [nogps_cars_text]
-comment = At the top of the Cars page of the Box sheet
+comment = At the top of the page of a car in the Box sheet
 tags = android-app,apple-maps
-en = Each box is one car with its own calibration and parking spot. Tap a car to drive it, rename it or forget it.
-ru = Каждый блок — это одна машина со своей калибровкой и местом парковки. Нажмите на машину, чтобы ехать на ней, переименовать или забыть её.
-uk = Кожен блок — це одне авто зі своїм калібруванням і місцем паркування. Натисніть на авто, щоб їхати ним, перейменувати чи забути його.
+en = Each box is one car with its own calibration and parking spot.
+ru = Каждый блок — это одна машина со своей калибровкой и местом парковки.
+uk = Кожен блок — це одне авто зі своїм калібруванням і місцем паркування.
 
 [nogps_car_add_text]
 comment = On the Add a car page while the box of the new car is searched

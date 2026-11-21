@@ -25,6 +25,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
+import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
@@ -40,6 +41,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.content.res.AppCompatResources;
+import androidx.appcompat.widget.ListPopupWindow;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
@@ -64,7 +67,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * The sensor box and GPS side by side, each opens its page, the current car opens the cars. Under them GPS is blocked
+ * The sensor box and GPS side by side, each opens its page, the current car opens its own. Under them GPS is blocked
  * for the car. Without a box it is searched while the sheet is open, step by step, and the sheet offers to buy one.
  */
 public class BoxBottomSheet extends BottomSheetDialogFragment
@@ -80,8 +83,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private static final String STATE_PAGE = "page";
   private static final String STATE_SEARCHING = "searching";
   private static final String STATE_CARS_BEFORE_ADD = "cars_before_add";
-  private static final String STATE_CAR_ID = "car_id";
-  private static final String STATE_CAR_FROM_ITEM = "car_from_item";
 
   /**
    * Each page is opened from its parent, Back returns there.
@@ -90,7 +91,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     MAIN,
     GPS,
-    CARS,
     CAR,
     ADD_CAR,
     BOX,
@@ -101,23 +101,19 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     ITEM_SPEED,
     ITEM_IMU,
     CALIBRATION,
-    // The results of the timed runs, opened from the Car item.
+    // The results of the timed runs, opened from the car page.
     SPRINT_TO_100,
     SPRINT_QUARTER_MILE;
 
-    /**
-     * The Car page has two parents, see BoxBottomSheet.parentOf().
-     */
     @NonNull
     Page parent()
     {
       return switch (this)
       {
-        case MAIN, GPS, CARS, BOX -> MAIN;
-        case CAR, ADD_CAR -> CARS;
+        case MAIN, GPS, CAR, BOX -> MAIN;
+        case ADD_CAR, SPRINT_TO_100, SPRINT_QUARTER_MILE -> CAR;
         case ITEM_BOX, ITEM_OBD, ITEM_CAR, ITEM_SPEED, ITEM_IMU -> BOX;
         case CALIBRATION -> ITEM_IMU;
-        case SPRINT_TO_100, SPRINT_QUARTER_MILE -> ITEM_CAR;
       };
     }
   }
@@ -185,18 +181,13 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private AlertDialog mAddPhoneDialog;
   private TextView mAddPhoneCode;
   private TextView mAddPhoneMessage;
-  // The user has turned the share on before the app is picked as the mock location app.
-  // The car of the Car page, and if the page was opened from the Car item of the Box page, not from the cars.
-  @NonNull
-  private String mCarId = "";
-  private boolean mCarFromItem;
   // The phones of the box are asked for once while the box tells them.
   private boolean mPhonesListed;
   private final OnBackPressedCallback mBackFromPage = new OnBackPressedCallback(false) {
     @Override
     public void handleOnBackPressed()
     {
-      showPage(parentOf(mPage));
+      showPage(mPage.parent());
     }
   };
   private ViewGroup mRoot;
@@ -231,11 +222,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private View mGpsPage;
   private GpsSheetView mGpsView;
 
-  private View mCarsPage;
-  private LinearLayout mCars;
-  private View mAddCar;
-  // The texts of the car rows shown: the rows are made again when they change.
-  private List<String> mCarTexts = new ArrayList<>();
   private View mAddCarPage;
 
   private View mCarPage;
@@ -243,8 +229,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private View mCarPageNameRow;
   private View mCarPageNameLabel;
   private TextView mCarPageName;
-  private View mCarDrive;
-  private View mPhones;
+  private TextView mCarBoxState;
+  // The drop-down of the cars over the title of the car page, null while it is closed.
+  @Nullable
+  private ListPopupWindow mCarMenu;
   private View mPhonesUnknown;
   private LinearLayout mPhonesRows;
   private View mPhonesReadOnly;
@@ -342,8 +330,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       mPage = Page.values()[savedInstanceState.getInt(STATE_PAGE)];
       mSearching = savedInstanceState.getBoolean(STATE_SEARCHING);
       mCarsBeforeAdd = savedInstanceState.getInt(STATE_CARS_BEFORE_ADD);
-      mCarId = savedInstanceState.getString(STATE_CAR_ID, "");
-      mCarFromItem = savedInstanceState.getBoolean(STATE_CAR_FROM_ITEM);
       // The app was killed while the box was searched: the new core doesn't search it. Without the core the activity
       // goes to the splash screen.
       if (MwmApplication.from(requireContext()).getOrganicMaps().arePlatformAndCoreInitialized())
@@ -382,8 +368,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     outState.putInt(STATE_PAGE, mPage.ordinal());
     outState.putBoolean(STATE_SEARCHING, mSearching);
     outState.putInt(STATE_CARS_BEFORE_ADD, mCarsBeforeAdd);
-    outState.putString(STATE_CAR_ID, mCarId);
-    outState.putBoolean(STATE_CAR_FROM_ITEM, mCarFromItem);
   }
 
   @Nullable
@@ -395,7 +379,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mRoot = (ViewGroup) ((ViewGroup) view).getChildAt(0);
     mMain = view.findViewById(R.id.box_main);
     mTitleRow = view.findViewById(R.id.box_title_row);
-    mTitleRow.setOnClickListener(v -> showPage(Page.CARS));
+    mTitleRow.setOnClickListener(v -> showPage(Page.CAR));
     mTitle = view.findViewById(R.id.box_title);
     mTitleSubtitle = view.findViewById(R.id.box_title_subtitle);
     mBox = view.findViewById(R.id.box_box);
@@ -443,19 +427,15 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mGpsView = view.findViewById(R.id.box_gps_view);
     setUpHeader(view, R.id.box_gps_header, R.string.nogps_status_gps);
 
-    mCarsPage = view.findViewById(R.id.box_cars_page);
-    // A few cars would leave the page low on the screen: it takes at least half of it, the sheet grows with more rows.
-    mCarsPage.setMinimumHeight(getResources().getDisplayMetrics().heightPixels / 2 - mRoot.getPaddingTop()
-                               - mRoot.getPaddingBottom());
-    setUpHeader(view, R.id.box_cars_header, R.string.nogps_cars);
-    mCars = view.findViewById(R.id.box_cars);
-    mAddCar = view.findViewById(R.id.box_add_car);
-    mAddCar.setOnClickListener(v -> showPage(Page.ADD_CAR));
     mAddCarPage = view.findViewById(R.id.box_add_car_page);
     setUpHeader(view, R.id.box_add_car_header, R.string.nogps_car_add);
 
     mCarPage = view.findViewById(R.id.box_car_page);
     mCarPageTitle = setUpHeader(view, R.id.box_car_header, 0);
+    // The title of the page is the drop-down of the cars.
+    mCarPageTitle.setCompoundDrawablesRelativeWithIntrinsicBounds(
+        null, null, AppCompatResources.getDrawable(requireContext(), R.drawable.ic_chevron_down_thin), null);
+    mCarPageTitle.setOnClickListener(this::showCarMenu);
     mCarPageName = view.findViewById(R.id.box_car_page_name);
     mCarPageNameLabel = view.findViewById(R.id.box_car_page_name_label);
     mCarPageNameRow = view.findViewById(R.id.box_car_page_name_row);
@@ -464,22 +444,26 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       if (car != null)
         renameCar(car);
     });
-    mCarDrive = view.findViewById(R.id.box_car_drive);
-    mCarDrive.setOnClickListener(v -> {
-      NoGps.nativeSelectCar(mCarId);
-      update();
-    });
+    view.findViewById(R.id.box_car_box_row).setOnClickListener(v -> showPage(Page.BOX));
+    mCarBoxState = view.findViewById(R.id.box_car_box_state);
     view.findViewById(R.id.box_car_forget).setOnClickListener(v -> {
       final NoGps.Car car = pageCar();
       if (car != null)
         confirmForgetCar(car);
     });
-    mPhones = view.findViewById(R.id.box_phones);
     mPhonesUnknown = view.findViewById(R.id.box_phones_unknown);
+    ((TextView) mPhonesUnknown.findViewById(R.id.car_name)).setText(R.string.nogps_car_phones_unknown);
+    mPhonesUnknown.setEnabled(false);
+    mPhonesUnknown.findViewById(R.id.car_name).setEnabled(false);
+    mPhonesUnknown.findViewById(R.id.car_state).setVisibility(View.GONE);
     mPhonesRows = view.findViewById(R.id.box_phones_rows);
     mPhonesReadOnly = view.findViewById(R.id.box_phones_read_only);
     mAddPhone = view.findViewById(R.id.box_add_phone);
     mAddPhone.setOnClickListener(v -> addPhone());
+    view.findViewById(R.id.box_sprint_to100_row).setOnClickListener(v -> showPage(Page.SPRINT_TO_100));
+    view.findViewById(R.id.box_sprint_quarter_row).setOnClickListener(v -> showPage(Page.SPRINT_QUARTER_MILE));
+    mSprintBest[0] = view.findViewById(R.id.box_sprint_to100_best);
+    mSprintBest[1] = view.findViewById(R.id.box_sprint_quarter_best);
 
     mBoxPage = view.findViewById(R.id.box_box_page);
     setUpHeader(view, R.id.box_box_header, R.string.nogps_box_title);
@@ -502,11 +486,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mFirmwareAction.setOnClickListener(v -> onFirmwareAction());
     mSpeed = view.findViewById(R.id.box_speed);
     mCarNameRow = view.findViewById(R.id.box_car_name_row);
-    mCarNameRow.setOnClickListener(v -> {
-      final NoGps.Car car = currentCar(NoGps.getStatus());
-      if (car != null)
-        showCar(car.id, true);
-    });
     mCarName = view.findViewById(R.id.box_car_name);
     mVoltageMismatch = view.findViewById(R.id.box_voltage_mismatch);
     mSpeedLagValue = view.findViewById(R.id.box_speed_lag_value);
@@ -515,10 +494,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     view.findViewById(R.id.box_clear_speed).setOnClickListener(v -> confirmClearSpeed());
     view.findViewById(R.id.box_calibration_row).setOnClickListener(v -> showPage(Page.CALIBRATION));
     mCalibrationValue = view.findViewById(R.id.box_calibration_value);
-    view.findViewById(R.id.box_sprint_to100_row).setOnClickListener(v -> showPage(Page.SPRINT_TO_100));
-    view.findViewById(R.id.box_sprint_quarter_row).setOnClickListener(v -> showPage(Page.SPRINT_QUARTER_MILE));
-    mSprintBest[0] = view.findViewById(R.id.box_sprint_to100_best);
-    mSprintBest[1] = view.findViewById(R.id.box_sprint_quarter_best);
     mSprintPage = view.findViewById(R.id.box_sprint_page);
     mSprintTitle = setUpHeader(view, R.id.box_sprint_header, 0);
     mSprintRows = view.findViewById(R.id.box_sprint_rows);
@@ -551,7 +526,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final TextView titleView = header.findViewById(R.id.page_title);
     if (title != 0)
       titleView.setText(title);
-    header.findViewById(R.id.page_back).setOnClickListener(v -> showPage(parentOf(mPage)));
+    header.findViewById(R.id.page_back).setOnClickListener(v -> showPage(mPage.parent()));
     return titleView;
   }
 
@@ -594,9 +569,11 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     super.onStop();
     mHandler.removeCallbacks(mUpdater);
-    // The code is not shown without the sheet that updates it.
+    // Neither is shown without the sheet that updates it.
     if (mAddPhoneDialog != null)
       mAddPhoneDialog.dismiss();
+    if (mCarMenu != null)
+      mCarMenu.dismiss();
     animateRings(false);
     mTile.pulse(false);
     mGpsTile.pulse(false);
@@ -614,6 +591,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       update();
       return;
     }
+    // The drop-down belongs to the car page, and the page may change under it, e.g. the box removes this phone.
+    if (mCarMenu != null)
+      mCarMenu.dismiss();
     if (from == Page.ADD_CAR)
       stopAddingCar();
     mPage = page;
@@ -633,39 +613,18 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     getBehavior().setState(BottomSheetBehavior.STATE_EXPANDED);
   }
 
-  /**
-   * The Car page goes back where it was opened from: the Cars page or the Car item of the Box page.
-   */
-  @NonNull
-  private Page parentOf(@NonNull Page page)
+  private static int depthOf(@NonNull Page page)
   {
-    return page == Page.CAR && mCarFromItem ? Page.ITEM_CAR : page.parent();
-  }
-
-  private int depthOf(@NonNull Page page)
-  {
-    return page == Page.MAIN ? 0 : 1 + depthOf(parentOf(page));
-  }
-
-  private void showCar(@NonNull String carId, boolean fromItem)
-  {
-    mCarId = carId;
-    mCarFromItem = fromItem;
-    showPage(Page.CAR);
+    return page == Page.MAIN ? 0 : 1 + depthOf(page.parent());
   }
 
   /**
-   * The car of the Car page, null once it is forgotten.
+   * The car of the car page: always the one driven now, null without a car.
    */
   @Nullable
   private NoGps.Car pageCar()
   {
-    for (NoGps.Car car : NoGps.nativeGetCars())
-    {
-      if (car.id.equals(mCarId))
-        return car;
-    }
-    return null;
+    return currentCar(NoGps.getStatus());
   }
 
   @NonNull
@@ -675,7 +634,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     {
       case MAIN -> new View[] {mMain, mSearch, mShop};
       case GPS -> new View[] {mGpsPage};
-      case CARS -> new View[] {mCarsPage};
       case CAR -> new View[] {mCarPage};
       case ADD_CAR -> new View[] {mAddCarPage, mSearch, mShop};
       case BOX -> new View[] {mBoxPage};
@@ -697,13 +655,13 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       mSearching = false;
     if (mPage == Page.ADD_CAR && isCarAdded())
     {
-      showPage(Page.CARS);
+      showPage(Page.CAR);
       return;
     }
     // The car is forgotten, e.g. after its box has removed this phone.
     if (mPage == Page.CAR && pageCar() == null)
     {
-      showPage(Page.CARS);
+      showPage(Page.MAIN);
       return;
     }
     // The pages of a box set up, e.g. after the box has removed this phone.
@@ -744,7 +702,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     {
     case MAIN -> updateMain(status);
     case GPS -> mGpsView.update(status);
-    case CARS -> updateCars(status);
     case CAR -> updateCarPage(status);
     case ADD_CAR -> updateSearch(status);
     case BOX, ITEM_BOX, ITEM_OBD, ITEM_CAR, ITEM_SPEED, ITEM_IMU -> updateBoxPage(status);
@@ -757,14 +714,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     final Context context = requireContext();
     final boolean boxSetUp = status.inertialEnabled && !mSearching;
-    // The car driven now opens the cars. Without a box set up there are none.
+    // The car driven now opens its page. Without a box set up, or with an adapter that is not a box, there is no car.
     final NoGps.Car current = boxSetUp ? currentCar(status) : null;
-    mTitle.setText(!boxSetUp         ? getString(R.string.nogps_box_title)
-                   : current != null ? BoxTexts.carName(context, current)
-                                     : getString(R.string.nogps_cars));
-    mTitleRow.setClickable(boxSetUp);
-    mTitleSubtitle.setVisibility(boxSetUp ? View.VISIBLE : View.GONE);
-    mTitle.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, boxSetUp ? R.drawable.ic_nogps_chevron : 0, 0);
+    mTitle.setText(current != null ? BoxTexts.carName(context, current) : getString(R.string.nogps_box_title));
+    mTitleRow.setClickable(current != null);
+    mTitleSubtitle.setVisibility(current != null ? View.VISIBLE : View.GONE);
+    mTitle.setCompoundDrawablesRelativeWithIntrinsicBounds(0, 0, current != null ? R.drawable.ic_nogps_chevron : 0, 0);
     mBox.setClickable(boxSetUp);
     mBoxChevron.setVisibility(boxSetUp ? View.VISIBLE : View.GONE);
     if (mSearching)
@@ -893,59 +848,105 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   }
 
   @NonNull
-  private String carStateText(@NonNull NoGps.Status status, @NonNull NoGps.Car car)
+  private String carStateText(@Nullable CarMenu.State state, long lastSeenUnixMs)
   {
-    if (car.id.equals(status.carId))
-      return getString(isConnected(status) ? R.string.nogps_car_connected : R.string.nogps_car_current);
-    if (isNearby(status, car))
-      return getString(R.string.nogps_car_nearby);
-    if (car.lastSeenUnixMs <= 0)
+    if (state == null)
       return "";
-    final CharSequence when =
-        DateUtils.getRelativeTimeSpanString(car.lastSeenUnixMs, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS);
-    return getString(R.string.nogps_car_last_seen, when);
+    return switch (state)
+    {
+      case CONNECTED -> getString(R.string.nogps_car_connected);
+      case CURRENT -> getString(R.string.nogps_car_current);
+      case NEARBY -> getString(R.string.nogps_car_nearby);
+      case LAST_SEEN ->
+        getString(R.string.nogps_car_last_seen,
+                  DateUtils.getRelativeTimeSpanString(lastSeenUnixMs, System.currentTimeMillis(),
+                                                      DateUtils.MINUTE_IN_MILLIS));
+    };
   }
 
   // The box of another car is awake near the phone.
-  private boolean isNearby(@NonNull NoGps.Status status, @NonNull NoGps.Car car)
+  private boolean isNearby(@NonNull String carId)
   {
-    return !car.id.equals(status.carId)
- && MwmApplication.from(requireContext()).getLocationHelper().isBoxNearby(car.id);
+    return MwmApplication.from(requireContext()).getLocationHelper().isBoxNearby(carId);
   }
 
-  private void updateCars(@NonNull NoGps.Status status)
+  /**
+   * The cars over the title of the car page: picking one drives it and the page shows it, the last entry adds a car.
+   */
+  private void showCarMenu(@NonNull View anchor)
   {
-    final Context context = requireContext();
-    final NoGps.Car[] cars = NoGps.nativeGetCars();
-    mAddCar.setVisibility(cars.length < NoGps.nativeGetMaxCars() ? View.VISIBLE : View.GONE);
-    final List<String> texts = new ArrayList<>();
-    for (NoGps.Car car : cars)
-    {
-      texts.add(BoxTexts.carName(context, car));
-      texts.add(carStateText(status, car));
-    }
-    if (texts.equals(mCarTexts))
-      return;
-    mCarTexts = texts;
-    mCars.removeAllViews();
-    final LayoutInflater inflater = LayoutInflater.from(context);
-    for (int i = 0; i < cars.length; ++i)
-    {
-      final NoGps.Car car = cars[i];
-      final View row = inflater.inflate(R.layout.nogps_car_row, mCars, false);
-      ((TextView) row.findViewById(R.id.car_name)).setText(texts.get(2 * i));
-      final TextView state = row.findViewById(R.id.car_state);
-      state.setText(texts.get(2 * i + 1));
-      state.setVisibility(texts.get(2 * i + 1).isEmpty() ? View.GONE : View.VISIBLE);
-      row.findViewById(R.id.car_chevron).setVisibility(View.VISIBLE);
-      final View switchCar = row.findViewById(R.id.car_switch);
-      switchCar.setVisibility(isNearby(status, car) ? View.VISIBLE : View.GONE);
-      switchCar.setOnClickListener(v -> {
+    final NoGps.Status status = NoGps.getStatus();
+    final List<CarMenu.Entry> entries = CarMenu.entries(NoGps.nativeGetCars(), status.carId, isConnected(status),
+                                                        this::isNearby, NoGps.nativeGetMaxCars());
+    final ListPopupWindow menu = new ListPopupWindow(requireContext());
+    mCarMenu = menu;
+    menu.setAnchorView(anchor);
+    menu.setWidth(ViewGroup.LayoutParams.WRAP_CONTENT);
+    menu.setAdapter(new CarMenuAdapter(entries));
+    menu.setOnDismissListener(() -> mCarMenu = null);
+    menu.setOnItemClickListener((parent, view, position, id) -> {
+      menu.dismiss();
+      final NoGps.Car car = entries.get(position).car();
+      if (car == null)
+        showPage(Page.ADD_CAR);
+      else
+      {
         NoGps.nativeSelectCar(car.id);
         update();
-      });
-      row.setOnClickListener(v -> showCar(car.id, false));
-      mCars.addView(row);
+      }
+    });
+    menu.show();
+  }
+
+  /**
+   * A row of the drop-down of the cars: the name of the car, its state under it, a check on the car driven now. The
+   * last row adds a car.
+   */
+  private final class CarMenuAdapter extends BaseAdapter
+  {
+    @NonNull
+    private final List<CarMenu.Entry> mEntries;
+
+    CarMenuAdapter(@NonNull List<CarMenu.Entry> entries)
+    {
+      mEntries = entries;
+    }
+
+    @Override
+    public int getCount()
+    {
+      return mEntries.size();
+    }
+
+    @Override
+    public Object getItem(int position)
+    {
+      return mEntries.get(position);
+    }
+
+    @Override
+    public long getItemId(int position)
+    {
+      return position;
+    }
+
+    @NonNull
+    @Override
+    public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent)
+    {
+      final View row = convertView != null
+                         ? convertView
+                         : LayoutInflater.from(requireContext()).inflate(R.layout.nogps_car_row, parent, false);
+      final CarMenu.Entry entry = mEntries.get(position);
+      final NoGps.Car car = entry.car();
+      ((TextView) row.findViewById(R.id.car_name))
+          .setText(car != null ? BoxTexts.carName(requireContext(), car) : getString(R.string.nogps_car_add));
+      final String stateText = car != null ? carStateText(entry.state(), car.lastSeenUnixMs) : "";
+      final TextView state = row.findViewById(R.id.car_state);
+      state.setText(stateText);
+      state.setVisibility(stateText.isEmpty() ? View.GONE : View.VISIBLE);
+      row.findViewById(R.id.car_check).setVisibility(entry.current() ? View.VISIBLE : View.GONE);
+      return row;
     }
   }
 
@@ -986,7 +987,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
                              if (!NoGps.getStatus().inertialEnabled)
                                dismiss();
                              else
-                               update();
+                               showPage(Page.MAIN);
                            })
         .setNegativeButton(R.string.cancel, null)
         .show();
@@ -1019,30 +1020,36 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   }
 
   /**
-   * The car and what the user does with it. Its box tells its phones while it is connected.
+   * The car driven now and what the user does with it. Its box tells its phones while it is connected.
    */
   private void updateCarPage(@NonNull NoGps.Status status)
   {
+    final Context context = requireContext();
     final NoGps.Car car = pageCar();
     if (car == null)
       return;
-    final String name = BoxTexts.carName(requireContext(), car);
+    final String name = BoxTexts.carName(context, car);
     mCarPageTitle.setText(name);
     mCarPageName.setText(name);
-    final boolean current = car.id.equals(status.carId);
     // The box takes the name from the phone connected first only, the note under the phones tells it.
-    final boolean canRename = !current || !status.boxReadOnly;
+    final boolean canRename = !status.boxReadOnly;
     mCarPageNameRow.setEnabled(canRename);
     mCarPageNameLabel.setEnabled(canRename);
-    mCarDrive.setVisibility(current ? View.GONE : View.VISIBLE);
-    final boolean phones = current && status.boxHasPhones;
-    mPhones.setVisibility(phones ? View.VISIBLE : View.GONE);
+    mCarBoxState.setText(BoxTexts.capitalize(BoxTexts.boxStateText(context, status)));
+    final boolean phones = status.boxHasPhones;
+    mPhonesRows.setVisibility(phones ? View.VISIBLE : View.GONE);
+    mAddPhone.setVisibility(phones ? View.VISIBLE : View.GONE);
     mPhonesUnknown.setVisibility(phones ? View.GONE : View.VISIBLE);
     if (phones && !mPhonesListed)
       NoGps.nativeListBoxPhones();
     mPhonesListed = phones;
     if (phones)
       updatePhones(status);
+    else
+      mPhonesReadOnly.setVisibility(View.GONE);
+    final NoGps.Sprint[] sprints = NoGps.nativeGetSprints();
+    mSprintBest[0].setText(Sprints.bestText(this::getString, sprints, NoGps.SprintKind.TO_100));
+    mSprintBest[1].setText(Sprints.bestText(this::getString, sprints, NoGps.SprintKind.QUARTER_MILE));
   }
 
   private void updatePhones(@NonNull NoGps.Status status)
@@ -1200,7 +1207,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
                                                                ? getString(R.string.nogps_speed_kmh, status.speedKmh)
                                                                : getString(R.string.nogps_unknown)));
 
-    // Opens the page of the car.
     mCarNameRow.setVisibility(car != null ? View.VISIBLE : View.GONE);
     if (car != null)
       mCarName.setText(BoxTexts.carName(context, car));
@@ -1225,13 +1231,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
 
     // The speed is learned while the box leads the car.
     mItemSpeed.row.setVisibility(status.inertialStarted ? View.VISIBLE : View.GONE);
-
-    if (mPage == Page.ITEM_CAR)
-    {
-      final NoGps.Sprint[] sprints = NoGps.nativeGetSprints();
-      mSprintBest[0].setText(Sprints.bestText(this::getString, sprints, NoGps.SprintKind.TO_100));
-      mSprintBest[1].setText(Sprints.bestText(this::getString, sprints, NoGps.SprintKind.QUARTER_MILE));
-    }
   }
 
   /**
