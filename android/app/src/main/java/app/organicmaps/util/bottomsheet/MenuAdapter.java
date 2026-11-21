@@ -46,6 +46,7 @@ public class MenuAdapter extends RecyclerView.Adapter<MenuAdapter.ViewHolder>
   public void onBindViewHolder(ViewHolder viewHolder, final int position)
   {
     final MenuBottomSheetItem item = dataSet.get(position);
+    viewHolder.getDividerView().setVisibility(item.startsGroup ? View.VISIBLE : View.GONE);
     final ImageView iv = viewHolder.getIconImageView();
     if (item.iconRes == R.drawable.ic_donate && Config.isNY())
     {
@@ -85,6 +86,7 @@ public class MenuAdapter extends RecyclerView.Adapter<MenuAdapter.ViewHolder>
 
   public static class ViewHolder extends RecyclerView.ViewHolder
   {
+    private final View dividerView;
     private final LinearLayout container;
     private final ImageView iconImageView;
     private final TextView titleTextView;
@@ -93,10 +95,16 @@ public class MenuAdapter extends RecyclerView.Adapter<MenuAdapter.ViewHolder>
     public ViewHolder(View view)
     {
       super(view);
+      dividerView = view.findViewById(R.id.bottom_sheet_menu_item_divider);
       container = view.findViewById(R.id.bottom_sheet_menu_item);
       iconImageView = view.findViewById(R.id.bottom_sheet_menu_item_icon);
       titleTextView = view.findViewById(R.id.bottom_sheet_menu_item_text);
       badgeTextView = view.findViewById(R.id.bottom_sheet_menu_item_badge);
+    }
+
+    public View getDividerView()
+    {
+      return dividerView;
     }
 
     public ImageView getIconImageView()

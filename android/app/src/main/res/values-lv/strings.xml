@@ -36,6 +36,14 @@
     <!-- Button text for the button under the country_status_download_failed message -->
     <string name="try_again">Mēģināt vēlreiz</string>
     <!-- Text in About screen -->
+    <string name="about_headline">Bezmaksas, pieejama visiem un veidota ar mīlestību</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_1">• Nesatur reklāmas, izsekošanu un nevāc datus</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_2">• Neizlādē bateriju, darbojas bez interneta pieslēguma</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_3">• Ātra, minimālistiska un kopienas izstrādāta</string>
+    <!-- Text in About screen -->
     <string name="about_developed_by_enthusiasts">Atvērtā pirmkoda programma, ko veidojuši entuziasti un brīvprātīgie.</string>
     <!-- The button that opens system location settings -->
     <string name="location_settings">Atrašanās vietas iestatījumi</string>
@@ -737,6 +745,10 @@
     <string name="enable_show_on_lock_screen_description">Ja ieslēgts, lietotne darbosies pat tad, ja ierīce būs nobloķēta.</string>
     <!-- Current language of the map! -->
     <string name="change_map_locale">Kartes valoda</string>
+    <!-- Telegram group url for the "?" About page -->
+    <string name="telegram_url">https://t.me/OrganicMapsApp</string>
+    <!-- Instagram account url for the "?" About page -->
+    <string name="instagram_url">https://www.instagram.com/organicmaps.app</string>
     <!-- Link to OSM wiki for Editor, Profile and About pages -->
     <string name="osm_wiki_about_url">https://wiki.openstreetmap.org/wiki/About_OpenStreetMap</string>
     <!-- A number of bookmarks and a number of tracks, separated by comma, like: 1 bookmark, 5 tracks -->

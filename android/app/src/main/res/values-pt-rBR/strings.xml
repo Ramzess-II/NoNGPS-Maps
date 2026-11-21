@@ -25,6 +25,12 @@
     <string name="country_status_download_failed">O download falhou</string>
     <!-- Button text for the button under the country_status_download_failed message -->
     <string name="try_again">Tente novamente</string>
+    <!-- Text in About screen -->
+    <string name="about_headline">Livre para todos, feito com amor</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_1">• Sem anúncios, sem rastreamento, sem coleta de dados</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_2">• Sem consumo de bateria, funciona off-line</string>
     <!-- The button that opens system location settings -->
     <string name="location_settings">Configurações de Localização</string>
     <string name="unsupported_phone">É necessário OpenGL acelerado por hardware. Infelizmente o seu dispositivo não é compatível.</string>

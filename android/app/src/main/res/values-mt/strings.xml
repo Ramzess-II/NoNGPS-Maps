@@ -36,6 +36,14 @@
     <!-- Button text for the button under the country_status_download_failed message -->
     <string name="try_again">Erġa prova</string>
     <!-- Text in About screen -->
+    <string name="about_headline">B\' xejn għal kulħadd, magħmul bl-imħabba</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_1">• Bla reklami, bla traċċar, bla kollezjoni ta\' data</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_2">• Bla ħela ta\' batterija, jaħdem offline</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_3">• Malajr, minimalista, żvillupat mill-komunità</string>
+    <!-- Text in About screen -->
     <string name="about_developed_by_enthusiasts">Apliażżjoni tas-sors miftuħ magħmula min dilettanti u il-voluntiera</string>
     <!-- The button that opens system location settings -->
     <string name="location_settings">Settings tal-lokażżjoni</string>

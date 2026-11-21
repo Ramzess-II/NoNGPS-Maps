@@ -36,6 +36,14 @@
     <!-- Button text for the button under the country_status_download_failed message -->
     <string name="try_again">נסה שוב</string>
     <!-- Text in About screen -->
+    <string name="about_headline">חינם לכולם, מיוצרים באהבה</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_1">• ללא מודעות, ללא מעקב, ללא איסוף נתונים</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_2">• אין ריקון סוללה, עובד במצב לא מקוון</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_3">• מהיר, מינימליסטי, שפותח על ידי הקהילה</string>
+    <!-- Text in About screen -->
     <string name="about_developed_by_enthusiasts">אפליקציית קוד פתוח שנוצרה על ידי חובבים ומתנדבים.</string>
     <!-- The button that opens system location settings -->
     <string name="location_settings">הגדרות מיקום</string>

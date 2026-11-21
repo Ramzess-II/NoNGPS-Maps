@@ -36,6 +36,14 @@
     <!-- Button text for the button under the country_status_download_failed message -->
     <string name="try_again">Probeer weer</string>
     <!-- Text in About screen -->
+    <string name="about_headline">Gratis vir almal, gemaak met liefde</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_1">• Geen advertensies, geen nasporing, geen dataversameling</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_2">• Geen battery dreineer, werk vanlyn</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_3">• Vinnig, minimalisties, ontwikkel deur die gemeenskap</string>
+    <!-- Text in About screen -->
     <string name="about_developed_by_enthusiasts">Oopbrontoepassing geskep deur entoesiaste en vrywilligers.</string>
     <!-- The button that opens system location settings -->
     <string name="location_settings">Liggingsinstellings</string>

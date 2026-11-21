@@ -6,7 +6,10 @@ protocol BottomMenuInteractorProtocol: AnyObject {
   func donate()
   func openSettings()
   func openBookmarks()
+  func openProfile()
   func openAbout()
+  func openAboutOrganicMaps()
+  func buyBox()
   func shareLocation(cell: BottomMenuItemCell)
   func toggleTrackRecording()
 }
@@ -70,9 +73,25 @@ extension BottomMenuInteractor: BottomMenuInteractorProtocol {
     mapViewController?.bookmarksCoordinator.open()
   }
 
+  /// The site until the account has a screen of its own, see issue #458.
+  func openProfile() {
+    close()
+    UIApplication.shared.open(NoGpsLinks.account)
+  }
+
   func openAbout() {
     close()
+    mapViewController?.navigationController?.pushViewController(AboutNoGpsController(), animated: true)
+  }
+
+  func openAboutOrganicMaps() {
+    close()
     mapViewController?.navigationController?.pushViewController(AboutController(), animated: true)
+  }
+
+  func buyBox() {
+    close()
+    UIApplication.shared.open(NoGpsLinks.shop)
   }
 
   func startDownloadingMapForCountry(_ countryId: String) {

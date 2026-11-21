@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?cardBackground"
+    android:clipToPadding="false"
+    android:fadeScrollbars="false"
+    android:fillViewport="true">
+
+  <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:clipChildren="false"
+      android:clipToPadding="false"
+      android:orientation="vertical"
+      android:padding="@dimen/margin_base">
+
+    <ImageView
+        android:layout_width="@dimen/about_logo"
+        android:layout_height="@dimen/about_logo"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="@dimen/margin_base"
+        android:layout_marginBottom="@dimen/margin_half"
+        android:contentDescription="@string/app_name"
+        app:srcCompat="@drawable/logo" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:layout_marginBottom="@dimen/margin_quarter"
+        android:text="NonGPS Maps"
+        android:textAppearance="@style/MwmTextAppearance.Title"
+        android:textStyle="bold"
+        tools:ignore="HardcodedText" />
+
+    <TextView
+        android:id="@+id/version"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:layout_marginBottom="@dimen/margin_quarter"
+        android:background="?selectableItemBackground"
+        android:textAppearance="@style/MwmTextAppearance.Body2.Primary"
+        tools:text="Version 2026.11.08-7-Google (26110807, abcdef12)" />
+
+    <TextView
+        android:id="@+id/upstream_version"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:layout_marginBottom="@dimen/margin_base"
+        android:background="?selectableItemBackground"
+        android:textAppearance="@style/MwmTextAppearance.Body3"
+        tools:text="Based on Organic Maps 2026.10.27-10" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/margin_base"
+        android:text="@string/nogps_about_headline"
+        android:textAlignment="center"
+        android:textAppearance="@style/MwmTextAppearance.Headline"
+        android:textColor="?android:textColorPrimary" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/margin_half"
+        android:text="@string/nogps_about_description"
+        android:textAppearance="@style/MwmTextAppearance.Body1"
+        android:textColor="?android:textColorPrimary" />
+
+    <TextView
+        android:id="@+id/map_data"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="@dimen/margin_half"
+        android:text="@string/nogps_map_data"
+        android:textAppearance="@style/MwmTextAppearance.Body1"
+        android:textColor="?android:textColorPrimary" />
+
+    <TextView
+        android:id="@+id/github"
+        style="@style/MwmWidget.TextView.Item"
+        android:text="@string/nogps_source_code"
+        android:textAlignment="viewStart"
+        app:drawableStartCompat="@drawable/ic_github" />
+
+    <Button
+        android:id="@+id/box_buy"
+        style="?borderlessButtonStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/margin_half"
+        android:text="@string/nogps_box_buy"
+        android:textStyle="bold" />
+
+  </LinearLayout>
+</ScrollView>

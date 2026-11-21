@@ -480,9 +480,16 @@
         android:parentActivityName="app.organicmaps.MwmActivity" />
 
     <activity
-        android:name="app.organicmaps.help.HelpActivity"
+        android:name="app.organicmaps.nogps.AboutNoGpsActivity"
         android:screenOrientation="portrait"
         android:label="@string/nogps_about_title"
+        android:parentActivityName="app.organicmaps.MwmActivity"
+        android:exported="false" />
+
+    <activity
+        android:name="app.organicmaps.help.HelpActivity"
+        android:screenOrientation="portrait"
+        android:label="@string/nogps_about_om_menu"
         android:parentActivityName="app.organicmaps.MwmActivity"
         android:exported="false">
       <intent-filter>

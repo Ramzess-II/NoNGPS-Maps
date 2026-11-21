@@ -17,6 +17,8 @@
 		287D14FA31636BEE6C00212D /* MapPanelDragger.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCBA000623F3162F1ACE63ED /* MapPanelDragger.swift */; };
 		2C6B64E5A79043179FD58BDC /* SearchOnMapViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D78F8A0D5C648C585DB2864 /* SearchOnMapViewTests.swift */; };
 		333A4718BABBBFC6A412D69B /* NoGpsBoxSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */; };
+		5C0A7E1B3D2F4A6890B1D004 /* AboutNoGpsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0A7E1B3D2F4A6890B1D003 /* AboutNoGpsController.swift */; };
+		5C0A7E1B3D2F4A6890B1D007 /* BottomMenuPresenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0A7E1B3D2F4A6890B1D006 /* BottomMenuPresenterTests.swift */; };
 		34F73F9C1E082FF800AC1FD6 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 34F73F5F1E082FF700AC1FD6 /* InfoPlist.strings */; };
 		34F73F9F1E082FF800AC1FD6 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 34F73F611E082FF800AC1FD6 /* Localizable.strings */; };
 		34F73FA31E08300E00AC1FD6 /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 34F73FA11E08300E00AC1FD6 /* Images.xcassets */; };
@@ -1863,6 +1865,8 @@
 		EE026F0511D6AC0D00645242 /* classificator.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = classificator.txt; path = ../../data/classificator.txt; sourceTree = SOURCE_ROOT; };
 		EF08A25A7AB83AC0C2867A85 /* cy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = cy; path = cy.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsBoxSheet.swift; sourceTree = "<group>"; };
+		5C0A7E1B3D2F4A6890B1D003 /* AboutNoGpsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutNoGpsController.swift; sourceTree = "<group>"; };
+		5C0A7E1B3D2F4A6890B1D006 /* BottomMenuPresenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomMenuPresenterTests.swift; sourceTree = "<group>"; };
 		F0A0B0002FF2ABCD00FA103D /* BookmarksListCellConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarksListCellConfiguration.swift; sourceTree = "<group>"; };
 		F623DA6A1C9C2731006A3436 /* opening_hours_how_to_edit.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = opening_hours_how_to_edit.html; path = ../../data/opening_hours_how_to_edit.html; sourceTree = "<group>"; };
 		F6C3A1B121AC22810060EEC8 /* Alert 5.m4a */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Alert 5.m4a"; sourceTree = "<group>"; };
@@ -2425,8 +2429,17 @@
 				E79F77A472014212B40FDE97 /* PlacePageTests */,
 				ED810EC32D566E7600ECDE2C /* SearchOnMapTests */,
 				94259BB25B4527D4BA08E88E /* NavigationDashboardTests */,
+				5C0A7E1B3D2F4A6890B1D008 /* BottomMenuTests */,
 			);
 			path = UI;
+			sourceTree = "<group>";
+		};
+		5C0A7E1B3D2F4A6890B1D008 /* BottomMenuTests */ = {
+			isa = PBXGroup;
+			children = (
+				5C0A7E1B3D2F4A6890B1D006 /* BottomMenuPresenterTests.swift */,
+			);
+			path = BottomMenuTests;
 			sourceTree = "<group>";
 		};
 		ED810EC32D566E7600ECDE2C /* SearchOnMapTests */ = {
@@ -3727,6 +3740,14 @@
 			path = Translator;
 			sourceTree = "<group>";
 		};
+		5C0A7E1B3D2F4A6890B1D005 /* NoGps */ = {
+			isa = PBXGroup;
+			children = (
+				5C0A7E1B3D2F4A6890B1D003 /* AboutNoGpsController.swift */,
+			);
+			path = NoGps;
+			sourceTree = "<group>";
+		};
 		ED82C4F12F90180300FA103D /* UI */ = {
 			isa = PBXGroup;
 			children = (
@@ -3753,6 +3774,7 @@
 				ED82C4EA2F90180300FA103D /* Settings */,
 				ED82C4EE2F90180300FA103D /* Translator */,
 				ED82C4AD2F90180300FA103D /* ReusableComponents */,
+				5C0A7E1B3D2F4A6890B1D005 /* NoGps */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -4881,6 +4903,7 @@
 				N0GPS1B00000000000000004 /* NoGpsIntroModalViewController.swift in Sources */,
 				N0GPS1B00000000000000005 /* NoGpsIntroController.swift in Sources */,
 				333A4718BABBBFC6A412D69B /* NoGpsBoxSheet.swift in Sources */,
+				5C0A7E1B3D2F4A6890B1D004 /* AboutNoGpsController.swift in Sources */,
 				3AB2A51C1DF5ED4103358BAF /* MWMNoGps.mm in Sources */,
 				9B5728946390BF79AAED06E1 /* Esp32BleTransport.swift in Sources */,
 				ED82BCB22F900F8200FA103D /* main.mm in Sources */,
@@ -5402,6 +5425,7 @@
 				5A07CF7460A24F6BBCA9F174 /* RoutePointCollectionViewCellTests.swift in Sources */,
 				D51CECE188BA883AE1DC41E8 /* MapPanelDraggerTests.swift in Sources */,
 				D560CC6FC73D20258FF65C5E /* NoGpsFlagsTests.swift in Sources */,
+				5C0A7E1B3D2F4A6890B1D007 /* BottomMenuPresenterTests.swift in Sources */,
 				N0GPS1B00000000000000006 /* NoGpsIntroTests.swift in Sources */,
 				A0C47D010000000000000002 /* NoGpsCarMenuTests.swift in Sources */,
 				57A0D9ACD3DDA2D29AF02FC5 /* NavigationSearchWheelTests.swift in Sources */,

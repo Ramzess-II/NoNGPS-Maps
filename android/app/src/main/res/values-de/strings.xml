@@ -36,6 +36,14 @@
     <!-- Button text for the button under the country_status_download_failed message -->
     <string name="try_again">Erneut versuchen</string>
     <!-- Text in About screen -->
+    <string name="about_headline">Kostenlos für alle, mit Liebe gemacht</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_1">• Keine Werbung, kein Tracking, keine Datenerfassung</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_2">• Minimaler Batterieverbrauch, funktioniert offline</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_3">• Schnell, minimalistisch, von der Community entwickelt</string>
+    <!-- Text in About screen -->
     <string name="about_developed_by_enthusiasts">Open-Source-Anwendung, entwickelt von Enthusiasten und Freiwilligen.</string>
     <!-- The button that opens system location settings -->
     <string name="location_settings">Standorteinstellungen</string>
@@ -742,6 +750,10 @@
     <string name="enable_show_on_lock_screen_description">Wenn aktiviert, funktioniert die App auf dem Sperrbildschirm auch, wenn das Gerät gesperrt ist.</string>
     <!-- Current language of the map! -->
     <string name="change_map_locale">Kartensprache</string>
+    <!-- Telegram group url for the "?" About page -->
+    <string name="telegram_url">https://t.me/OrganicMapsApp</string>
+    <!-- Instagram account url for the "?" About page -->
+    <string name="instagram_url">https://www.instagram.com/organicmaps.app</string>
     <!-- A link to the TTS FAQ -->
     <string name="tts_info_link">https://organicmaps.app/de/faq/voice/text-to-speech-android-tts/</string>
     <!-- Include only languages supported on the website, add new translations here: https://github.com/organicmaps/website/tree/master/content -->

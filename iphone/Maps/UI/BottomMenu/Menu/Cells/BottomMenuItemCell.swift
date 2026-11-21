@@ -9,6 +9,8 @@ final class BottomMenuItemCell: UITableViewCell {
   }
 
   private(set) var isEnabled: Bool = true
+  /// The full-width line above the first cell of a group; the cell's own inset line separates the rows inside a group.
+  private var groupSeparator: UIView?
 
   func configure(image: UIImage,
                  title: String,
@@ -23,5 +25,12 @@ final class BottomMenuItemCell: UITableViewCell {
     badgeBackground.isHidden = badgeCount == 0
     badgeCountLabel.text = "\(badgeCount)"
     badgeCountLabel.setFontStyleAndApply(.medium14, color: .whitePrimary)
+  }
+
+  func setStartsGroup(_ startsGroup: Bool) {
+    if groupSeparator == nil, startsGroup {
+      groupSeparator = addSeparator(.top)
+    }
+    groupSeparator?.isHidden = !startsGroup
   }
 }

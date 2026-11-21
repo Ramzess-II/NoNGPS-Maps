@@ -36,6 +36,14 @@
     <!-- Button text for the button under the country_status_download_failed message -->
     <string name="try_again">पुनः प्रयास करें</string>
     <!-- Text in About screen -->
+    <string name="about_headline">सभी के लिए मुफ़्त, प्यार से बनाया गया</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_1">• कोई विज्ञापन नहीं, कोई ट्रैकिंग नहीं, कोई डेटा संग्रह नहीं</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_2">• कोई बैटरी ख़त्म नहीं, ऑफ़लाइन काम करता है</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_3">• तेज़, न्यूनतम, समुदाय द्वारा विकसित</string>
+    <!-- Text in About screen -->
     <string name="about_developed_by_enthusiasts">उत्साही और स्वयंसेवकों द्वारा बनाया गया ओपन-सोर्स एप्लिकेशन।</string>
     <!-- The button that opens system location settings -->
     <string name="location_settings">स्थान सेटिंग्स</string>

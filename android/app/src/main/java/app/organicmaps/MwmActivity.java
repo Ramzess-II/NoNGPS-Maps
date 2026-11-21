@@ -69,7 +69,10 @@ import app.organicmaps.location.TrackRecordingService;
 import app.organicmaps.maplayer.MapButtonsController;
 import app.organicmaps.maplayer.MapButtonsViewModel;
 import app.organicmaps.maplayer.ToggleMapLayerFragment;
+import app.organicmaps.nogps.AboutNoGpsActivity;
 import app.organicmaps.nogps.BoxBottomSheet;
+import app.organicmaps.nogps.MainMenuItems;
+import app.organicmaps.nogps.NoGpsLinks;
 import app.organicmaps.nogps.intro.IntroModalFragment;
 import app.organicmaps.nogps.intro.IntroOverlay;
 import app.organicmaps.nogps.intro.IntroSequence;
@@ -176,6 +179,74 @@ public class MwmActivity extends BaseMwmFragmentActivity
   private OnmapDownloader mOnmapDownloader;
 
   private String mDonatesUrl;
+
+  private final MainMenuItems.Handlers mMainMenuHandlers = new MainMenuItems.Handlers() {
+    @Override
+    public void openProfile()
+    {
+      MwmActivity.this.openProfile();
+    }
+
+    @Override
+    public void openSettings()
+    {
+      onSettingsOptionSelected();
+    }
+
+    @Override
+    public void shareLocation()
+    {
+      onShareLocationOptionSelected();
+    }
+
+    @Override
+    public void openBookmarks()
+    {
+      showBookmarks();
+    }
+
+    @Override
+    public void downloadMaps()
+    {
+      onDownloadMapsOptionSelected();
+    }
+
+    @Override
+    public void toggleTrackRecording()
+    {
+      onTrackRecordingOptionSelected();
+    }
+
+    @Override
+    public void addPlace()
+    {
+      onAddPlaceOptionSelected();
+    }
+
+    @Override
+    public void openAboutNoGps()
+    {
+      showAboutNoGps();
+    }
+
+    @Override
+    public void openAboutOrganicMaps()
+    {
+      showHelp();
+    }
+
+    @Override
+    public void buyBox()
+    {
+      MwmActivity.this.buyBox();
+    }
+
+    @Override
+    public void donate()
+    {
+      onDonateOptionSelected();
+    }
+  };
 
   private int mNavBarHeight;
 
@@ -441,6 +512,22 @@ public class MwmActivity extends BaseMwmFragmentActivity
   {
     Intent intent = new Intent(this, HelpActivity.class);
     startActivity(intent);
+  }
+
+  private void showAboutNoGps()
+  {
+    startActivity(new Intent(this, AboutNoGpsActivity.class));
+  }
+
+  /// The site until the account has a screen of its own, see issue #458.
+  private void openProfile()
+  {
+    Utils.openUrl(this, NoGpsLinks.ACCOUNT_URL);
+  }
+
+  private void buyBox()
+  {
+    Utils.openUrl(this, NoGpsLinks.SHOP_URL);
   }
 
   public void showSearch(String query)
@@ -2409,29 +2496,11 @@ public class MwmActivity extends BaseMwmFragmentActivity
   @Nullable
   public ArrayList<MenuBottomSheetItem> getMenuBottomSheetItems(String id)
   {
-    if (id.equals(MAIN_MENU_ID))
-    {
-      ArrayList<MenuBottomSheetItem> items = new ArrayList<>();
-      // The bottom bar of the map has no button for them.
-      items.add(new MenuBottomSheetItem(R.string.bookmarks, R.drawable.ic_bookmarks_and_tracks, this::showBookmarks));
-      if (BuildConfig.MAP_EDITING)
-        items.add(new MenuBottomSheetItem(R.string.placepage_add_place_button, R.drawable.ic_plus,
-                                          this::onAddPlaceOptionSelected));
-      items.add(new MenuBottomSheetItem(R.string.download_maps, R.drawable.ic_download, getDownloadMapsCounter(),
-                                        this::onDownloadMapsOptionSelected));
-      mDonatesUrl = Utils.getDonateUrl(getApplicationContext());
-      if (!TextUtils.isEmpty(mDonatesUrl))
-        items.add(new MenuBottomSheetItem(R.string.donate, R.drawable.ic_donate, this::onDonateOptionSelected));
-      items.add(new MenuBottomSheetItem(R.string.settings, R.drawable.ic_settings, this::onSettingsOptionSelected));
-      items.add(new MenuBottomSheetItem(R.string.start_track_recording, R.drawable.ic_track_recording_off, -1,
-                                        this::onTrackRecordingOptionSelected));
-      items.add(new MenuBottomSheetItem(R.string.share_my_location, R.drawable.ic_share,
-                                        this::onShareLocationOptionSelected));
-      // The map data and the project it is based on are credited in a place every user sees.
-      items.add(new MenuBottomSheetItem(R.string.nogps_about_menu, R.drawable.ic_question_mark, this::showHelp));
-      return items;
-    }
-    return null;
+    if (!id.equals(MAIN_MENU_ID))
+      return null;
+    mDonatesUrl = Utils.getDonateUrl(getApplicationContext());
+    return MainMenuItems.create(BuildConfig.MAP_EDITING, !TextUtils.isEmpty(mDonatesUrl), getDownloadMapsCounter(),
+                                mMainMenuHandlers);
   }
 
   @Override

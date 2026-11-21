@@ -36,6 +36,14 @@
     <!-- Button text for the button under the country_status_download_failed message -->
     <string name="try_again">Спробуйте ще раз</string>
     <!-- Text in About screen -->
+    <string name="about_headline">Безкоштовно для всіх, зроблене з любов\'ю</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_1">• Без реклами, без трекінгу, без стеження</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_2">• Не розряджає батарею, працює в автономному режимі</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_3">• Швидкий, мінімалістичний, розроблений спільнотою</string>
+    <!-- Text in About screen -->
     <string name="about_developed_by_enthusiasts">Програма з відкритим кодом, створена ентузіастами та волонтерами.</string>
     <!-- The button that opens system location settings -->
     <string name="location_settings">Налаштування місцеположення</string>
@@ -751,6 +759,10 @@
     <string name="enable_show_on_lock_screen_description">Якщо ввімкнено, вам не потрібно щоразу розблоковувати пристрій під час роботи програми.</string>
     <!-- Current language of the map! -->
     <string name="change_map_locale">Мова мапи</string>
+    <!-- Telegram group url for the "?" About page -->
+    <string name="telegram_url">https://t.me/OrganicMapsApp</string>
+    <!-- Instagram account url for the "?" About page -->
+    <string name="instagram_url">https://www.instagram.com/organicmaps.app</string>
     <!-- A link to the TTS FAQ -->
     <string name="tts_info_link">https://organicmaps.app/uk/faq/voice/text-to-speech-android-tts/</string>
     <!-- Include only languages supported on the website, add new translations here: https://github.com/organicmaps/website/tree/master/content -->
@@ -1158,8 +1170,11 @@
     <string name="nogps_clear_speed">Скинути</string>
     <string name="nogps_clear_speed_title">Скинути калібрування швидкості?</string>
     <string name="nogps_clear_speed_message">Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або авто. Поки працює GPS, вони вимірюються наново.</string>
+    <!-- Main menu row opening the account of the user on the site -->
+    <string name="nogps_menu_profile">Профіль</string>
     <string name="nogps_about_title">Про NonGPS Maps</string>
-    <string name="nogps_about_menu">Про застосунок · Organic Maps</string>
+    <!-- Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on -->
+    <string name="nogps_about_om_menu">Про застосунок Organic Maps</string>
     <string name="nogps_about_headline">Навігація, коли GPS глушать або підміняють</string>
     <string name="nogps_about_description">Без GPS авто веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю авто з OBD-II. Авто тримається доріг офлайн-карти.</string>
     <!-- NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) -->
