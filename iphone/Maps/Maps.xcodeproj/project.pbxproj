@@ -24,6 +24,12 @@
 		183FDFE8CE934746BE36595D /* NoGpsSpeedHintView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64939671DA0B4C42B8CFFB2E /* NoGpsSpeedHintView.swift */; };
 		0A315CFDC6F1142A913A8A30 /* NoGpsCalibrationBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA3B0D3068B402225D5E65C4 /* NoGpsCalibrationBarView.swift */; };
 		5C0A7E1B3D2F4A6890B1C2D4 /* NoGpsSprintView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0A7E1B3D2F4A6890B1C2D3 /* NoGpsSprintView.swift */; };
+		N0GPS1B00000000000000001 /* NoGpsLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS1A00000000000000001 /* NoGpsLinks.swift */; };
+		N0GPS1B00000000000000002 /* NoGpsIntroSequence.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS1A00000000000000002 /* NoGpsIntroSequence.swift */; };
+		N0GPS1B00000000000000003 /* NoGpsIntroOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS1A00000000000000003 /* NoGpsIntroOverlay.swift */; };
+		N0GPS1B00000000000000004 /* NoGpsIntroModalViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS1A00000000000000004 /* NoGpsIntroModalViewController.swift */; };
+		N0GPS1B00000000000000005 /* NoGpsIntroController.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS1A00000000000000005 /* NoGpsIntroController.swift */; };
+		N0GPS1B00000000000000006 /* NoGpsIntroTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS1A00000000000000006 /* NoGpsIntroTests.swift */; };
 		3AB2A51C1DF5ED4103358BAF /* MWMNoGps.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7E8C3DE3FE048E6B44D39393 /* MWMNoGps.mm */; };
 		3ADD6F28B1682842E86CAD7C /* NoGpsGpsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0A2E482F0BC3FF3F47D237 /* NoGpsGpsSheet.swift */; };
 		408645FC21495EB1000A4A1D /* categories_cuisines.txt in Resources */ = {isa = PBXBuildFile; fileRef = 408645FB21495EB1000A4A1D /* categories_cuisines.txt */; };
@@ -911,6 +917,12 @@
 		64939671DA0B4C42B8CFFB2E /* NoGpsSpeedHintView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsSpeedHintView.swift; sourceTree = "<group>"; };
 		CA3B0D3068B402225D5E65C4 /* NoGpsCalibrationBarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsCalibrationBarView.swift; sourceTree = "<group>"; };
 		5C0A7E1B3D2F4A6890B1C2D3 /* NoGpsSprintView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsSprintView.swift; sourceTree = "<group>"; };
+		N0GPS1A00000000000000001 /* NoGpsLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsLinks.swift; sourceTree = "<group>"; };
+		N0GPS1A00000000000000002 /* NoGpsIntroSequence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsIntroSequence.swift; sourceTree = "<group>"; };
+		N0GPS1A00000000000000003 /* NoGpsIntroOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsIntroOverlay.swift; sourceTree = "<group>"; };
+		N0GPS1A00000000000000004 /* NoGpsIntroModalViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsIntroModalViewController.swift; sourceTree = "<group>"; };
+		N0GPS1A00000000000000005 /* NoGpsIntroController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsIntroController.swift; sourceTree = "<group>"; };
+		N0GPS1A00000000000000006 /* NoGpsIntroTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsIntroTests.swift; sourceTree = "<group>"; };
 		408645FB21495EB1000A4A1D /* categories_cuisines.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = categories_cuisines.txt; path = ../../data/categories_cuisines.txt; sourceTree = "<group>"; };
 		44369F0EB71FE889A86AF4F7 /* cy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = cy; path = cy.lproj/Localizable.strings; sourceTree = "<group>"; };
 		451950391B7A3E070085DA05 /* patterns.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = patterns.txt; path = ../../data/patterns.txt; sourceTree = "<group>"; };
@@ -2407,6 +2419,7 @@
 				1A4D381982BD4FCD9308F4D1 /* RoutePointCollectionViewCellTests.swift */,
 				269EA85AB77A3B550B66E5E2 /* MapPanelDraggerTests.swift */,
 				0E779A1A71BDFB9F9F1BA779 /* NoGpsFlagsTests.swift */,
+				N0GPS1A00000000000000006 /* NoGpsIntroTests.swift */,
 				A0C47D010000000000000001 /* NoGpsCarMenuTests.swift */,
 				6DCDADA4CA235047EE2F0639 /* NavigationSearchWheelTests.swift */,
 				E79F77A472014212B40FDE97 /* PlacePageTests */,
@@ -2921,6 +2934,17 @@
 			path = MailComposer;
 			sourceTree = "<group>";
 		};
+		N0GPS1C00000000000000001 /* NoGpsIntro */ = {
+			isa = PBXGroup;
+			children = (
+				N0GPS1A00000000000000002 /* NoGpsIntroSequence.swift */,
+				N0GPS1A00000000000000003 /* NoGpsIntroOverlay.swift */,
+				N0GPS1A00000000000000004 /* NoGpsIntroModalViewController.swift */,
+				N0GPS1A00000000000000005 /* NoGpsIntroController.swift */,
+			);
+			path = NoGpsIntro;
+			sourceTree = "<group>";
+		};
 		ED82C3912F90180300FA103D /* SideButtons */ = {
 			isa = PBXGroup;
 			children = (
@@ -2959,6 +2983,8 @@
 				CA3B0D3068B402225D5E65C4 /* NoGpsCalibrationBarView.swift */,
 				5C0A7E1B3D2F4A6890B1C2D3 /* NoGpsSprintView.swift */,
 				EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */,
+				N0GPS1A00000000000000001 /* NoGpsLinks.swift */,
+				N0GPS1C00000000000000001 /* NoGpsIntro */,
 				ED82C3912F90180300FA103D /* SideButtons */,
 				ED82C3952F90180300FA103D /* TrafficButton */,
 				ED82C3962F90180300FA103D /* MWMMapViewControlsCommon.h */,
@@ -4849,6 +4875,11 @@
 				183FDFE8CE934746BE36595D /* NoGpsSpeedHintView.swift in Sources */,
 				0A315CFDC6F1142A913A8A30 /* NoGpsCalibrationBarView.swift in Sources */,
 				5C0A7E1B3D2F4A6890B1C2D4 /* NoGpsSprintView.swift in Sources */,
+				N0GPS1B00000000000000001 /* NoGpsLinks.swift in Sources */,
+				N0GPS1B00000000000000002 /* NoGpsIntroSequence.swift in Sources */,
+				N0GPS1B00000000000000003 /* NoGpsIntroOverlay.swift in Sources */,
+				N0GPS1B00000000000000004 /* NoGpsIntroModalViewController.swift in Sources */,
+				N0GPS1B00000000000000005 /* NoGpsIntroController.swift in Sources */,
 				333A4718BABBBFC6A412D69B /* NoGpsBoxSheet.swift in Sources */,
 				3AB2A51C1DF5ED4103358BAF /* MWMNoGps.mm in Sources */,
 				9B5728946390BF79AAED06E1 /* Esp32BleTransport.swift in Sources */,
@@ -5371,6 +5402,7 @@
 				5A07CF7460A24F6BBCA9F174 /* RoutePointCollectionViewCellTests.swift in Sources */,
 				D51CECE188BA883AE1DC41E8 /* MapPanelDraggerTests.swift in Sources */,
 				D560CC6FC73D20258FF65C5E /* NoGpsFlagsTests.swift in Sources */,
+				N0GPS1B00000000000000006 /* NoGpsIntroTests.swift in Sources */,
 				A0C47D010000000000000002 /* NoGpsCarMenuTests.swift in Sources */,
 				57A0D9ACD3DDA2D29AF02FC5 /* NavigationSearchWheelTests.swift in Sources */,
 				A13418010000000000000004 /* CarPlayManeuverMapperTests.swift in Sources */,

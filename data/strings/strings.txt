@@ -47721,3 +47721,59 @@ tags = android-app,apple-maps
 en = The shared link has no place. Connect to the internet and share it again.
 ru = В ссылке нет места. Подключитесь к интернету и поделитесь ещё раз.
 uk = У посиланні немає місця. Підключіться до інтернету й поділіться ще раз.
+
+[nogps_intro_title]
+comment = Title of the dialog shown once, on the first start of the app
+tags = android-app,apple-maps
+en = Navigation without GPS
+ru = Навигация без GPS
+uk = Навігація без GPS
+
+[nogps_intro_text]
+comment = Text of the dialog of the first start: what the app is and that it needs the sensor box
+tags = android-app,apple-maps
+en = This app drives your car on the map without GPS. The NonGPS sensor box takes the speed from the car and the turns from its own sensors, and the app draws the car from them: in a tunnel, in a yard, under a bridge, where GPS is lost. Without the box this is an ordinary offline map.
+ru = Это приложение ведёт вашу машину по карте без GPS. Датчик NonGPS берёт скорость из машины, а повороты — со своих сенсоров, и приложение рисует машину по ним: в тоннеле, во дворе, под мостом, где GPS теряется. Без датчика это обычная офлайн-карта.
+uk = Цей застосунок веде вашу машину мапою без GPS. Датчик NonGPS бере швидкість з машини, а повороти — зі своїх сенсорів, і застосунок малює машину за ними: у тунелі, у дворі, під мостом, де GPS губиться. Без датчика це звичайна офлайн-мапа.
+
+[nogps_intro_video]
+comment = Button of the dialog of the first start, opens the video about the app
+tags = android-app,apple-maps
+en = Watch the video
+ru = Посмотреть видео
+uk = Подивитися відео
+
+[nogps_intro_understand]
+comment = Checkbox that closes the dialog of the first start
+tags = android-app,apple-maps
+en = Yes, I understand
+ru = Да, я понял
+uk = Так, я зрозумів
+
+[nogps_intro_bottom]
+comment = Balloon of the first start pointing at the bottom bar
+tags = android-app,apple-maps
+en = The cars, the box and GPS are here.
+ru = Машины, датчик и GPS — здесь.
+uk = Машини, датчик і GPS — тут.
+
+[nogps_intro_right]
+comment = Balloon of the first start pointing at the panel with the zoom buttons
+tags = android-app,apple-maps
+en = Zoom and the direction of the map. Hold to move it.
+ru = Масштаб и поворот карты. Удержание двигает панель.
+uk = Масштаб і поворот мапи. Утримання рухає панель.
+
+[nogps_intro_right_swipe]
+comment = Appended to nogps_intro_right on iOS only, where the zoom buttons also take a slide
+tags = apple-maps
+en = Slide +/− to zoom.
+ru = Проведите по +/− для масштаба.
+uk = Проведіть по +/− для масштабу.
+
+[nogps_intro_left]
+comment = Balloon of the first start pointing at the panel with the car buttons
+tags = android-app,apple-maps
+en = Turn the car or point it by hand. Hold to move it.
+ru = Поверните машину или укажите её рукой. Удержание двигает панель.
+uk = Поверніть машину або вкажіть її рукою. Утримання рухає панель.

@@ -49,6 +49,11 @@ CGFloat const kZoomSwipeStartPt = 24;
 {
   return [MWMMapViewControlsManager manager].sideButtons;
 }
+
++ (UIView *)introAnchor
+{
+  return [self buttons].sideView;
+}
 - (instancetype)initWithParentView:(UIView *)view
 {
   self = [super init];
