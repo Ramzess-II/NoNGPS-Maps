@@ -205,17 +205,28 @@ void SpeedUnit::OnSample(double carSpeedKmh, double gpsSpeedMps, double dtSec, d
     m_mphM /= 2;
     m_kmhM /= 2;
   }
+  UpdateUnit();
+}
+
+void SpeedUnit::UpdateUnit()
+{
+  double const share = m_mphM / (m_mphM + m_kmhM);
+  if (m_mph)
+    m_mph = share >= kKmhShare;
+  else
+    m_mph = m_mphM >= kMinDistanceM && share >= kMphShare;
 }
 
 double SpeedUnit::Get() const
 {
-  return m_mphM >= kMinDistanceM && m_mphM >= kMphShare * (m_mphM + m_kmhM) ? kMph : 1;
+  return m_mph ? kMph : 1;
 }
 
 void SpeedUnit::Clear()
 {
   m_mphM = 0;
   m_kmhM = 0;
+  m_mph = false;
 }
 
 std::string SpeedUnit::Serialize() const
@@ -231,6 +242,8 @@ void SpeedUnit::Deserialize(std::string_view unit)
   auto const distances = strings::Tokenize(unit, ":");
   if (distances.size() != 2 || !strings::to_double(distances[0], m_mphM) || !strings::to_double(distances[1], m_kmhM))
     Clear();
+  else
+    UpdateUnit();
 }
 
 bool SpeedFactor::IsGoodSample(double expectedKmh, double gpsKmh)

@@ -124,6 +124,8 @@ public:
   static double constexpr kMaxMphRatio = 1.85;
   // mph is told when most of the distance, not a part of it, is driven so.
   static double constexpr kMphShare = 0.8;
+  // km/h is back when the share falls below this: a share near kMphShare must not flip the unit, it clears the tables.
+  static double constexpr kKmhShare = 0.5;
 
   /// Takes into account the raw car speed and the real one measured at the same time.
   void OnSample(double carSpeedKmh, double gpsSpeedMps, double dtSec, double accelerationMps2);
@@ -137,8 +139,11 @@ public:
   void Deserialize(std::string_view unit);
 
 private:
+  void UpdateUnit();
+
   double m_mphM = 0;
   double m_kmhM = 0;
+  bool m_mph = false;
 };
 
 /// A change of the speed error common to all speeds, e.g. other tyres or the cold: the table keeps the error of every
