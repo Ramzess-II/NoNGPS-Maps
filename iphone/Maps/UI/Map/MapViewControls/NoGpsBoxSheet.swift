@@ -911,14 +911,18 @@ final class CarPageViewController: MWMTableViewController {
     return entries.map { entry -> UIMenuElement in
       switch entry {
       case .car(let carId, let name, let state):
-        let action = UIAction(title: name) { [weak self] _ in
+        let stateText = NoGpsCarMenu.stateText(state)
+        let on: UIMenuElement.State = NoGpsCarMenu.isCurrent(state) ? .on : .off
+        let drive: UIActionHandler = { [weak self] _ in
           NoGps.selectCar(carId)
           NoGpsStatusBar.update(NoGps.status())
           self?.refresh()
         }
-        action.subtitle = NoGpsCarMenu.stateText(state)
-        action.state = NoGpsCarMenu.isCurrent(state) ? .on : .off
-        return action
+        if #available(iOS 16.0, *) {
+          return UIAction(title: name, subtitle: stateText, state: on, handler: drive)
+        }
+        // An entry of a menu has no subtitle before iOS 16: the state follows the name.
+        return UIAction(title: stateText.map { name + " · " + $0 } ?? name, state: on, handler: drive)
       case .add:
         return UIAction(title: L("nogps_car_add"), image: UIImage(systemName: "plus")) { [weak self] _ in
           self?.navigationController?.pushViewController(AddCarViewController(style: .insetGrouped), animated: true)
