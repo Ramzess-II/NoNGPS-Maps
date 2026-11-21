@@ -444,14 +444,15 @@ public final class Logger
       final String line = mDateFormat.format(new Date()) + " " + data + "\n";
       try
       {
-        if (mWriter != null && mFileSize >= MAX_FILE_SIZE)
-          startFileLocked();
         ensureWriterLocked(logsFolder);
         if (mWriter == null)
           return;
 
         mWriter.write(line);
         mFileSize += line.length();
+        // Like on iOS: the file that reached the limit ends, the next line opens a new one.
+        if (mFileSize >= MAX_FILE_SIZE)
+          startFileLocked();
       }
       catch (IOException e)
       {
