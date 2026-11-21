@@ -120,7 +120,8 @@ public class IntroOverlay extends View
    */
   public void onModalClosed()
   {
-    if (mSequence.step() != IntroStep.MODAL)
+    // A modal restored with the activity, whose intro this overlay never ran: the flag is set, nothing follows.
+    if (!isRunning() || mSequence.step() != IntroStep.MODAL)
       return;
     advance();
   }
@@ -238,9 +239,17 @@ public class IntroOverlay extends View
     drawBalloon(canvas);
   }
 
+  /**
+   * Posted from onDraw(): the anchor of the step is taken again, so a second post of the same draw does not skip
+   * the step after it too.
+   */
   private void skipMissingAnchor()
   {
-    if (isRunning())
+    final IntroStep step = mSequence.step();
+    if (step == null || mAnchors == null)
+      return;
+    final View anchor = mAnchors.get(step);
+    if (anchor == null || anchor.getVisibility() != VISIBLE)
       advance();
   }
 
