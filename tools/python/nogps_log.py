@@ -759,7 +759,9 @@ class Trip:
         older than GPS_MARK_MAX_AGE_S, is accurate to GPS_MARK_MAX_ACCURACY_M, GPS is not spoofed, and the fix is
         not farther from the mark than the distance driven since the loss, the accuracies of the mark and of the fix
         and GPS_MARK_MARGIN_M. The road near the fix is not checked: the log has no map, so "fixable" is an upper
-        bound. A tap on the map or the end of the loss ends the time the GPS tap could be used in."""
+        bound: the settings of the user are not read either, so a trip with GPS turned off in the app (the tap fails
+        with "GPS is turned off") can show losses as fixable. A tap on the map or the end of the loss ends the time
+        the GPS tap could be used in; a tap just before the loss ends on its own is counted as a map tap too."""
         taps = [e['t'] for e in self.events if e['cat'] == 'user' and e['name'] == 'tap']
         # iOS writes a line of the network location between the lines of the mark, with lost=0.
         rows = [row for row in self.rows if row.get('src') != 'NETWORK']
