@@ -1978,3 +1978,27 @@
 
 /* Toast after another app, e.g. Google Maps, shares a link to the app, but the link has no place: usually a short link while offline */
 "nogps_shared_no_place" = "У посиланні немає місця. Підключіться до інтернету й поділіться ще раз.";
+
+/* Title of the dialog shown once, on the first start of the app */
+"nogps_intro_title" = "Навігація без GPS";
+
+/* Text of the dialog of the first start: what the app is and that it needs the sensor box */
+"nogps_intro_text" = "Цей застосунок веде вашу машину мапою без GPS. Датчик NonGPS бере швидкість з машини, а повороти — зі своїх сенсорів, і застосунок малює машину за ними: у тунелі, у дворі, під мостом, де GPS губиться. Без датчика це звичайна офлайн-мапа.";
+
+/* Button of the dialog of the first start, opens the video about the app */
+"nogps_intro_video" = "Подивитися відео";
+
+/* Checkbox that closes the dialog of the first start */
+"nogps_intro_understand" = "Так, я зрозумів";
+
+/* Balloon of the first start pointing at the bottom bar */
+"nogps_intro_bottom" = "Машини, датчик і GPS — тут.";
+
+/* Balloon of the first start pointing at the panel with the zoom buttons */
+"nogps_intro_right" = "Масштаб і поворот мапи. Утримання рухає панель.";
+
+/* Appended to nogps_intro_right on iOS only, where the zoom buttons also take a slide */
+"nogps_intro_right_swipe" = "Проведіть по +/− для масштабу.";
+
+/* Balloon of the first start pointing at the panel with the car buttons */
+"nogps_intro_left" = "Поверніть машину або вкажіть її рукою. Утримання рухає панель.";
