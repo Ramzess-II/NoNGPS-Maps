@@ -1484,6 +1484,8 @@
     <string name="nogps_intro_bottom">The cars, the box and GPS are here.</string>
     <!-- Balloon of the first start pointing at the panel with the zoom buttons -->
     <string name="nogps_intro_right">Zoom and the direction of the map. Hold to move it.</string>
+    <!-- Appended to nogps_intro_right, the zoom buttons also take a slide -->
+    <string name="nogps_intro_right_swipe">Slide +/− to zoom.</string>
     <!-- Balloon of the first start pointing at the panel with the car buttons -->
     <string name="nogps_intro_left">Turn the car or point it by hand. Hold to move it.</string>
 </resources>
