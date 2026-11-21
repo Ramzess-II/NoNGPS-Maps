@@ -28,6 +28,7 @@ import app.organicmaps.sdk.routing.RoutingController;
 import app.organicmaps.sdk.util.Config;
 import app.organicmaps.sdk.util.NetworkPolicy;
 import app.organicmaps.sdk.util.log.Logger;
+import app.organicmaps.sdk.util.log.LogsManager;
 import java.util.Collections;
 import java.util.TreeMap;
 import org.chromium.base.ObserverList;
@@ -181,6 +182,10 @@ public class LocationHelper implements BaseLocationProvider.Listener
       final NoGps.Event noGpsEvent = NoGps.toEvent(event);
       if (noGpsEvent == null)
         return;
+      // Here and not in a listener: a drive starts in the background too, and the core logs the calibration of the car
+      // right after the event.
+      if (noGpsEvent == NoGps.Event.TRIP_STARTED)
+        LogsManager.INSTANCE.startTrip();
       for (NoGpsListener listener : mNoGpsListeners)
         listener.onNoGpsEvent(noGpsEvent);
     }

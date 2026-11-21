@@ -42,8 +42,8 @@ confirmation at any step.
 3. **Replay data.** On macOS the slots replay the trips of a change to how the mark moves instead of postponing it.
    They need the maps of one version and the app's `settings.ini`: `maps` and `settings` are the paths the user
    gave, else `<ws>/replay/maps` and `<ws>/replay/settings.ini` when both exist. Pass them only when the OS is
-   macOS (`uname` is Darwin), both paths exist and `<ws>/app/trip-logs/*.log` matches some file. Otherwise leave both out: a
-   change that needs a replay is postponed, and a PR of a core change says "Not replayed".
+   macOS (`uname` is Darwin), both paths exist and `find <ws>/app/trip-logs/ -name '*.log'` finds a file. Otherwise
+   leave both out: a change that needs a replay is postponed, and a PR of a core change says "Not replayed".
 4. **Disk.** `df -g <ws>`: a slot starts an implementation only with 15 GB free. With less, say so: the run will
    wait for slots and may stop early.
 5. **Run.** Show the queue size, the count and the first issues in one line, then start the saved workflow by its

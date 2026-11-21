@@ -175,7 +175,7 @@ final class NoGpsFlagsViewController: MWMTableViewController, AVAudioPlayerDeleg
     guard !flags.isEmpty else { return }
     let logDays = Set(flags.map { NoGpsFlags.logDay(of: $0.name) })
     UIApplication.shared.showLoadingOverlay {
-      let logs = Logger.zipLogFiles { !NoGpsFlags.logFiles([$0], days: logDays).isEmpty }
+      let logs = Logger.zipLogFiles(days: logDays)
       let files = NoGpsFlags.attachments(flags) + [logs].compactMap { $0 }
       UIApplication.shared.hideLoadingOverlay {
         self.confirmSize(files) { self.compose(flags, files) }

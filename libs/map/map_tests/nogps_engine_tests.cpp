@@ -2,10 +2,12 @@
 
 #include "map/map_tests/nogps_test_env.hpp"
 
+#include "map/nogps/accel_speed.hpp"
 #include "map/nogps/box_car_values.hpp"
 #include "map/nogps/engine.hpp"
 #include "map/nogps/esp32_protocol.hpp"
 #include "map/nogps/geo.hpp"
+#include "map/nogps/speed_lag.hpp"
 #include "map/nogps/speed_table.hpp"
 #include "map/nogps/storage.hpp"
 
@@ -2852,6 +2854,254 @@ std::vector<std::string> CarIds(std::vector<Car> const & cars)
   for (auto const & car : cars)
     ids.push_back(car.m_id);
   return ids;
+}
+
+/// Keeps the CALIBRATION lines of the trip log while it lives, the other messages are logged as before.
+class CalibrationLines
+{
+public:
+  CalibrationLines()
+  {
+    s_lines.clear();
+    s_saved = base::SetLogMessageFn(&Keep);
+  }
+  ~CalibrationLines() { base::SetLogMessageFn(s_saved); }
+
+  static size_t Count() { return s_lines.size(); }
+  /// \returns the lines written since the last call.
+  std::vector<std::string> Take() { return std::exchange(s_lines, {}); }
+
+private:
+  static void Keep(base::LogLevel level, base::SrcPoint const & src, std::string const & message)
+  {
+    if (message.starts_with("CALIBRATION "))
+      s_lines.push_back(message);
+    else
+      s_saved(level, src, message);
+  }
+
+  static inline std::vector<std::string> s_lines;
+  static inline base::LogMessageFn s_saved = nullptr;
+};
+
+/// The values of a CALIBRATION line by their names.
+std::map<std::string, std::string> CalibrationValues(std::string const & line)
+{
+  std::map<std::string, std::string> values;
+  auto const words = strings::Tokenize(line, " ");
+  TEST_EQUAL(words[0], "CALIBRATION", ());
+  for (size_t i = 1; i < words.size(); ++i)
+  {
+    auto const eq = words[i].find('=');
+    TEST_NOT_EQUAL(eq, std::string_view::npos, (line));
+    TEST(values.emplace(words[i].substr(0, eq), words[i].substr(eq + 1)).second, (line));
+  }
+  return values;
+}
+
+int TripsStarted(Env const & env)
+{
+  auto const & events = env.m_delegate.m_events;
+  return static_cast<int>(std::count(events.begin(), events.end(), Event::TripStarted));
+}
+
+UNIT_TEST(NoGps_TripStarted_BoxConnectedSoonAfterStartStaysInFileOfLaunch)
+{
+  Env env(true /* inertial */);
+  env.Drive(2000, 0, 0);
+  TEST_EQUAL(TripsStarted(env), 0, ());
+  // The link is made again and again within the gap.
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  env.m_clock.Advance(Engine::kTripFileLinkGapMs - 1000);
+  env.ConnectBox();
+  env.ConnectBox();
+  TEST_EQUAL(TripsStarted(env), 0, ());
+}
+
+UNIT_TEST(NoGps_TripStarted_FirstConnectionLongAfterStart)
+{
+  NewUser user;
+  user.m_storage.Set(Storage::kInertialEnabled, true);
+  user.Start();
+  user.m_clock.Advance(Engine::kTripFileLinkGapMs);
+  // The box is found and asks for its code: not connected yet.
+  user.m_engine.OnEsp32BleState(BleState::Searching);
+  user.m_engine.OnEsp32BleState(BleState::Connecting);
+  user.m_engine.OnEsp32BleState(BleState::Pairing);
+  TEST(!user.m_delegate.HasEvent(Event::TripStarted), ());
+  user.m_engine.OnEsp32BleState(BleState::Connected);
+  TEST(user.m_delegate.HasEvent(Event::TripStarted), ());
+}
+
+UNIT_TEST(NoGps_TripStarted_LinkLostForLong)
+{
+  Env env(true /* inertial */);
+  env.Drive(2000, 36, 0);
+  // A dropout on the way.
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  env.m_clock.Advance(5000);
+  env.m_engine.OnEsp32BleState(BleState::Connecting);
+  env.ConnectBox();
+  TEST_EQUAL(TripsStarted(env), 0, ());
+
+  // The gap is counted from the end of the link, not from the last try to make it.
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  env.m_clock.Advance(Engine::kTripFileLinkGapMs - 1000);
+  env.m_engine.OnEsp32BleState(BleState::Connecting);
+  env.m_clock.Advance(1000);
+  env.ConnectBox();
+  TEST_EQUAL(TripsStarted(env), 1, ());
+  env.Drive(2000, 36, 0);
+  TEST_EQUAL(TripsStarted(env), 1, ());
+}
+
+UNIT_TEST(NoGps_TripStarted_BoxStoppedForLong)
+{
+  // The platform closes the link when the navigation stops and doesn't tell of it.
+  Env env(true /* inertial */);
+  env.m_engine.Stop();
+  env.m_clock.Advance(Engine::kTripFileLinkGapMs);
+  env.m_engine.Start();
+  TEST_EQUAL(TripsStarted(env), 0, ());
+  env.ConnectBox();
+  TEST_EQUAL(TripsStarted(env), 1, ());
+
+  // The box is started again for another car: no pause.
+  HearBox(env, "C47D");
+  HearBox(env, "42FD");
+  env.m_engine.SelectCar("C47D");
+  env.ConnectBox();
+  TEST_EQUAL(TripsStarted(env), 1, ());
+}
+
+UNIT_TEST(NoGps_TripStarted_IsFollowedByCalibrationLine)
+{
+  // The platform starts the new file in the event: the line is written after it, into that file.
+  struct FileDelegate : TestDelegate
+  {
+    void OnEvent(Event event) override
+    {
+      if (event == Event::TripStarted)
+        m_linesBefore = CalibrationLines::Count();
+    }
+    std::optional<size_t> m_linesBefore;
+  };
+  TestClock clock;
+  TestStorage storage;
+  FileDelegate delegate;
+  TestMap map;
+  storage.Set(Storage::kInertialEnabled, true);
+  Engine engine(delegate, map, storage, clock, clock);
+  CalibrationLines lines;
+  // The file of the launch has the line too.
+  engine.Start();
+  TEST_EQUAL(lines.Take(), std::vector<std::string>({"CALIBRATION car=-"}), ());
+
+  clock.Advance(Engine::kTripFileLinkGapMs);
+  engine.OnEsp32BleState(BleState::Connected);
+  TEST(delegate.m_linesBefore, ());
+  TEST_EQUAL(*delegate.m_linesBefore, 0, ());
+  TEST_EQUAL(lines.Take(), std::vector<std::string>({"CALIBRATION car=-"}), ());
+}
+
+UNIT_TEST(NoGps_CalibrationLine_ValuesAreReadBack)
+{
+  SpeedTable table;
+  for (int i = 0; i < 400; ++i)
+    table.OnSample(50, 50 / 3.6 * 1.04, 1.0, 0);
+  SpeedTable rough(false /* learnsOffset */);
+  rough.OnDistance(36, 1000, 1050);
+  SpeedFactor factor;
+  factor.OnDistance(2000, 2040);
+  // In the form the storage keeps them.
+  std::string lagText = "500";
+  for (int i = 0; i < SpeedLag::kSteps; ++i)
+    lagText += ";" + std::to_string(10 + std::abs(i - 3)) + ".5";
+  SpeedLag lag;
+  lag.Deserialize(lagText);
+  TEST_EQUAL(lag.Serialize(), lagText, ());
+  // As many values as AccelSpeed keeps.
+  std::string accelText = "40";
+  for (int i = 1; i < 21; ++i)
+    accelText += ";" + std::to_string(i) + ".25";
+  AccelSpeed accel;
+  TEST(accel.Deserialize(accelText), ());
+  TEST_EQUAL(accel.Serialize(), accelText, ());
+
+  CalibrationLines lines;
+  Env env(true /* inertial */, nullptr, [&](TestStorage & storage)
+  {
+    storage.Set(Storage::kCars, std::string("C47D"));
+    storage.Set(Storage::kCurrentCar, std::string("C47D"));
+    auto const set = [&storage](std::string_view key, std::string const & value)
+    { storage.Set(CarStorage::GetCarKey("C47D", key), value); };
+    set(Storage::kSpeedTable, table.Serialize());
+    set(Storage::kRoughSpeedTable, rough.Serialize());
+    set(Storage::kSpeedFactor, factor.Serialize());
+    set(Storage::kSpeedLag, lagText);
+    set(Storage::kSpeedScale, "1.04");
+    set(Storage::kBoxAccel, "C47D:" + accelText);
+    set(Storage::kCarPosition, "50.45,30.52,90,0,1700000000000");
+    set(CarStorage::kCarName, "Kia");
+  });
+  auto const written = lines.Take();
+  TEST_EQUAL(written.size(), 1, ());
+  auto values = CalibrationValues(written[0]);
+  // Where the car is and how it is named is not in the line.
+  TEST_EQUAL(values.size(), 7, (written[0]));
+  TEST_EQUAL(written[0].find("50.45"), std::string::npos, ());
+  TEST_EQUAL(written[0].find("Kia"), std::string::npos, ());
+  TEST_EQUAL(values["car"], "C47D", ());
+  TEST_EQUAL(values["scale"], "1.04", ());
+
+  // Read back, each value is what the storage keeps.
+  SpeedTable readTable;
+  readTable.Deserialize(values["table"]);
+  TEST_EQUAL(readTable.Serialize(), table.Serialize(), ());
+  TEST_EQUAL(readTable.GetKnownRanges(), 1, ());
+  SpeedTable readRough(false /* learnsOffset */);
+  readRough.Deserialize(values["rough"]);
+  TEST_EQUAL(readRough.Serialize(), rough.Serialize(), ());
+  SpeedFactor readFactor;
+  readFactor.Deserialize(values["factor"]);
+  TEST_EQUAL(readFactor.Get(), factor.Get(), ());
+  SpeedLag readLag;
+  readLag.Deserialize(values["lag"]);
+  TEST(readLag.IsMeasured(), ());
+  TEST_EQUAL(readLag.Get(), lag.Get(), ());
+  TEST_EQUAL(values["accel"], "C47D:" + accelText, ());
+  AccelSpeed readAccel;
+  TEST(readAccel.Deserialize(values["accel"].substr(5)), ());
+  TEST_EQUAL(readAccel.GetSamples(), 40, ());
+}
+
+UNIT_TEST(NoGps_CalibrationLine_NewCarAndReset)
+{
+  Env env(true /* inertial */);
+  CalibrationLines lines;
+  // A new car has learned nothing.
+  HearBox(env, "C47D");
+  TEST_EQUAL(lines.Take(), std::vector<std::string>({"CALIBRATION car=C47D"}), ());
+
+  env.m_engine.SetManualMode(true);
+  TEST(lines.Take().empty(), ());
+  // Learning writes no line: the values of the start of a trip are in the line before it.
+  env.m_engine.OnFix(GpsAt(env.m_clock, 0, 0, 90.0, 10.0));
+  for (int i = 0; i < 200; ++i)
+  {
+    env.Drive(1000, 36, 0);
+    env.m_engine.OnFix(GpsAt(env.m_clock, 10.4 * (i + 1), 0, 90.0, 10.4));
+  }
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedTableRanges, 1, ());
+  TEST(lines.Take().empty(), ());
+
+  // The calibration is reset by the user: the line tells what is left.
+  env.m_engine.ClearSpeedCalibration();
+  auto const written = lines.Take();
+  TEST_EQUAL(written.size(), 1, ());
+  auto const values = CalibrationValues(written[0]);
+  TEST_EQUAL(values.at("car"), "C47D", ());
+  TEST(!values.contains("table") && !values.contains("factor") && !values.contains("scale"), (written[0]));
 }
 
 UNIT_TEST(NoGps_Cars_LegacyValuesGoToCarOfLearnedAccelerometer)

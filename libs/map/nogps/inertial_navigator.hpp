@@ -394,6 +394,12 @@ public:
   void RestoreCalibration();
   /// Takes the speed calibration from the storage again: another phone has learned it, see BoxCarValues.
   void RestoreSpeedCalibration();
+  /// What is learned about the current car, as the storage keeps it: "CALIBRATION car=C47D scale=1.04 table=...
+  /// rough=... factor=... lag=... accel=...", a value not learned is left out, "car=-" without a car. A trip is
+  /// driven again with the last line before it.
+  std::string GetCalibrationLine() const;
+  /// Written to the trip log when the navigation or a trip starts and when the values change other than by learning.
+  void LogCalibration() const;
   /// Moves the position without changing the heading, e.g. to the shown position while the inertial
   /// navigation doesn't work yet.
   /// \param distanceSinceFixM, accuracyM how far the car had driven since the last known place and how accurate the

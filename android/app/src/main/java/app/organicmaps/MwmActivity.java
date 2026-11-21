@@ -923,6 +923,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
       case SPEED_RANGE_CALIBRATED -> 0;
       // The card over the map tells the time of a run.
       case SPRINT_MEASURED -> 0;
+      // LocationHelper has started a new file of the trip log.
+      case TRIP_STARTED -> 0;
       // The buttons show the mode, they are updated every second.
       case MANUAL_MODE_CHANGED -> 0;
       case GPS_BACK -> R.string.nogps_gps_back_auto;

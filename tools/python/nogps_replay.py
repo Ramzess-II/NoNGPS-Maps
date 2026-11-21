@@ -20,7 +20,11 @@ and <output>.done when it is over. Two programs run it:
 Compare a change only with a build of the same kind, on the same maps and settings: a few diagnostic values differ
 in the last digit.
 
-  nogps_replay.py input log-*.log --day 10-11 -o nogps-replay-in.txt [--no-taps] [--no-route] [--from HH:MM]
+The logs are the files of the Android app, logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log (log-dd-MM-yy-<phone>[.N].log and
+app*.log before). A folder given is read with its subfolders. Give the logs of one phone, logs/<phone>: the lines
+of two phones would be mixed, so the logs of several are refused.
+
+  nogps_replay.py input logs/<phone> --day 10-11 -o nogps-replay-in.txt [--no-taps] [--no-route] [--from HH:MM]
       [--to HH:MM]
       makes the file to drive from the trip logs of a day: the rotation, the speed and the acceleration of the
       sensor box, the marks and the buttons of the user, the routes the user asked for. --no-taps leaves only the
@@ -28,18 +32,18 @@ in the last digit.
       shown the car it kept, or the file begins with the car off the roads, the file gives that kept car instead of
       a tap: a tap would put it on a road.
 
-  nogps_replay.py compare log-*.log --day 10-11 --replay nogps-replay-out.txt
+  nogps_replay.py compare logs/<phone> --day 10-11 --replay nogps-replay-out.txt
       how far the mark was from GPS on the trip and how far it is driven again, where GPS was seen. The first line
       says which set the day is in.
 
-  nogps_replay.py run log-*.log --tool build-<name>-o2/nogps_replay_tool --data_path <maps> [--settings <ini>]
+  nogps_replay.py run logs/<phone> --tool build-<name>-o2/nogps_replay_tool --data_path <maps> [--settings <ini>]
       [--day MM-DD ...] [-j N] -o <folder> [--no-taps] [--no-route]
       makes the input of every day of the logs, or of the days given, drives them with nogps_replay_tool, N at a time,
       and prints a line of compare a day, the held-out days and the days rules were made from apart, with the
       seconds of all the days of each set. The inputs, the outputs, the log of the tool and the full compare of
       every day are written to the folder.
 
-  nogps_replay.py days log-*.log
+  nogps_replay.py days logs/<phone>
       the days of the logs with the seconds of TRIP lines and the set of each: "held out" (listed in
       nogps_held_out_days.txt, never used to set a rule) or "made from". A change of how the mark moves is replayed
       on the days of both sets, and the numbers of both go to the PR: better on the days it was made from and not
@@ -58,6 +62,8 @@ import os
 import re
 import subprocess
 import time
+
+import nogps_trip_log
 
 LINE = re.compile(r'^(\d\d-\d\d) (\d\d):(\d\d):(\d\d)\.(\d\d\d) \(([^)]*)\) \w/(\w+): (.*)$')
 FIELD = re.compile(r' (\w+)=(\S+)')
@@ -789,9 +795,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest='command', required=True)
     sub = commands.add_parser('days')
-    sub.add_argument('logs', nargs='+', help='the trip logs of the application, log-*.log (app*.log before)')
+    sub.add_argument('logs', nargs='+', help='the trip logs of the application: files or a folder of them, logs/<phone>')
     sub = commands.add_parser('run')
-    sub.add_argument('logs', nargs='+', help='the trip logs of the application, log-*.log (app*.log before)')
+    sub.add_argument('logs', nargs='+', help='the trip logs of the application: files or a folder of them, logs/<phone>')
     sub.add_argument('--tool', required=True, help='nogps_replay_tool of a build with optimized C++')
     sub.add_argument('--data_path', required=True, help='the .mwm files of one version, or a folder of them')
     sub.add_argument('--resources_path', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..',
@@ -807,7 +813,7 @@ def main():
     sub.add_argument('--change', type=float, default=15, help='meters that count as a change')
     for name in ('input', 'compare'):
         sub = commands.add_parser(name)
-        sub.add_argument('logs', nargs='+', help='the trip logs of the application, log-*.log (app*.log before)')
+        sub.add_argument('logs', nargs='+', help='the trip logs of the application: files or a folder of them, logs/<phone>')
         sub.add_argument('--day', required=True, help='MM-DD, as the lines of the log begin')
         sub.add_argument('--from', dest='start', help='HH:MM[:SS]')
         sub.add_argument('--to', dest='end', help='HH:MM[:SS]')
@@ -819,6 +825,10 @@ def main():
             sub.add_argument('--replay', required=True, help='nogps-replay-out.txt of the application')
             sub.add_argument('--change', type=float, default=15, help='meters that count as a change')
     args = parser.parse_args()
+    args.logs = nogps_trip_log.log_files(args.logs)
+    phones = sorted({nogps_trip_log.phone_of(path) for path in args.logs} - {''})
+    if len(phones) > 1:
+        parser.error('the logs of %s: give the logs of one phone, their lines would be mixed' % ', '.join(phones))
     if args.command == 'days':
         days(args)
     elif args.command == 'run':

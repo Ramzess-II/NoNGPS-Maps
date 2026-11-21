@@ -1,6 +1,6 @@
 ---
 name: nogps-log
-description: Analyse NonGPS Maps trip logs (log-dd-MM-yy-<phone>.log files or logs.zip of iOS and Android; older iOS log.txt/log.zip, Android app*.log) to explain what the navigation did on a drive. Use when the user gives logs or asks why the mark went wrong, what happened at a time, or how a trip or a replay went.
+description: Analyse NonGPS Maps trip logs (the logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log tree or logs.zip of iOS and Android; older log-dd-MM-yy-<phone>.log, iOS log.txt/log.zip, Android app*.log) to explain what the navigation did on a drive. Use when the user gives logs or asks why the mark went wrong, what happened at a time, or how a trip or a replay went.
 argument-hint: "<log files or folder> [question, trip or time]"
 ---
 
@@ -9,11 +9,13 @@ argument-hint: "<log files or folder> [question, trip or time]"
 `tools/python/nogps_log.py` reads the logs and prints what the viewer shows, as text. Run it from the repo root.
 Each call reads the logs again: a day of Android logs takes a few seconds.
 
-1. **Trips.** `python3 tools/python/nogps_log.py trips <logs>` lists them, with ids. `--all` also lists the
-   stationary ones. If the user named a time, take the trip that holds it. Android times are the local time of the
+1. **Trips.** `python3 tools/python/nogps_log.py trips <logs>` lists them, with ids. `<logs>` is the `logs` folder
+   (the zips of any phones and days unpacked into one folder), a `logs.zip` or log files; the folder of a file tells
+   its phone. `--all` also lists the stationary ones. If the user named a time, take the trip that holds it. Android times are the local time of the
    phone; iOS times are UTC.
-2. **Overview.** `nogps_log.py trip <logs> --trip N` prints the stats, the error from GPS per source, the counts
-   `nogps_replay.py compare` uses, the events by name and every anomaly with its time.
+2. **Overview.** `nogps_log.py trip <logs> --trip N` prints the stats, what the navigation had learned about the car
+   when the trip started (`calibration:`, the last `CALIBRATION` line before the car moves), the error from GPS per source, the
+   counts `nogps_replay.py compare` uses, the events by name and every anomaly with its time.
    It also counts the rules of the core that fired (`rules:`) with what came next within 300 m; `nogps_log.py rules
    <logs>` does it over all the trips.
 3. **Narrow down** to the moments that matter:

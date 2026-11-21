@@ -200,7 +200,7 @@ public final class LogsManager
     Log.i(TAG, "Logging to " + (enabled ? "logs folder " + mLogsFolder : "system log"));
   }
 
-  /// The model and a random id made once per install, in the names of the log files.
+  /// The model and a random id made once per install, the folder of the log files of the phone.
   @NonNull
   String getPhoneId()
   {
@@ -210,6 +210,12 @@ public final class LogsManager
   public synchronized boolean isFileLoggingEnabled()
   {
     return mIsFileLoggingEnabled;
+  }
+
+  /// A drive starts: the lines logged after this go to a new file.
+  public void startTrip()
+  {
+    Logger.startFile();
   }
 
   /**
@@ -245,7 +251,7 @@ public final class LogsManager
   }
 
   /**
-   * @param days only the daily files of these days, "dd-MM-yy", all files when null.
+   * @param days only the files of these days, "yyyy-MM-dd", all files and the logcat when null.
    * NOTE: initFileLogging() must be called before.
    */
   public synchronized void zipLogs(@Nullable Collection<String> days, @NonNull OnZipCompletedListener listener)

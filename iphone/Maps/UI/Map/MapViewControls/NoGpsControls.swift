@@ -604,6 +604,8 @@ final class NoGpsControls: NSObject {
     case .sprintMeasured:
       sprintView.show(status: NoGps.status())
       text = nil
+    // The bridge has started a new file of the trip log.
+    case .tripStarted: text = nil
     case .firmwareUpdateAvailable:
       offerFirmwareUpdate()
       text = nil

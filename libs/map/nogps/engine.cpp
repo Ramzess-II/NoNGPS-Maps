@@ -103,6 +103,7 @@ Engine::Engine(Delegate & delegate, MapApi & map, Storage & storage, Clock const
   , m_tripLogTimer(scheduler)
   , m_calibrateTimer(scheduler)
   , m_phoneRemovedTimer(scheduler)
+  , m_boxLinkEndedMs(clock.NowMs())
 {}
 
 Engine::~Engine() = default;
@@ -381,8 +382,28 @@ void Engine::OnEsp32BleBytes(std::string_view bytes)
 void Engine::OnEsp32BleState(BleState state)
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());
-  if (m_inertial)
-    m_inertial->OnEsp32BleState(state);
+  if (!m_inertial)
+    return;
+  // Before the box hears of it: the new file of a trip starts with its connection.
+  OnBoxLink(state == BleState::Connected && m_inertial->GetEsp32());
+  m_inertial->OnEsp32BleState(state);
+}
+
+void Engine::OnBoxLink(bool linked)
+{
+  if (linked == m_boxLinked)
+    return;
+  m_boxLinked = linked;
+  int64_t const now = m_clock.NowMs();
+  if (!linked)
+  {
+    m_boxLinkEndedMs = now;
+    return;
+  }
+  if (now - m_boxLinkEndedMs < kTripFileLinkGapMs)
+    return;
+  Notify(Event::TripStarted);
+  m_inertial->LogCalibration();
 }
 
 PositionSource Engine::SourceOf(Fix const & fix)
@@ -1110,6 +1131,8 @@ void Engine::EndAddPhone()
 void Engine::OnBoxStopping()
 {
   SaveBoxCarValues(true /* now */);
+  // The platform closes the link without telling of it.
+  OnBoxLink(false);
 }
 
 void Engine::SaveBoxCarValues(bool now)

@@ -21,7 +21,7 @@ public class NoGpsFlagsTest
     assertEquals("20261102-090507", NoGpsFlags.name(date));
     assertEquals(date, NoGpsFlags.date("20261102-090507"));
     assertEquals("09:05:07", NoGpsFlags.time("20261102-090507"));
-    assertEquals("02-11-26", NoGpsFlags.logDay("20261102-090507"));
+    assertEquals("2026-11-02", NoGpsFlags.logDay("20261102-090507"));
     assertEquals("02.11.26", NoGpsFlags.mailDay("20261102-090507"));
   }
 

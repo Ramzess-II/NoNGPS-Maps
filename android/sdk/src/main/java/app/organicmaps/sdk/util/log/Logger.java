@@ -183,6 +183,12 @@ public final class Logger
     FILE_WRITER.close();
   }
 
+  /// The lines logged after this go to a new file.
+  static void startFile()
+  {
+    FILE_WRITER.startFile();
+  }
+
   /// Runs the action while holding the file writer lock and with the buffer flushed to disk,
   /// so no log line is appended and no log file is switched or deleted concurrently.
   /// Used to safely read/zip the log files.
@@ -199,12 +205,15 @@ public final class Logger
     private final String mData;
     @Nullable
     private final CountDownLatch mFlushLatch;
+    // Not a line: the lines after it go to a new file.
+    private final boolean mStartsFile;
 
     private LogEntry(@NonNull String logsFolder, @NonNull String data)
     {
       mLogsFolder = logsFolder;
       mData = data;
       mFlushLatch = null;
+      mStartsFile = false;
     }
 
     private LogEntry(@NonNull CountDownLatch flushLatch)
@@ -212,6 +221,15 @@ public final class Logger
       mLogsFolder = null;
       mData = "";
       mFlushLatch = flushLatch;
+      mStartsFile = false;
+    }
+
+    private LogEntry()
+    {
+      mLogsFolder = null;
+      mData = "";
+      mFlushLatch = null;
+      mStartsFile = true;
     }
 
     boolean isFlush()
@@ -222,10 +240,11 @@ public final class Logger
 
   private static class LogFileWriter
   {
-    private static final int MAX_SIZE = 3000000;
     private static final int QUEUE_CAPACITY = 4096;
     private static final int MAX_BATCH_SIZE = 256;
     private static final int FLUSH_TIMEOUT_SECONDS = 2;
+    // Opening a file walks the whole log tree to keep it under the limit, so a failure is not retried at once.
+    private static final long OPEN_RETRY_MS = 5000;
 
     @NonNull
     private final ArrayBlockingQueue<LogEntry> mQueue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
@@ -239,12 +258,16 @@ public final class Logger
     private BufferedWriter mWriter;
     @Nullable
     private String mFilePath;
-    private long mCurrentSize;
+    // When the file was started, its name: at the first line since the launch or since startFile().
+    @Nullable
+    private Date mStarted;
+    // The file under the logs folder, see LogFiles.fileName().
     @NonNull
-    private Date mDay = new Date(0);
-    // The first moment of the next day: a line written at it or later goes to a new file.
+    private String mFileName = "";
+    // The first moment of the next day: a line written at it or later goes on in the folder of that day.
     private long mDayEndMs;
-    private int mPart;
+    // When a failed open may be tried again, 0 when the last one worked.
+    private long mRetryOpenMs;
 
     LogFileWriter()
     {
@@ -323,6 +346,22 @@ public final class Logger
       }
     }
 
+    void startFile()
+    {
+      // In the queue: the lines logged before it are of the file before.
+      final LogEntry entry = new LogEntry();
+      if (mQueue.offer(entry))
+        return;
+      if (mQueue.poll() != null)
+        mDroppedCount.incrementAndGet();
+      if (mQueue.offer(entry))
+        return;
+      synchronized (mWriteLock)
+      {
+        startFileLocked();
+      }
+    }
+
     void runExclusively(@NonNull Runnable action)
     {
       synchronized (mWriteLock)
@@ -372,6 +411,12 @@ public final class Logger
           return;
         }
 
+        if (entry.mStartsFile)
+        {
+          startFileLocked();
+          return;
+        }
+
         if (entry.mLogsFolder == null)
           return;
 
@@ -395,74 +440,76 @@ public final class Logger
       final String line = mDateFormat.format(new Date()) + " " + data + "\n";
       try
       {
-        ensureWriterLocked(logsFolder, line.length());
+        ensureWriterLocked(logsFolder);
         if (mWriter == null)
           return;
 
         mWriter.write(line);
-        mCurrentSize += line.length();
       }
       catch (IOException e)
       {
+        // Opening the file walks the whole tree to keep it under the limit: a full disk or a folder that can't be
+        // made would do it for every line until the writer opens again.
+        mRetryOpenMs = System.currentTimeMillis() + OPEN_RETRY_MS;
         Log.e(TAG, "Failed to write to " + mFilePath + ": " + data, e);
         closeWriterLocked();
       }
     }
 
-    private void ensureWriterLocked(@NonNull String logsFolder, int nextLineSize) throws IOException
+    private void ensureWriterLocked(@NonNull String logsFolder) throws IOException
     {
       final long now = System.currentTimeMillis();
-      if (now >= mDayEndMs)
-        startDayLocked(logsFolder, now);
-
-      File file = getLogFile(logsFolder, mPart);
-      if (!file.getPath().equals(mFilePath))
-        closeWriterLocked();
-
-      if (mWriter != null)
+      if (mWriter == null && now < mRetryOpenMs)
+        return;
+      if (mStarted == null)
       {
-        if (mCurrentSize + nextLineSize <= MAX_SIZE)
-          return;
-        closeWriterLocked();
+        mStarted = new Date(now);
+        mDayEndMs = 0;
+      }
+      if (now >= mDayEndMs)
+      {
+        final Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(now);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
+        calendar.add(Calendar.DAY_OF_MONTH, 1);
+        mDayEndMs = calendar.getTimeInMillis();
+        mFileName =
+            LogFiles.freeFileName(new File(logsFolder), LogsManager.INSTANCE.getPhoneId(), mStarted, new Date(now));
       }
 
-      while (file.length() > 0 && file.length() + nextLineSize > MAX_SIZE)
-        file = getLogFile(logsFolder, ++mPart);
+      final File file = new File(logsFolder, mFileName);
+      if (!file.getPath().equals(mFilePath))
+        closeWriterLocked();
+      if (mWriter != null)
+        return;
 
-      final boolean isNewFile = !file.exists() || file.length() == 0;
+      final boolean isNewFile = file.length() == 0;
       if (isNewFile)
+      {
+        // Before the folder of the file is made: it is empty yet.
         LogFiles.deleteOldest(new File(logsFolder), LogFiles.MAX_TOTAL_SIZE);
+        final File folder = file.getParentFile();
+        if (folder != null && !folder.isDirectory() && !folder.mkdirs())
+          throw new IOException("Can't create the folder " + folder.getPath());
+      }
 
       mWriter = new BufferedWriter(new FileWriter(file, true));
       mFilePath = file.getPath();
-      mCurrentSize = file.length();
+      mRetryOpenMs = 0;
 
       if (isNewFile)
-      {
-        final String systemInformation = LogsManager.INSTANCE.getSystemInformation();
-        mWriter.write(systemInformation);
-        mCurrentSize += systemInformation.length();
-      }
+        mWriter.write(LogsManager.INSTANCE.getSystemInformation());
     }
 
-    /// Goes on in the last file of today, if there is one.
-    private void startDayLocked(@NonNull String logsFolder, long now)
+    private void startFileLocked()
     {
       closeWriterLocked();
-
-      final Calendar calendar = Calendar.getInstance();
-      calendar.setTimeInMillis(now);
-      mDay = calendar.getTime();
-      calendar.set(Calendar.HOUR_OF_DAY, 0);
-      calendar.set(Calendar.MINUTE, 0);
-      calendar.set(Calendar.SECOND, 0);
-      calendar.set(Calendar.MILLISECOND, 0);
-      calendar.add(Calendar.DAY_OF_MONTH, 1);
-      mDayEndMs = calendar.getTimeInMillis();
-
-      mPart = 0;
-      while (getLogFile(logsFolder, mPart + 1).exists())
-        ++mPart;
+      mStarted = null;
+      // A new drive is worth an attempt even if the last open failed.
+      mRetryOpenMs = 0;
     }
 
     private void flushLocked()
@@ -498,14 +545,7 @@ public final class Logger
       {
         mWriter = null;
         mFilePath = null;
-        mCurrentSize = 0;
       }
-    }
-
-    @NonNull
-    private File getLogFile(@NonNull String logsFolder, int part)
-    {
-      return new File(logsFolder, LogFiles.fileName(mDay, LogsManager.INSTANCE.getPhoneId(), part));
     }
   }
 }
