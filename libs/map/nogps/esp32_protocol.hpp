@@ -31,6 +31,8 @@ int constexpr kFlagObdAbsent = 1 << 9;
 int constexpr kFlagError = 1 << 10;
 // The box tells about a wrong voltage divider from the same difference.
 int constexpr kMaxVoltageDiffPercent = 10;
+// The accuracy of a place of the other phone, in decimeters.
+int constexpr kMaxPeerAccuracyDm = 10'000;
 
 using Fields = std::vector<std::string>;
 

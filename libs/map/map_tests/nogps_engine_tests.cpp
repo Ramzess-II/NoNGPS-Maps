@@ -2879,10 +2879,14 @@ UNIT_TEST(NoGps_Engine_CalibrationWhenStillIsNotForReadOnlyBox)
 {
   Env env(true /* inertial */);
   CalibrateWhenStillBox box(env);
-  // The box knows its phones, another phone changes it: it refuses a command of this one.
+  // The box knows its phones, another phone changes it: the list says so.
   env.m_engine.OnEsp32BleBytes(
       BoxLine("NGI,1,0.4.1,2026-11-15T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA PHONES"));
-  env.m_engine.OnEsp32BleBytes(BoxLine("NGA,99,ERR,BUSY"));
+  auto const & sent = env.m_delegate.m_esp32BleSent;
+  auto const list = std::find_if(sent.begin(), sent.end(),
+                                 [](auto const & line) { return line.find(",BT_LIST*") != std::string::npos; });
+  TEST(list != sent.end(), ());
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + (*esp32::Parse(*list))[1] + ",OK,BC:D0:74:A9:71:92|Pixel 8|1|0,0"));
   TEST(env.m_engine.GetStatus().m_boxReadOnly, ());
   env.m_engine.CalibrateWhenStill();
   TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
@@ -6044,6 +6048,7 @@ UNIT_TEST(NoGps_Engine_PeerRolesFollowTheBox)
   TEST(leader.m_peerName.empty(), ());
 
   // The leader leaves: the box tells the follower that it changes the box now, the list has one phone more.
+  phones.Drive(Esp32Source::kListIntervalMs, 0, 0);
   phones.m_follower.m_engine.OnEsp32BleBytes(BoxLine("NGE,1,5,100,I,PHONE_LOST,BC:D0:74:A9:71:92"));
   phones.AnswerList(phones.m_follower, "Pixel 8", "iPhone", true);
   TEST_EQUAL(phones.m_follower.m_engine.GetStatus().m_peerRole, PeerRole::Leading, ());
