@@ -302,8 +302,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
     // As soon as the intro is shown: an app killed halfway through it does not show it again.
     Config.setNoGpsIntroShown();
     buttons.setIntroMode(true);
-    overlay.start(buttons::getIntroAnchor, () -> IntroModalFragment.show(getSupportFragmentManager()),
-                  () -> buttons.setIntroMode(false));
+    overlay.start(buttons::getIntroAnchor,
+                  () -> IntroModalFragment.show(getSupportFragmentManager()), () -> buttons.setIntroMode(false));
   }
 
   private void finishNoGpsIntro()

@@ -280,7 +280,8 @@ public class IntroOverlay extends View
     final float padding = dp(BALLOON_PADDING_DP);
     final float margin = dp(BALLOON_MARGIN_DP);
     final float gap = dp(BALLOON_GAP_DP);
-    final int maxTextWidth = (int) Math.min(dp(BALLOON_MAX_WIDTH_DP) - 2 * padding, getWidth() - 2 * margin - 2 * padding);
+    final int maxTextWidth =
+        (int) Math.min(dp(BALLOON_MAX_WIDTH_DP) - 2 * padding, getWidth() - 2 * margin - 2 * padding);
     if (maxTextWidth <= 0)
       return;
     if (mFullLayout == null)
