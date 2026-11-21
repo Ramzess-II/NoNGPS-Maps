@@ -32,17 +32,17 @@ final class NoGpsIntroTests: XCTestCase {
     XCTAssert(NoGpsIntroStep.right.text.hasPrefix(L("nogps_intro_right")))
   }
 
-  func testTypesAboutThreeCharactersASecond() {
+  func testTypesAboutTwentyCharactersASecond() {
     let sequence = NoGpsIntroSequence()
     sequence.tap(text, 0)
     XCTAssertEqual(sequence.step, .bottom)
     XCTAssertEqual(sequence.revealed(text, 0), 0)
-    XCTAssertEqual(sequence.revealed(text, 1), 3)
-    XCTAssertEqual(sequence.revealed(text, 10), 30)
+    XCTAssertEqual(sequence.revealed(text, 0.5), 10)
+    XCTAssertEqual(sequence.revealed(text, 1), 20)
     // Never past the end of the text.
     XCTAssertEqual(sequence.revealed(text, 100), text)
     XCTAssertFalse(sequence.isTyping(text, 100))
-    XCTAssertEqual(NoGpsIntroSequence.typeCharsPerS, 3)
+    XCTAssertEqual(NoGpsIntroSequence.typeCharsPerS, 20)
   }
 
   func testTapWhileTypingShowsTheRestAndTheNextTapAdvances() {
