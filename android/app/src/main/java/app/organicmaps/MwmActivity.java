@@ -71,6 +71,7 @@ import app.organicmaps.maplayer.MapButtonsViewModel;
 import app.organicmaps.maplayer.ToggleMapLayerFragment;
 import app.organicmaps.nogps.AboutNoGpsActivity;
 import app.organicmaps.nogps.BoxBottomSheet;
+import app.organicmaps.nogps.HowNoGpsActivity;
 import app.organicmaps.nogps.MainMenuItems;
 import app.organicmaps.nogps.NoGpsLinks;
 import app.organicmaps.nogps.intro.IntroModalFragment;
@@ -224,6 +225,12 @@ public class MwmActivity extends BaseMwmFragmentActivity
     }
 
     @Override
+    public void openHowItWorks()
+    {
+      showHowNoGps();
+    }
+
+    @Override
     public void openAboutNoGps()
     {
       showAboutNoGps();
@@ -282,6 +289,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
   private ActivityResultLauncher<SharingUtils.SharingIntent> mShareLauncher;
   @SuppressWarnings("NotNullFieldNotInitialized")
   private ActivityResultLauncher<Intent> mPowerSaveSettings;
+  @SuppressWarnings("NotNullFieldNotInitialized")
+  private ActivityResultLauncher<Intent> mHowNoGpsRequest;
   private boolean mPowerSaveDisclaimerShown = false;
 
   @SuppressWarnings("NotNullFieldNotInitialized")
@@ -361,17 +370,28 @@ public class MwmActivity extends BaseMwmFragmentActivity
    */
   private void startNoGpsIntro()
   {
+    final RoutingController routing = RoutingController.get();
+    if (!IntroSequence.isNeeded(Config.isNoGpsIntroShown(), routing.isPlanning() || routing.isNavigating()))
+      return;
+    // As soon as the intro is shown: an app killed halfway through it does not show it again.
+    Config.setNoGpsIntroShown();
+    playNoGpsIntro();
+  }
+
+  /**
+   * Plays the intro whatever the flag says: the first start and the How NonGPS works page both end here.
+   */
+  private void playNoGpsIntro()
+  {
     final IntroOverlay overlay = findViewById(R.id.nogps_intro);
     if (overlay == null || overlay.isRunning() || isFinishing())
       return;
     final RoutingController routing = RoutingController.get();
-    if (!IntroSequence.isNeeded(Config.isNoGpsIntroShown(), routing.isPlanning() || routing.isNavigating()))
+    if (routing.isPlanning() || routing.isNavigating())
       return;
     if (!(getSupportFragmentManager().findFragmentById(R.id.map_buttons) instanceof MapButtonsController buttons)
         || buttons.getView() == null)
       return;
-    // As soon as the intro is shown: an app killed halfway through it does not show it again.
-    Config.setNoGpsIntroShown();
     buttons.setIntroMode(true);
     overlay.start(buttons::getIntroAnchor,
                   () -> IntroModalFragment.show(getSupportFragmentManager()), () -> buttons.setIntroMode(false));
@@ -517,6 +537,12 @@ public class MwmActivity extends BaseMwmFragmentActivity
   private void showAboutNoGps()
   {
     startActivity(new Intent(this, AboutNoGpsActivity.class));
+  }
+
+  /// Closes with RESULT_OK when its button asks for the intro, see nogps.HowNoGpsFragment.
+  private void showHowNoGps()
+  {
+    mHowNoGpsRequest.launch(new Intent(this, HowNoGpsActivity.class));
   }
 
   /// The site until the account has a screen of its own, see issue #458.
@@ -710,6 +736,12 @@ public class MwmActivity extends BaseMwmFragmentActivity
         registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), this::onPowerSaveResult);
 
     mShareLauncher = SharingUtils.RegisterLauncher(this);
+
+    // The How NonGPS works page asks for the intro: the map is back by then and its panels are laid out.
+    mHowNoGpsRequest = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+      if (result.getResultCode() == RESULT_OK)
+        getWindow().getDecorView().postDelayed(this::playNoGpsIntro, INTRO_DELAY_MS);
+    });
 
     // The modal of the intro was closed: its balloons follow, see nogps.intro.IntroOverlay.
     getSupportFragmentManager().setFragmentResultListener(IntroModalFragment.RESULT_CLOSED, this, (key, result) -> {

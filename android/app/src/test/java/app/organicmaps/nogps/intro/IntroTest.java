@@ -64,6 +64,23 @@ public class IntroTest
   }
 
   @Test
+  public void restartPlaysTheIntroFromTheModal()
+  {
+    final IntroSequence sequence = new IntroSequence();
+    sequence.tap(TEXT, 0);
+    sequence.tap(TEXT, TEXT);
+    assertEquals(IntroStep.RIGHT, sequence.step());
+    sequence.finish();
+    assertTrue(sequence.isOver());
+    // The How NonGPS works page asks for the intro again: the modal first, and nothing of the last run is left.
+    sequence.restart();
+    assertEquals(IntroStep.MODAL, sequence.step());
+    sequence.tap(TEXT, 0);
+    assertEquals(IntroStep.BOTTOM, sequence.step());
+    assertTrue(sequence.isTyping(TEXT, 0));
+  }
+
+  @Test
   public void tapWhileTypingShowsTheRestAndTheNextTapAdvances()
   {
     final IntroSequence sequence = new IntroSequence();

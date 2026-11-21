@@ -13,6 +13,7 @@ class BottomMenuPresenter: NSObject {
     case downloadMaps
     case recordTrack
     case addPlace
+    case howItWorks
     case about
     case aboutOrganicMaps
     case buyBox
@@ -24,7 +25,7 @@ class BottomMenuPresenter: NSObject {
   private static let groups: [[CellType]] = [
     [.profile, .settings, .share],
     [.bookmarks, .downloadMaps, .recordTrack, .addPlace],
-    [.about, .aboutOrganicMaps, .buyBox, .donate],
+    [.howItWorks, .about, .aboutOrganicMaps, .buyBox, .donate],
   ]
 
   enum Sections: Int {
@@ -156,6 +157,8 @@ extension BottomMenuPresenter {
       case .share:
         cell.configure(image: UIImage(resource: .icMenuShare),
                        title: L("share_my_location"))
+      case .howItWorks:
+        cell.configure(image: UIImage(systemName: "questionmark.circle")!, title: L("nogps_how_title"))
       case .about:
         cell.configure(image: UIImage(systemName: "info.circle")!, title: L("nogps_about_title"))
       case .aboutOrganicMaps:
@@ -218,6 +221,8 @@ extension BottomMenuPresenter {
         if let cell = tableView.cellForRow(at: indexPath) as? BottomMenuItemCell {
           interactor.shareLocation(cell: cell)
         }
+      case .howItWorks:
+        interactor.openHowItWorks()
       case .about:
         interactor.openAbout()
       case .aboutOrganicMaps:

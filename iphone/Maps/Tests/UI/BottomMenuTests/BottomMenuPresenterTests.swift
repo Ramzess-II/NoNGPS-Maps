@@ -15,6 +15,7 @@ final class BottomMenuPresenterTests: XCTestCase {
     func openSettings() {}
     func openBookmarks() {}
     func openProfile() {}
+    func openHowItWorks() {}
     func openAbout() {}
     func openAboutOrganicMaps() {}
     func buyBox() {}
@@ -32,7 +33,7 @@ final class BottomMenuPresenterTests: XCTestCase {
   private var expectedCells: [BottomMenuPresenter.CellType] {
     var cells: [BottomMenuPresenter.CellType] = [.profile, .settings, .share,
                                                  .bookmarks, .downloadMaps, .recordTrack, .addPlace,
-                                                 .about, .aboutOrganicMaps, .buyBox]
+                                                 .howItWorks, .about, .aboutOrganicMaps, .buyBox]
     if Settings.donateUrl() != nil {
       cells.append(.donate)
     }
@@ -47,11 +48,11 @@ final class BottomMenuPresenterTests: XCTestCase {
     XCTAssertEqual(presenter.numberOfSections(in: UITableView()), 2)
   }
 
-  /// Marks and About NonGPS Maps open a group; Profile sits under the line of the map styles cell.
-  func testGroupsStartAtMarksAndAbout() {
+  /// Marks and How NonGPS works open a group; Profile sits under the line of the map styles cell.
+  func testGroupsStartAtMarksAndHowItWorks() {
     let presenter = makePresenter()
     let starts = presenter.groupStarts.sorted().map { presenter.menuCells[$0] }
-    XCTAssertEqual(starts, [.bookmarks, .about])
+    XCTAssertEqual(starts, [.bookmarks, .howItWorks])
   }
 
   /// cellToHighlightIndexPath() looks the cell up in menuCells, so the order decides the row it points at.

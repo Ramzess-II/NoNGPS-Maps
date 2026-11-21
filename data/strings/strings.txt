@@ -47785,3 +47785,45 @@ tags = android-app,apple-maps
 en = Turn the car or point it by hand. Hold to move it.
 ru = Поверните машину или укажите её рукой. Удержание двигает панель.
 uk = Поверніть машину або вкажіть її рукою. Утримання рухає панель.
+
+[nogps_how_title]
+comment = Menu row and title of the page that explains the app and plays the intro again
+tags = android-app,apple-maps
+en = How NonGPS works
+ru = Как работает NonGPS
+uk = Як працює NonGPS
+
+[nogps_how_panels]
+comment = Heading of the part of the How NonGPS works page about the panels of the map
+tags = android-app,apple-maps
+en = The panels of the map
+ru = Панели карты
+uk = Панелі мапи
+
+[nogps_how_bottom]
+comment = Line of the How NonGPS works page about the bottom bar
+tags = android-app,apple-maps
+en = Bottom bar: the cars, the box and GPS.
+ru = Нижняя панель: машины, датчик и GPS.
+uk = Нижня панель: машини, датчик і GPS.
+
+[nogps_how_right]
+comment = Line of the How NonGPS works page about the panel with the zoom buttons
+tags = android-app,apple-maps
+en = Right panel: zoom and the direction of the map. Hold it to move the panel.
+ru = Правая панель: масштаб и поворот карты. Удержание двигает панель.
+uk = Права панель: масштаб і поворот мапи. Утримання рухає панель.
+
+[nogps_how_left]
+comment = Line of the How NonGPS works page about the panel with the car buttons
+tags = android-app,apple-maps
+en = Left panel: turn the car or point it by hand. Hold it to move the panel.
+ru = Левая панель: повернуть машину или указать её рукой. Удержание двигает панель.
+uk = Ліва панель: повернути машину або вказати її рукою. Утримання рухає панель.
+
+[nogps_how_intro_again]
+comment = Button of the How NonGPS works page that plays the intro of the first start again
+tags = android-app,apple-maps
+en = Show the intro again
+ru = Показать подсказки снова
+uk = Показати підказки знову
