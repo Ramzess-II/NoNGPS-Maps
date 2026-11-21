@@ -2341,6 +2341,38 @@ SpeedTable GpsTable(std::set<int> const & ranges)
   return table;
 }
 
+/// The box says 100 km/h, GPS 60: seconds of fixes at the car position.
+bool IsGpsSpoofedBySpeed(Env & env)
+{
+  for (int i = 0; i < 2 * GpsSpoofingDetector::kSpeedMismatchFixes; ++i)
+  {
+    env.Drive(1000, 100, 0);
+    auto const & position = env.Last().m_position;
+    env.m_engine.OnFix(GpsAt(env.m_clock, East(position), North(position), 90.0, 60 / 3.6));
+  }
+  return env.m_engine.GetStatus().m_gpsSpoofed;
+}
+
+UNIT_TEST(NoGps_Engine_CarSpeedIsNotCheckedBeforeItsScaleIsMeasured)
+{
+  // The default scale may be far off, e.g. a box in mph: GPS is not called spoofed by it, and can't be stuck so.
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  TEST(!IsGpsSpoofedBySpeed(env), ());
+}
+
+UNIT_TEST(NoGps_Engine_CarSpeedChecksGpsOnceItsScaleIsMeasured)
+{
+  SpeedTable table;
+  table.OnDistance(100, 400, 400);
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads,
+          [&table](TestStorage & storage) { storage.Set(Storage::kSpeedTable, table.Serialize()); });
+  MarkCar(env, 0);
+  TEST(IsGpsSpoofedBySpeed(env), ());
+}
+
 UNIT_TEST(NoGps_SpeedHint_ShownAtSpeedGpsHasNotMeasured)
 {
   // GPS has measured 50-60 km/h.
