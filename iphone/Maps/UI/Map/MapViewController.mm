@@ -561,6 +561,8 @@ NSString * const kCategorySelectorSegue = @"MapToCategorySelectorSegue";
   // Otherwise PP container view is nil, or there is no animation/selection of the point.
   if (DeepLinkHandler.shared.hasPendingColdLaunchDeepLink)
     (void)[DeepLinkHandler.shared handlePendingDeepLink];
+  // Tells what the app is and what its panels do, once on the first start.
+  [NoGpsIntroController startIfNeededIn:self];
 }
 
 - (void)viewDidLayoutSubviews

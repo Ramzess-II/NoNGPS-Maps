@@ -36,6 +36,8 @@ final class NoGpsControls: NSObject {
   private static var availableArea = CGRect.zero
   /// The bottom of the turns of the navigation in the window, 0 without them. They are at the edge of the panel.
   private static var turnsBottom = CGFloat(0)
+  /// The intro of the first start points at the panels: they are held open while it runs.
+  private static var isIntroMode = false
 
   private let statusButton = NoGpsPillButton(type: .custom)
   /// At the bottom of the map until the box is calibrated.
@@ -99,6 +101,18 @@ final class NoGpsControls: NSObject {
     DispatchQueue.main.async {
       shared?.updateLayout(animated: true)
     }
+  }
+
+  /// The panel the balloon of the intro of the first start points at, see NoGpsIntroController.
+  static var introAnchor: UIView? {
+    shared?.panel
+  }
+
+  /// Holds the panel of the car buttons open with the buttons the intro talks about, and gives it back to its own
+  /// rules when the intro ends.
+  static func setIntroMode(_ intro: Bool) {
+    isIntroMode = intro
+    shared?.refresh()
   }
 
   static func updateTurnsBottom(_ bottom: CGFloat) {
@@ -384,6 +398,12 @@ final class NoGpsControls: NSObject {
                      manualButton: !canMark,
                      flagButton: !logging,
                      voiceFlagButton: !logging]
+    if Self.isIntroMode {
+      // The panel is slid out on a fresh install, and the balloon of the intro would point at nothing. The buttons it
+      // talks about are held visible; the flags of the testers keep their own rule.
+      buttonsHidden[reverseButton] = false
+      buttonsHidden[manualButton] = false
+    }
     hasButtons = buttonsHidden.values.contains(false)
     // Nothing to correct: the panel slides out as it is, its buttons are hidden after that.
     if hasButtons || !isPanelShown {

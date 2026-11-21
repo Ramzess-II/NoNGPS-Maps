@@ -1,11 +1,10 @@
-/// The pages of the project on the web. One place to change when a page moves or appears in the app itself.
+/// The pages of the project the app sends the user to: the shop of the Box sheet, of the intro of the first start and
+/// of the main menu, the video of the intro, the account, the sources and the project the app is based on. There is no
+/// video and no account screen yet, so both point at the site; each is the single line to change when there is one.
 enum NoGpsLinks {
-  /// The shop of the sensor box.
-  static let shop = "https://non-gps.com"
-  /// The account of the user: the site until the app has a screen of its own, see issue #458.
-  static let account = "https://non-gps.com"
-  /// The sources of the fork.
-  static let sourceCode = "https://github.com/Ramzess-II/NoGPSMaps"
-  /// The project NonGPS Maps is based on.
-  static let organicMaps = "https://organicmaps.app"
+  static let shop = URL(string: "https://non-gps.com")!
+  static let video = URL(string: "https://non-gps.com")!
+  static let account = URL(string: "https://non-gps.com")!
+  static let sourceCode = URL(string: "https://github.com/Ramzess-II/NoGPSMaps")!
+  static let organicMaps = URL(string: "https://organicmaps.app")!
 }

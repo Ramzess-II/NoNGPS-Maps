@@ -6,7 +6,7 @@ final class AboutNoGpsController: MWMViewController {
     static let versionSpacing: CGFloat = 4
     static let stackSpacing: CGFloat = 15
     static let stackInset: CGFloat = 20
-    static let osmCopyrightURL = "https://www.openstreetmap.org/copyright"
+    static let osmCopyrightURL = URL(string: "https://www.openstreetmap.org/copyright")!
   }
 
   private let scrollView = UIScrollView()
@@ -82,11 +82,11 @@ private extension AboutNoGpsController {
 
     setupMapData()
 
-    linksView.addButton(title: L("nogps_source_code")) { [weak self] in
-      self?.openUrl(NoGpsLinks.sourceCode, externally: true)
+    linksView.addButton(title: L("nogps_source_code")) {
+      UIApplication.shared.open(NoGpsLinks.sourceCode)
     }
-    linksView.addButton(title: L("nogps_box_buy")) { [weak self] in
-      self?.openUrl(NoGpsLinks.shop, externally: true)
+    linksView.addButton(title: L("nogps_box_buy")) {
+      UIApplication.shared.open(NoGpsLinks.shop)
     }
   }
 
@@ -107,7 +107,7 @@ private extension AboutNoGpsController {
     mapDataTextView.attributedText = text
   }
 
-  func link(in text: NSMutableAttributedString, _ name: String, _ url: String) {
+  func link(in text: NSMutableAttributedString, _ name: String, _ url: URL) {
     let range = text.mutableString.range(of: name)
     guard range.location != NSNotFound else { return }
     text.addAttribute(.link, value: url, range: range)
@@ -177,6 +177,6 @@ private extension AboutNoGpsController {
   }
 
   @objc func upstreamVersionTapped() {
-    openUrl(NoGpsLinks.organicMaps)
+    UIApplication.shared.open(NoGpsLinks.organicMaps)
   }
 }

@@ -76,7 +76,7 @@ extension BottomMenuInteractor: BottomMenuInteractorProtocol {
   /// The site until the account has a screen of its own, see issue #458.
   func openProfile() {
     close()
-    viewController?.openUrl(NoGpsLinks.account, externally: true)
+    UIApplication.shared.open(NoGpsLinks.account)
   }
 
   func openAbout() {
@@ -91,7 +91,7 @@ extension BottomMenuInteractor: BottomMenuInteractorProtocol {
 
   func buyBox() {
     close()
-    viewController?.openUrl(NoGpsLinks.shop, externally: true)
+    UIApplication.shared.open(NoGpsLinks.shop)
   }
 
   func startDownloadingMapForCountry(_ countryId: String) {

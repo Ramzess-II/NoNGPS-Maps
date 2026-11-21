@@ -47,6 +47,14 @@
       android:layout_height="match_parent"
       android:paddingBottom="@dimen/margin_base"
       android:visibility="invisible" />
+
+    <!-- Over the map and all its panels: the intro of the first start, see nogps.intro.IntroOverlay. -->
+    <app.organicmaps.nogps.intro.IntroOverlay
+      android:id="@+id/nogps_intro"
+      android:layout_width="match_parent"
+      android:layout_height="match_parent"
+      android:elevation="16dp"
+      android:visibility="gone" />
   </RelativeLayout>
   <androidx.fragment.app.FragmentContainerView
     android:id="@+id/search_container_fragment"

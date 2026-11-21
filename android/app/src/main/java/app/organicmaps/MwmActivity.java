@@ -73,6 +73,9 @@ import app.organicmaps.nogps.AboutNoGpsActivity;
 import app.organicmaps.nogps.BoxBottomSheet;
 import app.organicmaps.nogps.MainMenuItems;
 import app.organicmaps.nogps.NoGpsLinks;
+import app.organicmaps.nogps.intro.IntroModalFragment;
+import app.organicmaps.nogps.intro.IntroOverlay;
+import app.organicmaps.nogps.intro.IntroSequence;
 import app.organicmaps.routing.NavigationController;
 import app.organicmaps.routing.NavigationService;
 import app.organicmaps.routing.RoutePointLabels;
@@ -142,6 +145,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
                MapButtonsController.MapButtonClickListener, DisplayChangedListener, RoutingPlanController
 {
   private static final String TAG = MwmActivity.class.getSimpleName();
+  // Before the intro of the first start opens: the map and its panels are drawn under it.
+  private static final long INTRO_DELAY_MS = 700;
 
   public static final String EXTRA_COUNTRY_ID = "country_id";
   public static final String EXTRA_CATEGORY_ID = "category_id";
@@ -347,6 +352,36 @@ public class MwmActivity extends BaseMwmFragmentActivity
 
     processIntent();
     migrateOAuthCredentials();
+    // The panels of the map are laid out by then and the balloons of the intro find them.
+    getWindow().getDecorView().postDelayed(this::startNoGpsIntro, INTRO_DELAY_MS);
+  }
+
+  /**
+   * Tells what the app is and what its panels do, once on the first start on the map, see nogps.intro.IntroOverlay.
+   */
+  private void startNoGpsIntro()
+  {
+    final IntroOverlay overlay = findViewById(R.id.nogps_intro);
+    if (overlay == null || overlay.isRunning() || isFinishing())
+      return;
+    final RoutingController routing = RoutingController.get();
+    if (!IntroSequence.isNeeded(Config.isNoGpsIntroShown(), routing.isPlanning() || routing.isNavigating()))
+      return;
+    if (!(getSupportFragmentManager().findFragmentById(R.id.map_buttons) instanceof MapButtonsController buttons)
+        || buttons.getView() == null)
+      return;
+    // As soon as the intro is shown: an app killed halfway through it does not show it again.
+    Config.setNoGpsIntroShown();
+    buttons.setIntroMode(true);
+    overlay.start(buttons::getIntroAnchor,
+                  () -> IntroModalFragment.show(getSupportFragmentManager()), () -> buttons.setIntroMode(false));
+  }
+
+  private void finishNoGpsIntro()
+  {
+    final IntroOverlay overlay = findViewById(R.id.nogps_intro);
+    if (overlay != null)
+      overlay.finish();
   }
 
   /**
@@ -676,6 +711,13 @@ public class MwmActivity extends BaseMwmFragmentActivity
 
     mShareLauncher = SharingUtils.RegisterLauncher(this);
 
+    // The modal of the intro was closed: its balloons follow, see nogps.intro.IntroOverlay.
+    getSupportFragmentManager().setFragmentResultListener(IntroModalFragment.RESULT_CLOSED, this, (key, result) -> {
+      final IntroOverlay overlay = findViewById(R.id.nogps_intro);
+      if (overlay != null)
+        overlay.onModalClosed();
+    });
+
     mDisplayManager = MwmApplication.from(this).getDisplayManager();
     if (mDisplayManager.isCarDisplayUsed())
     {
@@ -923,6 +965,9 @@ public class MwmActivity extends BaseMwmFragmentActivity
 
   private void initNavigationButtons(MapButtonsController.LayoutMode layoutMode)
   {
+    // The panels of the balloons are replaced by those of the navigation: the intro is over.
+    if (layoutMode != MapButtonsController.LayoutMode.regular)
+      finishNoGpsIntro();
     // Recreate the navigation buttons with the correct layout when it changes
     if (mPreviousMapLayoutMode != layoutMode)
     {

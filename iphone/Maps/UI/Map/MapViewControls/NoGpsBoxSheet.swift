@@ -15,7 +15,6 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
   private enum Constants {
     static let refreshInterval: TimeInterval = 0.5
     static let cellId = "NoGpsBoxCell"
-    static let shopURL = URL(string: NoGpsLinks.shop)!
     static let fitDetent = "fit"
   }
 
@@ -410,7 +409,7 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
   /// Bluetooth is allowed in the settings: once refused, iOS doesn't ask again. The box is searched again after a failed
   /// pairing or a lost bond.
   static func openShop() {
-    UIApplication.shared.open(Constants.shopURL)
+    UIApplication.shared.open(NoGpsLinks.shop)
   }
 
   static func onLinkAction() {
