@@ -36,6 +36,14 @@
     <!-- Button text for the button under the country_status_download_failed message -->
     <string name="try_again">Jaribu tena</string>
     <!-- Text in About screen -->
+    <string name="about_headline">Bure kwa kila mtu, iliyotengenezwa na upendo</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_1">• Hakuna matangazo, hakuna ufuatiliaji, hakuna mkusanyiko wa data</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_2">• Hakuna betri kuisha, inafanya kazi nje ya mtandao</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_3">• Haraka, minimalist, iliyotengenezwa na jumuiya</string>
+    <!-- Text in About screen -->
     <string name="about_developed_by_enthusiasts">Maombi ya chanzo-wazi iliyoundwa na wanaovutia na wanaojitolea.</string>
     <!-- The button that opens system location settings -->
     <string name="location_settings">Mipangilio ya mahali</string>

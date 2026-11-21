@@ -36,6 +36,14 @@
     <!-- Button text for the button under the country_status_download_failed message -->
     <string name="try_again">Ceisio eto</string>
     <!-- Text in About screen -->
+    <string name="about_headline">Am ddim i bawb, wedi\'i wneud gyda chariad</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_1">• Dim hysbysebion, dim olrhain, dim casglu data</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_2">• Dim draenio batri, yn gweithio all-lein</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_3">• Cyflym, minimalaidd, wedi\'i ddatblygu gan y gymuned</string>
+    <!-- Text in About screen -->
     <string name="about_developed_by_enthusiasts">Rhaglen cod agored wedi\'i chreu gan selogion a gwirfoddolwyr.</string>
     <!-- The button that opens system location settings -->
     <string name="location_settings">Gosodiadau lleoliad</string>
@@ -752,6 +760,10 @@
     <string name="enable_show_on_lock_screen_description">Pan fydd wedi\'i alluogi, bydd yr ap yn gweithio ar y sgrin gloi hyd yn oed pan fydd y ddyfais wedi\'i chloi.</string>
     <!-- Current language of the map! -->
     <string name="change_map_locale">Iaith y map</string>
+    <!-- Telegram group url for the "?" About page -->
+    <string name="telegram_url">https://t.me/OrganicMapsApp</string>
+    <!-- Instagram account url for the "?" About page -->
+    <string name="instagram_url">https://www.instagram.com/organicmaps.app</string>
     <!-- A link to the TTS FAQ -->
     <string name="tts_info_link">https://organicmaps.app/faq/text-to-speech-android-tts/</string>
     <!-- Include only languages supported on the website, add new translations here: https://github.com/organicmaps/website/tree/master/content -->

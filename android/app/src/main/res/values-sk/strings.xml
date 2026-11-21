@@ -36,6 +36,14 @@
     <!-- Button text for the button under the country_status_download_failed message -->
     <string name="try_again">Skúsiť znova</string>
     <!-- Text in About screen -->
+    <string name="about_headline">Zadarmo pre každého, vyrobené s láskou</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_1">• Žiadne reklamy, žiadne sledovanie, žiadny zber údajov</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_2">• Žiadne vybíjanie batérie, funguje v režime offline</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_3">• Rýchly, minimalistický, vyvinutý komunitou</string>
+    <!-- Text in About screen -->
     <string name="about_developed_by_enthusiasts">Aplikácia s otvoreným zdrojovým kódom vytvorená nadšencami a dobrovoľníkmi.</string>
     <!-- The button that opens system location settings -->
     <string name="location_settings">Nastavenia polohy</string>

@@ -36,6 +36,14 @@
     <!-- Button text for the button under the country_status_download_failed message -->
     <string name="try_again">Mai încearcă</string>
     <!-- Text in About screen -->
+    <string name="about_headline">Gratuit pentru toată lumea, făcut cu dragoste</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_1">• Fără reclame, fără urmărire, fără colectare de date</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_2">• Nu consumă baterie, funcționează offline</string>
+    <!-- Text in About screen -->
+    <string name="about_proposition_3">• Rapid, minimalist, dezvoltat de comunitate</string>
+    <!-- Text in About screen -->
     <string name="about_developed_by_enthusiasts">Aplicație open-source creată de entuziaști și voluntari.</string>
     <!-- The button that opens system location settings -->
     <string name="location_settings">Setări de locație</string>
