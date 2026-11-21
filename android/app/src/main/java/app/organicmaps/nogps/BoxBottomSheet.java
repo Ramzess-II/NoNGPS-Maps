@@ -1128,12 +1128,16 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
    */
   private void addPhone()
   {
+    final NoGps.Car car = pageCar();
+    if (car == null)
+      return;
     NoGps.nativeStartAddPhone();
+    final Context context = requireContext();
     final View content = getLayoutInflater().inflate(R.layout.dialog_nogps_add_phone, null);
     mAddPhoneCode = content.findViewById(R.id.add_phone_code);
     mAddPhoneMessage = content.findViewById(R.id.add_phone_message);
-    mAddPhoneDialog = new MaterialAlertDialogBuilder(requireContext())
-                          .setTitle(R.string.nogps_phone_add)
+    mAddPhoneDialog = new MaterialAlertDialogBuilder(context)
+                          .setTitle(getString(R.string.nogps_phone_add_to_car, BoxTexts.carName(context, car)))
                           .setView(content)
                           .setPositiveButton(R.string.close, null)
                           .setOnDismissListener(dialog -> {

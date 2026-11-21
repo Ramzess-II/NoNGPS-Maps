@@ -1099,9 +1099,11 @@ final class CarPageViewController: MWMTableViewController {
 
   /// The box takes a new phone with a code shown here: the user enters it on the new phone.
   private func addPhone() {
+    guard let car else { return }
     NoGps.startAddPhone()
     status = NoGps.status()
-    let sheet = AddPhoneViewController(code: addPhoneCode(), message: addPhoneText())
+    let sheet = AddPhoneViewController(carName: NoGpsBoxSheet.carName(car), code: addPhoneCode(),
+                                       message: addPhoneText())
     addPhoneAlert = sheet
     present(sheet, animated: true)
   }
@@ -1137,8 +1139,10 @@ private final class AddPhoneViewController: UIViewController {
 
   private let codeLabel = UILabel()
   private let messageLabel = UILabel()
+  private let carName: String
 
-  init(code: String?, message: String) {
+  init(carName: String, code: String?, message: String) {
+    self.carName = carName
     super.init(nibName: nil, bundle: nil)
     modalPresentationStyle = .pageSheet
     sheetPresentationController?.detents = [.medium()]
@@ -1153,7 +1157,7 @@ private final class AddPhoneViewController: UIViewController {
     view.backgroundColor = .systemBackground
 
     let title = UILabel()
-    title.text = L("nogps_phone_add")
+    title.text = String(format: L("nogps_phone_add_to_car"), carName)
     title.font = .preferredFont(forTextStyle: .headline)
     title.textAlignment = .center
     title.numberOfLines = 0
