@@ -281,6 +281,14 @@ public final class Map
     nativeScaleMinus();
   }
 
+  /**
+   * Scales around the center of the visible map.
+   */
+  public static void scale(double factor)
+  {
+    nativeScale(factor);
+  }
+
   public static void onScale(double factor, double focusX, double focusY, boolean isAnim)
   {
     nativeOnScale(factor, focusX, focusY, isAnim);
@@ -408,6 +416,8 @@ public final class Map
   private static native void nativeScaleMinus();
 
   private static native void nativeOnScroll(double distanceX, double distanceY);
+
+  private static native void nativeScale(double factor);
 
   private static native void nativeOnScale(double factor, double focusX, double focusY, boolean isAnim);
 

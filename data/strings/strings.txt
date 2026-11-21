@@ -47773,8 +47773,8 @@ ru = Масштаб и поворот карты. Удержание двига�
 uk = Масштаб і поворот мапи. Утримання рухає панель.
 
 [nogps_intro_right_swipe]
-comment = Appended to nogps_intro_right on iOS only, where the zoom buttons also take a slide
-tags = apple-maps
+comment = Appended to nogps_intro_right, the zoom buttons also take a slide
+tags = android-app,apple-maps
 en = Slide +/− to zoom.
 ru = Проведите по +/− для масштаба.
 uk = Проведіть по +/− для масштабу.

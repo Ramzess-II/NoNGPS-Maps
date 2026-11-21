@@ -1492,6 +1492,8 @@
     <string name="nogps_intro_bottom">Машины, датчик и GPS — здесь.</string>
     <!-- Balloon of the first start pointing at the panel with the zoom buttons -->
     <string name="nogps_intro_right">Масштаб и поворот карты. Удержание двигает панель.</string>
+    <!-- Appended to nogps_intro_right, the zoom buttons also take a slide -->
+    <string name="nogps_intro_right_swipe">Проведите по +/− для масштаба.</string>
     <!-- Balloon of the first start pointing at the panel with the car buttons -->
     <string name="nogps_intro_left">Поверните машину или укажите её рукой. Удержание двигает панель.</string>
 </resources>

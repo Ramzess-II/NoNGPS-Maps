@@ -1,5 +1,6 @@
 package app.organicmaps.nogps.intro;
 
+import android.content.Context;
 import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.StringRes;
@@ -40,6 +41,16 @@ public enum IntroStep
   public int getTextId()
   {
     return mTextId;
+  }
+
+  /**
+   * The text of the balloon: the right panel tells about the zoom slide too, as on iOS.
+   */
+  @NonNull
+  public String getText(@NonNull Context context)
+  {
+    final String text = context.getString(mTextId);
+    return this == RIGHT ? text + " " + context.getString(R.string.nogps_intro_right_swipe) : text;
   }
 
   /**
