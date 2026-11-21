@@ -119,6 +119,19 @@ and the order of values in their enums. The bridges are `android/sdk/src/main/cp
 - a new file in `libs/map/nogps` goes into `libs/map/CMakeLists.txt` and `xcode/map/map.xcodeproj/project.pbxproj`.
   If the author can't build iOS, the PR says "Xcode project not verified".
 
+The box protocol is a shared interface too: `docs/nogps/esp32-firmware-spec.md` is what the app, the firmware and the
+box simulator (`tools/python/nogps_box_sim.py`, #468) all follow. A change to it — a line, a field, a command, a flag,
+a cap, an error — touches the spec in this repo, and the simulator changes in the same PR:
+
+- a line the box sends: the simulator sends it too, with the fields the panel can set;
+- a command the app sends: the simulator answers it, and can answer with the refusals the box would give
+  (`ERR,BUSY`, `ERR,VALUE`), so the app's handling of them can be seen without the box;
+- a cap in `NGI`: reported only once the simulator does what it promises, as the app gates its commands on the caps;
+- what the simulator can't do, because CoreBluetooth or BlueZ won't, goes in its docstring and in the PR.
+
+A test in `tools/python/nogps_box_sim_test.py` comes with it. A firmware change that leaves the protocol alone — a
+driver, OBD, the power rules — doesn't touch the simulator.
+
 ## Living docs
 
 Update these in the same PR, in a separate `[docs]` commit:
