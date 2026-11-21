@@ -235,7 +235,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private View mPhonesUnknown;
   private LinearLayout mPhonesRows;
   private View mPhonesReadOnly;
-  private View mAddPhone;
+  private TextView mAddPhone;
+  private ColorStateList mAddPhoneColors;
   // The texts of the phone rows shown: the rows are made again when they change.
   private List<String> mPhoneTexts = new ArrayList<>();
 
@@ -458,6 +459,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mPhonesRows = view.findViewById(R.id.box_phones_rows);
     mPhonesReadOnly = view.findViewById(R.id.box_phones_read_only);
     mAddPhone = view.findViewById(R.id.box_add_phone);
+    mAddPhoneColors = mAddPhone.getTextColors();
     mAddPhone.setOnClickListener(v -> addPhone());
     view.findViewById(R.id.box_sprint_to100_row).setOnClickListener(v -> showPage(Page.SPRINT_TO_100));
     view.findViewById(R.id.box_sprint_quarter_row).setOnClickListener(v -> showPage(Page.SPRINT_QUARTER_MILE));
@@ -1054,7 +1056,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private void updatePhones(@NonNull NoGps.Status status)
   {
     mPhonesReadOnly.setVisibility(status.boxReadOnly ? View.VISIBLE : View.GONE);
+    // The row looks like a link only while it works: the box of another phone takes no new phone.
     mAddPhone.setEnabled(!status.boxReadOnly);
+    mAddPhone.setTextColor(status.boxReadOnly ? mStateColors : mAddPhoneColors);
     final Context context = requireContext();
     final List<String> texts = new ArrayList<>();
     for (NoGps.Phone phone : status.boxPhones)

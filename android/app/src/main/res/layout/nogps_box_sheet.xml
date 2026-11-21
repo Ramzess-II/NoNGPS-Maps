@@ -476,75 +476,88 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="4dp"
-      android:layout_marginBottom="8dp"
+      android:layout_marginBottom="12dp"
       android:text="@string/nogps_cars_text"
       android:textColor="?android:textColorSecondary"
       android:textSize="14sp" />
-    <!-- A tap renames the car. -->
+    <!-- The car itself: its name, its box, and forgetting it. -->
     <LinearLayout
-      android:id="@+id/box_car_page_name_row"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:background="?selectableItemBackground"
-      android:gravity="center_vertical"
-      android:minHeight="48dp"
-      android:orientation="horizontal">
-      <TextView
-        android:id="@+id/box_car_page_name_label"
-        android:layout_width="wrap_content"
+      android:background="@drawable/bg_nogps_group"
+      android:divider="@drawable/divider_shape"
+      android:orientation="vertical"
+      android:showDividers="middle">
+      <!-- A tap renames the car. -->
+      <LinearLayout
+        android:id="@+id/box_car_page_name_row"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="12dp"
-        android:text="@string/nogps_car_name"
-        android:textSize="16sp" />
-      <TextView
-        android:id="@+id/box_car_page_name"
-        android:layout_width="0dp"
+        android:background="?selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp">
+        <TextView
+          android:id="@+id/box_car_page_name_label"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="12dp"
+          android:text="@string/nogps_car_name"
+          android:textSize="16sp" />
+        <TextView
+          android:id="@+id/box_car_page_name"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:gravity="end|center_vertical"
+          android:textColor="?android:textColorSecondary"
+          android:textSize="16sp" />
+      </LinearLayout>
+      <!-- The state of the box on the right, a tap opens its page. -->
+      <LinearLayout
+        android:id="@+id/box_car_box_row"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:gravity="end|center_vertical"
-        android:textColor="?android:textColorSecondary"
+        android:background="?selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp">
+        <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="12dp"
+          android:text="@string/nogps_box_title"
+          android:textSize="16sp" />
+        <TextView
+          android:id="@+id/box_car_box_state"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:gravity="end|center_vertical"
+          android:textColor="?android:textColorSecondary"
+          android:textSize="16sp"
+          app:drawableEndCompat="@drawable/ic_nogps_chevron" />
+      </LinearLayout>
+      <TextView
+        android:id="@+id/box_car_forget"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:paddingHorizontal="16dp"
+        android:text="@string/nogps_car_forget"
+        android:textColor="@color/base_red"
         android:textSize="16sp" />
     </LinearLayout>
-    <!-- The state of the box on the right, a tap opens its page. -->
-    <LinearLayout
-      android:id="@+id/box_car_box_row"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:background="?selectableItemBackground"
-      android:gravity="center_vertical"
-      android:minHeight="48dp"
-      android:orientation="horizontal">
-      <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="12dp"
-        android:text="@string/nogps_box_title"
-        android:textSize="16sp" />
-      <TextView
-        android:id="@+id/box_car_box_state"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:gravity="end|center_vertical"
-        android:textColor="?android:textColorSecondary"
-        android:textSize="16sp"
-        app:drawableEndCompat="@drawable/ic_nogps_chevron" />
-    </LinearLayout>
-    <TextView
-      android:id="@+id/box_car_forget"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:background="?selectableItemBackground"
-      android:gravity="center_vertical"
-      android:minHeight="48dp"
-      android:text="@string/nogps_car_forget"
-      android:textColor="@color/base_red"
-      android:textSize="16sp" />
 
     <TextView
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="16dp"
+      android:layout_marginBottom="6dp"
       android:text="@string/nogps_car_phones"
       android:textColor="?android:textColorSecondary"
       android:textSize="14sp"
@@ -553,7 +566,10 @@
     <LinearLayout
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:orientation="vertical">
+      android:background="@drawable/bg_nogps_group"
+      android:divider="@drawable/divider_shape"
+      android:orientation="vertical"
+      android:showDividers="middle">
       <!-- The box is out of reach: it alone tells its phones, so it is the only row then. -->
       <include
         android:id="@+id/box_phones_unknown"
@@ -562,83 +578,100 @@
         android:id="@+id/box_phones_rows"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical" />
-      <Button
-        android:id="@+id/box_add_phone"
-        style="?borderlessButtonStyle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="start|center_vertical"
-        android:text="@string/nogps_phone_add" />
+        android:divider="@drawable/divider_shape"
+        android:orientation="vertical"
+        android:showDividers="middle" />
       <TextView
-        android:id="@+id/box_phones_read_only"
+        android:id="@+id/box_add_phone"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="@string/nogps_box_read_only"
-        android:textColor="?android:textColorSecondary"
-        android:textSize="14sp" />
+        android:background="?selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:paddingHorizontal="16dp"
+        android:text="@string/nogps_phone_add"
+        android:textColor="?colorAccent"
+        android:textSize="16sp" />
     </LinearLayout>
+    <TextView
+      android:id="@+id/box_phones_read_only"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_marginTop="6dp"
+      android:text="@string/nogps_box_read_only"
+      android:textColor="?android:textColorSecondary"
+      android:textSize="14sp" />
 
     <TextView
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="16dp"
+      android:layout_marginBottom="6dp"
       android:text="@string/nogps_car_records"
       android:textColor="?android:textColorSecondary"
       android:textSize="14sp"
       android:textStyle="bold" />
-    <!-- Its best time, a tap opens the results. -->
     <LinearLayout
-      android:id="@+id/box_sprint_to100_row"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:background="?selectableItemBackground"
-      android:gravity="center_vertical"
-      android:minHeight="48dp"
-      android:orientation="horizontal">
-      <TextView
-        android:layout_width="wrap_content"
+      android:background="@drawable/bg_nogps_group"
+      android:divider="@drawable/divider_shape"
+      android:orientation="vertical"
+      android:showDividers="middle">
+      <!-- Its best time, a tap opens the results. -->
+      <LinearLayout
+        android:id="@+id/box_sprint_to100_row"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="12dp"
-        android:text="@string/nogps_sprint_to100"
-        android:textSize="16sp" />
-      <TextView
-        android:id="@+id/box_sprint_to100_best"
-        android:layout_width="0dp"
+        android:background="?selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp">
+        <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="12dp"
+          android:text="@string/nogps_sprint_to100"
+          android:textSize="16sp" />
+        <TextView
+          android:id="@+id/box_sprint_to100_best"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:fontFeatureSettings="tnum"
+          android:gravity="end|center_vertical"
+          android:textColor="?android:textColorSecondary"
+          android:textSize="16sp"
+          app:drawableEndCompat="@drawable/ic_nogps_chevron" />
+      </LinearLayout>
+      <!-- Its best time, a tap opens the results. -->
+      <LinearLayout
+        android:id="@+id/box_sprint_quarter_row"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:fontFeatureSettings="tnum"
-        android:gravity="end|center_vertical"
-        android:textColor="?android:textColorSecondary"
-        android:textSize="16sp"
-        app:drawableEndCompat="@drawable/ic_nogps_chevron" />
-    </LinearLayout>
-    <!-- Its best time, a tap opens the results. -->
-    <LinearLayout
-      android:id="@+id/box_sprint_quarter_row"
-      android:layout_width="match_parent"
-      android:layout_height="wrap_content"
-      android:background="?selectableItemBackground"
-      android:gravity="center_vertical"
-      android:minHeight="48dp"
-      android:orientation="horizontal">
-      <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="12dp"
-        android:text="@string/nogps_sprint_quarter_mile"
-        android:textSize="16sp" />
-      <TextView
-        android:id="@+id/box_sprint_quarter_best"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:fontFeatureSettings="tnum"
-        android:gravity="end|center_vertical"
-        android:textColor="?android:textColorSecondary"
-        android:textSize="16sp"
-        app:drawableEndCompat="@drawable/ic_nogps_chevron" />
+        android:background="?selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp">
+        <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginEnd="12dp"
+          android:text="@string/nogps_sprint_quarter_mile"
+          android:textSize="16sp" />
+        <TextView
+          android:id="@+id/box_sprint_quarter_best"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:fontFeatureSettings="tnum"
+          android:gravity="end|center_vertical"
+          android:textColor="?android:textColorSecondary"
+          android:textSize="16sp"
+          app:drawableEndCompat="@drawable/ic_nogps_chevron" />
+      </LinearLayout>
     </LinearLayout>
   </LinearLayout>
 
