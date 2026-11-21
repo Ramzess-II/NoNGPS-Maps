@@ -28,6 +28,7 @@ public:
   static std::string_view constexpr kSpeedTable = "NoGpsSpeedTable";
   static std::string_view constexpr kRoughSpeedTable = "NoGpsRoughSpeedTable";
   static std::string_view constexpr kSpeedFactor = "NoGpsSpeedFactor";
+  static std::string_view constexpr kSpeedUnit = "NoGpsSpeedUnit";
   static std::string_view constexpr kSpeedLag = "NoGpsSpeedLag";
   // How the accelerometer of the sensor box is fixed in the car: the identifier of the box and what is learned.
   static std::string_view constexpr kBoxAccel = "NoGpsBoxAccel";
@@ -115,9 +116,9 @@ std::string DebugPrint(Car const & car);
 class CarStorage : public Storage
 {
 public:
-  static std::array<std::string_view, 11> constexpr kCarValues = {
+  static std::array<std::string_view, 12> constexpr kCarValues = {
       kSpeedScale,  kSpeedTable,     kRoughSpeedTable, kSpeedFactor,           kSpeedLag, kBoxAccel,
-      kCarPosition, kBoxPowerOnTime, kBoxPowerOns,     kBoxCalibrationAdvised, kSprints,
+      kCarPosition, kBoxPowerOnTime, kBoxPowerOns,     kBoxCalibrationAdvised, kSprints,  kSpeedUnit,
   };
   // The name the user has given the car, kept by the keys of the car as its values: NoGpsCar.C47D.Name.
   static std::string_view constexpr kCarName = "NoGpsName";

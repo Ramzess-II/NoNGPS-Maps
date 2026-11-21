@@ -184,6 +184,55 @@ std::string SpeedTable::ToString() const
   return result;
 }
 
+void SpeedUnit::OnSample(double carSpeedKmh, double gpsSpeedMps, double dtSec, double accelerationMps2)
+{
+  if (carSpeedKmh < kMinSpeedKmh || dtSec <= 0 || dtSec > kMaxSampleDtSec ||
+      std::fabs(accelerationMps2) > kMaxAccelerationMps2)
+    return;
+  double const gpsKmh = gpsSpeedMps * 3.6;
+  if (gpsKmh < kMinSpeedKmh)
+    return;
+  double const ratio = gpsKmh / carSpeedKmh;
+  double const distanceM = gpsSpeedMps * dtSec;
+  if (ratio >= kMinMphRatio && ratio <= kMaxMphRatio)
+    m_mphM += distanceM;
+  else if (ratio >= 1 / kMaxScaleRatio && ratio <= kMaxScaleRatio)
+    m_kmhM += distanceM;
+  else
+    return;
+  while (m_mphM + m_kmhM > kMaxDistanceM)
+  {
+    m_mphM /= 2;
+    m_kmhM /= 2;
+  }
+}
+
+double SpeedUnit::Get() const
+{
+  return m_mphM >= kMinDistanceM && m_mphM >= kMphShare * (m_mphM + m_kmhM) ? kMph : 1;
+}
+
+void SpeedUnit::Clear()
+{
+  m_mphM = 0;
+  m_kmhM = 0;
+}
+
+std::string SpeedUnit::Serialize() const
+{
+  char buf[64];
+  std::snprintf(buf, sizeof(buf), "%.1f:%.1f", m_mphM, m_kmhM);
+  return buf;
+}
+
+void SpeedUnit::Deserialize(std::string_view unit)
+{
+  Clear();
+  auto const distances = strings::Tokenize(unit, ":");
+  if (distances.size() != 2 || !strings::to_double(distances[0], m_mphM) || !strings::to_double(distances[1], m_kmhM))
+    Clear();
+}
+
 bool SpeedFactor::IsGoodSample(double expectedKmh, double gpsKmh)
 {
   return std::fabs(gpsKmh - expectedKmh) <= std::max(kMaxSampleDiffKmh, kMaxSampleDiffRatio * expectedKmh);
