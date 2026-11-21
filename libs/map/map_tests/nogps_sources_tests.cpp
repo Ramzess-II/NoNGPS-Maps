@@ -989,19 +989,67 @@ UNIT_TEST(NoGps_Esp32Source_SecondPhoneOnlyGetsData)
   TEST_EQUAL(box.m_source.GetAddPhoneState(), Esp32Source::AddPhone::None, ());
 
   // The first phone has gone: this one changes the box now.
+  box.m_clock.Advance(Esp32Source::kListIntervalMs);
   box.Line("NGE,1,0,9000,I,PHONE_LOST,ble");
   box.List(true);
   TEST(!box.m_source.IsReadOnly(), ());
   TEST(box.m_source.CanUpdate(), ());
 
-  // The box refuses a command: another phone has come first after all.
-  box.m_source.Calibrate();
-  box.Refuse("BUSY");
+  // The other phone takes the role without this link lost: the list tells.
+  box.m_clock.Advance(Esp32Source::kListIntervalMs);
+  box.Line("NGE,1,1,9500,I,PHONE_CONNECTED,ble");
+  box.List(false);
   TEST(box.m_source.IsReadOnly(), ());
+  // The role passes again at once: the event is not throttled.
+  size_t const sentBefore = box.SentCount();
+  box.Line("NGE,1,2,9600,I,PHONE_LOST,ble");
+  TEST_EQUAL(box.SentCount(), sentBefore + 1, ());
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  box.List(true);
+
   // Another link, another order of the phones.
   box.m_source.OnBleState(BleState::Searching);
   box.ConnectWithPhones();
   TEST(!box.m_source.IsReadOnly(), ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_BusyAsksListOnly)
+{
+  PhonesBox box;
+  box.List(true);
+  box.m_clock.Advance(Esp32Source::kListIntervalMs);
+  // A calibration runs already: BUSY is not another phone.
+  box.m_source.Calibrate();
+  box.Refuse("BUSY");
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  box.List(true);
+  TEST(!box.m_source.IsReadOnly(), ());
+  TEST(box.m_source.CanUpdate(), ());
+
+  // An update runs already.
+  box.m_clock.Advance(Esp32Source::kListIntervalMs);
+  box.StartUpdate();
+  box.Refuse("BUSY");
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  box.List(true);
+  TEST(!box.m_source.IsReadOnly(), ());
+
+  // Another phone has come first: the list says so.
+  box.m_clock.Advance(Esp32Source::kListIntervalMs);
+  box.m_source.Calibrate();
+  box.Refuse("BUSY");
+  box.List(false);
+  TEST(box.m_source.IsReadOnly(), ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_PairWithoutReplyFails)
+{
+  PhonesBox box;
+  box.List();
+  box.m_source.StartAddPhone();
+  TEST_EQUAL(box.m_source.GetAddPhoneState(), Esp32Source::AddPhone::Opening, ());
+  box.m_clock.Advance(Esp32Source::kCarReplyTimeoutMs + Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(box.m_source.GetAddPhoneState(), Esp32Source::AddPhone::Failed, ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_HelloTellsNameOfPhone)
