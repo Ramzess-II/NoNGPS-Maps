@@ -245,6 +245,8 @@ public final class Logger
     private static final int FLUSH_TIMEOUT_SECONDS = 2;
     // Opening a file walks the whole log tree to keep it under the limit, so a failure is not retried at once.
     private static final long OPEN_RETRY_MS = 5000;
+    // A file that reaches it ends, the lines after go to a new file: a long session is not one huge file.
+    private static final long MAX_FILE_SIZE = LogFiles.MAX_FILE_SIZE;
 
     @NonNull
     private final ArrayBlockingQueue<LogEntry> mQueue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
@@ -268,6 +270,8 @@ public final class Logger
     private long mDayEndMs;
     // When a failed open may be tried again, 0 when the last one worked.
     private long mRetryOpenMs;
+    // The size of the open file in chars, which are bytes for the ASCII log.
+    private long mFileSize;
 
     LogFileWriter()
     {
@@ -440,11 +444,14 @@ public final class Logger
       final String line = mDateFormat.format(new Date()) + " " + data + "\n";
       try
       {
+        if (mWriter != null && mFileSize >= MAX_FILE_SIZE)
+          startFileLocked();
         ensureWriterLocked(logsFolder);
         if (mWriter == null)
           return;
 
         mWriter.write(line);
+        mFileSize += line.length();
       }
       catch (IOException e)
       {
@@ -499,9 +506,14 @@ public final class Logger
       mWriter = new BufferedWriter(new FileWriter(file, true));
       mFilePath = file.getPath();
       mRetryOpenMs = 0;
+      mFileSize = file.length();
 
       if (isNewFile)
-        mWriter.write(LogsManager.INSTANCE.getSystemInformation());
+      {
+        final String info = LogsManager.INSTANCE.getSystemInformation();
+        mWriter.write(info);
+        mFileSize += info.length();
+      }
     }
 
     private void startFileLocked()

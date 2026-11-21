@@ -22,6 +22,8 @@ final class LogFiles
 
   // A day of driving, 20 hours and more at about 6.5 MB an hour: the log of a drive is analysed afterwards.
   static final long MAX_TOTAL_SIZE = 150_000_000;
+  // About 4.5 hours at 6.5 MB an hour.
+  static final long MAX_FILE_SIZE = 30_000_000;
 
   private LogFiles() {}
 
