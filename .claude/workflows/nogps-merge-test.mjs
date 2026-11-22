@@ -126,9 +126,11 @@ const base = (label) => {
 // --- 3. stale once, then merged ---
 {
   const seen = {}
+  const updates = []
   const r = await runScript({
     args: { ws: '/ws', parallel: [pr(1), pr(2)], slots: 2, rounds: 3 },
-    reply: (label) => {
+    reply: (label, opts, prompt) => {
+      if (label.startsWith('update')) updates.push(prompt)
       if (label.startsWith('merge')) {
         const n = label.slice(7)
         seen[n] = (seen[n] || 0) + 1
@@ -144,6 +146,12 @@ const base = (label) => {
   check('staleRounds recorded', one.staleRounds === 1, one)
   check('#1 went through the gate twice', seen['1'] === 2, seen)
   check('#1 was updated twice', r.order.filter((o) => o === '+update:#1').length === 2)
+  // The second prep of #1 can land in the other slot, whose worktree still has train/1 checked out.
+  check(
+    'the prep checks out past another worktree holding the branch',
+    updates.every((p) => /checkout --force --ignore-other-worktrees -B train\/\d/.test(p)),
+    updates.length,
+  )
 }
 
 // --- 4. stale for ever: bounded by rounds ---

@@ -59,8 +59,12 @@ worktree lock of ${APP}) is run again after a few seconds.`
 
 // The PR's own branch is never checked out: it may be checked out in the main checkout or another worktree, and
 // git refuses that. The train works on train/<n> and pushes it to the PR's branch by its full refname.
-const CHECKOUT = (pr, wt) => `git -C ${wt} fetch -q origin && git -C ${wt} checkout --force -B train/${pr.number} \
-refs/remotes/origin/${pr.branch} && git -C ${wt} submodule update --init --recursive`
+// --ignore-other-worktrees: a PR the gate sends back as stale is prepped by whichever worker takes it next, while
+// the slot that prepped it before still has train/<n> checked out, and git refuses that branch without the flag
+// (--force doesn't cover it). Only one worker holds a PR at a time, so the two never write the branch at once.
+const CHECKOUT = (pr, wt) => `git -C ${wt} fetch -q origin && git -C ${wt} checkout --force \
+--ignore-other-worktrees -B train/${pr.number} refs/remotes/origin/${pr.branch} && git -C ${wt} submodule update \
+--init --recursive`
 const PUSH = (pr, wt) => `git -C ${wt} push origin HEAD:refs/heads/${pr.branch}`
 
 const SETUP_SCHEMA = {
