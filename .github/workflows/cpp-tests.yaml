@@ -28,6 +28,8 @@ on:
       - packaging/**
       - qt/**
       - tools/**
+      # libs/platform/CMakeLists.txt runs version.sh to generate the Qt version header.
+      - '!tools/unix/version.sh'
       - '!tools/python/test_server/**'
       - xcode/**
 
