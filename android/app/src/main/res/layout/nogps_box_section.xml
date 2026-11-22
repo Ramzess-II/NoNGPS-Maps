@@ -10,7 +10,6 @@
   android:gravity="center_vertical"
   android:minHeight="56dp"
   android:orientation="horizontal"
-  android:paddingHorizontal="16dp"
   android:paddingVertical="6dp"
   tools:ignore="Overdraw">
   <LinearLayout

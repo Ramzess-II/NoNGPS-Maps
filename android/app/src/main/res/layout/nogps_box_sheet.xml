@@ -214,14 +214,16 @@
       android:visibility="gone" />
 
     <!-- If the car follows GPS. -->
+    <View
+      android:layout_width="match_parent"
+      android:layout_height="@dimen/divider_height"
+      android:layout_marginTop="12dp"
+      android:background="?dividerHorizontal" />
     <androidx.appcompat.widget.SwitchCompat
       android:id="@+id/box_gps_block"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="12dp"
-      android:background="@drawable/bg_nogps_group"
       android:minHeight="56dp"
-      android:paddingHorizontal="16dp"
       android:text="@string/nogps_gps_block"
       android:textSize="16sp" />
     <!-- Both texts take their place: the sheet doesn't jump as the box comes and goes. -->
@@ -685,12 +687,16 @@
       android:textSize="17sp"
       android:textStyle="bold" />
 
-    <!-- One group: each item opens its page. -->
+    <!-- One list under a line, each item opens its page. -->
+    <View
+      android:layout_width="match_parent"
+      android:layout_height="@dimen/divider_height"
+      android:layout_marginTop="12dp"
+      android:background="?dividerHorizontal" />
     <LinearLayout
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="12dp"
-      android:background="@drawable/bg_nogps_group"
+      android:layout_marginTop="4dp"
       android:orientation="vertical">
       <include
         android:id="@+id/box_item_box"
