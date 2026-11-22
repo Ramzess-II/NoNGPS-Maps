@@ -13,28 +13,33 @@
               android:textAppearance="@style/MwmTextAppearance.Headline"/>
     <TextView android:layout_width="match_parent"
               android:layout_height="wrap_content"
-              android:layout_marginTop="@dimen/margin_base"
+              android:layout_marginTop="@dimen/margin_half"
               android:text="@string/nogps_intro_text"
-              android:textAppearance="@style/MwmTextAppearance.Body2.Primary"/>
-    <!-- The buttons do not close the modal: the user comes back to it from the shop or the video. -->
+              android:textAppearance="@style/MwmTextAppearance.Body3"/>
+    <!-- The shop and the video are secondary: they do not close the modal, the user comes back to it. -->
     <Button android:id="@+id/nogps_intro_buy"
-            style="@style/MwmWidget.Button.Primary"
+            style="@style/MwmWidget.Button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/margin_base_plus"
-            android:text="@string/nogps_box_buy"/>
+            android:layout_marginTop="@dimen/margin_base"
+            android:minHeight="@dimen/primary_button_min_height"
+            android:text="@string/nogps_box_buy"
+            android:textColor="?colorAccent"
+            android:textSize="@dimen/text_size_body_3"/>
     <Button android:id="@+id/nogps_intro_video"
             style="@style/MwmWidget.Button"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="@dimen/margin_half"
             android:minHeight="@dimen/primary_button_min_height"
-            android:text="@string/nogps_intro_video"/>
-    <CheckBox android:id="@+id/nogps_intro_understand"
-              android:layout_width="match_parent"
-              android:layout_height="wrap_content"
-              android:layout_marginTop="@dimen/margin_base_plus"
-              android:text="@string/nogps_intro_understand"
-              android:textAppearance="@style/MwmTextAppearance.Body2.Primary"/>
+            android:text="@string/nogps_intro_video"
+            android:textColor="?colorAccent"
+            android:textSize="@dimen/text_size_body_3"/>
+    <!-- The only way out of the modal. -->
+    <Button android:id="@+id/nogps_intro_understand"
+            style="@style/MwmWidget.Button.Primary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/margin_base"
+            android:text="@string/nogps_intro_understand"/>
   </LinearLayout>
 </ScrollView>

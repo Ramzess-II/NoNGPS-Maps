@@ -444,9 +444,11 @@ UNIT_TEST(NoGps_PeerSync_PeerLineFormat)
   TEST(*ParsePeer(*Parse(WithCrc("NGX,1,A,123456,501234567,-301234567,-1,50,T"))) == peer, ());
 
   // What is not a place of a phone.
-  for (auto const body : {"NGX,1,X,1,5,5,100,10,G", "NGX,2,A,1,5,5,100,10,G", "NGX,1,A,1,5,5,100,10",
-                          "NGX,1,A,x,5,5,100,10,G", "NGX,1,A,1,910000000,5,100,10,G", "NGX,1,A,1,5,5,36000,10,G",
-                          "NGX,1,A,1,5,5,100,10,GG", "NGD,1,A,1,5,5,100,10,G"})
+  for (auto const body :
+       {"NGX,1,X,1,5,5,100,10,G", "NGX,2,A,1,5,5,100,10,G", "NGX,1,A,1,5,5,100,10", "NGX,1,A,x,5,5,100,10,G",
+        "NGX,1,A,1,910000000,5,100,10,G", "NGX,1,A,1,5,5,36000,10,G", "NGX,1,A,1,5,5,100,10,GG",
+        "NGD,1,A,1,5,5,100,10,G", "NGX,1,A,1,-2147483648,5,100,10,G", "NGX,1,A,1,5,-2147483648,100,10,G",
+        "NGX,1,A,1,5,5,100,-1,G", "NGX,1,A,1,5,5,100,1000001,G", "NGX,1,A,-1,5,5,100,10,G"})
   {
     TEST(!ParsePeer(*Parse(WithCrc(body))), (body));
   }

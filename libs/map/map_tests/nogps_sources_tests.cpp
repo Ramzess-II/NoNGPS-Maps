@@ -989,19 +989,76 @@ UNIT_TEST(NoGps_Esp32Source_SecondPhoneOnlyGetsData)
   TEST_EQUAL(box.m_source.GetAddPhoneState(), Esp32Source::AddPhone::None, ());
 
   // The first phone has gone: this one changes the box now.
+  box.m_clock.Advance(Esp32Source::kListIntervalMs);
   box.Line("NGE,1,0,9000,I,PHONE_LOST,ble");
   box.List(true);
   TEST(!box.m_source.IsReadOnly(), ());
   TEST(box.m_source.CanUpdate(), ());
 
-  // The box refuses a command: another phone has come first after all.
-  box.m_source.Calibrate();
-  box.Refuse("BUSY");
+  // The other phone takes the role without this link lost: the list tells.
+  box.m_clock.Advance(Esp32Source::kListIntervalMs);
+  box.Line("NGE,1,1,9500,I,PHONE_CONNECTED,ble");
+  box.List(false);
   TEST(box.m_source.IsReadOnly(), ());
+  // The role passes again at once: the event is not throttled.
+  size_t const sentBefore = box.SentCount();
+  box.Line("NGE,1,2,9600,I,PHONE_LOST,ble");
+  TEST_EQUAL(box.SentCount(), sentBefore + 1, ());
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  box.List(true);
+
   // Another link, another order of the phones.
   box.m_source.OnBleState(BleState::Searching);
   box.ConnectWithPhones();
   TEST(!box.m_source.IsReadOnly(), ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_BusyAsksListOnly)
+{
+  PhonesBox box;
+  box.List(true);
+  box.m_clock.Advance(Esp32Source::kListIntervalMs);
+  // A calibration runs already: BUSY is not another phone.
+  box.m_source.Calibrate();
+  box.Refuse("BUSY");
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  box.List(true);
+  TEST(!box.m_source.IsReadOnly(), ());
+  TEST(box.m_source.CanUpdate(), ());
+
+  // One more BUSY within kListIntervalMs asks nothing: the box has just listed its phones.
+  box.m_source.Calibrate();
+  size_t const sent = box.SentCount();
+  auto const command = box.LastCommand();
+  box.Refuse("BUSY");
+  TEST_EQUAL(box.SentCount(), sent, ());
+  TEST_EQUAL(box.LastCommand(), command, ());
+  TEST(!box.m_source.IsReadOnly(), ());
+
+  // An update runs already.
+  box.m_clock.Advance(Esp32Source::kListIntervalMs);
+  box.StartUpdate();
+  box.Refuse("BUSY");
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  box.List(true);
+  TEST(!box.m_source.IsReadOnly(), ());
+
+  // Another phone has come first: the list says so.
+  box.m_clock.Advance(Esp32Source::kListIntervalMs);
+  box.m_source.Calibrate();
+  box.Refuse("BUSY");
+  box.List(false);
+  TEST(box.m_source.IsReadOnly(), ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_PairWithoutReplyFails)
+{
+  PhonesBox box;
+  box.List();
+  box.m_source.StartAddPhone();
+  TEST_EQUAL(box.m_source.GetAddPhoneState(), Esp32Source::AddPhone::Opening, ());
+  box.m_clock.Advance(Esp32Source::kCarReplyTimeoutMs + Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(box.m_source.GetAddPhoneState(), Esp32Source::AddPhone::Failed, ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_HelloTellsNameOfPhone)
@@ -1084,6 +1141,126 @@ UNIT_TEST(NoGps_Esp32Update_CancelWhileRestartingDoesNothing)
 
   box.Connect("0.3.3");
   TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
+}
+
+UNIT_TEST(NoGps_Esp32Update_CancelWhileVerifyingDoesNothing)
+{
+  UpdatedBox box;
+  box.StartUpdate();
+  box.Accept(",240,4096");
+  box.Line("NGO,1,1000,RECV");
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Verifying, ());
+  auto const commands = box.m_delegate.m_esp32BleSent.size();
+
+  // The box ignores OTA_ABORT after OTA_END and restarts with the new firmware.
+  box.m_source.CancelUpdate();
+  TEST_EQUAL(box.m_delegate.m_esp32BleSent.size(), commands, ());
+  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Verifying, ());
+}
+
+UNIT_TEST(NoGps_Esp32Update_AbortsWhenBoxDoesNotAnswerBegin)
+{
+  UpdatedBox box;
+  box.StartUpdate();
+  box.m_clock.Advance(Esp32Update::kReplyTimeoutMs + Esp32Update::kCheckIntervalMs);
+  TEST_EQUAL(box.Update().GetError(), "NO_REPLY", ());
+  TEST_EQUAL(box.LastCommand().second, "OTA_ABORT", ());
+}
+
+UNIT_TEST(NoGps_Esp32Update_LateNewFirmwareAfterTimeoutIsDone)
+{
+  {
+    // The box took longer than the application waited for it to restart.
+    UpdatedBox box;
+    box.SendAllAndRestart();
+    box.m_clock.Advance(Esp32Update::kRestartTimeoutMs + Esp32Update::kCheckIntervalMs);
+    TEST_EQUAL(box.Update().GetError(), "NO_RESTART", ());
+    box.Connect("0.3.3");
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
+    TEST(box.Update().GetError().empty(), ());
+  }
+  {
+    // The verification took longer than the application waited for the reply.
+    UpdatedBox box;
+    box.StartUpdate();
+    box.Accept(",240,4096");
+    box.Line("NGO,1,1000,RECV");
+    box.m_clock.Advance(Esp32Update::kVerifyTimeoutMs + Esp32Update::kCheckIntervalMs);
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Failed, ());
+    box.m_source.OnBleState(BleState::Searching);
+    box.Connect("0.3.3");
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
+  }
+  {
+    // The previous firmware stays a failure.
+    UpdatedBox box;
+    box.SendAllAndRestart();
+    box.m_clock.Advance(Esp32Update::kRestartTimeoutMs + Esp32Update::kCheckIntervalMs);
+    box.Connect("0.3.2");
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Failed, ());
+    TEST_EQUAL(box.Update().GetError(), "NO_RESTART", ());
+
+    // A timeout before OTA_END is not turned into success: the box answered nothing to OTA_BEGIN and has the new
+    // version only because another phone or a cable gave it the firmware.
+    UpdatedBox early;
+    early.StartUpdate();
+    early.m_clock.Advance(Esp32Update::kReplyTimeoutMs + Esp32Update::kCheckIntervalMs);
+    TEST_EQUAL(early.Update().GetError(), "NO_REPLY", ());
+    early.m_source.OnBleState(BleState::Searching);
+    early.Connect("0.3.3");
+    TEST_EQUAL(early.Update().GetState(), Esp32Update::State::Failed, ());
+    TEST_EQUAL(early.Update().GetError(), "NO_REPLY", ());
+
+    // A refusal of the box is not turned into success either.
+    UpdatedBox refused;
+    refused.StartUpdate();
+    refused.Refuse("MOVING");
+    refused.m_source.OnBleState(BleState::Searching);
+    refused.Connect("0.3.3");
+    TEST_EQUAL(refused.Update().GetError(), "MOVING", ());
+
+    // An error of the box after OTA_END stays a failure even when the same version is reported later.
+    UpdatedBox rejected;
+    rejected.StartUpdate();
+    rejected.Accept(",240,4096");
+    rejected.Line("NGO,1," + std::to_string(rejected.m_image.size()) + ",RECV");
+    TEST_EQUAL(rejected.LastCommand().second, "OTA_END", ());
+    rejected.Line("NGO,1," + std::to_string(rejected.m_image.size()) + ",ERR_SIGNATURE");
+    TEST_EQUAL(rejected.Update().GetState(), Esp32Update::State::Failed, ());
+    rejected.m_source.OnBleState(BleState::Searching);
+    rejected.Connect("0.3.3");
+    TEST_EQUAL(rejected.Update().GetState(), Esp32Update::State::Failed, ());
+  }
+}
+
+UNIT_TEST(NoGps_Esp32Update_IgnoresSuffixOfVersion)
+{
+  {
+    // The build of the box names itself "0.3.3-dirty", the firmware of the application 0.3.3: it is the new one.
+    UpdatedBox box;
+    box.SendAllAndRestart();
+    box.Connect("0.3.3-dirty");
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
+  }
+  {
+    // The box runs another build of the version the application brings: the same text back means it kept it.
+    UpdatedBox box;
+    box.m_source.OnBleState(BleState::Searching);
+    box.Connect("0.3.3-rc1");
+    box.SendAllAndRestart();
+    box.Connect("0.3.3-rc1");
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Failed, ());
+    TEST_EQUAL(box.Update().GetError(), "ROLLBACK", ());
+  }
+  {
+    // A debug build sends the same firmware again: the box tells the same version when it has taken it.
+    UpdatedBox box;
+    box.m_source.OnBleState(BleState::Searching);
+    box.Connect("0.3.3");
+    box.SendAllAndRestart();
+    box.Connect("0.3.3");
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
+  }
 }
 
 UNIT_TEST(NoGps_Esp32Update_TellsSizeAndHashOfFirmware)

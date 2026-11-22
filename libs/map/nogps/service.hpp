@@ -41,6 +41,7 @@ public:
   std::optional<RoadPoint> SnapToMainRoad(ms::LatLon const & position, double radiusM) override;
   routing::Maxspeed GetMaxspeed(FeatureID const & road) override;
   std::string GetDistanceLeft() const override;
+  std::string GetMapsVersion() const override;
   void ShowCarHeading(double bearingDeg) override { m_showCarHeading(bearingDeg); }
 
 private:

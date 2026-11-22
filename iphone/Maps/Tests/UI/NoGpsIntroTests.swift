@@ -10,7 +10,7 @@ final class NoGpsIntroTests: XCTestCase {
   func testStepsFollowTheModal() {
     let sequence = NoGpsIntroSequence()
     XCTAssertEqual(sequence.step, .modal)
-    // The modal is not typed: the checkbox opens the first balloon at once.
+    // The modal is not typed: the accent button opens the first balloon at once.
     XCTAssertFalse(sequence.isTyping(text, 0))
     sequence.tap(text, 0)
     XCTAssertEqual(sequence.step, .bottom)
@@ -32,17 +32,17 @@ final class NoGpsIntroTests: XCTestCase {
     XCTAssert(NoGpsIntroStep.right.text.hasPrefix(L("nogps_intro_right")))
   }
 
-  func testTypesAboutThreeCharactersASecond() {
+  func testTypesAboutTwentyCharactersASecond() {
     let sequence = NoGpsIntroSequence()
     sequence.tap(text, 0)
     XCTAssertEqual(sequence.step, .bottom)
     XCTAssertEqual(sequence.revealed(text, 0), 0)
-    XCTAssertEqual(sequence.revealed(text, 1), 3)
-    XCTAssertEqual(sequence.revealed(text, 10), 30)
+    XCTAssertEqual(sequence.revealed(text, 0.5), 10)
+    XCTAssertEqual(sequence.revealed(text, 1), 20)
     // Never past the end of the text.
     XCTAssertEqual(sequence.revealed(text, 100), text)
     XCTAssertFalse(sequence.isTyping(text, 100))
-    XCTAssertEqual(NoGpsIntroSequence.typeCharsPerS, 3)
+    XCTAssertEqual(NoGpsIntroSequence.typeCharsPerS, 20)
   }
 
   func testTapWhileTypingShowsTheRestAndTheNextTapAdvances() {

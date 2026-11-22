@@ -2939,10 +2939,14 @@ UNIT_TEST(NoGps_Engine_CalibrationWhenStillIsNotForReadOnlyBox)
 {
   Env env(true /* inertial */);
   CalibrateWhenStillBox box(env);
-  // The box knows its phones, another phone changes it: it refuses a command of this one.
+  // The box knows its phones, another phone changes it: the list says so.
   env.m_engine.OnEsp32BleBytes(
       BoxLine("NGI,1,0.4.1,2026-11-15T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA PHONES"));
-  env.m_engine.OnEsp32BleBytes(BoxLine("NGA,99,ERR,BUSY"));
+  auto const & sent = env.m_delegate.m_esp32BleSent;
+  auto const list = std::find_if(sent.begin(), sent.end(),
+                                 [](auto const & line) { return line.find(",BT_LIST*") != std::string::npos; });
+  TEST(list != sent.end(), ());
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + (*esp32::Parse(*list))[1] + ",OK,BC:D0:74:A9:71:92|Pixel 8|1|0,0"));
   TEST(env.m_engine.GetStatus().m_boxReadOnly, ());
   env.m_engine.CalibrateWhenStill();
   TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
@@ -3019,6 +3023,16 @@ std::vector<std::string> CarIds(std::vector<Car> const & cars)
   return ids;
 }
 
+/// The line without its " ms=<unix ms>": the tests compare the values, the time has its own tests.
+std::string WithoutTime(std::string line)
+{
+  auto const from = line.find(" ms=");
+  TEST_NOT_EQUAL(from, std::string::npos, (line));
+  auto const to = line.find(' ', from + 1);
+  line.erase(from, to == std::string::npos ? std::string::npos : to - from);
+  return line;
+}
+
 /// Keeps the CALIBRATION lines of the trip log while it lives, the other messages are logged as before.
 class CalibrationLines
 {
@@ -3038,7 +3052,7 @@ private:
   static void Keep(base::LogLevel level, base::SrcPoint const & src, std::string const & message)
   {
     if (message.starts_with("CALIBRATION "))
-      s_lines.push_back(message);
+      s_lines.push_back(WithoutTime(message));
     else
       s_saved(level, src, message);
   }
@@ -6146,6 +6160,7 @@ UNIT_TEST(NoGps_Engine_PeerRolesFollowTheBox)
   TEST(leader.m_peerName.empty(), ());
 
   // The leader leaves: the box tells the follower that it changes the box now, the list has one phone more.
+  phones.Drive(Esp32Source::kListIntervalMs, 0, 0);
   phones.m_follower.m_engine.OnEsp32BleBytes(BoxLine("NGE,1,5,100,I,PHONE_LOST,BC:D0:74:A9:71:92"));
   phones.AnswerList(phones.m_follower, "Pixel 8", "iPhone", true);
   TEST_EQUAL(phones.m_follower.m_engine.GetStatus().m_peerRole, PeerRole::Leading, ());
@@ -6442,5 +6457,87 @@ UNIT_TEST(NoGps_Sprint_SpeedTableApplied)
   TEST_EQUAL(CountEvents(env, Event::SprintMeasured), 1, ());
   // The real 100 km/h is 91 km/h by the car.
   TestAlmostEqualAbs(env.m_engine.GetStatus().m_sprintSec, 9.1, 0.15);
+}
+
+/// Keeps all the messages of the log while it lives and passes them on.
+class LoggedLines
+{
+public:
+  LoggedLines()
+  {
+    s_lines.clear();
+    s_saved = base::SetLogMessageFn(&Keep);
+  }
+  ~LoggedLines() { base::SetLogMessageFn(s_saved); }
+
+  /// \returns the messages that start with the prefix.
+  static std::vector<std::string> Starting(std::string const & prefix)
+  {
+    std::vector<std::string> found;
+    for (auto const & line : s_lines)
+      if (line.starts_with(prefix))
+        found.push_back(line);
+    return found;
+  }
+
+private:
+  static void Keep(base::LogLevel level, base::SrcPoint const & src, std::string const & message)
+  {
+    s_lines.push_back(message);
+    s_saved(level, src, message);
+  }
+
+  static inline std::vector<std::string> s_lines;
+  static inline base::LogMessageFn s_saved = nullptr;
+};
+
+UNIT_TEST(NoGps_LogFormat_MapsVersionIsWrittenAtStartAndAtNewFile)
+{
+  TestClock clock;
+  TestStorage storage;
+  TestDelegate delegate;
+  TestMap map;
+  map.m_mapsVersion = "261101,260714";
+  storage.Set(Storage::kInertialEnabled, true);
+  Engine engine(delegate, map, storage, clock, clock);
+  LoggedLines lines;
+  engine.Start();
+  auto const prefix = "MAPS ms=" + std::to_string(clock.UnixNowMs()) + " version=261101,260714";
+  TEST_EQUAL(LoggedLines::Starting(prefix).size(), 1, ());
+  TEST_EQUAL(LoggedLines::Starting("ACTION start ms=" + std::to_string(clock.UnixNowMs())).size(), 1, ());
+
+  clock.Advance(Engine::kTripFileLinkGapMs);
+  engine.OnEsp32BleState(BleState::Connected);
+  // The new file has its own line, with the time of that moment.
+  TEST_EQUAL(LoggedLines::Starting("MAPS ms=" + std::to_string(clock.UnixNowMs()) + " version=261101,260714").size(), 1,
+             ());
+}
+
+UNIT_TEST(NoGps_LogFormat_SwitchesOfTheUserAreActions)
+{
+  Env env(true /* inertial */);
+  LoggedLines lines;
+  env.m_engine.SetGpsDisabled(true);
+  auto const gps = LoggedLines::Starting("ACTION gps_off ms=");
+  TEST_EQUAL(gps.size(), 1, ());
+  TEST(gps[0].find(" disabled=1 by=user ") != std::string::npos, (gps[0]));
+  env.m_engine.SetManualMode(true);
+  auto const manual = LoggedLines::Starting("ACTION manual ms=");
+  TEST_EQUAL(manual.size(), 1, ());
+  TEST(manual[0].find(" enabled=1 by=user ") != std::string::npos, (manual[0]));
+}
+
+UNIT_TEST(NoGps_LogFormat_RuleHasItsNameAndTime)
+{
+  auto roads = StreetWithSideRoad(90);
+  Env env(true /* inertial */, &roads);
+  LoggedLines lines;
+  TurnLeftSlowly(env, 46);
+  TEST(env.m_delegate.HasEvent(Event::RoadLost), ());
+  auto const lost = LoggedLines::Starting("RULE road_lost ms=");
+  TEST(!lost.empty(), ());
+  // The sentence follows the tag, the name and the keys.
+  TEST(lost[0].find(" The road is lost after ") != std::string::npos, (lost[0]));
+  TEST(env.m_engine.GetTripLine().starts_with("TRIP ms="), (env.m_engine.GetTripLine()));
 }
 }  // namespace nogps_engine_tests

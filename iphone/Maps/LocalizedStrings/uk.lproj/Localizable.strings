@@ -1990,13 +1990,13 @@
 "nogps_intro_title" = "Навігація без GPS";
 
 /* Text of the dialog of the first start: what the app is and that it needs the sensor box */
-"nogps_intro_text" = "Цей застосунок веде вашу машину мапою без GPS. Датчик NonGPS бере швидкість з машини, а повороти — зі своїх сенсорів, і застосунок малює машину за ними: у тунелі, у дворі, під мостом, де GPS губиться. Без датчика це звичайна офлайн-мапа.";
+"nogps_intro_text" = "Застосунок веде машину мапою там, де губиться GPS: у тунелі, у дворі, під мостом. Потрібен датчик NonGPS — без датчика це звичайна офлайн-мапа.";
 
 /* Button of the dialog of the first start, opens the video about the app */
-"nogps_intro_video" = "Подивитися відео";
+"nogps_intro_video" = "Відео з поясненням";
 
-/* Checkbox that closes the dialog of the first start */
-"nogps_intro_understand" = "Так, я зрозумів";
+/* Button that closes the dialog of the first start */
+"nogps_intro_understand" = "Так, зрозуміло: працює з датчиком";
 
 /* Balloon of the first start pointing at the bottom bar */
 "nogps_intro_bottom" = "Машини, датчик і GPS — тут.";

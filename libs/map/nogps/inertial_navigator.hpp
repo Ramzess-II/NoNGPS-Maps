@@ -574,7 +574,7 @@ private:
   // The road has gone away from a car driving straight: the mark waits for it at |at| up to |limitM|, see
   // kMaxWaitAheadM.
   // |why| is for the log.
-  void StartWaitAhead(double limitM, ms::LatLon const & at, std::string const & why);
+  void StartWaitAhead(double limitM, ms::LatLon const & at, std::string_view name, std::string const & why);
   // \returns true if the mark waits for the car that has driven |distanceM| rotating by |rotatedDeg|.
   bool WaitAhead(double rotatedDeg, double distanceM);
   // Looks if the car the mark waits for at a roundabout drives along a road past it, see kPastRoundaboutM.
@@ -689,7 +689,7 @@ private:
   // Splits the mark: the car may be on the road too.
   void AddOtherMark(RoadPoint const & road, double headingDeg, std::string const & why, bool far = false);
   // Shows the car on the other road |index|, keeping the road it was shown on as an other one if |keepShown|.
-  void TakeOtherMark(size_t index, bool keepShown, std::string const & why);
+  void TakeOtherMark(size_t index, bool keepShown, std::string_view name, std::string const & why);
   // \returns how far across |bearingDeg| the places are apart.
   static BendMatcher::Params GentleBendParams();
   static double AsideM(ms::LatLon const & a, ms::LatLon const & b, double bearingDeg);

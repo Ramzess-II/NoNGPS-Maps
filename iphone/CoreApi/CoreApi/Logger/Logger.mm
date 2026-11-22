@@ -6,6 +6,8 @@
 #include "base/logging.hpp"
 #include "coding/zip_creator.hpp"
 
+#include <cmath>
+
 @interface Logger ()
 
 @property(nullable, nonatomic) NSFileHandle * fileHandle;
@@ -55,6 +57,8 @@ NSString * const kLogsFolderPath = [kDocumentsPath stringByAppendingPathComponen
 NSString * const kOldLogFilePath = [kDocumentsPath stringByAppendingPathComponent:@"log.txt"];
 NSString * const kZipLogsFileName = @"logs.zip";
 NSString * const kPhoneIdKey = @"LogsPhoneId";
+// The version of the trip log format, nogps::kLogFormat of the core.
+int const kLogFormat = 2;
 // A day of driving, 20 hours and more at about 6.5 MB an hour: the log of a drive is analysed afterwards.
 unsigned long long const kMaxLogsTotalSize = 150'000'000;
 // A file that reaches it ends, the lines after go to a new file: a long session is not one huge file. About 4.5 hours
@@ -405,6 +409,15 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
   {
     // The time of a line is seconds since the launch: this line tells the readers of the file when that was.
     std::ostringstream anchor;
+    // The first line of the file, which the tools read it by: its time is UTC, unlike the time of a line. The map
+    // version is not known here: the core writes "MAPS ms=<unix ms> version=<number>" when the navigation starts and
+    // when a drive starts a file, so a file this limit has begun in the middle of a drive has none.
+    AppInfo * info = AppInfo.sharedInfo;
+    NSString * trip = logger.fileName.lastPathComponent.stringByDeletingPathExtension;
+    anchor << "LOGFMT " << kLogFormat << " ms=" << std::llround(now.timeIntervalSince1970 * 1000)
+           << " phone=" << [self phoneId].UTF8String << " trip=" << trip.UTF8String
+           << " app=" << info.bundleVersion.UTF8String << " build=" << info.buildNumber.UTF8String
+           << " commit=" << info.gitHash.UTF8String << " om=" << info.upstreamVersion.UTF8String << std::endl;
     base::LogHelper::Instance().WriteProlog(anchor, LINFO);
     anchor << "Local time: " << now.description.UTF8String << std::endl;
     base::LogHelper::Instance().WriteProlog(anchor, LINFO);

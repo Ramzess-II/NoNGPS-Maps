@@ -3,6 +3,7 @@
 #include "map/nogps/clock.hpp"
 #include "map/nogps/esp32_source.hpp"
 #include "map/nogps/geo.hpp"
+#include "map/nogps/log_line.hpp"
 #include "map/nogps/phone_motion.hpp"
 #include "map/nogps/road_walker.hpp"
 #include "map/nogps/roads.hpp"
@@ -400,7 +401,7 @@ void InertialNavigator::LogSpeedCalibration() const
 std::string InertialNavigator::GetCalibrationLine() const
 {
   auto const car = m_storage.IsEsp32Source() ? m_storage.Get<std::string>(Storage::kCurrentCar, "") : std::string();
-  std::string line = "CALIBRATION car=" + (car.empty() ? "-" : car);
+  std::string line = LogHead(m_clock, "CALIBRATION") + " car=" + (car.empty() ? "-" : car);
   auto const add = [&line](char const * name, std::string const & value, std::string const & notLearned)
   {
     if (value != notLearned)
@@ -679,9 +680,11 @@ bool InertialNavigator::JumpToRoadGoingCarWay()
   { return Distance(position, a.m_point) < Distance(position, b.m_point); });
   auto const & nearest = roads.front();
   double const nearestM = Distance(position, nearest.m_point);
-  LOG(LINFO, ("The road is lost after", std::lround(m_offRoadM), "m, a road goes the car's way", std::lround(nearestM),
-              "m aside, roads going so", roads.size(), "within", std::lround(searchM), "m"));
   bool const jumped = nearestM <= kJumpSearchM;
+  LOG(LINFO, (LogHead(m_clock, "RULE", "road_lost"), "m=" + std::to_string(std::lround(m_offRoadM)),
+              std::string("jump=") + (jumped ? "1" : "0"), "The road is lost after", std::lround(m_offRoadM),
+              "m, a road goes the car's way", std::lround(nearestM), "m aside, roads going so", roads.size(), "within",
+              std::lround(searchM), "m"));
   if (jumped)
     PutOnRoad(nearest.m_point, Orient(nearest.m_bearingDeg, heading));
   for (size_t i = jumped ? 1 : 0; i < roads.size(); ++i)
@@ -703,8 +706,9 @@ bool InertialNavigator::MatchLateTurn(int64_t timestampNs)
   double const turnDeg = std::fabs(AngleDiff(m_deadReckoning.GetHeading(), steady.m_bearingDeg));
   if (turnDeg < TurnMatcher::kMinTurnDeg || turnDeg > TurnMatcher::kMaxTurnDeg)
     return false;
-  LOG(LINFO, ("The car has turned by", std::lround(turnDeg),
-              "degrees from its road without a turn matched, it is matched now"));
+  LOG(LINFO,
+      (LogHead(m_clock, "RULE", "late_turn"), "deg=" + std::to_string(std::lround(turnDeg)), "The car has turned by",
+       std::lround(turnDeg), "degrees from its road without a turn matched, it is matched now"));
   m_turnFromBearing = steady.m_bearingDeg;
   m_turnStart = steady.m_point;
   m_turnEnd = m_deadReckoning.GetPosition();
@@ -749,10 +753,12 @@ void InertialNavigator::LoseRoad(std::string const & after)
   }
   if (other)
   {
-    TakeOtherMark(*other, false /* keepShown */, "the road of the shown one is lost after " + after);
+    TakeOtherMark(*other, false /* keepShown */, "mark_switched_road_lost",
+                  "the road of the shown one is lost after " + after);
     return;
   }
-  LOG(LINFO, ("The road is lost after", after + ",", "stopping at", *m_roadPoint));
+  LOG(LINFO, (LogHead(m_clock, "RULE", "road_lost"), "jump=0", "The road is lost after", after + ",", "stopping at",
+              *m_roadPoint));
   m_roadLost = true;
   m_roadLostDrivenM = 0;
   m_roughStretch.reset();
@@ -766,9 +772,10 @@ bool InertialNavigator::IsDrivingStraight() const
   return rotated && std::fabs(*rotated) < kWaitStraightDeg;
 }
 
-void InertialNavigator::StartWaitAhead(double limitM, ms::LatLon const & at, std::string const & why)
+void InertialNavigator::StartWaitAhead(double limitM, ms::LatLon const & at, std::string_view name,
+                                       std::string const & why)
 {
-  LOG(LINFO, (why, "after", std::round(GetDistanceSinceFix()),
+  LOG(LINFO, (LogHead(m_clock, "RULE", name), why, "after", std::round(GetDistanceSinceFix()),
               "m without a known place: the mark is ahead, it waits up to", std::round(limitM), "m at", at));
   m_waitAhead = WaitAheadState{limitM};
   // The car is not off the roads, and a turn starts from where the mark waits.
@@ -828,7 +835,8 @@ void InertialNavigator::CheckRoadPastRoundabout()
   }
   if (!IsRoadConfirmed(*road, heading, m_exitCandidate))
     return;
-  LOG(LINFO, ("The car drives along a road past the roundabout after the mark has waited", std::round(wait.m_waitedM),
+  LOG(LINFO, (LogHead(m_clock, "RULE", "roundabout_exit"),
+              "The car drives along a road past the roundabout after the mark has waited", std::round(wait.m_waitedM),
               "m for it, it is put there"));
   m_exitCandidate.reset();
   PutOnRoad(road->m_point, Orient(road->m_bearingDeg, heading));
@@ -865,7 +873,8 @@ void InertialNavigator::CheckRoundabout()
       // The mark waits where it is: the map may have no road for the last metres before the roundabout, and
       // a mark moved back to its road would go around the roundabout behind the car.
       LeaveRoundabout();
-      StartWaitAhead(kMaxWaitAheadM, position, "The mark has come to a roundabout before the car driving straight");
+      StartWaitAhead(kMaxWaitAheadM, position, "wait_at_roundabout",
+                     "The mark has come to a roundabout before the car driving straight");
       m_waitAhead->m_probe = position;
       return;
     }
@@ -884,8 +893,8 @@ void InertialNavigator::CheckRoundabout()
   }
   if (!IsRoadConfirmed(*road, heading, m_exitCandidate))
     return;
-  LOG(LINFO, ("The car has left the roundabout along a road", std::round(Distance(position, road->m_point)),
-              "m aside, it is put there"));
+  LOG(LINFO, (LogHead(m_clock, "RULE", "roundabout_exit"), "The car has left the roundabout along a road",
+              std::round(Distance(position, road->m_point)), "m aside, it is put there"));
   PutOnRoad(road->m_point, Orient(road->m_bearingDeg, heading));
   LeaveRoundabout();
 }
@@ -945,7 +954,7 @@ void InertialNavigator::CheckBoxAccel()
   std::snprintf(buf, sizeof(buf), "dir=%s n=%.0f corr=%.2f recent=%.2f/%.2f usable=%d", direction,
                 m_boxAccelSpeed.GetSamples(), m_boxAccelSpeed.GetCorrelation(), m_boxAccelSpeed.GetRecentCorrelation(),
                 m_boxAccelSpeed.GetRecentScale(), m_boxAccelSpeed.IsUsable() ? 1 : 0);
-  LOG(LINFO, ("BOXACC", buf));
+  LOG(LINFO, (LogHead(m_clock, "BOXACC"), buf));
   if (m_boxAccelSpeed.IsUsable())
     SaveBoxAccel();
   else
@@ -1026,8 +1035,9 @@ void InertialNavigator::ResetLag()
 
 void InertialNavigator::StartFollowingApart()
 {
-  LOG(LINFO, ("The car maneuvers", std::round(m_offRoadM), "m off the roads at up to",
-              std::round(m_offRoadMaxSpeedMps * 3.6), "km/h, it is followed apart, the mark waits at", *m_roadPoint));
+  LOG(LINFO, (LogHead(m_clock, "RULE", "followed_apart"), "The car maneuvers", std::round(m_offRoadM),
+              "m off the roads at up to", std::round(m_offRoadMaxSpeedMps * 3.6),
+              "km/h, it is followed apart, the mark waits at", *m_roadPoint));
   m_fastWithoutRoad = false;
   m_fastSinceMs.reset();
   m_turning = false;
@@ -1117,8 +1127,8 @@ void InertialNavigator::CheckBackOnRoad()
                          : SnapResult::Unconfirmed;
     return;
   }
-  LOG(LINFO, ("The car drives along a road again", std::round(shift), "m aside, after", std::round(m_offRoadM),
-              "m off the roads"));
+  LOG(LINFO, (LogHead(m_clock, "RULE", "back_on_road"), "The car drives along a road again", std::round(shift),
+              "m aside, after", std::round(m_offRoadM), "m off the roads"));
   PutOnRoad(road->m_point, Orient(road->m_bearingDeg, heading));
 }
 
@@ -1146,7 +1156,7 @@ void InertialNavigator::OnAccel(int64_t timestampNs, Vec3 const & accel)
   // The log is to check on real trips what the accelerometer can tell.
   auto const line = m_accelLog.OnSample(timestampNs, accel[0], accel[1], accel[2]);
   if (line && m_moving)
-    LOG(LINFO, ("ACC", *line));
+    LOG(LINFO, (LogHead(m_clock, "ACC"), *line));
 }
 
 void InertialNavigator::OnElm327Connected()
@@ -1270,7 +1280,7 @@ void InertialNavigator::OnMotion(double yawDeltaDeg, double dtSec, int64_t times
   // The car reports that it moves a second late: a second with a rotation is written too.
   auto const gyroLine = m_gyroLog.OnSample(timestampNs, yawDeltaDeg, IsSpeedFresh() ? m_speedKmh : -1);
   if (gyroLine && (m_moving || m_gyroLog.GetLineRotationDeg() >= kGyroLogMinRotationDeg))
-    LOG(LINFO, ("GYRO", *gyroLine));
+    LOG(LINFO, (LogHead(m_clock, "GYRO"), *gyroLine));
 
   bool const speedFresh = IsSpeedFresh();
   m_deadReckoning.SetSpeed(speedFresh ? m_speedKmh / 3.6 * GetSpeedScale(m_speedKmh) : 0);
@@ -1538,7 +1548,8 @@ void InertialNavigator::SnapToRoad()
       atFork = true;
       if (Distance(branch->m_point, snapped->m_point) > kSameForkBranchM)
       {
-        LOG(LINFO, ("FORK the car goes along the branch", std::round(Distance(position, branch->m_point)), "m aside,",
+        LOG(LINFO, (LogHead(m_clock, "RULE", "fork_branch"), "FORK the car goes along the branch",
+                    std::round(Distance(position, branch->m_point)), "m aside,",
                     std::round(AngleDiff(Orient(branch->m_bearingDeg, heading), heading)),
                     "degrees off its heading, not along the one", std::round(Distance(position, snapped->m_point)),
                     "m aside,", std::round(AngleDiff(Orient(snapped->m_bearingDeg, heading), heading)), "degrees off"));
@@ -1573,7 +1584,8 @@ void InertialNavigator::SnapToRoad()
     }
     if (!IsRoadConfirmed(*snapped, heading))
       return;
-    LOG(LINFO, ("The maneuvering car has driven along a road", std::round(shift), "m aside, it is put there"));
+    LOG(LINFO, (LogHead(m_clock, "RULE", "back_on_road"), "The maneuvering car has driven along a road",
+                std::round(shift), "m aside, it is put there"));
     PutOnRoad(snapped->m_point, Orient(snapped->m_bearingDeg, heading));
     return;
   }
@@ -1587,7 +1599,7 @@ void InertialNavigator::SnapToRoad()
       IsDrivingStraight())
   {
     // The mark waits on its road.
-    StartWaitAhead(std::min(kMaxWaitAheadM, m_deadReckoning.GetAlongErrorM()), *m_roadPoint,
+    StartWaitAhead(std::min(kMaxWaitAheadM, m_deadReckoning.GetAlongErrorM()), *m_roadPoint, "wait_ahead",
                    "The road goes away from the car driving straight");
     return;
   }
@@ -1670,13 +1682,16 @@ void InertialNavigator::ApplyBend(double aheadM, bool gentle)
   auto const position = m_deadReckoning.GetPosition();
   double const heading = m_deadReckoning.GetHeading();
   std::string const tag = gentle ? "Gentle bend:" : "Bend:";
+  // The kind goes into the head, the sentences keep their tag.
+  std::string const kind = gentle ? "kind=gentle" : "kind=bend";
   char const * const where = gentle ? "gentle bend" : "bend";
   // Two gentle comparisons agree only when no ordinary answer comes between them.
   if (!gentle)
     m_lastGentleBend.reset();
   if (std::fabs(aheadM) < kMinBendShiftM)
   {
-    LOG(LINFO, (tag, "the position fits the road, ahead by", std::round(aheadM), "m"));
+    LOG(LINFO, (LogHead(m_clock, "RULE", "bend_confirmed"), kind, tag, "the position fits the road, ahead by",
+                std::round(aheadM), "m"));
     m_lastGentleBend.reset();
     // The place along the road is confirmed: the distance error is gone as after a move.
     m_deadReckoning.SetPosition(position);
@@ -1716,10 +1731,13 @@ void InertialNavigator::ApplyBend(double aheadM, bool gentle)
     LOG(LINFO, (tag, "ahead by", std::round(aheadM), "m, but the road is not followed that far"));
     return;
   }
+  // Told repeatedly: by a slow car, or because the place is far, which a fast car tells too.
   if (slow || far)
-    LOG(LINFO, (tag, "moved along the road by", std::round(-aheadM), "m, told repeatedly"));
+    LOG(LINFO, (LogHead(m_clock, "RULE", "bend_moved_repeated"), kind, tag, "moved along the road by",
+                std::round(-aheadM), "m, told repeatedly"));
   else
-    LOG(LINFO, (tag, "moved along the road by", std::round(-aheadM), "m"));
+    LOG(LINFO,
+        (LogHead(m_clock, "RULE", "bend_moved"), kind, tag, "moved along the road by", std::round(-aheadM), "m"));
   m_lastGentleBend.reset();
   LearnRoughSpeed(aheadM, where);
   SetRoadPosition(walked->m_position, walked->m_bearingDeg);
@@ -1825,7 +1843,8 @@ void InertialNavigator::MatchTurn(int64_t timestampNs)
                 std::lround(toBearing), std::lround(m_turnRotationDeg), (timestampNs - m_turnStartNs) / 1e9,
                 std::lround(m_pathM - m_turnStartPathM), m_turnMinKmh, m_turnMaxKmh, m_turnFromRoad ? 1 : 0,
                 std::lround(m_deadReckoning.GetAccuracy()));
-  LOG(LINFO, ("TURN", buf + TurnMatcher::DescribeCrossings(m_roads, corner, m_turnFromBearing, toBearing)));
+  LOG(LINFO,
+      (LogHead(m_clock, "TURN"), buf + TurnMatcher::DescribeCrossings(m_roads, corner, m_turnFromBearing, toBearing)));
   if (m_turnRotationDeg - turnDeg > kMaxExtraTurnRotationDeg)
   {
     LOG(LINFO, ("Turn from", std::round(m_turnFromBearing), "to", std::round(toBearing), "rotating by",
@@ -1892,8 +1911,8 @@ void InertialNavigator::MatchTurn(int64_t timestampNs)
            Distance(here->m_point, moved->m_road.m_point) > kMaxFollowedTurnMoveM)
   {
     // The road the regular snapping keeps the car on, or takes it to in a moment.
-    LOG(LINFO, ("Turn from", std::round(m_turnFromBearing), "to", std::round(toBearing),
-                "has followed the roads, the crossing", std::round(Distance(corner, *crossing)),
+    LOG(LINFO, (LogHead(m_clock, "RULE", "turn_followed_roads"), "Turn from", std::round(m_turnFromBearing), "to",
+                std::round(toBearing), "has followed the roads, the crossing", std::round(Distance(corner, *crossing)),
                 "m away would move the car by", std::round(Distance(here->m_point, moved->m_road.m_point)), "m"));
     places.m_chosen = stay;
   }
@@ -1943,7 +1962,7 @@ void InertialNavigator::MatchTurn(int64_t timestampNs)
   auto const otherWithRoad = TurnOtherMarks(toBearing, atCrossing, turned);
   if (!places.m_chosen && atCrossing && otherWithRoad)
   {
-    TakeOtherMark(*otherWithRoad, false /* keepShown */,
+    TakeOtherMark(*otherWithRoad, false /* keepShown */, "mark_switched_turn",
                   "the car has turned where the road of the shown one has no road that way");
   }
   else if (places.m_chosen && places.m_chosen->m_shiftM)
@@ -1964,8 +1983,9 @@ void InertialNavigator::MatchTurn(int64_t timestampNs)
         keptAccuracyM = m_deadReckoning.GetAccuracy();
     bool const known = spreadM <= TurnMatcher::kSameCrossingM && !keptAccuracyM;
     double const accuracyM = std::max(spreadM, keptAccuracyM.value_or(0));
-    LOG(LINFO, ("Turn from", std::round(m_turnFromBearing), "to", std::round(toBearing), "is moved to the crossing by",
-                std::round(*m_lastTurnShiftM), "m", known ? "" : ", the car may be farther from it by",
+    LOG(LINFO, (LogHead(m_clock, "RULE", "turn_moved_to_crossing"), "Turn from", std::round(m_turnFromBearing), "to",
+                std::round(toBearing), "is moved to the crossing by", std::round(*m_lastTurnShiftM), "m",
+                known ? "" : ", the car may be farther from it by",
                 known ? "" : std::to_string(std::lround(accuracyM)) + " m"));
     // The crossing is a known place, the distance error is gone. The heading stays the gyroscope's: the road found
     // for the turn was 31° off on October 21, and a turn still going on was counted twice on October 23.
@@ -2124,7 +2144,7 @@ void InertialNavigator::FollowOtherMarks()
   if (m_roadLost)
   {
     if (auto const other = FindOtherMarkOnRoad())
-      TakeOtherMark(*other, false /* keepShown */, "the shown one stands lost");
+      TakeOtherMark(*other, false /* keepShown */, "mark_switched_stand_lost", "the shown one stands lost");
   }
 }
 
@@ -2159,6 +2179,7 @@ void InertialNavigator::CheckMarksByWay()
   if (better)
   {
     TakeOtherMark(*better, !m_roadLost /* keepShown */,
+                  m_otherMarks[*better].m_far ? "far_mark_taken" : "mark_switched_by_way",
                   "WAY misses the roads at " + std::to_string(*shownMisses) + " points where it was shown, at " +
                       std::to_string(misses[*better]) + " there" + (m_otherMarks[*better].m_far ? " far" : ""));
   }
@@ -2293,7 +2314,7 @@ void InertialNavigator::AddOtherMark(RoadPoint const & road, double headingDeg, 
               "m aside of the shown one at", road.m_point, ", marks", m_otherMarks.size() + 1));
 }
 
-void InertialNavigator::TakeOtherMark(size_t index, bool keepShown, std::string const & why)
+void InertialNavigator::TakeOtherMark(size_t index, bool keepShown, std::string_view name, std::string const & why)
 {
   CHECK_LESS(index, m_otherMarks.size(), ());
   auto const taken = m_otherMarks[index];
@@ -2333,8 +2354,8 @@ void InertialNavigator::TakeOtherMark(size_t index, bool keepShown, std::string 
   m_turnSteadyFromBearing.reset();
   m_roughStretch.reset();
   LeaveRoundabout();
-  LOG(LINFO, ("The car is shown on another road it may be on:", why, ", marks", m_otherMarks.size() + 1, "at",
-              m_deadReckoning.GetPosition()));
+  LOG(LINFO, (LogHead(m_clock, "RULE", name), "The car is shown on another road it may be on:", why, ", marks",
+              m_otherMarks.size() + 1, "at", m_deadReckoning.GetPosition()));
   m_listener.OnMarkSwitched();
 }
 
@@ -2350,7 +2371,7 @@ bool InertialNavigator::SwitchMark()
 {
   if (m_otherMarks.empty())
     return false;
-  TakeOtherMark(0, !m_roadLost /* keepShown */, "the user has switched the marks");
+  TakeOtherMark(0, !m_roadLost /* keepShown */, "mark_switched_by_user", "the user has switched the marks");
   return true;
 }
 
@@ -2372,8 +2393,8 @@ bool InertialNavigator::MatchLoop(double toBearingDeg)
     LOG(LINFO, ("Loop: not moved,", why));
     return false;
   }
-  LOG(LINFO, ("Loop: the way driven lies on the roads", std::round(Distance(position, road->m_point)),
-              "m away, moved there,", why));
+  LOG(LINFO, (LogHead(m_clock, "RULE", "loop"), "Loop: the way driven lies on the roads",
+              std::round(Distance(position, road->m_point)), "m away, moved there,", why));
   SetRoadPosition(road->m_point, Orient(road->m_bearingDeg, toBearingDeg));
   return true;
 }
