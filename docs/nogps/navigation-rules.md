@@ -1160,7 +1160,9 @@
 - Перший рядок кожного файлу пише платформа: `LOGFMT 2 ms=<unix мс> phone=<id> trip=<HHmmss> app=<версія>
   build=<номер> commit=<хеш> om=<версія Organic Maps>` (Android `LogsManager.getLogFormatLine`, iOS `Logger.mm`).
   Файл продовження після півночі має такий самий рядок із тим самим `trip=`. Інструменти цього рядка поки не
-  читають і номер формату не перевіряють — це #464. Рядки застосунку (`file:line`) лишаються з префіксом платформи
+  читають: телефон файлу беруть з нього, а не зі шляху, файл без такого рядка чи з невідомим номером формату
+  (`nogps_trip_log.LOG_FORMATS`) інструменти відмовляються читати (`LogFormatError`). Решту полів рядка поки не
+  читають — це #464. Рядки застосунку (`file:line`) лишаються з префіксом платформи
   без змін.
 - Заголовок нового файлу має `NonGPS Maps: 2026.11.08 (26110807, abcdef12), Organic Maps 2026.10.27-10`: версію
   застосунку (на Android `versionName`, як-от `2026.11.08-7-Google`), номер збірки `yyMMddNN`, коміт збірки
@@ -1192,7 +1194,10 @@
   - «Report a bug»: уся тека `logs/`. Android кладе свій logcat у `logs/<телефон>/logcat.log`. iOS із вимкненим
     записом у файл кладе текст OSLog у `logs/<телефон>/<yyyy-MM-dd>/<HHmmss>.log` теперішнього часу.
 - Файли старої назви (`log-dd-MM-yy-<телефон>[.N].log`), що вже є на телефоні, лишаються в `logs/`, доки їх не
-  видалить межа 150 МБ. «Report a bug» їх шле, «Надіслати журнали» дня прапорця до оновлення — ні.
+  видалить межа 150 МБ. «Report a bug» їх шле, «Надіслати журнали» дня прапорця до оновлення — ні. Інструменти їх не
+  читають: вони приймають лише дерево `logs/<телефон>/<yyyy-MM-dd>/<HHmmss>.log`, `nogps_log.py`,
+  `nogps_log_viewer.py`, `nogps_trip_log.py` і `nogps_replay.py` — теку з кількома телефонами; `nogps_replay.py`
+  `days`, `run` (результати в `<output>/<телефон>/`) і `input` ведуть кожен телефон окремо, `compare` бере один.
 - Рядок `CALIBRATION` (`InertialNavigator::LogCalibration`) каже, що навігація знає про машину:
   `CALIBRATION ms=… car=<id> scale=<v> table=<v> rough=<v> factor=<v> unit=<v> lag=<v> accel=<v>`. Значення — ті, що в
   роботі для поточної машини (`NoGpsSpeedScale`, `NoGpsSpeedTable`, `NoGpsRoughSpeedTable`,
