@@ -381,12 +381,16 @@ public class MwmActivity extends BaseMwmFragmentActivity
 
   /**
    * Plays the intro whatever the flag says: the first start and the How NonGPS works page both end here. Returns
-   * whether it started: the map may be gone or busy with the navigation by now.
+   * whether it started: the map may be gone, stopped or busy with the navigation by the end of the delay.
    */
   private boolean playNoGpsIntro()
   {
     final IntroOverlay overlay = findViewById(R.id.nogps_intro);
     if (overlay == null || overlay.isRunning() || isFinishing())
+      return false;
+    // The first step is a dialog fragment, and committing it past onSaveInstanceState throws: the screen went off or
+    // another activity came up within the delay. The intro waits for the next start, or the next tap of the page.
+    if (getSupportFragmentManager().isStateSaved())
       return false;
     final RoutingController routing = RoutingController.get();
     if (routing.isPlanning() || routing.isNavigating())
