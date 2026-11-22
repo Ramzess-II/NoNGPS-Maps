@@ -13,12 +13,12 @@ export const meta = {
 }
 
 // Prep is parallel, the merge serial. Up to SLOTS workers each take one PR of the parallel set -- the PRs whose
-// files no other queued PR touches -- bring master into it, review and fix it in the worker's own worktree, and
-// push: from there on the PRs' CI runs overlap instead of one waiting for the other. The merge gate then takes one
-// ready PR at a time: it checks that master gained no file this PR touches since its prep, merges the PR into
-// current master locally and runs the core tests on the two together (no CI run tests that pair: each PR's checks
-// ran before the other one landed), and merges on GitHub. The serial set goes after, one PR at a time in the gate
-// worktree, the way the whole train worked before.
+// files no other queued PR touches and that are in no dependency chain with one -- bring master into it, review and
+// fix it in the worker's own worktree, and push: from there on the PRs' CI runs overlap instead of one waiting for
+// the other. The merge gate then takes one ready PR at a time: it checks that master gained no file this PR touches
+// since its prep, merges the PR into current master locally and runs the core tests on the two together (no CI run
+// tests that pair: each PR's checks ran before the other one landed), and merges on GitHub. The serial set goes
+// after, one PR at a time in the gate worktree, the way the whole train worked before.
 // The train never rewrites a branch: it merges master into the PR branch, so every push is a fast-forward. No
 // rebase and no force push, not even with a lease.
 const A = args || {}
@@ -533,8 +533,8 @@ while (pending.length) {
   record(pr, 'open', why)
 }
 
-// The serial set: the PRs whose files another queued PR touches, one at a time in the gate worktree, so each one
-// is reviewed on the master the one before it made.
+// The serial set: the PRs whose files another queued PR touches and the dependency chains, one at a time in the
+// gate worktree, so each one is reviewed on the master the one before it made.
 const left = [...serial]
 while (left.length) {
   const pr = left.shift()

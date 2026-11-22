@@ -50,13 +50,16 @@ train doesn't push commits under the session working there.
    there, so list the open ones for the user (`gh pr list -R Ramzess-II/ELMandIMU --state open`) as ready to merge
    by hand, with the same author check.
 3. **Two sets.** For each PR left: `gh pr view <n> --json files,additions,deletions,body`. Then split them:
-   - **parallel**: the PRs whose files no other queued PR touches and that no other queued PR depends on, smallest
-     diff first. Nothing the train merges can break them, so their prep and their CI runs go at the same time. A PR
-     is depended on when another's body says "Depends on #N", or when its head is an ancestor of another's head
-     (`git -C <ws>/app merge-base --is-ancestor <head> <other head>`).
-   - **serial**: the rest, in the order the train takes them one at a time: a PR others depend on first, then the
-     others oldest first, and a PR that touches the files of several others last, so master is merged into it and
-     not the other way round.
+   - **parallel**: the PRs whose files no other queued PR touches and that are in no dependency pair with another
+     queued PR -- neither depended on by one nor depending on one, smallest diff first. Nothing the train merges can
+     break them, so their prep and their CI runs go at the same time. A PR depends on another when its body says
+     "Depends on #N" for a queued PR, or when that PR's head is an ancestor of its head
+     (`git -C <ws>/app merge-base --is-ancestor <other head> <head>`). Both PRs of such a pair go to **serial**:
+     the whole parallel set is merged before the serial one, so a dependent PR left in parallel would land before
+     what it depends on.
+   - **serial**: the rest, in the order the train takes them one at a time: a PR others depend on before the ones
+     that depend on it, then the others oldest first, and a PR that touches the files of several others last, so
+     master is merged into it and not the other way round.
 
    Print both sets with one line each: number, title, its set and why. With `--dry` stop here.
 4. **Run.** Start the saved workflow by its path, which works from both `<ws>` and `app/`:
