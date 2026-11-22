@@ -232,7 +232,7 @@ class SilenceWatch:
         self.written.pop(phone_id, None)
 
     def gone(self):
-        """\returns the ids silent for SILENT_GONE_S, and forgets them."""
+        """Returns the ids silent for SILENT_GONE_S, and forgets them."""
         now = self.clock()
         found = [phone_id for phone_id, at in self.written.items() if now - at >= SILENT_GONE_S]
         for phone_id in found:
