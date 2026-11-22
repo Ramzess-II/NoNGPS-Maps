@@ -410,7 +410,8 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
     // The time of a line is seconds since the launch: this line tells the readers of the file when that was.
     std::ostringstream anchor;
     // The first line of the file, which the tools read it by: its time is UTC, unlike the time of a line. The map
-    // version is not known here: the core writes "MAPS ms=<unix ms> version=<number>" when a file starts.
+    // version is not known here: the core writes "MAPS ms=<unix ms> version=<number>" when the navigation starts and
+    // when a drive starts a file, so a file this limit has begun in the middle of a drive has none.
     AppInfo * info = AppInfo.sharedInfo;
     NSString * trip = logger.fileName.lastPathComponent.stringByDeletingPathExtension;
     anchor << "LOGFMT " << kLogFormat << " ms=" << std::llround(now.timeIntervalSince1970 * 1000)

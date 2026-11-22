@@ -275,8 +275,8 @@ public final class LogsManager
 
   /// The first line of every log file, which the tools read the file by: "LOGFMT 2 ms=<unix ms> phone=<id>
   /// trip=<HHmmss> app=<version name> build=<number> commit=<hash> om=<Organic Maps version>". The map version is
-  /// not known to the writer: the core writes it, as "MAPS ms=<unix ms> version=<number>", when it starts and when a
-  /// drive starts a file.
+  /// not known to the writer: the core writes it, as "MAPS ms=<unix ms> version=<number>", when the navigation starts
+  /// and when a drive starts a file, so a file MAX_FILE_SIZE has begun in the middle of a drive has none.
   @NonNull
   String getLogFormatLine(@NonNull String fileName)
   {
