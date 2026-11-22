@@ -38,6 +38,10 @@ on:
       - packaging/**
       - qt*/**
       - tools/**
+      # The "NonGPS versions" Run Script phases build the Info.plist with these.
+      - '!tools/unix/version.sh'
+      - '!tools/unix/nogps_version.sh'
+      - '!tools/unix/nogps_upstream_version.txt'
 
 jobs:
   ios-check:

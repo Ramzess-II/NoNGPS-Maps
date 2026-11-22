@@ -7,13 +7,16 @@ on:
       - master
   pull_request:
     paths-ignore:
+      - .agents/**
+      - .claude/**
+      - .gemini/**
       - .gitignore
       - .github/**
       - '!.github/workflows/cpp-tests.yaml'  # Run check on self change
+      - '**/*.md'
       - CONTRIBUTORS
       - LICENSE
       - NOTICE
-      - README.md
       - android/**
       - data/countries-strings/**
       - data/organic_maps_emoji/**
