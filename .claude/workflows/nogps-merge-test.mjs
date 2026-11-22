@@ -81,24 +81,15 @@ const base = (label) => {
 
 // --- 1. parallel prep, serial gate ---
 {
-  let gateLive = 0
-  let gateOverlap = 0
   const r = await runScript({
     args: { ws: '/ws', parallel: [pr(1), pr(2), pr(3), pr(4)], slots: 2 },
-    reply: (label) => {
-      if (label.startsWith('merge')) {
-        gateLive++
-        if (gateLive > 1) gateOverlap++
-        gateLive--
-      }
-      return base(label)
-    },
+    reply: base,
   })
   console.log('1. four independent PRs, 2 slots')
   check('all four merged', r.out.merged === 4, r.out.results.map((x) => [x.pr, x.outcome]))
   check('every result is in the parallel set', r.out.results.every((x) => x.set === 'parallel'))
   check('two preps ran at once', prepPeak(r.peak) === 2, r.peak)
-  check('the gate never ran twice at once', gateOverlap === 0 && (r.peak.merge || 0) === 1, r.peak)
+  check('the gate never ran twice at once', (r.peak.merge || 0) === 1, r.peak)
   check('one setup and one clean', r.order.filter((o) => o === '+setup').length === 1 && r.order.filter((o) => o === '+clean').length === 1)
 }
 
@@ -108,9 +99,12 @@ const base = (label) => {
   let maxGate = 0
   const r = await runScript({
     args: { ws: '/ws', parallel: [pr(1), pr(2), pr(3), pr(4), pr(5)], slots: 4 },
+    // The gate's reply has to span an await: counted up and down in one synchronous reply, gateLive is back to 0
+    // before any other worker can run, and the count would be 1 even with the gate's lock taken out.
     reply: async (label) => {
       if (label.startsWith('merge')) {
         gateLive++
+        await sleep(4)
         maxGate = Math.max(maxGate, gateLive)
         gateLive--
       }
