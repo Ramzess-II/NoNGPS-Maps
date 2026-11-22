@@ -172,7 +172,7 @@ GPS_MARK_MARGIN_M = 50
 ACTION_BY = re.compile(r'\bACTION \w+ (?:\w+=\S+ )*by=(\S+)')
 # The by= of "ACTION tap" that are a tap of the user on the map, see Engine::PutMark; the rest ("gps_mark" for the
 # GPS tap of the road lost panel, "peer" for the place of the other phone, "core" for a place the core guesses) are
-# no taps. Only this key tells them apart: the manual mode is already on when they place the mark, so
+# no taps. Only this key tells them apart while the manual mode is already on, as it is during a road loss: then
 # Engine::SetManualMode writes no line of its own.
 MARK_BY_USER = ('user', 'tap')
 SENSORS = ('ACCB', 'ACCB_BEFORE', 'ACC', 'GYRO')
@@ -409,8 +409,10 @@ class Group:
     def map_taps(self):
         """When the user placed the mark on the map, by a tap or by the button of a place. Engine::PutMark writes
         the same "tap =" line for the GPS tap of the road lost panel, for the place the other phone shares and for
-        the place the core guesses itself; its by= tells which of them. A log written before the core wrote that
-        key has no panel either: every tap of it is the user's."""
+        the place the core guesses itself; its by= tells which of them. A line without by= is read as the user's,
+        which is what a log older than the road lost panel has. A build between the panel (2026-11-19) and the by=
+        key writes neither: in such a log a GPS tap of the panel counts as a map tap, and `losses` shows its loss
+        as ended by the user."""
         return [e['t'] for e in self.events if e['cat'] == 'user' and e['name'] == 'tap'
                 and e.get('by', 'tap') in MARK_BY_USER]
 

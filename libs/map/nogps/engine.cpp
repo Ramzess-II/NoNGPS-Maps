@@ -1858,8 +1858,8 @@ void Engine::PutMark(ms::LatLon const & position, RoadPoint const & road, char c
   location.m_bearingDeg = road.m_bearingDeg;
   location.m_timeMs = m_clock.NowMs();
   location.m_unixTimeMs = m_clock.UnixNowMs();
-  // by= tells a tap of the user on the map from the marks the core places itself: the manual mode is already on
-  // for those, so SetManualMode() writes no line of its own.
+  // by= tells a tap of the user on the map from the marks the core places itself: during a road loss the manual
+  // mode is already on, so SetManualMode() writes no line of its own there.
   LOG(LINFO, (LogHead(m_clock, "ACTION", "tap"), std::string("by=") + by, "tap =", position,
               "location =", location.m_position, "bearing =", road.m_bearingDeg, "heading was =", GetCarBearing()));
 
