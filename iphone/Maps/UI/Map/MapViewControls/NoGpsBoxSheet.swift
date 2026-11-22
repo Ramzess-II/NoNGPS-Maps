@@ -61,15 +61,16 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
   /// be set: UINavigationBarRenderer unwraps scrollEdgeAppearance.
   private static func plainBar(_ bar: UINavigationBar) {
     bar.setStyle(.clearBackground)
-    // Filled with the background of the sheet, as the bar of a sheet is: a translucent bar shows the map through it.
+    // Filled with the background the list is drawn on, as the bar of a sheet is: a translucent bar shows the map
+    // through it, and .whitePrimary is the colour of the cells, not of the table under them.
     let scrolled = UINavigationBarAppearance()
     scrolled.configureWithOpaqueBackground()
-    scrolled.backgroundColor = .whitePrimary
+    scrolled.backgroundColor = .pressBackground
     bar.standardAppearance = scrolled
     // At the top the bar and the list are one surface: the line comes only once the list runs under the bar.
     let top = UINavigationBarAppearance()
     top.configureWithOpaqueBackground()
-    top.backgroundColor = .whitePrimary
+    top.backgroundColor = .pressBackground
     top.shadowColor = .clear
     bar.scrollEdgeAppearance = top
     bar.tintColor = .linkBlue
