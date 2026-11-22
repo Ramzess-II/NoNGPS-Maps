@@ -49,8 +49,8 @@ LOGFMT_LINE = re.compile(r'LOGFMT (\d+)((?: \w+=\S*)*)\s*$')
 HEADER_KEYS = ('ms', 'phone', 'trip')
 # "logs/Pixel_7-a3f9/2026-11-01/081500.log": the phone and the time the file was started at. iOS with the record in a
 # file off writes the OSLog text of "Report a bug" into such a file without the LOGFMT line (Logger.mm), so a file of
-# the tree is read with the phone of its path.
-TREE_PATH = re.compile(r'(?:^|/)([^/]+)/\d{4}-\d\d-\d\d/(\d{6}(?:-\d+)?)\.log$', re.I)
+# the tree is read with the phone of its path. "." and ".." are no phone, see tree_path().
+TREE_PATH = re.compile(r'(?:^|/)(?!\.\.?/)([^/]+)/\d{4}-\d\d-\d\d/(\d{6}(?:-\d+)?)\.log$', re.I)
 FIRST_COLUMNS = ['time', 'src', 'lat', 'lon', 'acc', 'bear', 'age', 'ref', 'err_m', 'along_m', 'across_m']
 
 
@@ -72,6 +72,15 @@ class LogFormatError(ValueError):
     """A file that is not a log of a format the tools read."""
 
 
+def tree_path(name):
+    """The match of logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log in |name|, None when it is not such a path. A file on disk
+    is matched by its absolute path: the <phone> folder can be above the path given, as it is for "." and for
+    "<yyyy-MM-dd>/<HHmmss>.log" given inside the folder of one phone."""
+    if os.path.isfile(name):
+        name = os.path.abspath(name)
+    return TREE_PATH.search(name.replace('\\', '/'))
+
+
 def parse_header(name, first_line):
     """The fields of the LOGFMT line of the file |name| as a dictionary of strings, with 'logfmt' the number: the file
     identifies itself. A file of the tree without that line is the OSLog text of iOS, and its path tells the phone and
@@ -79,7 +88,7 @@ def parse_header(name, first_line):
     a format not in LOG_FORMATS, or one that lacks a field the tools need."""
     m = LOGFMT_LINE.match(first_line.lstrip('\ufeff').rstrip('\r\n'))
     if not m:
-        tree = TREE_PATH.search(name.replace('\\', '/'))
+        tree = tree_path(name)
         if tree:
             return dict(logfmt=None, ms=None, phone=tree.group(1), trip=tree.group(2))
         raise LogFormatError('%s: not a log of LOGFMT %s, its first line is not a LOGFMT line (logs of the earlier '

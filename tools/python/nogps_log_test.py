@@ -474,6 +474,22 @@ class InputTest(unittest.TestCase):
                                         ('\n'.join(android_drive(seconds=3)) + '\n').encode())])
         self.assertEqual([(f['phone'], f['platform']) for f in analysis.files], [('Pixel_7-a3f9', 'android')])
 
+    def test_a_tree_file_without_the_logfmt_line_read_from_inside_the_phone_folder(self):
+        """The folder of one phone given as ".", or a day of it: the <phone> folder is above the path given."""
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {'Pixel_7-a3f9/2026-10-08/180000.log': android_drive(seconds=3)})
+            here = os.getcwd()
+            os.chdir(os.path.join(folder, 'Pixel_7-a3f9'))
+            try:
+                for path in ('.', './2026-10-08/180000.log', '2026-10-08/180000.log'):
+                    with self.subTest(path):
+                        self.assertEqual(list(nogps_trip_log.files_by_phone([path])), ['Pixel_7-a3f9'])
+            finally:
+                os.chdir(here)
+        # A name that is no file on disk is not a path of the tree: "." tells no phone.
+        with self.assertRaises(nogps_trip_log.LogFormatError):
+            nogps_trip_log.parse_header('./2026-10-08/180000.log', 'I(1) 0.5 hello')
+
     def test_analysis_skips_an_old_file_next_to_new_ones(self):
         """A zip of a phone that still keeps a file of an earlier version: the rest of it is read, as in load_paths."""
         data = io.BytesIO()
