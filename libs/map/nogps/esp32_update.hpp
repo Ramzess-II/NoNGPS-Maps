@@ -70,8 +70,10 @@ public:
 
   /// \param image the file of the firmware.
   /// \param version the version the box tells after it has restarted with the firmware.
-  void Start(std::string image, std::string const & version);
-  /// Stops the update by the user: the box keeps its firmware. Does nothing while the box restarts with the new one.
+  /// \param boxVersion the version the box tells now: the same text later means it has kept its firmware.
+  void Start(std::string image, std::string const & version, std::string const & boxVersion);
+  /// Stops the update by the user: the box keeps its firmware. Does nothing once the box has everything: it checks the
+  /// firmware and restarts with it.
   void Cancel();
   /// Forgets the update, e.g. the box is not used any more.
   void Reset();
@@ -81,7 +83,8 @@ public:
   void OnProgress(esp32::UpdateProgress const & progress);
   /// The connection to the box is lost: an update is not continued, but a restarting box is waited for.
   void OnLinkLost();
-  /// The box tells its firmware when a connection starts.
+  /// The box tells its firmware when a connection starts. A failed update after OTA_END is Done when the box comes
+  /// back with the new firmware.
   void OnBoxFirmware(std::string const & version);
 
   State GetState() const { return m_state; }
@@ -94,6 +97,8 @@ public:
 
 private:
   void SendPieces();
+  bool IsLateTimeout() const;
+  bool IsNewFirmware(std::string const & version) const;
   void Fail(std::string const & error);
   void Check();
   void StartCheckTimer();
@@ -109,6 +114,8 @@ private:
   std::string m_image;
   size_t m_size = 0;
   std::string m_version;
+  // What the box told as its firmware when the update started.
+  std::string m_previousVersion;
   // The command waiting for its reply, 0 if none.
   int m_commandId = 0;
   int64_t m_stateSinceMs = 0;
@@ -122,6 +129,8 @@ private:
   int64_t m_resentMs = 0;
   // The box has restarted: its firmware told before that is the old one.
   bool m_linkLost = false;
+  // OTA_END is sent: the box may restart with the new firmware whatever the application does.
+  bool m_endSent = false;
 };
 
 std::string DebugPrint(Esp32Update::State state);

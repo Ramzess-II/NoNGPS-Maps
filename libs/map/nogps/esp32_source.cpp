@@ -137,7 +137,7 @@ bool Esp32Source::CanUpdate() const
 void Esp32Source::StartUpdate(Firmware const & firmware)
 {
   if (CanUpdate())
-    m_update.Start(firmware.m_read(), firmware.m_version);
+    m_update.Start(firmware.m_read(), firmware.m_version, m_info->m_firmware);
 }
 
 bool Esp32Source::CanStoreCarValues() const

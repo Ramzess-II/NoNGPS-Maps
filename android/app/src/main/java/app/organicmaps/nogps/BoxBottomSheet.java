@@ -1198,8 +1198,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final boolean updating = BoxTexts.isUpdating(update);
     mFirmwareRow.setVisibility(updating || !status.boxFirmware.isEmpty() ? View.VISIBLE : View.GONE);
     mFirmware.setText(firmware);
-    // A box that has taken the firmware restarts by itself.
-    final boolean cancel = updating && update != NoGps.FirmwareUpdate.RESTARTING;
+    final boolean cancel = BoxTexts.canCancelFirmware(status);
     final boolean install = BoxTexts.canInstallFirmware(status);
     mFirmwareAction.setVisibility(cancel || install ? View.VISIBLE : View.GONE);
     if (cancel)
@@ -1413,8 +1412,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private void onFirmwareAction()
   {
     final NoGps.Status status = NoGps.getStatus();
-    final NoGps.FirmwareUpdate update = status.getFirmwareUpdate();
-    if (BoxTexts.isUpdating(update) && update != NoGps.FirmwareUpdate.RESTARTING)
+    if (BoxTexts.canCancelFirmware(status))
       NoGps.nativeCancelFirmwareUpdate();
     else if (BoxTexts.canInstallFirmware(status))
       NoGps.nativeStartFirmwareUpdate();
