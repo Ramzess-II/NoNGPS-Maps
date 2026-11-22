@@ -24,7 +24,8 @@ the flags there, and an iOS release build connects to the simulator as it does t
 
 What it doesn't simulate, and why:
 - the pairing rules (BLE-11, BLE-12, BLE-15, BLE-16): on macOS pairing belongs to the system, with no bt_pin and no
-  "display only" capability;
+  "display only" capability; so no drop of a link that stays unencrypted and no BT_UNSECURE event, and the
+  write queue of BLE-5 is the radio's, not ours;
 - any motion: no speed, no turns, no jolts;
 - the firmware update, the car values, the phone list and the places of two phones: NGI tells the abilities "BLE"
   alone, and the application asks for none of them.
@@ -71,10 +72,10 @@ COMPANY_ID = 0xFFFF
 ADV_FORMAT = 1
 ADV_FLAGS = [('pairing_open', 1), ('full', 2), ('has_phones', 4)]
 
-# Section 9.2: without a HELLO for this long the box stops sending the data.
-HELLO_TIMEOUT_S = 3.0
-# A radio that can't see a link drop takes a central as gone after this long without a write: far above the
-# HELLO timeout, as a connected phone that doesn't write is kept by a real box and only gets no data.
+# Section 9.2: without any command for this long the box stops sending the data.
+HELLO_TIMEOUT_S = 10.0
+# A radio that can't see a link drop takes a central as gone after this long without a write: well above the
+# session timeout, as a connected phone that doesn't write is kept by a real box and only gets no data.
 SILENT_GONE_S = 60.0
 # Section 9.3: NGD 50 times a second, 9.4: NGS once a second and at once on a change.
 DATA_PERIOD_S = 0.02
@@ -333,6 +334,8 @@ class Box:
     def on_command(self, phone, fields):
         """Section 9.5. The box has the abilities of ABILITIES only: anything else is unknown."""
         command_id, name, rest = fields[1], fields[2], fields[3:]
+        if phone.hello_at:
+            phone.hello_at = self.clock()     # section 9.2: any command keeps the session of a phone that has one
         if name == 'HELLO':
             # HELLO,<name>,<Unix s> from a newer application; the box remembers both for its list of phones.
             phone.hello_at = self.clock()
