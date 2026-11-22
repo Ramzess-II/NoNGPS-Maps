@@ -15,6 +15,9 @@ What CoreBluetooth doesn't give the simulator:
 - the pairing of BLE-11: the system pairs by itself, with no bt_pin and no "display only" capability;
 - dropping a central: there is no such call. Stop and Disconnect take the service away instead, which is what the
   phone sees when the box parks, and it searches again when the service comes back.
+- a central that went away: a process that dies with its link is reported as neither a subscription nor an
+  unsubscription, so a central with no write for SILENT_GONE_S is taken as gone by its silence alone. The box
+  keeps no data for it; a phone that writes again slots into the same row.
 - the name in the advertisement is dropped by macOS when it is longer than 8 characters, because the 16 bytes of the
   service UUID leave no room: the name of the box is NoGPS- and two characters.
 """
@@ -96,6 +99,7 @@ class Radio:
         # CoreBluetooth refuses a notification when its queue is full and calls back when it is free again.
         self.ready = True
         self.stopped = False
+        self.silence = sim.SilenceWatch()
 
     # The box asks.
 
@@ -133,6 +137,8 @@ class Radio:
             # The calls of CoreBluetooth arrive while the run loop runs, so the tick has them all by its turn.
             loop.runUntilDate_(NSDate.dateWithTimeIntervalSinceNow_(interval_s))
             tick()
+            for phone_id in self.silence.gone():
+                self.on_unsubscribe_id(phone_id)
 
     def stop(self):
         self.stopped = True
@@ -163,16 +169,21 @@ class Radio:
         return phone_id
 
     def on_subscribe(self, central):
-        self.remember(central)
+        self.silence.wrote(self.remember(central))
 
     def on_unsubscribe(self, central):
-        phone_id = str(central.identifier().UUIDString())
+        self.on_unsubscribe_id(str(central.identifier().UUIDString()))
+
+    def on_unsubscribe_id(self, phone_id):
+        self.silence.forget(phone_id)
         self.payloads.pop(phone_id, None)
         if self.centrals.pop(phone_id, None) is not None:
             self.on_event('disconnect', phone_id)
 
     def on_write(self, central, data):
-        self.on_event('write', self.remember(central), data)
+        phone_id = self.remember(central)
+        self.silence.wrote(phone_id)
+        self.on_event('write', phone_id, data)
 
     def on_service_added(self, error):
         if self.serving != 'adding':
@@ -210,6 +221,7 @@ class Radio:
         self.serving = 'off'
         self.advertised_name = None
         self.payloads.clear()
+        self.silence.written.clear()
         for phone_id in list(self.centrals):
             del self.centrals[phone_id]
             self.on_event('disconnect', phone_id)

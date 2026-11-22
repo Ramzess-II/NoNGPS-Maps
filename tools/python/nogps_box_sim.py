@@ -73,6 +73,9 @@ ADV_FLAGS = [('pairing_open', 1), ('full', 2), ('has_phones', 4)]
 
 # Section 9.2: without a HELLO for this long the box stops sending the data.
 HELLO_TIMEOUT_S = 3.0
+# A radio that can't see a link drop takes a central as gone after this long without a write: far above the
+# HELLO timeout, as a connected phone that doesn't write is kept by a real box and only gets no data.
+SILENT_GONE_S = 60.0
 # Section 9.3: NGD 50 times a second, 9.4: NGS once a second and at once on a change.
 DATA_PERIOD_S = 0.02
 STATUS_PERIOD_S = 1.0
@@ -213,6 +216,28 @@ class State:
         """Section 9.6."""
         return line('NGI,%d,%s,%s,%s,%s,%s,4096,2031616,ota_0,VALID,%s,0,%s' % (
             VERSION, self.firmware, self.build, self.chip, self.board, self.box_id, ABILITIES, self.revision))
+
+
+class SilenceWatch:
+    """When each central last wrote, for a radio the stack of which never reports a central that went away."""
+
+    def __init__(self, clock=time.monotonic):
+        self.clock = clock
+        self.written = {}
+
+    def wrote(self, phone_id):
+        self.written[phone_id] = self.clock()
+
+    def forget(self, phone_id):
+        self.written.pop(phone_id, None)
+
+    def gone(self):
+        """\returns the ids silent for SILENT_GONE_S, and forgets them."""
+        now = self.clock()
+        found = [phone_id for phone_id, at in self.written.items() if now - at >= SILENT_GONE_S]
+        for phone_id in found:
+            del self.written[phone_id]
+        return found
 
 
 class Phone:
