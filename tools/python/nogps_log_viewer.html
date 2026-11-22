@@ -4,14 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NoGPS log viewer</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" crossorigin="anonymous"
-      integrity="sha384-c6Rcwz4e4CITMbu/NBmnNS8yN2sC3cUElMEMfP3vqqKFp7GOYaaBBCqmaWBjmkjb">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.min.css" crossorigin="anonymous"
-      integrity="sha384-IfV0B7MIOYuO95kO9G5ySKPz/85zqFNOAs8iy4tkK5zd9izhJAB8b7lHrwYqqmYE">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" crossorigin="anonymous"
-        integrity="sha384-NElt3Op+9NBMCYaef5HxeJmU4Xeard/Lku8ek6hoPTvYkQPh3zLIrJP7KiRocsxO"></script>
-<script src="https://cdn.jsdelivr.net/npm/uplot@1.6.30/dist/uPlot.iife.min.js" crossorigin="anonymous"
-        integrity="sha384-1NEYi76CBpge3gahk4+X4M4JzdOV3WYq84RnByqYdAd5SdvJBTNCPFh/nsoHfN6i"></script>
+<link rel="stylesheet" href="/assets/leaflet.css">
+<link rel="stylesheet" href="/assets/uPlot.min.css">
+<script src="/assets/leaflet.js"></script>
+<script src="/assets/uPlot.iife.min.js"></script>
 <style>
 :root {
   --bg: #f7f7f5; --panel: #ffffff; --text: #1f2328; --muted: #6a737d; --line: #dcdcd7; --hover: #eef2f7;
@@ -291,10 +287,12 @@ async function api(url, options) {
 }
 
 // The map.
-const map = L.map('map', {preferCanvas: true, zoomControl: true}).setView([20, 0], 2);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-}).addTo(map);
+const map = L.map('map', {preferCanvas: true, zoomControl: true, maxZoom: 19}).setView([20, 0], 2);
+// No tiles unless the person gave a source with --tiles: the tile requests tell where the trip was.
+fetch('/api/config').then(r => r.json()).then(config => {
+  if (!config.tiles) return;
+  L.tileLayer(config.tiles, {maxZoom: 19, attribution: config.attribution}).addTo(map);
+});
 L.control.scale({imperial: false}).addTo(map);
 nowLayer.addTo(map);
 map.on('zoomend', () => drawNow());
