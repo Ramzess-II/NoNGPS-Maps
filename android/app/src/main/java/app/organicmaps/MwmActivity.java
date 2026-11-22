@@ -373,28 +373,31 @@ public class MwmActivity extends BaseMwmFragmentActivity
     final RoutingController routing = RoutingController.get();
     if (!IntroSequence.isNeeded(Config.isNoGpsIntroShown(), routing.isPlanning() || routing.isNavigating()))
       return;
-    // As soon as the intro is shown: an app killed halfway through it does not show it again.
-    Config.setNoGpsIntroShown();
-    playNoGpsIntro();
+    // As soon as the intro is shown, and only then: an app killed halfway through it does not show it again, while
+    // an activity that went away before the modal appeared still shows the intro on the next start.
+    if (playNoGpsIntro())
+      Config.setNoGpsIntroShown();
   }
 
   /**
-   * Plays the intro whatever the flag says: the first start and the How NonGPS works page both end here.
+   * Plays the intro whatever the flag says: the first start and the How NonGPS works page both end here. Returns
+   * whether it started: the map may be gone or busy with the navigation by now.
    */
-  private void playNoGpsIntro()
+  private boolean playNoGpsIntro()
   {
     final IntroOverlay overlay = findViewById(R.id.nogps_intro);
     if (overlay == null || overlay.isRunning() || isFinishing())
-      return;
+      return false;
     final RoutingController routing = RoutingController.get();
     if (routing.isPlanning() || routing.isNavigating())
-      return;
+      return false;
     if (!(getSupportFragmentManager().findFragmentById(R.id.map_buttons) instanceof MapButtonsController buttons)
         || buttons.getView() == null)
-      return;
+      return false;
     buttons.setIntroMode(true);
     overlay.start(buttons::getIntroAnchor,
                   () -> IntroModalFragment.show(getSupportFragmentManager()), () -> buttons.setIntroMode(false));
+    return true;
   }
 
   private void finishNoGpsIntro()
