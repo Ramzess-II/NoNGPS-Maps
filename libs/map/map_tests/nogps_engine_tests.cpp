@@ -2444,6 +2444,36 @@ UNIT_TEST(NoGps_Engine_CarSpeedChecksGpsOnceItsScaleIsMeasured)
   TEST(IsGpsSpoofedBySpeed(env), ());
 }
 
+UNIT_TEST(NoGps_Engine_MphCarSpeedIsConverted)
+{
+  // The box of this car tells 62 where the car drives 100 km/h, and GPS says so for a couple of kilometers.
+  int constexpr kRawKmh = 62;
+  double const realMps = kRawKmh * SpeedUnit::kMph / 3.6;
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  env.Drive(1000, kRawKmh, 0);
+  // Until GPS has told the unit the car speed is taken as it comes.
+  TEST_EQUAL(TripField(env, "speed"), std::to_string(kRawKmh), ());
+  for (int i = 0; i < 80; ++i)
+  {
+    env.Drive(1000, kRawKmh, 0);
+    auto const & position = env.Last().m_position;
+    env.m_engine.OnFix(GpsAt(env.m_clock, East(position), North(position), 90.0, realMps));
+  }
+  TEST_EQUAL(TripField(env, "speed"), "100", ());
+  // The tables learned in the other unit are cleared, the unit is kept for the next trip.
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedTableRanges, 0, ());
+  SpeedUnit saved;
+  saved.Deserialize(env.m_storage.Get<std::string>(Storage::kSpeedUnit, ""));
+  TEST_EQUAL(saved.Get(), SpeedUnit::kMph, ());
+
+  // The application starts again: the first speed of the box is converted already.
+  Env after(true /* inertial */, &roads, SavedBy(env));
+  after.Drive(1000, kRawKmh, 0);
+  TEST_EQUAL(TripField(after, "speed"), "100", ());
+}
+
 UNIT_TEST(NoGps_SpeedHint_ShownAtSpeedGpsHasNotMeasured)
 {
   // GPS has measured 50-60 km/h.
