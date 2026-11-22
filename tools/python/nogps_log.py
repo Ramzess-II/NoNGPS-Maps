@@ -404,7 +404,8 @@ class Group:
         The check is that of Engine::PlaceMarkByGps on the TRIP line: the newer of the GPS and fused fixes is not
         older than GPS_MARK_MAX_AGE_S, is accurate to GPS_MARK_MAX_ACCURACY_M, GPS is not spoofed, and the fix is
         not farther from the mark than the distance driven since the loss, the accuracies of the mark and of the fix
-        and GPS_MARK_MARGIN_M. The road near the fix is
+        and GPS_MARK_MARGIN_M. The distance is driven by the speed of the car alone, as InertialNavigator drives
+        m_roadLostDrivenM; "speed=-1" is a speed not fresh, which neither drives it on. The road near the fix is
         not checked: the log has no map, so "fixable" is an upper bound: the settings of the user are not read
         either, so a trip with GPS turned off in the app (the tap fails with "GPS is turned off") can show losses as
         fixable. A tap on the map or the end of the loss ends the time the GPS tap could be used in; a tap just
@@ -432,8 +433,7 @@ class Group:
                     break
                 if j > i:
                     before = rows[j - 1]
-                    kmh = num(before, 'speed') or num(before, 'gps_kmh') or 0
-                    driven += kmh / 3.6 * min(5, (current['t'] - before['t']) / 1000)
+                    driven += max(0.0, num(before, 'speed') or 0) / 3.6 * min(5, (current['t'] - before['t']) / 1000)
                 why = gps_mark_failure(current, driven)
                 if not why:
                     fixable = (current['t'] - row['t']) / 1000

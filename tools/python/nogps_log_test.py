@@ -576,6 +576,20 @@ class LossesTest(unittest.TestCase):
         self.assertTrue(losses[0]['taps'])
         self.assertEqual(self.losses(lambda s: {}), [])
 
+    def test_a_stale_speed_drives_nothing(self):
+        """"speed=-1" is a speed not fresh: it neither drives the loss on nor takes back what the car has driven."""
+        # The fix is 9 s old for 200 s, then a fresh one comes 60 m behind the mark: the 10 m of the mark, the 5 m
+        # of the fix and the 50 m of margin allow it, and a speed of -1 km/h would have eaten them.
+        def fields(s):
+            if s < 10:
+                return {}
+            fresh = s >= 210
+            return dict(lost='1', speed='-1',
+                        gps='%.6f,%.6f/5.0/36.0/0/%d.00/3' % (START_LAT + (s * 10 + 3 - (60 if fresh else 0))
+                                                              * DEG_PER_M, START_LON, 1 if fresh else 9))
+        (loss,) = self.losses(fields, seconds=230)
+        self.assertEqual(loss['fixable_s'], 200)
+
     def test_a_loss_across_a_stand_is_one_loss(self):
         """The car stands lost between two drives: standing splits the trips, the loss is one."""
         lost = self.lost(0, 10 ** 9)
