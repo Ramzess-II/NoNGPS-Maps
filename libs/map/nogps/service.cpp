@@ -124,10 +124,11 @@ bool RoutingMapApi::RoutingRoads::IsRoundaboutNear(ms::LatLon const & center, do
 }
 
 RoutingMapApi::RoutingMapApi(SessionRoute & route, DataSource const & dataSource, Clock const & clock,
-                             ShowCarHeadingFn && showCarHeading)
+                             DataVersionFn && dataVersion, ShowCarHeadingFn && showCarHeading)
   : m_route(route)
   , m_dataSource(dataSource)
   , m_clock(clock)
+  , m_dataVersion(std::move(dataVersion))
   , m_showCarHeading(std::move(showCarHeading))
   , m_roads(route, false /* matchRoute */)
   , m_routeRoads(route, true /* matchRoute */)
@@ -224,8 +225,8 @@ std::string RoutingMapApi::GetDistanceLeft() const
 }
 
 Service::Service(Delegate & delegate, SessionRoute & route, DataSource const & dataSource,
-                 RoutingMapApi::ShowCarHeadingFn && showCarHeading)
-  : m_map(route, dataSource, m_clock, std::move(showCarHeading))
+                 RoutingMapApi::DataVersionFn && dataVersion, RoutingMapApi::ShowCarHeadingFn && showCarHeading)
+  : m_map(route, dataSource, m_clock, std::move(dataVersion), std::move(showCarHeading))
   , m_engine(delegate, m_map, m_storage, m_clock, m_scheduler)
 {
   m_engine.SetFirmwares(LoadFirmwares());

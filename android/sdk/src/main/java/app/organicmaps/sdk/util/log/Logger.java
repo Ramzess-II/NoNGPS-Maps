@@ -511,7 +511,7 @@ public final class Logger
 
       if (isNewFile)
       {
-        final String info = LogsManager.INSTANCE.getSystemInformation();
+        final String info = LogsManager.INSTANCE.getLogFormatLine(mFileName) + LogsManager.INSTANCE.getSystemInformation();
         mWriter.write(info);
         mFileSize += info.length();
       }

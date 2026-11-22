@@ -57,6 +57,10 @@ public:
   /// \returns the distance left to the end of the route for the log of a drive, empty if there is no route.
   virtual std::string GetDistanceLeft() const = 0;
 
+  /// \returns the version of the downloaded maps, as `Storage::GetCurrentDataVersion()` is (260714), for the header of
+  /// a trip log: a trip is driven again on the maps it was driven on.
+  virtual int64_t GetDataVersion() const = 0;
+
   /// Shows the car direction instead of the compass: without GPS the car looks along its road, and the compass of
   /// a phone in a car or in hands looks anywhere.
   virtual void ShowCarHeading(double bearingDeg) = 0;

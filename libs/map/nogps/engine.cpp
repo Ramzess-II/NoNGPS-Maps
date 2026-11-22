@@ -2,6 +2,7 @@
 
 #include "map/nogps/clock.hpp"
 #include "map/nogps/geo.hpp"
+#include "map/nogps/log_line.hpp"
 #include "map/nogps/map_api.hpp"
 #include "map/nogps/road_walker.hpp"
 #include "map/nogps/storage.hpp"
@@ -113,7 +114,8 @@ void Engine::Start()
   CHECK_THREAD_CHECKER(m_threadChecker, ());
   if (m_active)
     return;
-  LOG(LINFO, ("Start"));
+  LOG(LINFO, (LogHead(m_clock, "ACTION", "start"), "Start"));
+  LogMapsVersion();
   m_active = true;
   m_loggedState = {};
   m_tripLoggedMs.reset();
@@ -127,7 +129,7 @@ void Engine::Start()
   // After the car: GPS ignored before the restart is not trusted anew by its first position either. Once: the choice
   // is kept by the engine after it is stopped in the background.
   if (!m_gpsDisabled && m_storage.Get<bool>(Storage::kGpsDisabled, false))
-    SetGpsDisabled(true);
+    SetGpsDisabled(true, "restore");
   m_tripLogTimer.Start(0, [this] { LogTrip(); });
   m_peerTimer.Start(kPeerSnapshotIntervalMs, [this] { SharePlaceByTimer(); });
   if (m_manualLocation)
@@ -139,7 +141,7 @@ void Engine::Stop()
   CHECK_THREAD_CHECKER(m_threadChecker, ());
   if (!m_active)
     return;
-  LOG(LINFO, ("Stop"));
+  LOG(LINFO, (LogHead(m_clock, "ACTION", "stop"), "Stop"));
   SaveCarPosition(true /* now */);
   if (m_inertial)
     m_inertial->Stop();
@@ -218,7 +220,8 @@ void Engine::OnFix(Fix const & location)
   if (!trusted)
   {
     m_gpsReturnDetector.Reset();
-    LOG(LWARNING, ("Untrusted location =", location.m_position, location.m_accuracyM));
+    LOG(LWARNING, (LogHead(m_clock, "EVENT", "gps_untrusted"), "Untrusted location =", location.m_position,
+                   location.m_accuracyM));
     return;
   }
 
@@ -238,10 +241,11 @@ void Engine::OnFix(Fix const & location)
     SharePlace(PeerTrigger::GpsFix, 'G', location);
   if (m_manualMode && goodGps && (m_manualUntilGps || IsGpsBack(location)))
   {
-    LOG(LINFO, ("GPS is trusted again, leaving the manual mode, location =", location.m_position));
+    LOG(LINFO, (LogHead(m_clock, "EVENT", "gps_trusted"),
+                "GPS is trusted again, leaving the manual mode, location =", location.m_position));
     // GPS was trusted before the restart of the app: it is found at the start as always, the user is not told.
     bool const told = !m_manualUntilGps;
-    SetManualMode(false);
+    SetManualMode(false, "gps_back");
     if (told)
       Notify(Event::GpsBack);
   }
@@ -251,7 +255,8 @@ void Engine::OnFix(Fix const & location)
     if (++m_offRoadGpsCount >= kOffRoadGpsCount)
       EnterManualModeByItself("GPS has left the roads, location = " + DebugPrint(location.m_position));
     else
-      LOG(LWARNING, ("GPS is off the roads, location =", location.m_position));
+      LOG(LWARNING,
+          (LogHead(m_clock, "EVENT", "gps_off_roads"), "GPS is off the roads, location =", location.m_position));
     return;
   }
   m_offRoadGpsCount = 0;
@@ -271,8 +276,9 @@ void Engine::OnFix(Fix const & location)
 
   if (m_manualMode && m_manualForNoPosition && isNetwork && !m_manualLocation)
   {
-    LOG(LINFO, ("The network position is back, leaving the manual mode, location =", location.m_position));
-    SetManualMode(false);
+    LOG(LINFO, (LogHead(m_clock, "EVENT", "network_back"),
+                "The network position is back, leaving the manual mode, location =", location.m_position));
+    SetManualMode(false, "network_back");
   }
 
   if (m_manualMode)
@@ -403,6 +409,8 @@ void Engine::OnBoxLink(bool linked)
   if (now - m_boxLinkEndedMs < kTripFileLinkGapMs)
     return;
   Notify(Event::TripStarted);
+  // The platform has started a new file by now: it is to say which maps the trip is on.
+  LogMapsVersion();
   m_inertial->LogCalibration();
 }
 
@@ -554,9 +562,9 @@ void Engine::EnterManualModeByItself(std::string const & reason)
   // manual mode is left by itself when GPS is trusted again.
   if (m_manualMode)
     return;
-  LOG(LWARNING, ("Entering the manual mode:", reason));
+  LOG(LWARNING, (LogHead(m_clock, "EVENT", "manual_by_itself"), "Entering the manual mode:", reason));
   auto const last = m_savedLocation;
-  SetManualMode(true);
+  SetManualMode(true, "core");
   // The car is where it was shown until the user moves it: on the road there, or where GPS has left it if
   // there is no road. The inertial navigation has moved the car on since, it continues from there.
   bool const inertialReady = m_inertial && m_inertial->IsReady();
@@ -848,7 +856,8 @@ void Engine::CheckBoxCalibration()
 
 void Engine::OnGpsSpoofingChanged(bool spoofed)
 {
-  LOG(LWARNING, ("GPS spoofed =", spoofed));
+  LOG(LWARNING,
+      (LogHead(m_clock, "EVENT", "gps_spoofed"), "spoofed=" + std::to_string(spoofed), "GPS spoofed =", spoofed));
   Notify(spoofed ? Event::GpsSpoofed : Event::GpsRestored);
   if (spoofed)
     m_manualUntilGps = false;
@@ -968,10 +977,10 @@ void Engine::RestoreCarPosition(bool otherCar)
       LOG(LERROR, ("Wrong car position =", saved));
     return;
   }
-  LOG(LINFO, ("The car is where it was left =", saved));
+  LOG(LINFO, (LogHead(m_clock, "ACTION", "restore_car"), "The car is where it was left =", saved));
 
   // GPS may be gone since: the car is shown where it was, as if the user has marked it there.
-  SetManualMode(true);
+  SetManualMode(true, "restore");
   m_manualUntilGps = manual == 0;
   Fix location;
   location.m_provider = Provider::Manual;
@@ -1053,7 +1062,7 @@ void Engine::OnJolt(double joltMs2, int speedKmh)
   char buf[128];
   std::snprintf(buf, sizeof(buf), "%d %.1f %.6f,%.6f %d %s %d", pct, hit->m_joltMs2, hit->m_place.m_lat,
                 hit->m_place.m_lon, hit->m_speedKmh, added.m_merged ? "merged" : "new", added.m_pothole.m_hits);
-  LOG(LINFO, ("POTHOLE", buf));
+  LOG(LINFO, (LogHead(m_clock, "POTHOLE"), buf));
   if (!m_potholesFile.empty() && !m_potholes.Save(m_potholesFile))
     LOG(LWARNING, ("Can't save the potholes to", m_potholesFile));
   if (m_potholesListener)
@@ -1153,8 +1162,9 @@ void Engine::OnSprint(SprintTimer::Result const & result)
   m_lastSprint = sprint;
   m_lastSprintBestSec = best.value_or(0);
   m_lastSprintRecord = !best || sprint.m_sec < *best;
-  LOG(LINFO, ("SPRINT", "kind=" + DebugPrint(sprint.m_kind), "sec=" + strings::to_string_dac(sprint.m_sec, 2),
-              "trap=" + std::to_string(sprint.m_trapKmh), std::string("record=") + (m_lastSprintRecord ? "1" : "0"),
+  LOG(LINFO, (LogHead(m_clock, "SPRINT"), "kind=" + DebugPrint(sprint.m_kind),
+              "sec=" + strings::to_string_dac(sprint.m_sec, 2), "trap=" + std::to_string(sprint.m_trapKmh),
+              std::string("record=") + (m_lastSprintRecord ? "1" : "0"),
               "best=" + (best ? strings::to_string_dac(*best, 2) : std::string("-"))));
   Notify(Event::SprintMeasured);
 }
@@ -1276,7 +1286,7 @@ void Engine::SetInertialNavigationEnabled(bool enabled)
   if (m_inertial)
     m_inertial->Stop();
   // Nothing else would drive the car, the box was the only source.
-  SetGpsDisabled(false);
+  SetGpsDisabled(false, "box");
 }
 
 void Engine::SetElm327Address(std::string const & address)
@@ -1420,7 +1430,7 @@ void Engine::ReverseDirection()
     return;
 
   double const reversed = Normalize(*bearing + 180);
-  LOG(LINFO, ("Reversed the car to", std::round(reversed)));
+  LOG(LINFO, (LogHead(m_clock, "ACTION", "reverse"), "Reversed the car to", std::round(reversed)));
   if (m_inertial)
   {
     // The other roads were the car's way, not the other one.
@@ -1446,7 +1456,7 @@ void Engine::ReverseDirection()
 void Engine::SwitchMark()
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());
-  LOG(LINFO, ("Switching the mark"));
+  LOG(LINFO, (LogHead(m_clock, "ACTION", "switch_mark"), "Switching the mark"));
   // The navigator tells by OnMarkSwitched().
   if (m_inertial)
     m_inertial->SwitchMark();
@@ -1699,8 +1709,14 @@ bool Engine::TrackWorkingGps(Fix const & location)
 
 void Engine::SetGpsDisabled(bool disabled)
 {
+  SetGpsDisabled(disabled, "user");
+}
+
+void Engine::SetGpsDisabled(bool disabled, char const * by)
+{
   CHECK_THREAD_CHECKER(m_threadChecker, ());
-  LOG(LINFO, ("GPS ignored by the user =", disabled));
+  LOG(LINFO, (LogHead(m_clock, "ACTION", "gps_off"), "disabled=" + std::to_string(disabled), std::string("by=") + by,
+              "GPS ignored by the user =", disabled));
   m_gpsDisabled = disabled;
   m_storage.Set(Storage::kGpsDisabled, disabled);
   // GPS ignored by the user is not trusted anew by its first position when it is used again.
@@ -1710,11 +1726,18 @@ void Engine::SetGpsDisabled(bool disabled)
 
 void Engine::SetManualMode(bool enabled)
 {
+  SetManualMode(enabled, "user");
+}
+
+void Engine::SetManualMode(bool enabled, char const * by)
+{
   CHECK_THREAD_CHECKER(m_threadChecker, ());
   if (m_manualMode == enabled)
     return;
 
-  LOG(LINFO, ("Manual mode =", enabled));
+  // by= tells a switch of the user, which a trip is driven again with, from the one the core has made itself.
+  LOG(LINFO, (LogHead(m_clock, "ACTION", "manual"), "enabled=" + std::to_string(enabled), std::string("by=") + by,
+              "Manual mode =", enabled));
   m_manualMode = enabled;
   m_manualForNoPosition = false;
   m_manualUntilGps = false;
@@ -1757,7 +1780,7 @@ bool Engine::PlaceMarkByTap(ms::LatLon const & position)
     return false;
   }
   // GPS may work: the mark tells that it is wrong, as the manual mode turned on by the user did.
-  SetManualMode(true);
+  SetManualMode(true, "tap");
   PutMark(position, *road);
   m_markByTap = false;
   return true;
@@ -1797,7 +1820,7 @@ bool Engine::PlaceMarkByGps()
   auto const road = FindMarkRoad(fix->m_position, GetCarBearing(), radiusM);
   if (!road)
     return fail("no road near the fix");
-  SetManualMode(true);
+  SetManualMode(true, "gps_mark");
   PutMark(fix->m_position, *road, std::max(kManualAccuracyM, fix->m_accuracyM));
   m_markByTap = false;
   return true;
@@ -1835,8 +1858,8 @@ void Engine::PutMark(ms::LatLon const & position, RoadPoint const & road, double
   location.m_bearingDeg = road.m_bearingDeg;
   location.m_timeMs = m_clock.NowMs();
   location.m_unixTimeMs = m_clock.UnixNowMs();
-  LOG(LINFO, ("tap =", position, "location =", location.m_position, "bearing =", road.m_bearingDeg,
-              "heading was =", GetCarBearing()));
+  LOG(LINFO, (LogHead(m_clock, "ACTION", "tap"), "tap =", position, "location =", location.m_position,
+              "bearing =", road.m_bearingDeg, "heading was =", GetCarBearing()));
 
   m_manualLocation = location;
   m_manualSetTimeMs = m_clock.NowMs();
@@ -1913,7 +1936,7 @@ void Engine::ApplyPeerPlace(PeerPlace const & place)
   }
   LOG(LINFO, ("The place of the other phone, kind =", place.m_kind, "source =", place.m_source, "=", place.m_position));
   m_applyingPeer = true;
-  SetManualMode(true);
+  SetManualMode(true, "peer");
   PutMark(place.m_position, *road);
   m_applyingPeer = false;
   // The leader has taken the correction: the follower is told the place it has.
@@ -1988,7 +2011,8 @@ double Engine::ShiftPosition(double distanceM)
   }
 
   LOG(LINFO,
-      ("Moved the position by", std::round(shifted->m_appliedM), "m, bearing =", std::round(shifted->m_bearingDeg)));
+      (LogHead(m_clock, "ACTION", "shift"), "m=" + std::to_string(std::lround(shifted->m_appliedM)),
+       "Moved the position by", std::round(shifted->m_appliedM), "m, bearing =", std::round(shifted->m_bearingDeg)));
   if (m_inertial)
     m_inertial->OnPositionCorrected(shifted->m_position, shifted->m_bearingDeg, shifted->m_appliedM);
 
@@ -2168,26 +2192,33 @@ Status Engine::GetStatus()
   return status;
 }
 
+void Engine::LogMapsVersion() const
+{
+  // The header of a file is written by the platform before the core knows the maps: the trip is on these.
+  LOG(LINFO, (LogHead(m_clock, "MAPS"), "version=" + std::to_string(m_map.GetDataVersion())));
+}
+
 bool Engine::LogStateChanges()
 {
   auto const status = GetStatus();
   std::string box = "NOT_SET_UP";
   if (status.m_inertialEnabled)
     box = status.m_inertialStarted ? DebugPrint(status.m_sourceState) : "STOPPED";
-  auto const log = [](char const * what, std::string & last, std::string now)
+  auto const log = [this](char const * name, char const * what, std::string & last, std::string now)
   {
     if (last == now)
       return false;
-    LOG(LINFO, (what, last.empty() ? "?" : last, "->", now));
+    LOG(LINFO, (LogHead(m_clock, "EVENT", name), "from=" + (last.empty() ? "?" : last), "to=" + now, what,
+                last.empty() ? "?" : last, "->", now));
     last = std::move(now);
     return true;
   };
-  bool changed = log("Position source", m_loggedState.m_source, DebugPrint(status.m_source));
+  bool changed = log("position_source", "Position source", m_loggedState.m_source, DebugPrint(status.m_source));
   // Not a change: GPS of a phone at home comes and goes with the network positions, 300 times a day.
-  log("GPS signal", m_loggedState.m_gps, DebugPrint(status.m_gpsState));
-  changed = log("Box state", m_loggedState.m_box, box) || changed;
-  changed = log("Box Bluetooth", m_loggedState.m_ble, DebugPrint(status.m_bleState)) || changed;
-  log("Peer role", m_loggedState.m_peer, DebugPrint(status.m_peerRole));
+  log("gps_signal", "GPS signal", m_loggedState.m_gps, DebugPrint(status.m_gpsState));
+  changed = log("box_state", "Box state", m_loggedState.m_box, box) || changed;
+  changed = log("box_ble", "Box Bluetooth", m_loggedState.m_ble, DebugPrint(status.m_bleState)) || changed;
+  log("peer_role", "Peer role", m_loggedState.m_peer, DebugPrint(status.m_peerRole));
   return changed;
 }
 
@@ -2232,7 +2263,7 @@ bool Engine::IsCarMoving() const
 
 std::string Engine::GetTripLine()
 {
-  std::string line = "TRIP src=" + DebugPrint(GetPositionSource());
+  std::string line = LogHead(m_clock, "TRIP") + " src=" + DebugPrint(GetPositionSource());
   char buf[256];
   if (m_savedLocation)
   {

@@ -256,7 +256,7 @@ nogps::Engine & Framework::CreateNoGps(nogps::Delegate & delegate)
 {
   CHECK(!m_noGps, ());
   m_noGps = std::make_unique<nogps::Service>(delegate, m_routingManager.GetSessionRoute(), GetDataSource(),
-                                             [this](double bearingDeg)
+                                             [this] { return GetCurrentDataVersion(); }, [this](double bearingDeg)
   {
     if (m_drapeEngine != nullptr)
       m_drapeEngine->SetCompassInfo(CompassInfo{math::DegToRad(bearingDeg)});
