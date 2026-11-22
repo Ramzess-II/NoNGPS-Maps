@@ -2504,6 +2504,36 @@ UNIT_TEST(NoGps_Engine_SpeedUnitChangeClearsWhatTheOtherUnitLearned)
   TEST_EQUAL(env.m_storage.Get<double>(Storage::kSpeedScale, 0), 1.0, ());
 }
 
+UNIT_TEST(NoGps_Engine_ResetOfTheSpeedCalibrationForgetsTheUnit)
+{
+  // The box of this car tells 62 where GPS drives 100 km/h: mph is learned.
+  int constexpr kRawKmh = 62;
+  double const realMps = kRawKmh * SpeedUnit::kMph / 3.6;
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  for (int i = 0; i < 80; ++i)
+  {
+    env.Drive(1000, kRawKmh, 0);
+    auto const & position = env.Last().m_position;
+    env.m_engine.OnFix(GpsAt(env.m_clock, East(position), North(position), 90.0, realMps));
+  }
+  TEST_EQUAL(TripField(env, "speed"), "100", ());
+
+  // The box is moved to a car that tells km/h and the user resets the calibration: the unit of the car before is
+  // forgotten too, otherwise the mark runs 61% too fast until tens of kilometers of GPS unlearn it.
+  env.m_engine.ClearSpeedCalibration();
+  TEST_EQUAL(TripField(env, "speed"), std::to_string(kRawKmh), ());
+  SpeedUnit saved;
+  saved.Deserialize(env.m_storage.Get<std::string>(Storage::kSpeedUnit, ""));
+  TEST_EQUAL(saved.Get(), 1.0, ());
+
+  // The application starts again: the raw speed of the box is taken as it comes.
+  Env after(true /* inertial */, &roads, SavedBy(env));
+  after.Drive(1000, kRawKmh, 0);
+  TEST_EQUAL(TripField(after, "speed"), std::to_string(kRawKmh), ());
+}
+
 UNIT_TEST(NoGps_SpeedHint_ShownAtSpeedGpsHasNotMeasured)
 {
   // GPS has measured 50-60 km/h.

@@ -360,7 +360,7 @@ void InertialNavigator::OnSpeedTableGps(Fix const & gps)
     {
       LOG(LINFO, ("Speed unit factor", was.Get(), "->", m_speedUnit.Get()));
       // Learned in the other unit.
-      ClearSpeedCalibration();
+      ClearSpeedCalibration(true /* keepUnit */);
       m_speedKmh = ConvertSpeed(m_rawSpeedKmh);
     }
     // Compared with the table before the sample is in it.
@@ -423,13 +423,21 @@ void InertialNavigator::LogCalibration() const
   LOG(LINFO, (GetCalibrationLine()));
 }
 
-void InertialNavigator::ClearSpeedCalibration()
+void InertialNavigator::ClearSpeedCalibration(bool keepUnit)
 {
   LOG(LINFO, ("Speed table was", m_speedTable.ToString(), "factor", m_speedFactor.Get(), "rough",
-              m_roughSpeedTable.ToString()));
+              m_roughSpeedTable.ToString(), "unit", m_speedUnit.Get()));
   m_speedTable.Clear();
   m_speedFactor.Clear();
   m_speedLag.Clear();
+  if (!keepUnit)
+  {
+    // The user resets the calibration of a car whose speed is wrong, e.g. after the box was moved to another car:
+    // a learned unit of the car before takes tens of kilometers of GPS to unlearn.
+    m_speedUnit.Clear();
+    if (m_rawSpeedKmh >= 0)
+      m_speedKmh = ConvertSpeed(m_rawSpeedKmh);
+  }
   // The next trip learns the rough table again, as the first one.
   m_roughSpeedTable.Clear();
   m_roughStretch.reset();

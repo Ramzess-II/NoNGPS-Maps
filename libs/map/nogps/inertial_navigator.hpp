@@ -389,7 +389,9 @@ public:
   /// from it. It works in the manual mode and when GPS is disabled for tests too.
   void OnSpeedTableGps(Fix const & gps);
   /// Forgets the car speed errors measured by GPS and corrected by the user, e.g. after new tyres.
-  void ClearSpeedCalibration();
+  /// \param keepUnit the speed unit of the car is kept: it has just been learned and the rest is cleared because
+  /// of it. The user's reset forgets the unit too, the box may be in another car now.
+  void ClearSpeedCalibration(bool keepUnit = false);
   /// Saves what is learned about the car and its box, and takes it from the storage again: the storage is of another
   /// car before and after, see CarStorage.
   void SaveCalibration();
