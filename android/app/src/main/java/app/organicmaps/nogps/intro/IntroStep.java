@@ -37,12 +37,6 @@ public enum IntroStep
     return mAnchorId;
   }
 
-  @StringRes
-  public int getTextId()
-  {
-    return mTextId;
-  }
-
   /**
    * The text of the balloon: the right panel tells about the zoom slide too, as on iOS.
    */
