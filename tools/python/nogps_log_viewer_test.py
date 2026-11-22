@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Tests of nogps_log_viewer.py: the page loads nothing from the network and tiles come only from --tiles."""
 
+import io
 import json
 import os
 import re
@@ -9,6 +10,7 @@ import threading
 import unittest
 import urllib.error
 import urllib.request
+import zipfile
 from http.server import ThreadingHTTPServer
 
 import nogps_log_viewer as v
@@ -119,6 +121,21 @@ class AddTest(unittest.TestCase):
     def test_a_file_of_the_earlier_versions_is_refused(self):
         with self.assertRaises(v.nogps_trip_log.LogFormatError):
             v.Viewer([], None).add('app.log', b'Datetime: 2026-10-08 18:00:00.000\n', True)
+
+    def test_a_zip_is_read_without_its_file_of_an_earlier_version(self):
+        """The zip of a phone that still keeps a file of an earlier version next to the files of the tree."""
+        data = io.BytesIO()
+        with zipfile.ZipFile(data, 'w') as z:
+            z.writestr('logs/log-07-10-26-Pixel_7-a3f9.log', 'Datetime: 2026-10-07 18:00:00.000\n')
+            z.writestr('logs/Pixel_7-a3f9/2026-10-08/180000.log', self.log('Pixel_7-a3f9')
+                       + b'10-08 18:00:01.000 (main) I/OMcore: nogps/engine.cpp:1 Start(): Start\n')
+        viewer = v.Viewer([], None)
+        viewer.add('logs.zip', data.getvalue(), True)
+        self.assertEqual(len(viewer.sources), 1)
+        self.assertEqual([f['phone'] for f in viewer.analysis.files], ['Pixel_7-a3f9'])
+        self.assertEqual([n for n in viewer.analysis.notes if 'Skipped' in n],
+                         ['Skipped: logs.zip/logs/log-07-10-26-Pixel_7-a3f9.log: not a log of LOGFMT 2, its first '
+                          'line is not a LOGFMT line (logs of the earlier versions are not read)'])
 
 
 if __name__ == '__main__':

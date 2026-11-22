@@ -11,8 +11,9 @@ Logs:
   Both platforms write a file per launch of the app and per drive, logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log: iOS in
   Documents/, Android in Android/data/<app id>/files/. "Report a bug" sends logs.zip of that folder, "Send logs" of
   the days of the flags: unpacked into one folder, the zips of any phones and days make one tree. The first line of
-  a file, LOGFMT, tells its phone; the logs of each platform and phone form a group of their own. A file without
-  that line or of a format not known is refused, the names of the earlier versions are not read.
+  a file, LOGFMT, tells its phone; the logs of each platform and phone form a group of their own. A file of a format
+  not known is skipped with a note and refused when no file is left; the names of the earlier versions are not
+  read.
   iOS times are UTC. Android times are the local time of the phone; the year is taken from the header of a file.
 
 A trip is the car driving with stops shorter than STAND_SPLIT_S. The lines of a phone that stands are kept as
@@ -919,9 +920,18 @@ class Analysis:
         entries = {}
         self.notes = []
         self.files = []
+        # A file of no known format is skipped as load_paths() skips it, and refused when no file is left: a zip can
+        # hold a file of an earlier version next to the ones of the tree.
+        refused = []
+        read = 0
         for name, data in sources:
             for log_name, log_data in unpack(name, data):
-                phone = nogps_trip_log.header_of(log_name, log_data)['phone']
+                try:
+                    phone = nogps_trip_log.header_of(log_name, log_data)['phone']
+                except nogps_trip_log.LogFormatError as e:
+                    refused.append(e)
+                    continue
+                read += 1
                 platform, lines, unknown = parse_file(log_name, log_data, year)
                 if not platform:
                     self.notes.append('%s: has no lines of the app' % log_name)
@@ -931,6 +941,9 @@ class Analysis:
                     self.notes.append('%s: %d lines of a run without "Local time:", their time is unknown'
                                       % (log_name, unknown))
                 entries.setdefault((platform, phone), []).extend(lines)
+        if refused and not read:
+            raise refused[0]
+        self.notes += ['Skipped: %s' % e for e in refused]
         self.groups = [Group(platform, phone, lines) for (platform, phone), lines in sorted(entries.items())]
         spans = sorted(((g, first, after, driven) for g in self.groups for first, after, driven in split(g)),
                        key=lambda s: s[0].rows[s[1]]['t'])

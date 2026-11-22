@@ -71,10 +71,21 @@ class Viewer:
         replaces the one of the same name, phone, start and trip: the page knows only the name of a file, and trips of
         two phones or two days have files of the same name."""
         with self.lock:
-            # A file that can't be read is not kept.
             def identity(source):
-                return {tuple(nogps_trip_log.header_of(n, d)[k] for k in ('phone', 'ms', 'trip'))
-                        for n, d in nogps_log.unpack(*source)}
+                """The (phone, start, trip) of the files of the source that can be read. A file of an earlier version
+                is left out, as nogps_log.load_paths() leaves it out; a source with no file to read is not kept."""
+                result = set()
+                refused = []
+                for n, d in nogps_log.unpack(*source):
+                    try:
+                        header = nogps_trip_log.header_of(n, d)
+                    except nogps_trip_log.LogFormatError as e:
+                        refused.append(e)
+                        continue
+                    result.add(tuple(header[k] for k in ('phone', 'ms', 'trip')))
+                if refused and not result:
+                    raise refused[0]
+                return result
 
             new = (name, data)
             same = identity(new)

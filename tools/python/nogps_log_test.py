@@ -466,6 +466,16 @@ class InputTest(unittest.TestCase):
             self.assertEqual([(g.platform, g.phone, len(g.rows)) for g in analysis.groups],
                              [('android', 'Pixel_7-a3f9', 30), ('android', 'SM_S918B-0b1c', 40)])
 
+    def test_analysis_skips_an_old_file_next_to_new_ones(self):
+        """A zip of a phone that still keeps a file of an earlier version: the rest of it is read, as in load_paths."""
+        data = io.BytesIO()
+        with zipfile.ZipFile(data, 'w') as z:
+            z.writestr('logs/log-07-10-26-Pixel_7-a3f9.log', '\n'.join(android_drive(seconds=3)))
+            z.writestr('logs/Pixel_7-a3f9/2026-10-08/180000.log', '\n'.join(with_logfmt(android_drive(seconds=3))))
+        analysis = nogps_log.Analysis([('logs.zip', data.getvalue())])
+        self.assertEqual([f['name'] for f in analysis.files], ['logs.zip/logs/Pixel_7-a3f9/2026-10-08/180000.log'])
+        self.assertEqual([n.split(':')[0] for n in analysis.notes], ['Skipped'])
+
     def test_load_paths_refuses_an_old_file(self):
         with tempfile.TemporaryDirectory() as folder:
             write_tree(folder, {'log-08-10-26-Pixel_7-a3f9.log': android_drive(seconds=3)})
