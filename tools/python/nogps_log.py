@@ -26,6 +26,7 @@ import io
 import math
 import os
 import re
+import sys
 import tempfile
 import zipfile
 from datetime import datetime, timedelta
@@ -227,14 +228,23 @@ def unpack(name, data):
 
 
 def load_paths(paths):
-    """(name, bytes) of the logs in files, folders and zips. LogFormatError for a file that is not a log of a known
-    format."""
+    """(name, bytes) of the logs in files, folders and zips. A file that is not a log of a known format (one left by
+    an earlier version) is skipped with a note on stderr; LogFormatError when none can be read."""
     result = []
+    errors = []
     for path in nogps_trip_log.log_files(paths, LOG_NAME):
         with open(path, 'rb') as f:
             for name, data in unpack(path, f.read()):
-                nogps_trip_log.header_of(name, data)
+                try:
+                    nogps_trip_log.header_of(name, data)
+                except nogps_trip_log.LogFormatError as e:
+                    errors.append(e)
+                    continue
                 result.append((name, data))
+    if errors and not result:
+        raise errors[0]
+    for e in errors:
+        print(f'Skipped: {e}', file=sys.stderr)
     return result
 
 

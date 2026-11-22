@@ -102,9 +102,9 @@ if __name__ == '__main__':
 
 class AddTest(unittest.TestCase):
     @staticmethod
-    def log(phone):
-        return ('LOGFMT 2 ms=1 phone=%s trip=180000 app=a build=1 commit=c om=o\nDatetime: 2026-10-08 18:00:00.000\n'
-                % phone).encode()
+    def log(phone, ms=1):
+        return ('LOGFMT 2 ms=%d phone=%s trip=180000 app=a build=1 commit=c om=o\nDatetime: 2026-10-08 18:00:00.000\n'
+                % (ms, phone)).encode()
 
     def test_files_of_the_same_name_of_two_phones_do_not_replace_each_other(self):
         viewer = v.Viewer([], None)
@@ -112,6 +112,12 @@ class AddTest(unittest.TestCase):
         viewer.add('180000.log', self.log('SM_S918B-0b1c'), False)
         self.assertEqual(len(viewer.sources), 2)
         viewer.add('180000.log', self.log('Pixel_7-a3f9'), True)
+        self.assertEqual(len(viewer.sources), 2)
+
+    def test_files_of_the_same_name_of_two_days_do_not_replace_each_other(self):
+        viewer = v.Viewer([], None)
+        viewer.add('180000.log', self.log('Pixel_7-a3f9', 1), False)
+        viewer.add('180000.log', self.log('Pixel_7-a3f9', 86400000), False)
         self.assertEqual(len(viewer.sources), 2)
 
     def test_a_file_of_the_earlier_versions_is_refused(self):

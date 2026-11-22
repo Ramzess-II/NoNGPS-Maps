@@ -97,11 +97,29 @@ def read_header(path):
         return header_of(path, f.read(4096))
 
 
+def readable_files(paths):
+    """log_files() without the files of no known format, each skipped with a note on stderr; LogFormatError when none
+    can be read."""
+    result = []
+    errors = []
+    for path in log_files(paths):
+        try:
+            read_header(path)
+            result.append(path)
+        except LogFormatError as e:
+            errors.append(e)
+    if errors and not result:
+        raise errors[0]
+    for e in errors:
+        print(f'Skipped: {e}', file=sys.stderr)
+    return result
+
+
 def files_by_phone(paths):
     """{phone: [file, …]} of the log files of the paths, a folder with its subfolders; each file's own header tells
-    its phone. LogFormatError for a file that can't be placed."""
+    its phone. A file that can't be placed is skipped as in readable_files()."""
     result = {}
-    for path in log_files(paths):
+    for path in readable_files(paths):
         result.setdefault(read_header(path)['phone'], []).append(path)
     return result
 
@@ -224,7 +242,11 @@ def main():
     parser.add_argument('--gpx', help='also write the shown and the platform positions as GPX tracks')
     args = parser.parse_args()
 
-    rows = read_rows(log_files(args.logs), args.year)
+    try:
+        files = readable_files(args.logs)
+    except LogFormatError as e:
+        parser.error(str(e))
+    rows = read_rows(files, args.year)
     columns = FIRST_COLUMNS + list(dict.fromkeys(k for row in rows for k in row if k not in FIRST_COLUMNS))
     out = csv.DictWriter(sys.stdout, columns)
     out.writeheader()

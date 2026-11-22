@@ -12,7 +12,7 @@ Each call reads the logs again: a day of Android logs takes a few seconds.
 1. **Trips.** `python3 tools/python/nogps_log.py trips <logs>` lists them, with ids. `<logs>` is the `logs` folder
    (the zips of any phones and days unpacked into one folder), a `logs.zip` or log files; the `LOGFMT` first line of
    a file tells its phone. A file without it, of another format, or named as the earlier versions (`log-dd-MM-yy-*.log`,
-   `app*.log`, `log.txt`) is refused: those logs are not read. `--all` also lists the stationary ones. If the user named a time, take the trip that holds it. Android times are the local time of the
+   `app*.log`, `log.txt`) is skipped with a note (refused when no file is left): those logs are not read. `--all` also lists the stationary ones. If the user named a time, take the trip that holds it. Android times are the local time of the
    phone; iOS times are UTC.
 2. **Overview.** `nogps_log.py trip <logs> --trip N` prints the stats, what the navigation had learned about the car
    when the trip started (`calibration:`, the last `CALIBRATION` line before the car moves), the error from GPS per source, the

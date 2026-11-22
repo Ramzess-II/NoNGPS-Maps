@@ -463,6 +463,13 @@ class InputTest(unittest.TestCase):
             with self.assertRaises(nogps_trip_log.LogFormatError):
                 nogps_log.load_paths([folder])
 
+    def test_load_paths_skips_an_old_file_next_to_new_ones(self):
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {'log-08-10-26-Pixel_7-a3f9.log': android_drive(seconds=3),
+                                'Pixel_7-a3f9/2026-10-08/180000.log': with_logfmt(android_drive(seconds=3))})
+            self.assertEqual(len(nogps_log.load_paths([folder])), 1)
+            self.assertEqual(list(nogps_trip_log.files_by_phone([folder])), ['Pixel_7-a3f9'])
+
     def test_not_a_log(self):
         with self.assertRaises(nogps_trip_log.LogFormatError):
             nogps_log.Analysis([('notes.txt', b'hello')])
