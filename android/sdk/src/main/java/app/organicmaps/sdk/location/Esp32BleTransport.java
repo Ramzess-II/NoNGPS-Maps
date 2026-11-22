@@ -687,6 +687,17 @@ class Esp32BleTransport
   }
 
   /**
+   * The user has removed the pairing the lost-pairing hint asks about: the box is searched again at once. The hint's
+   * own flag decides, not the state: while a search connection of the box is subscribed the state is Connected
+   * (#474), and the broadcast of the removed pairing may come before the disconnection.
+   */
+  @VisibleForTesting
+  static boolean removedLostBond(boolean bondLost, int bondState, boolean lostBox)
+  {
+    return bondLost && bondState == BluetoothDevice.BOND_NONE && lostBox;
+  }
+
+  /**
    * The state while the box is searched: the lost-pairing hint stays until the box is heard.
    */
   private int searchState()
@@ -869,8 +880,7 @@ class Esp32BleTransport
   {
     final BluetoothGatt gatt = mGatt;
     // The user has removed the pairing of the box in the settings, as the hint about a lost bond asks.
-    if (mState == STATE_BOND_LOST && bondState == BluetoothDevice.BOND_NONE && device != null
-        && device.equals(mBondLostBox))
+    if (removedLostBond(mBondLost, bondState, device != null && device.equals(mBondLostBox)))
     {
       // A search connection may be open: it is dropped, the hint stays until retry() starts the search.
       closeGatt();

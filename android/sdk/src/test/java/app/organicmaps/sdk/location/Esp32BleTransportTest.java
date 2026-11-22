@@ -138,6 +138,17 @@ public class Esp32BleTransportTest
     assertFalse(Esp32BleTransport.isSimulator(false, false));
   }
 
+  // The hint is shown and a search connection of the box is subscribed, so the state is Connected: the pairing
+  // removed in the settings still starts the search at once.
+  @Test
+  public void theRemovedPairingOfTheLostBox_searchesAtOnce()
+  {
+    assertTrue(Esp32BleTransport.removedLostBond(true, BluetoothDevice.BOND_NONE, true));
+    assertFalse(Esp32BleTransport.removedLostBond(false, BluetoothDevice.BOND_NONE, true));
+    assertFalse(Esp32BleTransport.removedLostBond(true, BluetoothDevice.BOND_NONE, false));
+    assertFalse(Esp32BleTransport.removedLostBond(true, BluetoothDevice.BOND_BONDED, true));
+  }
+
   @Test
   public void foundBox_isTakenAsBefore()
   {
