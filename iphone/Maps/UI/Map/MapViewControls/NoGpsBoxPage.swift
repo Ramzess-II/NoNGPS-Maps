@@ -162,7 +162,11 @@ final class NoGpsBoxPage: MWMTableViewController {
 
   /// The values of a group, in the order of NoGpsBoxValue.
   private func valueRows(_ first: NoGpsBoxValue, _ last: NoGpsBoxValue) -> [Row] {
-    lastValues.filter { (first.rawValue ... last.rawValue).contains($0.kind.rawValue) }.map { .value($0.kind) }
+    // Nothing from the box yet: every row of the range is shown with a dash, so the page is not an empty one.
+    guard !lastValues.isEmpty else {
+      return (first.rawValue ... last.rawValue).compactMap(NoGpsBoxValue.init(rawValue:)).map { .value($0) }
+    }
+    return lastValues.filter { (first.rawValue ... last.rawValue).contains($0.kind.rawValue) }.map { .value($0.kind) }
   }
 
   // MARK: - UITableViewDataSource
@@ -566,9 +570,10 @@ final class NoGpsBoxPage: MWMTableViewController {
 #endif
   }
 
-  /// A box that has taken the firmware restarts by itself.
+  /// A box that has taken the whole firmware checks it and restarts by itself: it ignores OTA_ABORT after that, so
+  /// the update can't be stopped any more.
   private static func canCancelFirmware(_ status: NoGpsStatus) -> Bool {
-    isFirmwareUpdating(status) && status.firmwareUpdate != .restarting
+    isFirmwareUpdating(status) && ![.verifying, .restarting].contains(status.firmwareUpdate)
   }
 
   /// The states follow a label elsewhere ("Box: name ·"), here they start the line.

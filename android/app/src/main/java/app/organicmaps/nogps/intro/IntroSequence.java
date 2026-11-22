@@ -10,9 +10,10 @@ import androidx.annotation.Nullable;
 public final class IntroSequence
 {
   /**
-   * The text of a balloon appears at this speed, characters per second: slow enough to draw the eye to the panel.
+   * The text of a balloon appears at this speed, characters per second: about as fast as it is read, so the eye goes
+   * to the panel without waiting for the text. The longest balloon takes a little over three seconds.
    */
-  public static final float TYPE_CHARS_PER_S = 3;
+  public static final float TYPE_CHARS_PER_S = 20;
 
   private static final IntroStep[] STEPS = IntroStep.values();
 

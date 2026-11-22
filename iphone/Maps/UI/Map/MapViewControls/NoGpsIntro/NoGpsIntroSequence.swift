@@ -26,8 +26,10 @@ enum NoGpsIntroStep: CaseIterable {
 /// no view, so a test drives it like the real app does. The same machine runs on Android, see nogps.intro.
 /// IntroSequence.
 final class NoGpsIntroSequence {
-  /// The text of a balloon appears at this speed, characters per second: slow enough to draw the eye to the panel.
-  static let typeCharsPerS = 3.0
+  /// The text of a balloon appears at this speed, characters per second: about as fast as it is read, so the eye goes
+  /// to the panel without waiting for the text. The longest balloon, the right panel with the slide line, takes about
+  /// four seconds.
+  static let typeCharsPerS = 20.0
 
   private static let steps = NoGpsIntroStep.allCases
 

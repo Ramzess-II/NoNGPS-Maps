@@ -118,7 +118,7 @@ public class IntroOverlay extends View
   }
 
   /**
-   * The modal was closed by its checkbox, or dismissed: the balloons follow either way.
+   * The modal was closed by its accent button, or dismissed: the balloons follow either way.
    */
   public void onModalClosed()
   {
@@ -164,7 +164,7 @@ public class IntroOverlay extends View
       return;
     }
     mStepStartMs = SystemClock.uptimeMillis();
-    mText = getContext().getString(step.getTextId());
+    mText = step.getText(getContext());
     mFullLayout = null;
     mShownLayout = null;
     mShownChars = -1;

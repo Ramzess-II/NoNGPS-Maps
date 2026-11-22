@@ -39,7 +39,8 @@ import nogps_log  # noqa: E402
 
 SLICES = nogps_log.SLICES
 SLICE_MS = 1000 // SLICES
-SENSOR_LINE = re.compile(r'\): (ACCB_BEFORE|ACCB|GYRO) (.+)$')
+# Since LOGFMT 2 a data line has "ms=<unix ms>" after its tag, see libs/map/nogps/log_line.hpp.
+SENSOR_LINE = re.compile(r'\): (ACCB_BEFORE|ACCB|GYRO) (?:ms=\d+ )?(.+)$')
 # Slices closer than this belong to one stretch of driving.
 MAX_GAP_MS = 2 * SLICE_MS + 50
 TURN_MIN_RATE = math.radians(5)

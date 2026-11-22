@@ -360,6 +360,8 @@ class Group:
     def classify(self, t, level, tag, body):
         source = SOURCE.match(body)
         file, func, text = (source.group(1), source.group(3), source.group(4)) if source else ('', '', body)
+        # A line of LOGFMT 2 has a head before what the patterns below read, see nogps_replay.sentence.
+        text = nogps_replay.sentence(text)
         if text.startswith('TRIP '):
             row = nogps_trip_log.parse_trip(text[len('TRIP '):])
             nogps_trip_log.add_error(row)

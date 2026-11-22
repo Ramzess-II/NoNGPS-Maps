@@ -65,6 +65,13 @@
   <!-- Backgrounds -->
   <color name="bg_window">#FFEEEEEE</color>
   <color name="bg_primary">#006C35</color>
+  <!-- The splash: the map background and its text, as the launch screen on iOS. -->
+  <color name="nogps_splash_bg">#FFE3E1D2</color>
+  <color name="nogps_splash_text">@color/black_primary</color>
+  <!-- The bars around the splash. Dark icons over the light splash need API 23 for the status bar and API 27 for the
+       navigation bar; below that the system draws white icons, so the bar stays black (values-v23, values-v27). -->
+  <color name="nogps_splash_status_bar">#FF000000</color>
+  <color name="nogps_splash_navigation_bar">#FF000000</color>
   <color name="bg_cards">@android:color/white</color>
   <color name="bg_panel">@color/bg_window</color>
   <color name="notes_fade_start">#00FFFFFF</color>

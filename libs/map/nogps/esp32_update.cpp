@@ -7,6 +7,7 @@
 #include "base/string_utils.hpp"
 
 #include <algorithm>
+#include <string_view>
 
 #include <boost/hash2/sha2.hpp>
 
@@ -27,6 +28,12 @@ std::string Sha256Hex(std::string const & data)
   }
   return hex;
 }
+
+// A build may add a suffix to the version of the box ("0.3.3-dirty"): the numbers tell the firmware.
+std::string_view VersionNumbers(std::string_view version)
+{
+  return version.substr(0, version.find_first_not_of("0123456789."));
+}
 }  // namespace
 
 Esp32Update::Esp32Update(Link & link, Scheduler & scheduler, Clock const & clock)
@@ -35,11 +42,12 @@ Esp32Update::Esp32Update(Link & link, Scheduler & scheduler, Clock const & clock
   , m_checkTimer(scheduler)
 {}
 
-void Esp32Update::Start(std::string image, std::string const & version)
+void Esp32Update::Start(std::string image, std::string const & version, std::string const & boxVersion)
 {
   Reset();
   m_image = std::move(image);
   m_version = version;
+  m_previousVersion = boxVersion;
   m_size = m_image.size();
   if (m_image.empty())
   {
@@ -55,9 +63,9 @@ void Esp32Update::Start(std::string image, std::string const & version)
 
 void Esp32Update::Cancel()
 {
-  // The box restarts by itself after it has checked the firmware, it can't be stopped then: the update ends when it
-  // comes back with the new firmware.
-  if (!IsActive() || m_state == State::Restarting)
+  // The box ignores OTA_ABORT after OTA_END and restarts by itself once it has checked the firmware: the update
+  // ends when it comes back with the new firmware.
+  if (!IsActive() || m_state == State::Verifying || m_state == State::Restarting)
     return;
   m_link.SendUpdateCommand("OTA_ABORT");
   Fail("CANCELED");
@@ -70,11 +78,13 @@ void Esp32Update::Reset()
   m_error.clear();
   m_image = {};
   m_version.clear();
+  m_previousVersion.clear();
   m_commandId = 0;
   m_size = 0;
   m_received = 0;
   m_sent = 0;
   m_linkLost = false;
+  m_endSent = false;
 }
 
 bool Esp32Update::OnReply(esp32::Reply const & reply)
@@ -154,6 +164,7 @@ void Esp32Update::OnProgress(esp32::UpdateProgress const & progress)
   if (m_received == m_size)
   {
     SetState(State::Verifying);
+    m_endSent = true;
     m_commandId = m_link.SendUpdateCommand("OTA_END");
     return;
   }
@@ -165,7 +176,8 @@ void Esp32Update::OnLinkLost()
   // The box restarts a second after it has taken the firmware: its reply may be lost with the connection.
   if (m_state == State::Verifying)
     SetState(State::Restarting);
-  if (m_state == State::Restarting)
+  // A box that has taken the whole firmware restarts even when the update is given up.
+  if (m_state == State::Restarting || (m_state == State::Failed && IsLateTimeout()))
     m_linkLost = true;
   else if (IsActive())
     Fail("LINK");
@@ -173,17 +185,20 @@ void Esp32Update::OnLinkLost()
 
 void Esp32Update::OnBoxFirmware(std::string const & version)
 {
-  if (m_state != State::Restarting || !m_linkLost)
+  // A slow update that was given up as failed may still have worked.
+  if (!m_linkLost || (m_state != State::Restarting && !(m_state == State::Failed && IsLateTimeout())))
     return;
-  // The box has come back with its previous firmware: the new one didn't start or was not accepted.
-  if (version != m_version)
+  if (!IsNewFirmware(version))
   {
-    Fail("ROLLBACK");
+    // The box has come back with its previous firmware: the new one didn't start or was not accepted.
+    if (m_state == State::Restarting)
+      Fail("ROLLBACK");
     return;
   }
   LOG(LINFO, ("The box works with the firmware", version));
   m_checkTimer.Stop();
   m_image = {};
+  m_error.clear();
   SetState(State::Done);
 }
 
@@ -218,6 +233,22 @@ void Esp32Update::SendPieces()
   }
 }
 
+// Only a timeout after OTA_END leaves it open that the box took the firmware: an error of the box says it didn't.
+bool Esp32Update::IsLateTimeout() const
+{
+  return m_endSent && (m_error == "NO_REPLY" || m_error == "NO_RESTART");
+}
+
+// The box has restarted with the new firmware and not with the one it had.
+bool Esp32Update::IsNewFirmware(std::string const & version) const
+{
+  if (VersionNumbers(version) != VersionNumbers(m_version))
+    return false;
+  // The numbers are the same, so only a build suffix can differ ("0.3.3-dirty" for the firmware 0.3.3). A box that
+  // tells exactly what it told before an update to another text has the firmware it had.
+  return version == m_version || version != m_previousVersion;
+}
+
 void Esp32Update::Fail(std::string const & error)
 {
   LOG(LWARNING, ("The firmware update has failed:", error, "state =", m_state, "received =", m_received, "of", m_size));
@@ -248,7 +279,11 @@ void Esp32Update::Check()
   {
   case State::Starting:
     if (inState >= kReplyTimeoutMs)
+    {
+      // The box may have started: it waits for pieces with NGD stopped and answers BUSY to a new try.
+      m_link.SendUpdateCommand("OTA_ABORT");
       Fail("NO_REPLY");
+    }
     break;
   case State::Sending:
     if (now - m_receivedGrewMs >= kStallMs)

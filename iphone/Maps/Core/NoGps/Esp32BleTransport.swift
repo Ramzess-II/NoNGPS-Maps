@@ -302,8 +302,17 @@ final class Esp32BleTransport: NSObject {
     advertisedFlags(advertisementData) & Constants.pairingOpenFlag != 0
   }
 
+  /// A box always advertises its flags (BLE-13). A debug build also takes a box that advertises no data at all as
+  /// one that accepts a new phone: the box simulator can't advertise it on macOS, where CoreBluetooth puts the name
+  /// and the service UUIDs in the advertisement and nothing else. See tools/python/nogps_box_sim.py.
   private func advertisedFlags(_ advertisementData: [String: Any]) -> UInt8 {
-    guard let data = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data else { return 0 }
+    guard let data = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data else {
+#if DEBUG
+      return Constants.pairingOpenFlag
+#else
+      return 0
+#endif
+    }
     let bytes = [UInt8](data)
     return bytes.count >= 4 && Array(bytes[0 ..< 2]) == Constants.manufacturerId ? bytes[3] : 0
   }

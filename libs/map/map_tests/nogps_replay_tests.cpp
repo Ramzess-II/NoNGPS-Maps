@@ -166,7 +166,7 @@ UNIT_TEST(NoGps_Replay_DrivesJolt)
     input += "B " + std::to_string(ms) + " 200 0 36 17 0 0 9810 " + (ms == 36003000 ? "12000" : "500") + "\n";
   input += "S 36005000 0\n";
   auto const log = Drive(input);
-  TEST(log.find("POTHOLE 31 12.0 53.904") != std::string::npos, (log));
+  TEST(log.find(" 31 12.0 53.904") != std::string::npos, (log));
 }
 
 UNIT_TEST(NoGps_Replay_BoxOfTrip)

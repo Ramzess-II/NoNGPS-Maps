@@ -149,9 +149,11 @@ public:
     return it == m_maxspeeds.end() ? routing::Maxspeed() : it->second;
   }
   std::string GetDistanceLeft() const override { return {}; }
+  std::string GetMapsVersion() const override { return m_mapsVersion; }
   void ShowCarHeading(double bearingDeg) override { m_carHeading = bearingDeg; }
 
   bool m_navigating = false;
+  std::string m_mapsVersion = "260714";
   int m_rebuilds = 0;
   int m_routeLefts = 0;
   // How far aside of the car the followed route is.
