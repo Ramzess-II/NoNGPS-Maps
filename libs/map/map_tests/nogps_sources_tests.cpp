@@ -1192,7 +1192,7 @@ UNIT_TEST(NoGps_Esp32Update_LateNewFirmwareAfterTimeoutIsDone)
     TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
   }
   {
-    // The previous firmware stays a failure, and a failure before OTA_END is not turned into success.
+    // The previous firmware stays a failure.
     UpdatedBox box;
     box.SendAllAndRestart();
     box.m_clock.Advance(Esp32Update::kRestartTimeoutMs + Esp32Update::kCheckIntervalMs);
@@ -1200,12 +1200,24 @@ UNIT_TEST(NoGps_Esp32Update_LateNewFirmwareAfterTimeoutIsDone)
     TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Failed, ());
     TEST_EQUAL(box.Update().GetError(), "NO_RESTART", ());
 
+    // A timeout before OTA_END is not turned into success: the box answered nothing to OTA_BEGIN and has the new
+    // version only because another phone or a cable gave it the firmware.
     UpdatedBox early;
     early.StartUpdate();
-    early.Refuse("MOVING");
+    early.m_clock.Advance(Esp32Update::kReplyTimeoutMs + Esp32Update::kCheckIntervalMs);
+    TEST_EQUAL(early.Update().GetError(), "NO_REPLY", ());
     early.m_source.OnBleState(BleState::Searching);
     early.Connect("0.3.3");
-    TEST_EQUAL(early.Update().GetError(), "MOVING", ());
+    TEST_EQUAL(early.Update().GetState(), Esp32Update::State::Failed, ());
+    TEST_EQUAL(early.Update().GetError(), "NO_REPLY", ());
+
+    // A refusal of the box is not turned into success either.
+    UpdatedBox refused;
+    refused.StartUpdate();
+    refused.Refuse("MOVING");
+    refused.m_source.OnBleState(BleState::Searching);
+    refused.Connect("0.3.3");
+    TEST_EQUAL(refused.Update().GetError(), "MOVING", ());
 
     // An error of the box after OTA_END stays a failure even when the same version is reported later.
     UpdatedBox rejected;
