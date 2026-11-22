@@ -57,6 +57,9 @@ NSString * const kZipLogsFileName = @"logs.zip";
 NSString * const kPhoneIdKey = @"LogsPhoneId";
 // A day of driving, 20 hours and more at about 6.5 MB an hour: the log of a drive is analysed afterwards.
 unsigned long long const kMaxLogsTotalSize = 150'000'000;
+// A file that reaches it ends, the lines after go to a new file: a long session is not one huge file. About 4.5 hours
+// at 6.5 MB an hour.
+unsigned long long const kMaxLogFileSize = 30'000'000;
 // Opening a file walks the whole log tree to keep it under the limit, so a failure is not retried at once.
 NSTimeInterval const kOpenRetrySeconds = 5;
 
@@ -335,8 +338,14 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
     return;
 
   NSFileHandle * fileHandle = [self logger].fileHandle;
-  [fileHandle seekToEndOfFile];
+  unsigned long long const size = [fileHandle seekToEndOfFile];
   [fileHandle writeData:[NSData dataWithBytes:logString.c_str() length:logString.length()]];
+  if (size + logString.length() >= kMaxLogFileSize)
+  {
+    // The next line opens a new file.
+    [self closeFile];
+    [self logger].started = nil;
+  }
 }
 
 /// Opens the file to write to: a new one after the launch and after startTrip, the same one in the folder of the new
