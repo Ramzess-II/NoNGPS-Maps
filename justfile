@@ -85,3 +85,9 @@ test filter="NoGps_.*" dir="build/debug":
 [no-cd]
 logs *args:
     {{ if os_family() == "windows" { "python" } else { "python3" } }} {{ quote(justfile_directory() / "tools/python/nogps_log_viewer.py") }} {{args}}
+
+# Open the box simulator and its panel in the browser: a standing sensor box over this computer's Bluetooth
+[unix]
+[no-cd]
+boxsim *args:
+    python3 {{ quote(justfile_directory() / "tools/python/nogps_box_sim.py") }} {{args}}
