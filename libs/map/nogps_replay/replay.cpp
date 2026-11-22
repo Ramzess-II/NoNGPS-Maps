@@ -92,8 +92,8 @@ private:
 };
 
 // What the navigation has learned about the current car is taken from the settings of the application, nothing is
-// written back to them. A trip driven again as the first one knows no speed errors yet: the lag of the speed and the
-// accelerometer, learned apart from them, are still taken.
+// written back to them. A trip driven again as the first one knows no speed errors yet: the lag of the speed, the
+// accelerometer and the unit of the car speed, learned apart from them, are still taken.
 class ReplayStorage : public Storage
 {
 public:
@@ -101,7 +101,7 @@ public:
   {
     SettingsStorage app;
     CarStorage const settings(app);
-    for (auto const key : {kSpeedScale, kSpeedTable, kRoughSpeedTable, kSpeedLag, kBoxAccel})
+    for (auto const key : {kSpeedScale, kSpeedTable, kRoughSpeedTable, kSpeedUnit, kSpeedLag, kBoxAccel})
     {
       if (firstTrip && (key == kSpeedScale || key == kSpeedTable || key == kRoughSpeedTable))
         continue;
