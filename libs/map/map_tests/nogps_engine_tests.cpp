@@ -2474,6 +2474,36 @@ UNIT_TEST(NoGps_Engine_MphCarSpeedIsConverted)
   TEST_EQUAL(TripField(after, "speed"), "100", ());
 }
 
+UNIT_TEST(NoGps_Engine_SpeedUnitChangeClearsWhatTheOtherUnitLearned)
+{
+  // The roads have measured the error of the raw speed of this car, as far as the clamp of the table allows, and the
+  // user has shifted the mark: both were learned with the car taken for a km/h one.
+  SpeedTable rough(false /* learnsOffset */);
+  rough.OnDistance(62, 400, 500);
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads, [&rough](TestStorage & storage)
+  {
+    storage.Set(Storage::kRoughSpeedTable, rough.Serialize());
+    storage.Set(Storage::kSpeedScale, 1.15);
+  });
+  MarkCar(env, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_roughSpeedTableRanges, 1, ());
+
+  // The box tells 62 where GPS drives 100 km/h: the unit of the car turns out to be mph.
+  int constexpr kRawKmh = 62;
+  double const realMps = kRawKmh * SpeedUnit::kMph / 3.6;
+  for (int i = 0; i < 80; ++i)
+  {
+    env.Drive(1000, kRawKmh, 0);
+    auto const & position = env.Last().m_position;
+    env.m_engine.OnFix(GpsAt(env.m_clock, East(position), North(position), 90.0, realMps));
+  }
+  TEST_EQUAL(TripField(env, "speed"), "100", ());
+  // Nothing learned in the other unit is kept.
+  TEST_EQUAL(env.m_engine.GetStatus().m_roughSpeedTableRanges, 0, ());
+  TEST_EQUAL(env.m_storage.Get<double>(Storage::kSpeedScale, 0), 1.0, ());
+}
+
 UNIT_TEST(NoGps_SpeedHint_ShownAtSpeedGpsHasNotMeasured)
 {
   // GPS has measured 50-60 km/h.
