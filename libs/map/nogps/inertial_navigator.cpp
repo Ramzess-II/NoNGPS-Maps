@@ -1702,9 +1702,10 @@ void InertialNavigator::ApplyBend(double aheadM, bool gentle)
     LOG(LINFO, (tag, "ahead by", std::round(aheadM), "m, but the road is not followed that far"));
     return;
   }
+  // Told repeatedly: by a slow car, or because the place is far, which a fast car tells too.
   if (slow || far)
-    LOG(LINFO, (LogHead(m_clock, "RULE", "bend_moved_slow"), kind, tag, "moved along the road by", std::round(-aheadM),
-                "m, told repeatedly"));
+    LOG(LINFO, (LogHead(m_clock, "RULE", "bend_moved_repeated"), kind, tag, "moved along the road by",
+                std::round(-aheadM), "m, told repeatedly"));
   else
     LOG(LINFO,
         (LogHead(m_clock, "RULE", "bend_moved"), kind, tag, "moved along the road by", std::round(-aheadM), "m"));
