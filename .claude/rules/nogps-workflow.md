@@ -76,6 +76,22 @@ given (`<ws>/replay/maps` and `<ws>/replay/settings.ini`, or the paths in the co
 how the mark moves before and after with `nogps_replay_tool`, as in "Verification", instead of postponing it. Without
 them such a PR says "Not replayed".
 
+## Merge train
+
+`/nogps-merge [<PR numbers>] [--no-roll] [--rounds N] [--dry]` lands the open PRs of this repo one by one. It runs
+the issue roller first, unless `--no-roll` or PR numbers are given, then orders what is left (a PR others depend on
+first, then the ones no other PR touches, then the rest oldest first) and takes each one through: rebase on current
+master and force-push, review with Fable which posts its findings on the PR, fix with Opus which replies on the
+same PR, review again, and merge with a merge commit once a review comes back clean and CI is green. Up to
+`--rounds` rounds (default 3). The script is `.claude/workflows/nogps-merge.js`; it works in one worktree,
+`<ws>/worktrees/merge-train`, reused by every PR and removed at the end.
+
+A PR it can't land stays open and the train goes on to the next one: a rebase conflict that isn't plain, a failing
+check, findings still open after the last round. It never takes a PR with a commit of anyone but koloboid or
+Ramzess-II, one waiting for the other person's review, one from a fork, or one whose branch is checked out in the
+main checkout or a worktree -- a rebase would rewrite it under the session working there. Firmware PRs are not in
+the train: koloboid can't merge in `ELMandIMU`.
+
 ## Versions
 
 Nobody raises a version by hand. Each build takes them from git: `tools/unix/version.sh` gives the app version
