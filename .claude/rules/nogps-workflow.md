@@ -112,6 +112,11 @@ The day's number counts the commits of the branch that is built, so a branch bui
 than a later `master` build of the same day. Android then refuses to install the `master` build over it: uninstall
 first or use `adb install -r -d`.
 
+`NN` stops at 99: the Android `versionCode` keeps two digits for it, and a third one makes what the markets add to
+the code (`01_00_00_00_00` for Huawei, a tenfold for Wear OS) pass the int Gradle holds a versionCode in. Past the
+99th commit of a day every build repeats 99: Android `versionName` still counts them, the version line tells them
+apart only by the commit hash, and App Store Connect refuses a second upload of that day.
+
 ## Work you don't do now goes to an issue
 
 IMPORTANT: anything you notice that this session won't finish goes into a GitHub issue before the session ends or
