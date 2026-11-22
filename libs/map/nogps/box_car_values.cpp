@@ -26,6 +26,8 @@ BoxKeys constexpr kBoxKeys[] = {
     {Storage::kSpeedTable, "spd_table_lo", "spd_table_hi"},
     {Storage::kRoughSpeedTable, "spd_rough_lo", "spd_rough_hi"},
     {Storage::kSpeedFactor, "spd_factor", {}},
+    // The tables of the box are learned in this unit: a phone that took them without it would use the raw speed.
+    {Storage::kSpeedUnit, "spd_unit", {}},
     {Storage::kSpeedLag, "spd_lag", {}},
     {Storage::kSpeedScale, "spd_scale", {}},
     {CarStorage::kCarName, "car_name", {}},

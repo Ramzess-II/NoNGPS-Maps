@@ -3613,6 +3613,32 @@ UNIT_TEST(NoGps_BoxCarValues_PhonesOfCarShareItsValues)
   TEST_EQUAL(firstAgain.m_engine.GetCars()[0].m_name, "Ауді, моя", ());
 }
 
+UNIT_TEST(NoGps_BoxCarValues_UnitOfCarSpeedGoesWithTheTables)
+{
+  // The phone has learned the box of the car tells mph, and the tables with the speed converted from it.
+  SpeedUnit unit;
+  for (int i = 0; i < 60; ++i)
+    unit.OnSample(62, 100 / 3.6, 1, 0);
+  TEST_EQUAL(unit.Get(), SpeedUnit::kMph, ());
+  SpeedTable table;
+  table.OnDistance(100, 400, 400);
+  CarBox box;
+  Env first(true /* inertial */, nullptr, [&unit, &table](TestStorage & storage)
+  {
+    storage.Set(Storage::kSpeedUnit, unit.Serialize());
+    storage.Set(Storage::kSpeedTable, table.Serialize());
+  });
+  box.Connect(first);
+  TEST_EQUAL(box.m_values["spd_unit"], BoxCarValues::Encode(Storage::kSpeedUnit, unit.Serialize())[0].second, ());
+
+  // Another phone takes the unit with them: the tables are of no use with the raw speed.
+  Env second(true /* inertial */);
+  box.Connect(second);
+  TEST_EQUAL(second.m_engine.GetStatus().m_speedTableRanges, 1, ());
+  second.Drive(1000, 62, 0);
+  TEST_EQUAL(TripField(second, "speed"), "100", ());
+}
+
 UNIT_TEST(NoGps_BoxCarValues_ValueChangedByPhoneIsWritten)
 {
   CarBox box;

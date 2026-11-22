@@ -125,8 +125,8 @@ public:
   // A box heard when the user has this many cars is not added. Cars already over it are kept.
   static size_t constexpr kMaxCars = 4;
   // The values the box of the car keeps too, see BoxCarValues.
-  static std::array<std::string_view, 7> constexpr kValuesOnBox = {
-      kSpeedTable, kRoughSpeedTable, kSpeedFactor, kSpeedLag, kSpeedScale, kCarName, kCarPosition,
+  static std::array<std::string_view, 8> constexpr kValuesOnBox = {
+      kSpeedTable, kRoughSpeedTable, kSpeedFactor, kSpeedUnit, kSpeedLag, kSpeedScale, kCarName, kCarPosition,
   };
 
   explicit CarStorage(Storage & storage) : m_storage(storage) {}
