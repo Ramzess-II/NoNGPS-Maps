@@ -971,6 +971,7 @@ class Esp32BleTransport
     }
   };
 
+  @SuppressLint("MissingPermission")
   private void onBytes(@NonNull BluetoothGatt gatt, @NonNull byte[] value)
   {
     mMainHandler.post(() -> {
