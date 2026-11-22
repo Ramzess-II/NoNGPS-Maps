@@ -3,8 +3,8 @@
   <style name="MwmTheme.Splash">
     <item name="android:windowBackground">@color/nogps_splash_bg</item>
     <item name="android:textColorPrimary">@color/nogps_splash_text</item>
-    <item name="android:navigationBarColor">@color/nogps_splash_bg</item>
-    <item name="android:statusBarColor">@color/nogps_splash_bg</item>
+    <item name="android:navigationBarColor">@color/nogps_splash_navigation_bar</item>
+    <item name="android:statusBarColor">@color/nogps_splash_status_bar</item>
     <!-- Dark icons over the light splash, light ones over the dark one. -->
     <item name="android:windowLightStatusBar" tools:targetApi="m">@bool/nogps_splash_light_bars</item>
     <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">@bool/nogps_splash_light_bars</item>
