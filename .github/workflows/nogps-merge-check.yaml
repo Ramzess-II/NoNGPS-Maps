@@ -1,0 +1,21 @@
+name: Merge train checks
+
+on:
+  pull_request:
+    branches: [ master ]
+    paths:
+      - '.github/workflows/nogps-merge-check.yaml'
+      - '.claude/workflows/nogps-merge*'
+
+jobs:
+  nogps-merge-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Run the scheduler tests of the merge train
+        # Stubbed agents, no network and no packages: it only exercises the script's own scheduling.
+        run: node .claude/workflows/nogps-merge-test.mjs
