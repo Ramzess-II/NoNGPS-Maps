@@ -80,17 +80,21 @@ them such a PR says "Not replayed".
 
 `/nogps-merge [<PR numbers>] [--no-roll] [--rounds N] [--dry]` lands the open PRs of this repo one by one. It runs
 the issue roller first, unless `--no-roll` or PR numbers are given, then orders what is left (a PR others depend on
-first, then the ones no other PR touches, then the rest oldest first) and takes each one through: rebase on current
-master and force-push, review with Fable which posts its findings on the PR, fix with Opus which replies on the
-same PR, review again, and merge with a merge commit once a review comes back clean and CI is green. Up to
-`--rounds` rounds (default 3). The script is `.claude/workflows/nogps-merge.js`; it works in one worktree,
+first, then the ones no other PR touches, then the rest oldest first) and takes each one through: merge current
+master into the PR branch and push, review with Fable which posts its findings on the PR, fix with Opus which
+replies on the same PR, review again, and merge with a merge commit once a review comes back clean and CI is
+green. Up to `--rounds` rounds (default 3). The script is `.claude/workflows/nogps-merge.js`; it works in one worktree,
 `<ws>/worktrees/merge-train`, reused by every PR and removed at the end.
 
-A PR it can't land stays open and the train goes on to the next one: a rebase conflict that isn't plain, a failing
+IMPORTANT: nothing here rebases a PR branch or force-pushes it, with or without a lease. A branch of an open PR is
+only moved forward: master is merged into it, so every push is a fast-forward. This holds for the train, for a
+session and for an agent, and a push that would need a force is a reason to stop and tell the user.
+
+A PR it can't land stays open and the train goes on to the next one: a merge conflict that isn't plain, a failing
 check, findings still open after the last round. It never takes a PR with a commit of anyone but koloboid or
 Ramzess-II, one waiting for the other person's review, one from a fork, or one whose branch is checked out in the
-main checkout or a worktree -- a rebase would rewrite it under the session working there. Firmware PRs are not in
-the train: koloboid can't merge in `ELMandIMU`.
+main checkout or a worktree -- the train would push commits under the session working there. Firmware PRs are not
+in the train, which works in one repo (#504); both of us can merge them by hand.
 
 ## Versions
 
