@@ -84,10 +84,11 @@ each PR through: merge current master into the PR branch and push, review with F
 PR, fix with Opus which replies on the same PR, review again, and merge with a merge commit once a review comes back
 clean and CI is green. Up to `--rounds` rounds (default 3).
 
-Only the merge is serial. The PRs whose files no other queued PR touches are prepped in parallel, up to `--slots` of
-them at once (default 4), each in its own worktree `<ws>/worktrees/merge-<slot>`: they are pushed while the others
-are still being reviewed, so their CI runs overlap instead of one PR waiting out another's checks. The merge gate,
-in `<ws>/worktrees/merge-train`, then takes one prepped PR at a time:
+Only the merge is serial. The PRs whose files no other queued PR touches and that are in no dependency chain with
+one are prepped in parallel, up to `--slots` of them at once (default 4), each in its own worktree
+`<ws>/worktrees/merge-<slot>`: they are pushed while the others are still being reviewed, so their CI runs overlap
+instead of one PR waiting out another's checks. The merge gate, in `<ws>/worktrees/merge-train`, then takes one
+prepped PR at a time:
 
 - a PR whose files master gained since its prep goes back for one more update and review round, which spends one of
   the `--rounds`: the review it has was made without those files;
