@@ -545,7 +545,8 @@ final class Esp32BleTransport: NSObject {
     let inRow = silentConnections > 0 && sinceLastSilent <= Constants.silentConnectionsGap
     end.isSilent = true
     end.silentConnections = inRow ? silentConnections + 1 : 1
-    end.bondLost = end.silentConnections >= Constants.maxSilentConnections
+    // A gap of more than 3 min starts the count again, but only the data of the box take the hint away.
+    end.bondLost = bondLost || end.silentConnections >= Constants.maxSilentConnections
     if end.bondLost {
       end.retryDelay = Constants.maxRetryDelay
     }

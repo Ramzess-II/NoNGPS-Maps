@@ -104,6 +104,16 @@ public class Esp32BleTransportTest
     assertFalse(result.bondLost);
   }
 
+  // The box slept for more than 3 min and is still silent: the count starts again, the hint stays.
+  @Test
+  public void theHintStaysThroughAGapWithoutData()
+  {
+    final Esp32BleTransport.ConnectionEnd result = end(false, true, 4000, 6, 180_001, true, 60_000);
+    assertEquals(1, result.silentConnections);
+    assertTrue(result.bondLost);
+    assertEquals(60_000, result.retryDelayMs);
+  }
+
   @Test
   public void bytesOfADeviceThatIsNotPaired_areDropped()
   {

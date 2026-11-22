@@ -46,6 +46,14 @@ final class Esp32BleTransportTests: XCTestCase {
     XCTAssertFalse(result.bondLost)
   }
 
+  /// The box slept for more than 3 min and is still silent: the count starts again, the hint stays.
+  func testTheHintStaysThroughAGapWithoutData() {
+    let result = end(silent: 6, since: 181, lost: true, delay: 60)
+    XCTAssertEqual(result.silentConnections, 1)
+    XCTAssertTrue(result.bondLost)
+    XCTAssertEqual(result.retryDelay, 60)
+  }
+
   func testNewBoxWithoutDataIsAFailedPairing() {
     XCTAssertTrue(end(known: false).pairingFailed)
     XCTAssertFalse(end(known: false, linkedFor: 1).pairingFailed)

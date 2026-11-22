@@ -668,7 +668,8 @@ class Esp32BleTransport
     final boolean inRow = silentConnections > 0 && sinceLastSilentMs <= SILENT_CONNECTIONS_GAP_MS;
     end.silent = true;
     end.silentConnections = inRow ? silentConnections + 1 : 1;
-    end.bondLost = end.silentConnections >= MAX_SILENT_CONNECTIONS;
+    // A gap of more than 3 min starts the count again, but only the data of the box take the hint away.
+    end.bondLost = bondLost || end.silentConnections >= MAX_SILENT_CONNECTIONS;
     if (end.bondLost)
       end.retryDelayMs = MAX_RETRY_DELAY_MS;
     return end;
