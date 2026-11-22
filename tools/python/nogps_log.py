@@ -167,14 +167,14 @@ RULE_RARE_TRIPS = 2
 GPS_MARK_MAX_AGE_S = 5
 GPS_MARK_MAX_ACCURACY_M = 300
 GPS_MARK_MARGIN_M = 50
-# Who turned the manual mode on, see Engine::SetManualMode: the key is in the head of the line, which the tools
-# take off before they read its sentence.
-MANUAL_BY = re.compile(r'\bACTION manual (?:\w+=\S+ )*by=(\S+)')
-# The mark is placed right after the manual mode is turned on, in the same call: a line older than this tells
-# about an earlier mark.
-MANUAL_BY_MS = 1000
-# Who turned it on for the places that are not a tap of the user on the map, see Engine::PutMark.
-MARK_NOT_BY_USER = ('gps_mark', 'peer')
+# Who did what the line tells, the by= of an ACTION line: the key is in the head of the line, which the tools take
+# off before they read its sentence.
+ACTION_BY = re.compile(r'\bACTION \w+ (?:\w+=\S+ )*by=(\S+)')
+# The by= of "ACTION tap" that are a tap of the user on the map, see Engine::PutMark; the rest ("gps_mark" for the
+# GPS tap of the road lost panel, "peer" for the place of the other phone, "core" for a place the core guesses) are
+# no taps. Only this key tells them apart: the manual mode is already on when they place the mark, so
+# Engine::SetManualMode writes no line of its own.
+MARK_BY_USER = ('user', 'tap')
 SENSORS = ('ACCB', 'ACCB_BEFORE', 'ACC', 'GYRO')
 SLICES = 5
 
@@ -395,7 +395,7 @@ class Group:
         kind = event_of(level, file, func, text)
         if kind:
             event = dict(t=t, level=level, cat=kind[0], name=kind[1], text=text, src=('%s %s' % (file, func)).strip())
-            by = MANUAL_BY.search(body)
+            by = ACTION_BY.search(body)
             if by:
                 event['by'] = by.group(1)
             position = LAT_LON.search(text)
@@ -408,17 +408,11 @@ class Group:
 
     def map_taps(self):
         """When the user placed the mark on the map, by a tap or by the button of a place. Engine::PutMark writes
-        the same "tap =" line for the GPS tap of the road lost panel and for the place the other phone shares; the
-        by= of the "Manual mode" line written right before it tells which of the three. A log older than LOGFMT 2
-        has no by= and no panel either: every tap of it is the user's."""
-        result, by, by_t = [], None, 0
-        for e in self.events:
-            if 'by' in e:
-                by, by_t = e['by'], e['t']
-            elif e['cat'] == 'user' and e['name'] == 'tap':
-                if not (e['t'] - by_t <= MANUAL_BY_MS and by in MARK_NOT_BY_USER):
-                    result.append(e['t'])
-        return result
+        the same "tap =" line for the GPS tap of the road lost panel, for the place the other phone shares and for
+        the place the core guesses itself; its by= tells which of them. A log written before the core wrote that
+        key has no panel either: every tap of it is the user's."""
+        return [e['t'] for e in self.events if e['cat'] == 'user' and e['name'] == 'tap'
+                and e.get('by', 'tap') in MARK_BY_USER]
 
     def road_losses(self):
         """The road losses of the log (a row with lost=1 after one without), each as a dict: t, seconds, taps (the
