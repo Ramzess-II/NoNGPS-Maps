@@ -22,8 +22,9 @@ in the last digit.
 
 The logs are the files of the Android app, logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, the tree as the phone writes it
 (the names of the earlier versions are not read). A folder given is read with its subfolders: give the whole tree,
-a phone or a day. The first line of a file, LOGFMT, tells its phone; a file without it, or of a format the tools
-do not know, is refused. The logs of each phone are driven apart and labeled with the phone, since the lines of two
+a phone or a day. The first line of a file, LOGFMT, tells its phone, and its path does for the OSLog text of iOS;
+a file of another layout, or of a format the tools do not know, is skipped with a note and refused when no file is
+left. The logs of each phone are driven apart and labeled with the phone, since the lines of two
 would be mixed: `days`, `run` and `input` take a tree of several phones, `compare` one phone, as it takes one
 replay.
 

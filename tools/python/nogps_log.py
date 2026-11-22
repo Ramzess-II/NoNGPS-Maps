@@ -11,9 +11,9 @@ Logs:
   Both platforms write a file per launch of the app and per drive, logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log: iOS in
   Documents/, Android in Android/data/<app id>/files/. "Report a bug" sends logs.zip of that folder, "Send logs" of
   the days of the flags: unpacked into one folder, the zips of any phones and days make one tree. The first line of
-  a file, LOGFMT, tells its phone; the logs of each platform and phone form a group of their own. A file of a format
-  not known is skipped with a note and refused when no file is left; the names of the earlier versions are not
-  read.
+  a file, LOGFMT, tells its phone, and the path of the file does for the OSLog text of iOS; the logs of each
+  platform and phone form a group of their own. A file of another layout, or of a format not known, is skipped with
+  a note and refused when no file is left; the names of the earlier versions are not read.
   iOS times are UTC. Android times are the local time of the phone; the year is taken from the header of a file.
 
 A trip is the car driving with stops shorter than STAND_SPLIT_S. The lines of a phone that stands are kept as

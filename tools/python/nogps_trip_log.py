@@ -9,9 +9,8 @@ and across it (+ the mark is to the right). With "Disable GPS" on, the platform 
 
 Logs: logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, written with "Enable logging" on in the settings: a file per launch
 of the app and per drive. A folder given is read with its subfolders: give the tree, the folder of one phone, or of
-one day of it. Every file begins with the LOGFMT line that tells its phone; a file without one, or of a format
-the tools do not know, is refused. The names of the earlier versions (log-dd-MM-yy-<phone>.log, log.txt, app*.log)
-are not read.
+one day of it. Every file begins with the LOGFMT line that tells its phone, except the OSLog text of iOS, whose phone comes
+from its path; a file of another layout, or of a format the tools do not know, is refused. The names of the earlier versions (log-dd-MM-yy-<phone>.log, log.txt, app*.log) are not read.
   iOS: Documents/logs/. Times are UTC.
   Android: Android/data/<app id>/files/logs/, or the zip of "Report a bug" unpacked. Times are the local time of
   the phone, the log has no year: --year.
@@ -47,6 +46,10 @@ NOT_LOG_NAME = re.compile(r'^(logcat|nogps-replay)', re.I)
 LOG_FORMATS = (2,)
 LOGFMT_LINE = re.compile(r'LOGFMT (\d+)((?: \w+=\S*)*)\s*$')
 HEADER_KEYS = ('ms', 'phone', 'trip')
+# "logs/Pixel_7-a3f9/2026-11-01/081500.log": the phone and the time the file was started at. iOS with the record in a
+# file off writes the OSLog text of "Report a bug" into such a file without the LOGFMT line (Logger.mm), so a file of
+# the tree is read with the phone of its path.
+TREE_PATH = re.compile(r'(?:^|/)([^/]+)/\d{4}-\d\d-\d\d/(\d{6}(?:-\d+)?)\.log$', re.I)
 FIRST_COLUMNS = ['time', 'src', 'lat', 'lon', 'acc', 'bear', 'age', 'ref', 'err_m', 'along_m', 'across_m']
 
 
@@ -69,11 +72,15 @@ class LogFormatError(ValueError):
 
 
 def parse_header(name, first_line):
-    """The fields of the LOGFMT line of the file |name| as a dictionary of strings, with 'logfmt' the number. The
-    file identifies itself: nothing is taken from its path. LogFormatError for a file that has no such line, one of
+    """The fields of the LOGFMT line of the file |name| as a dictionary of strings, with 'logfmt' the number: the file
+    identifies itself. A file of the tree without that line is the OSLog text of iOS, and its path tells the phone and
+    the time it was started at; 'logfmt' is then None. LogFormatError for any other file that has no such line, one of
     a format not in LOG_FORMATS, or one that lacks a field the tools need."""
     m = LOGFMT_LINE.match(first_line.lstrip('\ufeff').rstrip('\r\n'))
     if not m:
+        tree = TREE_PATH.search(name.replace('\\', '/'))
+        if tree:
+            return dict(logfmt=None, ms=None, phone=tree.group(1), trip=tree.group(2))
         raise LogFormatError('%s: not a log of LOGFMT %s, its first line is not a LOGFMT line (logs of the earlier '
                              'versions are not read)' % (name, ', '.join(map(str, LOG_FORMATS))))
     if int(m.group(1)) not in LOG_FORMATS:

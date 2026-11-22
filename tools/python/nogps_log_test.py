@@ -466,6 +466,14 @@ class InputTest(unittest.TestCase):
             self.assertEqual([(g.platform, g.phone, len(g.rows)) for g in analysis.groups],
                              [('android', 'Pixel_7-a3f9', 30), ('android', 'SM_S918B-0b1c', 40)])
 
+    def test_a_tree_file_without_the_logfmt_line_takes_the_phone_of_its_path(self):
+        """iOS with the record in a file off writes the OSLog text of "Report a bug" into the tree, Logger.mm."""
+        header = nogps_trip_log.parse_header('logs.zip/logs/Pixel_7-a3f9/2026-10-08/180000.log', 'I(1) 0.5 hello')
+        self.assertEqual((header['logfmt'], header['phone'], header['trip']), (None, 'Pixel_7-a3f9', '180000'))
+        analysis = nogps_log.Analysis([('logs/Pixel_7-a3f9/2026-10-08/180000.log',
+                                        ('\n'.join(android_drive(seconds=3)) + '\n').encode())])
+        self.assertEqual([(f['phone'], f['platform']) for f in analysis.files], [('Pixel_7-a3f9', 'android')])
+
     def test_analysis_skips_an_old_file_next_to_new_ones(self):
         """A zip of a phone that still keeps a file of an earlier version: the rest of it is read, as in load_paths."""
         data = io.BytesIO()
