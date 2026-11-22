@@ -2045,7 +2045,8 @@ void RoutingManager::CallRouteBuilded(RouterResultCode code, storage::CountriesS
 
 void RoutingManager::MatchLocationToRoute(location::GpsInfo & location, location::RouteMatchingInfo & routeMatchingInfo)
 {
-  if (!IsRoutingActive())
+  // The route is still checked for the car leaving it, the car is not drawn on it.
+  if (!IsRoutingActive() || m_sessionRoute.IsFollowedApart())
     return;
 
   bool const matchedToRoute = m_routingSession.MatchLocationToRoute(location, routeMatchingInfo);

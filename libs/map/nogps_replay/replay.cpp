@@ -249,7 +249,7 @@ private:
   void Give(location::GpsInfo info)
   {
     m_route.CheckLocationForRouting(info);
-    if (m_session.IsActive())
+    if (m_session.IsActive() && !m_route.IsFollowedApart())
     {
       location::RouteMatchingInfo matching;
       if (!m_session.MatchLocationToRoute(info, matching))

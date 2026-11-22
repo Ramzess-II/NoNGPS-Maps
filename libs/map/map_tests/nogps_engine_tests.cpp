@@ -4344,6 +4344,8 @@ UNIT_TEST(NoGps_Engine_ManeuveringCarIsFollowedApart)
     TestAlmostEqualAbs(North(env.Last().m_position), -24, 3);
     TestAlmostEqualAbs(East(env.Last().m_position), 7, 3);
     TestAlmostEqualAbs(*env.Last().m_bearingDeg, 180, 1);
+    // The map does not draw it on the route or on a road.
+    TEST(env.m_map.m_followedApart, (navigating));
 
     // The car turns left and drives east, the other street is 15 m to the right of it. It is not the street of
     // the car at once.
@@ -4355,6 +4357,7 @@ UNIT_TEST(NoGps_Engine_ManeuveringCarIsFollowedApart)
     TEST(!FollowedApart(env), (navigating));
     TestAlmostEqualAbs(North(env.Last().m_position), -40, 0.5);
     TestAlmostEqualAbs(*env.Last().m_bearingDeg, 90, 0.5);
+    TEST(!env.m_map.m_followedApart, (navigating));
     double const east = East(env.Last().m_position);
     TEST_GREATER(east, 20, ());
     env.Drive(4000, 9, 0);

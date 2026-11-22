@@ -151,6 +151,7 @@ public:
   std::string GetDistanceLeft() const override { return {}; }
   std::string GetMapsVersion() const override { return m_mapsVersion; }
   void ShowCarHeading(double bearingDeg) override { m_carHeading = bearingDeg; }
+  void SetCarFollowedApart(bool apart) override { m_followedApart = apart; }
 
   bool m_navigating = false;
   std::string m_mapsVersion = "260714";
@@ -159,6 +160,8 @@ public:
   // How far aside of the car the followed route is.
   std::optional<double> m_routeAsideM;
   std::optional<double> m_carHeading;
+  // What the engine told the map before its last position: the car is followed apart.
+  bool m_followedApart = false;
   // The speed limits by the index of the road feature.
   std::map<uint32_t, routing::Maxspeed> m_maxspeeds;
   GridRoads m_grid;

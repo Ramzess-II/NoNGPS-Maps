@@ -1538,6 +1538,8 @@ void Engine::ShowCarHeading()
 void Engine::NotifyLocationUpdated()
 {
   CHECK(m_savedLocation, ());
+  // Before the position: the platform gives it to the map at once.
+  m_map.SetCarFollowedApart(m_inertial && IsInertialNavigationEnabled() && m_inertial->GetOffRoadCar().has_value());
   m_delegate.OnPosition(*m_savedLocation);
   m_shownPosition = m_savedLocation->m_position;
   ShowCarHeading();

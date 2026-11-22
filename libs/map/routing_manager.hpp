@@ -73,6 +73,9 @@ public:
                SwapAlternativeFn && swapAlternative);
 
   routing::RoutingSession & GetSession() { return m_session; }
+  // The car is followed apart off the roads, the map draws it where it is: not on the route or on the road graph.
+  void SetFollowedApart(bool apart) { m_followedApart = apart; }
+  bool IsFollowedApart() const { return m_followedApart; }
   routing::RoutingSession const & GetSession() const { return m_session; }
 
   // Takes the next position of the car: an alternative route the car has turned to is followed, the route the
@@ -130,6 +133,7 @@ public:
 
 private:
   routing::RoutingSession & m_session;
+  bool m_followedApart = false;
   routing::ReadyCallback m_onRebuilt;
   SwapAlternativeFn m_swapAlternative;
 };
