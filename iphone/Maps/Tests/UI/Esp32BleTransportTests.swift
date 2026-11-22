@@ -65,6 +65,16 @@ final class Esp32BleTransportTests: XCTestCase {
     XCTAssertFalse(result.isSilent)
   }
 
+  /// The hint is shown and a search connection of the box is open, so Try again drops it and searches at once. A link
+  /// without the hint is kept.
+  func testTryAgainDropsTheSearchConnectionOfTheLostBox() {
+    XCTAssertTrue(Esp32BleTransport.retrySearches(isOpen: true, hasConnection: true, bondLost: true))
+    XCTAssertTrue(Esp32BleTransport.retrySearches(isOpen: true, hasConnection: false, bondLost: true))
+    XCTAssertTrue(Esp32BleTransport.retrySearches(isOpen: true, hasConnection: false, bondLost: false))
+    XCTAssertFalse(Esp32BleTransport.retrySearches(isOpen: true, hasConnection: true, bondLost: false))
+    XCTAssertFalse(Esp32BleTransport.retrySearches(isOpen: false, hasConnection: false, bondLost: true))
+  }
+
   private func found(known: Bool = false, open: Bool = true, phones: Bool = false, adds: Bool = false,
                      cars: Bool = true, knownBoxes: Bool = false, since: TimeInterval = 5,
                      tried: Bool = false) -> Esp32BleTransport.FoundBox {

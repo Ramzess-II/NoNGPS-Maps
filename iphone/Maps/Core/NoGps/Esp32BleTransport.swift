@@ -178,10 +178,14 @@ final class Esp32BleTransport: NSObject {
     writeNext()
   }
 
-  /// The user asks to look for the box again after a failed pairing or a lost bond, which stop the search.
+  /// The user asks to look for the box again after a failed pairing or a lost bond. The search goes on while the
+  /// lost-pairing hint is shown, so a connection of the box may be open: it is dropped and the box is searched at once.
   @objc
   func retry() {
-    guard isOpen, peripheral == nil else { return }
+    guard Self.retrySearches(isOpen: isOpen, hasConnection: peripheral != nil, bondLost: isBondLost) else { return }
+    if peripheral != nil {
+      closeConnection()
+    }
     retryDelay = Constants.retryDelay
     silentConnections = 0
     isBondLost = false
@@ -551,6 +555,12 @@ final class Esp32BleTransport: NSObject {
       end.retryDelay = Constants.maxRetryDelay
     }
     return end
+  }
+
+  /// Whether the user's Try again searches the box now. A connection open while the lost-pairing hint is shown is a
+  /// search connection of the box thought lost: the caller drops it. A link without the hint works, it is kept.
+  static func retrySearches(isOpen: Bool, hasConnection: Bool, bondLost: Bool) -> Bool {
+    isOpen && (!hasConnection || bondLost)
   }
 
   enum FoundBox: Equatable {
