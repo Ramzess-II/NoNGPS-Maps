@@ -304,6 +304,8 @@
     <string name="enable_location_services">Attiva s-servizzi tal-post</string>
     <string name="save">Issejvja</string>
     <string name="create">Oħloq</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Verżjoni ta\' Organic Maps: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Dehra</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

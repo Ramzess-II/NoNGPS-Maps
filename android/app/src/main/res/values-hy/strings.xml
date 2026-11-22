@@ -304,6 +304,8 @@
     <string name="enable_location_services">Խնդրում ենք միացնել տեղորոշման ծառայությունները</string>
     <string name="save">Պահպանել</string>
     <string name="create">ստեղծել</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Organic Maps-ի տարբերակ՝ %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Արտաքին տեսք</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

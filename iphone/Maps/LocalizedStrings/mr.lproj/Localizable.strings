@@ -392,6 +392,9 @@
 /* blue gray color */
 "blue_gray" = "निळा राखाडी";
 
+/* Prints version number in About dialog */
+"version" = "Organic Maps आवृत्ती: %@";
+
 /* Settings «Map» category: «Appearance» title */
 "pref_appearance_title" = "दर्शनी रूप";
 

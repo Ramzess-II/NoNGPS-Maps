@@ -304,6 +304,8 @@
     <string name="enable_location_services">Ενεργοποιήστε τις υπηρεσίες εντοπισμού τοποθεσίας</string>
     <string name="save">Αποθήκευση</string>
     <string name="create">δημιουργήστε</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Έκδοση Organic Maps: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Εμφάνιση</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

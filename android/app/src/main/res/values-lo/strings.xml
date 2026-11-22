@@ -258,6 +258,8 @@
     <string name="enable_location_services">ກະລຸນາເປີດບໍລິການຕຳແໜ່ງທີ່ຕັ້ງ</string>
     <string name="save">ບັນທຶກ</string>
     <string name="create">ສ້າງ</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">ເວີຊັນ Organic Maps: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">ຮູບລັກສະນະ</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

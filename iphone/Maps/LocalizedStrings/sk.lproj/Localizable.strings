@@ -392,6 +392,9 @@
 /* blue gray color */
 "blue_gray" = "Modro sivá";
 
+/* Prints version number in About dialog */
+"version" = "Verzia Organic Maps: %@";
+
 /* Settings «Map» category: «Appearance» title */
 "pref_appearance_title" = "Vzhľad";
 

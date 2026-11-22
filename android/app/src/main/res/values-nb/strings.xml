@@ -304,6 +304,8 @@
     <string name="enable_location_services">Aktiver posisjonstjenester</string>
     <string name="save">Lagre</string>
     <string name="create">opprett</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Organic Maps versjon: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Utseende</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

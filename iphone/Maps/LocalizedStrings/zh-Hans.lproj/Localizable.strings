@@ -392,6 +392,9 @@
 /* blue gray color */
 "blue_gray" = "蓝灰色";
 
+/* Prints version number in About dialog */
+"version" = "Organic Maps 版本：%@";
+
 /* Settings «Map» category: «Appearance» title */
 "pref_appearance_title" = "外观";
 

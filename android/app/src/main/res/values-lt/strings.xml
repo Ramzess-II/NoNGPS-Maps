@@ -304,6 +304,8 @@
     <string name="enable_location_services">Įjunkite vietovės tarnybas</string>
     <string name="save">Įrašyti</string>
     <string name="create">kurti</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">„Organic Maps“ versija: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Išvaizda</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

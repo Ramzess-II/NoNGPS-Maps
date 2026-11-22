@@ -392,6 +392,9 @@
 /* blue gray color */
 "blue_gray" = "ສີເທົາຟ້າ";
 
+/* Prints version number in About dialog */
+"version" = "ເວີຊັນ Organic Maps: %@";
+
 /* Settings «Map» category: «Appearance» title */
 "pref_appearance_title" = "ຮູບລັກສະນະ";
 

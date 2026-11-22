@@ -392,6 +392,9 @@
 /* blue gray color */
 "blue_gray" = "Xám xanh da trời";
 
+/* Prints version number in About dialog */
+"version" = "Phiên bản Organic Maps: %@";
+
 /* Settings «Map» category: «Appearance» title */
 "pref_appearance_title" = "Giao diện";
 

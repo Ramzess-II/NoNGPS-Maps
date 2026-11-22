@@ -304,6 +304,8 @@
     <string name="enable_location_services">Kapcsolja be a helymeghatározási szolgáltatást</string>
     <string name="save">Mentés</string>
     <string name="create">létrehozás</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Az Organic Maps verziója: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Megjelenés</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

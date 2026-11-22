@@ -304,6 +304,8 @@
     <string name="enable_location_services">कृपया स्थान सेवा सक्रिय करा</string>
     <string name="save">साठवा</string>
     <string name="create">तयार करा</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Organic Maps आवृत्ती: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">दर्शनी रूप</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

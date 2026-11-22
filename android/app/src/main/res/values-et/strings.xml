@@ -304,6 +304,8 @@
     <string name="enable_location_services">Palun luba asukohateenused</string>
     <string name="save">Salvesta</string>
     <string name="create">loo</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Organic Mapsi versioon: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Välimus</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

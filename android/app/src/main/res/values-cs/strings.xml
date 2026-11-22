@@ -304,6 +304,8 @@
     <string name="enable_location_services">Prosím, povolte Služby určování polohy</string>
     <string name="save">Uložit</string>
     <string name="create">vytvořit</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Verze Organic Maps: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Vzhled</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

@@ -304,6 +304,8 @@
     <string name="enable_location_services">Mesedez, aktibatu kokapen zerbitzuak</string>
     <string name="save">Gorde</string>
     <string name="create">sortu</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Organic Maps bertsioa: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Itxura</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->
