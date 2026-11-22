@@ -882,9 +882,11 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final ListPopupWindow menu = new ListPopupWindow(requireContext());
     mCarMenu = menu;
     menu.setAnchorView(anchor);
-    // From the title to the right edge of the page: a name with its state under it needs the width.
-    final View header = (View) anchor.getParent();
-    menu.setWidth(Math.max(header.getWidth() - anchor.getLeft(), dp(240)));
+    // As wide as the page, over the title: a name with its state under it has no room in a drop-down fitted to the
+    // text of the title. Taken from the screen, not from the views: the sheet lays out again while it is open.
+    final int page = Math.min(getResources().getDisplayMetrics().widthPixels, anchor.getRootView().getWidth());
+    menu.setWidth(Math.max(page - dp(40), dp(280)));
+    menu.setHorizontalOffset(-anchor.getLeft());
     menu.setAdapter(new CarMenuAdapter(entries));
     menu.setOnDismissListener(() -> mCarMenu = null);
     menu.setOnItemClickListener((parent, view, position, id) -> {
