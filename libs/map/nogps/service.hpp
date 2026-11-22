@@ -25,9 +25,8 @@ class RoutingMapApi : public MapApi
 {
 public:
   using ShowCarHeadingFn = std::function<void(double bearingDeg)>;
-  using DataVersionFn = std::function<int64_t()>;
 
-  RoutingMapApi(SessionRoute & route, DataSource const & dataSource, Clock const & clock, DataVersionFn && dataVersion,
+  RoutingMapApi(SessionRoute & route, DataSource const & dataSource, Clock const & clock,
                 ShowCarHeadingFn && showCarHeading);
 
   // MapApi overrides:
@@ -42,7 +41,7 @@ public:
   std::optional<RoadPoint> SnapToMainRoad(ms::LatLon const & position, double radiusM) override;
   routing::Maxspeed GetMaxspeed(FeatureID const & road) override;
   std::string GetDistanceLeft() const override;
-  int64_t GetDataVersion() const override { return m_dataVersion(); }
+  std::string GetMapsVersion() const override;
   void ShowCarHeading(double bearingDeg) override { m_showCarHeading(bearingDeg); }
 
 private:
@@ -64,7 +63,6 @@ private:
   SessionRoute & m_route;
   DataSource const & m_dataSource;
   Clock const & m_clock;
-  DataVersionFn m_dataVersion;
   ShowCarHeadingFn m_showCarHeading;
   // Loaded once per map: the limit is asked at every position.
   std::map<MwmSet::MwmId, std::unique_ptr<routing::Maxspeeds>> m_maxspeeds;
@@ -77,7 +75,7 @@ class Service
 {
 public:
   Service(Delegate & delegate, SessionRoute & route, DataSource const & dataSource,
-          RoutingMapApi::DataVersionFn && dataVersion, RoutingMapApi::ShowCarHeadingFn && showCarHeading);
+          RoutingMapApi::ShowCarHeadingFn && showCarHeading);
 
   Engine & GetEngine() { return m_engine; }
   Clock const & GetClock() const { return m_clock; }

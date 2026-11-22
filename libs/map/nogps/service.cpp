@@ -14,6 +14,12 @@
 #include "base/exception.hpp"
 #include "base/logging.hpp"
 
+#include <functional>
+#include <memory>
+#include <set>
+#include <string>
+#include <vector>
+
 #include <glaze/json.hpp>
 
 namespace nogps
@@ -124,11 +130,10 @@ bool RoutingMapApi::RoutingRoads::IsRoundaboutNear(ms::LatLon const & center, do
 }
 
 RoutingMapApi::RoutingMapApi(SessionRoute & route, DataSource const & dataSource, Clock const & clock,
-                             DataVersionFn && dataVersion, ShowCarHeadingFn && showCarHeading)
+                             ShowCarHeadingFn && showCarHeading)
   : m_route(route)
   , m_dataSource(dataSource)
   , m_clock(clock)
-  , m_dataVersion(std::move(dataVersion))
   , m_showCarHeading(std::move(showCarHeading))
   , m_roads(route, false /* matchRoute */)
   , m_routeRoads(route, true /* matchRoute */)
@@ -224,9 +229,25 @@ std::string RoutingMapApi::GetDistanceLeft() const
   return info.m_distToTarget.GetDistanceString() + info.m_distToTarget.GetUnitsString();
 }
 
+std::string RoutingMapApi::GetMapsVersion() const
+{
+  // The maps of the countries, World left out: the roads of the navigation come from the country maps, and World
+  // comes with the application, so its version tells nothing about the maps a trip was driven on.
+  std::vector<std::shared_ptr<MwmInfo>> infos;
+  m_dataSource.GetMwmsInfo(infos);
+  std::set<int64_t, std::greater<>> versions;
+  for (auto const & info : infos)
+    if (info->IsRegistered() && info->GetType() == MwmInfo::COUNTRY)
+      versions.insert(info->GetVersion());
+  std::string result;
+  for (auto const version : versions)
+    result += (result.empty() ? "" : ",") + std::to_string(version);
+  return result.empty() ? "-" : result;
+}
+
 Service::Service(Delegate & delegate, SessionRoute & route, DataSource const & dataSource,
-                 RoutingMapApi::DataVersionFn && dataVersion, RoutingMapApi::ShowCarHeadingFn && showCarHeading)
-  : m_map(route, dataSource, m_clock, std::move(dataVersion), std::move(showCarHeading))
+                 RoutingMapApi::ShowCarHeadingFn && showCarHeading)
+  : m_map(route, dataSource, m_clock, std::move(showCarHeading))
   , m_engine(delegate, m_map, m_storage, m_clock, m_scheduler)
 {
   m_engine.SetFirmwares(LoadFirmwares());

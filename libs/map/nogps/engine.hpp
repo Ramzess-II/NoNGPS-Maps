@@ -509,7 +509,7 @@ private:
   // The same with what has switched it, for the trip log: "user" for the public ones.
   void SetManualMode(bool enabled, char const * by);
   void SetGpsDisabled(bool disabled, char const * by);
-  /// "MAPS ms=<unix ms> version=260714" in the trip log.
+  /// "MAPS ms=<unix ms> version=260714" in the trip log: the maps the trip is driven on.
   void LogMapsVersion() const;
   void RebuildRouteIfOffRoute(Fix const & fix);
   void LeaveRouteIfBesideIt(Fix const & inertial);

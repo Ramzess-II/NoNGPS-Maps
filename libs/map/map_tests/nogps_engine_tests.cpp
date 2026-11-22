@@ -6395,19 +6395,20 @@ UNIT_TEST(NoGps_LogFormat_MapsVersionIsWrittenAtStartAndAtNewFile)
   TestStorage storage;
   TestDelegate delegate;
   TestMap map;
-  map.m_dataVersion = 260714;
+  map.m_mapsVersion = "261101,260714";
   storage.Set(Storage::kInertialEnabled, true);
   Engine engine(delegate, map, storage, clock, clock);
   LoggedLines lines;
   engine.Start();
-  auto const prefix = "MAPS ms=" + std::to_string(clock.UnixNowMs()) + " version=260714";
+  auto const prefix = "MAPS ms=" + std::to_string(clock.UnixNowMs()) + " version=261101,260714";
   TEST_EQUAL(LoggedLines::Starting(prefix).size(), 1, ());
   TEST_EQUAL(LoggedLines::Starting("ACTION start ms=" + std::to_string(clock.UnixNowMs())).size(), 1, ());
 
   clock.Advance(Engine::kTripFileLinkGapMs);
   engine.OnEsp32BleState(BleState::Connected);
   // The new file has its own line, with the time of that moment.
-  TEST_EQUAL(LoggedLines::Starting("MAPS ms=" + std::to_string(clock.UnixNowMs()) + " version=260714").size(), 1, ());
+  TEST_EQUAL(LoggedLines::Starting("MAPS ms=" + std::to_string(clock.UnixNowMs()) + " version=261101,260714").size(), 1,
+             ());
 }
 
 UNIT_TEST(NoGps_LogFormat_SwitchesOfTheUserAreActions)

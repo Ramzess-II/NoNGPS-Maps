@@ -2195,7 +2195,7 @@ Status Engine::GetStatus()
 void Engine::LogMapsVersion() const
 {
   // The header of a file is written by the platform before the core knows the maps: the trip is on these.
-  LOG(LINFO, (LogHead(m_clock, "MAPS"), "version=" + std::to_string(m_map.GetDataVersion())));
+  LOG(LINFO, (LogHead(m_clock, "MAPS"), "version=" + m_map.GetMapsVersion()));
 }
 
 bool Engine::LogStateChanges()
