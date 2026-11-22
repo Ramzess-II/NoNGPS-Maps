@@ -270,6 +270,23 @@ public final class LogsManager
     TASK_EXECUTOR.execute(task);
   }
 
+  /// The version of the trip log format, nogps::kLogFormat of the core.
+  private static final int LOG_FORMAT = 2;
+
+  /// The first line of every log file, which the tools read the file by: "LOGFMT 2 ms=<unix ms> phone=<id>
+  /// trip=<HHmmss> app=<version name> build=<number> commit=<hash> om=<Organic Maps version>". The map version is
+  /// not known to the writer: the core writes it, as "MAPS ms=<unix ms> version=<number>", when the navigation starts
+  /// and when a drive starts a file, so a file MAX_FILE_SIZE has begun in the middle of a drive has none.
+  @NonNull
+  String getLogFormatLine(@NonNull String fileName)
+  {
+    final String name = new File(fileName).getName();
+    final String trip = name.endsWith(".log") ? name.substring(0, name.length() - ".log".length()) : name;
+    return String.format(Locale.ROOT, "LOGFMT %d ms=%d phone=%s trip=%s app=%s build=%d commit=%s om=%s\n", LOG_FORMAT,
+                         System.currentTimeMillis(), mPhoneId, trip, Config.getVersionName(), Config.getVersionCode(),
+                         BuildConfig.GIT_HASH, BuildConfig.UPSTREAM_VERSION);
+  }
+
   /**
    * NOTE: initFileLogging() must be called before.
    */

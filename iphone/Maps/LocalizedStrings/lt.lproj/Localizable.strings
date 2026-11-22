@@ -1990,13 +1990,13 @@
 "nogps_intro_title" = "Navigation without GPS";
 
 /* Text of the dialog of the first start: what the app is and that it needs the sensor box */
-"nogps_intro_text" = "This app drives your car on the map without GPS. The NonGPS sensor box takes the speed from the car and the turns from its own sensors, and the app draws the car from them: in a tunnel, in a yard, under a bridge, where GPS is lost. Without the box this is an ordinary offline map.";
+"nogps_intro_text" = "The app drives your car on the map where GPS is lost: a tunnel, a yard, under a bridge. It needs the NonGPS sensor box — without the box this is an ordinary offline map.";
 
 /* Button of the dialog of the first start, opens the video about the app */
-"nogps_intro_video" = "Watch the video";
+"nogps_intro_video" = "Video explanation";
 
-/* Checkbox that closes the dialog of the first start */
-"nogps_intro_understand" = "Yes, I understand";
+/* Button that closes the dialog of the first start */
+"nogps_intro_understand" = "Yes, I understand it works with the box";
 
 /* Balloon of the first start pointing at the bottom bar */
 "nogps_intro_bottom" = "The cars, the box and GPS are here.";
