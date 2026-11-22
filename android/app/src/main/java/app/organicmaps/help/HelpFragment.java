@@ -1,13 +1,12 @@
 package app.organicmaps.help;
 
-import android.content.res.Configuration;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -15,11 +14,12 @@ import androidx.core.view.ViewCompat;
 import app.organicmaps.BuildConfig;
 import app.organicmaps.R;
 import app.organicmaps.base.BaseMwmFragment;
+import app.organicmaps.nogps.NoGpsLinks;
 import app.organicmaps.sdk.Framework;
 import app.organicmaps.sdk.util.Constants;
+import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.sdk.util.DateUtils;
 import app.organicmaps.util.Graphics;
-import app.organicmaps.util.SharingUtils;
 import app.organicmaps.util.Utils;
 import app.organicmaps.util.WindowInsetUtils.ScrollableContentInsetsListener;
 import app.organicmaps.widget.DonationView;
@@ -31,7 +31,6 @@ import app.organicmaps.widget.DonationView;
 public class HelpFragment extends BaseMwmFragment implements View.OnClickListener
 {
   private String mDonateUrl;
-  private ActivityResultLauncher<SharingUtils.SharingIntent> shareLauncher;
 
   private TextView setupItem(@IdRes int id, boolean tint, @NonNull View frame)
   {
@@ -48,7 +47,8 @@ public class HelpFragment extends BaseMwmFragment implements View.OnClickListene
     mDonateUrl = Utils.getDonateUrl(requireContext());
     View root = inflater.inflate(R.layout.about, container, false);
 
-    final boolean isLandscape = getResources().getConfiguration().orientation == Configuration.ORIENTATION_LANDSCAPE;
+    // The Organic Maps version the build is based on, not the fork's: that one is on About NonGPS Maps.
+    setupItem(R.id.version, false, root).setText(getString(R.string.version, NoGps.getUpstreamVersion()));
 
     final String dataVersion = DateUtils.getShortDateFormatter().format(Framework.getDataVersion());
     final TextView osmPresentationView = root.findViewById(R.id.osm_presentation);
@@ -67,7 +67,6 @@ public class HelpFragment extends BaseMwmFragment implements View.OnClickListene
     setupItem(R.id.mastodon, false, root);
     setupItem(R.id.openstreetmap, true, root);
     setupItem(R.id.faq, true, root);
-    setupItem(R.id.report, isLandscape, root);
 
     final TextView supportUsView = root.findViewById(R.id.support_us);
     if (BuildConfig.FLAVOR.equals("google") && !TextUtils.isEmpty(mDonateUrl))
@@ -90,10 +89,7 @@ public class HelpFragment extends BaseMwmFragment implements View.OnClickListene
       });
     }
 
-    if (BuildConfig.REVIEW_URL.isEmpty())
-      root.findViewById(R.id.rate).setVisibility(View.GONE);
-    else
-      setupItem(R.id.rate, true, root);
+    setupItem(R.id.rate, true, root);
 
     setupItem(R.id.copyright, false, root);
     View termOfUseView = root.findViewById(R.id.term_of_use_link);
@@ -102,8 +98,6 @@ public class HelpFragment extends BaseMwmFragment implements View.OnClickListene
         v -> Utils.openUrl(requireActivity(), getResources().getString(R.string.translated_om_site_url) + "terms/"));
     privacyPolicyView.setOnClickListener(
         v -> Utils.openUrl(requireActivity(), getResources().getString(R.string.translated_om_site_url) + "privacy/"));
-
-    shareLauncher = SharingUtils.RegisterLauncher(this);
 
     ViewCompat.setOnApplyWindowInsetsListener(root, new ScrollableContentInsetsListener(root));
 
@@ -119,7 +113,7 @@ public class HelpFragment extends BaseMwmFragment implements View.OnClickListene
     else if (id == R.id.news)
       Utils.openUrl(requireActivity(), getResources().getString(R.string.translated_om_site_url) + "news/");
     else if (id == R.id.email)
-      Utils.sendTo(requireContext(), BuildConfig.SUPPORT_MAIL, "NonGPS Maps");
+      Utils.sendTo(requireContext(), NoGpsLinks.ORGANIC_MAPS_EMAIL, "Organic Maps");
     else if (id == R.id.github)
       Utils.openUrl(requireActivity(), Constants.Url.GITHUB);
     else if (id == R.id.telegram)
@@ -138,13 +132,22 @@ public class HelpFragment extends BaseMwmFragment implements View.OnClickListene
       Utils.openUrl(requireActivity(), getString(R.string.osm_wiki_about_url));
     else if (id == R.id.faq)
       ((HelpActivity) requireActivity()).stackFragment(FaqFragment.class, getString(R.string.faq), null);
-    else if (id == R.id.report)
-      Utils.sendBugReport(shareLauncher, requireActivity(), "", "");
+    else if (id == R.id.version)
+      copyVersion(v);
     else if (id == R.id.support_us)
       Utils.openUrl(requireActivity(), getResources().getString(R.string.translated_om_site_url) + "support-us/");
     else if (id == R.id.rate)
-      Utils.openAppInMarket(requireActivity(), BuildConfig.REVIEW_URL);
+      Utils.openAppInMarket(requireActivity(), NoGpsLinks.ORGANIC_MAPS_STORE_URL);
     else if (id == R.id.copyright)
       ((HelpActivity) requireActivity()).stackFragment(CopyrightFragment.class, getString(R.string.copyright), null);
+  }
+
+  private void copyVersion(@NonNull View view)
+  {
+    final String text = getString(R.string.version, NoGps.getUpstreamVersion());
+    Utils.copyTextToClipboard(requireContext(), text);
+    // Starting from API 33, the system shows the copied text itself.
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU)
+      Utils.showSnackbar(view, getString(R.string.copied_to_clipboard, text));
   }
 }
