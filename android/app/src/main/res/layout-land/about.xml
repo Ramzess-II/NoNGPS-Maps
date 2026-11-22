@@ -34,55 +34,36 @@
           app:layout_constraintVertical_bias="0.5">
 
           <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/margin_quarter"
-            android:text="NonGPS Maps"
-            android:textAlignment="center"
-            android:textAppearance="@style/MwmTextAppearance.Title"
-            android:textStyle="bold"
-            tools:ignore="HardcodedText" />
-
-          <TextView
             android:id="@+id/version"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/margin_quarter"
-            android:background="?selectableItemBackground"
-            android:textAlignment="center"
-            android:textAppearance="@style/MwmTextAppearance.Body2.Primary"
-            tools:text="Version 2026.11.08-7-Google (26110807, abcdef12)" />
-
-          <TextView
-            android:id="@+id/upstream_version"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="@dimen/margin_base"
             android:background="?selectableItemBackground"
             android:textAlignment="center"
             android:textAppearance="@style/MwmTextAppearance.Body3"
-            tools:text="Based on Organic Maps 2026.10.27-10" />
+            tools:text="2021.10.15-15-Google" />
 
           <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/nogps_about_headline"
+            android:text="@string/about_headline"
             android:textAlignment="center"
             android:textAppearance="@style/MwmTextAppearance.Headline"
-            android:textColor="?android:textColorPrimary" />
+            android:textColor="?android:textColorPrimary"
+            app:layout_constraintTop_toTopOf="@id/version" />
         </LinearLayout>
 
         <ImageView
           android:id="@+id/imageView3"
           android:layout_width="@dimen/about_logo"
           android:layout_height="@dimen/about_logo"
-          android:contentDescription="@string/app_name"
-          app:srcCompat="@drawable/logo"
+          android:contentDescription="@string/organic_maps_name"
+          app:srcCompat="@drawable/ic_logo_organicmaps"
           app:layout_constraintBottom_toBottomOf="parent"
           app:layout_constraintEnd_toStartOf="@+id/linearLayout2"
           app:layout_constraintHorizontal_bias="0.5"
           app:layout_constraintStart_toEndOf="@+id/linearLayout1"
-          app:layout_constraintTop_toTopOf="parent" />
+          app:layout_constraintTop_toTopOf="parent"
+          app:tint="?attr/colorLogo" />
 
         <LinearLayout
           android:id="@+id/linearLayout2"
@@ -107,7 +88,7 @@
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:layout_marginBottom="@dimen/margin_half"
-            android:text="@string/nogps_about_description"
+            android:text="@string/about_proposition_1"
             android:textAppearance="@style/MwmTextAppearance.Body1"
             android:textColor="?android:textColorPrimary" />
 
@@ -115,8 +96,15 @@
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:layout_marginBottom="@dimen/margin_half"
-            android:id="@+id/map_data"
-        android:text="@string/nogps_map_data"
+            android:text="@string/about_proposition_2"
+            android:textAppearance="@style/MwmTextAppearance.Body1"
+            android:textColor="?android:textColorPrimary" />
+
+          <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginBottom="@dimen/margin_half"
+            android:text="@string/about_proposition_3"
             android:textAppearance="@style/MwmTextAppearance.Body1"
             android:textColor="?android:textColorPrimary" />
           </LinearLayout>
@@ -132,7 +120,6 @@
         android:layout_marginBottom="@dimen/margin_half"
         android:fontFamily="@string/robotoRegular"
         android:text="@string/about_developed_by_enthusiasts"
-        android:visibility="gone"
         android:textAppearance="@style/MwmTextAppearance.Body2"
         android:textColor="?android:textColorPrimary"
         android:textStyle="bold" />
@@ -186,13 +173,6 @@
         android:textAlignment="viewStart"
         android:text="@string/faq"
         app:drawableStartCompat="@drawable/ic_question_mark" />
-
-      <TextView
-          android:id="@+id/report"
-          style="@style/MwmWidget.TextView.Item"
-          android:text="@string/report_a_bug"
-          android:textAlignment="viewStart"
-          app:drawableStartCompat="@drawable/ic_report_a_bug" />
 
       <TextView
         android:id="@+id/support_us"

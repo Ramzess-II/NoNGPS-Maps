@@ -304,6 +304,8 @@
     <string name="enable_location_services">Aktiviraj usluge lokacija</string>
     <string name="save">Spremi</string>
     <string name="create">stvori</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Organic Maps verzija: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Izgled</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

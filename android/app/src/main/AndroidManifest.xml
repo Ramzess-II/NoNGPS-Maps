@@ -488,7 +488,6 @@
 
     <activity
         android:name="app.organicmaps.help.HelpActivity"
-        android:screenOrientation="portrait"
         android:label="@string/nogps_about_om_menu"
         android:parentActivityName="app.organicmaps.MwmActivity"
         android:exported="false">

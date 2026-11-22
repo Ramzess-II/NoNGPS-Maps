@@ -304,6 +304,8 @@
     <string name="enable_location_services">Abilita i servizi di localizzazione</string>
     <string name="save">Salva</string>
     <string name="create">crea</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Versione di Organic Maps: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Aspetto</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

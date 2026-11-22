@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?cardBackground"
@@ -16,10 +17,29 @@
       android:orientation="vertical"
       android:padding="@dimen/margin_base">
 
+    <ImageView
+        android:layout_width="@dimen/about_logo"
+        android:layout_height="@dimen/about_logo"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="@dimen/margin_base"
+        android:layout_marginBottom="@dimen/margin_half"
+        android:contentDescription="@string/organic_maps_name"
+        app:srcCompat="@drawable/ic_logo_organicmaps"
+        app:tint="?attr/colorLogo" />
+
+    <TextView
+        android:id="@+id/version"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_horizontal"
+        android:layout_marginBottom="@dimen/margin_half"
+        android:background="?selectableItemBackground"
+        android:textAppearance="@style/MwmTextAppearance.Body3"
+        tools:text="2021.10.15-15-Google" />
+
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/margin_base"
         android:layout_marginBottom="@dimen/margin_base"
         android:text="@string/about_headline"
         android:textAlignment="center"
@@ -104,13 +124,6 @@
       android:text="@string/faq"
       android:textAlignment="viewStart"
       app:drawableStartCompat="@drawable/ic_question_mark" />
-
-    <TextView
-        android:id="@+id/report"
-        style="@style/MwmWidget.TextView.Item"
-        android:text="@string/report_a_bug"
-        android:textAlignment="viewStart"
-        app:drawableStartCompat="@drawable/ic_report_a_bug" />
 
     <TextView
         android:id="@+id/support_us"

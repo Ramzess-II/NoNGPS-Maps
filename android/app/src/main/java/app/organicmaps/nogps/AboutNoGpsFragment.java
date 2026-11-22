@@ -10,6 +10,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import androidx.activity.result.ActivityResultLauncher;
 import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -18,6 +19,7 @@ import app.organicmaps.R;
 import app.organicmaps.base.BaseMwmFragment;
 import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.util.Graphics;
+import app.organicmaps.util.SharingUtils;
 import app.organicmaps.util.Utils;
 import app.organicmaps.util.WindowInsetUtils.ScrollableContentInsetsListener;
 
@@ -28,6 +30,8 @@ import app.organicmaps.util.WindowInsetUtils.ScrollableContentInsetsListener;
 public class AboutNoGpsFragment extends BaseMwmFragment implements View.OnClickListener
 {
   private static final String OSM_COPYRIGHT_URL = "https://www.openstreetmap.org/copyright";
+
+  private ActivityResultLauncher<SharingUtils.SharingIntent> shareLauncher;
 
   private TextView setupItem(@IdRes int id, boolean tint, @NonNull View frame)
   {
@@ -53,6 +57,9 @@ public class AboutNoGpsFragment extends BaseMwmFragment implements View.OnClickL
               NoGpsLinks.ORGANIC_MAPS_URL);
     setupItem(R.id.github, true, root);
     setupItem(R.id.box_buy, false, root);
+    setupItem(R.id.report, true, root);
+
+    shareLauncher = SharingUtils.RegisterLauncher(this);
 
     ViewCompat.setOnApplyWindowInsetsListener(root, new ScrollableContentInsetsListener(root));
 
@@ -94,6 +101,8 @@ public class AboutNoGpsFragment extends BaseMwmFragment implements View.OnClickL
       Utils.openUrl(requireActivity(), NoGpsLinks.SOURCE_CODE_URL);
     else if (id == R.id.box_buy)
       Utils.openUrl(requireActivity(), NoGpsLinks.SHOP_URL);
+    else if (id == R.id.report)
+      Utils.sendBugReport(shareLauncher, requireActivity(), "", "");
     else if (id == R.id.version)
       copyFullVersion(v);
     else if (id == R.id.upstream_version)

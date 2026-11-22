@@ -304,6 +304,8 @@
     <string name="enable_location_services">Virkjaðu staðsetningarþjónustur</string>
     <string name="save">Vista</string>
     <string name="create">búa til</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Organic Maps útgáfa: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Útlit</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

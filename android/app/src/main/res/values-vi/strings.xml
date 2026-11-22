@@ -304,6 +304,8 @@
     <string name="enable_location_services">Bạn vui lòng bật Dịch vụ Định vị</string>
     <string name="save">Lưu</string>
     <string name="create">tạo</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Phiên bản Organic Maps: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Giao diện</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

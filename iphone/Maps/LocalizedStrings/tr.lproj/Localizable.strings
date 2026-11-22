@@ -392,6 +392,9 @@
 /* blue gray color */
 "blue_gray" = "Mavi Gri";
 
+/* Prints version number in About dialog */
+"version" = "Organic Maps sürümü: %@";
+
 /* Settings «Map» category: «Appearance» title */
 "pref_appearance_title" = "Görünüm";
 

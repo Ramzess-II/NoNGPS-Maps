@@ -304,6 +304,8 @@
     <string name="enable_location_services">請啟用定位服務</string>
     <string name="save">儲存</string>
     <string name="create">建立</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Organic Maps 版本：%s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">外觀</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

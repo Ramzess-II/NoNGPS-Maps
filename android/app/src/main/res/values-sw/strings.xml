@@ -304,6 +304,8 @@
     <string name="enable_location_services">Tafadhali wezesha Huduma za Mahali</string>
     <string name="save">Hifadhi</string>
     <string name="create">unda</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Toleo la Organic Maps: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Muonekano</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

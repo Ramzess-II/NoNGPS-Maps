@@ -304,6 +304,8 @@
     <string name="enable_location_services">위치 서비스를 작동시켜 주십시요.</string>
     <string name="save">저장</string>
     <string name="create">만들기</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Organic Maps 버전: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">모양</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

@@ -22,6 +22,8 @@ final class AboutController: MWMViewController {
 
   private let scrollView = UIScrollView()
   private let stackView = UIStackView()
+  private let logoImageView = UIImageView()
+  private let versionLabel = UILabel()
   private let headerTitleLabel = UILabel()
   private let additionalInfoStackView = UIStackView()
   private var donationView: DonationView?
@@ -89,6 +91,22 @@ private extension AboutController {
       stackView.distribution = .fill
       stackView.alignment = .center
       stackView.spacing = 15
+    }
+
+    // The Organic Maps leaf, not the fork's icon: that one is on About NonGPS Maps.
+    func setupLogo() {
+      logoImageView.contentMode = .scaleAspectFit
+      logoImageView.image = UIImage(named: "ic_logo_organicmaps")
+    }
+
+    // The Organic Maps version the build is based on, not the fork's: that one is on About NonGPS Maps.
+    func setupVersion() {
+      versionLabel.setFontStyle(.regular13, color: .blackSecondary)
+      versionLabel.text = Self.formattedUpstreamVersion()
+      versionLabel.textAlignment = .center
+      versionLabel.isUserInteractionEnabled = true
+      versionLabel.configureSingleLineAutoScaling()
+      versionLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(appVersionButtonTapped)))
     }
 
     func setupHeaderTitle() {
@@ -160,6 +178,8 @@ private extension AboutController {
 
     setupTitle()
     setupScrollAndStack()
+    setupLogo()
+    setupVersion()
     setupHeaderTitle()
     setupAdditionalInfo()
     setupDonation()
@@ -175,6 +195,8 @@ private extension AboutController {
   func arrangeViews() {
     view.addSubview(scrollView)
     scrollView.addSubview(stackView)
+    stackView.addArrangedSubview(logoImageView)
+    stackView.addArrangedSubview(versionLabel)
     stackView.addArrangedSubview(headerTitleLabel)
     stackView.addArrangedSubviewWithSeparator(additionalInfoStackView)
     if let donationView {
@@ -190,6 +212,7 @@ private extension AboutController {
   func layoutViews() {
     scrollView.translatesAutoresizingMaskIntoConstraints = false
     stackView.translatesAutoresizingMaskIntoConstraints = false
+    logoImageView.translatesAutoresizingMaskIntoConstraints = false
     additionalInfoStackView.translatesAutoresizingMaskIntoConstraints = false
     infoTableView.translatesAutoresizingMaskIntoConstraints = false
     socialMediaCollectionView.translatesAutoresizingMaskIntoConstraints = false
@@ -206,6 +229,9 @@ private extension AboutController {
       stackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor, constant: -20),
       stackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
       stackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+
+      logoImageView.heightAnchor.constraint(equalToConstant: 64),
+      logoImageView.widthAnchor.constraint(equalTo: logoImageView.heightAnchor),
 
       additionalInfoStackView.widthAnchor.constraint(equalTo: stackView.widthAnchor),
 
@@ -235,15 +261,12 @@ private extension AboutController {
   }
 
   func buildInfoTableViewData() -> [AboutInfoTableViewCellModel] {
-    // No .rateTheApp until NonGPS Maps is on the App Store: UIApplication.rateApp opens the page of Organic Maps.
-    let infoContent: [AboutInfo] = [.faq, .reportMapDataProblem, .reportABug, .news, .volunteer]
+    let infoContent: [AboutInfo] = [.faq, .reportMapDataProblem, .news, .volunteer, .rateTheApp]
     return infoContent.map { [weak self] aboutInfo in
       AboutInfoTableViewCellModel(title: aboutInfo.title, image: aboutInfo.image, didTapHandler: {
         switch aboutInfo {
         case .faq:
           self?.navigationController?.pushViewController(FaqController(), animated: true)
-        case .reportABug:
-          MailComposer.sendBugReportWith(title: "NonGPS Maps Bug Report")
         case .reportMapDataProblem, .volunteer, .news:
           self?.openUrl(aboutInfo.link)
         case .rateTheApp:
@@ -295,6 +318,11 @@ private extension AboutController {
     return df.string(from: mapsDate)
   }
 
+  static func formattedUpstreamVersion() -> String {
+    // Use strong left-to-right unicode direction characters for the app version.
+    String(format: L("version"), "\u{2066}\(AppInfo.shared().upstreamVersion)\u{2069}")
+  }
+
   func showCopyright() {
     let path = Bundle.main.path(forResource: "copyright", ofType: "html")!
     let html = try! String(contentsOfFile: path, encoding: String.Encoding.utf8)
@@ -314,6 +342,10 @@ private extension AboutController {
 // MARK: - Actions
 
 private extension AboutController {
+  @objc func appVersionButtonTapped() {
+    copyToClipboard(Self.formattedUpstreamVersion())
+  }
+
   @objc func osmMapsDataButtonTapped() {
     copyToClipboard(Self.formattedMapsDataVersion())
   }
