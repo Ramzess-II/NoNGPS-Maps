@@ -77,4 +77,28 @@ public class MapPanelDraggerTest
     // A slow fling stops at once.
     assertEquals(0, MapPanelDragger.step(50, MapPanelDragger.STOP_SPEED / 2, DT, 0, 100)[1], 0);
   }
+
+  @Test
+  public void zoomSlideScalesByExponent()
+  {
+    assertEquals(1, MapPanelDragger.zoomFactor(0, 1000), 1e-9);
+    assertEquals(Math.E, MapPanelDragger.zoomFactor(1000, 1000), 1e-9);
+    // Up zooms in, down zooms out, by the same amount.
+    assertEquals(1 / MapPanelDragger.zoomFactor(300, 1000), MapPanelDragger.zoomFactor(-300, 1000), 1e-9);
+  }
+
+  @Test
+  public void zoomSlideStartsAtTwentyFourDp()
+  {
+    assertEquals(24, MapPanelDragger.ZOOM_SLIDE_START_DP, 0);
+    // 24 dp on a 3x screen is 72 px, up or down.
+    assertTrue(MapPanelDragger.startsZoom(true, 72, 3));
+    assertTrue(MapPanelDragger.startsZoom(true, -72, 3));
+    assertFalse(MapPanelDragger.startsZoom(true, 71, 3));
+    assertFalse(MapPanelDragger.startsZoom(true, -71, 3));
+    assertTrue(MapPanelDragger.startsZoom(true, 24, 1));
+    assertFalse(MapPanelDragger.startsZoom(true, 23, 1));
+    // A slide that went down on another button is a drag of the panel, never a zoom.
+    assertFalse(MapPanelDragger.startsZoom(false, 1000, 3));
+  }
 }

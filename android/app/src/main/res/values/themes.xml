@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
   <style name="MwmTheme.Splash">
-    <item name="android:windowBackground">@color/bg_primary</item>
-    <item name="android:textColorPrimary">@color/white_primary</item>
-    <item name="android:navigationBarColor">@color/bg_primary</item>
-    <item name="android:statusBarColor">@color/bg_primary</item>
+    <item name="android:windowBackground">@color/nogps_splash_bg</item>
+    <item name="android:textColorPrimary">@color/nogps_splash_text</item>
+    <item name="android:navigationBarColor">@color/nogps_splash_navigation_bar</item>
+    <item name="android:statusBarColor">@color/nogps_splash_status_bar</item>
+    <!-- Dark icons over the light splash, light ones over the dark one. -->
+    <item name="android:windowLightStatusBar" tools:targetApi="m">@bool/nogps_splash_light_bars</item>
+    <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">@bool/nogps_splash_light_bars</item>
 
     <item name="android:windowSplashScreenBackground" tools:targetApi="31">?android:windowBackground</item>
     <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@drawable/system_splash</item>

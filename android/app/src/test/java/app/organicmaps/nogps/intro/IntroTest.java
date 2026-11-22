@@ -4,7 +4,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import android.content.Context;
 import app.organicmaps.R;
 import org.junit.Test;
 
@@ -21,7 +24,7 @@ public class IntroTest
   {
     final IntroSequence sequence = new IntroSequence();
     assertEquals(IntroStep.MODAL, sequence.step());
-    // The modal is not typed: the checkbox opens the first balloon at once.
+    // The modal is not typed: the accent button opens the first balloon at once.
     assertFalse(sequence.isTyping(TEXT, 0));
     sequence.tap(TEXT, 0);
     assertEquals(IntroStep.BOTTOM, sequence.step());
@@ -39,28 +42,35 @@ public class IntroTest
     assertEquals(R.id.map_buttons_bottom, IntroStep.BOTTOM.getAnchorId());
     assertEquals(R.id.right_panel, IntroStep.RIGHT.getAnchorId());
     assertEquals(R.id.car_controls, IntroStep.LEFT.getAnchorId());
-    assertEquals(R.string.nogps_intro_text, IntroStep.MODAL.getTextId());
-    assertEquals(R.string.nogps_intro_bottom, IntroStep.BOTTOM.getTextId());
-    assertEquals(R.string.nogps_intro_right, IntroStep.RIGHT.getTextId());
-    assertEquals(R.string.nogps_intro_left, IntroStep.LEFT.getTextId());
+    final Context context = mock(Context.class);
+    when(context.getString(R.string.nogps_intro_text)).thenReturn("modal");
+    when(context.getString(R.string.nogps_intro_bottom)).thenReturn("bottom");
+    when(context.getString(R.string.nogps_intro_right)).thenReturn("right");
+    when(context.getString(R.string.nogps_intro_right_swipe)).thenReturn("slide");
+    when(context.getString(R.string.nogps_intro_left)).thenReturn("left");
+    assertEquals("modal", IntroStep.MODAL.getText(context));
+    assertEquals("bottom", IntroStep.BOTTOM.getText(context));
+    // The slide of the zoom buttons is told in the balloon of the right panel only, as on iOS.
+    assertEquals("right slide", IntroStep.RIGHT.getText(context));
+    assertEquals("left", IntroStep.LEFT.getText(context));
     assertFalse(IntroStep.MODAL.isTyped());
     for (IntroStep step : new IntroStep[] {IntroStep.BOTTOM, IntroStep.RIGHT, IntroStep.LEFT})
       assertTrue(step.isTyped());
   }
 
   @Test
-  public void typesAboutThreeCharactersASecond()
+  public void typesAboutTwentyCharactersASecond()
   {
     final IntroSequence sequence = new IntroSequence();
     sequence.tap(TEXT, 0);
     assertEquals(IntroStep.BOTTOM, sequence.step());
     assertEquals(0, sequence.revealed(TEXT, 0));
-    assertEquals(3, sequence.revealed(TEXT, 1));
-    assertEquals(30, sequence.revealed(TEXT, 10));
+    assertEquals(10, sequence.revealed(TEXT, 0.5));
+    assertEquals(20, sequence.revealed(TEXT, 1));
     // Never past the end of the text.
     assertEquals(TEXT, sequence.revealed(TEXT, 100));
     assertFalse(sequence.isTyping(TEXT, 100));
-    assertEquals(3, IntroSequence.TYPE_CHARS_PER_S, 0.001);
+    assertEquals(20, IntroSequence.TYPE_CHARS_PER_S, 0.001);
   }
 
   @Test

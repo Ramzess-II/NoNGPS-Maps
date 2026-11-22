@@ -214,14 +214,16 @@
       android:visibility="gone" />
 
     <!-- If the car follows GPS. -->
+    <View
+      android:layout_width="match_parent"
+      android:layout_height="@dimen/divider_height"
+      android:layout_marginTop="12dp"
+      android:background="?dividerHorizontal" />
     <androidx.appcompat.widget.SwitchCompat
       android:id="@+id/box_gps_block"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="12dp"
-      android:background="@drawable/bg_nogps_group"
       android:minHeight="56dp"
-      android:paddingHorizontal="16dp"
       android:text="@string/nogps_gps_block"
       android:textSize="16sp" />
     <!-- Both texts take their place: the sheet doesn't jump as the box comes and goes. -->
@@ -236,14 +238,14 @@
         android:layout_height="wrap_content"
         android:text="@string/nogps_gps_block_hint"
         android:textColor="?android:textColorSecondary"
-        android:textSize="13sp" />
+        android:textSize="14sp" />
       <TextView
         android:id="@+id/box_gps_block_needs_box"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/nogps_gps_block_needs_box"
         android:textColor="?android:textColorSecondary"
-        android:textSize="13sp" />
+        android:textSize="14sp" />
     </FrameLayout>
   </LinearLayout>
 
@@ -458,7 +460,7 @@
       android:layout_marginHorizontal="4dp"
       android:text="@string/nogps_box_buy_text"
       android:textColor="?android:textColorSecondary"
-      android:textSize="13sp" />
+      android:textSize="14sp" />
   </LinearLayout>
 
   <!-- The car driven now: its name and its box, what the user does with it, the phones of its box and its records. Its
@@ -476,7 +478,7 @@
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:layout_marginTop="4dp"
-      android:layout_marginBottom="8dp"
+      android:layout_marginBottom="12dp"
       android:text="@string/nogps_cars_text"
       android:textColor="?android:textColorSecondary"
       android:textSize="14sp" />
@@ -505,30 +507,39 @@
         android:textColor="?android:textColorSecondary"
         android:textSize="16sp" />
     </LinearLayout>
-    <!-- The state of the box on the right, a tap opens its page. -->
+    <!-- The state of the box under its title: it is a sentence, too long for the end of the row. A tap opens its page. -->
     <LinearLayout
       android:id="@+id/box_car_box_row"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:background="?selectableItemBackground"
       android:gravity="center_vertical"
-      android:minHeight="48dp"
-      android:orientation="horizontal">
-      <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="12dp"
-        android:text="@string/nogps_box_title"
-        android:textSize="16sp" />
-      <TextView
-        android:id="@+id/box_car_box_state"
+      android:minHeight="56dp"
+      android:orientation="horizontal"
+      android:paddingVertical="6dp">
+      <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:gravity="end|center_vertical"
-        android:textColor="?android:textColorSecondary"
-        android:textSize="16sp"
-        app:drawableEndCompat="@drawable/ic_nogps_chevron" />
+        android:orientation="vertical">
+        <TextView
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:text="@string/nogps_box_title"
+          android:textSize="16sp" />
+        <TextView
+          android:id="@+id/box_car_box_state"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:textColor="?android:textColorSecondary"
+          android:textSize="14sp" />
+      </LinearLayout>
+      <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="12dp"
+        android:importantForAccessibility="no"
+        app:srcCompat="@drawable/ic_nogps_chevron" />
     </LinearLayout>
     <TextView
       android:id="@+id/box_car_forget"
@@ -541,14 +552,21 @@
       android:textColor="@color/base_red"
       android:textSize="16sp" />
 
+    <!-- The sections of the page: a line and a heading, as in the settings. -->
+    <View
+      android:layout_width="match_parent"
+      android:layout_height="@dimen/divider_height"
+      android:layout_marginTop="12dp"
+      android:background="?dividerHorizontal" />
     <TextView
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="16dp"
+      android:layout_marginTop="12dp"
+      android:layout_marginBottom="4dp"
+      android:fontFamily="@string/robotoMedium"
       android:text="@string/nogps_car_phones"
-      android:textColor="?android:textColorSecondary"
-      android:textSize="14sp"
-      android:textStyle="bold" />
+      android:textColor="?colorAccent"
+      android:textSize="14sp" />
     <!-- While the box of the car is connected: a row for each of its phones, see nogps_car_row, a tap removes it. -->
     <LinearLayout
       android:layout_width="match_parent"
@@ -563,13 +581,16 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical" />
-      <Button
+      <TextView
         android:id="@+id/box_add_phone"
-        style="?borderlessButtonStyle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="start|center_vertical"
-        android:text="@string/nogps_phone_add" />
+        android:background="?selectableItemBackground"
+        android:gravity="center_vertical"
+        android:minHeight="48dp"
+        android:text="@string/nogps_phone_add"
+        android:textColor="?colorAccent"
+        android:textSize="16sp" />
       <TextView
         android:id="@+id/box_phones_read_only"
         android:layout_width="match_parent"
@@ -580,14 +601,20 @@
         android:textSize="14sp" />
     </LinearLayout>
 
+    <View
+      android:layout_width="match_parent"
+      android:layout_height="@dimen/divider_height"
+      android:layout_marginTop="12dp"
+      android:background="?dividerHorizontal" />
     <TextView
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="16dp"
+      android:layout_marginTop="12dp"
+      android:layout_marginBottom="4dp"
+      android:fontFamily="@string/robotoMedium"
       android:text="@string/nogps_car_records"
-      android:textColor="?android:textColorSecondary"
-      android:textSize="14sp"
-      android:textStyle="bold" />
+      android:textColor="?colorAccent"
+      android:textSize="14sp" />
     <!-- Its best time, a tap opens the results. -->
     <LinearLayout
       android:id="@+id/box_sprint_to100_row"
@@ -660,12 +687,16 @@
       android:textSize="17sp"
       android:textStyle="bold" />
 
-    <!-- One group: each item opens its page. -->
+    <!-- One list under a line, each item opens its page. -->
+    <View
+      android:layout_width="match_parent"
+      android:layout_height="@dimen/divider_height"
+      android:layout_marginTop="12dp"
+      android:background="?dividerHorizontal" />
     <LinearLayout
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
-      android:layout_marginTop="12dp"
-      android:background="@drawable/bg_nogps_group"
+      android:layout_marginTop="4dp"
       android:orientation="vertical">
       <include
         android:id="@+id/box_item_box"
@@ -833,7 +864,7 @@
       android:layout_height="wrap_content"
       android:text="@string/nogps_sprint_none"
       android:textColor="?android:textColorSecondary"
-      android:textSize="15sp" />
+      android:textSize="14sp" />
   </LinearLayout>
 
   <LinearLayout
@@ -855,13 +886,13 @@
         android:layout_height="wrap_content"
         android:text="@string/nogps_speed_table_hint"
         android:textColor="?android:textColorSecondary"
-        android:textSize="15sp" />
+        android:textSize="14sp" />
       <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:text="@string/nogps_speed_table_action"
-        android:textSize="15sp"
+        android:textSize="14sp"
         android:textStyle="bold" />
       <LinearLayout
         android:layout_width="match_parent"

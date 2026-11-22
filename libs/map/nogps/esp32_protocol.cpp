@@ -352,8 +352,9 @@ std::optional<Peer> ParsePeer(Fields const & fields)
     return {};
   }
   // A wrong place is worse than none.
-  if (std::abs(peer.m_latE7) > 900'000'000 || std::abs(peer.m_lonE7) > 1'800'000'000 || peer.m_headingCdeg < -1 ||
-      peer.m_headingCdeg >= 36000)
+  if (peer.m_latE7 < -900'000'000 || peer.m_latE7 > 900'000'000 || peer.m_lonE7 < -1'800'000'000 ||
+      peer.m_lonE7 > 1'800'000'000 || peer.m_headingCdeg < -1 || peer.m_headingCdeg >= 36000 || peer.m_accuracyDm < 0 ||
+      peer.m_accuracyDm > kMaxPeerAccuracyDm || peer.m_distMm < 0)
   {
     return {};
   }

@@ -30,8 +30,8 @@ const queue = [...(A.queue || [])]
 if (!WS) throw new Error('args.ws is required: the folder that holds app/ and firmware/')
 
 const ENV = `NonGPS Maps workspace: ${WS}. App repo ${APP_REPO}, main checkout ${APP}. Firmware repo ${FW_REPO} \
-(ESP-IDF 5.5, C) in ${FW}; koloboid has read access there: firmware branches are pushed to the remote "koloboid" \
-(the fork) and the PR goes from it; you can't add labels there, and close only issues koloboid opened.
+(ESP-IDF 5.5, C) in ${FW}; both of us have write access there: a firmware branch is pushed to origin and the PR \
+goes from it, labels work, and an issue either of us opened can be closed.
 Don't change the main checkouts ${APP} and ${FW}: other sessions work in them. The shell's working directory can \
 reset between commands: use absolute paths, git -C <path>, or "cd <path> && ..." in each command.
 You are one of up to ${SLOTS} parallel agents of the issue roller (/nogps-roll). Nobody answers questions during the \

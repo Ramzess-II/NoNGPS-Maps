@@ -17,12 +17,14 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
 import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
+import app.organicmaps.sdk.Map;
 
 /**
  * Moves a panel of map buttons up and down its free area, where a hand or a car holder may cover it. A long press
  * lifts the panel, the finger drags it, a quick release flings it on with a bounce at the ends. Its place is the
  * vertical bias of the panel in its frame: a fraction of the distance it can travel, so it stays when the frame or
- * the panel changes size.
+ * the panel changes size. A slide that starts on a zoom button before the long press zooms the map instead, as on
+ * iOS.
  */
 public class MapPanelDragger
 {
@@ -38,6 +40,8 @@ public class MapPanelDragger
   static final long LIFT_PRESS_MS = 800;
   // The middle of the frame.
   static final float DEFAULT_FRACTION = 0.5f;
+  // A slide on a zoom button shorter than this is a tap, dp.
+  static final float ZOOM_SLIDE_START_DP = 24;
   private static final float LIFTED_SCALE = 1.08f;
   private static final int LIFTED_TINT_ALPHA = 0x33;
 
@@ -67,6 +71,23 @@ public class MapPanelDragger
     if (Math.abs(newV) < STOP_SPEED)
       newV = 0;
     return new float[] {Math.min(Math.max(newY, min), max), newV};
+  }
+
+  /**
+   * The scale factor of a zoom slide: a finger slid up by dy px in a frame of the given height zooms in.
+   */
+  static double zoomFactor(float dy, float frameHeight)
+  {
+    return Math.exp(dy / frameHeight);
+  }
+
+  /**
+   * Whether a slide becomes a zoom: it went down on a zoom button and slid dy px, up or down, past the start of the
+   * zoom on a screen of the given density. A shorter slide, or one from another button, stays a tap.
+   */
+  static boolean startsZoom(boolean onZoomButton, float dy, float density)
+  {
+    return onZoomButton && Math.abs(dy) >= ZOOM_SLIDE_START_DP * density;
   }
 
   /**
@@ -105,6 +126,11 @@ public class MapPanelDragger
   private float mFraction;
   private boolean mEnabled = true;
   private boolean mLifted;
+  // The finger went down on a zoom button, and whether its slide has become a zoom.
+  private boolean mOnZoomButton;
+  private boolean mZooming;
+  // The slide of the finger up when it became a zoom, px.
+  private float mZoomOrigin;
   // In dp from the top of the travel.
   private float mY;
   // dp/s.
@@ -160,12 +186,15 @@ public class MapPanelDragger
     if (event.getActionMasked() == MotionEvent.ACTION_DOWN)
       drop();
     final boolean lifted = mLifted;
+    final boolean wasZooming = mZooming;
     mTouchY = event.getRawY();
     switch (event.getActionMasked())
     {
     case MotionEvent.ACTION_DOWN:
       mDownX = event.getRawX();
       mDownY = event.getRawY();
+      mOnZoomButton = isOnZoomButton(mDownX, mDownY);
+      mZooming = false;
       endTouch();
       mTracker = VelocityTracker.obtain();
       addMovement(event);
@@ -175,6 +204,8 @@ public class MapPanelDragger
       addMovement(event);
       if (lifted)
         move(mStartY + (mTouchY - mStartTouch) / mDensity);
+      else if (mZooming || startsZoom(mOnZoomButton, mDownY - mTouchY, mDensity))
+        zoom();
       else if (Math.hypot(event.getRawX() - mDownX, event.getRawY() - mDownY) > mTouchSlop)
         cancelPress();
       break;
@@ -183,13 +214,47 @@ public class MapPanelDragger
       if (lifted)
         release();
       endTouch();
+      mZooming = false;
       break;
     case MotionEvent.ACTION_CANCEL:
       endTouch();
+      mZooming = false;
       drop();
       break;
     }
-    return lifted;
+    // The touch is taken from the button under the finger while the panel is lifted or zooms.
+    return lifted || wasZooming || mZooming;
+  }
+
+  private boolean isOnZoomButton(float x, float y)
+  {
+    final int[] location = new int[2];
+    for (int id : new int[] {R.id.nav_zoom_in, R.id.nav_zoom_out})
+    {
+      final View button = mPanel.findViewById(id);
+      if (button == null || !button.isShown())
+        continue;
+      button.getLocationOnScreen(location);
+      if (x >= location[0] && x < location[0] + button.getWidth() && y >= location[1]
+          && y < location[1] + button.getHeight())
+        return true;
+    }
+    return false;
+  }
+
+  private void zoom()
+  {
+    final float up = mDownY - mTouchY;
+    if (!mZooming)
+    {
+      // The slide is a zoom now, it is not a long press or a tap. Zoom counts from here, so it never jumps when
+      // the finger comes back.
+      mZooming = true;
+      mZoomOrigin = up;
+      cancelPress();
+    }
+    final View frame = (View) mPanel.getParent();
+    Map.scale(zoomFactor(up - mZoomOrigin, frame.getHeight()));
   }
 
   // The panel moves under the finger: the speed is taken on the screen.

@@ -2,10 +2,14 @@
 """Shows the logs of NonGPS Maps trip by trip in the browser: the map, the tracks, the events, the anomalies and
 the state of the navigation at any second, with a time slider.
 
-  nogps_log_viewer.py [logs, zips or folders…] [--year 2026] [--port 8765] [--no-browser]
+  nogps_log_viewer.py [logs, zips or folders…] [--year 2026] [--port 8765] [--no-browser] [--tiles <dir|url|off>]
 
 More logs and a nogps-replay-out.txt of nogps_replay.py are added in the page. The logs stay on this computer: the
-server listens on 127.0.0.1 only, and the page loads only the map tiles of OpenStreetMap and its two libraries.
+server listens on 127.0.0.1 only, and the page loads nothing from the network: its two libraries are in
+nogps_log_viewer_assets/ and the tracks are drawn on a plain background. --tiles <dir> draws a map from a folder
+of {z}/{x}/{y}.png tiles that you put there. --tiles <url> takes tiles from a server, with {z}/{x}/{y} in the url:
+then that server sees which area the trip was in. The choice is kept in ~/.nogps_log_viewer.json; --tiles off
+clears it.
 See nogps_log.py for the logs it reads.
 """
 
@@ -22,14 +26,41 @@ from urllib.parse import parse_qs, unquote, urlparse
 
 import nogps_log
 
+ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nogps_log_viewer_assets')
+ASSET_TYPES = {'.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png'}
+CONFIG = os.path.expanduser('~/.nogps_log_viewer.json')
+TILE_PATH = re.compile(r'^/tiles/(\d{1,2})/(\d+)/(\d+)\.png$')
+LOCAL_TILES = '/tiles/{z}/{x}/{y}.png'
 PAGE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nogps_log_viewer.html')
 TRIP_PATH = re.compile(r'^/api/trip/(\d+)(\.csv|\.gpx)?$')
 REPLAY_PATH = re.compile(r'^/api/replay/(\d+)$')
 
 
+def load_tiles(arg):
+    """The tile source: |arg| of --tiles, else the one kept from an earlier run. Returns a folder or a url or None."""
+    if arg == 'off':
+        arg = None
+    elif arg is None:
+        try:
+            with open(CONFIG) as f:
+                return json.load(f).get('tiles')
+        except (OSError, ValueError, AttributeError):
+            return None
+    elif '://' not in arg:
+        arg = os.path.abspath(os.path.expanduser(arg))
+        if not os.path.isdir(arg):
+            raise SystemExit('--tiles: %s is not a folder' % arg)
+    elif '{z}' not in arg or '{x}' not in arg or '{y}' not in arg:
+        raise SystemExit('--tiles: the url needs {z}, {x} and {y}')
+    with open(CONFIG, 'w') as f:
+        json.dump(dict(tiles=arg), f)
+    return arg
+
+
 class Viewer:
-    def __init__(self, sources, year):
+    def __init__(self, sources, year, tiles=None):
         self.year = year
+        self.tiles = tiles
         self.sources = sources
         self.lock = threading.Lock()
         self.analysis = nogps_log.Analysis(sources, year)
@@ -98,6 +129,31 @@ def handler(viewer):
                 if url.path == '/':
                     with open(PAGE, 'rb') as f:
                         return self.send(f.read(), 'text/html')
+                if url.path == '/api/config':
+                    tiles = viewer.tiles
+                    if tiles and '://' not in tiles:
+                        return self.send(dict(tiles=LOCAL_TILES, attribution=''))
+                    return self.send(dict(tiles=tiles, attribution='Map tiles: ' + tiles.split('/')[2] if tiles else ''))
+                if url.path.startswith('/assets/'):
+                    name = url.path[len('/assets/'):]
+                    ext = os.path.splitext(name)[1]
+                    # Only a file of the folder or of its images/, which leaflet.css asks for: no "..".
+                    folder, _, base = name.rpartition('/')
+                    if ext not in ASSET_TYPES or folder not in ('', 'images') or base.startswith('.') or \
+                            not os.path.isfile(os.path.join(ASSETS, folder, base)):
+                        return self.fail(404, 'not found')
+                    with open(os.path.join(ASSETS, folder, base), 'rb') as f:
+                        return self.send(f.read(), ASSET_TYPES[ext])
+                m = TILE_PATH.match(url.path)
+                if m:
+                    if not viewer.tiles or '://' in viewer.tiles:
+                        return self.fail(404, 'no tiles')
+                    z, x, y = m.groups()
+                    path = os.path.join(viewer.tiles, z, x, y + '.png')
+                    if not os.path.isfile(path):
+                        return self.fail(404, 'no tile')
+                    with open(path, 'rb') as f:
+                        return self.send(f.read(), 'image/png')
                 if url.path == '/api/trips':
                     return self.send(viewer.trips())
                 if url.path == '/api/lines':
@@ -156,11 +212,14 @@ def main():
     parser.add_argument('--year', type=int, help='the year of an Android log without its header')
     parser.add_argument('--port', type=int, default=0, help='0 takes a free one')
     parser.add_argument('--no-browser', action='store_true')
+    parser.add_argument('--tiles', help='a folder of {z}/{x}/{y}.png tiles, or a tile server url with {z}/{x}/{y}, '
+                        'or "off"; kept for the next runs. Without it the map has no tiles')
     args = parser.parse_args()
 
-    viewer = Viewer(nogps_log.load_paths(args.logs), args.year)
+    viewer = Viewer(nogps_log.load_paths(args.logs), args.year, load_tiles(args.tiles))
     for note in viewer.analysis.notes:
         print(note)
+    print('tiles:', viewer.tiles or 'none')
     print('%d trips in %d files' % (len(viewer.analysis.trips), len(viewer.analysis.files)))
     server = ThreadingHTTPServer(('127.0.0.1', args.port), handler(viewer))
     url = 'http://127.0.0.1:%d/' % server.server_address[1]

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- API 23+: windowLightStatusBar gives the status bar dark icons, so it can carry the splash background. -->
+  <color name="nogps_splash_status_bar">@color/nogps_splash_bg</color>
+</resources>

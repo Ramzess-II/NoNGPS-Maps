@@ -14,6 +14,12 @@
 #include "base/exception.hpp"
 #include "base/logging.hpp"
 
+#include <functional>
+#include <memory>
+#include <set>
+#include <string>
+#include <vector>
+
 #include <glaze/json.hpp>
 
 namespace nogps
@@ -221,6 +227,22 @@ std::string RoutingMapApi::GetDistanceLeft() const
   if (!info.IsValid())
     return {};
   return info.m_distToTarget.GetDistanceString() + info.m_distToTarget.GetUnitsString();
+}
+
+std::string RoutingMapApi::GetMapsVersion() const
+{
+  // The maps of the countries, World left out: the roads of the navigation come from the country maps, and World
+  // comes with the application, so its version tells nothing about the maps a trip was driven on.
+  std::vector<std::shared_ptr<MwmInfo>> infos;
+  m_dataSource.GetMwmsInfo(infos);
+  std::set<int64_t, std::greater<>> versions;
+  for (auto const & info : infos)
+    if (info->IsRegistered() && info->GetType() == MwmInfo::COUNTRY)
+      versions.insert(info->GetVersion());
+  std::string result;
+  for (auto const version : versions)
+    result += (result.empty() ? "" : ",") + std::to_string(version);
+  return result.empty() ? "-" : result;
 }
 
 Service::Service(Delegate & delegate, SessionRoute & route, DataSource const & dataSource,

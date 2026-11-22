@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <!-- The splash is light: its status and navigation bars carry dark icons. -->
+  <bool name="nogps_splash_light_bars">true</bool>
+</resources>
