@@ -1107,6 +1107,8 @@
     <string name="nogps_phone_removed_unpair">Цей телефон видалено з блока, авто забуто. Видаліть NoGPS-%1$s у налаштуваннях Bluetooth</string>
     <!-- Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code -->
     <string name="nogps_phone_add">Додати телефон</string>
+    <!-- Title of the dialog that adds a phone to the box of a car. %1$@ is the car name, e.g. "Add a phone to Kia" -->
+    <string name="nogps_phone_add_to_car">Додати телефон до %1$s</string>
     <!-- Shown with a one-time pairing code on the paired phone. %1$@ is the time left, e.g. 1:45 -->
     <string name="nogps_phone_add_code">На новому телефоні відкрийте «Блок» у NonGPS Maps. Коли телефон спитає код, введіть цей. Він діє один раз, ще %1$s.</string>
     <!-- Shown while the one-time pairing code is sent to the sensor box -->
@@ -1485,11 +1487,11 @@
     <!-- Title of the dialog shown once, on the first start of the app -->
     <string name="nogps_intro_title">Навігація без GPS</string>
     <!-- Text of the dialog of the first start: what the app is and that it needs the sensor box -->
-    <string name="nogps_intro_text">Цей застосунок веде вашу машину мапою без GPS. Датчик NonGPS бере швидкість з машини, а повороти — зі своїх сенсорів, і застосунок малює машину за ними: у тунелі, у дворі, під мостом, де GPS губиться. Без датчика це звичайна офлайн-мапа.</string>
+    <string name="nogps_intro_text">Застосунок веде машину мапою там, де губиться GPS: у тунелі, у дворі, під мостом. Потрібен датчик NonGPS — без датчика це звичайна офлайн-мапа.</string>
     <!-- Button of the dialog of the first start, opens the video about the app -->
-    <string name="nogps_intro_video">Подивитися відео</string>
-    <!-- Checkbox that closes the dialog of the first start -->
-    <string name="nogps_intro_understand">Так, я зрозумів</string>
+    <string name="nogps_intro_video">Відео з поясненням</string>
+    <!-- Button that closes the dialog of the first start -->
+    <string name="nogps_intro_understand">Так, зрозуміло: працює з датчиком</string>
     <!-- Balloon of the first start pointing at the bottom bar -->
     <string name="nogps_intro_bottom">Машини, датчик і GPS — тут.</string>
     <!-- Balloon of the first start pointing at the panel with the zoom buttons -->

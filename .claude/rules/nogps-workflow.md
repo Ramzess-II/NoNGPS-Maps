@@ -76,6 +76,26 @@ given (`<ws>/replay/maps` and `<ws>/replay/settings.ini`, or the paths in the co
 how the mark moves before and after with `nogps_replay_tool`, as in "Verification", instead of postponing it. Without
 them such a PR says "Not replayed".
 
+## Merge train
+
+`/nogps-merge [<PR numbers>] [--no-roll] [--rounds N] [--dry]` lands the open PRs of this repo one by one. It runs
+the issue roller first, unless `--no-roll` or PR numbers are given, then orders what is left (a PR others depend on
+first, then the ones no other PR touches, then the rest oldest first) and takes each one through: merge current
+master into the PR branch and push, review with Fable which posts its findings on the PR, fix with Opus which
+replies on the same PR, review again, and merge with a merge commit once a review comes back clean and CI is
+green. Up to `--rounds` rounds (default 3). The script is `.claude/workflows/nogps-merge.js`; it works in one worktree,
+`<ws>/worktrees/merge-train`, reused by every PR and removed at the end.
+
+IMPORTANT: nothing here rebases a PR branch or force-pushes it, with or without a lease. A branch of an open PR is
+only moved forward: master is merged into it, so every push is a fast-forward. This holds for the train, for a
+session and for an agent, and a push that would need a force is a reason to stop and tell the user.
+
+A PR it can't land stays open and the train goes on to the next one: a merge conflict that isn't plain, a failing
+check, findings still open after the last round. It never takes a PR with a commit of anyone but koloboid or
+Ramzess-II, one waiting for the other person's review, one from a fork, or one whose branch is checked out in the
+main checkout or a worktree -- the train would push commits under the session working there. Firmware PRs are not
+in the train, which works in one repo (#504); both of us can merge them by hand.
+
 ## Versions
 
 Nobody raises a version by hand. Each build takes them from git: `tools/unix/version.sh` gives the app version
@@ -118,6 +138,19 @@ and the order of values in their enums. The bridges are `android/sdk/src/main/cp
 - change both bridges in the same PR;
 - a new file in `libs/map/nogps` goes into `libs/map/CMakeLists.txt` and `xcode/map/map.xcodeproj/project.pbxproj`.
   If the author can't build iOS, the PR says "Xcode project not verified".
+
+The box protocol is a shared interface too: `docs/nogps/esp32-firmware-spec.md` is what the app, the firmware and the
+box simulator (`tools/python/nogps_box_sim.py`, #468) all follow. A change to it — a line, a field, a command, a flag,
+a cap, an error — touches the spec in this repo, and the simulator changes in the same PR:
+
+- a line the box sends: the simulator sends it too, with the fields the panel can set;
+- a command the app sends: the simulator answers it, and can answer with the refusals the box would give
+  (`ERR,BUSY`, `ERR,VALUE`), so the app's handling of them can be seen without the box;
+- a cap in `NGI`: reported only once the simulator does what it promises, as the app gates its commands on the caps;
+- what the simulator can't do, because CoreBluetooth or BlueZ won't, goes in its docstring and in the PR.
+
+A test in `tools/python/nogps_box_sim_test.py` comes with it. A firmware change that leaves the protocol alone — a
+driver, OBD, the power rules — doesn't touch the simulator.
 
 ## Living docs
 

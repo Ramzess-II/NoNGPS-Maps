@@ -7,6 +7,7 @@
 import argparse
 import io
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -23,6 +24,14 @@ import nogps_trip_log  # noqa: E402
 DEG_PER_M = 1 / 111320.0
 START_LAT, START_LON = 10.0, 20.0
 DAY_MS = nogps_log.to_ms(nogps_log.datetime(2026, 10, 8))
+# The stamp of LOGFMT 2 data lines: the tools skip it so far, see nogps_replay.sentence.
+LOGFMT_MS = 1760000000000
+DATA_TAG = re.compile(r'(\(\): (?:TRIP|ACC|ACCB|ACCB_BEFORE|GYRO|CALIBRATION)) ')
+
+
+def logfmt2(lines):
+    """The same log as LOGFMT 2 writes it: every data line has "ms=<unix ms>" right after its tag."""
+    return [DATA_TAG.sub(r'\1 ms=%d ' % LOGFMT_MS, line) for line in lines]
 
 
 def android_time(day, second, ms=0):
@@ -240,7 +249,7 @@ class AnomaliesTest(unittest.TestCase):
 class EventsTest(unittest.TestCase):
     def test_categories(self):
         day, t = '10-08', 18 * 3600
-        log = android_drive(seconds=30, stand=0) + [
+        log = logfmt2(android_drive(seconds=30, stand=0)) + [
             core(day, t + 5, 'SetManual', 'tap = ms::LatLon(10.0001, 20.0002) location = ms::LatLon(10.0, 20.0) '
                  'bearing = 0 heading was = nullopt'),
             core(day, t + 6, 'LogStateChanges', 'GPS signal GOOD -> NONE'),
@@ -381,6 +390,78 @@ class InputTest(unittest.TestCase):
         self.assertEqual((analysis.trips, analysis.notes), ([], ['notes.txt: not a log of the app']))
 
 
+class ReplayInputTest(unittest.TestCase):
+    def drive(self, seconds, tagged=False):
+        lines = android_drive(day='10-08', seconds=seconds, stand=0)
+        lines += [core('10-08', 18 * 3600 + 2 + s, 'OnMotion', 'GYRO 0.0 0 0 0 0 0 36 36 36 36 36', ms=600,
+                       file='nogps/esp32_source.cpp:1') for s in range(seconds)]
+        return logfmt2(lines) if tagged else lines
+
+    def records(self, lines):
+        with tempfile.TemporaryDirectory() as folder:
+            log = os.path.join(folder, 'app.log')
+            out = os.path.join(folder, 'in.txt')
+            with open(log, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(lines) + '\n')
+            with redirect_stdout(io.StringIO()):
+                nogps_replay.make_input(argparse.Namespace(logs=[log], day='10-08', start=None, end=None,
+                                                           output=out, no_taps=False, no_route=False))
+            with open(out, encoding='ascii') as f:
+                return [line.split() for line in f]
+
+    def switches(self, switch_lines, tagged=False):
+        # The switches come while the car drives, after the first second of the box data.
+        lines = self.drive(60, tagged)
+        lines[30:30] = [core('10-08', 18 * 3600 + 20, f, t) for f, t in switch_lines]
+        return [r for r in self.records(lines) if r[0] in ('X', 'A') and int(r[1]) >= (18 * 3600 + 20) * 1000]
+
+    def test_current_wording(self):
+        got = self.switches([('SetGpsDisabled', 'GPS ignored by the user = 1'), ('SetManualMode', 'Manual mode = 1'),
+                             ('SetGpsDisabled', 'GPS ignored by the user = 0')])
+        self.assertEqual([(r[0], r[2]) for r in got], [('X', '1'), ('A', '1'), ('X', '0')])
+
+    def test_old_wording(self):
+        got = self.switches([('SetGpsDisabled', 'disabled = 1'), ('SetManualMode', 'enabled = 1')])
+        self.assertEqual([(r[0], r[2]) for r in got], [('X', '1'), ('A', '1')])
+
+    def test_tagged_wording(self):
+        """LOGFMT 2 writes the tag, the stable name and the keys before the sentence."""
+        got = self.switches([('SetGpsDisabled', 'ACTION gps_off ms=1760000020000 disabled=1 by=user '
+                                                'GPS ignored by the user = 1'),
+                             ('SetManualMode', 'ACTION manual ms=1760000020000 enabled=1 by=user Manual mode = 1')],
+                            tagged=True)
+        self.assertEqual([(r[0], r[2]) for r in got], [('X', '1'), ('A', '1')])
+
+    def test_tagged_actions_of_the_user(self):
+        lines = self.drive(60, tagged=True)
+        lines[30:30] = [
+            core('10-08', 18 * 3600 + 20, 'PutMark', 'ACTION tap ms=1760000020000 tap = ms::LatLon(10.0, 20.0) '
+                 'location = ms::LatLon(10.0, 20.0) bearing = 0 heading was = nullopt'),
+            core('10-08', 18 * 3600 + 21, 'SwitchMark', 'ACTION switch_mark ms=1760000021000 Switching the mark'),
+            core('10-08', 18 * 3600 + 22, 'Stop', 'ACTION stop ms=1760000022000 Stop'),
+        ]
+        got = [r[0] for r in self.records(lines)
+               if r[0] in ('T', 'H', 'W', 'S') and int(r[1]) >= (18 * 3600 + 20) * 1000]
+        self.assertEqual(got, ['T', 'H', 'W', 'S'])
+
+    def test_initial_gps_off(self):
+        lines = [core('10-08', 18 * 3600 - 5, 'SetGpsDisabled', 'GPS ignored by the user = 1')]
+        lines += self.drive(30)
+        self.assertEqual([(r[0], r[2]) for r in self.records(lines) if r[0] == 'X'], [('X', '1')])
+
+    def test_a_tagged_log_gives_the_same_input(self):
+        """A log of LOGFMT 2 is driven again as the same log of LOGFMT 1: the data lines, and the switch of the
+        user before the first line of the file."""
+        plain = [core('10-08', 18 * 3600 - 5, 'SetGpsDisabled', 'GPS ignored by the user = 1')] + self.drive(30)
+        tagged = [core('10-08', 18 * 3600 - 5, 'SetGpsDisabled', 'ACTION gps_off ms=%d disabled=1 by=restore '
+                       'GPS ignored by the user = 1' % LOGFMT_MS)] + self.drive(30, tagged=True)
+        records = self.records(plain)
+        # The box data of the second: without it the two inputs would be equal and empty.
+        self.assertTrue([r for r in records if r[0] == 'B'])
+        self.assertEqual([(r[0], r[2]) for r in records if r[0] == 'X'], [('X', '1')])
+        self.assertEqual(self.records(tagged), records)
+
+
 class ExportTest(unittest.TestCase):
     def test_csv_and_gpx(self):
         trip = analyse(('app.log', android_drive(seconds=20, stand=0))).trips[0]
@@ -443,6 +524,92 @@ class RulesTest(unittest.TestCase):
             nogps_log.print_rules(analyse(('app.log', log)))
         loop = next(line for line in out.getvalue().splitlines() if line.startswith('loop'))
         self.assertIn('rare: 1 trips', loop)
+
+
+class TaggedLinesTest(unittest.TestCase):
+    """A line of LOGFMT 2 counts as the sentence of LOGFMT 1 did: a trip of an old log is compared with a replay."""
+
+    def test_rules_of_a_tagged_log_are_counted(self):
+        log = logfmt2(android_drive(seconds=120, stand=0))
+        log += [core('10-08', 18 * 3600 + sec, 'F', text) for sec, text in (
+            (10, 'RULE bend_moved ms=1760000010000 kind=bend Bend: moved along the road by 20 m'),
+            (20, 'RULE bend_confirmed ms=1760000020000 kind=bend Bend: the position fits the road, ahead by 1 m'),
+            (30, 'RULE loop ms=1760000030000 Loop: the way driven lies on the roads 20 m away, moved there'),
+            (40, 'RULE fork_branch ms=1760000040000 FORK the car goes along the branch 5 m aside'),
+            (50, 'RULE followed_apart ms=1760000050000 The car maneuvers 30 m off the roads at up to 10 km/h'),
+            (60, 'RULE late_turn ms=1760000060000 deg=40 The car has turned by 40 degrees from its road'),
+            (70, 'RULE road_lost ms=1760000070000 jump=0 The road is lost after 120 m, stopping at 10.0,20.0'),
+            (80, 'RULE mark_switched_turn ms=1760000080000 The car is shown on another road it may be on: '
+                 'WAY misses the roads at 3 points where it was shown, at 1 there, marks 2'))]
+        counts = analyse(('app.log', log)).trips[0].rule_counts()
+        self.assertEqual({name for name, count in counts.items() if count['fired']},
+                         {'bend moved', 'bend confirmed', 'loop', 'fork branch chosen', 'followed apart', 'late turn',
+                          'road lost', 'mark switched by the way'})
+
+    def test_events_of_a_tagged_log_keep_their_category(self):
+        day, t = '10-08', 18 * 3600
+        log = logfmt2(android_drive(seconds=30, stand=0)) + [
+            core(day, t + 5, 'PutMark', 'ACTION tap ms=1760000005000 tap = ms::LatLon(10.0001, 20.0002) '
+                 'location = ms::LatLon(10.0, 20.0) bearing = 0 heading was = nullopt'),
+            core(day, t + 6, 'LogStateChanges', 'EVENT gps_signal ms=1760000006000 from=GOOD to=NONE '
+                 'GPS signal GOOD -> NONE'),
+            core(day, t + 7, 'Lost', 'RULE road_lost ms=1760000007000 jump=0 The road is lost after 120 m, '
+                 'stopping at ms::LatLon(10.0, 20.0)'),
+            # The replay tool writes its notifications as "EVENT <event>", without a name and ms=.
+            core(day, t + 8, 'OnEvent', 'EVENT GpsBack'),
+        ]
+        events = analyse(('app.log', log)).trips[0].events
+        self.assertEqual([(e['cat'], e['name']) for e in events
+                          if e['name'] not in ('app started', 'navigation started')],
+                         [('user', 'tap'), ('state', 'GPS signal'), ('road', 'road lost'), ('app', 'notification')])
+
+    def test_data_lines_of_a_tagged_log_are_read(self):
+        """The series of the viewer, the TRIP rows and the calibration of the trip are the same of both formats."""
+        log = android_drive(seconds=30, stand=10) + [
+            core('10-08', 18 * 3600 + 3, 'LogCalibration', 'CALIBRATION car=C47D scale=1.04 table=3',
+                 file='nogps/inertial_navigator.cpp:393'),
+            core('10-08', 18 * 3600 + 15, 'OnMotion', 'GYRO 12.5 0.10 0.20 0.30 0.40 0.50 36 36 36 36 36',
+                 file='nogps/inertial_navigator.cpp:1254')]
+        for name, lines in (('LOGFMT 1', log), ('LOGFMT 2', logfmt2(log))):
+            with self.subTest(name):
+                analysis = analyse(('app.log', lines))
+                group = analysis.groups[0]
+                self.assertEqual([round(value, 2) for _, value in group.series['gyro']], [0.5, 1.0, 1.5, 2.0, 2.5])
+                self.assertEqual(len(group.series['accb']), 100)
+                self.assertEqual(len(group.rows), 30)
+                self.assertEqual(analysis.trips[0].calibration(), 'car=C47D scale=1.04 table=3')
+
+    def test_the_trip_csv_reads_a_tagged_log(self):
+        lines = logfmt2(android_drive(seconds=10, stand=0))
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, 'app.log')
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(lines) + '\n')
+            rows = nogps_trip_log.read_rows([path], 2026)
+        self.assertEqual(len(rows), 10)
+        self.assertEqual({row['src'] for row in rows}, {'INERTIAL'})
+
+    def test_compare_counts_a_tagged_replay_as_the_trip(self):
+        sentences = ['Bend: moved along the road by 20 m', 'FORK the car goes along the branch 5 m aside',
+                     'The car is shown on another road it may be on: the shown one stands lost']
+        heads = ['RULE bend_moved ms=1760000010000 kind=bend ', 'RULE fork_branch ms=1760000020000 ',
+                 'RULE mark_switched_stand_lost ms=1760000030000 ']
+        trip = [core('10-08', 18 * 3600 + 10 * i, 'F', text) for i, text in enumerate(sentences)]
+        replay = [core('10-08', 18 * 3600 + 10 * i, 'F', head + text)
+                  for i, (head, text) in enumerate(zip(heads, sentences))]
+        with tempfile.TemporaryDirectory() as folder:
+            paths = []
+            for name, lines in (('trip.log', trip), ('replay.log', replay)):
+                paths.append(os.path.join(folder, name))
+                with open(paths[-1], 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(lines) + '\n')
+            _, others, _ = nogps_replay.read(paths[:1], '10-08')
+            _, replayed, _ = nogps_replay.read(paths[1:], '10-08')
+        stats = nogps_replay.compare_stats([], others, [], replayed, 0, 86_400_000, 15)
+        counts = {name: (a, b) for name, a, b in stats['events']}
+        self.assertEqual(counts['bend moved'], (1, 1))
+        self.assertEqual(counts['seconds on another branch of a fork'], (1, 1))
+        self.assertEqual(counts['mark switched to another road'], (1, 1))
 
 
 class HeldOutTest(unittest.TestCase):

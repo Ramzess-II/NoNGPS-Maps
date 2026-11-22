@@ -389,7 +389,9 @@ public:
   /// from it. It works in the manual mode and when GPS is disabled for tests too.
   void OnSpeedTableGps(Fix const & gps);
   /// Forgets the car speed errors measured by GPS and corrected by the user, e.g. after new tyres.
-  void ClearSpeedCalibration();
+  /// \param keepUnit the speed unit of the car is kept: it has just been learned and the rest is cleared because
+  /// of it. The user's reset forgets the unit too, the box may be in another car now.
+  void ClearSpeedCalibration(bool keepUnit = false);
   /// Saves what is learned about the car and its box, and takes it from the storage again: the storage is of another
   /// car before and after, see CarStorage.
   void SaveCalibration();
@@ -537,9 +539,11 @@ private:
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
   void OnThisPhoneRemoved() override { m_listener.OnThisPhoneRemoved(); }
   void OnPeerPlace(PeerPlace const & place) override { m_listener.OnPeerPlace(place); }
-  void OnJolt(double joltMs2, int speedKmh) override { m_listener.OnJolt(joltMs2, speedKmh); }
+  void OnJolt(double joltMs2, int speedKmh) override;
 
   void CheckTurnSign(Fix const & gps);
+  /// \returns the speed the box tells in the unit of the car, see SpeedUnit.
+  int ConvertSpeed(int rawSpeedKmh) const;
   double GetSpeedScale(int speedKmh) const;
   void SaveSpeedTable();
   void LogSpeedCalibration() const;
@@ -572,7 +576,7 @@ private:
   // The road has gone away from a car driving straight: the mark waits for it at |at| up to |limitM|, see
   // kMaxWaitAheadM.
   // |why| is for the log.
-  void StartWaitAhead(double limitM, ms::LatLon const & at, std::string const & why);
+  void StartWaitAhead(double limitM, ms::LatLon const & at, std::string_view name, std::string const & why);
   // \returns true if the mark waits for the car that has driven |distanceM| rotating by |rotatedDeg|.
   bool WaitAhead(double rotatedDeg, double distanceM);
   // Looks if the car the mark waits for at a roundabout drives along a road past it, see kPastRoundaboutM.
@@ -687,7 +691,7 @@ private:
   // Splits the mark: the car may be on the road too.
   void AddOtherMark(RoadPoint const & road, double headingDeg, std::string const & why, bool far = false);
   // Shows the car on the other road |index|, keeping the road it was shown on as an other one if |keepShown|.
-  void TakeOtherMark(size_t index, bool keepShown, std::string const & why);
+  void TakeOtherMark(size_t index, bool keepShown, std::string_view name, std::string const & why);
   // \returns how far across |bearingDeg| the places are apart.
   static BendMatcher::Params GentleBendParams();
   static double AsideM(ms::LatLon const & a, ms::LatLon const & b, double bearingDeg);
@@ -747,7 +751,9 @@ private:
   DeadReckoning m_deadReckoning;
   HeadingSource m_headingSource = HeadingSource::None;
   int64_t m_lastOutputMs = 0;
+  // The speed of the car converted by m_speedUnit, and as the car told it.
   int m_speedKmh = -1;
+  int m_rawSpeedKmh = -1;
   int64_t m_speedTimeMs = 0;
 
   // The speed error estimated from the corrections of the user, used until GPS measures it.
@@ -785,6 +791,7 @@ private:
   SpeedTable m_roughSpeedTable{false /* learnsOffset */};
   // The change of the GPS table told by GPS and the roads, see kMinRoadFactorStretchM.
   SpeedFactor m_speedFactor;
+  SpeedUnit m_speedUnit;
   // The distance driven since the place known along the road, in the ranges of the speed table: by the car speed
   // and as calculated, by the car speed and the GPS table, and the error of the calculated distance at that place. The
   // snapping moves the position along the road too, e.g. onto the next branch at a bend, which takes away a part of the

@@ -235,7 +235,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private View mPhonesUnknown;
   private LinearLayout mPhonesRows;
   private View mPhonesReadOnly;
-  private View mAddPhone;
+  private TextView mAddPhone;
+  private ColorStateList mAddPhoneColors;
   // The texts of the phone rows shown: the rows are made again when they change.
   private List<String> mPhoneTexts = new ArrayList<>();
 
@@ -458,6 +459,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mPhonesRows = view.findViewById(R.id.box_phones_rows);
     mPhonesReadOnly = view.findViewById(R.id.box_phones_read_only);
     mAddPhone = view.findViewById(R.id.box_add_phone);
+    mAddPhoneColors = mAddPhone.getTextColors();
     mAddPhone.setOnClickListener(v -> addPhone());
     view.findViewById(R.id.box_sprint_to100_row).setOnClickListener(v -> showPage(Page.SPRINT_TO_100));
     view.findViewById(R.id.box_sprint_quarter_row).setOnClickListener(v -> showPage(Page.SPRINT_QUARTER_MILE));
@@ -880,7 +882,12 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final ListPopupWindow menu = new ListPopupWindow(requireContext());
     mCarMenu = menu;
     menu.setAnchorView(anchor);
-    menu.setWidth(ViewGroup.LayoutParams.WRAP_CONTENT);
+    // As wide as the page, over the title: a name with its state under it has no room in a drop-down fitted to the
+    // text of the title. Taken from the header row, which spans the page: the sheet is narrower than a wide screen,
+    // and the width of the anchor itself is only the width of its text.
+    final View header = (View) anchor.getParent();
+    menu.setWidth(Math.max(header.getWidth(), dp(280)));
+    menu.setHorizontalOffset(-anchor.getLeft());
     menu.setAdapter(new CarMenuAdapter(entries));
     menu.setOnDismissListener(() -> mCarMenu = null);
     menu.setOnItemClickListener((parent, view, position, id) -> {
@@ -936,6 +943,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       final View row = convertView != null
                          ? convertView
                          : LayoutInflater.from(requireContext()).inflate(R.layout.nogps_car_row, parent, false);
+      row.setPadding(dp(16), row.getPaddingTop(), dp(16), row.getPaddingBottom());
       final CarMenu.Entry entry = mEntries.get(position);
       final NoGps.Car car = entry.car();
       ((TextView) row.findViewById(R.id.car_name))
@@ -1054,7 +1062,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private void updatePhones(@NonNull NoGps.Status status)
   {
     mPhonesReadOnly.setVisibility(status.boxReadOnly ? View.VISIBLE : View.GONE);
+    // The row looks like a link only while it works: the box of another phone takes no new phone.
     mAddPhone.setEnabled(!status.boxReadOnly);
+    mAddPhone.setTextColor(status.boxReadOnly ? mStateColors : mAddPhoneColors);
     final Context context = requireContext();
     final List<String> texts = new ArrayList<>();
     for (NoGps.Phone phone : status.boxPhones)
@@ -1124,12 +1134,16 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
    */
   private void addPhone()
   {
+    final NoGps.Car car = pageCar();
+    if (car == null)
+      return;
     NoGps.nativeStartAddPhone();
+    final Context context = requireContext();
     final View content = getLayoutInflater().inflate(R.layout.dialog_nogps_add_phone, null);
     mAddPhoneCode = content.findViewById(R.id.add_phone_code);
     mAddPhoneMessage = content.findViewById(R.id.add_phone_message);
-    mAddPhoneDialog = new MaterialAlertDialogBuilder(requireContext())
-                          .setTitle(R.string.nogps_phone_add)
+    mAddPhoneDialog = new MaterialAlertDialogBuilder(context)
+                          .setTitle(getString(R.string.nogps_phone_add_to_car, BoxTexts.carName(context, car)))
                           .setView(content)
                           .setPositiveButton(R.string.close, null)
                           .setOnDismissListener(dialog -> {
@@ -1184,8 +1198,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final boolean updating = BoxTexts.isUpdating(update);
     mFirmwareRow.setVisibility(updating || !status.boxFirmware.isEmpty() ? View.VISIBLE : View.GONE);
     mFirmware.setText(firmware);
-    // A box that has taken the firmware restarts by itself.
-    final boolean cancel = updating && update != NoGps.FirmwareUpdate.RESTARTING;
+    final boolean cancel = BoxTexts.canCancelFirmware(status);
     final boolean install = BoxTexts.canInstallFirmware(status);
     mFirmwareAction.setVisibility(cancel || install ? View.VISIBLE : View.GONE);
     if (cancel)
@@ -1318,6 +1331,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     }
     else
     {
+      // Nothing from the box yet: the pages of the values show every row with a dash instead of collapsing to a
+      // header and nothing under it.
+      if (mValueIds.length == 0)
+        makeValueRows(NoGps.BoxValue.values());
       Arrays.fill(mValues, "");
     }
     boolean mismatch = false;
@@ -1395,8 +1412,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private void onFirmwareAction()
   {
     final NoGps.Status status = NoGps.getStatus();
-    final NoGps.FirmwareUpdate update = status.getFirmwareUpdate();
-    if (BoxTexts.isUpdating(update) && update != NoGps.FirmwareUpdate.RESTARTING)
+    if (BoxTexts.canCancelFirmware(status))
       NoGps.nativeCancelFirmwareUpdate();
     else if (BoxTexts.canInstallFirmware(status))
       NoGps.nativeStartFirmwareUpdate();

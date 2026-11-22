@@ -2,6 +2,9 @@
 <resources>
   <color name="cursor_edit_field">@color/text_light</color>
 
+  <color name="nogps_splash_bg">#FF000000</color>
+  <color name="nogps_splash_text">@color/white_primary</color>
+
   <color name="base_accent">#FF4BB9E6</color>
   <color name="base_accent_pressed">#FF3C9BBE</color>
 

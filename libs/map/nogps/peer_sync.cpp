@@ -108,7 +108,8 @@ std::optional<esp32::Peer> PeerSync::MakeMessage(PeerRole role, PeerTrigger trig
   peer.m_lonE7 = static_cast<int32_t>(std::lround(place.m_position.m_lon * 1e7));
   peer.m_headingCdeg =
       place.m_bearingDeg ? static_cast<int>(std::lround(Normalize(*place.m_bearingDeg) * 100)) % 36000 : -1;
-  peer.m_accuracyDm = static_cast<int>(std::lround(std::clamp(place.m_accuracyM, 0.0, 100'000.0) * 10));
+  peer.m_accuracyDm = static_cast<int>(
+      std::lround(std::clamp(place.m_accuracyM * 10, 0.0, static_cast<double>(esp32::kMaxPeerAccuracyDm))));
   peer.m_source = place.m_source;
   return peer;
 }

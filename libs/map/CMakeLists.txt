@@ -73,6 +73,7 @@ set(SRC
   nogps/gyro_calibrator.hpp
   nogps/inertial_navigator.cpp
   nogps/inertial_navigator.hpp
+  nogps/log_line.hpp
   nogps/map_api.hpp
   nogps/motion_source.cpp
   nogps/motion_source.hpp

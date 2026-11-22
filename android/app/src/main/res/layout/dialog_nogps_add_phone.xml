@@ -29,5 +29,5 @@
     android:layout_marginTop="16dp"
     android:gravity="center"
     android:text="@string/nogps_phone_add_opening"
-    android:textAppearance="?attr/textAppearanceBodyMedium" />
+    android:textAppearance="@style/MwmTextAppearance.Body2" />
 </LinearLayout>
