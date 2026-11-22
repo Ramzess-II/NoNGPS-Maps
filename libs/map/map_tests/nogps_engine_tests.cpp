@@ -3140,6 +3140,22 @@ UNIT_TEST(NoGps_TripStarted_FirstConnectionLongAfterStart)
   TEST(user.m_delegate.HasEvent(Event::TripStarted), ());
 }
 
+UNIT_TEST(NoGps_TripStarted_LostPairingProbeIsNoLink)
+{
+  NewUser user;
+  user.m_storage.Set(Storage::kInertialEnabled, true);
+  user.Start();
+  user.m_clock.Advance(Engine::kTripFileLinkGapMs);
+  // The search for a box with a lost pairing connects to it: the UI keeps the hint, no trip starts.
+  user.m_engine.OnEsp32BleState(BleState::Connected, true /* bondLost */);
+  TEST(!user.m_delegate.HasEvent(Event::TripStarted), ());
+  TEST_EQUAL(user.m_engine.GetStatus().m_bleState, BleState::BondLost, ());
+  // The box is heard: the same connection is a link now.
+  user.m_engine.OnEsp32BleState(BleState::Connected, false /* bondLost */);
+  TEST(user.m_delegate.HasEvent(Event::TripStarted), ());
+  TEST_EQUAL(user.m_engine.GetStatus().m_bleState, BleState::Connected, ());
+}
+
 UNIT_TEST(NoGps_TripStarted_LinkLostForLong)
 {
   Env env(true /* inertial */);
