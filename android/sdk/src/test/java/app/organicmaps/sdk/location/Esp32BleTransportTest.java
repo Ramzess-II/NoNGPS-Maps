@@ -107,9 +107,16 @@ public class Esp32BleTransportTest
   @Test
   public void bytesOfADeviceThatIsNotPaired_areDropped()
   {
-    assertTrue(Esp32BleTransport.takesLines(BluetoothDevice.BOND_BONDED));
-    assertFalse(Esp32BleTransport.takesLines(BluetoothDevice.BOND_BONDING));
-    assertFalse(Esp32BleTransport.takesLines(BluetoothDevice.BOND_NONE));
+    assertTrue(Esp32BleTransport.takesLines(BluetoothDevice.BOND_BONDED, false));
+    assertFalse(Esp32BleTransport.takesLines(BluetoothDevice.BOND_BONDING, false));
+    assertFalse(Esp32BleTransport.takesLines(BluetoothDevice.BOND_NONE, false));
+  }
+
+  // A debug build talks to the box simulator, which asks for no pairing: a Mac is never bonded.
+  @Test
+  public void linesOfTheBoxSimulator_areTaken()
+  {
+    assertTrue(Esp32BleTransport.takesLines(BluetoothDevice.BOND_NONE, true));
   }
 
   @Test

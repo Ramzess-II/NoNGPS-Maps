@@ -153,6 +153,8 @@ class Esp32BleTransport
   };
   // The box was paired when it was found.
   private boolean mBonded;
+  // The box advertises no data at all and this is a debug build: the box simulator, which needs no pairing.
+  private boolean mSimulator;
   // When the connection was made, -1 before.
   private long mLinkedMs = -1;
   // The box has sent data over the connection.
@@ -572,6 +574,7 @@ class Esp32BleTransport
       setState(STATE_CONNECTING);
     mMtu = 23;
     mBonded = bonded;
+    mSimulator = data == null && BuildConfig.DEBUG;
     mLinkedMs = -1;
     mHeard = false;
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
@@ -624,12 +627,13 @@ class Esp32BleTransport
 
   /**
    * The subscription needs no encryption: bytes of a device that is not paired in the system may be a fake box's or a
-   * neighbour's.
+   * neighbour's. The box simulator of a debug build is taken as it is: its characteristics ask for no pairing, and a
+   * Mac is never bonded, see onBoxFound().
    */
   @VisibleForTesting
-  static boolean takesLines(int bondState)
+  static boolean takesLines(int bondState, boolean simulator)
   {
-    return bondState == BluetoothDevice.BOND_BONDED;
+    return bondState == BluetoothDevice.BOND_BONDED || simulator;
   }
 
   /**
@@ -949,7 +953,7 @@ class Esp32BleTransport
   {
     mMainHandler.post(() -> {
       // The bytes of a closed connection are dropped.
-      if (gatt != mGatt || !takesLines(gatt.getDevice().getBondState()))
+      if (gatt != mGatt || !takesLines(gatt.getDevice().getBondState(), mSimulator))
         return;
       if (!mHeard)
       {
@@ -1088,7 +1092,7 @@ class Esp32BleTransport
     {
       mReady = true;
       // A box that is not paired yet is connected after the pairing, see onBondStateChanged().
-      if (takesLines(gatt.getDevice().getBondState()))
+      if (takesLines(gatt.getDevice().getBondState(), mSimulator))
         setState(STATE_CONNECTED);
     }
     else if (status != BluetoothGatt.GATT_INSUFFICIENT_AUTHENTICATION
