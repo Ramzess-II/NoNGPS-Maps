@@ -1335,6 +1335,48 @@ UNIT_TEST(NoGps_Engine_TurnFitsCrossingOtherMarkHasPassed)
   TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
 }
 
+UNIT_TEST(NoGps_Engine_OtherMarkSearchesCrossingByItsOwnAlongError)
+{
+  // The car turns left beside two streets going north, 40 m apart: the shown mark is on the street at 200, an other
+  // mark is on the one at 240. The car drives 25 km north, and the bends of the shown street tell its place: the
+  // shown mark is known then, the other one has the along error of 190 m still. A street goes east from the other
+  // street 150 m ahead of where the car turns east: the shown street has none, and the other mark is moved to that
+  // street, because it searches by its own along error, not by the shown one.
+  double constexpr kTurnNorthM = 26'100;
+  double const bend = math::DegToRad(25.0);
+  PieceRoads roads({{-300, 0, 400, 0},
+                    {200, 0, 200, 25'000},
+                    {200, 25'000, 200 + 800 * std::sin(bend), 25'000 + 800 * std::cos(bend)},
+                    {200 + 800 * std::sin(bend), 25'000 + 800 * std::cos(bend), 200 + 800 * std::sin(bend), 28'000},
+                    {240, -10, 240, 25'000},
+                    {240, 25'000, 240 + 800 * std::sin(bend), 25'000 + 800 * std::cos(bend)},
+                    {240 + 800 * std::sin(bend), 25'000 + 800 * std::cos(bend), 240 + 800 * std::sin(bend), 28'000},
+                    {240 + 800 * std::sin(bend), kTurnNorthM + 150, 1500, kTurnNorthM + 150}},
+                   {{200, 0}, {240 + 800 * std::sin(bend), kTurnNorthM + 150}});
+  Env env(true /* inertial */, &roads);
+  TurnLeftBesideCrossing(env);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+  for (int i = 0; i < 25; ++i)
+    env.Drive(33'333, 108, 0);
+  env.Drive(500, 108, 0);
+  env.Drive(1000, 36, 25);
+  env.Drive(79'000, 36, 0);
+  env.Drive(1000, 36, -25);
+  env.Drive(30'000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+  TEST_LESS(env.Last().m_accuracyM, 30, (env.m_engine.GetTripLine()));
+  // The car turns right where the calculation has it at 26'100 m.
+  while (North(env.Last().m_position) < kTurnNorthM - 12)
+    env.Drive(100, 36, 0);
+  env.Drive(3000, 36, 30);
+  // The turn is moved to the crossing of the other mark when it ends, not when the shown road is lost 30 m later.
+  env.Drive(2500, 36, 0);
+  TestAlmostEqualAbs(North(env.Last().m_position), kTurnNorthM + 150, 3);
+  env.Drive(5000, 36, 0);
+  TEST_GREATER(East(env.Last().m_position), 600, ());
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+}
+
 UNIT_TEST(NoGps_Engine_TurnStartedWithoutCrossingIsMatchedLate)
 {
   // The car turns left 40 m before the crossing at 200 m by the calculation: no crossing is in reach then. It drives
@@ -1736,6 +1778,53 @@ UNIT_TEST(NoGps_Engine_TurnAfterLongWayIsNotMovedFartherThanAlongError)
   // the test fails if the search takes the cap instead of the along error. The car has turned somewhere else.
   TEST_EQUAL(TripField(env, "turn"), "NaN", ());
   TEST_LESS(East(env.Last().m_position), 25'200, ());
+}
+
+// A street going east for 20 km, then bends by 25 degrees left and right in turn every 800 m, 4 km on.
+PieceRoads ZigzagAfterLongWay()
+{
+  std::vector<PieceRoads::Piece> pieces = {{-300, 0, 20'000, 0}};
+  double x = 20'000;
+  double y = 0;
+  for (int i = 1; i < 6; ++i)
+  {
+    double const heading = math::DegToRad(i % 2 == 1 ? 65.0 : 90.0);
+    pieces.push_back({x, y, x + 800 * std::sin(heading), y + 800 * std::cos(heading)});
+    x = pieces.back()[2];
+    y = pieces.back()[3];
+  }
+  return PieceRoads(pieces, {});
+}
+
+// The car marked |markShiftM| from itself drives 20 km without a known place: the along error is 155 m. Then it drives
+// the zigzag at 36 km/h and rotates through 10 m of each bend.
+// \returns where the mark is at the end.
+ms::LatLon DriveZigzagAfterLongWay(double markShiftM)
+{
+  auto roads = ZigzagAfterLongWay();
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, markShiftM);
+  for (int i = 0; i < 26; ++i)
+    env.Drive(25'000, 108, 0);
+  env.Drive(16'167, 108, 0);
+  env.Drive(1000, 36, -25);
+  for (int i = 2; i < 6; ++i)
+  {
+    env.Drive(79'000, 36, 0);
+    env.Drive(1000, 36, i % 2 == 0 ? 25 : -25);
+  }
+  env.Drive(20'000, 36, 0);
+  return env.Last().m_position;
+}
+
+UNIT_TEST(NoGps_Engine_BendsMoveMarkBehindFartherThanNearSearch)
+{
+  // The mark put 140 m behind the car is ~100 m behind it at the first bend, farther than kMaxBendShiftM: only the
+  // search up to the along error finds the bends where the car rotated, and moves the mark there after it has been
+  // told 3 times. The car that was marked right is the reference.
+  auto const exact = DriveZigzagAfterLongWay(0);
+  auto const behind = DriveZigzagAfterLongWay(-140);
+  TestAlmostEqualAbs(Distance(behind, exact), 0, 15);
 }
 
 UNIT_TEST(NoGps_Engine_StopsCarThatLeftRoads)
