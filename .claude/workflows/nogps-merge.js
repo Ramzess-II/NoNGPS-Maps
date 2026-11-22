@@ -1,10 +1,10 @@
 export const meta = {
   name: 'nogps-merge',
-  description: 'NonGPS merge train: rebase each open PR on master, review it with Fable, fix with Opus, merge when clean',
+  description: 'NonGPS merge train: merge master into each open PR, review it with Fable, fix with Opus, merge when clean',
   whenToUse: 'Started by the /nogps-merge skill, which builds the order: args {ws, queue, rounds}',
   phases: [
     { title: 'Setup', detail: 'the train worktree, reused by every PR' },
-    { title: 'Rebase', detail: 'the PR branch on current master, force-push with lease' },
+    { title: 'Update', detail: 'merge current master into the PR branch, push fast-forward' },
     { title: 'Review', detail: 'correctness only, the findings posted on the PR', model: 'fable' },
     { title: 'Fix', detail: 'check each finding, fix the ones that hold, push', model: 'opus' },
     { title: 'Merge', detail: 'authors, CI green, merge commit' },
@@ -12,9 +12,11 @@ export const meta = {
   ],
 }
 
-// One PR at a time: master moves under the queue with every merge, so the next PR is rebased on the new master,
-// reviewed again, and merged only when the review is clean and CI is green. A PR that can't be merged stays open
-// and the train goes on.
+// One PR at a time: master moves under the queue with every merge, so the next PR gets the new master merged into
+// it, is reviewed again, and is merged only when the review is clean and CI is green. A PR that can't be merged
+// stays open and the train goes on.
+// The train never rewrites a branch: it merges master into the PR branch, so every push is a fast-forward. No
+// rebase and no force push, not even with a lease.
 const A = args || {}
 const WS = A.ws
 if (!WS) throw new Error('args.ws is required: the folder that holds app/')
@@ -40,8 +42,6 @@ PR open. Write English only on GitHub.`
 const CHECKOUT = (pr) => `git -C ${WT} fetch -q origin && git -C ${WT} checkout --force -B train/${pr.number} \
 refs/remotes/origin/${pr.branch} && git -C ${WT} submodule update --init --recursive`
 const PUSH = (pr) => `git -C ${WT} push origin HEAD:refs/heads/${pr.branch}`
-const PUSH_FORCE = (pr, expect) => `git -C ${WT} push \
---force-with-lease=refs/heads/${pr.branch}:${expect} origin HEAD:refs/heads/${pr.branch}`
 
 const SETUP_SCHEMA = {
   type: 'object',
@@ -53,13 +53,13 @@ const SETUP_SCHEMA = {
   required: ['ok', 'freeGb'],
 }
 
-const REBASE_SCHEMA = {
+const UPDATE_SCHEMA = {
   type: 'object',
   properties: {
     status: { type: 'string', enum: ['ok', 'conflict', 'moved', 'failed'] },
     reason: { type: 'string', description: 'one line for the report table' },
-    head: { type: 'string', description: 'the sha of the rebased head' },
-    rebased: { type: 'boolean', description: 'the branch was behind master and is now on top of it' },
+    head: { type: 'string', description: 'the sha of the head after the merge' },
+    updated: { type: 'boolean', description: 'the branch was behind master and now has it merged in' },
     diffStat: { type: 'string', description: 'git diff --shortstat origin/master...HEAD' },
   },
   required: ['status'],
@@ -123,22 +123,26 @@ nobody pushed, report ok false and say what is in it; the train then stops and a
 Nothing else: no builds, no GitHub writes.`
 }
 
-function rebasePrompt(pr) {
+function updatePrompt(pr) {
   return `${ENV}
 
-Put PR #${pr.number} "${pr.title}" (branch ${pr.branch}, head ${pr.head}) on top of current master, in ${WT}.
+Bring current master into PR #${pr.number} "${pr.title}" (branch ${pr.branch}, head ${pr.head}), in ${WT}.
+IMPORTANT: never rebase this branch and never force-push it, with or without a lease. The branch is only ever \
+moved forward: master is merged into it, so the push is a fast-forward. A push that would need a force is a \
+"moved" report, not a force push.
 1. ${CHECKOUT(pr)}
    If the PR's head on GitHub is no longer ${pr.head} (gh pr view ${pr.number} -R ${REPO} --json headRefOid), \
 somebody pushed to it while the train was running: report "moved" and stop.
-2. git -C ${WT} rebase origin/master. Already on top of master: report "ok" with rebased false and push nothing.
+2. git -C ${WT} merge --no-edit origin/master. Already has master in it ("Already up to date"): report "ok" with \
+updated false and push nothing.
 3. A conflict: resolve it only where both sides make the resolution plain (both added a line to the same list, a \
 constant moved, a string table). Read the code around it, not only the conflict markers. Anything else, or a \
-conflict in a generated file: git -C ${WT} rebase --abort, report "conflict" with the files, and stop. The PR \
+conflict in a generated file: git -C ${WT} merge --abort, report "conflict" with the files, and stop. The PR \
 stays open for a person.
 4. After a resolved conflict, check that nothing of the PR was dropped and nothing of master was undone: \
 git -C ${WT} diff origin/master...HEAD against the PR's own diff on GitHub (gh pr diff ${pr.number} -R ${REPO}).
-5. Push the rebased branch: ${PUSH_FORCE(pr, pr.head)}
-   Rejected: somebody pushed meanwhile, report "moved".
+5. Push the branch: ${PUSH(pr)}
+   Rejected as non-fast-forward: somebody pushed meanwhile, report "moved". Don't force it.
 6. Report the new head (git -C ${WT} rev-parse HEAD) and git -C ${WT} diff --shortstat origin/master...HEAD.
 Don't build and don't write on GitHub beyond this push.`
 }
@@ -151,14 +155,15 @@ is a new bug the fix brought. Don't repeat a finding you now agree was wrong.`
     : ''
   return `${ENV}
 
-Review PR #${pr.number} "${pr.title}" in ${WT}, just rebased on master: git -C ${WT} diff origin/master...HEAD. \
+Review PR #${pr.number} "${pr.title}" in ${WT}, with current master just merged in: git -C ${WT} diff \
+ origin/master...HEAD. \
 You didn't write it. Read the PR and its issue (gh pr view ${pr.number} -R ${REPO} --comments), and the code around \
 the diff, not only the diff.${again}
 Correctness bugs only: wrong behavior, a missed corner case, a behavior both apps show changed on one platform \
 only, the shared interface changed in one bridge only (see "Shared interface" in .claude/rules/nogps-workflow.md), \
 a test that doesn't test the change, living docs (docs/nogps/navigation-rules.md, esp32-firmware-spec.md) that no \
-longer match the code, a generated file edited by hand, and a rebase that dropped a change or undid something of \
-master.
+longer match the code, a generated file edited by hand, and a merge of master that dropped a change or undid \
+something of master.
 Leave out style preferences, defensive code for cases that can't happen, and whatever CI already gates: \
 formatting, lint, translation keys, the other-platform check.
 Give every finding a file, a line and a concrete failing scenario. Say nothing about the PR that isn't a finding.
@@ -199,7 +204,7 @@ the same: the train then merges the PR.`
 function mergePrompt(pr) {
   return `${ENV}
 
-Merge PR #${pr.number} "${pr.title}" of ${REPO}. It is rebased on master and its review is clean.
+Merge PR #${pr.number} "${pr.title}" of ${REPO}. It has current master merged in and its review is clean.
 1. Authors, from "Flow of a change" in .claude/rules/nogps-workflow.md: \
 gh api --paginate repos/${REPO}/pulls/${pr.number}/commits --jq '.[].author.login // "unknown"' | sort -u \
 must print only koloboid and Ramzess-II. IMPORTANT: any other login, or "unknown", stops the merge. Report \
@@ -248,9 +253,9 @@ if (!setup || !setup.ok) throw new Error(`the train worktree is not ready: ${set
 if (setup.freeGb < MIN_FREE_GB) log(`only ${setup.freeGb} GB free, builds of the fix rounds may fail`)
 
 for (const pr of queue) {
-  const reb = await agent(rebasePrompt(pr), { label: `rebase:#${pr.number}`, phase: 'Rebase', schema: REBASE_SCHEMA })
+  const reb = await agent(updatePrompt(pr), { label: `update:#${pr.number}`, phase: 'Update', schema: UPDATE_SCHEMA })
   if (!reb) {
-    record(pr, 'open', 'the rebase agent stopped')
+    record(pr, 'open', 'the update agent stopped')
     continue
   }
   if (reb.status !== 'ok') {
