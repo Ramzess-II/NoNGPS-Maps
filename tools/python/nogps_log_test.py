@@ -518,6 +518,13 @@ class RulesTest(unittest.TestCase):
                          lambda s: dict(speed='-1') if 20 <= s < 80 else dict(lost='1') if s >= 99 else {})
         self.assertEqual(trip.rule_counts()['loop'], dict(fired=1, ok=1, lost=0, tap=0))
 
+    def test_the_gps_speed_does_not_drive_the_window(self):
+        # The car stands (speed=0) from 20 s to 80 s while GPS still reports 36 km/h: the window follows the car, so
+        # the 300 m are not driven before the loss at 90 s.
+        trip = self.trip([(10, 'Loop: the way driven lies on the roads 20 m away, moved there')],
+                         lambda s: dict(speed='0') if 20 <= s < 80 else dict(lost='1') if s >= 90 else {})
+        self.assertEqual(trip.rule_counts()['loop'], dict(fired=1, ok=0, lost=1, tap=0))
+
     def test_a_tap_of_the_panel_is_not_a_map_tap(self):
         tap = 'ACTION tap ms=1760000020000 by=%s tap = ms::LatLon(10.0, 20.0) location = ms::LatLon(10.0, 20.0)'
         for by, key in (('gps', 'ok'), ('user', 'tap')):
