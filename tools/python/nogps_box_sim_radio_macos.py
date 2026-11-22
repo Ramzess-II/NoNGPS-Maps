@@ -84,6 +84,8 @@ class Radio:
         self.tx = None
         self.rx = None
         self.centrals = {}
+        # The length of a notification each central takes, to tell the box when it changes.
+        self.payloads = {}
         # What the panel wants: (name, manufacturer) or None. Done as soon as Bluetooth is on.
         self.wanted = None
         self.powered_on = False
@@ -143,24 +145,34 @@ class Radio:
         self.powered_on = True
         self.apply()
 
-    def on_subscribe(self, central):
+    def remember(self, central):
+        """\returns the id of a central, telling the box of a new one and of a changed notification length.
+
+        CoreBluetooth reports a subscription only as it happens. A phone that subscribed before this program
+        started -- the system keeps the link while the simulator restarts -- is never reported, so a phone is
+        taken as subscribed from its first write too: it writes HELLO, which asks for the data (9.2).
+        """
         phone_id = str(central.identifier().UUIDString())
         if phone_id not in self.centrals:
             self.centrals[phone_id] = central
             self.on_event('connect', phone_id, phone_id[:8])
-        self.on_event('subscribe', phone_id, int(central.maximumUpdateValueLength()))
+        payload = int(central.maximumUpdateValueLength())
+        if self.payloads.get(phone_id) != payload:
+            self.payloads[phone_id] = payload
+            self.on_event('subscribe', phone_id, payload)
+        return phone_id
+
+    def on_subscribe(self, central):
+        self.remember(central)
 
     def on_unsubscribe(self, central):
         phone_id = str(central.identifier().UUIDString())
+        self.payloads.pop(phone_id, None)
         if self.centrals.pop(phone_id, None) is not None:
             self.on_event('disconnect', phone_id)
 
     def on_write(self, central, data):
-        phone_id = str(central.identifier().UUIDString())
-        if phone_id not in self.centrals:
-            self.centrals[phone_id] = central
-            self.on_event('connect', phone_id, phone_id[:8])
-        self.on_event('write', phone_id, data)
+        self.on_event('write', self.remember(central), data)
 
     def on_service_added(self, error):
         if self.serving != 'adding':
@@ -197,6 +209,7 @@ class Radio:
         self.manager.removeAllServices()
         self.serving = 'off'
         self.advertised_name = None
+        self.payloads.clear()
         for phone_id in list(self.centrals):
             del self.centrals[phone_id]
             self.on_event('disconnect', phone_id)
