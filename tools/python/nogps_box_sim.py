@@ -24,7 +24,8 @@ the flags there, and an iOS release build connects to the simulator as it does t
 
 What it doesn't simulate, and why:
 - the pairing rules (BLE-11, BLE-12, BLE-15, BLE-16): on macOS pairing belongs to the system, with no bt_pin and no
-  "display only" capability;
+  "display only" capability; so no drop of a link that stays unencrypted and no BT_UNSECURE event, and the
+  write queue of BLE-5 is the radio's, not ours;
 - any motion: no speed, no turns, no jolts;
 - the firmware update, the car values, the phone list and the places of two phones: NGI tells the abilities "BLE"
   alone, and the application asks for none of them.
@@ -71,10 +72,10 @@ COMPANY_ID = 0xFFFF
 ADV_FORMAT = 1
 ADV_FLAGS = [('pairing_open', 1), ('full', 2), ('has_phones', 4)]
 
-# Section 9.2: without a HELLO for this long the box stops sending the data.
-HELLO_TIMEOUT_S = 3.0
-# A radio that can't see a link drop takes a central as gone after this long without a write: far above the
-# HELLO timeout, as a connected phone that doesn't write is kept by a real box and only gets no data.
+# Section 9.2: without any command for this long the box stops sending the data.
+HELLO_TIMEOUT_S = 10.0
+# A radio that can't see a link drop takes a central as gone after this long without a write: well above the
+# session timeout, as a connected phone that doesn't write is kept by a real box and only gets no data.
 SILENT_GONE_S = 60.0
 # Section 9.3: NGD 50 times a second, 9.4: NGS once a second and at once on a change.
 DATA_PERIOD_S = 0.02
@@ -251,6 +252,8 @@ class Phone:
         self.subscribed = False
         self.payload = MIN_PAYLOAD
         self.hello_at = 0.0
+        # Section 9.2: the last command that keeps the session, 0 until the first HELLO starts one.
+        self.cmd_at = 0.0
         self.info_sent = False
         self.queue = collections.deque(maxlen=QUEUE_LINES)
         # The tail of a line that has started going out: BLE-4 sends it whole.
@@ -258,8 +261,12 @@ class Phone:
         self.sent = 0
         self.dropped = 0
 
+    def in_session(self, now):
+        """Section 9.2: a HELLO has started a session and a command has come within the timeout."""
+        return bool(self.cmd_at) and now - self.cmd_at < HELLO_TIMEOUT_S
+
     def heard(self, now):
-        return self.subscribed and self.hello_at and now - self.hello_at < HELLO_TIMEOUT_S
+        return self.subscribed and self.in_session(now)
 
 
 class Box:
@@ -333,9 +340,13 @@ class Box:
     def on_command(self, phone, fields):
         """Section 9.5. The box has the abilities of ABILITIES only: anything else is unknown."""
         command_id, name, rest = fields[1], fields[2], fields[3:]
+        # Section 9.2: any command but PEER, which the box relays before it looks at the commands, keeps a
+        # session that is still on. An ended one the box restarts on HELLO alone: it has freed the phone's slot.
+        if phone.in_session(self.clock()) and name != 'PEER':
+            phone.cmd_at = self.clock()
         if name == 'HELLO':
             # HELLO,<name>,<Unix s> from a newer application; the box remembers both for its list of phones.
-            phone.hello_at = self.clock()
+            phone.hello_at = phone.cmd_at = self.clock()
             if rest:
                 phone.name = rest[0]
             if len(rest) > 1 and rest[1].isdigit():
