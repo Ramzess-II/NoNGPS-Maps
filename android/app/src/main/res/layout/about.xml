@@ -23,7 +23,7 @@
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="@dimen/margin_base"
         android:layout_marginBottom="@dimen/margin_half"
-        android:contentDescription="@string/app_name"
+        android:contentDescription="@string/organic_maps_name"
         app:srcCompat="@drawable/ic_logo_organicmaps"
         app:tint="?attr/colorLogo" />
 

@@ -34,6 +34,19 @@ public class AboutLayoutTest
     }
   }
 
+  /** @string/app_name is the fork's name, so a screen reader would call the Organic Maps leaf "NonGPS Maps". */
+  @Test
+  public void theLeafIsLabelledOrganicMaps()
+  {
+    for (String layout : LAYOUTS)
+    {
+      final Element logo = elementWithAttribute(layout, "app:srcCompat", "@drawable/ic_logo_organicmaps");
+      assertNotNull(layout + " shows no @drawable/ic_logo_organicmaps", logo);
+      assertEquals(layout + " does not label the leaf Organic Maps", "@string/organic_maps_name",
+                   logo.getAttribute("android:contentDescription"));
+    }
+  }
+
   /**
    * A focusable version row swallows the first tap: View.onTouchEvent skips performClick() when the touch takes the
    * focus, so HelpFragment.copyVersion would copy on the second tap only.
