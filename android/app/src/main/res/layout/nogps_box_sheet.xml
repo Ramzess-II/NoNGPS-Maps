@@ -505,30 +505,39 @@
         android:textColor="?android:textColorSecondary"
         android:textSize="16sp" />
     </LinearLayout>
-    <!-- The state of the box on the right, a tap opens its page. -->
+    <!-- The state of the box under its title: it is a sentence, too long for the end of the row. A tap opens its page. -->
     <LinearLayout
       android:id="@+id/box_car_box_row"
       android:layout_width="match_parent"
       android:layout_height="wrap_content"
       android:background="?selectableItemBackground"
       android:gravity="center_vertical"
-      android:minHeight="48dp"
-      android:orientation="horizontal">
-      <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="12dp"
-        android:text="@string/nogps_box_title"
-        android:textSize="16sp" />
-      <TextView
-        android:id="@+id/box_car_box_state"
+      android:minHeight="56dp"
+      android:orientation="horizontal"
+      android:paddingVertical="6dp">
+      <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:gravity="end|center_vertical"
-        android:textColor="?android:textColorSecondary"
-        android:textSize="16sp"
-        app:drawableEndCompat="@drawable/ic_nogps_chevron" />
+        android:orientation="vertical">
+        <TextView
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:text="@string/nogps_box_title"
+          android:textSize="16sp" />
+        <TextView
+          android:id="@+id/box_car_box_state"
+          android:layout_width="match_parent"
+          android:layout_height="wrap_content"
+          android:textColor="?android:textColorSecondary"
+          android:textSize="14sp" />
+      </LinearLayout>
+      <ImageView
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_marginStart="12dp"
+        android:importantForAccessibility="no"
+        app:srcCompat="@drawable/ic_nogps_chevron" />
     </LinearLayout>
     <TextView
       android:id="@+id/box_car_forget"

@@ -1007,9 +1007,11 @@ final class CarPageViewController: MWMTableViewController {
       content.textProperties.color = canRename ? .label : .secondaryLabel
       cell.selectionStyle = canRename ? .default : .none
     case .box:
-      content = UIListContentConfiguration.valueCell()
+      // The state is a sentence, too long for the end of the row: it goes under the title.
+      content = UIListContentConfiguration.subtitleCell()
       content.text = L("nogps_box_title")
       content.secondaryText = NoGpsBoxPage.sentenceCase(NoGpsBoxPage.boxStateText(status))
+      content.secondaryTextProperties.color = .secondaryLabel
       cell.accessoryType = .disclosureIndicator
     case .forget:
       content.text = L("nogps_car_forget")
