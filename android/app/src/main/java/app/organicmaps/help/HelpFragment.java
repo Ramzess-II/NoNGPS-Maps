@@ -89,7 +89,10 @@ public class HelpFragment extends BaseMwmFragment implements View.OnClickListene
       });
     }
 
-    setupItem(R.id.rate, true, root);
+    // Only the Google flavor has a store listing of its own that the market:// link opens.
+    final TextView rateView = setupItem(R.id.rate, true, root);
+    if (!BuildConfig.FLAVOR.equals("google"))
+      rateView.setVisibility(View.GONE);
 
     setupItem(R.id.copyright, false, root);
     View termOfUseView = root.findViewById(R.id.term_of_use_link);
