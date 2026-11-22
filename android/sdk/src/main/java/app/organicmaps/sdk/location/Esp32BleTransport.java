@@ -149,10 +149,12 @@ class Esp32BleTransport
   {
     if (mState == STATE_PAIRING_CLOSED || mState == STATE_PAIRING_BY_PHONE || mState == STATE_PAIRING_FULL
         || mState == STATE_CAR_LIMIT)
-      setState(STATE_SEARCHING);
+      setState(searchState());
   };
   // The box was paired when it was found.
   private boolean mBonded;
+  // The box advertises no data at all and this is a debug build: the box simulator, which needs no pairing.
+  private boolean mSimulator;
   // When the connection was made, -1 before.
   private long mLinkedMs = -1;
   // The box has sent data over the connection.
@@ -160,6 +162,8 @@ class Esp32BleTransport
   // Silent connections to a paired box in a row, the last one ended at mLastSilentMs.
   private int mSilentConnections;
   private long mLastSilentMs;
+  // Too many silent connections: the lost-pairing hint is shown, and the search goes on once a minute.
+  private boolean mBondLost;
   // The box that has forgotten the phone: the search starts again when its pairing is removed.
   @Nullable
   private BluetoothDevice mBondLostBox;
@@ -202,6 +206,7 @@ class Esp32BleTransport
     mOpen = true;
     mRetryDelayMs = RETRY_DELAY_MS;
     mSilentConnections = 0;
+    mBondLost = false;
     final IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
     filter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S)
@@ -249,6 +254,7 @@ class Esp32BleTransport
       return;
     mRetryDelayMs = RETRY_DELAY_MS;
     mSilentConnections = 0;
+    mBondLost = false;
     start();
   }
 
@@ -268,6 +274,7 @@ class Esp32BleTransport
     closeGatt();
     mRetryDelayMs = RETRY_DELAY_MS;
     mSilentConnections = 0;
+    mBondLost = false;
     start();
   }
 
@@ -450,7 +457,7 @@ class Esp32BleTransport
     for (NoGps.Car car : NoGps.nativeGetCars())
       mCarIds.add(car.id);
     mCurrentCar = NoGps.getStatus().carId;
-    setState(STATE_SEARCHING);
+    setState(searchState());
     mMainHandler.postDelayed(mStarter, RESCAN_INTERVAL_MS);
   }
 
@@ -532,41 +539,42 @@ class Esp32BleTransport
     if (id != null ? !isBoxWanted(id, bonded) : mNewBoxOnly && bonded)
       return;
     final boolean forgotten = id != null && getForgottenBoxes().contains(id);
-    if (needsPairingWindow(bonded, forgotten, mNewBoxOnly))
+    final ScanRecord record = result.getScanRecord();
+    final byte[] data = record != null ? record.getManufacturerSpecificData(MANUFACTURER_ID) : null;
+    // A box always advertises the data (BLE-13). A debug build also takes a box that advertises none at all as one
+    // that accepts a new phone: the box simulator can't advertise it on macOS, see tools/python/nogps_box_sim.py.
+    final int flags =
+        data != null && data.length >= 2 ? data[1] : (data == null && BuildConfig.DEBUG ? FLAG_PAIRING_OPEN : 0);
+    final boolean pairingOpen = (flags & FLAG_PAIRING_OPEN) != 0;
+    final FoundBox found = foundBox(bonded, forgotten, mNewBoxOnly, pairingOpen,
+                                    needsPairingWindow(bonded, forgotten, mNewBoxOnly) && hasPairedBox(adapter),
+                                    SystemClock.elapsedRealtime() - mScanStartMs);
+    if (found == FoundBox.WAIT)
+      return;
+    if (found == FoundBox.SKIP)
     {
       // A box accepts a new phone for two minutes after it is powered, if it has no phones, or after a paired phone
-      // has let it. The phone asks for the code.
-      final ScanRecord record = result.getScanRecord();
-      final byte[] data = record != null ? record.getManufacturerSpecificData(MANUFACTURER_ID) : null;
-      // A box always advertises the data (BLE-13). A debug build also takes a box that advertises none at all as one
-      // that accepts a new phone: the box simulator can't advertise it on macOS, see tools/python/nogps_box_sim.py.
-      final int flags =
-          data != null && data.length >= 2 ? data[1] : (data == null && BuildConfig.DEBUG ? FLAG_PAIRING_OPEN : 0);
-      if ((flags & FLAG_PAIRING_OPEN) == 0)
-      {
-        // The box of a forgotten car still knows this phone: powered on again, it takes it back.
-        setState(forgotten                        ? STATE_PAIRING_CLOSED
-                 : (flags & FLAG_FULL) != 0       ? STATE_PAIRING_FULL
-                 : (flags & FLAG_HAS_PHONES) != 0 ? STATE_PAIRING_BY_PHONE
-                                                  : STATE_PAIRING_CLOSED);
-        mMainHandler.removeCallbacks(mPairingClosedEnd);
-        mMainHandler.postDelayed(mPairingClosedEnd, PAIRING_CLOSED_TIMEOUT_MS);
-        return;
-      }
-      // A box paired already is taken first if it is near: the new one may be somebody else's. Without it the
-      // new box is a second or a replaced one of the user.
-      if (!mNewBoxOnly && !forgotten && hasPairedBox(adapter)
-          && SystemClock.elapsedRealtime() - mScanStartMs < NEW_BOX_DELAY_MS)
-        return;
+      // has let it. The phone asks for the code. The box of a forgotten car still knows this phone: powered on again,
+      // it takes it back.
+      setState(forgotten                        ? STATE_PAIRING_CLOSED
+               : (flags & FLAG_FULL) != 0       ? STATE_PAIRING_FULL
+               : (flags & FLAG_HAS_PHONES) != 0 ? STATE_PAIRING_BY_PHONE
+                                                : STATE_PAIRING_CLOSED);
+      mMainHandler.removeCallbacks(mPairingClosedEnd);
+      mMainHandler.postDelayed(mPairingClosedEnd, PAIRING_CLOSED_TIMEOUT_MS);
+      return;
     }
     Logger.i(TAG, "Found " + device.getAddress() + " " + id + " rssi " + result.getRssi() + " bonded " + bonded);
     mBoxId = id;
     mMainHandler.removeCallbacks(mStarter);
     mMainHandler.removeCallbacks(mPairingClosedEnd);
     stopScan();
-    setState(STATE_CONNECTING);
+    // The lost-pairing hint stays while the search goes on.
+    if (!mBondLost)
+      setState(STATE_CONNECTING);
     mMtu = 23;
     mBonded = bonded;
+    mSimulator = isSimulator(BuildConfig.DEBUG, bonded);
     mLinkedMs = -1;
     mHeard = false;
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
@@ -588,6 +596,113 @@ class Esp32BleTransport
   static boolean needsPairingWindow(boolean bonded, boolean forgotten, boolean newBoxOnly)
   {
     return !bonded || (forgotten && !newBoxOnly);
+  }
+
+  enum FoundBox
+  {
+    CONNECT,
+    // A paired box is near: the new one waits for it.
+    WAIT,
+    // Not connected: the hint of its flags.
+    SKIP
+  }
+
+  /**
+   * Whether a box that is found is connected. The lines of a box that is not paired are taken only while it accepts a
+   * new phone, and only after the pairing, see takesLines().
+   */
+  @VisibleForTesting
+  static FoundBox foundBox(boolean bonded, boolean forgotten, boolean newBoxOnly, boolean pairingOpen,
+                           boolean hasPairedBox, long sinceScanStartMs)
+  {
+    if (!needsPairingWindow(bonded, forgotten, newBoxOnly))
+      return FoundBox.CONNECT;
+    if (!pairingOpen)
+      return FoundBox.SKIP;
+    // A box paired already is taken first if it is near: the new one may be somebody else's. Without it the new box is
+    // a second or a replaced one of the user.
+    return !newBoxOnly && !forgotten && hasPairedBox && sinceScanStartMs < NEW_BOX_DELAY_MS ? FoundBox.WAIT
+                                                                                            : FoundBox.CONNECT;
+  }
+
+  /**
+   * The subscription needs no encryption: bytes of a device that is not paired in the system may be a fake box's or a
+   * neighbour's. The box simulator of a debug build is taken as it is, see isSimulator().
+   */
+  @VisibleForTesting
+  static boolean takesLines(int bondState, boolean simulator)
+  {
+    return bondState == BluetoothDevice.BOND_BONDED || simulator;
+  }
+
+  /**
+   * Whether the device connected may be the box simulator (#468), whose characteristics ask for no encryption: the
+   * phone never pairs with it, and the manufacturer data don't tell it apart (BlueZ on Linux advertises them, macOS
+   * doesn't). A real box sends nothing at all until the link is encrypted (BLE-11), so an unpaired device that talks
+   * is the simulator or a fake, and only a debug build listens to it.
+   */
+  @VisibleForTesting
+  static boolean isSimulator(boolean debugBuild, boolean bonded)
+  {
+    return debugBuild && !bonded;
+  }
+
+  /**
+   * What follows a connection that ended.
+   */
+  @VisibleForTesting
+  static final class ConnectionEnd
+  {
+    // The connection to a paired box lasted but gave no data.
+    boolean silent;
+    int silentConnections;
+    // Six silent connections in a row: the hint is shown, the search goes on.
+    boolean bondLost;
+    long retryDelayMs;
+  }
+
+  /**
+   * A silent connection is not a proof of a lost bond (#154), so the search goes on once a minute after the hint.
+   * @param linkedMs how long the connection lasted, -1 if it was not made.
+   */
+  @VisibleForTesting
+  static ConnectionEnd afterConnection(boolean heard, boolean bonded, boolean worked, long linkedMs,
+                                       int silentConnections, long sinceLastSilentMs, boolean bondLost,
+                                       long retryDelayMs)
+  {
+    final ConnectionEnd end = new ConnectionEnd();
+    end.silentConnections = silentConnections;
+    end.bondLost = bondLost;
+    end.retryDelayMs = worked ? RETRY_DELAY_MS : Math.min(MAX_RETRY_DELAY_MS, retryDelayMs * 2);
+    if (!bonded || heard || linkedMs < MIN_SILENT_LINK_MS)
+      return end;
+    final boolean inRow = silentConnections > 0 && sinceLastSilentMs <= SILENT_CONNECTIONS_GAP_MS;
+    end.silent = true;
+    end.silentConnections = inRow ? silentConnections + 1 : 1;
+    // A gap of more than 3 min starts the count again, but only the data of the box take the hint away.
+    end.bondLost = bondLost || end.silentConnections >= MAX_SILENT_CONNECTIONS;
+    if (end.bondLost)
+      end.retryDelayMs = MAX_RETRY_DELAY_MS;
+    return end;
+  }
+
+  /**
+   * The user has removed the pairing the lost-pairing hint asks about: the box is searched again at once. The hint's
+   * own flag decides, not the state: while a search connection of the box is subscribed the state is Connected
+   * (#474), and the broadcast of the removed pairing may come before the disconnection.
+   */
+  @VisibleForTesting
+  static boolean removedLostBond(boolean bondLost, int bondState, boolean lostBox)
+  {
+    return bondLost && bondState == BluetoothDevice.BOND_NONE && lostBox;
+  }
+
+  /**
+   * The state while the box is searched: the lost-pairing hint stays until the box is heard.
+   */
+  private int searchState()
+  {
+    return mBondLost ? STATE_BOND_LOST : STATE_SEARCHING;
   }
 
   /**
@@ -713,36 +828,26 @@ class Esp32BleTransport
 
   private void restartLater()
   {
-    final boolean worked = mReady;
-    final boolean silent =
-        mBonded && !mHeard && mLinkedMs >= 0 && SystemClock.elapsedRealtime() - mLinkedMs >= MIN_SILENT_LINK_MS;
+    final long now = SystemClock.elapsedRealtime();
+    final ConnectionEnd end = afterConnection(mHeard, mBonded, mReady, mLinkedMs >= 0 ? now - mLinkedMs : -1,
+                                              mSilentConnections, now - mLastSilentMs, mBondLost, mRetryDelayMs);
     final BluetoothDevice box = mGatt != null ? mGatt.getDevice() : null;
     closeGatt();
     if (!mOpen)
       return;
-    if (silent && countSilentConnection())
+    if (end.silent)
+      mLastSilentMs = now;
+    if (end.bondLost && !mBondLost)
     {
-      Logger.w(TAG, "The box has forgotten the phone: " + mSilentConnections + " silent connections");
+      Logger.w(TAG, "The box has forgotten the phone: " + end.silentConnections + " silent connections");
       mBondLostBox = box;
-      stopUntilRetry(STATE_BOND_LOST);
-      return;
     }
-    setState(STATE_SEARCHING);
-    mRetryDelayMs = worked ? RETRY_DELAY_MS : Math.min(MAX_RETRY_DELAY_MS, mRetryDelayMs * 2);
+    mSilentConnections = end.silentConnections;
+    mBondLost = end.bondLost;
+    mRetryDelayMs = end.retryDelayMs;
+    setState(searchState());
     mMainHandler.removeCallbacks(mStarter);
     mMainHandler.postDelayed(mStarter, mRetryDelayMs);
-  }
-
-  /**
-   * @return true if there are too many silent connections in a row.
-   */
-  private boolean countSilentConnection()
-  {
-    final long now = SystemClock.elapsedRealtime();
-    final boolean inRow = mSilentConnections > 0 && now - mLastSilentMs <= SILENT_CONNECTIONS_GAP_MS;
-    mSilentConnections = inRow ? mSilentConnections + 1 : 1;
-    mLastSilentMs = now;
-    return mSilentConnections >= MAX_SILENT_CONNECTIONS;
   }
 
   /**
@@ -775,9 +880,10 @@ class Esp32BleTransport
   {
     final BluetoothGatt gatt = mGatt;
     // The user has removed the pairing of the box in the settings, as the hint about a lost bond asks.
-    if (gatt == null && mState == STATE_BOND_LOST && bondState == BluetoothDevice.BOND_NONE && device != null
-        && device.equals(mBondLostBox))
+    if (removedLostBond(mBondLost, bondState, device != null && device.equals(mBondLostBox)))
     {
+      // A search connection may be open: it is dropped, the hint stays until retry() starts the search.
+      closeGatt();
       retry();
       return;
     }
@@ -865,16 +971,18 @@ class Esp32BleTransport
     }
   };
 
+  @SuppressLint("MissingPermission")
   private void onBytes(@NonNull BluetoothGatt gatt, @NonNull byte[] value)
   {
     mMainHandler.post(() -> {
       // The bytes of a closed connection are dropped.
-      if (gatt != mGatt)
+      if (gatt != mGatt || !takesLines(gatt.getDevice().getBondState(), mSimulator))
         return;
       if (!mHeard)
       {
         mHeard = true;
         mSilentConnections = 0;
+        mBondLost = false;
         mMainHandler.removeCallbacks(mWatchdog);
         onBoxHeard();
       }
@@ -924,8 +1032,13 @@ class Esp32BleTransport
     if (gatt != mGatt)
       return;
     Logger.i(TAG, "mtu = " + mtu + " status " + status);
-    if (status == BluetoothGatt.GATT_SUCCESS)
-      mMtu = mtu;
+    if (status != BluetoothGatt.GATT_SUCCESS)
+    {
+      // With the default MTU of 23 every HELLO is too long: the link would stay silent.
+      restartLater();
+      return;
+    }
+    mMtu = mtu;
     // The box may ask for it too: the services are searched once.
     if (mRx != null)
       return;
@@ -993,6 +1106,7 @@ class Esp32BleTransport
     }
   }
 
+  @SuppressLint("MissingPermission")
   private void onSubscribed(@NonNull BluetoothGatt gatt, int status)
   {
     if (gatt != mGatt)
@@ -1001,7 +1115,9 @@ class Esp32BleTransport
     if (status == BluetoothGatt.GATT_SUCCESS)
     {
       mReady = true;
-      setState(STATE_CONNECTED);
+      // A box that is not paired yet is connected after the pairing, see onBondStateChanged().
+      if (takesLines(gatt.getDevice().getBondState(), mSimulator))
+        setState(STATE_CONNECTED);
     }
     else if (status != BluetoothGatt.GATT_INSUFFICIENT_AUTHENTICATION
              && status != BluetoothGatt.GATT_INSUFFICIENT_ENCRYPTION)

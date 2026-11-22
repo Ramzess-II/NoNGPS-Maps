@@ -304,6 +304,8 @@
     <string name="enable_location_services">Activeu els serveis de geolocalització</string>
     <string name="save">Desa</string>
     <string name="create">crea</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Versió de l’Organic Maps: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Aspecte</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

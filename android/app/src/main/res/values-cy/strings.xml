@@ -304,6 +304,8 @@
     <string name="enable_location_services">Galluogwch wasanaethau lleoliad</string>
     <string name="save">Cadw</string>
     <string name="create">creu</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Fersiwn Organic Maps: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Ymddangosiad</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

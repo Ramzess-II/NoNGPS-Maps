@@ -392,6 +392,9 @@
 /* blue gray color */
 "blue_gray" = "Կապտամոխրագույն";
 
+/* Prints version number in About dialog */
+"version" = "Organic Maps-ի տարբերակ՝ %@";
+
 /* Settings «Map» category: «Appearance» title */
 "pref_appearance_title" = "Արտաքին տեսք";
 

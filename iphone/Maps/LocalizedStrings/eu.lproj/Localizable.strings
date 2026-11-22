@@ -392,6 +392,9 @@
 /* blue gray color */
 "blue_gray" = "Gris urdinxka";
 
+/* Prints version number in About dialog */
+"version" = "Organic Maps bertsioa: %@";
+
 /* Settings «Map» category: «Appearance» title */
 "pref_appearance_title" = "Itxura";
 

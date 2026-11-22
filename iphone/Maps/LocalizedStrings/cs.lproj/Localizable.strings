@@ -392,6 +392,9 @@
 /* blue gray color */
 "blue_gray" = "Modrošedá";
 
+/* Prints version number in About dialog */
+"version" = "Verze Organic Maps: %@";
+
 /* Settings «Map» category: «Appearance» title */
 "pref_appearance_title" = "Vzhled";
 

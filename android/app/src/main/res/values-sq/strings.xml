@@ -304,6 +304,8 @@
     <string name="enable_location_services">Ju lutemi aktivizoni Shërbimet e Vendndodhjes</string>
     <string name="save">Ruaj</string>
     <string name="create">krijo</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Versioni Organic Maps: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Pamja</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

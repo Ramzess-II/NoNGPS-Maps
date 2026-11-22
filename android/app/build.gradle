@@ -69,8 +69,6 @@ android {
     buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
     // Editing OpenStreetMap needs an OAuth application of NonGPS Maps, the one of Organic Maps is not used.
     buildConfigField 'boolean', 'MAP_EDITING', 'false'
-    // Should be customized in flavors.
-    buildConfigField 'String', 'REVIEW_URL', '""'
     resourceConfigurations += [project.ext.supportedLocalizations]
 
     base.archivesName = rootProject.name.replaceAll('\\s', '') + '-' + defaultConfig.versionCode
@@ -98,7 +96,6 @@ android {
       minSdk = 24
       versionName = android.defaultConfig.versionName + '-Google'
       buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
-      buildConfigField 'String', 'REVIEW_URL', '"market://details?id=ua.nogps.maps"'
     }
 
     web {
@@ -119,7 +116,6 @@ android {
       versionName = android.defaultConfig.versionName + '-Huawei'
       versionCode = HUAWEI_VERSION_CODE_BASE + android.defaultConfig.versionCode
       buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
-      buildConfigField 'String', 'REVIEW_URL', '"appmarket://details?id=ua.nogps.maps"'
     }
   }
 
@@ -281,6 +277,13 @@ dependencies {
   testImplementation libs.androidx.junit
   testImplementation libs.mockito.core
   testImplementation libs.mockito.inline
+}
+
+// AboutLayoutTest reads the About layouts, and resources are no input of a JVM test task on their own.
+tasks.withType(Test).configureEach {
+  inputs.files('src/main/res/layout/about.xml', 'src/main/res/layout-land/about.xml')
+      .withPropertyName('aboutLayouts')
+      .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 def allowedPermissions = [

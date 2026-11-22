@@ -304,6 +304,8 @@
     <string name="enable_location_services">Zəhmət olmasa məkan xidmətlərini aktivləşdirin</string>
     <string name="save">Yadda saxla</string>
     <string name="create">yaratmaq</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Organic Maps versiyası: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Görünüş</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

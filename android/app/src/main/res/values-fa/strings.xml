@@ -304,6 +304,8 @@
     <string name="enable_location_services">لطفا خدمات مکان‌یابی را فعال کنید</string>
     <string name="save">ذخیره</string>
     <string name="create">ایجاد</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">نسخه Organic Maps: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">ظاهری</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

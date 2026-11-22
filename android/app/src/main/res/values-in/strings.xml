@@ -304,6 +304,8 @@
     <string name="enable_location_services">Mohon aktifkan Layanan Lokasi</string>
     <string name="save">Simpan</string>
     <string name="create">buat</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Versi Organic Maps: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Tampilan</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

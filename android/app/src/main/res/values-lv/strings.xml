@@ -304,6 +304,8 @@
     <string name="enable_location_services">Ieslēdziet ierīces atrašanās vietas noteikšanas pakalpojumus</string>
     <string name="save">Saglabāt</string>
     <string name="create">izveidot</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">„Organic Maps“ versija: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Izskats</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

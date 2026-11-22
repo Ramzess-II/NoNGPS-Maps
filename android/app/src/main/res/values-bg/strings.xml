@@ -304,6 +304,8 @@
     <string name="enable_location_services">Моля, разрешете услугите за местоположение</string>
     <string name="save">Запазване</string>
     <string name="create">създаване</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Версия на Organic Maps: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Изглед</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

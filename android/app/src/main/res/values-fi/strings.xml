@@ -304,6 +304,8 @@
     <string name="enable_location_services">Ota sijaintipalvelut käyttöön</string>
     <string name="save">Tallenna</string>
     <string name="create">luo</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Organic Maps versio: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Ulkoasu</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

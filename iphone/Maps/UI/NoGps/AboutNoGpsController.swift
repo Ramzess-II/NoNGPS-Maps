@@ -88,6 +88,9 @@ private extension AboutNoGpsController {
     linksView.addButton(title: L("nogps_box_buy")) {
       UIApplication.shared.open(NoGpsLinks.shop)
     }
+    linksView.addButton(title: L("report_a_bug")) {
+      MailComposer.sendBugReportWith(title: "NonGPS Maps Bug Report")
+    }
   }
 
   /// The map data is credited with clickable names, as Organic Maps and OpenStreetMap ask.

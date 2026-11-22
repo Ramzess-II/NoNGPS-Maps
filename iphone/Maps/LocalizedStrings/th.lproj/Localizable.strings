@@ -392,6 +392,9 @@
 /* blue gray color */
 "blue_gray" = "สีฟ้าอมเทา";
 
+/* Prints version number in About dialog */
+"version" = "เวอร์ชัน Organic Maps: %@";
+
 /* Settings «Map» category: «Appearance» title */
 "pref_appearance_title" = "รูปแบบ";
 

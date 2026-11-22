@@ -304,6 +304,8 @@
     <string name="enable_location_services">Уключыце геалакацыю</string>
     <string name="save">Захаваць</string>
     <string name="create">стварыць</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">Версія Organic Maps: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">Выгляд</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

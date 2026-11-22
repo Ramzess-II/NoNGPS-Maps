@@ -304,6 +304,8 @@
     <string name="enable_location_services">โปรดเปิดการใช้งานการบริการตำแหน่งที่ตั้ง</string>
     <string name="save">บันทึก</string>
     <string name="create">สร้าง</string>
+    <!-- Prints version number in About dialog -->
+    <string name="version">เวอร์ชัน Organic Maps: %s</string>
     <!-- Settings «Map» category: «Appearance» title -->
     <string name="pref_appearance_title">รูปแบบ</string>
     <!-- Settings "Appearance" category: "Light" title, should be consistent with the pref_appearance_title translation. -->

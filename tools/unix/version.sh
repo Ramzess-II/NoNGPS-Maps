@@ -48,11 +48,13 @@ function android_code {
   # yy - year
   # MM - month
   # dd - day
-  # CC - the number of commits from the current day
+  # CC - the number of commits from the current day, capped at 99 to keep the field two digits:
+  #      a third digit shifts the whole code left, and android/wear/build.gradle, which multiplies the
+  #      code by ten for the Wear OS artifact, then passes the signed int Gradle keeps a versionCode in.
   # 21_00_00_00_00 is the the greatest value Google Play allows for versionCode.
   # See https://developer.android.com/studio/publish/versioning for details.
   local cutYear=${DATE:2}
-  echo "${cutYear//./}$(printf %02d "$COUNT")"
+  echo "${cutYear//./}$(printf %02d "$((COUNT > 99 ? 99 : COUNT))")"
 }
 
 function qt_int_version {

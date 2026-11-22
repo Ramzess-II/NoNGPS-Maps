@@ -6557,6 +6557,23 @@ UNIT_TEST(NoGps_LogFormat_SwitchesOfTheUserAreActions)
   TEST(manual[0].find(" enabled=1 by=user ") != std::string::npos, (manual[0]));
 }
 
+UNIT_TEST(NoGps_LogFormat_TheMarkTellsWhoPlacedIt)
+{
+  Env env(false /* inertial */);
+  LoggedLines lines;
+  MarkCar(env, 0);
+  auto const tapped = LoggedLines::Starting("ACTION tap ms=");
+  TEST_EQUAL(tapped.size(), 1, ());
+  TEST(tapped[0].find(" by=tap ") != std::string::npos, (tapped[0]));
+  // The manual mode is already on, so no "ACTION manual" line follows: the by= of the mark is the only thing that
+  // tells the GPS tap of the road lost panel from a tap of the user on the map.
+  TEST(PlaceByGpsFix(env, 60, 3, 4), ());
+  auto const marks = LoggedLines::Starting("ACTION tap ms=");
+  TEST_EQUAL(marks.size(), 2, ());
+  TEST(marks[1].find(" by=gps_mark ") != std::string::npos, (marks[1]));
+  TEST_EQUAL(LoggedLines::Starting("ACTION manual ms=").size(), 1, ());
+}
+
 UNIT_TEST(NoGps_LogFormat_RuleHasItsNameAndTime)
 {
   auto roads = StreetWithSideRoad(90);

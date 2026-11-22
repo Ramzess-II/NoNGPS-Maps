@@ -392,6 +392,9 @@
 /* blue gray color */
 "blue_gray" = "नीला धूसर";
 
+/* Prints version number in About dialog */
+"version" = "Organic Maps संस्करण: %@";
+
 /* Settings «Map» category: «Appearance» title */
 "pref_appearance_title" = "प्रकटन";
 

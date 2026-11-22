@@ -98,5 +98,12 @@
         android:text="@string/nogps_box_buy"
         android:textStyle="bold" />
 
+    <TextView
+        android:id="@+id/report"
+        style="@style/MwmWidget.TextView.Item"
+        android:text="@string/report_a_bug"
+        android:textAlignment="viewStart"
+        app:drawableStartCompat="@drawable/ic_report_a_bug" />
+
   </LinearLayout>
 </ScrollView>

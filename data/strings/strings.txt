@@ -11120,7 +11120,7 @@ zh-Hant = 藍灰色
 
 [version]
 comment = Prints version number in About dialog
-tags = qt
+tags = android-app,apple-maps,qt
 en = Organic Maps version: %@
 af = Organic Maps weergawe: %@
 ar = Organic Maps الإصدار: %@

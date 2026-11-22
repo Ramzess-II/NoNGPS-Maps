@@ -10,6 +10,7 @@ final class AppConstants: NSObject {
   static let openStreetMapURL = "https://www.openstreetmap.org/"
   static let omapsURL = "https://omaps.app"
   static let contactEmail = "most05062014@gmail.com"
+  static let organicMapsEmail = "ios@organicmaps.app"
 }
 
 var isiPad: Bool {

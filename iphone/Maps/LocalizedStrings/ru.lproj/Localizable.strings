@@ -392,6 +392,9 @@
 /* blue gray color */
 "blue_gray" = "Серо-голубой";
 
+/* Prints version number in About dialog */
+"version" = "Версия Organic Maps: %@";
+
 /* Settings «Map» category: «Appearance» title */
 "pref_appearance_title" = "Оформление";
 
