@@ -415,6 +415,25 @@ class ReplayInputTest(unittest.TestCase):
         got = self.switches([('SetGpsDisabled', 'disabled = 1'), ('SetManualMode', 'enabled = 1')])
         self.assertEqual([(r[0], r[2]) for r in got], [('X', '1'), ('A', '1')])
 
+    def test_tagged_wording(self):
+        """LOGFMT 2 writes the tag, the stable name and the keys before the sentence."""
+        got = self.switches([('SetGpsDisabled', 'ACTION gps_off ms=1760000020000 disabled=1 by=user '
+                                                'GPS ignored by the user = 1'),
+                             ('SetManualMode', 'ACTION manual ms=1760000020000 enabled=1 by=user Manual mode = 1')])
+        self.assertEqual([(r[0], r[2]) for r in got], [('X', '1'), ('A', '1')])
+
+    def test_tagged_actions_of_the_user(self):
+        lines = self.drive(60)
+        lines[30:30] = [
+            core('10-08', 18 * 3600 + 20, 'PutMark', 'ACTION tap ms=1760000020000 tap = ms::LatLon(10.0, 20.0) '
+                 'location = ms::LatLon(10.0, 20.0) bearing = 0 heading was = nullopt'),
+            core('10-08', 18 * 3600 + 21, 'SwitchMark', 'ACTION switch_mark ms=1760000021000 Switching the mark'),
+            core('10-08', 18 * 3600 + 22, 'Stop', 'ACTION stop ms=1760000022000 Stop'),
+        ]
+        got = [r[0] for r in self.records(lines)
+               if r[0] in ('T', 'H', 'W', 'S') and int(r[1]) >= (18 * 3600 + 20) * 1000]
+        self.assertEqual(got, ['T', 'H', 'W', 'S'])
+
     def test_initial_gps_off(self):
         lines = [core('10-08', 18 * 3600 - 5, 'SetGpsDisabled', 'GPS ignored by the user = 1')]
         lines += self.drive(30)
@@ -483,6 +502,58 @@ class RulesTest(unittest.TestCase):
             nogps_log.print_rules(analyse(('app.log', log)))
         loop = next(line for line in out.getvalue().splitlines() if line.startswith('loop'))
         self.assertIn('rare: 1 trips', loop)
+
+
+class TaggedLinesTest(unittest.TestCase):
+    """A line of LOGFMT 2 counts as the sentence of LOGFMT 1 did: a trip of an old log is compared with a replay."""
+
+    def test_rules_of_a_tagged_log_are_counted(self):
+        log = android_drive(seconds=120, stand=0)
+        log += [core('10-08', 18 * 3600 + sec, 'F', text) for sec, text in (
+            (10, 'RULE bend_moved ms=1760000010000 kind=bend Bend: moved along the road by 20 m'),
+            (20, 'RULE bend_confirmed ms=1760000020000 kind=bend Bend: the position fits the road, ahead by 1 m'),
+            (30, 'RULE loop ms=1760000030000 Loop: the way driven lies on the roads 20 m away, moved there'),
+            (40, 'RULE fork_branch ms=1760000040000 FORK the car goes along the branch 5 m aside'),
+            (50, 'RULE followed_apart ms=1760000050000 The car maneuvers 30 m off the roads at up to 10 km/h'),
+            (60, 'RULE late_turn ms=1760000060000 deg=40 The car has turned by 40 degrees from its road'),
+            (70, 'RULE road_lost ms=1760000070000 jump=0 The road is lost after 120 m, stopping at 10.0,20.0'),
+            (80, 'RULE mark_switched_turn ms=1760000080000 The car is shown on another road it may be on: '
+                 'WAY misses the roads at 3 points where it was shown, at 1 there, marks 2'))]
+        counts = analyse(('app.log', log)).trips[0].rule_counts()
+        self.assertEqual({name for name, count in counts.items() if count['fired']},
+                         {'bend moved', 'bend confirmed', 'loop', 'fork branch chosen', 'followed apart', 'late turn',
+                          'road lost', 'mark switched by the way'})
+
+    def test_events_of_a_tagged_log_keep_their_category(self):
+        day, t = '10-08', 18 * 3600
+        log = android_drive(seconds=30, stand=0) + [
+            core(day, t + 5, 'PutMark', 'ACTION tap ms=1760000005000 tap = ms::LatLon(10.0001, 20.0002) '
+                 'location = ms::LatLon(10.0, 20.0) bearing = 0 heading was = nullopt'),
+            core(day, t + 6, 'LogStateChanges', 'EVENT gps_signal ms=1760000006000 from=GOOD to=NONE '
+                 'GPS signal GOOD -> NONE'),
+            core(day, t + 7, 'Lost', 'RULE road_lost ms=1760000007000 jump=0 The road is lost after 120 m, '
+                 'stopping at ms::LatLon(10.0, 20.0)'),
+            # The replay tool writes its notifications as "EVENT <event>", without a name and ms=.
+            core(day, t + 8, 'OnEvent', 'EVENT GpsBack'),
+        ]
+        events = analyse(('app.log', log)).trips[0].events
+        self.assertEqual([(e['cat'], e['name']) for e in events
+                          if e['name'] not in ('app started', 'navigation started')],
+                         [('user', 'tap'), ('state', 'GPS signal'), ('road', 'road lost'), ('app', 'notification')])
+
+    def test_compare_counts_a_tagged_replay_as_the_trip(self):
+        others = [(10_000, 'Bend: moved along the road by 20 m', ''),
+                  (20_000, 'FORK the car goes along the branch 5 m aside', ''),
+                  (30_000, 'The car is shown on another road it may be on: the shown one stands lost', '')]
+        replayed = [(10_000, 'RULE bend_moved ms=1760000010000 kind=bend Bend: moved along the road by 20 m', ''),
+                    (20_000, 'RULE fork_branch ms=1760000020000 FORK the car goes along the branch 5 m aside', ''),
+                    (30_000, 'RULE mark_switched_stand_lost ms=1760000030000 The car is shown on another road it '
+                             'may be on: the shown one stands lost', '')]
+        stats = nogps_replay.compare_stats([], others, [], replayed, 0, 86_400_000, 15)
+        counts = {name: (a, b) for name, a, b in stats['events']}
+        self.assertEqual(counts['bend moved'], (1, 1))
+        self.assertEqual(counts['seconds on another branch of a fork'], (1, 1))
+        self.assertEqual(counts['mark switched to another road'], (1, 1))
 
 
 class HeldOutTest(unittest.TestCase):

@@ -75,6 +75,12 @@ MANUAL = re.compile(r'^(?:Manual mode|enabled) = (\d)')
 TAP = re.compile(r'tap = ms::LatLon\((-?[\d.]+), (-?[\d.]+)\) location = ms::LatLon\((-?[\d.]+), (-?[\d.]+)\) '
                  r'bearing = (-?[\d.]+)')
 CHECKPOINT = re.compile(r'ms::LatLon\((-?[\d.]+), (-?[\d.]+)\)')
+# Since LOGFMT 2 (libs/map/nogps/log_line.hpp) a line a tool reads starts with its tag, its stable name and its
+# key=value pairs, and the free sentence follows: "RULE bend_moved ms=1763800000000 kind=bend Bend: moved along the
+# road by 20 m". A pattern of such a sentence written with HEAD matches the lines of both formats, so a trip written
+# before and a trip driven again now are counted the same way.
+HEAD = r'^(?:(?:RULE|ACTION|EVENT) \w+ (?:\w+=\S+ )+)?'
+HEAD_RE = re.compile(HEAD)
 SLICE_MS = 200
 # A break of the box data longer than this is another trip.
 MAX_STAND_FILL_MS = 600_000
@@ -212,6 +218,11 @@ def moves_by(fields):
     return False
 
 
+def sentence(text):
+    """The free sentence of a line: a line of LOGFMT 2 has its tag, its name and its key=value pairs before it."""
+    return text[HEAD_RE.match(text).end():]
+
+
 def make_input(args):
     trips, others, started = read(args.logs, args.day)
     start = parse_clock(args.start) if args.start else 0
@@ -229,6 +240,7 @@ def make_input(args):
     # Where the application started anew has found the car it kept: (ms, the kept car as it was written).
     restores = []
     for ms, text, function in others:
+        text = sentence(text)
         if text.startswith('GYRO '):
             parts = text.split()
             deltas = [float(p) for p in parts[2:7]]
@@ -319,7 +331,7 @@ def make_input(args):
     # The last GPS position given and the number of the TRIP line it is from.
     last_fix = None
     # GPS changed or the application started anew while the car stood: GPS did not go on as it was.
-    breaks = sorted([ms for ms, text, _ in others if text.startswith('GPS signal ')] + started)
+    breaks = sorted([ms for ms, text, _ in others if sentence(text).startswith('GPS signal ')] + started)
     for k, f in enumerate(trips):
         value = f.get('gps')
         if not value or f.get('spoofed') == '1':
@@ -610,11 +622,11 @@ EVENTS = [
     ('roundabout or winding road', r'roundabout or a winding'), ('off the roads at a roundabout', r'at a roundabout'),
     ('started backward', r'has started backward'), ('way of a start changed', r'by the accelerometer, it has felt'),
     ('mark moved to the road of the car', r'the mark is put on the road going its way'),
-    ('no road at the tap', r'^No road at the tap'), ('bend moved', r'^Bend: moved'),
+    ('no road at the tap', r'^No road at the tap'), ('bend moved', HEAD + r'Bend: moved'),
     ('bend told nothing', r'^Bend: tells nothing'),
-    ('gentle bend moved', r'^Gentle bend: moved'),
+    ('gentle bend moved', HEAD + r'Gentle bend: moved'),
     ('gentle bend told nothing', r'^Gentle bend: tells nothing'),
-    ('seconds on another branch of a fork', r'^FORK '),
+    ('seconds on another branch of a fork', HEAD + r'FORK '),
     ('route asked for', r'Routing session state: \w+ -> RouteBuilding'),
     ('route rebuilt: the car left it', r'Routing session state: RouteNeedRebuild -> RouteRebuilding'),
     ('route rebuilt: the mark put off it', r'^Manual position is off the route'),
@@ -622,7 +634,7 @@ EVENTS = [
     ('alternative route followed', r'is on the alternative route'),
     # A turn that fits several roads splits the mark, since October 17.
     ('other mark added', r'^Other mark added'), ('other mark dropped', r'^Other mark dropped'),
-    ('mark switched to another road', r'^The car is shown on another road'),
+    ('mark switched to another road', HEAD + r'The car is shown on another road'),
     ('turn place told by the way driven', r'^Turn from .* WAY misses'),
 ]
 
