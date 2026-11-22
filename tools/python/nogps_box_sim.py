@@ -195,13 +195,17 @@ class State:
         body += ',%d' % self.shake_pct if self.flags.get('IMU_OK') else ','
         return line(body)
 
-    def status(self, last_event=0):
-        """Section 9.4, the 16 fields of version 2: the ones of version 3 may be absent and the box has no car."""
+    def status(self):
+        """Section 9.4, the 16 fields of version 2: the ones of version 3 may be absent and the box has no car.
+
+        The last field is the number of the last event, and it is empty because the journal of the simulator is:
+        a number there, 0 among them, is an event the application then asks for (Esp32Source::OnLastEventNumber).
+        """
         found = self.obd not in ('DISABLED', 'NO_ADAPTER')
-        return line('NGS,%d,%s,%s,%d,%s,%s,%d,%d,%d,%s,%s,%s,%d,%d,%d' % (
+        return line('NGS,%d,%s,%s,%d,%s,%s,%d,%d,%d,%s,%s,%s,%d,%d,' % (
             VERSION, self.firmware, self.imu_name, self.imu_rate, self.obd, OBD_PROTOCOL if found else '',
             0, self.temp_dc, 0, self.imu_state, self.imu_chip_id, OBD_ERRORS.get(self.obd, 'NONE'),
-            38400 if found else 0, self.bias_up_mdps, last_event))
+            38400 if found else 0, self.bias_up_mdps))
 
     def info(self):
         """Section 9.6."""
@@ -318,6 +322,10 @@ class Box:
             return
         if name == 'INFO':
             self.queue(phone, self.state.info())
+            return
+        if name == 'EVENTS':
+            # Section 10: the events from that number. The journal is empty, so there is nothing before the answer.
+            self.queue(phone, line('NGA,%s,OK' % command_id))
             return
         if name in CALIBRATION:
             for flag, value in CALIBRATION[name].items():

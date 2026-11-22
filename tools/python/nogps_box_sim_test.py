@@ -124,8 +124,8 @@ class Lines(unittest.TestCase):
         self.assertEqual(got[0:5], ['NGS', '1', '0.4.4', 'ICM42688', '500'])
         # No adapter: no protocol, no baud rate, and the last error names it.
         self.assertEqual([got[5], got[6], got[12], got[13]], ['NO_ADAPTER', '', 'NO_ADAPTER', '0'])
-        # The number of the last event stays 0, so the application never asks for the journal.
-        self.assertEqual(got[15], '0')
+        # The number of the last event is empty: with a number there the application asks for the journal.
+        self.assertEqual(got[15], '')
 
     def test_status_of_a_car_that_answers(self):
         made, _, _ = box()
@@ -208,6 +208,16 @@ class Commands(unittest.TestCase):
         made.on_event('write', PHONE, command(6, 'CAL_RESET'))
         made.tick()
         self.assertFalse(made.state.flags['UP_OK'])
+
+    def test_the_journal_is_asked_for_and_empty(self):
+        made, radio, _ = box()
+        connect(made)
+        # The application asks on its own when the status names a last event; it must not be told the box is new
+        # to the command, as a box of any firmware knows it.
+        made.on_event('write', PHONE, command(30, 'EVENTS,0'))
+        made.tick()
+        self.assertEqual(fields(radio.lines('NGA')[0]), ['NGA', '30', 'OK'])
+        self.assertEqual(radio.lines('NGE'), [])
 
     def test_a_command_the_box_hasnt_got(self):
         made, radio, _ = box()
