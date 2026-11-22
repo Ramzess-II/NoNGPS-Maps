@@ -10,7 +10,8 @@ import UIKit
 ///
 /// iOS doesn't tell an app if a device is paired, and pairs by itself when the box asks for it. So the boxes that have
 /// sent data are remembered as the paired ones, and a new box is connected only while it accepts a new phone. A box
-/// with phones that doesn't is tried once when the user adds a car or has none: the system may still pair it.
+/// with phones that doesn't is tried once when the user adds a car, or has none and didn't forget this box: the
+/// system may still pair it.
 @objc
 final class Esp32BleTransport: NSObject {
   private enum Constants {
@@ -573,15 +574,16 @@ final class Esp32BleTransport: NSObject {
   }
 
   /// Whether a box that is found is connected: |tried| is a box with a closed window that was connected already.
-  static func foundBox(known: Bool, pairingOpen: Bool, hasPhones: Bool, addsCar: Bool, hasCars: Bool,
+  static func foundBox(known: Bool, pairingOpen: Bool, hasPhones: Bool, forgotten: Bool, addsCar: Bool, hasCars: Bool,
                        hasKnownBoxes: Bool, sinceSearchStart: TimeInterval, tried: Bool) -> FoundBox {
     if known {
       return .connect
     }
     guard pairingOpen else {
-      // The app may have lost the box (a reinstall, the other build, the last car forgotten) while the system still
-      // has the pairing: a new car is looked for, or the user has none.
-      return hasPhones && (addsCar || !hasCars) && !tried ? .connectClosed : .skip
+      // The app may have lost the box (a reinstall, the other build) while the system still has the pairing: a new car
+      // is looked for, or the user has none. The box of a forgotten car is not taken this way: it still has the
+      // pairing, so only setting it up again, while it accepts a new phone, brings the car back (#325), as on Android.
+      return hasPhones && (addsCar || (!hasCars && !forgotten)) && !tried ? .connectClosed : .skip
     }
     // A box paired already is taken first if it is near: the new one may be somebody else's. Without it the new box is
     // a second or a replaced one of the user.
@@ -656,8 +658,8 @@ extension Esp32BleTransport: CBCentralManagerDelegate {
     var closedFlags: UInt8?
     switch Self.foundBox(
       known: known, pairingOpen: pairingOpen,
-      hasPhones: flags & (Constants.hasPhonesFlag | Constants.fullFlag) != 0, addsCar: newBoxOnly,
-      hasCars: !carIds.isEmpty, hasKnownBoxes: !knownBoxes.isEmpty,
+      hasPhones: flags & (Constants.hasPhonesFlag | Constants.fullFlag) != 0, forgotten: forgotten,
+      addsCar: newBoxOnly, hasCars: !carIds.isEmpty, hasKnownBoxes: !knownBoxes.isEmpty,
       sinceSearchStart: ProcessInfo.processInfo.systemUptime - scanStart,
       tried: triedClosed.contains(peripheral.identifier)
     ) {

@@ -75,11 +75,12 @@ final class Esp32BleTransportTests: XCTestCase {
     XCTAssertFalse(Esp32BleTransport.retrySearches(isOpen: false, hasConnection: false, bondLost: true))
   }
 
-  private func found(known: Bool = false, open: Bool = true, phones: Bool = false, adds: Bool = false,
-                     cars: Bool = true, knownBoxes: Bool = false, since: TimeInterval = 5,
+  private func found(known: Bool = false, open: Bool = true, phones: Bool = false, forgotten: Bool = false,
+                     adds: Bool = false, cars: Bool = true, knownBoxes: Bool = false, since: TimeInterval = 5,
                      tried: Bool = false) -> Esp32BleTransport.FoundBox {
-    Esp32BleTransport.foundBox(known: known, pairingOpen: open, hasPhones: phones, addsCar: adds, hasCars: cars,
-                               hasKnownBoxes: knownBoxes, sinceSearchStart: since, tried: tried)
+    Esp32BleTransport.foundBox(known: known, pairingOpen: open, hasPhones: phones, forgotten: forgotten,
+                               addsCar: adds, hasCars: cars, hasKnownBoxes: knownBoxes, sinceSearchStart: since,
+                               tried: tried)
   }
 
   func testKnownBoxIsConnected() {
@@ -103,5 +104,13 @@ final class Esp32BleTransportTests: XCTestCase {
     XCTAssertEqual(found(open: false, phones: true), .skip)
     XCTAssertEqual(found(open: false, phones: false, adds: true), .skip)
     XCTAssertEqual(found(open: false, phones: false, cars: false), .skip)
+  }
+
+  /// The box of a forgotten car keeps the pairing: without the window it is not tried, so the car doesn't come back
+  /// by itself (#325). Adding a car takes it at once, as on Android.
+  func testForgottenBoxWithoutCarsNeedsThePairingWindow() {
+    XCTAssertEqual(found(open: false, phones: true, forgotten: true, cars: false), .skip)
+    XCTAssertEqual(found(open: false, phones: true, forgotten: true, adds: true), .connectClosed)
+    XCTAssertEqual(found(open: true, phones: true, forgotten: true, cars: false), .connect)
   }
 }
