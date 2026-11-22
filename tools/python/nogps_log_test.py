@@ -381,6 +381,46 @@ class InputTest(unittest.TestCase):
         self.assertEqual((analysis.trips, analysis.notes), ([], ['notes.txt: not a log of the app']))
 
 
+class ReplayInputTest(unittest.TestCase):
+    def drive(self, seconds):
+        lines = android_drive(day='10-08', seconds=seconds, stand=0)
+        lines += [core('10-08', 18 * 3600 + 2 + s, 'OnMotion', 'GYRO 0.0 0 0 0 0 0 36 36 36 36 36', ms=600,
+                       file='nogps/esp32_source.cpp:1') for s in range(seconds)]
+        return lines
+
+    def records(self, lines):
+        with tempfile.TemporaryDirectory() as folder:
+            log = os.path.join(folder, 'app.log')
+            out = os.path.join(folder, 'in.txt')
+            with open(log, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(lines) + '\n')
+            with redirect_stdout(io.StringIO()):
+                nogps_replay.make_input(argparse.Namespace(logs=[log], day='10-08', start=None, end=None,
+                                                           output=out, no_taps=False, no_route=False))
+            with open(out, encoding='ascii') as f:
+                return [line.split() for line in f]
+
+    def switches(self, switch_lines):
+        # The switches come while the car drives, after the first second of the box data.
+        lines = self.drive(60)
+        lines[30:30] = [core('10-08', 18 * 3600 + 20, f, t) for f, t in switch_lines]
+        return [r for r in self.records(lines) if r[0] in ('X', 'A') and int(r[1]) >= (18 * 3600 + 20) * 1000]
+
+    def test_current_wording(self):
+        got = self.switches([('SetGpsDisabled', 'GPS ignored by the user = 1'), ('SetManualMode', 'Manual mode = 1'),
+                             ('SetGpsDisabled', 'GPS ignored by the user = 0')])
+        self.assertEqual([(r[0], r[2]) for r in got], [('X', '1'), ('A', '1'), ('X', '0')])
+
+    def test_old_wording(self):
+        got = self.switches([('SetGpsDisabled', 'disabled = 1'), ('SetManualMode', 'enabled = 1')])
+        self.assertEqual([(r[0], r[2]) for r in got], [('X', '1'), ('A', '1')])
+
+    def test_initial_gps_off(self):
+        lines = [core('10-08', 18 * 3600 - 5, 'SetGpsDisabled', 'GPS ignored by the user = 1')]
+        lines += self.drive(30)
+        self.assertEqual([(r[0], r[2]) for r in self.records(lines) if r[0] == 'X'], [('X', '1')])
+
+
 class ExportTest(unittest.TestCase):
     def test_csv_and_gpx(self):
         trip = analyse(('app.log', android_drive(seconds=20, stand=0))).trips[0]

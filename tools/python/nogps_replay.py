@@ -69,6 +69,9 @@ LINE = re.compile(r'^(\d\d-\d\d) (\d\d):(\d\d):(\d\d)\.(\d\d\d) \(([^)]*)\) \w/(
 FIELD = re.compile(r' (\w+)=(\S+)')
 SOURCE = re.compile(r'^\S+:\d+ (\w+)\(\): (.*)$')
 BOX_INFO = re.compile(r'^Box (?!firmware\b)(\S+) firmware')
+# The switches of the user; the core wrote "disabled = " and "enabled = " before 2026-10-29.
+GPS_OFF = re.compile(r'^(?:GPS ignored by the user|disabled) = (\d)')
+MANUAL = re.compile(r'^(?:Manual mode|enabled) = (\d)')
 TAP = re.compile(r'tap = ms::LatLon\((-?[\d.]+), (-?[\d.]+)\) location = ms::LatLon\((-?[\d.]+), (-?[\d.]+)\) '
                  r'bearing = (-?[\d.]+)')
 CHECKPOINT = re.compile(r'ms::LatLon\((-?[\d.]+), (-?[\d.]+)\)')
@@ -256,14 +259,14 @@ def make_input(args):
             actions.append((ms, 2, 'L %d %s' % (ms, text.split()[2]), False))
         elif function == 'OnInfo' and BOX_INFO.match(text):
             actions.append((ms, 2, 'I %d %s' % (ms, BOX_INFO.match(text).group(1)), False))
-        elif function == 'SetGpsDisabled' and text.startswith('disabled = '):
-            actions.append((ms, 3, 'X %d %s' % (ms, text.split()[2]), False))
+        elif function == 'SetGpsDisabled' and GPS_OFF.match(text):
+            actions.append((ms, 3, 'X %d %s' % (ms, GPS_OFF.match(text).group(1)), False))
         elif text.startswith('Entering the manual mode') or text.startswith('GPS is trusted again'):
             by_itself_ms = ms
-        elif function == 'SetManualMode' and text.startswith('enabled = '):
+        elif function == 'SetManualMode' and MANUAL.match(text):
             # The navigation turns the manual mode on and off by itself too, and does it again here.
             if by_itself_ms is None or ms - by_itself_ms > 5:
-                actions.append((ms, 3, 'A %d %s' % (ms, text.split()[2]), False))
+                actions.append((ms, 3, 'A %d %s' % (ms, MANUAL.match(text).group(1)), False))
         elif text.startswith('tap = '):
             m = TAP.search(text)
             if m:
@@ -495,8 +498,8 @@ def make_input(args):
         # the day before, and the first GPS position came minutes after the file begins.
         disabled = None
         for ms, text, function in others:
-            if function == 'SetGpsDisabled' and ms <= first:
-                disabled = text.split()[2] == '1'
+            if function == 'SetGpsDisabled' and ms <= first and GPS_OFF.match(text):
+                disabled = GPS_OFF.match(text).group(1) == '1'
             elif disabled is None and ms >= first and function == 'SetGpsDisabled':
                 break
             elif disabled is None and ms >= first and text.startswith('GPS is disabled, ignoring'):
