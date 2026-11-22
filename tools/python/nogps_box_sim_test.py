@@ -406,9 +406,12 @@ class Session(unittest.TestCase):
         self.assertNotIn('NOPE', made.state.flags)
         self.assertEqual(made.state.shake_pct, 9999)
         self.assertEqual(made.state.obd, 'NO_ADAPTER')
-        # The id is the four characters of the name of a box, and macOS drops a longer name.
+        # One character of id: macOS drops an advertised name over 8 characters.
         made.panel_set({'box_id': 'TOOLONG'})
-        self.assertEqual(made.state.name(), 'NonGPS-TOOL')
+        self.assertEqual(made.state.name(), 'NonGPS-T')
+        made.panel_set({'legacy_name': True})
+        self.assertEqual(made.panel_state()['legacy_name'], True)
+        self.assertEqual(made.state.name(), 'NoGPS-T')
 
 
 class SilenceWatchTest(unittest.TestCase):

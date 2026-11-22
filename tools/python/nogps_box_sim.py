@@ -473,6 +473,7 @@ class Box:
                 'obd_states': OBD_STATES,
                 'shake_pct': state.shake_pct,
                 'box_id': state.box_id,
+                'legacy_name': state.legacy_name,
                 'firmware': state.firmware,
                 'chip': state.chip,
                 'board': state.board,
@@ -503,8 +504,8 @@ class Box:
                 state.shake_pct = max(0, min(9999, int(values['shake_pct'])))
             for name in ('box_id', 'firmware', 'chip', 'board', 'imu_name'):
                 if values.get(name):
-                    # The id is the four characters of the name of a box; macOS drops a name over 8 characters.
-                    setattr(state, name, str(values[name])[:4 if name == 'box_id' else 32])
+                    # One character: macOS drops an advertised name over 8 characters, and NonGPS- is 7.
+                    setattr(state, name, str(values[name])[:1 if name == 'box_id' else 32])
             if 'legacy_name' in values:
                 state.legacy_name = bool(values['legacy_name'])
             if 'advertising' in values:
