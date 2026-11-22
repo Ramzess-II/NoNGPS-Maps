@@ -279,6 +279,13 @@ dependencies {
   testImplementation libs.mockito.inline
 }
 
+// AboutLayoutTest reads the About layouts, and resources are no input of a JVM test task on their own.
+tasks.withType(Test).configureEach {
+  inputs.files('src/main/res/layout/about.xml', 'src/main/res/layout-land/about.xml')
+      .withPropertyName('aboutLayouts')
+      .withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
 def allowedPermissions = [
     // location
     "name='android.permission.ACCESS_COARSE_LOCATION'",

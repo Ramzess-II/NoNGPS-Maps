@@ -33,9 +33,8 @@
         android:layout_height="wrap_content"
         android:gravity="center_horizontal"
         android:layout_marginBottom="@dimen/margin_half"
-        android:selectAllOnFocus="true"
+        android:background="?selectableItemBackground"
         android:textAppearance="@style/MwmTextAppearance.Body3"
-        android:textIsSelectable="true"
         tools:text="2021.10.15-15-Google" />
 
     <TextView
