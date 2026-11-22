@@ -238,14 +238,14 @@
         android:layout_height="wrap_content"
         android:text="@string/nogps_gps_block_hint"
         android:textColor="?android:textColorSecondary"
-        android:textSize="13sp" />
+        android:textSize="14sp" />
       <TextView
         android:id="@+id/box_gps_block_needs_box"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/nogps_gps_block_needs_box"
         android:textColor="?android:textColorSecondary"
-        android:textSize="13sp" />
+        android:textSize="14sp" />
     </FrameLayout>
   </LinearLayout>
 
@@ -460,7 +460,7 @@
       android:layout_marginHorizontal="4dp"
       android:text="@string/nogps_box_buy_text"
       android:textColor="?android:textColorSecondary"
-      android:textSize="13sp" />
+      android:textSize="14sp" />
   </LinearLayout>
 
   <!-- The car driven now: its name and its box, what the user does with it, the phones of its box and its records. Its
@@ -864,7 +864,7 @@
       android:layout_height="wrap_content"
       android:text="@string/nogps_sprint_none"
       android:textColor="?android:textColorSecondary"
-      android:textSize="15sp" />
+      android:textSize="14sp" />
   </LinearLayout>
 
   <LinearLayout
@@ -886,13 +886,13 @@
         android:layout_height="wrap_content"
         android:text="@string/nogps_speed_table_hint"
         android:textColor="?android:textColorSecondary"
-        android:textSize="15sp" />
+        android:textSize="14sp" />
       <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
         android:text="@string/nogps_speed_table_action"
-        android:textSize="15sp"
+        android:textSize="14sp"
         android:textStyle="bold" />
       <LinearLayout
         android:layout_width="match_parent"
