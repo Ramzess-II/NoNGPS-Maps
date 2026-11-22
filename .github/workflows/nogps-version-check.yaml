@@ -1,0 +1,22 @@
+name: Version checks
+
+on:
+  pull_request:
+    branches: [ master ]
+    paths:
+      - '.github/workflows/nogps-version-check.yaml'
+      - 'tools/unix/version.sh'
+      - 'tools/python/version_test.py'
+
+jobs:
+  nogps-version-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Run the tests of the version formats
+        # They make their own git repositories, so the depth of the checkout doesn't matter.
+        run: python3 tools/python/version_test.py
