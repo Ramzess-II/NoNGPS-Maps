@@ -1477,6 +1477,9 @@
 /* Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code */
 "nogps_phone_add" = "Add a phone";
 
+/* Title of the dialog that adds a phone to the box of a car. %1$@ is the car name, e.g. "Add a phone to Kia" */
+"nogps_phone_add_to_car" = "Add a phone to %1$@";
+
 /* Shown with a one-time pairing code on the paired phone. %1$@ is the time left, e.g. 1:45 */
 "nogps_phone_add_code" = "On the new phone, open Box in NonGPS Maps. When the phone asks for the code, enter this one. It works once, for %1$@.";
 

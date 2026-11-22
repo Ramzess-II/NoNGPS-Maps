@@ -56,6 +56,26 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     56
   }
 
+  /// The sheet is not a screen of the app: its bar keeps the system look instead of the green bar of Organic Maps.
+  /// The style name must stay set, an empty one lets the theme paint the bar green again, and both appearances must
+  /// be set: UINavigationBarRenderer unwraps scrollEdgeAppearance.
+  private static func plainBar(_ bar: UINavigationBar) {
+    bar.setStyle(.clearBackground)
+    // Filled with the background the list is drawn on, as the bar of a sheet is: a translucent bar shows the map
+    // through it, and .whitePrimary is the colour of the cells, not of the table under them.
+    let scrolled = UINavigationBarAppearance()
+    scrolled.configureWithOpaqueBackground()
+    scrolled.backgroundColor = .pressBackground
+    bar.standardAppearance = scrolled
+    // At the top the bar and the list are one surface: the line comes only once the list runs under the bar.
+    let top = UINavigationBarAppearance()
+    top.configureWithOpaqueBackground()
+    top.backgroundColor = .pressBackground
+    top.shadowColor = .clear
+    bar.scrollEdgeAppearance = top
+    bar.tintColor = .linkBlue
+  }
+
   static func show(_ page: Page = .main) {
     // The pages of the box tell nothing once it is forgotten.
     let page = NoGps.status().inertialEnabled ? page : .main
@@ -70,6 +90,7 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     let root = NoGpsBoxSheet(style: .insetGrouped)
     let navigation = UINavigationController(rootViewController: root)
     navigation.delegate = root
+    plainBar(navigation.navigationBar)
     if let sheet = navigation.sheetPresentationController {
       sheet.detents = [.medium(), .large()]
       if #available(iOS 16.0, *) {
@@ -987,9 +1008,11 @@ final class CarPageViewController: MWMTableViewController {
       content.textProperties.color = canRename ? .label : .secondaryLabel
       cell.selectionStyle = canRename ? .default : .none
     case .box:
-      content = UIListContentConfiguration.valueCell()
+      // The state is a sentence, too long for the end of the row: it goes under the title.
+      content = UIListContentConfiguration.subtitleCell()
       content.text = L("nogps_box_title")
       content.secondaryText = NoGpsBoxPage.sentenceCase(NoGpsBoxPage.boxStateText(status))
+      content.secondaryTextProperties.color = .secondaryLabel
       cell.accessoryType = .disclosureIndicator
     case .forget:
       content.text = L("nogps_car_forget")
@@ -1099,9 +1122,11 @@ final class CarPageViewController: MWMTableViewController {
 
   /// The box takes a new phone with a code shown here: the user enters it on the new phone.
   private func addPhone() {
+    guard let car else { return }
     NoGps.startAddPhone()
     status = NoGps.status()
-    let sheet = AddPhoneViewController(code: addPhoneCode(), message: addPhoneText())
+    let sheet = AddPhoneViewController(carName: NoGpsBoxSheet.carName(car), code: addPhoneCode(),
+                                       message: addPhoneText())
     addPhoneAlert = sheet
     present(sheet, animated: true)
   }
@@ -1137,8 +1162,10 @@ private final class AddPhoneViewController: UIViewController {
 
   private let codeLabel = UILabel()
   private let messageLabel = UILabel()
+  private let carName: String
 
-  init(code: String?, message: String) {
+  init(carName: String, code: String?, message: String) {
+    self.carName = carName
     super.init(nibName: nil, bundle: nil)
     modalPresentationStyle = .pageSheet
     sheetPresentationController?.detents = [.medium()]
@@ -1153,7 +1180,7 @@ private final class AddPhoneViewController: UIViewController {
     view.backgroundColor = .systemBackground
 
     let title = UILabel()
-    title.text = L("nogps_phone_add")
+    title.text = String(format: L("nogps_phone_add_to_car"), carName)
     title.font = .preferredFont(forTextStyle: .headline)
     title.textAlignment = .center
     title.numberOfLines = 0

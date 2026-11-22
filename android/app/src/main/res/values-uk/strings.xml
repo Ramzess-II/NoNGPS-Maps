@@ -1107,6 +1107,8 @@
     <string name="nogps_phone_removed_unpair">Цей телефон видалено з блока, авто забуто. Видаліть NoGPS-%1$s у налаштуваннях Bluetooth</string>
     <!-- Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code -->
     <string name="nogps_phone_add">Додати телефон</string>
+    <!-- Title of the dialog that adds a phone to the box of a car. %1$@ is the car name, e.g. "Add a phone to Kia" -->
+    <string name="nogps_phone_add_to_car">Додати телефон до %1$s</string>
     <!-- Shown with a one-time pairing code on the paired phone. %1$@ is the time left, e.g. 1:45 -->
     <string name="nogps_phone_add_code">На новому телефоні відкрийте «Блок» у NonGPS Maps. Коли телефон спитає код, введіть цей. Він діє один раз, ще %1$s.</string>
     <!-- Shown while the one-time pairing code is sent to the sensor box -->
