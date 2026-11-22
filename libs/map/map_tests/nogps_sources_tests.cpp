@@ -1223,10 +1223,32 @@ UNIT_TEST(NoGps_Esp32Update_LateNewFirmwareAfterTimeoutIsDone)
 
 UNIT_TEST(NoGps_Esp32Update_IgnoresSuffixOfVersion)
 {
-  UpdatedBox box;
-  box.SendAllAndRestart();
-  box.Connect("0.3.3-dirty");
-  TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
+  {
+    // The build of the box names itself "0.3.3-dirty", the firmware of the application 0.3.3: it is the new one.
+    UpdatedBox box;
+    box.SendAllAndRestart();
+    box.Connect("0.3.3-dirty");
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
+  }
+  {
+    // The box runs another build of the version the application brings: the same text back means it kept it.
+    UpdatedBox box;
+    box.m_source.OnBleState(BleState::Searching);
+    box.Connect("0.3.3-rc1");
+    box.SendAllAndRestart();
+    box.Connect("0.3.3-rc1");
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Failed, ());
+    TEST_EQUAL(box.Update().GetError(), "ROLLBACK", ());
+  }
+  {
+    // A debug build sends the same firmware again: the box tells the same version when it has taken it.
+    UpdatedBox box;
+    box.m_source.OnBleState(BleState::Searching);
+    box.Connect("0.3.3");
+    box.SendAllAndRestart();
+    box.Connect("0.3.3");
+    TEST_EQUAL(box.Update().GetState(), Esp32Update::State::Done, ());
+  }
 }
 
 UNIT_TEST(NoGps_Esp32Update_TellsSizeAndHashOfFirmware)

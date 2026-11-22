@@ -42,11 +42,12 @@ Esp32Update::Esp32Update(Link & link, Scheduler & scheduler, Clock const & clock
   , m_checkTimer(scheduler)
 {}
 
-void Esp32Update::Start(std::string image, std::string const & version)
+void Esp32Update::Start(std::string image, std::string const & version, std::string const & boxVersion)
 {
   Reset();
   m_image = std::move(image);
   m_version = version;
+  m_previousVersion = boxVersion;
   m_size = m_image.size();
   if (m_image.empty())
   {
@@ -77,6 +78,7 @@ void Esp32Update::Reset()
   m_error.clear();
   m_image = {};
   m_version.clear();
+  m_previousVersion.clear();
   m_commandId = 0;
   m_size = 0;
   m_received = 0;
@@ -186,7 +188,7 @@ void Esp32Update::OnBoxFirmware(std::string const & version)
   // A slow update that was given up as failed may still have worked.
   if (!m_linkLost || (m_state != State::Restarting && !(m_state == State::Failed && IsLateTimeout())))
     return;
-  if (VersionNumbers(version) != VersionNumbers(m_version))
+  if (!IsNewFirmware(version))
   {
     // The box has come back with its previous firmware: the new one didn't start or was not accepted.
     if (m_state == State::Restarting)
@@ -235,6 +237,16 @@ void Esp32Update::SendPieces()
 bool Esp32Update::IsLateTimeout() const
 {
   return m_endSent && (m_error == "NO_REPLY" || m_error == "NO_RESTART");
+}
+
+// The box has restarted with the new firmware and not with the one it had.
+bool Esp32Update::IsNewFirmware(std::string const & version) const
+{
+  if (VersionNumbers(version) != VersionNumbers(m_version))
+    return false;
+  // The numbers are the same, so only a build suffix can differ ("0.3.3-dirty" for the firmware 0.3.3). A box that
+  // tells exactly what it told before an update to another text has the firmware it had.
+  return version == m_version || version != m_previousVersion;
 }
 
 void Esp32Update::Fail(std::string const & error)
