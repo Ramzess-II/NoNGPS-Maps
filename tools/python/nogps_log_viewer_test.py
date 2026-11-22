@@ -96,10 +96,6 @@ class ViewerTest(unittest.TestCase):
             v.load_tiles('https://example.com/tile.png')
 
 
-if __name__ == '__main__':
-    unittest.main()
-
-
 class AddTest(unittest.TestCase):
     @staticmethod
     def log(phone, ms=1):
@@ -123,3 +119,7 @@ class AddTest(unittest.TestCase):
     def test_a_file_of_the_earlier_versions_is_refused(self):
         with self.assertRaises(v.nogps_trip_log.LogFormatError):
             v.Viewer([], None).add('app.log', b'Datetime: 2026-10-08 18:00:00.000\n', True)
+
+
+if __name__ == '__main__':
+    unittest.main()
