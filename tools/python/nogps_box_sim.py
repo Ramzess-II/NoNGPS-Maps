@@ -16,9 +16,10 @@ NGD lines of docs/nogps/esp32-firmware-spec.md section 9. A panel in the browser
 what the box says: the flags, the state of the OBD adapter, the shake, the version. The mark on the phone doesn't
 move, and nothing here is kept between runs.
 
-A debug build of the application is needed on macOS: CoreBluetooth can't advertise the manufacturer data of BLE-13,
-so the pairing window flag never reaches the phone, and only a debug build takes an advertisement without that data
-as a box that accepts a new phone. BlueZ on Linux does advertise it, and the panel sets the flags there.
+A debug build of the application is needed: the simulator asks for no pairing, and a release build takes the lines
+of a paired box alone. On macOS CoreBluetooth can't advertise the manufacturer data of BLE-13 either, so the pairing
+window flag never reaches the phone, and only a debug build takes an advertisement without that data as a box that
+accepts a new phone. BlueZ on Linux does advertise it, and the panel sets the flags there.
 
 What it doesn't simulate, and why:
 - the pairing rules (BLE-11, BLE-12, BLE-15, BLE-16): on macOS pairing belongs to the system, with no bt_pin and no
