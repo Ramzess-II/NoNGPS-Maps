@@ -169,9 +169,9 @@
   заїзді (`kSprintDropKmh`), чи між вимірами пауза довша за 2 с (`kSpeedStaleMs`): незакінчене відкидається.
 - Кожен результат ядро зберігає для машини (`NoGpsSprints`, «вид:unixMs:сотіС:trapКмгод,…», від старшого; вид
   `to100` чи `quarter`), не на блоці, каже `Event::SprintMeasured` і пише в журнал
-  `SPRINT kind=quarter sec=15.21 trap=142 record=1 best=15.80` (`best=-`, коли попереднього немає). У `Status`:
-  вид, час (до 0,01 с), trap, найкращий час цього виду до нього (0 — немає) і рекорд: перший результат виду чи
-  швидший за найкращий. `Engine::GetSprints()` — результати поточної машини, від новішого.
+  `SPRINT ms=… kind=quarter sec=15.21 trap=142 record=1 best=15.80` (`best=-`, коли попереднього немає).
+  У `Status`: вид, час (до 0,01 с), trap, найкращий час цього виду до нього (0 — немає) і рекорд: перший результат
+  виду чи швидший за найкращий. `Engine::GetSprints()` — результати поточної машини, від новішого.
 - Застосунок показує картку по центру нижньої третини мапи над нижньою панеллю: «0–100 км/год · 8,4 с» чи
   «¼ милі · 15,2 с · 142 км/год»; рекорд — «Новий рекорд! 8,4 с», «Було 9,1 с» (без цього рядка для першого), з
   конфеті й вібрацією успіху. Час — з десятими; у рекорді, коли десяті нового й старого однакові, обидва з сотими.
@@ -1070,7 +1070,7 @@
 - **Мапа.** Мітка закладки з іконкою ями (`bookmark-pothole-m`) з масштабу 12 (`NoGpsPotholeMark`,
   `UserMark::Type::NOGPS_POTHOLE`): жовта до 25 %, помаранчева 25–49 %, червона від 50 %. Дотик — картка місця
   «Pothole 31%, hits: 3» (`nogps_pothole_name`; платформи дають ядру текст з `%1$d` і `%2$d`, ядро ставить числа).
-- Журнал поїздки: `POTHOLE <pct> <jolt> <lat>,<lon> <км/год> new|merged <hits>`.
+- Журнал поїздки: `POTHOLE ms=… <pct> <jolt> <lat>,<lon> <км/год> new|merged <hits>`.
 - Без блока чи з блоком без `UP_OK` (поля 11–14 порожні) ям немає. Реплей бере `jolt` частин рядків `ACCB`, а там
   найбільше з `jolt` блока й розкиду прискорень за 0,2 с: реплей знаходить не менше ям, ніж телефон з тих самих
   пакетів.
@@ -1094,7 +1094,7 @@
   - `TRIP`, `ACC`, `ACCB`, `ACCB_BEFORE`, `GYRO`, `BOXACC`, `TURN`, `CALIBRATION`, `RPM`, `POTHOLE`, `SPRINT`:
     дані, як і раніше, лише з `ms=` одразу після тегу;
   - `RULE <назва>`: правила, що рухають позначку: `road_lost`, `late_turn`, `turn_moved_to_crossing`,
-    `turn_followed_roads`, `bend_confirmed`, `bend_moved`, `bend_moved_slow` (ключ `kind=bend|gentle`), `loop`,
+    `turn_followed_roads`, `bend_confirmed`, `bend_moved`, `bend_moved_repeated` (ключ `kind=bend|gentle`), `loop`,
     `fork_branch`, `wait_ahead`, `wait_at_roundabout`, `roundabout_exit`, `followed_apart`, `back_on_road`,
     `mark_switched_by_way`, `far_mark_taken`, `mark_switched_road_lost`, `mark_switched_turn`,
     `mark_switched_stand_lost`, `mark_switched_by_user`;
@@ -1103,8 +1103,11 @@
     `user`, а решта (`core`, `gps_back`, `network_back`, `restore`, `box`, `tap`, `gps_mark`, `peer`) — ядро саме;
   - `EVENT <назва>`: `position_source`, `gps_signal`, `box_state`, `box_ble`, `peer_role` (ключі `from=` і `to=`),
     `gps_spoofed`, `gps_untrusted`, `gps_off_roads`, `gps_trusted`, `network_back`, `manual_by_itself`;
-  - `MAPS ms=… version=260714`: версія карт (`Storage::GetCurrentDataVersion`); ядро пише її на `Start` і після
-    `Event::TripStarted`, коли платформа вже почала новий файл.
+  - `MAPS ms=… version=261101,260714`: версії карт на диску, від новішої (`MapApi::GetMapsVersion`) — версії
+    зареєстрованих карт країн, без World, бо дороги навігації беруться з карт країн; без карт — `version=-`. Це не
+    версія списку країн (`Storage::GetCurrentDataVersion`): карта лежить такою, якою її завантажили, доки її не
+    оновлять. Ядро пише рядок на `Start` і після `Event::TripStarted`, коли платформа вже почала новий файл. У файлі,
+    який межа розміру почала посеред поїздки, рядка MAPS немає, і `trip=` у нього новий.
 - Перший рядок кожного файлу пише платформа: `LOGFMT 2 ms=<unix мс> phone=<id> trip=<HHmmss> app=<версія>
   build=<номер> commit=<хеш> om=<версія Organic Maps>` (Android `LogsManager.getLogFormatLine`, iOS `Logger.mm`).
   Файл продовження після півночі має такий самий рядок із тим самим `trip=`. Інструмент, що зустрів інший `LOGFMT`,
@@ -1141,8 +1144,8 @@
 - Файли старої назви (`log-dd-MM-yy-<телефон>[.N].log`), що вже є на телефоні, лишаються в `logs/`, доки їх не
   видалить межа 150 МБ. «Report a bug» їх шле, «Надіслати журнали» дня прапорця до оновлення — ні.
 - Рядок `CALIBRATION` (`InertialNavigator::LogCalibration`) каже, що навігація знає про машину:
-  `CALIBRATION car=<id> scale=<v> table=<v> rough=<v> factor=<v> lag=<v> accel=<v>`. Значення — ті, що в роботі для
-  поточної машини (`NoGpsSpeedScale`, `NoGpsSpeedTable`, `NoGpsRoughSpeedTable`,
+  `CALIBRATION ms=… car=<id> scale=<v> table=<v> rough=<v> factor=<v> lag=<v> accel=<v>`. Значення — ті, що в
+  роботі для поточної машини (`NoGpsSpeedScale`, `NoGpsSpeedTable`, `NoGpsRoughSpeedTable`,
   `NoGpsSpeedFactor`, `NoGpsSpeedLag`, `NoGpsBoxAccel`), кожне у вигляді, в якому його тримає сховище
   (`Serialize()`, без пробілів), тож їх можна перенести в `settings.ini` повтору руками; сам `nogps_replay.py`
   рядок не читає. Невідомого значення немає, без машини
@@ -1162,8 +1165,8 @@
   `ROAD` (дорога після мітки, тапу чи розвороту) або `GYRO` — поворот перенесено на перехрестя, курс лишився гіроскопа.
 - `rpm=<оберти>` у рядку TRIP — оберти двигуна з останнього статусу блока (`CarInfo::m_rpm`), є лише якщо блок їх
   віддав. Прошивка питає їх у машини тільки на стоянці, тож на ходу поля зазвичай немає. Якщо статус на ходу все ж
-  має оберти, `Esp32Source` пише рядок `RPM <оберти> speed = <км/год>` (раз на статус): за ними видно, як часто
-  оберти приходять. Це лише для журналу, на рух мітки не впливає.
+  має оберти, `Esp32Source` пише рядок `RPM ms=… <оберти> speed = <км/год>` (раз на статус): за ними видно, як
+  часто оберти приходять. Це лише для журналу, на рух мітки не впливає.
 
 ## 12. Перший запуск
 
