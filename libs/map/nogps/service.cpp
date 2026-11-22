@@ -156,6 +156,11 @@ void RoutingMapApi::RebuildRouteIfOffRoute(Fix const & fix, double offRouteDista
   m_route.RebuildRouteIfOffRoute(info);
 }
 
+void RoutingMapApi::SetCarFollowedApart(bool apart)
+{
+  m_route.SetFollowedApart(apart);
+}
+
 void RoutingMapApi::LeaveRoute(Fix const & fix)
 {
   location::GpsInfo info;

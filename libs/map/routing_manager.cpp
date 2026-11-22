@@ -2048,6 +2048,16 @@ void RoutingManager::MatchLocationToRoute(location::GpsInfo & location, location
   if (!IsRoutingActive())
     return;
 
+  // A car followed apart is not moved to the route or to a road, it is drawn where it is. The route is still
+  // matched on a copy of the position: |routeMatchingInfo| carries the distance from the beginning of the route,
+  // and the renderer hides the passed part of the line by it.
+  if (m_sessionRoute.IsFollowedApart())
+  {
+    location::GpsInfo unmoved = location;
+    m_routingSession.MatchLocationToRoute(unmoved, routeMatchingInfo);
+    return;
+  }
+
   bool const matchedToRoute = m_routingSession.MatchLocationToRoute(location, routeMatchingInfo);
 
   if (!matchedToRoute && m_currentRouterType == RouterType::Vehicle)
