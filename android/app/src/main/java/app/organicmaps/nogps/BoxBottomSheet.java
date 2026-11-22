@@ -882,7 +882,9 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final ListPopupWindow menu = new ListPopupWindow(requireContext());
     mCarMenu = menu;
     menu.setAnchorView(anchor);
-    menu.setWidth(ViewGroup.LayoutParams.WRAP_CONTENT);
+    // From the title to the right edge of the page: a name with its state under it needs the width.
+    final View header = (View) anchor.getParent();
+    menu.setWidth(Math.max(header.getWidth() - anchor.getLeft(), dp(240)));
     menu.setAdapter(new CarMenuAdapter(entries));
     menu.setOnDismissListener(() -> mCarMenu = null);
     menu.setOnItemClickListener((parent, view, position, id) -> {
@@ -938,6 +940,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       final View row = convertView != null
                          ? convertView
                          : LayoutInflater.from(requireContext()).inflate(R.layout.nogps_car_row, parent, false);
+      row.setPadding(dp(16), row.getPaddingTop(), dp(16), row.getPaddingBottom());
       final CarMenu.Entry entry = mEntries.get(position);
       final NoGps.Car car = entry.car();
       ((TextView) row.findViewById(R.id.car_name))
