@@ -2444,6 +2444,96 @@ UNIT_TEST(NoGps_Engine_CarSpeedChecksGpsOnceItsScaleIsMeasured)
   TEST(IsGpsSpoofedBySpeed(env), ());
 }
 
+UNIT_TEST(NoGps_Engine_MphCarSpeedIsConverted)
+{
+  // The box of this car tells 62 where the car drives 100 km/h, and GPS says so for a couple of kilometers.
+  int constexpr kRawKmh = 62;
+  double const realMps = kRawKmh * SpeedUnit::kMph / 3.6;
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  env.Drive(1000, kRawKmh, 0);
+  // Until GPS has told the unit the car speed is taken as it comes.
+  TEST_EQUAL(TripField(env, "speed"), std::to_string(kRawKmh), ());
+  for (int i = 0; i < 80; ++i)
+  {
+    env.Drive(1000, kRawKmh, 0);
+    auto const & position = env.Last().m_position;
+    env.m_engine.OnFix(GpsAt(env.m_clock, East(position), North(position), 90.0, realMps));
+  }
+  TEST_EQUAL(TripField(env, "speed"), "100", ());
+  // The tables learned in the other unit are cleared, the unit is kept for the next trip.
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedTableRanges, 0, ());
+  SpeedUnit saved;
+  saved.Deserialize(env.m_storage.Get<std::string>(Storage::kSpeedUnit, ""));
+  TEST_EQUAL(saved.Get(), SpeedUnit::kMph, ());
+
+  // The application starts again: the first speed of the box is converted already.
+  Env after(true /* inertial */, &roads, SavedBy(env));
+  after.Drive(1000, kRawKmh, 0);
+  TEST_EQUAL(TripField(after, "speed"), "100", ());
+}
+
+UNIT_TEST(NoGps_Engine_SpeedUnitChangeClearsWhatTheOtherUnitLearned)
+{
+  // The roads have measured the error of the raw speed of this car, as far as the clamp of the table allows, and the
+  // user has shifted the mark: both were learned with the car taken for a km/h one.
+  SpeedTable rough(false /* learnsOffset */);
+  rough.OnDistance(62, 400, 500);
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads, [&rough](TestStorage & storage)
+  {
+    storage.Set(Storage::kRoughSpeedTable, rough.Serialize());
+    storage.Set(Storage::kSpeedScale, 1.15);
+  });
+  MarkCar(env, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_roughSpeedTableRanges, 1, ());
+
+  // The box tells 62 where GPS drives 100 km/h: the unit of the car turns out to be mph.
+  int constexpr kRawKmh = 62;
+  double const realMps = kRawKmh * SpeedUnit::kMph / 3.6;
+  for (int i = 0; i < 80; ++i)
+  {
+    env.Drive(1000, kRawKmh, 0);
+    auto const & position = env.Last().m_position;
+    env.m_engine.OnFix(GpsAt(env.m_clock, East(position), North(position), 90.0, realMps));
+  }
+  TEST_EQUAL(TripField(env, "speed"), "100", ());
+  // Nothing learned in the other unit is kept.
+  TEST_EQUAL(env.m_engine.GetStatus().m_roughSpeedTableRanges, 0, ());
+  TEST_EQUAL(env.m_storage.Get<double>(Storage::kSpeedScale, 0), 1.0, ());
+}
+
+UNIT_TEST(NoGps_Engine_ResetOfTheSpeedCalibrationForgetsTheUnit)
+{
+  // The box of this car tells 62 where GPS drives 100 km/h: mph is learned.
+  int constexpr kRawKmh = 62;
+  double const realMps = kRawKmh * SpeedUnit::kMph / 3.6;
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  for (int i = 0; i < 80; ++i)
+  {
+    env.Drive(1000, kRawKmh, 0);
+    auto const & position = env.Last().m_position;
+    env.m_engine.OnFix(GpsAt(env.m_clock, East(position), North(position), 90.0, realMps));
+  }
+  TEST_EQUAL(TripField(env, "speed"), "100", ());
+
+  // The box is moved to a car that tells km/h and the user resets the calibration: the unit of the car before is
+  // forgotten too, otherwise the mark runs 61% too fast until tens of kilometers of GPS unlearn it.
+  env.m_engine.ClearSpeedCalibration();
+  TEST_EQUAL(TripField(env, "speed"), std::to_string(kRawKmh), ());
+  SpeedUnit saved;
+  saved.Deserialize(env.m_storage.Get<std::string>(Storage::kSpeedUnit, ""));
+  TEST_EQUAL(saved.Get(), 1.0, ());
+
+  // The application starts again: the raw speed of the box is taken as it comes.
+  Env after(true /* inertial */, &roads, SavedBy(env));
+  after.Drive(1000, kRawKmh, 0);
+  TEST_EQUAL(TripField(after, "speed"), std::to_string(kRawKmh), ());
+}
+
 UNIT_TEST(NoGps_SpeedHint_ShownAtSpeedGpsHasNotMeasured)
 {
   // GPS has measured 50-60 km/h.
@@ -2879,10 +2969,14 @@ UNIT_TEST(NoGps_Engine_CalibrationWhenStillIsNotForReadOnlyBox)
 {
   Env env(true /* inertial */);
   CalibrateWhenStillBox box(env);
-  // The box knows its phones, another phone changes it: it refuses a command of this one.
+  // The box knows its phones, another phone changes it: the list says so.
   env.m_engine.OnEsp32BleBytes(
       BoxLine("NGI,1,0.4.1,2026-11-15T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA PHONES"));
-  env.m_engine.OnEsp32BleBytes(BoxLine("NGA,99,ERR,BUSY"));
+  auto const & sent = env.m_delegate.m_esp32BleSent;
+  auto const list = std::find_if(sent.begin(), sent.end(),
+                                 [](auto const & line) { return line.find(",BT_LIST*") != std::string::npos; });
+  TEST(list != sent.end(), ());
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + (*esp32::Parse(*list))[1] + ",OK,BC:D0:74:A9:71:92|Pixel 8|1|0,0"));
   TEST(env.m_engine.GetStatus().m_boxReadOnly, ());
   env.m_engine.CalibrateWhenStill();
   TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
@@ -2959,6 +3053,16 @@ std::vector<std::string> CarIds(std::vector<Car> const & cars)
   return ids;
 }
 
+/// The line without its " ms=<unix ms>": the tests compare the values, the time has its own tests.
+std::string WithoutTime(std::string line)
+{
+  auto const from = line.find(" ms=");
+  TEST_NOT_EQUAL(from, std::string::npos, (line));
+  auto const to = line.find(' ', from + 1);
+  line.erase(from, to == std::string::npos ? std::string::npos : to - from);
+  return line;
+}
+
 /// Keeps the CALIBRATION lines of the trip log while it lives, the other messages are logged as before.
 class CalibrationLines
 {
@@ -2978,7 +3082,7 @@ private:
   static void Keep(base::LogLevel level, base::SrcPoint const & src, std::string const & message)
   {
     if (message.starts_with("CALIBRATION "))
-      s_lines.push_back(message);
+      s_lines.push_back(WithoutTime(message));
     else
       s_saved(level, src, message);
   }
@@ -3479,6 +3583,22 @@ UNIT_TEST(NoGps_Engine_PotholeIsWhereTheMarkHitsIt)
   TEST_EQUAL(env.m_engine.GetPotholes().size(), 1, ());
 }
 
+UNIT_TEST(NoGps_Engine_PotholeTakesTheConvertedSpeed)
+{
+  // The box of this car tells 7 where the car drives 11 km/h: a hit of a driving car, over PotholeDetector::kMinKmh.
+  SpeedUnit mph;
+  for (int i = 0; i < 60; ++i)
+    mph.OnSample(62, 100 / 3.6, 1, 0);
+  TEST_EQUAL(mph.Get(), SpeedUnit::kMph, ());
+  Env env(true /* inertial */, nullptr,
+          [&mph](TestStorage & storage) { storage.Set(Storage::kSpeedUnit, mph.Serialize()); });
+  MarkCar(env, 50);
+  env.Drive(2000, 7, 0);
+  env.Jolt(7, 12);
+  env.Drive(1500, 7, 0);
+  TEST_EQUAL(env.m_engine.GetPotholes().size(), 1, ());
+}
+
 UNIT_TEST(NoGps_Engine_NoPotholeWhileRoadIsLost)
 {
   Env env(true /* inertial */);
@@ -3611,6 +3731,32 @@ UNIT_TEST(NoGps_BoxCarValues_PhonesOfCarShareItsValues)
   box.Connect(firstAgain);
   TEST_EQUAL(firstAgain.m_engine.GetStatus().m_roughSpeedTableRanges, 0, ());
   TEST_EQUAL(firstAgain.m_engine.GetCars()[0].m_name, "Ауді, моя", ());
+}
+
+UNIT_TEST(NoGps_BoxCarValues_UnitOfCarSpeedGoesWithTheTables)
+{
+  // The phone has learned the box of the car tells mph, and the tables with the speed converted from it.
+  SpeedUnit unit;
+  for (int i = 0; i < 60; ++i)
+    unit.OnSample(62, 100 / 3.6, 1, 0);
+  TEST_EQUAL(unit.Get(), SpeedUnit::kMph, ());
+  SpeedTable table;
+  table.OnDistance(100, 400, 400);
+  CarBox box;
+  Env first(true /* inertial */, nullptr, [&unit, &table](TestStorage & storage)
+  {
+    storage.Set(Storage::kSpeedUnit, unit.Serialize());
+    storage.Set(Storage::kSpeedTable, table.Serialize());
+  });
+  box.Connect(first);
+  TEST_EQUAL(box.m_values["spd_unit"], BoxCarValues::Encode(Storage::kSpeedUnit, unit.Serialize())[0].second, ());
+
+  // Another phone takes the unit with them: the tables are of no use with the raw speed.
+  Env second(true /* inertial */);
+  box.Connect(second);
+  TEST_EQUAL(second.m_engine.GetStatus().m_speedTableRanges, 1, ());
+  second.Drive(1000, 62, 0);
+  TEST_EQUAL(TripField(second, "speed"), "100", ());
 }
 
 UNIT_TEST(NoGps_BoxCarValues_ValueChangedByPhoneIsWritten)
@@ -6044,6 +6190,7 @@ UNIT_TEST(NoGps_Engine_PeerRolesFollowTheBox)
   TEST(leader.m_peerName.empty(), ());
 
   // The leader leaves: the box tells the follower that it changes the box now, the list has one phone more.
+  phones.Drive(Esp32Source::kListIntervalMs, 0, 0);
   phones.m_follower.m_engine.OnEsp32BleBytes(BoxLine("NGE,1,5,100,I,PHONE_LOST,BC:D0:74:A9:71:92"));
   phones.AnswerList(phones.m_follower, "Pixel 8", "iPhone", true);
   TEST_EQUAL(phones.m_follower.m_engine.GetStatus().m_peerRole, PeerRole::Leading, ());
@@ -6340,5 +6487,87 @@ UNIT_TEST(NoGps_Sprint_SpeedTableApplied)
   TEST_EQUAL(CountEvents(env, Event::SprintMeasured), 1, ());
   // The real 100 km/h is 91 km/h by the car.
   TestAlmostEqualAbs(env.m_engine.GetStatus().m_sprintSec, 9.1, 0.15);
+}
+
+/// Keeps all the messages of the log while it lives and passes them on.
+class LoggedLines
+{
+public:
+  LoggedLines()
+  {
+    s_lines.clear();
+    s_saved = base::SetLogMessageFn(&Keep);
+  }
+  ~LoggedLines() { base::SetLogMessageFn(s_saved); }
+
+  /// \returns the messages that start with the prefix.
+  static std::vector<std::string> Starting(std::string const & prefix)
+  {
+    std::vector<std::string> found;
+    for (auto const & line : s_lines)
+      if (line.starts_with(prefix))
+        found.push_back(line);
+    return found;
+  }
+
+private:
+  static void Keep(base::LogLevel level, base::SrcPoint const & src, std::string const & message)
+  {
+    s_lines.push_back(message);
+    s_saved(level, src, message);
+  }
+
+  static inline std::vector<std::string> s_lines;
+  static inline base::LogMessageFn s_saved = nullptr;
+};
+
+UNIT_TEST(NoGps_LogFormat_MapsVersionIsWrittenAtStartAndAtNewFile)
+{
+  TestClock clock;
+  TestStorage storage;
+  TestDelegate delegate;
+  TestMap map;
+  map.m_mapsVersion = "261101,260714";
+  storage.Set(Storage::kInertialEnabled, true);
+  Engine engine(delegate, map, storage, clock, clock);
+  LoggedLines lines;
+  engine.Start();
+  auto const prefix = "MAPS ms=" + std::to_string(clock.UnixNowMs()) + " version=261101,260714";
+  TEST_EQUAL(LoggedLines::Starting(prefix).size(), 1, ());
+  TEST_EQUAL(LoggedLines::Starting("ACTION start ms=" + std::to_string(clock.UnixNowMs())).size(), 1, ());
+
+  clock.Advance(Engine::kTripFileLinkGapMs);
+  engine.OnEsp32BleState(BleState::Connected);
+  // The new file has its own line, with the time of that moment.
+  TEST_EQUAL(LoggedLines::Starting("MAPS ms=" + std::to_string(clock.UnixNowMs()) + " version=261101,260714").size(), 1,
+             ());
+}
+
+UNIT_TEST(NoGps_LogFormat_SwitchesOfTheUserAreActions)
+{
+  Env env(true /* inertial */);
+  LoggedLines lines;
+  env.m_engine.SetGpsDisabled(true);
+  auto const gps = LoggedLines::Starting("ACTION gps_off ms=");
+  TEST_EQUAL(gps.size(), 1, ());
+  TEST(gps[0].find(" disabled=1 by=user ") != std::string::npos, (gps[0]));
+  env.m_engine.SetManualMode(true);
+  auto const manual = LoggedLines::Starting("ACTION manual ms=");
+  TEST_EQUAL(manual.size(), 1, ());
+  TEST(manual[0].find(" enabled=1 by=user ") != std::string::npos, (manual[0]));
+}
+
+UNIT_TEST(NoGps_LogFormat_RuleHasItsNameAndTime)
+{
+  auto roads = StreetWithSideRoad(90);
+  Env env(true /* inertial */, &roads);
+  LoggedLines lines;
+  TurnLeftSlowly(env, 46);
+  TEST(env.m_delegate.HasEvent(Event::RoadLost), ());
+  auto const lost = LoggedLines::Starting("RULE road_lost ms=");
+  TEST(!lost.empty(), ());
+  // The sentence follows the tag, the name and the keys.
+  TEST(lost[0].find(" The road is lost after ") != std::string::npos, (lost[0]));
+  TEST(env.m_engine.GetTripLine().starts_with("TRIP ms="), (env.m_engine.GetTripLine()));
 }
 }  // namespace nogps_engine_tests

@@ -171,6 +171,7 @@
 		A7C10B5F2E98F00100E5D2A1 /* esp32_update.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A7C10B612E98F00100E5D2A1 /* esp32_update.hpp */; };
 		1C5409F39F6C18B09C389D00 /* inertial_navigator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B645D7BF39FF5E94AC075D4D /* inertial_navigator.cpp */; };
 		7FE05A6E13EC417A84352102 /* inertial_navigator.hpp in Headers */ = {isa = PBXBuildFile; fileRef = D07F2DFB8EED09937FA87D0F /* inertial_navigator.hpp */; };
+		B2C3D4E5F60718293A4B5C6D /* log_line.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* log_line.hpp */; };
 		8A50E93EC62CB714D9C23487 /* map_api.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 1462255FBD1C062C7DFD5223 /* map_api.hpp */; };
 		61FF3CDF8DFAE152B84F53D1 /* motion_source.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 346B03C4DEFF198B6A2CD9ED /* motion_source.cpp */; };
 		F48364C194A6810D714F1A43 /* phone_motion.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9D5C9B356A2EA74A26578D42 /* phone_motion.cpp */; };
@@ -383,6 +384,7 @@
 		A7C10B612E98F00100E5D2A1 /* esp32_update.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = esp32_update.hpp; sourceTree = "<group>"; };
 		B645D7BF39FF5E94AC075D4D /* inertial_navigator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = inertial_navigator.cpp; sourceTree = "<group>"; };
 		D07F2DFB8EED09937FA87D0F /* inertial_navigator.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = inertial_navigator.hpp; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5C /* log_line.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = log_line.hpp; sourceTree = "<group>"; };
 		1462255FBD1C062C7DFD5223 /* map_api.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = map_api.hpp; sourceTree = "<group>"; };
 		346B03C4DEFF198B6A2CD9ED /* motion_source.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = motion_source.cpp; sourceTree = "<group>"; };
 		9D5C9B356A2EA74A26578D42 /* phone_motion.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = phone_motion.cpp; sourceTree = "<group>"; };
@@ -622,6 +624,7 @@
 				A7C10B612E98F00100E5D2A1 /* esp32_update.hpp */,
 				B645D7BF39FF5E94AC075D4D /* inertial_navigator.cpp */,
 				D07F2DFB8EED09937FA87D0F /* inertial_navigator.hpp */,
+				A1B2C3D4E5F60718293A4B5C /* log_line.hpp */,
 				1462255FBD1C062C7DFD5223 /* map_api.hpp */,
 				346B03C4DEFF198B6A2CD9ED /* motion_source.cpp */,
 				9D5C9B356A2EA74A26578D42 /* phone_motion.cpp */,
@@ -696,6 +699,7 @@
 				EA028C66D059DB8F5FDADD05 /* esp32_source.hpp in Headers */,
 				A7C10B5F2E98F00100E5D2A1 /* esp32_update.hpp in Headers */,
 				7FE05A6E13EC417A84352102 /* inertial_navigator.hpp in Headers */,
+				B2C3D4E5F60718293A4B5C6D /* log_line.hpp in Headers */,
 				8A50E93EC62CB714D9C23487 /* map_api.hpp in Headers */,
 				31020396F993FF96B99D52BF /* phone_motion.hpp in Headers */,
 				84003B391BCAFDA6B02EB0DB /* potholes.hpp in Headers */,

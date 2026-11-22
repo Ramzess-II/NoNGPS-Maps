@@ -57,6 +57,12 @@ public:
   /// \returns the distance left to the end of the route for the log of a drive, empty if there is no route.
   virtual std::string GetDistanceLeft() const = 0;
 
+  /// \returns the versions of the maps on disk, as the folders holding them are named (260714), the newest first
+  /// ("261101,260714" when they differ), "-" without a map. For the header of a trip log: a trip is driven again on
+  /// the maps it was driven on. Not the version of the countries list: a map stays as it was downloaded until it is
+  /// updated, so the roads of a trip can come from an older map than the list the application has.
+  virtual std::string GetMapsVersion() const = 0;
+
   /// Shows the car direction instead of the compass: without GPS the car looks along its road, and the compass of
   /// a phone in a car or in hands looks anywhere.
   virtual void ShowCarHeading(double bearingDeg) = 0;
