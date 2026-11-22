@@ -91,9 +91,10 @@ android {
     google {
       dimension 'default'
       isDefault = true
-      // The automatic protection of Google Play, which checks the installer of the app, needs Android 7.
+      // The market build takes Android 12+ only: BLUETOOTH_SCAN with neverForLocation finds the box in the
+      // background, which Android 10 and 11 would need a location permission for.
       // The native code is built in the sdk module for the common minSdk and is not rebuilt for it.
-      minSdk = 24
+      minSdk = 31
       versionName = android.defaultConfig.versionName + '-Google'
       buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
     }
