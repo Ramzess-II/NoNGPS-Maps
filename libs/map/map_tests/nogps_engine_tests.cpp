@@ -3459,8 +3459,11 @@ UNIT_TEST(NoGps_Cars_ForgetRemovesOnlyThatCar)
 
   cars.RenameCar("C47D", " My\ncar ");
   TEST_EQUAL(cars.GetCars()[0].m_name, "My car", ());
+  // An empty name keeps the previous one.
   cars.RenameCar("C47D", "");
-  TEST_EQUAL(cars.GetCars()[0].m_name, "", ());
+  TEST_EQUAL(cars.GetCars()[0].m_name, "My car", ());
+  cars.RenameCar("C47D", " \n ");
+  TEST_EQUAL(cars.GetCars()[0].m_name, "My car", ());
   cars.RenameCar("C47D", "Kia");
 
   // The current car is forgotten: the one heard the last time is the current one.

@@ -173,6 +173,15 @@ class TripLineTest(unittest.TestCase):
         self.assertEqual((row['gps_kmh'], row['err_m'], row['along_m']), ('36.0', 3.0, 3.0))
         self.assertEqual(nogps_log.box_flags(row), {'IMU_OK', 'BIAS_OK', 'FWD_OK', 'OBD_OK', 'MOUNT_MOVED'})
 
+    def test_header_of_a_joined_file_after_a_trip_line(self):
+        # A standing car ends the first day with a TRIP line: the header of the next file follows it.
+        first = android_drive('10-08', seconds=5, stand=5)
+        second = android_drive('10-09', seconds=5, stand=5)
+        second.insert(1, 'Location providers: gps net')
+        self.assertIn('TRIP ', first[-1])
+        groups = analyse(('joined.log', first + second)).groups
+        self.assertEqual(sum(len(g.rows) for g in groups), 10)
+
     def test_sensors(self):
         group = analyse(('app.log', android_drive(seconds=12))).groups[0]
         self.assertEqual(len(group.series['accb']), 10)
