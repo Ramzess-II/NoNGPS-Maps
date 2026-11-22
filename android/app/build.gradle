@@ -91,8 +91,9 @@ android {
     google {
       dimension 'default'
       isDefault = true
-      // The market build takes Android 12+ only: BLUETOOTH_SCAN with neverForLocation finds the box in the
-      // background, which Android 10 and 11 would need a location permission for.
+      // The market build takes Android 12+ only: there BLUETOOTH_SCAN with neverForLocation scans for the box
+      // without any location permission, while Android 10 and 11 count a scan as a location use and from the
+      // background want ACCESS_BACKGROUND_LOCATION, which the app doesn't ask for.
       // The native code is built in the sdk module for the common minSdk and is not rebuilt for it.
       minSdk = 31
       versionName = android.defaultConfig.versionName + '-Google'
