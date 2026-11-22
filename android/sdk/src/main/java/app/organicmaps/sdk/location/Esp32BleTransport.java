@@ -1106,6 +1106,7 @@ class Esp32BleTransport
     }
   }
 
+  @SuppressLint("MissingPermission")
   private void onSubscribed(@NonNull BluetoothGatt gatt, int status)
   {
     if (gatt != mGatt)
