@@ -252,6 +252,8 @@ class Phone:
         self.subscribed = False
         self.payload = MIN_PAYLOAD
         self.hello_at = 0.0
+        # Section 9.2: the last command that keeps the session, 0 until the first HELLO starts one.
+        self.cmd_at = 0.0
         self.info_sent = False
         self.queue = collections.deque(maxlen=QUEUE_LINES)
         # The tail of a line that has started going out: BLE-4 sends it whole.
@@ -259,8 +261,12 @@ class Phone:
         self.sent = 0
         self.dropped = 0
 
+    def in_session(self, now):
+        """Section 9.2: a HELLO has started a session and a command has come within the timeout."""
+        return bool(self.cmd_at) and now - self.cmd_at < HELLO_TIMEOUT_S
+
     def heard(self, now):
-        return self.subscribed and self.hello_at and now - self.hello_at < HELLO_TIMEOUT_S
+        return self.subscribed and self.in_session(now)
 
 
 class Box:
@@ -334,11 +340,13 @@ class Box:
     def on_command(self, phone, fields):
         """Section 9.5. The box has the abilities of ABILITIES only: anything else is unknown."""
         command_id, name, rest = fields[1], fields[2], fields[3:]
-        if phone.hello_at:
-            phone.hello_at = self.clock()     # section 9.2: any command keeps the session of a phone that has one
+        # Section 9.2: any command but PEER, which the box relays before it looks at the commands, keeps a
+        # session that is still on. An ended one the box restarts on HELLO alone: it has freed the phone's slot.
+        if phone.in_session(self.clock()) and name != 'PEER':
+            phone.cmd_at = self.clock()
         if name == 'HELLO':
             # HELLO,<name>,<Unix s> from a newer application; the box remembers both for its list of phones.
-            phone.hello_at = self.clock()
+            phone.hello_at = phone.cmd_at = self.clock()
             if rest:
                 phone.name = rest[0]
             if len(rest) > 1 and rest[1].isdigit():

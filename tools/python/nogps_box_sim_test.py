@@ -284,6 +284,28 @@ class Session(unittest.TestCase):
         made.tick()
         self.assertEqual(radio.lines('NGD'), [])
 
+    def test_a_command_does_not_restart_an_ended_session(self):
+        """Section 9.2: the box has freed the phone's slot, so only a HELLO starts the session again."""
+        made, radio, clock = box()
+        connect(made)
+        clock.pass_s(sim.HELLO_TIMEOUT_S + 1)
+        made.on_event('write', PHONE, command(2, 'STATUS'))
+        made.tick()
+        self.assertEqual(radio.lines('NGD'), [])
+        made.on_event('write', PHONE, command(3, 'HELLO,Test phone,1794685770'))
+        made.tick()
+        self.assertEqual(len(radio.lines('NGD')), 1)
+
+    def test_peer_does_not_keep_the_session(self):
+        """The box relays PEER before it looks at the commands, so it does not refresh the session."""
+        made, radio, clock = box()
+        connect(made)
+        clock.pass_s(6)
+        made.on_event('write', PHONE, command(2, 'PEER,SELF,1000,0,0,0,10,BOX'))
+        clock.pass_s(5)
+        made.tick()
+        self.assertEqual(radio.lines('NGD'), [])
+
     def test_two_phones_hear_the_same_data_line(self):
         """Section 9.7: both phones hear the same NGD, so its totals are one moment for both."""
         made, radio, _ = box()
@@ -403,11 +425,21 @@ class Session(unittest.TestCase):
         self.assertEqual(len(state['phones']), 1)
         self.assertEqual(state['phones'][0]['name'], 'Test phone')
         self.assertTrue(state['phones'][0]['heard'])
+        self.assertEqual(state['phones'][0]['hello_age_ms'], 0)
         # IMU_OK, BIAS_OK, UP_OK, STILL, and OBD_ABSENT of the adapter that isn't there.
         self.assertEqual(state['flags_value'], '227')
         without = made.panel_lines(0, False)
         self.assertTrue(all(item['kind'] != 'NGD' for item in without['lines']))
         self.assertTrue(any(item['kind'] == 'NGD' for item in made.panel_lines(0, True)['lines']))
+
+    def test_the_panel_shows_the_age_of_the_last_hello(self):
+        """The panel says 'HELLO ... s ago': a command of another kind keeps the session but is not a HELLO."""
+        made, _, clock = box()
+        connect(made)
+        clock.pass_s(4)
+        made.on_event('write', PHONE, command(2, 'STATUS'))
+        made.tick()
+        self.assertEqual(made.panel_state()['phones'][0]['hello_age_ms'], 4000)
 
     def test_the_panel_does_not_take_a_flag_it_doesnt_know(self):
         made, _, _ = box()
