@@ -34,6 +34,11 @@ Each call reads the logs again: a day of Android logs takes a few seconds.
 5. **Answer** with the times, the field values and the log lines that show it. To let the user see a moment, give the
    viewer command `python3 tools/python/nogps_log_viewer.py <logs>` and the `#trip=N&t=<ms>` that `state` prints.
 
+The viewer is offline: it loads its libraries from `tools/python/nogps_log_viewer_assets/` and draws the tracks on a
+plain background. `--tiles <folder>` draws a map from local `{z}/{x}/{y}.png` tiles and reveals nothing. `--tiles
+<url>` fetches tiles from that server, which then sees the area of every trip opened. The choice is kept in
+`~/.nogps_log_viewer.json`; `--tiles off` clears it.
+
 The logs hold where the user drove. Keep coordinates and log files out of issues, PRs and commits: the repo is
 public. Describe a place by its time on the trip.
 
