@@ -16,4 +16,4 @@ NonGPS Maps — офлайн-навігація для водіїв, яка пр
 Інерціальна навігація накопичує похибку. Звіряйтеся з дорогою і знаками, не відволікайтеся від керування.
 
 На основі Organic Maps (organicmaps.app). Дані карт © учасники OpenStreetMap та Organic Maps.
-Вихідний код: github.com/Ramzess-II/NoGPSMaps
+Вихідний код: github.com/Ramzess-II/NoNGPS-Maps
