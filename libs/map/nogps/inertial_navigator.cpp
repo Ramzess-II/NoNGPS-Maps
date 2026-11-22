@@ -664,10 +664,11 @@ bool InertialNavigator::JumpToRoadGoingCarWay()
   { return Distance(position, a.m_point) < Distance(position, b.m_point); });
   auto const & nearest = roads.front();
   double const nearestM = Distance(position, nearest.m_point);
-  LOG(LINFO, (LogHead(m_clock, "RULE", "road_lost"), "m=" + std::to_string(std::lround(m_offRoadM)), "jump=1",
-              "The road is lost after", std::lround(m_offRoadM), "m, a road goes the car's way", std::lround(nearestM),
-              "m aside, roads going so", roads.size(), "within", std::lround(searchM), "m"));
   bool const jumped = nearestM <= kJumpSearchM;
+  LOG(LINFO, (LogHead(m_clock, "RULE", "road_lost"), "m=" + std::to_string(std::lround(m_offRoadM)),
+              std::string("jump=") + (jumped ? "1" : "0"), "The road is lost after", std::lround(m_offRoadM),
+              "m, a road goes the car's way", std::lround(nearestM), "m aside, roads going so", roads.size(), "within",
+              std::lround(searchM), "m"));
   if (jumped)
     PutOnRoad(nearest.m_point, Orient(nearest.m_bearingDeg, heading));
   for (size_t i = jumped ? 1 : 0; i < roads.size(); ++i)
