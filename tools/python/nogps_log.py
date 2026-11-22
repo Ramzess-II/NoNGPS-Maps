@@ -75,8 +75,8 @@ REPLAY_CATEGORIES = {
 }
 EVENT_KINDS = [
     ('app', 'app started', r'^Initializing application$|started, detected CPU cores', None),
-    ('app', 'navigation started', nogps_replay.HEAD + r'Start$', r'engine\.cpp'),
-    ('app', 'navigation stopped', nogps_replay.HEAD + r'Stop$', r'engine\.cpp'),
+    ('app', 'navigation started', r'^Start$', r'engine\.cpp'),
+    ('app', 'navigation stopped', r'^Stop$', r'engine\.cpp'),
     ('app', 'location started', r'^Start updating location', None),
     ('app', 'location stopped', r'^Stop updating location', None),
     ('app', 'location started', r'^$', r'LocationHelper\.java start$'),
@@ -85,28 +85,28 @@ EVENT_KINDS = [
     ('app', 'location status', r'^Location status updated', None),
     ('app', 'background', r'background|the car is parked', r'^(MwmApplication|NoGpsBoxService)\.java '),
     ('app', 'log lines dropped', r'^Dropped \d+ log lines', None),
-    ('app', 'notification', r'^EVENT (?!\w+ ms=)', None),
-    ('app', 'car restored', nogps_replay.HEAD + r'The car is where it was left', None),
+    ('app', 'notification', r'^EVENT ', None),
+    ('app', 'car restored', r'^The car is where it was left', None),
     ('app', 'last trusted position', r'^Last trusted position', None),
-    ('state', 'position source', nogps_replay.HEAD + r'Position source ', None),
-    ('state', 'GPS signal', nogps_replay.HEAD + r'GPS signal ', None),
-    ('state', 'box state', nogps_replay.HEAD + r'Box state ', None),
-    ('state', 'box Bluetooth', nogps_replay.HEAD + r'Box Bluetooth ', None),
+    ('state', 'position source', r'^Position source ', None),
+    ('state', 'GPS signal', r'^GPS signal ', None),
+    ('state', 'box state', r'^Box state ', None),
+    ('state', 'box Bluetooth', r'^Box Bluetooth ', None),
     ('state', 'chosen by itself', r'is chosen by itself', None),
     ('state', 'GPS agrees with the box', r'^GPS agrees with the box', None),
-    ('user', 'tap', nogps_replay.HEAD + r'tap = ms::LatLon', None),
-    ('user', 'GPS ignored by the user', nogps_replay.HEAD + r'(GPS ignored by the user|disabled) = ', None),
+    ('user', 'tap', r'^tap = ms::LatLon', None),
+    ('user', 'GPS ignored by the user', r'^(GPS ignored by the user|disabled) = ', None),
     ('user', 'box set up by the user', r'^Box set up by the user', None),
-    ('user', 'mark switched', nogps_replay.HEAD + r'Switching the mark', None),
-    ('user', 'car reversed', nogps_replay.HEAD + r'Reversed the car', None),
-    ('user', 'mark moved', nogps_replay.HEAD + r'Moved the position by', None),
+    ('user', 'mark switched', r'^Switching the mark', None),
+    ('user', 'car reversed', r'^Reversed the car', None),
+    ('user', 'mark moved', r'^Moved the position by', None),
 ] + [(REPLAY_CATEGORIES.get(name, 'road'), name, pattern, None) for name, pattern in nogps_replay.EVENTS] + [
     ('road', 'not followed apart any more', r'is not followed apart any more', None),
     ('road', 'back on a road', r'drives along a road again', None),
     ('road', 'put on a road', r'it is put there$', None),
-    ('road', 'bend', nogps_replay.HEAD + r'Bend: ', None),
-    ('road', 'gentle bend', nogps_replay.HEAD + r'Gentle bend: ', None),
-    ('road', 'loop', nogps_replay.HEAD + r'Loop: ', None),
+    ('road', 'bend', r'^Bend: ', None),
+    ('road', 'gentle bend', r'^Gentle bend: ', None),
+    ('road', 'loop', r'^Loop: ', None),
     ('road', 'other marks dropped', r'^Other marks? (dropped|not added)', None),
     ('road', 'car started', r'^The car has started', None),
     ('road', 'car drives fast', r'^The car drives fast', None),
@@ -131,9 +131,9 @@ EVENT_KINDS = [
     ('route', 'routing state', r'^Routing session state|following mode|^\[[SB]\] State', None),
     ('route', 'route calculation', r'^Calculating the route|^ROUTE ', None),
     ('route', 'routing', r'', r'^RoutingController'),
-    ('gps', 'GPS spoofed', nogps_replay.HEAD + r'GPS spoofed', None),
-    ('gps', 'untrusted location', nogps_replay.HEAD + r'Untrusted location|^Unsatisfied accuracy', None),
-    ('gps', 'GPS off the roads', nogps_replay.HEAD + r'GPS (has left|is off) the roads', None),
+    ('gps', 'GPS spoofed', r'^GPS spoofed', None),
+    ('gps', 'untrusted location', r'^Untrusted location|^Unsatisfied accuracy', None),
+    ('gps', 'GPS off the roads', r'^GPS (has left|is off) the roads', None),
     ('gps', 'network location', r'[Nn]etwork (location|points)', None),
     ('gps', 'location ignored', r'^Not active, ignoring', None),
 ]
@@ -142,21 +142,20 @@ EVENT_KINDS = [(c, n, re.compile(t), re.compile(f) if f else None) for c, n, t, 
 RULES = [
     ('turn moved to a crossing', r'is moved to the crossing'),
     ('turn left by "followed the roads"', r'has followed the roads, the crossing'),
-    ('late turn', nogps_replay.HEAD + r'The car has turned by'),
+    ('late turn', r'^The car has turned by'),
     ('bend moved, slow car', r'told repeatedly to a slow car'),
-    ('bend moved', nogps_replay.HEAD + r'Bend: moved along the road'),
-    ('bend confirmed', nogps_replay.HEAD + r'Bend: the position fits the road'),
-    ('loop', nogps_replay.HEAD + r'Loop: the way driven'),
-    ('fork branch chosen', nogps_replay.HEAD + r'FORK '),
+    ('bend moved', r'^Bend: moved along the road'),
+    ('bend confirmed', r'^Bend: the position fits the road'),
+    ('loop', r'^Loop: the way driven'),
+    ('fork branch chosen', r'^FORK '),
     ('wait ahead', r'the mark is ahead, it waits'),
     ('wait at a roundabout', r'come to a roundabout before the car'),
     ('exit of a roundabout', r'has left the roundabout along a road|road past the roundabout'),
-    ('followed apart', nogps_replay.HEAD + r'The car maneuvers'),
-    ('back on a road', r'drives along a road again|' + nogps_replay.HEAD
-     + r'The maneuvering car has driven along a road'),
+    ('followed apart', r'^The car maneuvers'),
+    ('back on a road', r'drives along a road again|^The maneuvering car has driven along a road'),
     ('far mark taken', r'WAY misses.* there far\b'),
-    ('mark switched by the way', nogps_replay.HEAD + r'The car is shown on another road.*WAY misses'),
-    ('road lost', nogps_replay.HEAD + r'The road is lost after'),
+    ('mark switched by the way', r'^The car is shown on another road.*WAY misses'),
+    ('road lost', r'^The road is lost after'),
 ]
 RULES = [(name, re.compile(pattern)) for name, pattern in RULES]
 # What came next is looked at this far from the line of a rule.
@@ -361,6 +360,8 @@ class Group:
     def classify(self, t, level, tag, body):
         source = SOURCE.match(body)
         file, func, text = (source.group(1), source.group(3), source.group(4)) if source else ('', '', body)
+        # A line of LOGFMT 2 has a head before what the patterns below read, see nogps_replay.sentence.
+        text = nogps_replay.sentence(text)
         if text.startswith('TRIP '):
             row = nogps_trip_log.parse_trip(text[len('TRIP '):])
             nogps_trip_log.add_error(row)

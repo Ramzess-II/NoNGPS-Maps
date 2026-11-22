@@ -7,6 +7,7 @@
 import argparse
 import io
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -23,6 +24,14 @@ import nogps_trip_log  # noqa: E402
 DEG_PER_M = 1 / 111320.0
 START_LAT, START_LON = 10.0, 20.0
 DAY_MS = nogps_log.to_ms(nogps_log.datetime(2026, 10, 8))
+# The stamp of LOGFMT 2 data lines: the tools skip it so far, see nogps_replay.sentence.
+LOGFMT_MS = 1760000000000
+DATA_TAG = re.compile(r'(\(\): (?:TRIP|ACC|ACCB|ACCB_BEFORE|GYRO|CALIBRATION)) ')
+
+
+def logfmt2(lines):
+    """The same log as LOGFMT 2 writes it: every data line has "ms=<unix ms>" right after its tag."""
+    return [DATA_TAG.sub(r'\1 ms=%d ' % LOGFMT_MS, line) for line in lines]
 
 
 def android_time(day, second, ms=0):
@@ -240,7 +249,7 @@ class AnomaliesTest(unittest.TestCase):
 class EventsTest(unittest.TestCase):
     def test_categories(self):
         day, t = '10-08', 18 * 3600
-        log = android_drive(seconds=30, stand=0) + [
+        log = logfmt2(android_drive(seconds=30, stand=0)) + [
             core(day, t + 5, 'SetManual', 'tap = ms::LatLon(10.0001, 20.0002) location = ms::LatLon(10.0, 20.0) '
                  'bearing = 0 heading was = nullopt'),
             core(day, t + 6, 'LogStateChanges', 'GPS signal GOOD -> NONE'),
@@ -382,11 +391,11 @@ class InputTest(unittest.TestCase):
 
 
 class ReplayInputTest(unittest.TestCase):
-    def drive(self, seconds):
+    def drive(self, seconds, tagged=False):
         lines = android_drive(day='10-08', seconds=seconds, stand=0)
         lines += [core('10-08', 18 * 3600 + 2 + s, 'OnMotion', 'GYRO 0.0 0 0 0 0 0 36 36 36 36 36', ms=600,
                        file='nogps/esp32_source.cpp:1') for s in range(seconds)]
-        return lines
+        return logfmt2(lines) if tagged else lines
 
     def records(self, lines):
         with tempfile.TemporaryDirectory() as folder:
@@ -400,9 +409,9 @@ class ReplayInputTest(unittest.TestCase):
             with open(out, encoding='ascii') as f:
                 return [line.split() for line in f]
 
-    def switches(self, switch_lines):
+    def switches(self, switch_lines, tagged=False):
         # The switches come while the car drives, after the first second of the box data.
-        lines = self.drive(60)
+        lines = self.drive(60, tagged)
         lines[30:30] = [core('10-08', 18 * 3600 + 20, f, t) for f, t in switch_lines]
         return [r for r in self.records(lines) if r[0] in ('X', 'A') and int(r[1]) >= (18 * 3600 + 20) * 1000]
 
@@ -419,11 +428,12 @@ class ReplayInputTest(unittest.TestCase):
         """LOGFMT 2 writes the tag, the stable name and the keys before the sentence."""
         got = self.switches([('SetGpsDisabled', 'ACTION gps_off ms=1760000020000 disabled=1 by=user '
                                                 'GPS ignored by the user = 1'),
-                             ('SetManualMode', 'ACTION manual ms=1760000020000 enabled=1 by=user Manual mode = 1')])
+                             ('SetManualMode', 'ACTION manual ms=1760000020000 enabled=1 by=user Manual mode = 1')],
+                            tagged=True)
         self.assertEqual([(r[0], r[2]) for r in got], [('X', '1'), ('A', '1')])
 
     def test_tagged_actions_of_the_user(self):
-        lines = self.drive(60)
+        lines = self.drive(60, tagged=True)
         lines[30:30] = [
             core('10-08', 18 * 3600 + 20, 'PutMark', 'ACTION tap ms=1760000020000 tap = ms::LatLon(10.0, 20.0) '
                  'location = ms::LatLon(10.0, 20.0) bearing = 0 heading was = nullopt'),
@@ -438,6 +448,18 @@ class ReplayInputTest(unittest.TestCase):
         lines = [core('10-08', 18 * 3600 - 5, 'SetGpsDisabled', 'GPS ignored by the user = 1')]
         lines += self.drive(30)
         self.assertEqual([(r[0], r[2]) for r in self.records(lines) if r[0] == 'X'], [('X', '1')])
+
+    def test_a_tagged_log_gives_the_same_input(self):
+        """A log of LOGFMT 2 is driven again as the same log of LOGFMT 1: the data lines, and the switch of the
+        user before the first line of the file."""
+        plain = [core('10-08', 18 * 3600 - 5, 'SetGpsDisabled', 'GPS ignored by the user = 1')] + self.drive(30)
+        tagged = [core('10-08', 18 * 3600 - 5, 'SetGpsDisabled', 'ACTION gps_off ms=%d disabled=1 by=restore '
+                       'GPS ignored by the user = 1' % LOGFMT_MS)] + self.drive(30, tagged=True)
+        records = self.records(plain)
+        # The box data of the second: without it the two inputs would be equal and empty.
+        self.assertTrue([r for r in records if r[0] == 'B'])
+        self.assertEqual([(r[0], r[2]) for r in records if r[0] == 'X'], [('X', '1')])
+        self.assertEqual(self.records(tagged), records)
 
 
 class ExportTest(unittest.TestCase):
@@ -508,7 +530,7 @@ class TaggedLinesTest(unittest.TestCase):
     """A line of LOGFMT 2 counts as the sentence of LOGFMT 1 did: a trip of an old log is compared with a replay."""
 
     def test_rules_of_a_tagged_log_are_counted(self):
-        log = android_drive(seconds=120, stand=0)
+        log = logfmt2(android_drive(seconds=120, stand=0))
         log += [core('10-08', 18 * 3600 + sec, 'F', text) for sec, text in (
             (10, 'RULE bend_moved ms=1760000010000 kind=bend Bend: moved along the road by 20 m'),
             (20, 'RULE bend_confirmed ms=1760000020000 kind=bend Bend: the position fits the road, ahead by 1 m'),
@@ -526,7 +548,7 @@ class TaggedLinesTest(unittest.TestCase):
 
     def test_events_of_a_tagged_log_keep_their_category(self):
         day, t = '10-08', 18 * 3600
-        log = android_drive(seconds=30, stand=0) + [
+        log = logfmt2(android_drive(seconds=30, stand=0)) + [
             core(day, t + 5, 'PutMark', 'ACTION tap ms=1760000005000 tap = ms::LatLon(10.0001, 20.0002) '
                  'location = ms::LatLon(10.0, 20.0) bearing = 0 heading was = nullopt'),
             core(day, t + 6, 'LogStateChanges', 'EVENT gps_signal ms=1760000006000 from=GOOD to=NONE '
@@ -541,14 +563,48 @@ class TaggedLinesTest(unittest.TestCase):
                           if e['name'] not in ('app started', 'navigation started')],
                          [('user', 'tap'), ('state', 'GPS signal'), ('road', 'road lost'), ('app', 'notification')])
 
+    def test_data_lines_of_a_tagged_log_are_read(self):
+        """The series of the viewer, the TRIP rows and the calibration of the trip are the same of both formats."""
+        log = android_drive(seconds=30, stand=10) + [
+            core('10-08', 18 * 3600 + 3, 'LogCalibration', 'CALIBRATION car=C47D scale=1.04 table=3',
+                 file='nogps/inertial_navigator.cpp:393'),
+            core('10-08', 18 * 3600 + 15, 'OnMotion', 'GYRO 12.5 0.10 0.20 0.30 0.40 0.50 36 36 36 36 36',
+                 file='nogps/inertial_navigator.cpp:1254')]
+        for name, lines in (('LOGFMT 1', log), ('LOGFMT 2', logfmt2(log))):
+            with self.subTest(name):
+                analysis = analyse(('app.log', lines))
+                group = analysis.groups[0]
+                self.assertEqual([round(value, 2) for _, value in group.series['gyro']], [0.5, 1.0, 1.5, 2.0, 2.5])
+                self.assertEqual(len(group.series['accb']), 100)
+                self.assertEqual(len(group.rows), 30)
+                self.assertEqual(analysis.trips[0].calibration(), 'car=C47D scale=1.04 table=3')
+
+    def test_the_trip_csv_reads_a_tagged_log(self):
+        lines = logfmt2(android_drive(seconds=10, stand=0))
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, 'app.log')
+            with open(path, 'w', encoding='utf-8') as f:
+                f.write('\n'.join(lines) + '\n')
+            rows = nogps_trip_log.read_rows([path], 2026)
+        self.assertEqual(len(rows), 10)
+        self.assertEqual({row['src'] for row in rows}, {'INERTIAL'})
+
     def test_compare_counts_a_tagged_replay_as_the_trip(self):
-        others = [(10_000, 'Bend: moved along the road by 20 m', ''),
-                  (20_000, 'FORK the car goes along the branch 5 m aside', ''),
-                  (30_000, 'The car is shown on another road it may be on: the shown one stands lost', '')]
-        replayed = [(10_000, 'RULE bend_moved ms=1760000010000 kind=bend Bend: moved along the road by 20 m', ''),
-                    (20_000, 'RULE fork_branch ms=1760000020000 FORK the car goes along the branch 5 m aside', ''),
-                    (30_000, 'RULE mark_switched_stand_lost ms=1760000030000 The car is shown on another road it '
-                             'may be on: the shown one stands lost', '')]
+        sentences = ['Bend: moved along the road by 20 m', 'FORK the car goes along the branch 5 m aside',
+                     'The car is shown on another road it may be on: the shown one stands lost']
+        heads = ['RULE bend_moved ms=1760000010000 kind=bend ', 'RULE fork_branch ms=1760000020000 ',
+                 'RULE mark_switched_stand_lost ms=1760000030000 ']
+        trip = [core('10-08', 18 * 3600 + 10 * i, 'F', text) for i, text in enumerate(sentences)]
+        replay = [core('10-08', 18 * 3600 + 10 * i, 'F', head + text)
+                  for i, (head, text) in enumerate(zip(heads, sentences))]
+        with tempfile.TemporaryDirectory() as folder:
+            paths = []
+            for name, lines in (('trip.log', trip), ('replay.log', replay)):
+                paths.append(os.path.join(folder, name))
+                with open(paths[-1], 'w', encoding='utf-8') as f:
+                    f.write('\n'.join(lines) + '\n')
+            _, others, _ = nogps_replay.read(paths[:1], '10-08')
+            _, replayed, _ = nogps_replay.read(paths[1:], '10-08')
         stats = nogps_replay.compare_stats([], others, [], replayed, 0, 86_400_000, 15)
         counts = {name: (a, b) for name, a, b in stats['events']}
         self.assertEqual(counts['bend moved'], (1, 1))
