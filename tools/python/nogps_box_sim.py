@@ -355,8 +355,17 @@ class Box:
                 for phone in self.phones.values():
                     if phone.heard(now):
                         self.queue(phone, status)
-            for phone in list(self.phones.values()):
-                self.flush(phone, now)
+            ready = [phone for phone in list(self.phones.values()) if self.flush(phone) and phone.heard(now)]
+            if ready:
+                # One packet for every phone listening: its number counts the packets, not the phones, and both
+                # phones hear the same line, which is what makes its dist_mm one moment for both (9.7).
+                self.seq = (self.seq + 1) & 0xFFFFFFFF
+                data = self.state.data(self.seq, self.time_ms())
+                for phone in ready:
+                    if self.send_line(phone, data, drop=True):
+                        self.note(True, data.decode('ascii').strip(), phone)
+                    else:
+                        phone.dropped += 1
             if now - self.rate_at >= 1.0:
                 self.rate = self.rate_sent
                 self.rate_at, self.rate_sent = now, 0
@@ -375,23 +384,18 @@ class Box:
         else:
             self.radio.advertise(want[0], want[1] if self.radio.supports_manufacturer_data else None)
 
-    def flush(self, phone, now):
+    def flush(self, phone):
+        """Sends what waits for the phone. \returns True when nothing is left and a data line can follow."""
         if not self.send_pending(phone):
-            return
+            return False
         while phone.queue:
             data = phone.queue.popleft()
             sent = self.send_line(phone, data)
             # Told once, as it starts going out: what is left of it waits in pending and is not dropped (BLE-4).
             self.note(True, data.decode('ascii').strip(), phone)
             if not sent:
-                return
-        if phone.heard(now):
-            self.seq = (self.seq + 1) & 0xFFFFFFFF
-            data = self.state.data(self.seq, self.time_ms())
-            if self.send_line(phone, data, drop=True):
-                self.note(True, data.decode('ascii').strip(), phone)
-            else:
-                phone.dropped += 1
+                return False
+        return True
 
     def send_pending(self, phone):
         """BLE-4: a line that has started going out is sent whole, over the ticks it takes."""

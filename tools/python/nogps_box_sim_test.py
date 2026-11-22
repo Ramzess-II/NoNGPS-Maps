@@ -268,6 +268,27 @@ class Session(unittest.TestCase):
         self.assertEqual(len(radio.lines('NGD')), 3)
         self.assertEqual([fields(raw)[2] for raw in radio.lines('NGD')], ['1', '2', '3'])
 
+    def test_two_phones_hear_the_same_data_line(self):
+        """Section 9.7: both phones hear the same NGD, so its totals are one moment for both."""
+        made, radio, _ = box()
+        connect(made)
+        made.on_event('connect', 'phone-2', 'Other phone')
+        made.on_event('subscribe', 'phone-2', 182)
+        made.on_event('write', 'phone-2', command(1, 'HELLO,Other phone,1794685760'))
+        made.tick()
+        sent = {}
+        for phone_id, data in radio.sent:
+            sent.setdefault(phone_id, b'')
+            sent[phone_id] += data
+        lines = {phone_id: [raw for raw in text.decode('ascii').split('\r\n') if raw[1:4] == 'NGD']
+                 for phone_id, text in sent.items()}
+        self.assertEqual(sorted(lines), [PHONE, 'phone-2'])
+        self.assertEqual(lines[PHONE], lines['phone-2'])
+        # One packet, so one number: not one per phone.
+        self.assertEqual(fields(lines[PHONE][0])[2], '1')
+        made.tick()
+        self.assertEqual(made.seq, 2)
+
     def test_the_status_goes_once_a_second_and_at_once_on_a_change(self):
         made, radio, clock = box()
         connect(made)
