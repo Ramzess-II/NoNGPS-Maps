@@ -162,7 +162,11 @@ final class NoGpsBoxPage: MWMTableViewController {
 
   /// The values of a group, in the order of NoGpsBoxValue.
   private func valueRows(_ first: NoGpsBoxValue, _ last: NoGpsBoxValue) -> [Row] {
-    lastValues.filter { (first.rawValue ... last.rawValue).contains($0.kind.rawValue) }.map { .value($0.kind) }
+    // Nothing from the box yet: every row of the range is shown with a dash, so the page is not an empty one.
+    guard !lastValues.isEmpty else {
+      return (first.rawValue ... last.rawValue).compactMap(NoGpsBoxValue.init(rawValue:)).map { .value($0) }
+    }
+    return lastValues.filter { (first.rawValue ... last.rawValue).contains($0.kind.rawValue) }.map { .value($0.kind) }
   }
 
   // MARK: - UITableViewDataSource

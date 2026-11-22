@@ -1097,6 +1097,8 @@
     <string name="nogps_phone_removed_unpair">This phone is removed from the box, the car is forgotten. Remove NoGPS-%1$s in the Bluetooth settings</string>
     <!-- Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code -->
     <string name="nogps_phone_add">Add a phone</string>
+    <!-- Title of the dialog that adds a phone to the box of a car. %1$@ is the car name, e.g. "Add a phone to Kia" -->
+    <string name="nogps_phone_add_to_car">Add a phone to %1$s</string>
     <!-- Shown with a one-time pairing code on the paired phone. %1$@ is the time left, e.g. 1:45 -->
     <string name="nogps_phone_add_code">On the new phone, open Box in NonGPS Maps. When the phone asks for the code, enter this one. It works once, for %1$s.</string>
     <!-- Shown while the one-time pairing code is sent to the sensor box -->
@@ -1475,11 +1477,11 @@
     <!-- Title of the dialog shown once, on the first start of the app -->
     <string name="nogps_intro_title">Navigation without GPS</string>
     <!-- Text of the dialog of the first start: what the app is and that it needs the sensor box -->
-    <string name="nogps_intro_text">This app drives your car on the map without GPS. The NonGPS sensor box takes the speed from the car and the turns from its own sensors, and the app draws the car from them: in a tunnel, in a yard, under a bridge, where GPS is lost. Without the box this is an ordinary offline map.</string>
+    <string name="nogps_intro_text">The app drives your car on the map where GPS is lost: a tunnel, a yard, under a bridge. It needs the NonGPS sensor box — without the box this is an ordinary offline map.</string>
     <!-- Button of the dialog of the first start, opens the video about the app -->
-    <string name="nogps_intro_video">Watch the video</string>
-    <!-- Checkbox that closes the dialog of the first start -->
-    <string name="nogps_intro_understand">Yes, I understand</string>
+    <string name="nogps_intro_video">Video explanation</string>
+    <!-- Button that closes the dialog of the first start -->
+    <string name="nogps_intro_understand">Yes, I understand it works with the box</string>
     <!-- Balloon of the first start pointing at the bottom bar -->
     <string name="nogps_intro_bottom">The cars, the box and GPS are here.</string>
     <!-- Balloon of the first start pointing at the panel with the zoom buttons -->

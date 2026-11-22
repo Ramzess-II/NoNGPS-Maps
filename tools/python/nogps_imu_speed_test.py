@@ -143,6 +143,19 @@ class ImuSpeedTest(unittest.TestCase):
         self.assertEqual([(t, round(w, 2), kmh) for t, w, kmh in gyro],
                          [(9_200, 1.0, 10), (9_600, 2.0, 30), (9_800, 3.0, 40), (10_000, 4.0, 50)])
 
+    def test_read_sensors_reads_the_tagged_lines_of_logfmt_2(self):
+        def group(head):
+            lines = ['I(1) 10.0 nogps/esp32_source.cpp:1 OnData(): ACCB %s1.00,2.00,0.00,0.1 1.20,2.20,0.00,0.1'
+                     % head,
+                     'I(1) 10.0 nogps/inertial_navigator.cpp:1 OnMotion(): GYRO %s5.0 0.20 0.40 0.60 0.80 1.00 '
+                     '10 20 30 40 50' % head]
+            return SimpleNamespace(lines=[(10_000, 'I', line) for line in lines])
+
+        plain = m.read_sensors(group(''))
+        self.assertEqual(len(plain[0]), 2)
+        self.assertEqual(len(plain[1]), m.SLICES)
+        self.assertEqual(m.read_sensors(group('ms=1763800000000 ')), plain)
+
 
 if __name__ == '__main__':
     unittest.main()

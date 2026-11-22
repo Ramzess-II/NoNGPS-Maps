@@ -2,6 +2,7 @@
 
 #include "map/nogps/clock.hpp"
 #include "map/nogps/delegate.hpp"
+#include "map/nogps/log_line.hpp"
 
 #include "base/assert.hpp"
 #include "base/logging.hpp"
@@ -98,6 +99,13 @@ void Esp32Source::SendHello()
   {
     LOG(LWARNING, ("No reply to the list of the phones"));
     m_listId = 0;
+  }
+  // The box may have dropped the command: the list is asked again, the code is not kept.
+  if (m_addPhone && m_addPhone->m_state == AddPhone::Opening &&
+      m_clock.NowMs() - m_addPhone->m_sentMs > kCarReplyTimeoutMs)
+  {
+    LOG(LWARNING, ("No reply to the pairing code"));
+    m_addPhone->m_state = AddPhone::Failed;
   }
   if (m_forget && m_clock.NowMs() - m_forget->m_sentMs > kCarReplyTimeoutMs)
   {
@@ -218,6 +226,12 @@ void Esp32Source::ListPhones()
   Send("BT_LIST", m_listId);
 }
 
+void Esp32Source::ListPhonesThrottled()
+{
+  if (m_clock.NowMs() - m_listSentMs >= kListIntervalMs)
+    ListPhones();
+}
+
 void Esp32Source::ForgetPhone(std::string const & address)
 {
   if (!HasPhones() || IsReadOnly() || m_forget || !m_phones)
@@ -241,6 +255,7 @@ void Esp32Source::StartAddPhone()
   char code[8];
   std::snprintf(code, sizeof(code), "%06d", digits(random));
   m_addPhone = AddPhoneRequest{code, m_nextCommandId++};
+  m_addPhone->m_sentMs = m_clock.NowMs();
   m_addPhone->m_lastEvent = m_loggedEvents.empty() ? -1 : *m_loggedEvents.rbegin();
   LOG(LINFO, ("Add a phone"));
   Send("BT_PAIR," + m_addPhone->m_code, m_addPhone->m_id);
@@ -487,7 +502,7 @@ void Esp32Source::OnLine(std::string_view text)
     // The engine speed on the move is for the check of the speed it gives: the status comes less often than the
     // speed, this line tells how often.
     if (carInfo->m_rpm >= 0 && m_speedKmh > 0 && IsConnected())
-      LOG(LINFO, ("RPM", carInfo->m_rpm, "speed =", m_speedKmh));
+      LOG(LINFO, (LogHead(m_clock, "RPM"), carInfo->m_rpm, "speed =", m_speedKmh));
   }
   auto const obdState = esp32::ParseObdState(*fields);
   if (obdState && obdState != m_obdState)
@@ -544,9 +559,9 @@ void Esp32Source::OnData(esp32::Data const & data)
       // The car reports that it moves a second late. What the sensor has felt before that tells which way the car
       // has started, forward or backward.
       for (size_t i = 0; i < m_accelLinesBeforeStart.size(); ++i)
-        LOG(LINFO, ("ACCB_BEFORE", m_accelLinesBeforeStart.size() - i, m_accelLinesBeforeStart[i]));
+        LOG(LINFO, (LogHead(m_clock, "ACCB_BEFORE"), m_accelLinesBeforeStart.size() - i, m_accelLinesBeforeStart[i]));
       m_accelLinesBeforeStart.clear();
-      LOG(LINFO, ("ACCB", *line));
+      LOG(LINFO, (LogHead(m_clock, "ACCB"), *line));
     }
     else if (line)
     {
@@ -677,8 +692,9 @@ void Esp32Source::OnEvent(esp32::Event const & event)
     m_addPhone->m_state = AddPhone::Added;
     ListPhones();
   }
-  // The phone that came first has left: this one may change the box now.
-  else if (event.m_code == "PHONE_LOST" && m_readOnly)
+  // The phones changed: the role may have passed from one to the other, with this link up.
+  else if ((event.m_code == "PHONE_LOST" || event.m_code == "PHONE_CONNECTED") && m_phones &&
+           m_phones->m_phones.size() >= 2)
   {
     ListPhones();
   }
@@ -717,11 +733,9 @@ void Esp32Source::OnLastEventNumber(int64_t lastNumber)
 
 void Esp32Source::OnReply(esp32::Reply const & reply)
 {
-  if (!reply.m_ok && reply.m_error == "BUSY" && !m_readOnly)
-  {
-    LOG(LINFO, ("Another phone changes the box"));
-    m_readOnly = true;
-  }
+  // BUSY is also a calibration or an update that runs: only the list tells if another phone changes the box.
+  if (!reply.m_ok && reply.m_error == "BUSY")
+    ListPhonesThrottled();
   if (m_update.OnReply(reply) || OnCarReply(reply) || OnPhonesReply(reply) || reply.m_id != m_calibrationId)
     return;
   if (reply.m_progress)

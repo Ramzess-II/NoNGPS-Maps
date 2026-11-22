@@ -32,6 +32,8 @@ IOS_PREFIX = re.compile(r'\w\(\d+\) (\d+\.\d+) ')
 IOS_START = re.compile(r'Local time: (\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) \+0000')
 # "10-08 18:51:32.123 (main) I/OM: TRIP ...".
 ANDROID_PREFIX = re.compile(r'(\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}) ')
+# The fields of a TRIP line; since LOGFMT 2 "ms=<unix ms>" comes first, see libs/map/nogps/log_line.hpp.
+TRIP_LINE = re.compile(r' TRIP (?:ms=\d+ )?(?=src=)')
 # gps= and fused= are "lat,lon/accuracy/km/h/course/age".
 PLATFORM_FIELDS = ('acc', 'kmh', 'bear', 'age')
 EARTH_RADIUS_M = 6371000
@@ -135,10 +137,10 @@ def read_rows(paths, year):
         with open(path, encoding='utf-8', errors='replace') as log:
             for line in log:
                 time = parse_time(line, launch, year)
-                trip = line.find(' TRIP src=')
-                if time is None or trip < 0:
+                trip = TRIP_LINE.search(line)
+                if time is None or not trip:
                     continue
-                row = parse_trip(line[trip + len(' TRIP '):])
+                row = parse_trip(line[trip.end():])
                 row['time'] = time
                 add_error(row)
                 rows.append(row)

@@ -35,6 +35,7 @@ import androidx.annotation.Nullable;
 import androidx.annotation.UiThread;
 import androidx.annotation.VisibleForTesting;
 import androidx.core.content.ContextCompat;
+import app.organicmaps.sdk.BuildConfig;
 import app.organicmaps.sdk.util.log.Logger;
 import java.util.ArrayDeque;
 import java.util.Collections;
@@ -537,7 +538,10 @@ class Esp32BleTransport
       // has let it. The phone asks for the code.
       final ScanRecord record = result.getScanRecord();
       final byte[] data = record != null ? record.getManufacturerSpecificData(MANUFACTURER_ID) : null;
-      final int flags = data != null && data.length >= 2 ? data[1] : 0;
+      // A box always advertises the data (BLE-13). A debug build also takes a box that advertises none at all as one
+      // that accepts a new phone: the box simulator can't advertise it on macOS, see tools/python/nogps_box_sim.py.
+      final int flags =
+          data != null && data.length >= 2 ? data[1] : (data == null && BuildConfig.DEBUG ? FLAG_PAIRING_OPEN : 0);
       if ((flags & FLAG_PAIRING_OPEN) == 0)
       {
         // The box of a forgotten car still knows this phone: powered on again, it takes it back.
