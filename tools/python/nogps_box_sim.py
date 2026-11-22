@@ -8,7 +8,7 @@
 # ///
 """The sensor box of NonGPS Maps, simulated on this computer so a phone can find it without the hardware.
 
-  just box [--radio auto|macos|linux|fake] [--id S1] [--port 0] [--no-browser]
+  just box [--radio auto|macos|linux|fake] [--id S] [--port 0] [--no-browser]
   uv run --script tools/python/nogps_box_sim.py [the same]
 
 The box stands in a parked car: it advertises the service of the box over Bluetooth LE and sends the NGI, NGS and
@@ -65,7 +65,9 @@ VERSION = 1
 SERVICE_UUID = '02CB0001-C0C3-40D0-819C-5A85998DCD99'
 TX_UUID = '02CB0002-C0C3-40D0-819C-5A85998DCD99'
 RX_UUID = '02CB0003-C0C3-40D0-819C-5A85998DCD99'
-NAME_PREFIX = 'NoGPS-'
+# NET-9: NonGPS-XXXX; a box that is not updated says NoGPS-XXXX, see State.legacy_name.
+NAME_PREFIX = 'NonGPS-'
+LEGACY_NAME_PREFIX = 'NoGPS-'
 # BLE-13: the company id, a byte of the format version and a byte of the flags.
 COMPANY_ID = 0xFFFF
 ADV_FORMAT = 1
@@ -169,9 +171,10 @@ class State:
         self.flags = {name: name in ('IMU_OK', 'BIAS_OK', 'UP_OK', 'STILL') for name in PANEL_FLAGS}
         self.adv = {'pairing_open': True, 'full': False, 'has_phones': False}
         self.advertising = True
+        self.legacy_name = False
 
     def name(self):
-        return NAME_PREFIX + self.box_id
+        return (LEGACY_NAME_PREFIX if self.legacy_name else NAME_PREFIX) + self.box_id
 
     def manufacturer(self):
         flags = 0
@@ -502,6 +505,8 @@ class Box:
                 if values.get(name):
                     # The id is the four characters of the name of a box; macOS drops a name over 8 characters.
                     setattr(state, name, str(values[name])[:4 if name == 'box_id' else 32])
+            if 'legacy_name' in values:
+                state.legacy_name = bool(values['legacy_name'])
             if 'advertising' in values:
                 state.advertising = bool(values['advertising'])
             self.status_dirty = True
@@ -650,8 +655,11 @@ def handler(box):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--radio', default='auto', choices=['auto', 'macos', 'linux', 'fake'])
-    parser.add_argument('--id', default='S1', help='the characters after NoGPS- in the name of the box; macOS drops '
-                                                   'a name over 8 characters from the advertisement')
+    parser.add_argument('--id', default='S', help='the characters after NonGPS- in the name of the box; macOS drops '
+                                                   'a name over 8 characters from the advertisement, so one '
+                                                   'character fits after NonGPS- and two after NoGPS-')
+    parser.add_argument('--legacy-name', action='store_true',
+                        help='advertise NoGPS-XXXX as a box that is not updated does')
     parser.add_argument('--port', type=int, default=0, help='0 takes a free one')
     parser.add_argument('--no-browser', action='store_true')
     args = parser.parse_args()
@@ -659,7 +667,9 @@ def main():
     # The lines below are a running log: they are of no use when a redirected stdout holds them back.
     sys.stdout.reconfigure(line_buffering=True)
     radio = make_radio(args.radio)
-    box = Box(State(args.id), radio)
+    state = State(args.id)
+    state.legacy_name = args.legacy_name
+    box = Box(state, radio)
     server = ThreadingHTTPServer(('127.0.0.1', args.port), handler(box))
     url = 'http://127.0.0.1:%d/' % server.server_address[1]
     threading.Thread(target=server.serve_forever, daemon=True).start()

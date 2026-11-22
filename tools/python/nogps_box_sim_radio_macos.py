@@ -19,7 +19,7 @@ What CoreBluetooth doesn't give the simulator:
   unsubscription, so a central with no write for SILENT_GONE_S is taken as gone by its silence alone. The box
   keeps no data for it; a phone that writes again slots into the same row.
 - the name in the advertisement is dropped by macOS when it is longer than 8 characters, because the 16 bytes of the
-  service UUID leave no room: the name of the box is NoGPS- and two characters.
+  service UUID leave no room: the name of the box is NonGPS- and one character, or NoGPS- and two.
 """
 
 import objc

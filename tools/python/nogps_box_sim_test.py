@@ -145,7 +145,7 @@ class Lines(unittest.TestCase):
             self.assertNotIn(ability, got[11].split(' '))
 
     def test_the_name_fits_the_advertisement(self):
-        made, _, _ = box()
+        made, _, _ = box(box_id='S')
         # macOS drops a longer name when the service UUID of 16 bytes is in the packet.
         self.assertLessEqual(len(made.state.name()), 8)
         self.assertEqual(made.state.manufacturer(), bytes([0xFF, 0xFF, 1, 1]))
@@ -359,7 +359,14 @@ class Session(unittest.TestCase):
         self.assertIsNone(radio.advertisement)
         made.panel_action('start', '')
         made.tick()
-        self.assertEqual(radio.advertisement, ('NoGPS-S1', None))
+        self.assertEqual(radio.advertisement, ('NonGPS-S1', None))
+
+    def test_a_box_that_is_not_updated_advertises_the_old_name(self):
+        made, radio, _ = box()
+        made.panel_set({'legacy_name': True})
+        self.assertEqual(made.state.name(), 'NoGPS-S1')
+        made.panel_set({'legacy_name': False})
+        self.assertEqual(made.state.name(), 'NonGPS-S1')
 
     def test_the_panel_shuts_the_simulator_down(self):
         made, radio, clock = box()
@@ -401,7 +408,7 @@ class Session(unittest.TestCase):
         self.assertEqual(made.state.obd, 'NO_ADAPTER')
         # The id is the four characters of the name of a box, and macOS drops a longer name.
         made.panel_set({'box_id': 'TOOLONG'})
-        self.assertEqual(made.state.name(), 'NoGPS-TOOL')
+        self.assertEqual(made.state.name(), 'NonGPS-TOOL')
 
 
 class SilenceWatchTest(unittest.TestCase):
