@@ -379,7 +379,8 @@ class Group:
         # A line of LOGFMT 2 has a head before what the patterns below read, see nogps_replay.sentence.
         text = nogps_replay.sentence(text)
         if text.startswith('TRIP '):
-            row = nogps_trip_log.parse_trip(text[len('TRIP '):])
+            # Only the first line: parse_android appends the header of a joined file's next day to this entry.
+            row = nogps_trip_log.parse_trip(text[len('TRIP '):].split('\n', 1)[0])
             nogps_trip_log.add_error(row)
             row['t'] = t
             self.rows.append(row)
