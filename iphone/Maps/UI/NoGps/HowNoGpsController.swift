@@ -50,7 +50,7 @@ private extension HowNoGpsController {
     panelsLabel.numberOfLines = 0
 
     setupBody(bottomLabel, L("nogps_how_bottom"))
-    // The slide of the zoom buttons is an iOS gesture only, as in the balloon of the right panel.
+    // The slide of the zoom buttons, as in the balloon of the right panel and on the same page on Android.
     setupBody(rightLabel, L("nogps_how_right") + " " + L("nogps_intro_right_swipe"))
     setupBody(leftLabel, L("nogps_how_left"))
 

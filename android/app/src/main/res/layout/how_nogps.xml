@@ -31,10 +31,11 @@
               android:textAppearance="@style/MwmTextAppearance.Body1"
               android:textColor="?android:textColorPrimary"/>
 
-    <TextView android:layout_width="match_parent"
+    <!-- Text set in HowNoGpsFragment: the line of the right panel tells about the zoom slide too. -->
+    <TextView android:id="@+id/nogps_how_right"
+              android:layout_width="match_parent"
               android:layout_height="wrap_content"
               android:layout_marginTop="@dimen/margin_half"
-              android:text="@string/nogps_how_right"
               android:textAppearance="@style/MwmTextAppearance.Body1"
               android:textColor="?android:textColorPrimary"/>
 
