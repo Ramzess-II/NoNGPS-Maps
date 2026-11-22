@@ -144,7 +144,9 @@ RULES = [
     ('turn moved to a crossing', r'is moved to the crossing'),
     ('turn left by "followed the roads"', r'has followed the roads, the crossing'),
     ('late turn', r'^The car has turned by'),
-    ('bend moved, slow car', r'told repeatedly to a slow car'),
+    # The head of LOGFMT 2 is off by now, so the rule is told by its sentence: "told repeatedly" (bend_moved_repeated,
+    # a slow car or a far place) was "told repeatedly to a slow car" in older logs.
+    ('bend moved, repeated', r'^Bend: moved along the road.*, told repeatedly'),
     ('bend moved', r'^Bend: moved along the road'),
     ('bend confirmed', r'^Bend: the position fits the road'),
     ('loop', r'^Loop: the way driven'),
