@@ -3539,6 +3539,22 @@ UNIT_TEST(NoGps_Engine_PotholeIsWhereTheMarkHitsIt)
   TEST_EQUAL(env.m_engine.GetPotholes().size(), 1, ());
 }
 
+UNIT_TEST(NoGps_Engine_PotholeTakesTheConvertedSpeed)
+{
+  // The box of this car tells 7 where the car drives 11 km/h: a hit of a driving car, over PotholeDetector::kMinKmh.
+  SpeedUnit mph;
+  for (int i = 0; i < 60; ++i)
+    mph.OnSample(62, 100 / 3.6, 1, 0);
+  TEST_EQUAL(mph.Get(), SpeedUnit::kMph, ());
+  Env env(true /* inertial */, nullptr,
+          [&mph](TestStorage & storage) { storage.Set(Storage::kSpeedUnit, mph.Serialize()); });
+  MarkCar(env, 50);
+  env.Drive(2000, 7, 0);
+  env.Jolt(7, 12);
+  env.Drive(1500, 7, 0);
+  TEST_EQUAL(env.m_engine.GetPotholes().size(), 1, ());
+}
+
 UNIT_TEST(NoGps_Engine_NoPotholeWhileRoadIsLost)
 {
   Env env(true /* inertial */);

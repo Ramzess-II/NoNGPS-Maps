@@ -537,9 +537,11 @@ private:
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
   void OnThisPhoneRemoved() override { m_listener.OnThisPhoneRemoved(); }
   void OnPeerPlace(PeerPlace const & place) override { m_listener.OnPeerPlace(place); }
-  void OnJolt(double joltMs2, int speedKmh) override { m_listener.OnJolt(joltMs2, speedKmh); }
+  void OnJolt(double joltMs2, int speedKmh) override;
 
   void CheckTurnSign(Fix const & gps);
+  /// \returns the speed the box tells in the unit of the car, see SpeedUnit.
+  int ConvertSpeed(int rawSpeedKmh) const;
   double GetSpeedScale(int speedKmh) const;
   void SaveSpeedTable();
   void LogSpeedCalibration() const;

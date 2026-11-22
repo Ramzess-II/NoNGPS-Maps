@@ -360,7 +360,7 @@ void InertialNavigator::OnSpeedTableGps(Fix const & gps)
       LOG(LINFO, ("Speed unit factor", was.Get(), "->", m_speedUnit.Get()));
       // Learned in the other unit.
       ClearSpeedCalibration();
-      m_speedKmh = static_cast<int>(std::lround(m_rawSpeedKmh * m_speedUnit.Get()));
+      m_speedKmh = ConvertSpeed(m_rawSpeedKmh);
     }
     // Compared with the table before the sample is in it.
     if (auto const scale = m_speedTable.GetScale(m_speedKmh);
@@ -466,7 +466,7 @@ void InertialNavigator::RestoreSpeedCalibration()
   m_speedUnit.Deserialize(m_storage.Get<std::string>(Storage::kSpeedUnit, ""));
   // Another car may have another unit.
   if (m_rawSpeedKmh >= 0)
-    m_speedKmh = static_cast<int>(std::lround(m_rawSpeedKmh * m_speedUnit.Get()));
+    m_speedKmh = ConvertSpeed(m_rawSpeedKmh);
   m_speedLag.Deserialize(m_storage.Get<std::string>(Storage::kSpeedLag, ""));
   // The speedometer error is the same on every trip.
   m_speedScale.Set(m_storage.Get<double>(Storage::kSpeedScale, 1));
@@ -1191,10 +1191,15 @@ std::optional<Esp32Source::DataRate> InertialNavigator::GetEsp32DataRate() const
   return m_esp32->GetDataRate();
 }
 
+int InertialNavigator::ConvertSpeed(int rawSpeedKmh) const
+{
+  return static_cast<int>(std::lround(rawSpeedKmh * m_speedUnit.Get()));
+}
+
 void InertialNavigator::OnSpeed(int rawSpeedKmh, int64_t timeMs)
 {
   m_rawSpeedKmh = rawSpeedKmh;
-  int const speedKmh = static_cast<int>(std::lround(rawSpeedKmh * m_speedUnit.Get()));
+  int const speedKmh = ConvertSpeed(rawSpeedKmh);
   m_speedKmh = speedKmh;
   m_speedTimeMs = timeMs;
   m_moving = speedKmh > 0;
@@ -1249,6 +1254,12 @@ void InertialNavigator::OnSpeed(int rawSpeedKmh, int64_t timeMs)
       NotifyRoadLost();
     }
   }
+}
+
+void InertialNavigator::OnJolt(double joltMs2, int rawSpeedKmh)
+{
+  // The box of the car may tell mph: the potholes take the speed as everything else does.
+  m_listener.OnJolt(joltMs2, ConvertSpeed(rawSpeedKmh));
 }
 
 void InertialNavigator::OnMotion(double yawDeltaDeg, double dtSec, int64_t timestampNs)
