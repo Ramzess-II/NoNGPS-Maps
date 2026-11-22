@@ -249,10 +249,16 @@ private:
   void Give(location::GpsInfo info)
   {
     m_route.CheckLocationForRouting(info);
-    if (m_session.IsActive() && !m_route.IsFollowedApart())
+    if (m_session.IsActive())
     {
       location::RouteMatchingInfo matching;
-      if (!m_session.MatchLocationToRoute(info, matching))
+      // A car followed apart is matched on a copy: it is not moved to the route or to a road.
+      if (m_route.IsFollowedApart())
+      {
+        location::GpsInfo unmoved = info;
+        m_session.MatchLocationToRoute(unmoved, matching);
+      }
+      else if (!m_session.MatchLocationToRoute(info, matching))
         m_session.MatchLocationToRoadGraph(info);
     }
     // The map tells back the position it shows: on the route, if the car is on it.

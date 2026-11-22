@@ -2045,9 +2045,18 @@ void RoutingManager::CallRouteBuilded(RouterResultCode code, storage::CountriesS
 
 void RoutingManager::MatchLocationToRoute(location::GpsInfo & location, location::RouteMatchingInfo & routeMatchingInfo)
 {
-  // The route is still checked for the car leaving it, the car is not drawn on it.
-  if (!IsRoutingActive() || m_sessionRoute.IsFollowedApart())
+  if (!IsRoutingActive())
     return;
+
+  // A car followed apart is not moved to the route or to a road, it is drawn where it is. The route is still
+  // matched on a copy of the position: |routeMatchingInfo| carries the distance from the beginning of the route,
+  // and the renderer hides the passed part of the line by it.
+  if (m_sessionRoute.IsFollowedApart())
+  {
+    location::GpsInfo unmoved = location;
+    m_routingSession.MatchLocationToRoute(unmoved, routeMatchingInfo);
+    return;
+  }
 
   bool const matchedToRoute = m_routingSession.MatchLocationToRoute(location, routeMatchingInfo);
 

@@ -200,6 +200,11 @@ public:
   routing::RoutingSession const & RoutingSession() const { return m_routingSession; }
   routing::RoutingSession & RoutingSession() { return m_routingSession; }
   SessionRoute & GetSessionRoute() { return m_sessionRoute; }
+  /// The matching info the renderer is given for |info|, as OnExtrapolatedLocationUpdate() does.
+  location::RouteMatchingInfo GetRouteMatchingInfoForTesting(location::GpsInfo & info)
+  {
+    return GetRouteMatchingInfo(info);
+  }
   /// Gives |session| a router as the one of the session of the manager, for a route followed apart from it.
   void InitSession(routing::RoutingSession & session, routing::RouterType type) const;
   void SetRouter(routing::RouterType type);
