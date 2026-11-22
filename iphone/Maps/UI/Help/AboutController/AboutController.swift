@@ -261,7 +261,8 @@ private extension AboutController {
   }
 
   func buildInfoTableViewData() -> [AboutInfoTableViewCellModel] {
-    let infoContent: [AboutInfo] = [.faq, .reportMapDataProblem, .news, .volunteer, .rateTheApp]
+    // .rateTheApp is hidden until NonGPS Maps is on the App Store (#81): rateApp points to Organic Maps.
+    let infoContent: [AboutInfo] = [.faq, .reportMapDataProblem, .news, .volunteer]
     return infoContent.map { [weak self] aboutInfo in
       AboutInfoTableViewCellModel(title: aboutInfo.title, image: aboutInfo.image, didTapHandler: {
         switch aboutInfo {
