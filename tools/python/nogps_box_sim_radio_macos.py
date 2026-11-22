@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The radio of nogps_box_sim.py on macOS: CBPeripheralManager through PyObjC.
 
-  just boxsim
+  just box
 
 nogps_box_sim.py declares the package for uv, which keeps it out of the system Python.
 

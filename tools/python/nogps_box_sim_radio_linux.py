@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The radio of nogps_box_sim.py on Linux: a GATT server and an advertisement of BlueZ over D-Bus.
 
-  just boxsim
+  just box
 
 nogps_box_sim.py declares the package for uv, which keeps it out of the system Python.
 
@@ -25,7 +25,7 @@ from dbus_next.constants import PropertyAccess
 import nogps_box_sim as sim
 
 BLUEZ = 'org.bluez'
-ROOT = '/org/nogps/boxsim'
+ROOT = '/org/nogps/box'
 SERVICE_PATH = ROOT + '/service0'
 TX_PATH = SERVICE_PATH + '/char0'
 RX_PATH = SERVICE_PATH + '/char1'

@@ -8,7 +8,7 @@
 # ///
 """The sensor box of NonGPS Maps, simulated on this computer so a phone can find it without the hardware.
 
-  just boxsim [--radio auto|macos|linux|fake] [--id S1] [--port 0] [--no-browser]
+  just box [--radio auto|macos|linux|fake] [--id S1] [--port 0] [--no-browser]
   uv run --script tools/python/nogps_box_sim.py [the same]
 
 The box stands in a parked car: it advertises the service of the box over Bluetooth LE and sends the NGI, NGS and
@@ -522,7 +522,7 @@ def make_radio(kind):
         return importlib.import_module(module_name).Radio()
     except ImportError as e:
         packages = {'macos': 'pyobjc-framework-CoreBluetooth', 'linux': 'dbus-next'}
-        sys.exit('%s needs %s, which the script declares for uv: run it with `just boxsim`, or with\n'
+        sys.exit('%s needs %s, which the script declares for uv: run it with `just box`, or with\n'
                  '`uv run --script` on this file. Without uv, put the package in a virtual environment of your own.\n'
                  '(%s)' % (module_name, packages.get(kind, '?'), e))
 

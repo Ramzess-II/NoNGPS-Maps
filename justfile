@@ -89,7 +89,7 @@ logs *args:
 # Open the box simulator and its panel in the browser: a standing sensor box over this computer's Bluetooth
 [unix]
 [no-cd]
-boxsim *args:
+box *args:
     #!/usr/bin/env bash
     set -euo pipefail
     script={{ quote(justfile_directory() / "tools/python/nogps_box_sim.py") }}
