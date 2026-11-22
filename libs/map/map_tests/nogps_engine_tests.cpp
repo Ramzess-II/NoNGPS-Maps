@@ -4347,6 +4347,13 @@ UNIT_TEST(NoGps_Engine_ManeuveringCarIsFollowedApart)
     // The map does not draw it on the route or on a road.
     TEST(env.m_map.m_followedApart, (navigating));
 
+    // The engine stopped, e.g. real GPS is back: the map matches its positions again.
+    {
+      env.m_engine.Stop();
+      TEST(!env.m_map.m_followedApart, (navigating));
+      env.m_engine.Start();
+    }
+
     // The car turns left and drives east, the other street is 15 m to the right of it. It is not the street of
     // the car at once.
     env.Drive(1000, 9, -90);
