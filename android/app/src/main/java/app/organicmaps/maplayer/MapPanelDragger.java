@@ -82,6 +82,15 @@ public class MapPanelDragger
   }
 
   /**
+   * Whether a slide becomes a zoom: it went down on a zoom button and slid dy px, up or down, past the start of the
+   * zoom on a screen of the given density. A shorter slide, or one from another button, stays a tap.
+   */
+  static boolean startsZoom(boolean onZoomButton, float dy, float density)
+  {
+    return onZoomButton && Math.abs(dy) >= ZOOM_SLIDE_START_DP * density;
+  }
+
+  /**
    * Whether a release with the speed v flings the panel on.
    */
   static boolean flings(float v)
@@ -195,7 +204,7 @@ public class MapPanelDragger
       addMovement(event);
       if (lifted)
         move(mStartY + (mTouchY - mStartTouch) / mDensity);
-      else if (mZooming || mOnZoomButton && Math.abs(mDownY - mTouchY) >= ZOOM_SLIDE_START_DP * mDensity)
+      else if (mZooming || startsZoom(mOnZoomButton, mDownY - mTouchY, mDensity))
         zoom();
       else if (Math.hypot(event.getRawX() - mDownX, event.getRawY() - mDownY) > mTouchSlop)
         cancelPress();

@@ -91,5 +91,14 @@ public class MapPanelDraggerTest
   public void zoomSlideStartsAtTwentyFourDp()
   {
     assertEquals(24, MapPanelDragger.ZOOM_SLIDE_START_DP, 0);
+    // 24 dp on a 3x screen is 72 px, up or down.
+    assertTrue(MapPanelDragger.startsZoom(true, 72, 3));
+    assertTrue(MapPanelDragger.startsZoom(true, -72, 3));
+    assertFalse(MapPanelDragger.startsZoom(true, 71, 3));
+    assertFalse(MapPanelDragger.startsZoom(true, -71, 3));
+    assertTrue(MapPanelDragger.startsZoom(true, 24, 1));
+    assertFalse(MapPanelDragger.startsZoom(true, 23, 1));
+    // A slide that went down on another button is a drag of the panel, never a zoom.
+    assertFalse(MapPanelDragger.startsZoom(false, 1000, 3));
   }
 }
