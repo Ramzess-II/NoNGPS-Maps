@@ -1117,8 +1117,12 @@
     `mark_switched_by_way`, `far_mark_taken`, `mark_switched_road_lost`, `mark_switched_turn`,
     `mark_switched_stand_lost`, `mark_switched_by_user`;
   - `ACTION <назва>`: що відтворення виконує знову: `start`, `stop`, `gps_off` (`disabled=`, `by=`), `manual`
-    (`enabled=`, `by=`), `tap`, `reverse`, `switch_mark`, `shift` (`m=`), `restore_car`. `by=` каже, хто перемкнув:
-    `user`, а решта (`core`, `gps_back`, `network_back`, `restore`, `box`, `tap`, `gps_mark`, `peer`) — ядро саме;
+    (`enabled=`, `by=`), `tap` (`by=`), `reverse`, `switch_mark`, `shift` (`m=`), `restore_car`. `by=` каже, хто
+    перемкнув: `user`, а решта (`core`, `gps_back`, `network_back`, `restore`, `box`, `tap`, `gps_mark`, `peer`) —
+    ядро саме. У `tap` `by=` каже, хто поставив позначку: `user` або `tap` — користувач на карті, `gps_mark` — тап
+    на панелі втрати дороги, `peer` — місце з іншого телефона, `core` — здогад ядра. Коли позначку ставить не
+    користувач, ручний режим уже ввімкнений, тож рядка `manual` при цьому немає і лише це `by=` їх розрізняє
+    (`Engine::PutMark`, `nogps_log.py losses`);
   - `EVENT <назва>`: `position_source`, `gps_signal`, `box_state`, `box_ble`, `peer_role` (ключі `from=` і `to=`),
     `gps_spoofed`, `gps_untrusted`, `gps_off_roads`, `gps_trusted`, `network_back`, `manual_by_itself`;
   - `MAPS ms=… version=261101,260714`: версії карт на диску, від новішої (`MapApi::GetMapsVersion`) — версії
