@@ -877,6 +877,36 @@ class TaggedLinesTest(unittest.TestCase):
         self.assertEqual(counts['mark switched to another road'], (1, 1))
 
 
+class TripCsvTest(unittest.TestCase):
+    """nogps_trip_log.py: the rows of one phone."""
+
+    def run_main(self, *argv):
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.object(sys, 'argv', ['nogps_trip_log.py', *argv]), redirect_stdout(out), \
+                mock.patch.object(sys, 'stderr', err):
+            try:
+                nogps_trip_log.main()
+            except SystemExit:
+                pass
+        return out.getvalue(), err.getvalue()
+
+    def test_the_logs_of_two_phones_are_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {
+                'Pixel_7-a3f9/2026-10-08/180000.log': with_logfmt(android_drive(seconds=3, stand=0)),
+                'SM_S918B-0b1c/2026-10-08/180000.log': with_logfmt(android_drive(seconds=3, stand=0),
+                                                                   'SM_S918B-0b1c')})
+            out, err = self.run_main(folder)
+            self.assertIn('the logs of Pixel_7-a3f9, SM_S918B-0b1c: give the logs of one phone', err)
+            self.assertEqual(out, '')
+
+    def test_the_rows_of_one_phone(self):
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {'Pixel_7-a3f9/2026-10-08/180000.log': with_logfmt(android_drive(seconds=3, stand=0))})
+            out, _ = self.run_main(folder, '--year', '2026')
+            self.assertEqual(len(out.splitlines()), 4)
+
+
 class HeldOutTest(unittest.TestCase):
     def test_days_and_sets(self):
         with tempfile.TemporaryDirectory() as folder:

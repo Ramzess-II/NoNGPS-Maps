@@ -8,9 +8,10 @@ there is one, at the same moment (the two have different ages): along the course
 and across it (+ the mark is to the right). With "Disable GPS" on, the platform position is the car itself.
 
 Logs: logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, written with "Enable logging" on in the settings: a file per launch
-of the app and per drive. A folder given is read with its subfolders: give the tree, the folder of one phone, or of
-one day of it. Every file begins with the LOGFMT line that tells its phone, except the OSLog text of iOS, whose phone comes
-from its path; a file of another layout, or of a format the tools do not know, is refused. The names of the earlier versions (log-dd-MM-yy-<phone>.log, log.txt, app*.log) are not read.
+of the app and per drive. A folder given is read with its subfolders: give the folder of one phone, or of one day of
+it, as the rows of two phones would be mixed. Every file begins with the LOGFMT line that tells its phone, except
+the OSLog text of iOS, whose phone comes from its path; a file of another layout, or of a format the tools do not
+know, is refused. The names of the earlier versions (log-dd-MM-yy-<phone>.log, log.txt, app*.log) are not read.
   iOS: Documents/logs/. Times are UTC.
   Android: Android/data/<app id>/files/logs/, or the zip of "Report a bug" unpacked. Times are the local time of
   the phone, the log has no year: --year.
@@ -250,10 +251,13 @@ def main():
     args = parser.parse_args()
 
     try:
-        files = readable_files(args.logs)
+        by_phone = files_by_phone(args.logs)
     except LogFormatError as e:
         parser.error(str(e))
-    rows = read_rows(files, args.year)
+    if len(by_phone) > 1:
+        parser.error('the logs of %s: give the logs of one phone, their rows and tracks would be mixed'
+                     % ', '.join(sorted(by_phone)))
+    rows = read_rows([path for paths in by_phone.values() for path in paths], args.year)
     columns = FIRST_COLUMNS + list(dict.fromkeys(k for row in rows for k in row if k not in FIRST_COLUMNS))
     out = csv.DictWriter(sys.stdout, columns)
     out.writeheader()
