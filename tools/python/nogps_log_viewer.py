@@ -67,12 +67,14 @@ class Viewer:
         self.analysis = nogps_log.Analysis(sources, year)
 
     def add(self, name, data, analyse):
-        """Adds a log, read with the others when |analyse|: the page sends a few files one by one."""
+        """Adds a log, read with the others when |analyse|: the page sends a few files one by one. A file given again
+        replaces the one of the same name and phone: the page knows only the name of a file, and two phones have
+        files of the same name."""
         with self.lock:
-            sources = [s for s in self.sources if s[0] != name] + [(name, data)]
             # A file that can't be read is not kept.
-            for log_name, log_data in nogps_log.unpack(name, data):
-                nogps_trip_log.header_of(log_name, log_data)
+            phones = {nogps_trip_log.header_of(n, d)['phone'] for n, d in nogps_log.unpack(name, data)}
+            sources = [s for s in self.sources if s[0] != name or {
+                nogps_trip_log.header_of(n, d)['phone'] for n, d in nogps_log.unpack(*s)} != phones] + [(name, data)]
             if analyse:
                 self.analysis = nogps_log.Analysis(sources, self.year)
             self.sources = sources
