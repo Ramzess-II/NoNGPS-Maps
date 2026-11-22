@@ -43,6 +43,7 @@ public:
   std::string GetDistanceLeft() const override;
   std::string GetMapsVersion() const override;
   void ShowCarHeading(double bearingDeg) override { m_showCarHeading(bearingDeg); }
+  void SetCarFollowedApart(bool apart) override;
 
 private:
   class RoutingRoads : public Roads

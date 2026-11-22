@@ -149,6 +149,7 @@ void Engine::Stop()
   m_peerTimer.Stop();
   m_tripLogTimer.Stop();
   CancelCalibrateWhenStill();
+  m_map.SetCarFollowedApart(false);
   m_active = false;
 }
 
@@ -1535,9 +1536,16 @@ void Engine::ShowCarHeading()
     m_map.ShowCarHeading(*GetCarBearing());
 }
 
+bool Engine::IsCarFollowedApart() const
+{
+  return m_inertial && IsInertialNavigationEnabled() && m_inertial->GetOffRoadCar().has_value();
+}
+
 void Engine::NotifyLocationUpdated()
 {
   CHECK(m_savedLocation, ());
+  // Before the position: the platform gives it to the map at once.
+  m_map.SetCarFollowedApart(IsCarFollowedApart());
   m_delegate.OnPosition(*m_savedLocation);
   m_shownPosition = m_savedLocation->m_position;
   ShowCarHeading();
@@ -1563,6 +1571,7 @@ void Engine::ShowBetweenGpsPositions(Fix const & inertial)
                          DeadReckoning::kAccuracyPerMeter * Distance(m_savedLocation->m_position, location.m_position);
   location.m_unixTimeMs = UnixTimeAfterGps(location.m_timeMs);
   ++m_positionsBetweenGps;
+  m_map.SetCarFollowedApart(IsCarFollowedApart());
   m_delegate.OnPosition(location);
   m_shownPosition = location.m_position;
 }
