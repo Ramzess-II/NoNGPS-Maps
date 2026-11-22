@@ -12,6 +12,9 @@ the task needs, use it instead of typing its commands. When it does more than ne
 - **An APK to send or install by hand:** `just apk`.
 - **Core unit tests:** `just test` runs `NoGps_.*` of `map_tests`. Pass a filter and your own build dir:
   `just test "NoGps_Cars.*" build-<name>`.
+- **Check the app against the box without the box:** `just box` opens the box simulator and its panel in the
+  browser (macOS or Linux). It is a box standing in a parked car; the panel sets the flags, the OBD state, the
+  shake and the versions. On macOS the app must be a debug build, see `tools/python/nogps_box_sim.py`.
 - **Show trip logs to the user:** `just logs <files>` opens the log viewer in the browser. To analyse logs yourself,
   use `/nogps-log`.
 - **Release:** `just appstore` uploads the iOS build to App Store Connect. Run it only when the user asks.

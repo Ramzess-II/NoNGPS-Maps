@@ -1,0 +1,21 @@
+name: Box simulator checks
+
+on:
+  pull_request:
+    branches: [ master ]
+    paths:
+      - '.github/workflows/nogps-box-sim-check.yaml'
+      - 'tools/python/nogps_box_sim*.py'
+
+jobs:
+  nogps-box-sim-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Run the tests of the lines and the commands
+        # They need no Bluetooth and no package: the radios are imported only when one is used.
+        run: python3 tools/python/nogps_box_sim_test.py
