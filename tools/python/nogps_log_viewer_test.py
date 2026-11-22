@@ -122,6 +122,18 @@ class AddTest(unittest.TestCase):
         with self.assertRaises(v.nogps_trip_log.LogFormatError):
             v.Viewer([], None).add('app.log', b'Datetime: 2026-10-08 18:00:00.000\n', True)
 
+    def test_a_file_of_the_earlier_versions_does_not_stop_the_batch(self):
+        """The page sends the files one by one: the last one is read with the others, the refused one is noted."""
+        viewer = v.Viewer([], None)
+        viewer.add('180000.log', self.log('Pixel_7-a3f9')
+                   + b'10-08 18:00:01.000 (main) I/OMcore: nogps/engine.cpp:1 Start(): Start\n', False)
+        viewer.add('log-07-10-26-Pixel_7-a3f9.log', b'Datetime: 2026-10-07 18:00:00.000\n', True)
+        self.assertEqual(len(viewer.sources), 2)
+        self.assertEqual([f['name'] for f in viewer.analysis.files], ['180000.log'])
+        self.assertEqual([n for n in viewer.analysis.notes if 'Skipped' in n],
+                         ['Skipped: log-07-10-26-Pixel_7-a3f9.log: not a log of LOGFMT 2, its first line is not a '
+                          'LOGFMT line (logs of the earlier versions are not read)'])
+
     def test_a_zip_is_read_without_its_file_of_an_earlier_version(self):
         """The zip of a phone that still keeps a file of an earlier version next to the files of the tree."""
         data = io.BytesIO()
