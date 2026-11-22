@@ -11,7 +11,7 @@ public final class IntroSequence
 {
   /**
    * The text of a balloon appears at this speed, characters per second: about as fast as it is read, so the eye goes
-   * to the panel without waiting for the text. A balloon lands in under three seconds.
+   * to the panel without waiting for the text. The longest balloon takes a little over three seconds.
    */
   public static final float TYPE_CHARS_PER_S = 20;
 
