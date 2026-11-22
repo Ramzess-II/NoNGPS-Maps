@@ -167,6 +167,14 @@ RULE_RARE_TRIPS = 2
 GPS_MARK_MAX_AGE_S = 5
 GPS_MARK_MAX_ACCURACY_M = 300
 GPS_MARK_MARGIN_M = 50
+# Who turned the manual mode on, see Engine::SetManualMode: the key is in the head of the line, which the tools
+# take off before they read its sentence.
+MANUAL_BY = re.compile(r'\bACTION manual (?:\w+=\S+ )*by=(\S+)')
+# The mark is placed right after the manual mode is turned on, in the same call: a line older than this tells
+# about an earlier mark.
+MANUAL_BY_MS = 1000
+# Who turned it on for the places that are not a tap of the user on the map, see Engine::PutMark.
+MARK_NOT_BY_USER = ('gps_mark', 'peer')
 SENSORS = ('ACCB', 'ACCB_BEFORE', 'ACC', 'GYRO')
 SLICES = 5
 
@@ -387,6 +395,9 @@ class Group:
         kind = event_of(level, file, func, text)
         if kind:
             event = dict(t=t, level=level, cat=kind[0], name=kind[1], text=text, src=('%s %s' % (file, func)).strip())
+            by = MANUAL_BY.search(body)
+            if by:
+                event['by'] = by.group(1)
             position = LAT_LON.search(text)
             if position:
                 event['lat'], event['lon'] = float(position.group(1)), float(position.group(2))
@@ -394,6 +405,20 @@ class Group:
 
     def lines_between(self, start, end):
         return self.lines[bisect.bisect_left(self.times, start):bisect.bisect_right(self.times, end)]
+
+    def map_taps(self):
+        """When the user placed the mark on the map, by a tap or by the button of a place. Engine::PutMark writes
+        the same "tap =" line for the GPS tap of the road lost panel and for the place the other phone shares; the
+        by= of the "Manual mode" line written right before it tells which of the three. A log older than LOGFMT 2
+        has no by= and no panel either: every tap of it is the user's."""
+        result, by, by_t = [], None, 0
+        for e in self.events:
+            if 'by' in e:
+                by, by_t = e['by'], e['t']
+            elif e['cat'] == 'user' and e['name'] == 'tap':
+                if not (e['t'] - by_t <= MANUAL_BY_MS and by in MARK_NOT_BY_USER):
+                    result.append(e['t'])
+        return result
 
     def road_losses(self):
         """The road losses of the log (a row with lost=1 after one without), each as a dict: t, seconds, taps (the
@@ -410,7 +435,7 @@ class Group:
         either, so a trip with GPS turned off in the app (the tap fails with "GPS is turned off") can show losses as
         fixable. A tap on the map or the end of the loss ends the time the GPS tap could be used in; a tap just
         before the loss ends on its own is counted as a map tap too."""
-        taps = [e['t'] for e in self.events if e['cat'] == 'user' and e['name'] == 'tap']
+        taps = self.map_taps()
         # iOS writes a line of the network location between the lines of the mark, with lost=0.
         rows = [row for row in self.rows if row.get('src') != 'NETWORK']
 

@@ -529,9 +529,12 @@ class RulesTest(unittest.TestCase):
 class LossesTest(unittest.TestCase):
     TAP = 'tap = ms::LatLon(10.0, 20.0) location = ms::LatLon(10.0, 20.0) bearing = 0'
 
-    def losses(self, fields, taps=(), seconds=60):
+    def losses(self, fields, taps=(), seconds=60, by=None):
         log = android_drive(seconds=seconds, stand=0, fields=fields)
         for sec in taps:
+            if by:
+                log.append(core('10-08', 18 * 3600 + sec, 'SetManualMode', 'ACTION manual ms=%d enabled=1 by=%s '
+                                'Manual mode = 1' % (LOGFMT_MS, by), ms=100))
             log.append(core('10-08', 18 * 3600 + sec, 'PutMark', self.TAP, ms=500))
         return analyse(('app.log', log)).groups[0].road_losses()
 
@@ -575,6 +578,14 @@ class LossesTest(unittest.TestCase):
         losses = self.losses(self.lost(10, 20, spoofed='1'), taps=[14])
         self.assertTrue(losses[0]['taps'])
         self.assertEqual(self.losses(lambda s: {}), [])
+
+    def test_the_gps_tap_of_the_panel_is_no_tap_on_the_map(self):
+        """Engine::PutMark writes the same line for the GPS tap of the road lost panel and for the peer place."""
+        for by in ('gps_mark', 'peer'):
+            losses = self.losses(self.lost(10, 20, spoofed='1'), taps=[14], by=by)
+            self.assertFalse(losses[0]['taps'], by)
+        losses = self.losses(self.lost(10, 20, spoofed='1'), taps=[14], by='tap')
+        self.assertTrue(losses[0]['taps'])
 
     def test_a_stale_speed_drives_nothing(self):
         """"speed=-1" is a speed not fresh: it neither drives the loss on nor takes back what the car has driven."""
