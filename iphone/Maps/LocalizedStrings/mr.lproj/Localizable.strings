@@ -160,7 +160,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "नमस्कार!\n\nNonGPS Maps ऍप मधील माझे खूणपत्रे संलग्न केले आहेत. तुम्ही NonGPS Maps इन्स्टॉल केले असल्यास हे खूणपत्रे उघडा. इन्स्टॉल केले नसल्यास, पुढील दुव्यावर जाऊन तुमच्या iOS किंवा अँड्रॉइड उपकरणावर हे डाउनलोड करा: https://github.com/Ramzess-II/NoGPSMaps\n\nNonGPS Maps सह प्रवासाचा आनंद घ्या!";
+"share_bookmarks_email_body" = "नमस्कार!\n\nNonGPS Maps ऍप मधील माझे खूणपत्रे संलग्न केले आहेत. तुम्ही NonGPS Maps इन्स्टॉल केले असल्यास हे खूणपत्रे उघडा. इन्स्टॉल केले नसल्यास, पुढील दुव्यावर जाऊन तुमच्या iOS किंवा अँड्रॉइड उपकरणावर हे डाउनलोड करा: https://github.com/Ramzess-II/NoNGPS-Maps\n\nNonGPS Maps सह प्रवासाचा आनंद घ्या!";
 
 /* message title of loading file */
 "load_kmz_title" = "खूणपत्रे वाचत आहे";
@@ -1475,7 +1475,7 @@
 "nogps_phone_remove_this_text" = "This phone will not connect to the box any more, and the car will be forgotten on it.";
 
 /* Message on iOS: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and iOS apps cannot remove it */
-"nogps_phone_removed_forget" = "This phone is removed from the box, the car is forgotten. Remove NoGPS-%1$@ in Settings > Bluetooth: tap its info button, then Forget This Device";
+"nogps_phone_removed_forget" = "This phone is removed from the box, the car is forgotten. Remove the box ending in %1$@ in Settings > Bluetooth: tap its info button, then Forget This Device";
 
 /* Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code */
 "nogps_phone_add" = "Add a phone";

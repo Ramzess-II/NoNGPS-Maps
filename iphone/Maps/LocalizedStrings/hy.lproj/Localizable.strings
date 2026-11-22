@@ -160,7 +160,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "Ողջույն!\nԿից ներկայացված են իմ էջանիշները: Խնդրում եմ բացել դրանք NonGPS Maps-ում: Եթե այն տեղադրված չէ, կարող եք ներբեռնել այստեղ՝ https://github.com/Ramzess-II/NoGPSMaps\nՎայելեք ճանապարհորդությունը NonGPS Maps-ի հետ:";
+"share_bookmarks_email_body" = "Ողջույն!\nԿից ներկայացված են իմ էջանիշները: Խնդրում եմ բացել դրանք NonGPS Maps-ում: Եթե այն տեղադրված չէ, կարող եք ներբեռնել այստեղ՝ https://github.com/Ramzess-II/NoNGPS-Maps\nՎայելեք ճանապարհորդությունը NonGPS Maps-ի հետ:";
 
 /* message title of loading file */
 "load_kmz_title" = "Էջանիշների բեռնում";
@@ -1475,7 +1475,7 @@
 "nogps_phone_remove_this_text" = "This phone will not connect to the box any more, and the car will be forgotten on it.";
 
 /* Message on iOS: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and iOS apps cannot remove it */
-"nogps_phone_removed_forget" = "This phone is removed from the box, the car is forgotten. Remove NoGPS-%1$@ in Settings > Bluetooth: tap its info button, then Forget This Device";
+"nogps_phone_removed_forget" = "This phone is removed from the box, the car is forgotten. Remove the box ending in %1$@ in Settings > Bluetooth: tap its info button, then Forget This Device";
 
 /* Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code */
 "nogps_phone_add" = "Add a phone";

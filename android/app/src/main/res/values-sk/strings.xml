@@ -151,7 +151,7 @@
     <string name="description">Poznámky</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Zdielané záložky NonGPS Maps</string>
-    <string name="share_bookmarks_email_body">Ahoj!\n\nV prílohe sú moje záložky z aplikácie NonGPS Maps. Ak ju nemáš nainštalovanú, môžeš si ju stiahnuť tu: https://github.com/Ramzess-II/NoGPSMaps\n\nPrajem šťastnú cestu s NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Ahoj!\n\nV prílohe sú moje záložky z aplikácie NonGPS Maps. Ak ju nemáš nainštalovanú, môžeš si ju stiahnuť tu: https://github.com/Ramzess-II/NoNGPS-Maps\n\nPrajem šťastnú cestu s NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Načítavanie záložiek</string>
     <!-- Kmz file successful loading -->

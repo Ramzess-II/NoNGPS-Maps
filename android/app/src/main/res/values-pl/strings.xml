@@ -151,7 +151,7 @@
     <string name="description">Notatki</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Udostępnione zakładki z NonGPS Maps</string>
-    <string name="share_bookmarks_email_body">Cześć!\n\nZałączam moje zakładki z aplikacji NonGPS Maps. Proszę otwórz je jeżeli masz zaintalowane NonGPS Maps. Lub, jeżeli nie masz, pobierz aplikację na swoje urządzenie iOS/Android za pomocą tego linka: https://github.com/Ramzess-II/NoGPSMaps\n\nMiłego podróżowania z NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Cześć!\n\nZałączam moje zakładki z aplikacji NonGPS Maps. Proszę otwórz je jeżeli masz zaintalowane NonGPS Maps. Lub, jeżeli nie masz, pobierz aplikację na swoje urządzenie iOS/Android za pomocą tego linka: https://github.com/Ramzess-II/NoNGPS-Maps\n\nMiłego podróżowania z NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Wczytywanie zakładek</string>
     <!-- Kmz file successful loading -->

@@ -151,7 +151,7 @@
     <string name="description">Бележки</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Споделени са с вас отметки за NonGPS Maps</string>
-    <string name="share_bookmarks_email_body">Здравейте!\n\nПриложени са моите отметки; моля, отворете ги в NonGPS Maps. Ако нямате инсталирана програма, можете да я изтеглите оттук: https://github.com/Ramzess-II/NoGPSMaps\n\nНаслаждавайте се на пътуванията с NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Здравейте!\n\nПриложени са моите отметки; моля, отворете ги в NonGPS Maps. Ако нямате инсталирана програма, можете да я изтеглите оттук: https://github.com/Ramzess-II/NoNGPS-Maps\n\nНаслаждавайте се на пътуванията с NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Зареждане на отметки</string>
     <!-- Kmz file successful loading -->

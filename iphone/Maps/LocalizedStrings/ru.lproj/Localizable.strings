@@ -160,7 +160,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "Здравствуйте!\n\nВ прикреплённом файле мои метки из офлайновых карт NonGPS Maps. Для того чтобы открыть этот файл, вам потребуется приложение NonGPS Maps, которое можно установить по ссылке: https://github.com/Ramzess-II/NoGPSMaps\n\nСпасибо!";
+"share_bookmarks_email_body" = "Здравствуйте!\n\nВ прикреплённом файле мои метки из офлайновых карт NonGPS Maps. Для того чтобы открыть этот файл, вам потребуется приложение NonGPS Maps, которое можно установить по ссылке: https://github.com/Ramzess-II/NoNGPS-Maps\n\nСпасибо!";
 
 /* message title of loading file */
 "load_kmz_title" = "Загрузка меток";
@@ -1475,7 +1475,7 @@
 "nogps_phone_remove_this_text" = "Этот телефон больше не будет подключаться к блоку, а машина на нём будет забыта.";
 
 /* Message on iOS: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and iOS apps cannot remove it */
-"nogps_phone_removed_forget" = "Этот телефон удалён из блока, машина забыта. Удалите NoGPS-%1$@ в Настройки > Bluetooth: нажмите кнопку информации и «Забыть это устройство»";
+"nogps_phone_removed_forget" = "Этот телефон удалён из блока, машина забыта. Удалите блок, имя которого заканчивается на %1$@, в Настройки > Bluetooth: нажмите кнопку информации и «Забыть это устройство»";
 
 /* Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code */
 "nogps_phone_add" = "Добавить телефон";

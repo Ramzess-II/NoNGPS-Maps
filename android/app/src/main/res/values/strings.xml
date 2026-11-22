@@ -151,7 +151,7 @@
     <string name="description">Notes</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">NonGPS Maps bookmarks were shared with you</string>
-    <string name="share_bookmarks_email_body">Hello!\n\nAttached are my bookmarks; please open them in NonGPS Maps. If you don\'t have it installed you can download it here: https://github.com/Ramzess-II/NoGPSMaps\n\nEnjoy travelling with NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Hello!\n\nAttached are my bookmarks; please open them in NonGPS Maps. If you don\'t have it installed you can download it here: https://github.com/Ramzess-II/NoNGPS-Maps\n\nEnjoy travelling with NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Loading Bookmarks</string>
     <!-- Kmz file successful loading -->
@@ -1096,7 +1096,7 @@
     <!-- Message: this phone has been removed from the sensor box on its own request -->
     <string name="nogps_phone_removed">This phone is removed from the box, the car is forgotten</string>
     <!-- Message on Android: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and the app could not remove it -->
-    <string name="nogps_phone_removed_unpair">This phone is removed from the box, the car is forgotten. Remove NoGPS-%1$s in the Bluetooth settings</string>
+    <string name="nogps_phone_removed_unpair">This phone is removed from the box, the car is forgotten. Remove the box ending in %1$s in the Bluetooth settings</string>
     <!-- Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code -->
     <string name="nogps_phone_add">Add a phone</string>
     <!-- Title of the dialog that adds a phone to the box of a car. %1$@ is the car name, e.g. "Add a phone to Kia" -->

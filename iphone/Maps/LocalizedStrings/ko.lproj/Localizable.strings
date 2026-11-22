@@ -160,7 +160,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "안녕하세요!\n\n제 북마크를 첨부했습니다. NonGPS Maps에서 열어주세요. 설치되어 있지 않다면 여기에서 다운로드할 수 있습니다: https://github.com/Ramzess-II/NoGPSMaps\n\nNonGPS Maps와 함께 즐거운 여행 되세요!";
+"share_bookmarks_email_body" = "안녕하세요!\n\n제 북마크를 첨부했습니다. NonGPS Maps에서 열어주세요. 설치되어 있지 않다면 여기에서 다운로드할 수 있습니다: https://github.com/Ramzess-II/NoNGPS-Maps\n\nNonGPS Maps와 함께 즐거운 여행 되세요!";
 
 /* message title of loading file */
 "load_kmz_title" = "즐겨찾기 로드";
@@ -1475,7 +1475,7 @@
 "nogps_phone_remove_this_text" = "This phone will not connect to the box any more, and the car will be forgotten on it.";
 
 /* Message on iOS: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and iOS apps cannot remove it */
-"nogps_phone_removed_forget" = "This phone is removed from the box, the car is forgotten. Remove NoGPS-%1$@ in Settings > Bluetooth: tap its info button, then Forget This Device";
+"nogps_phone_removed_forget" = "This phone is removed from the box, the car is forgotten. Remove the box ending in %1$@ in Settings > Bluetooth: tap its info button, then Forget This Device";
 
 /* Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code */
 "nogps_phone_add" = "Add a phone";
