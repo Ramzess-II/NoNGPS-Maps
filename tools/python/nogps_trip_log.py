@@ -8,8 +8,10 @@ there is one, at the same moment (the two have different ages): along the course
 and across it (+ the mark is to the right). With "Disable GPS" on, the platform position is the car itself.
 
 Logs: logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, written with "Enable logging" on in the settings: a file per launch
-of the app and per drive. A folder given is read with its subfolders: give the folder of one phone, or of one day
-of it. The names of the earlier versions are read too: log-dd-MM-yy-<phone>[.N].log, iOS log.txt, Android app*.log.
+of the app and per drive. A folder given is read with its subfolders: give the tree, the folder of one phone, or of
+one day of it. Every file begins with the LOGFMT line that tells its phone; a file without one, or of a format
+the tools do not know, is refused. The names of the earlier versions (log-dd-MM-yy-<phone>.log, log.txt, app*.log)
+are not read.
   iOS: Documents/logs/. Times are UTC.
   Android: Android/data/<app id>/files/logs/, or the zip of "Report a bug" unpacked. Times are the local time of
   the phone, the log has no year: --year.
@@ -37,13 +39,14 @@ TRIP_LINE = re.compile(r' TRIP (?:ms=\d+ )?(?=src=)')
 # gps= and fused= are "lat,lon/accuracy/km/h/course/age".
 PLATFORM_FIELDS = ('acc', 'kmh', 'bear', 'age')
 EARTH_RADIUS_M = 6371000
-LOG_NAME = re.compile(r'\.(log|txt)$', re.I)
+LOG_NAME = re.compile(r'\.log$', re.I)
 # Android "Report a bug" saves the system log next to the logs of the app; a replay writes its files.
 NOT_LOG_NAME = re.compile(r'^(logcat|nogps-replay)', re.I)
-# "logs/Pixel_7-a3f9/2026-11-01/081500.log": the phone, the day and when the file was started.
-PHONE_FOLDER = re.compile(r'(?:^|/)([^/]+)/\d{4}-\d\d-\d\d/\d{6}\.log$')
-# The name of the earlier versions, "log-01-11-26-Pixel_7-a3f9.2.log": the day, the phone and the part.
-PHONE_NAME = re.compile(r'^log-\d\d-\d\d-\d\d-(.+?)(?:\.\d+)?\.log$')
+# The formats of the first line of a log, "LOGFMT <n> ms=<unix ms> phone=<id> trip=<HHmmss> app=<version> build=<number>
+# commit=<hash> om=<Organic Maps version>", see libs/map/nogps/log_line.hpp. A tool refuses any other.
+LOG_FORMATS = (2,)
+LOGFMT_LINE = re.compile(r'LOGFMT (\d+)((?: \w+=\S*)*)\s*$')
+HEADER_KEYS = ('ms', 'phone', 'trip')
 FIRST_COLUMNS = ['time', 'src', 'lat', 'lon', 'acc', 'bear', 'age', 'ref', 'err_m', 'along_m', 'across_m']
 
 
@@ -61,11 +64,46 @@ def log_files(paths, log_name=LOG_NAME):
     return result
 
 
-def phone_of(name):
-    """The <phone> of a log file: its folder, or of its name as the earlier versions had it. '' when neither tells."""
-    name = name.replace('\\', '/')
-    m = PHONE_FOLDER.search(name) or PHONE_NAME.match(os.path.basename(name))
-    return m.group(1) if m else ''
+class LogFormatError(ValueError):
+    """A file that is not a log of a format the tools read."""
+
+
+def parse_header(name, first_line):
+    """The fields of the LOGFMT line of the file |name| as a dictionary of strings, with 'logfmt' the number. The
+    file identifies itself: nothing is taken from its path. LogFormatError for a file that has no such line, one of
+    a format not in LOG_FORMATS, or one that lacks a field the tools need."""
+    m = LOGFMT_LINE.match(first_line.lstrip('\ufeff').rstrip('\r\n'))
+    if not m:
+        raise LogFormatError('%s: not a log of LOGFMT %s, its first line is not a LOGFMT line (logs of the earlier '
+                             'versions are not read)' % (name, ', '.join(map(str, LOG_FORMATS))))
+    if int(m.group(1)) not in LOG_FORMATS:
+        raise LogFormatError('%s: LOGFMT %s is not known, the tools read %s' % (
+            name, m.group(1), ', '.join(map(str, LOG_FORMATS))))
+    header = dict(token.split('=', 1) for token in m.group(2).split())
+    missing = [key for key in HEADER_KEYS if not header.get(key)]
+    if missing:
+        raise LogFormatError('%s: the LOGFMT line has no %s' % (name, ', '.join(missing)))
+    header['logfmt'] = int(m.group(1))
+    return header
+
+
+def header_of(name, data):
+    """parse_header() of the bytes of a file."""
+    return parse_header(name, data[:4096].decode('utf-8', errors='replace').split('\n', 1)[0])
+
+
+def read_header(path):
+    with open(path, 'rb') as f:
+        return header_of(path, f.read(4096))
+
+
+def files_by_phone(paths):
+    """{phone: [file, …]} of the log files of the paths, a folder with its subfolders; each file's own header tells
+    its phone. LogFormatError for a file that can't be placed."""
+    result = {}
+    for path in log_files(paths):
+        result.setdefault(read_header(path)['phone'], []).append(path)
+    return result
 
 
 def parse_time(line, launch, year):

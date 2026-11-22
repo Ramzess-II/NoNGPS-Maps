@@ -10,9 +10,9 @@ nogps_log_viewer.py and as a text report:
 Logs:
   Both platforms write a file per launch of the app and per drive, logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log: iOS in
   Documents/, Android in Android/data/<app id>/files/. "Report a bug" sends logs.zip of that folder, "Send logs" of
-  the days of the flags: unpacked into one folder, the zips of any phones and days make one tree. The logs of each
-  platform and <phone> form a group of their own. The names of the earlier versions are read too:
-  log-dd-MM-yy-<phone>[.N].log, iOS log.txt or log.zip, Android app*.log.
+  the days of the flags: unpacked into one folder, the zips of any phones and days make one tree. The first line of
+  a file, LOGFMT, tells its phone; the logs of each platform and phone form a group of their own. A file without
+  that line or of a format not known is refused, the names of the earlier versions are not read.
   iOS times are UTC. Android times are the local time of the phone; the year is taken from the header of a file.
 
 A trip is the car driving with stops shorter than STAND_SPLIT_S. The lines of a phone that stands are kept as
@@ -44,7 +44,7 @@ SOURCE = re.compile(r'(\S+\.\w+):(\d+) (.+?)(?:\(\))?: (.*)', re.S)
 LAT_LON = re.compile(r'ms::LatLon\((-?[\d.]+), (-?[\d.]+)\)')
 LEVELS = {'V': 'D', 'D': 'D', 'I': 'I', 'W': 'W', 'E': 'E', 'C': 'E'}
 EPOCH = datetime(1970, 1, 1)
-LOG_NAME = re.compile(r'\.(log|txt|zip)$', re.I)
+LOG_NAME = re.compile(r'\.(log|zip)$', re.I)
 NOT_LOG_NAME = nogps_trip_log.NOT_LOG_NAME
 # A pause of the car or of the log this long ends a trip.
 STAND_SPLIT_S = 300
@@ -227,11 +227,14 @@ def unpack(name, data):
 
 
 def load_paths(paths):
-    """(name, bytes) of the logs in files, folders and zips. The name is the path: its folders tell the phone."""
+    """(name, bytes) of the logs in files, folders and zips. LogFormatError for a file that is not a log of a known
+    format."""
     result = []
     for path in nogps_trip_log.log_files(paths, LOG_NAME):
         with open(path, 'rb') as f:
-            result += unpack(path, f.read())
+            for name, data in unpack(path, f.read()):
+                nogps_trip_log.header_of(name, data)
+                result.append((name, data))
     return result
 
 
@@ -907,11 +910,11 @@ class Analysis:
         self.files = []
         for name, data in sources:
             for log_name, log_data in unpack(name, data):
+                phone = nogps_trip_log.header_of(log_name, log_data)['phone']
                 platform, lines, unknown = parse_file(log_name, log_data, year)
                 if not platform:
-                    self.notes.append('%s: not a log of the app' % log_name)
+                    self.notes.append('%s: has no lines of the app' % log_name)
                     continue
-                phone = nogps_trip_log.phone_of(log_name)
                 self.files.append(dict(name=log_name, platform=platform, phone=phone, lines=len(lines)))
                 if unknown:
                     self.notes.append('%s: %d lines of a run without "Local time:", their time is unknown'
@@ -1142,8 +1145,8 @@ def main():
   replay  the trip against a nogps-replay-out.txt: --replay file''',
         formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('command', choices=['trips', 'losses', 'rules', 'trip', 'events', 'state', 'rows', 'replay'])
-    parser.add_argument('logs', nargs='+', help='the logs folder, logs.zip or log files; log-*.log, app*.log, '
-                        'log.txt and log.zip of the earlier versions too')
+    parser.add_argument('logs', nargs='+', help='the logs tree logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, '
+                        'logs.zip or log files')
     parser.add_argument('--year', type=int, help='the year of an Android log without its header')
     parser.add_argument('--trip', type=int, help='the id the trips command shows')
     parser.add_argument('--all', action='store_true', help='with the stationary trips')
@@ -1158,7 +1161,10 @@ def main():
     parser.add_argument('--replay', help='nogps-replay-out.txt')
     args = parser.parse_args()
 
-    analysis = Analysis(load_paths(args.logs), args.year)
+    try:
+        analysis = Analysis(load_paths(args.logs), args.year)
+    except nogps_trip_log.LogFormatError as e:
+        parser.error(str(e))
     if args.command == 'trips':
         return print_trips(analysis, args.all)
     if args.command == 'losses':
