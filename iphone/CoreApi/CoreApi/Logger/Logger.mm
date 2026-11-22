@@ -33,6 +33,7 @@
 + (void)logMessageWithLevel:(base::LogLevel)level src:(base::SrcPoint const &)src message:(std::string const &)message;
 + (void)tryWriteToFile:(std::string const &)logString;
 + (BOOL)openFileIfNeeded;
++ (NSDate *)now;
 + (void)closeFile;
 + (void)deleteOldestFiles;
 + (NSArray<NSString *> *)logFiles;
@@ -77,6 +78,7 @@ static NSDictionary<NSFileAttributeKey, id> * FileAttributes(NSString * name)
 @implementation Logger
 
 static BOOL _fileLoggingEnabled = NO;
+static NSDate * (^_clock)(void) = nil;
 static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
 
 + (void)initialize
@@ -259,6 +261,11 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
   }];
 }
 
++ (void)setClockForTesting:(nullable NSDate * (^)(void))clock
+{
+  [self runSyncOnFileLoggingQueue:^{ _clock = [clock copy]; }];
+}
+
 + (uint64_t)getLogFileSize
 {
   __block uint64_t size = 0;
@@ -359,7 +366,7 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
   dispatch_assert_queue([self fileLoggingQueue]);
   Logger * logger = [self logger];
   NSFileManager * fileManager = NSFileManager.defaultManager;
-  NSDate * now = NSDate.date;
+  NSDate * now = [self now];
   // Opening a file walks the whole tree to keep it under the limit: a full disk would do it for every line.
   if (logger.fileHandle == nil && logger.retryOpen != nil && [now compare:logger.retryOpen] == NSOrderedAscending)
     return NO;
@@ -426,6 +433,11 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
     [fileHandle writeData:[NSData dataWithBytes:anchorString.c_str() length:anchorString.length()]];
   }
   return YES;
+}
+
++ (NSDate *)now
+{
+  return _clock ? _clock() : NSDate.date;
 }
 
 + (void)closeFile
