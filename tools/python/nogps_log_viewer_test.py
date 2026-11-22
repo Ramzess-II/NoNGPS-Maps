@@ -60,6 +60,11 @@ class ViewerTest(unittest.TestCase):
         self.assertEqual(get(server, '/assets/../nogps_log.py')[0], 404)
         self.assertEqual(get(server, '/assets/README.txt')[0], 404)
 
+    def test_the_map_limits_the_zoom(self):
+        # Without a tile layer nothing else limits it, and fitBounds of a trip that stood still gives zoom Infinity.
+        page = get(self.start(), '/')[1].decode()
+        self.assertRegex(page, r"L\.map\('map', \{[^}]*maxZoom: \d+")
+
     def test_tile_folder(self):
         os.makedirs(os.path.join(self.dir.name, 't', '3', '4'))
         with open(os.path.join(self.dir.name, 't', '3', '4', '5.png'), 'wb') as f:
