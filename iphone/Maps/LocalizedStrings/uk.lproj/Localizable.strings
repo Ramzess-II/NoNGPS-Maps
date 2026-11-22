@@ -2004,7 +2004,7 @@
 /* Balloon of the first start pointing at the panel with the zoom buttons */
 "nogps_intro_right" = "Масштаб і поворот мапи. Утримання рухає панель.";
 
-/* Appended to nogps_intro_right on iOS only, where the zoom buttons also take a slide */
+/* Appended to nogps_intro_right, the zoom buttons also take a slide */
 "nogps_intro_right_swipe" = "Проведіть по +/− для масштабу.";
 
 /* Balloon of the first start pointing at the panel with the car buttons */

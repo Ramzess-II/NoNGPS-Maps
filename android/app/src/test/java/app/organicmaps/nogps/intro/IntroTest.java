@@ -4,7 +4,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import android.content.Context;
 import app.organicmaps.R;
 import org.junit.Test;
 
@@ -39,10 +42,17 @@ public class IntroTest
     assertEquals(R.id.map_buttons_bottom, IntroStep.BOTTOM.getAnchorId());
     assertEquals(R.id.right_panel, IntroStep.RIGHT.getAnchorId());
     assertEquals(R.id.car_controls, IntroStep.LEFT.getAnchorId());
-    assertEquals(R.string.nogps_intro_text, IntroStep.MODAL.getTextId());
-    assertEquals(R.string.nogps_intro_bottom, IntroStep.BOTTOM.getTextId());
-    assertEquals(R.string.nogps_intro_right, IntroStep.RIGHT.getTextId());
-    assertEquals(R.string.nogps_intro_left, IntroStep.LEFT.getTextId());
+    final Context context = mock(Context.class);
+    when(context.getString(R.string.nogps_intro_text)).thenReturn("modal");
+    when(context.getString(R.string.nogps_intro_bottom)).thenReturn("bottom");
+    when(context.getString(R.string.nogps_intro_right)).thenReturn("right");
+    when(context.getString(R.string.nogps_intro_right_swipe)).thenReturn("slide");
+    when(context.getString(R.string.nogps_intro_left)).thenReturn("left");
+    assertEquals("modal", IntroStep.MODAL.getText(context));
+    assertEquals("bottom", IntroStep.BOTTOM.getText(context));
+    // The slide of the zoom buttons is told in the balloon of the right panel only, as on iOS.
+    assertEquals("right slide", IntroStep.RIGHT.getText(context));
+    assertEquals("left", IntroStep.LEFT.getText(context));
     assertFalse(IntroStep.MODAL.isTyped());
     for (IntroStep step : new IntroStep[] {IntroStep.BOTTOM, IntroStep.RIGHT, IntroStep.LEFT})
       assertTrue(step.isTyped());

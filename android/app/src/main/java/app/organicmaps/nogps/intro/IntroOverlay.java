@@ -162,7 +162,7 @@ public class IntroOverlay extends View
       return;
     }
     mStepStartMs = SystemClock.uptimeMillis();
-    mText = getContext().getString(step.getTextId());
+    mText = step.getText(getContext());
     mFullLayout = null;
     mShownLayout = null;
     mShownChars = -1;

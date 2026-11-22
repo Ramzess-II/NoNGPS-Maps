@@ -17,7 +17,9 @@ Each call reads the logs again: a day of Android logs takes a few seconds.
    when the trip started (`calibration:`, the last `CALIBRATION` line before the car moves), the error from GPS per source, the
    counts `nogps_replay.py compare` uses, the events by name and every anomaly with its time.
    It also counts the rules of the core that fired (`rules:`) with what came next within 300 m; `nogps_log.py rules
-   <logs>` does it over all the trips.
+   <logs>` does it over all the trips. `nogps_log.py losses <logs>` lists the road losses and tells which a tap on
+   the road lost panel would have placed by GPS (the fix is fresh, accurate, near the mark; the road near it is not
+   checked), with totals per set of `nogps_replay.py days`.
 3. **Narrow down** to the moments that matter:
    - `state <logs> --trip N --at HH:MM:SS`: every TRIP field (`*` = changed since the line before), the box flags
      decoded, the anomalies at that moment, the events within 30 s and the other log lines within 5 s.
@@ -33,6 +35,11 @@ Each call reads the logs again: a day of Android logs takes a few seconds.
    then use `a.trips[N].rows` (dicts of TRIP fields with `t` in ms), `.events` and `.anomalies`.
 5. **Answer** with the times, the field values and the log lines that show it. To let the user see a moment, give the
    viewer command `python3 tools/python/nogps_log_viewer.py <logs>` and the `#trip=N&t=<ms>` that `state` prints.
+
+The viewer is offline: it loads its libraries from `tools/python/nogps_log_viewer_assets/` and draws the tracks on a
+plain background. `--tiles <folder>` draws a map from local `{z}/{x}/{y}.png` tiles and reveals nothing. `--tiles
+<url>` fetches tiles from that server, which then sees the area of every trip opened. The choice is kept in
+`~/.nogps_log_viewer.json`; `--tiles off` clears it.
 
 The logs hold where the user drove. Keep coordinates and log files out of issues, PRs and commits: the repo is
 public. Describe a place by its time on the trip.

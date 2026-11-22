@@ -570,7 +570,7 @@ void Engine::EnterManualModeByItself(std::string const & reason)
   bool const inertialReady = m_inertial && m_inertial->IsReady();
   // The place is a guess, not a place set by the user: it is not sent as one, the snapshot tells it as manual.
   m_applyingPeer = true;
-  bool const marked = last && !inertialReady && SetManualLocation(last->m_position);
+  bool const marked = last && !inertialReady && SetManualLocation(last->m_position, "core");
   m_applyingPeer = false;
   if (last && !inertialReady && !marked && SourceOf(*last) == PositionSource::Gps)
   {
@@ -1751,14 +1751,14 @@ void Engine::SetManualMode(bool enabled, char const * by)
   Notify(Event::ManualModeChanged);
 }
 
-bool Engine::SetManualLocation(ms::LatLon const & position)
+bool Engine::SetManualLocation(ms::LatLon const & position, char const * by)
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());
   CHECK(m_manualMode, ("Manual mode is off"));
   auto const road = FindMarkRoad(position, GetCarBearing());
   if (!road)
     return false;
-  PutMark(position, *road);
+  PutMark(position, *road, by);
   return true;
 }
 
@@ -1781,7 +1781,7 @@ bool Engine::PlaceMarkByTap(ms::LatLon const & position)
   }
   // GPS may work: the mark tells that it is wrong, as the manual mode turned on by the user did.
   SetManualMode(true, "tap");
-  PutMark(position, *road);
+  PutMark(position, *road, "tap");
   m_markByTap = false;
   return true;
 }
@@ -1821,7 +1821,7 @@ bool Engine::PlaceMarkByGps()
   if (!road)
     return fail("no road near the fix");
   SetManualMode(true, "gps_mark");
-  PutMark(fix->m_position, *road, std::max(kManualAccuracyM, fix->m_accuracyM));
+  PutMark(fix->m_position, *road, "gps_mark", std::max(kManualAccuracyM, fix->m_accuracyM));
   m_markByTap = false;
   return true;
 }
@@ -1849,7 +1849,7 @@ std::optional<RoadPoint> Engine::FindMarkRoad(ms::LatLon const & position, std::
   return road;
 }
 
-void Engine::PutMark(ms::LatLon const & position, RoadPoint const & road, double accuracyM)
+void Engine::PutMark(ms::LatLon const & position, RoadPoint const & road, char const * by, double accuracyM)
 {
   Fix location;
   location.m_provider = Provider::Manual;
@@ -1858,8 +1858,10 @@ void Engine::PutMark(ms::LatLon const & position, RoadPoint const & road, double
   location.m_bearingDeg = road.m_bearingDeg;
   location.m_timeMs = m_clock.NowMs();
   location.m_unixTimeMs = m_clock.UnixNowMs();
-  LOG(LINFO, (LogHead(m_clock, "ACTION", "tap"), "tap =", position, "location =", location.m_position,
-              "bearing =", road.m_bearingDeg, "heading was =", GetCarBearing()));
+  // by= tells a tap of the user on the map from the marks the core places itself: during a road loss the manual
+  // mode is already on, so SetManualMode() writes no line of its own there.
+  LOG(LINFO, (LogHead(m_clock, "ACTION", "tap"), std::string("by=") + by, "tap =", position,
+              "location =", location.m_position, "bearing =", road.m_bearingDeg, "heading was =", GetCarBearing()));
 
   m_manualLocation = location;
   m_manualSetTimeMs = m_clock.NowMs();
@@ -1937,7 +1939,7 @@ void Engine::ApplyPeerPlace(PeerPlace const & place)
   LOG(LINFO, ("The place of the other phone, kind =", place.m_kind, "source =", place.m_source, "=", place.m_position));
   m_applyingPeer = true;
   SetManualMode(true, "peer");
-  PutMark(place.m_position, *road);
+  PutMark(place.m_position, *road, "peer");
   m_applyingPeer = false;
   // The leader has taken the correction: the follower is told the place it has.
   if (place.m_kind == 'C' && m_manualLocation)
