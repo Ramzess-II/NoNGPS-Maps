@@ -7,13 +7,16 @@ on:
       - master
   pull_request:
     paths-ignore:
+      - .agents/**
+      - .claude/**
+      - .gemini/**
       - .gitignore
       - .github/**
       - '!.github/workflows/cpp-tests.yaml'  # Run check on self change
+      - '**/*.md'
       - CONTRIBUTORS
       - LICENSE
       - NOTICE
-      - README.md
       - android/**
       - data/countries-strings/**
       - data/organic_maps_emoji/**
@@ -25,6 +28,8 @@ on:
       - packaging/**
       - qt/**
       - tools/**
+      # libs/platform/CMakeLists.txt runs version.sh to generate the Qt version header.
+      - '!tools/unix/version.sh'
       - '!tools/python/test_server/**'
       - xcode/**
 

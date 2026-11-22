@@ -186,7 +186,7 @@ function showPhones(phones) {
       '</td><td>HELLO ' + hello + '</td><td>' + phone.payload + ' bytes</td><td>' + phone.sent + ' sent</td><td>' +
       phone.dropped + ' dropped</td><td><button data-phone="' + escape(phone.label) + '">Disconnect</button></td></tr>';
   });
-  $('phones').innerHTML = '<table><tr><th>phone</th><th></th><th></th><th>notification</th><th></th><th></th><th></th></tr>' +
+  $('phones').innerHTML = '<p class="hint">On macOS a phone that went away without unsubscribing is only taken as gone after a minute of silence.</p><table><tr><th>phone</th><th></th><th></th><th>notification</th><th></th><th></th><th></th></tr>' +
     rows.join('') + '</table>';
   for (const button of $('phones').querySelectorAll('button')) {
     button.onclick = () => action('disconnect', button.dataset.phone);

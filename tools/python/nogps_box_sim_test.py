@@ -404,5 +404,25 @@ class Session(unittest.TestCase):
         self.assertEqual(made.state.name(), 'NoGPS-TOOL')
 
 
+class SilenceWatchTest(unittest.TestCase):
+    def test_a_central_is_gone_only_after_a_long_silence(self):
+        clock = Clock()
+        watch = sim.SilenceWatch(clock)
+        watch.wrote('a')
+        watch.wrote('b')
+        clock.pass_s(sim.SILENT_GONE_S - 1)
+        watch.wrote('b')
+        self.assertGreater(sim.SILENT_GONE_S, 10 * sim.HELLO_TIMEOUT_S)
+        self.assertEqual(watch.gone(), [])
+        clock.pass_s(1)
+        self.assertEqual(watch.gone(), ['a'])
+        # Taken once; a phone that writes again is watched again.
+        self.assertEqual(watch.gone(), [])
+        watch.wrote('a')
+        watch.forget('b')
+        clock.pass_s(sim.SILENT_GONE_S)
+        self.assertEqual(watch.gone(), ['a'])
+
+
 if __name__ == '__main__':
     unittest.main()
