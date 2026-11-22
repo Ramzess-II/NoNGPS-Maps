@@ -205,15 +205,12 @@ public final class Logger
     private final String mData;
     @Nullable
     private final CountDownLatch mFlushLatch;
-    // Not a line: the lines after it go to a new file.
-    private final boolean mStartsFile;
 
     private LogEntry(@NonNull String logsFolder, @NonNull String data)
     {
       mLogsFolder = logsFolder;
       mData = data;
       mFlushLatch = null;
-      mStartsFile = false;
     }
 
     private LogEntry(@NonNull CountDownLatch flushLatch)
@@ -221,15 +218,6 @@ public final class Logger
       mLogsFolder = null;
       mData = "";
       mFlushLatch = flushLatch;
-      mStartsFile = false;
-    }
-
-    private LogEntry()
-    {
-      mLogsFolder = null;
-      mData = "";
-      mFlushLatch = null;
-      mStartsFile = true;
     }
 
     boolean isFlush()
@@ -352,16 +340,14 @@ public final class Logger
 
     void startFile()
     {
-      // In the queue: the lines logged before it are of the file before.
-      final LogEntry entry = new LogEntry();
-      if (mQueue.offer(entry))
-        return;
-      if (mQueue.poll() != null)
-        mDroppedCount.incrementAndGet();
-      if (mQueue.offer(entry))
-        return;
+      // Under the write lock like writeSync(): an error line is either before the switch or after it, never
+      // misplaced. The queued lines are written first, they are of the file before. The one entry that the writer
+      // thread took from the queue and has not written yet may still land in the new file.
       synchronized (mWriteLock)
       {
+        LogEntry entry;
+        while ((entry = mQueue.poll()) != null)
+          processEntry(entry);
         startFileLocked();
       }
     }
@@ -412,12 +398,6 @@ public final class Logger
         {
           flushLocked();
           entry.mFlushLatch.countDown();
-          return;
-        }
-
-        if (entry.mStartsFile)
-        {
-          startFileLocked();
           return;
         }
 
