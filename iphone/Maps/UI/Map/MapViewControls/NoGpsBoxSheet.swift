@@ -56,6 +56,25 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     56
   }
 
+  /// The sheet is not a screen of the app: its bar keeps the system look instead of the green bar of Organic Maps.
+  /// The style name must stay set, an empty one lets the theme paint the bar green again, and both appearances must
+  /// be set: UINavigationBarRenderer unwraps scrollEdgeAppearance.
+  private static func plainBar(_ bar: UINavigationBar) {
+    bar.setStyle(.clearBackground)
+    // Filled with the background of the sheet, as the bar of a sheet is: a translucent bar shows the map through it.
+    let scrolled = UINavigationBarAppearance()
+    scrolled.configureWithOpaqueBackground()
+    scrolled.backgroundColor = .whitePrimary
+    bar.standardAppearance = scrolled
+    // At the top the bar and the list are one surface: the line comes only once the list runs under the bar.
+    let top = UINavigationBarAppearance()
+    top.configureWithOpaqueBackground()
+    top.backgroundColor = .whitePrimary
+    top.shadowColor = .clear
+    bar.scrollEdgeAppearance = top
+    bar.tintColor = .linkBlue
+  }
+
   static func show(_ page: Page = .main) {
     // The pages of the box tell nothing once it is forgotten.
     let page = NoGps.status().inertialEnabled ? page : .main
@@ -70,6 +89,7 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     let root = NoGpsBoxSheet(style: .insetGrouped)
     let navigation = UINavigationController(rootViewController: root)
     navigation.delegate = root
+    plainBar(navigation.navigationBar)
     if let sheet = navigation.sheetPresentationController {
       sheet.detents = [.medium(), .large()]
       if #available(iOS 16.0, *) {
