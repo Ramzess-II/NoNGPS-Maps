@@ -391,7 +391,10 @@ def main():
     parser.add_argument('--turn-obd', action='store_true', help='the OBD speed in turns, as from the radius on the map')
     args = parser.parse_args()
 
-    analysis = nogps_log.Analysis(nogps_log.load_paths(args.logs))
+    try:
+        analysis = nogps_log.Analysis(nogps_log.load_paths(args.logs))
+    except nogps_log.nogps_trip_log.LogFormatError as e:
+        parser.error(str(e))
     sensors = {id(g): read_sensors(g) for g in analysis.groups}
     options = Options(args.sign, not args.no_turns, DEFAULT_LAG_S if args.lag is None else args.lag, args.carry,
                       args.closure, args.turn_obd)

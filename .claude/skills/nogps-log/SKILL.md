@@ -1,6 +1,6 @@
 ---
 name: nogps-log
-description: Analyse NonGPS Maps trip logs (the logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log tree or logs.zip of iOS and Android; older log-dd-MM-yy-<phone>.log, iOS log.txt/log.zip, Android app*.log) to explain what the navigation did on a drive. Use when the user gives logs or asks why the mark went wrong, what happened at a time, or how a trip or a replay went.
+description: Analyse NonGPS Maps trip logs (the logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log tree or logs.zip of iOS and Android) to explain what the navigation did on a drive. Use when the user gives logs or asks why the mark went wrong, what happened at a time, or how a trip or a replay went.
 argument-hint: "<log files or folder> [question, trip or time]"
 ---
 
@@ -10,8 +10,9 @@ argument-hint: "<log files or folder> [question, trip or time]"
 Each call reads the logs again: a day of Android logs takes a few seconds.
 
 1. **Trips.** `python3 tools/python/nogps_log.py trips <logs>` lists them, with ids. `<logs>` is the `logs` folder
-   (the zips of any phones and days unpacked into one folder), a `logs.zip` or log files; the folder of a file tells
-   its phone. `--all` also lists the stationary ones. If the user named a time, take the trip that holds it. Android times are the local time of the
+   (the zips of any phones and days unpacked into one folder), a `logs.zip` or log files; the `LOGFMT` first line of
+   a file tells its phone. A file without it, of another format, or named as the earlier versions (`log-dd-MM-yy-*.log`,
+   `app*.log`, `log.txt`) is skipped with a note (refused when no file is left): those logs are not read. `--all` also lists the stationary ones. If the user named a time, take the trip that holds it. Android times are the local time of the
    phone; iOS times are UTC.
 2. **Overview.** `nogps_log.py trip <logs> --trip N` prints the stats, what the navigation had learned about the car
    when the trip started (`calibration:`, the last `CALIBRATION` line before the car moves), the error from GPS per source, the
