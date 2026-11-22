@@ -527,11 +527,13 @@ class RulesTest(unittest.TestCase):
 
 
 class LossesTest(unittest.TestCase):
+    TAP = 'tap = ms::LatLon(10.0, 20.0) location = ms::LatLon(10.0, 20.0) bearing = 0'
+
     def losses(self, fields, taps=(), seconds=60):
         log = android_drive(seconds=seconds, stand=0, fields=fields)
-        log += [core('10-08', 18 * 3600 + sec, 'F', 'tap = ms::LatLon(10.0, 20.0) location = ms::LatLon(10.0, 20.0) '
-                     'bearing = 0') for sec in taps]
-        return analyse(('app.log', log)).trips[0].road_losses()
+        for sec in taps:
+            log.append(core('10-08', 18 * 3600 + sec, 'PutMark', self.TAP, ms=500))
+        return analyse(('app.log', log)).groups[0].road_losses()
 
     def lost(self, first, after, **extra):
         return lambda s: dict(lost='1', **extra) if first <= s < after else {}
@@ -573,6 +575,28 @@ class LossesTest(unittest.TestCase):
         losses = self.losses(self.lost(10, 20, spoofed='1'), taps=[14])
         self.assertTrue(losses[0]['taps'])
         self.assertEqual(self.losses(lambda s: {}), [])
+
+    def test_a_loss_across_a_stand_is_one_loss(self):
+        """The car stands lost between two drives: standing splits the trips, the loss is one."""
+        lost = self.lost(0, 10 ** 9)
+        log = android_drive(seconds=20, stand=0, fields=lost)
+        # The core writes a standing car every 35 s, see STAND_TRIP_S, and the stand is longer than STAND_SPLIT_S.
+        log += [core('10-08', 18 * 3600 + 22 + s, 'LogTrip',
+                     trip_line(lat=START_LAT + 200 * DEG_PER_M, kmh=0.0, lost='1', speed='0'),
+                     file='nogps/engine.cpp:1526') for s in range(0, 400, 35)]
+        log += android_drive(start=18 * 3600 + 422, seconds=20, stand=0, fields=lost, header=False)
+        analysis = analyse(('app.log', log))
+        self.assertEqual([trip.driven for trip in analysis.trips], [True, False, True])
+        (loss,) = analysis.groups[0].road_losses()
+        self.assertEqual((loss['t'], loss['seconds']), (DAY_MS + (18 * 3600 + 2) * 1000, 441))
+
+    def test_a_loss_after_a_pause_of_the_log_is_another_loss(self):
+        """The app was not running for an hour: what the core kept of the loss across it is not known."""
+        lost = self.lost(0, 10 ** 9)
+        log = android_drive(seconds=20, stand=0, fields=lost)
+        log += android_drive(start=18 * 3600 + 3600, seconds=20, stand=0, fields=lost, header=False)
+        first, second = analyse(('app.log', log)).groups[0].road_losses()
+        self.assertEqual((first['seconds'], second['seconds']), (19, 19))
 
     def test_report_per_set(self):
         log = android_drive(seconds=60, stand=0, fields=self.lost(10, 20))

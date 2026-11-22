@@ -395,6 +395,55 @@ class Group:
     def lines_between(self, start, end):
         return self.lines[bisect.bisect_left(self.times, start):bisect.bisect_right(self.times, end)]
 
+    def road_losses(self):
+        """The road losses of the log (a row with lost=1 after one without), each as a dict: t, seconds, taps (the
+        user tapped the map before the loss ended), fixable_s (seconds after the loss when the GPS tap of the road
+        lost panel would first have worked, None if never) and why (what stopped it most often). The whole log of
+        the phone is read at once: a loss goes on while the car stands, and standing splits the trips.
+
+        The check is that of Engine::PlaceMarkByGps on the TRIP line: the newer of the GPS and fused fixes is not
+        older than GPS_MARK_MAX_AGE_S, is accurate to GPS_MARK_MAX_ACCURACY_M, GPS is not spoofed, and the fix is
+        not farther from the mark than the distance driven since the loss, the accuracies of the mark and of the fix
+        and GPS_MARK_MARGIN_M. The road near the fix is
+        not checked: the log has no map, so "fixable" is an upper bound: the settings of the user are not read
+        either, so a trip with GPS turned off in the app (the tap fails with "GPS is turned off") can show losses as
+        fixable. A tap on the map or the end of the loss ends the time the GPS tap could be used in; a tap just
+        before the loss ends on its own is counted as a map tap too."""
+        taps = [e['t'] for e in self.events if e['cat'] == 'user' and e['name'] == 'tap']
+        # iOS writes a line of the network location between the lines of the mark, with lost=0.
+        rows = [row for row in self.rows if row.get('src') != 'NETWORK']
+
+        def paused(j):
+            """The log wrote nothing for STAND_SPLIT_S before rows[j]: a standing car is written every STAND_TRIP_S,
+            so the app was not running, and the loss after the pause is counted as another one."""
+            return rows[j]['t'] - rows[j - 1]['t'] > STAND_SPLIT_S * 1000
+
+        result = []
+        for i, row in enumerate(rows):
+            if row.get('lost') != '1' or (i and rows[i - 1].get('lost') == '1' and not paused(i)):
+                continue
+            end = next((j for j in range(i + 1, len(rows)) if rows[j].get('lost') != '1' or paused(j)), len(rows))
+            ended = rows[end]['t'] if end < len(rows) and not paused(end) else rows[end - 1]['t']
+            tap = next((t for t in taps if row['t'] < t <= ended), None)
+            fixable, reasons, driven = None, collections.Counter(), 0.0
+            for j in range(i, end):
+                current = rows[j]
+                if tap is not None and current['t'] > tap:
+                    break
+                if j > i:
+                    before = rows[j - 1]
+                    kmh = num(before, 'speed') or num(before, 'gps_kmh') or 0
+                    driven += kmh / 3.6 * min(5, (current['t'] - before['t']) / 1000)
+                why = gps_mark_failure(current, driven)
+                if not why:
+                    fixable = (current['t'] - row['t']) / 1000
+                    break
+                reasons[why] += 1
+            why = reasons.most_common(1)[0][0] if reasons else 'no fix in the line'
+            result.append(dict(t=row['t'], seconds=(ended - row['t']) / 1000, taps=tap is not None,
+                               fixable_s=fixable, why=why))
+        return result
+
 
 # Trips.
 
@@ -752,47 +801,6 @@ class Trip:
                 counts['ok'] += 1
         return result
 
-    def road_losses(self):
-        """The road losses of the trip (a row with lost=1 after one without), each as a dict: t, seconds, taps (the
-        user tapped the map before the loss ended), fixable_s (seconds after the loss when the GPS tap of the road
-        lost panel would first have worked, None if never) and why (what stopped it most often).
-
-        The check is that of Engine::PlaceMarkByGps on the TRIP line: the newer of the GPS and fused fixes is not
-        older than GPS_MARK_MAX_AGE_S, is accurate to GPS_MARK_MAX_ACCURACY_M, GPS is not spoofed, and the fix is
-        not farther from the mark than the distance driven since the loss, the accuracies of the mark and of the fix
-        and GPS_MARK_MARGIN_M. The road near the fix is not checked: the log has no map, so "fixable" is an upper
-        bound: the settings of the user are not read either, so a trip with GPS turned off in the app (the tap fails
-        with "GPS is turned off") can show losses as fixable. A tap on the map or the end of the loss ends the time
-        the GPS tap could be used in; a tap just before the loss ends on its own is counted as a map tap too."""
-        taps = [e['t'] for e in self.events if e['cat'] == 'user' and e['name'] == 'tap']
-        # iOS writes a line of the network location between the lines of the mark, with lost=0.
-        rows = [row for row in self.rows if row.get('src') != 'NETWORK']
-        result = []
-        for i, row in enumerate(rows):
-            if row.get('lost') != '1' or (i and rows[i - 1].get('lost') == '1'):
-                continue
-            end = next((j for j in range(i, len(rows)) if rows[j].get('lost') != '1'), len(rows))
-            ended = rows[end]['t'] if end < len(rows) else rows[-1]['t']
-            tap = next((t for t in taps if row['t'] < t <= ended), None)
-            fixable, reasons, driven = None, collections.Counter(), 0.0
-            for j in range(i, end):
-                current = rows[j]
-                if tap is not None and current['t'] > tap:
-                    break
-                if j > i:
-                    before = rows[j - 1]
-                    kmh = num(before, 'speed') or num(before, 'gps_kmh') or 0
-                    driven += kmh / 3.6 * min(5, (current['t'] - before['t']) / 1000)
-                why = gps_mark_failure(current, driven)
-                if not why:
-                    fixable = (current['t'] - row['t']) / 1000
-                    break
-                reasons[why] += 1
-            why = reasons.most_common(1)[0][0] if reasons else 'no fix in the line'
-            result.append(dict(t=row['t'], seconds=(ended - row['t']) / 1000, taps=tap is not None,
-                               fixable_s=fixable, why=why))
-        return result
-
     def details(self):
         fields = list(dict.fromkeys(k for row in self.rows for k in row))
         series = {name: [s for s in values if self.start - 1000 <= s[0] <= self.end]
@@ -1016,27 +1024,25 @@ def print_rules(analysis):
 
 
 def print_losses(analysis):
-    """The road losses of all the driven trips: for each, whether a tap on the road lost panel would have placed
-    the mark by GPS (see Trip.road_losses), and the totals per set of nogps_replay.py days. The trip logs have no
-    taps on the panel, so a replay can't tell it."""
+    """The road losses of the logs: for each, whether a tap on the road lost panel would have placed the mark by
+    GPS (see Group.road_losses), and the totals per set of nogps_replay.py days. The trip logs have no taps on the
+    panel, so a replay can't tell it."""
     held_out = nogps_replay.held_out_days()
     totals = {}
     print('%-6s %-8s %8s  %-8s %-9s  %s' % ('day', 'at', 'lasted', 'ended by', 'GPS tap', 'why not'))
-    for trip in analysis.trips:
-        if not trip.driven:
-            continue
-        for loss in trip.road_losses():
-            day = from_ms(loss['t']).strftime('%m-%d')
-            fixed = loss['fixable_s'] is not None
-            print('%-6s %s %8s  %-8s %-9s  %s' % (day, clock(loss['t']), duration(loss['seconds'] * 1000),
-                                                  'map tap' if loss['taps'] else 'no tap',
-                                                  'after %ds' % loss['fixable_s'] if fixed else 'no',
-                                                  '' if fixed else loss['why']))
-            t = totals.setdefault(nogps_replay.set_of(day, held_out), collections.Counter())
-            t['losses'] += 1
-            t['fixable'] += fixed
-            t['taps'] += loss['taps']
-            t['tap_fixable'] += fixed and loss['taps']
+    losses = sorted((loss for group in analysis.groups for loss in group.road_losses()), key=lambda l: l['t'])
+    for loss in losses:
+        day = from_ms(loss['t']).strftime('%m-%d')
+        fixed = loss['fixable_s'] is not None
+        print('%-6s %s %8s  %-8s %-9s  %s' % (day, clock(loss['t']), duration(loss['seconds'] * 1000),
+                                              'map tap' if loss['taps'] else 'no tap',
+                                              'after %ds' % loss['fixable_s'] if fixed else 'no',
+                                              '' if fixed else loss['why']))
+        t = totals.setdefault(nogps_replay.set_of(day, held_out), collections.Counter())
+        t['losses'] += 1
+        t['fixable'] += fixed
+        t['taps'] += loss['taps']
+        t['tap_fixable'] += fixed and loss['taps']
     print()
     print('%-10s %7s %9s %9s %17s' % ('set', 'losses', 'fixable', 'map taps', 'map taps fixable'))
     for name in ('made from', 'held out'):
