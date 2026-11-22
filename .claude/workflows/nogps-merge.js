@@ -233,9 +233,11 @@ for the files you changed: clang-format 23 (uvx --from clang-format==23.1.3 clan
 4. A fix that changes a rule or a constant of the core goes into docs/nogps/navigation-rules.md too, in a separate \
 [docs] commit; one that changes the box protocol into docs/nogps/esp32-firmware-spec.md and the box simulator. A \
 fix to a behavior both apps show is made on both platforms.
-5. Tests: when the fix touches the core, cmake --preset debug -B ${BUILD(name)} -DSKIP_QT_GUI=ON (the dir is this \
-slot's own and is reused by the PRs that come through it, so this is mostly a no-op after the first) and then \
-cd ${wt} && just test "NoGps_.*" ${BUILD_REL(name)}. Android Java: cd ${wt}/android && ./gradlew \
+5. Tests: when the fix touches the core, cd ${wt} && cmake --preset debug -B ${BUILD(name)} -DSKIP_QT_GUI=ON \
+(the cd comes first: --preset takes the source tree from the working directory, and configuring ${APP} into this \
+build dir would build the other session's work; the dir is this slot's own and is reused by the PRs that come \
+through it, so this is mostly a no-op after the first) and then cd ${wt} && just test "NoGps_.*" \
+${BUILD_REL(name)}. Android Java: cd ${wt}/android && ./gradlew \
 :app:compileGoogleDebugJavaWithJavac -Parm64. iOS code is checked by CI. Up to 3 attempts when a test fails, then \
 report "failed" with the output and push nothing.
 6. Push: ${PUSH(pr, wt)} (no rewriting here, the fixes are new commits). Report the new head.
@@ -280,8 +282,10 @@ train/gate is local and thrown away after the run: don't push it.
 5. Build and test the two together -- this is the only run that sees them together, as the PR's own checks ran \
 before the other PRs were merged and theirs ran before this one. Look at what that merge's diff touches: \
 git -C ${wt} diff --name-only origin/master...HEAD
-   - libs/: cmake --preset debug -B ${BUILD(GATE)} -DSKIP_QT_GUI=ON && cd ${wt} && \
+   - libs/: cd ${wt} && cmake --preset debug -B ${BUILD(GATE)} -DSKIP_QT_GUI=ON && \
 just test "NoGps_.*" ${BUILD_REL(GATE)}
+     The cd comes first: cmake --preset takes the source tree from the working directory, so running it from \
+anywhere else configures that checkout -- ${APP}, the other session's work in progress -- into the gate's build dir.
    - android/: cd ${wt}/android && ./gradlew :app:compileGoogleDebugJavaWithJavac -Parm64
    - iOS code is left to the PR's own CI; say so in combinedTest when the merge touches iphone/ or xcode/.
    A failure: report "test" with what failed in reason, the output in combinedTest, and post it on the PR -- \
