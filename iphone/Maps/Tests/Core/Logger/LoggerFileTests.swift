@@ -2,8 +2,9 @@ import CoreApi
 @testable import Organic_Maps__Debug_
 import XCTest
 
-/// The file writer of Logger: the file of a launch, startTrip, midnight and concurrent lines. It drives the files in
-/// the logs folder of the app, which it removes: run it on a simulator.
+/// The file writer of Logger: the file of a launch, startTrip, midnight and concurrent lines. It drives the files of
+/// the faked days 2026-11-01 and 2026-11-02 in the logs folder of the app, which it removes: run it on a simulator.
+/// The app keeps logging through the same Logger, so the tests look only at the files that hold their marker lines.
 final class LoggerFileTests: XCTestCase {
   private let marker = "LoggerFileTests"
   private var now = Date()
@@ -23,10 +24,12 @@ final class LoggerFileTests: XCTestCase {
     Logger.setFileLoggingEnabled(true)
     // Enabling opens a file at once: drop it, the first line of a test opens the file under test.
     Logger.startTrip()
-    try? FileManager.default.removeItem(at: logsFolder)
+    removeFakeDays()
   }
 
   override func tearDown() {
+    Logger.startTrip()
+    removeFakeDays()
     Logger.setFileLoggingEnabled(false)
     Logger.setClockForTesting(nil)
     super.tearDown()
@@ -66,9 +69,14 @@ final class LoggerFileTests: XCTestCase {
     XCTAssertEqual(logFiles().map(\.lastPathComponent), ["120000-2.log", "120000.log"])
   }
 
-  func testStartTripWithoutLinesOpensNoFileAtOnce() {
+  func testStartTripNamesTheFileAfterTheFirstLineNotAfterTheTrip() {
+    Logger.log(.info, message: "\(marker) drive 1")
+    setTime(2026, 11, 1, 12, 0, 9)
     Logger.startTrip()
-    XCTAssertTrue(logFiles().isEmpty)
+    setTime(2026, 11, 1, 12, 0, 20)
+    Logger.log(.info, message: "\(marker) drive 2")
+
+    XCTAssertEqual(logFiles().map(\.lastPathComponent), ["120000.log", "120020.log"])
   }
 
   func testMidnightContinuesTheFileInTheFolderOfTheNextDay() throws {
@@ -122,11 +130,28 @@ final class LoggerFileTests: XCTestCase {
     clockLock.unlock()
   }
 
-  /// The log files under the logs folder, sorted by their paths.
+  /// The log files of the faked days that hold a marker line, sorted by their paths. A foreign line of the app may
+  /// open a file of its own under the faked clock: it has no marker line.
   private func logFiles() -> [URL] {
+    _ = Logger.getLogFileSize() // On the queue of the writer: the lines before it are written.
+    return fakeDayFiles().filter { file in
+      file.pathExtension == "log" && ((try? lines(of: file)) ?? []).contains { $0.contains(marker) }
+    }
+  }
+
+  /// Everything under the logs folder that lies in a folder of a faked day, folders included.
+  private func fakeDayFiles() -> [URL] {
     guard let paths = FileManager.default.subpaths(atPath: logsFolder.path) else { return [] }
-    return paths.sorted().map { logsFolder.appendingPathComponent($0) }.filter {
-      $0.pathExtension == "log"
+    return paths.sorted().filter { path in fakeDays.contains { path.contains("/" + $0 + "/") || path.hasSuffix("/" + $0) } }
+      .map { logsFolder.appendingPathComponent($0) }
+  }
+
+  private let fakeDays = ["2026-11-01", "2026-11-02"]
+
+  private func removeFakeDays() {
+    guard let paths = FileManager.default.subpaths(atPath: logsFolder.path) else { return }
+    for path in paths where fakeDays.contains(where: { path.hasSuffix("/" + $0) }) {
+      try? FileManager.default.removeItem(at: logsFolder.appendingPathComponent(path))
     }
   }
 
