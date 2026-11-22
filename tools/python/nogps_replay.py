@@ -75,6 +75,14 @@ MANUAL = re.compile(r'^(?:Manual mode|enabled) = (\d)')
 TAP = re.compile(r'tap = ms::LatLon\((-?[\d.]+), (-?[\d.]+)\) location = ms::LatLon\((-?[\d.]+), (-?[\d.]+)\) '
                  r'bearing = (-?[\d.]+)')
 CHECKPOINT = re.compile(r'ms::LatLon\((-?[\d.]+), (-?[\d.]+)\)')
+# Since LOGFMT 2 (libs/map/nogps/log_line.hpp) a line of the core begins with a head: the tag, the stable name of a
+# rule, an action or an event, "ms=<unix ms>" and the key=value pairs, and the free sentence follows: "RULE
+# bend_moved ms=1763800000000 kind=bend Bend: moved along the road by 20 m". The tools still read the sentence, so
+# read() takes the head off every line and every pattern here and in nogps_log.py is written for the sentence alone,
+# as it was before LOGFMT 2. Reading the name and the keys instead is #464.
+HEAD_RE = re.compile(r'^(?:RULE|ACTION|EVENT) \w+ (?:\w+=\S+ )+')
+# A data line keeps its tag and has only "ms=" after it: "GYRO ms=1763800000000 12.5 …" is read as "GYRO 12.5 …".
+DATA_MS_RE = re.compile(r'^([A-Z][A-Z_\d]*) ms=\d+ ')
 SLICE_MS = 200
 # A break of the box data longer than this is another trip.
 MAX_STAND_FILL_MS = 600_000
@@ -118,6 +126,15 @@ def days(args):
     print('held out %d of %d days' % (sum(day in held_out for day in counts), len(counts)))
 
 
+def sentence(text):
+    """The line without the head of LOGFMT 2, see HEAD_RE: the sentence of a rule, an action or an event, a data
+    line with its tag and without its "ms=", and any other line as it is."""
+    m = HEAD_RE.match(text)
+    if m:
+        return text[m.end():]
+    return DATA_MS_RE.sub(r'\1 ', text, count=1)
+
+
 def read(paths, day):
     """The lines of the core of the day: the TRIP lines as dictionaries, the others as (ms of the day, text, the
     function that has written it), and when the application was started."""
@@ -142,6 +159,7 @@ def read(paths, day):
                     continue
                 source = SOURCE.match(body)
                 function, text = (source.group(1), source.group(2)) if source else ('', body)
+                text = sentence(text)
                 if text.startswith('TRIP '):
                     fields = dict(FIELD.findall(' ' + text))
                     fields['ms'] = ms

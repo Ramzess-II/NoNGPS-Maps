@@ -2,6 +2,7 @@
 
 #include "map/nogps/clock.hpp"
 #include "map/nogps/delegate.hpp"
+#include "map/nogps/log_line.hpp"
 
 #include "base/assert.hpp"
 #include "base/logging.hpp"
@@ -501,7 +502,7 @@ void Esp32Source::OnLine(std::string_view text)
     // The engine speed on the move is for the check of the speed it gives: the status comes less often than the
     // speed, this line tells how often.
     if (carInfo->m_rpm >= 0 && m_speedKmh > 0 && IsConnected())
-      LOG(LINFO, ("RPM", carInfo->m_rpm, "speed =", m_speedKmh));
+      LOG(LINFO, (LogHead(m_clock, "RPM"), carInfo->m_rpm, "speed =", m_speedKmh));
   }
   auto const obdState = esp32::ParseObdState(*fields);
   if (obdState && obdState != m_obdState)
@@ -558,9 +559,9 @@ void Esp32Source::OnData(esp32::Data const & data)
       // The car reports that it moves a second late. What the sensor has felt before that tells which way the car
       // has started, forward or backward.
       for (size_t i = 0; i < m_accelLinesBeforeStart.size(); ++i)
-        LOG(LINFO, ("ACCB_BEFORE", m_accelLinesBeforeStart.size() - i, m_accelLinesBeforeStart[i]));
+        LOG(LINFO, (LogHead(m_clock, "ACCB_BEFORE"), m_accelLinesBeforeStart.size() - i, m_accelLinesBeforeStart[i]));
       m_accelLinesBeforeStart.clear();
-      LOG(LINFO, ("ACCB", *line));
+      LOG(LINFO, (LogHead(m_clock, "ACCB"), *line));
     }
     else if (line)
     {
