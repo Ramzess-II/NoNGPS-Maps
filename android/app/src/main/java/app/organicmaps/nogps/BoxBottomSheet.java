@@ -1331,6 +1331,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     }
     else
     {
+      // Nothing from the box yet: the pages of the values show every row with a dash instead of collapsing to a
+      // header and nothing under it.
+      if (mValueIds.length == 0)
+        makeValueRows(NoGps.BoxValue.values());
       Arrays.fill(mValues, "");
     }
     boolean mismatch = false;
