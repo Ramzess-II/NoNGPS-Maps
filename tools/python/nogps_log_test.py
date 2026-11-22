@@ -506,10 +506,31 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(counts['turn moved to a crossing'], dict(fired=1, ok=1, lost=0, tap=0))
         # 10 m/s: 300 m take 30 s, the loss at 55 s is within them.
         self.assertEqual(counts['bend moved'], dict(fired=1, ok=0, lost=1, tap=0))
-        self.assertEqual(counts['bend moved, slow car'], dict(fired=1, ok=0, lost=1, tap=0))
+        self.assertEqual(counts['bend moved, repeated'], dict(fired=1, ok=0, lost=1, tap=0))
         self.assertEqual(counts['turn left by "followed the roads"'], dict(fired=1, ok=0, lost=0, tap=1))
         self.assertEqual(counts['fork branch chosen'], dict(fired=1, ok=1, lost=0, tap=0))
         self.assertNotIn('loop', counts)
+
+    def test_speed_not_fresh_does_not_stretch_the_window(self):
+        # 10 m/s from the rule at 10 s, "speed=-1" (not fresh) from 20 s to 80 s: the car does not drive back, so the
+        # 300 m are driven by 98 s and the loss at 99 s is outside the window.
+        trip = self.trip([(10, 'Loop: the way driven lies on the roads 20 m away, moved there')],
+                         lambda s: dict(speed='-1') if 20 <= s < 80 else dict(lost='1') if s >= 99 else {})
+        self.assertEqual(trip.rule_counts()['loop'], dict(fired=1, ok=1, lost=0, tap=0))
+
+    def test_the_gps_speed_does_not_drive_the_window(self):
+        # The car stands (speed=0) from 20 s to 80 s while GPS still reports 36 km/h: the window follows the car, so
+        # the 300 m are not driven before the loss at 90 s.
+        trip = self.trip([(10, 'Loop: the way driven lies on the roads 20 m away, moved there')],
+                         lambda s: dict(speed='0') if 20 <= s < 80 else dict(lost='1') if s >= 90 else {})
+        self.assertEqual(trip.rule_counts()['loop'], dict(fired=1, ok=0, lost=1, tap=0))
+
+    def test_a_tap_of_the_panel_is_not_a_map_tap(self):
+        tap = 'ACTION tap ms=1760000020000 by=%s tap = ms::LatLon(10.0, 20.0) location = ms::LatLon(10.0, 20.0)'
+        for by, key in (('gps', 'ok'), ('user', 'tap')):
+            trip = self.trip([(10, 'Loop: the way driven lies on the roads 20 m away, moved there'),
+                              (20, tap % by)])
+            self.assertEqual(trip.rule_counts()['loop'][key], 1, by)
 
     def test_a_road_already_lost_is_not_a_new_loss(self):
         trip = self.trip([(30, 'Loop: the way driven lies on the roads 20 m away, moved there')],
@@ -639,6 +660,8 @@ class TaggedLinesTest(unittest.TestCase):
         log = logfmt2(android_drive(seconds=120, stand=0))
         log += [core('10-08', 18 * 3600 + sec, 'F', text) for sec, text in (
             (10, 'RULE bend_moved ms=1760000010000 kind=bend Bend: moved along the road by 20 m'),
+            (15, 'RULE bend_moved_repeated ms=1760000015000 kind=bend Bend: moved along the road by 20 m, '
+                 'told repeatedly'),
             (20, 'RULE bend_confirmed ms=1760000020000 kind=bend Bend: the position fits the road, ahead by 1 m'),
             (30, 'RULE loop ms=1760000030000 Loop: the way driven lies on the roads 20 m away, moved there'),
             (40, 'RULE fork_branch ms=1760000040000 FORK the car goes along the branch 5 m aside'),
@@ -649,8 +672,30 @@ class TaggedLinesTest(unittest.TestCase):
                  'WAY misses the roads at 3 points where it was shown, at 1 there, marks 2'))]
         counts = analyse(('app.log', log)).trips[0].rule_counts()
         self.assertEqual({name for name, count in counts.items() if count['fired']},
-                         {'bend moved', 'bend confirmed', 'loop', 'fork branch chosen', 'followed apart', 'late turn',
-                          'road lost', 'mark switched by the way'})
+                         {'bend moved', 'bend moved, repeated', 'bend confirmed', 'loop', 'fork branch chosen',
+                          'followed apart', 'late turn', 'road lost', 'mark switched by the way'})
+
+    def test_repeated_bend_is_counted_apart_from_bend(self):
+        """Both kinds of bend_moved_repeated count, the ordinary bend and the gentle one."""
+        for name, texts in (
+                ('LOGFMT 1', ['Bend: moved along the road by 20 m', 'Bend: moved along the road by 30 m, told '
+                              'repeatedly to a slow car', 'Bend: moved along the road by 40 m, told repeatedly',
+                              'Gentle bend: moved along the road by 50 m, told repeatedly']),
+                ('LOGFMT 2', ['RULE bend_moved ms=1 kind=bend Bend: moved along the road by 20 m',
+                              'RULE bend_moved_repeated ms=2 kind=bend Bend: moved along the road by 30 m, '
+                              'told repeatedly',
+                              'RULE bend_moved_repeated ms=3 kind=bend Bend: moved along the road by 40 m, '
+                              'told repeatedly',
+                              'RULE bend_moved_repeated ms=4 kind=gentle Gentle bend: moved along the road by '
+                              '50 m, told repeatedly'])):
+            with self.subTest(name):
+                log = android_drive(seconds=120, stand=0)
+                log += [core('10-08', 18 * 3600 + 10 * (i + 1), 'F', t) for i, t in enumerate(texts)]
+                if name == 'LOGFMT 2':
+                    log = logfmt2(log)
+                counts = analyse(('app.log', log)).trips[0].rule_counts()
+                self.assertEqual(counts['bend moved']['fired'], 1)
+                self.assertEqual(counts['bend moved, repeated']['fired'], 3)
 
     def test_events_of_a_tagged_log_keep_their_category(self):
         day, t = '10-08', 18 * 3600

@@ -39,6 +39,9 @@ on:
       - packaging/**
       - qt*/**
       - tools/**
+      # android/build.gradle runs version.sh for the versionCode and reads the upstream version file.
+      - '!tools/unix/version.sh'
+      - '!tools/unix/nogps_upstream_version.txt'
       - xcode/**
 
 env:
