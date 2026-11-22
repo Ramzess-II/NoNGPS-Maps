@@ -385,14 +385,14 @@ void Engine::OnEsp32BleBytes(std::string_view bytes)
   SaveHeardBox();
 }
 
-void Engine::OnEsp32BleState(BleState state)
+void Engine::OnEsp32BleState(BleState state, bool bondLost)
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());
   if (!m_inertial)
     return;
   // Before the box hears of it: the new file of a trip starts with its connection.
-  OnBoxLink(state == BleState::Connected && m_inertial->GetEsp32());
-  m_inertial->OnEsp32BleState(state);
+  OnBoxLink(state == BleState::Connected && !bondLost && m_inertial->GetEsp32());
+  m_inertial->OnEsp32BleState(state, bondLost);
 }
 
 void Engine::OnBoxLink(bool linked)
@@ -2142,6 +2142,9 @@ Status Engine::GetStatus()
   {
     status.m_sourceState = m_inertial->GetSourceState();
     status.m_bleState = m_inertial->GetBleState();
+    // The probe of a lost pairing is not a connection for the UI either.
+    if (status.m_bleState == BleState::Connected && m_inertial->IsBleBondLost())
+      status.m_bleState = BleState::BondLost;
     status.m_deviceName = m_inertial->GetDeviceName();
     status.m_speedKmh = m_inertial->GetSpeedKmh();
     status.m_carInfo = m_inertial->GetCarInfo();
