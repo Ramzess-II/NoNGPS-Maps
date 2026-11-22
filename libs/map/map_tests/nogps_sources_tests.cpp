@@ -1026,6 +1026,15 @@ UNIT_TEST(NoGps_Esp32Source_BusyAsksListOnly)
   TEST(!box.m_source.IsReadOnly(), ());
   TEST(box.m_source.CanUpdate(), ());
 
+  // One more BUSY within kListIntervalMs asks nothing: the box has just listed its phones.
+  box.m_source.Calibrate();
+  size_t const sent = box.SentCount();
+  auto const command = box.LastCommand();
+  box.Refuse("BUSY");
+  TEST_EQUAL(box.SentCount(), sent, ());
+  TEST_EQUAL(box.LastCommand(), command, ());
+  TEST(!box.m_source.IsReadOnly(), ());
+
   // An update runs already.
   box.m_clock.Advance(Esp32Source::kListIntervalMs);
   box.StartUpdate();
