@@ -78,13 +78,26 @@ them such a PR says "Not replayed".
 
 ## Merge train
 
-`/nogps-merge [<PR numbers>] [--no-roll] [--rounds N] [--dry]` lands the open PRs of this repo one by one. It runs
-the issue roller first, unless `--no-roll` or PR numbers are given, then orders what is left (a PR others depend on
-first, then the ones no other PR touches, then the rest oldest first) and takes each one through: merge current
-master into the PR branch and push, review with Fable which posts its findings on the PR, fix with Opus which
-replies on the same PR, review again, and merge with a merge commit once a review comes back clean and CI is
-green. Up to `--rounds` rounds (default 3). The script is `.claude/workflows/nogps-merge.js`; it works in one worktree,
-`<ws>/worktrees/merge-train`, reused by every PR and removed at the end.
+`/nogps-merge [<PR numbers>] [--no-roll] [--rounds N] [--slots N] [--dry]` lands the open PRs of this repo. It runs
+the issue roller first, unless `--no-roll` or PR numbers are given, then splits what is left into two sets and takes
+each PR through: merge current master into the PR branch and push, review with Fable which posts its findings on the
+PR, fix with Opus which replies on the same PR, review again, and merge with a merge commit once a review comes back
+clean and CI is green. Up to `--rounds` rounds (default 3).
+
+Only the merge is serial. The PRs whose files no other queued PR touches are prepped in parallel, up to `--slots` of
+them at once (default 4), each in its own worktree `<ws>/worktrees/merge-<slot>`: they are pushed while the others
+are still being reviewed, so their CI runs overlap instead of one PR waiting out another's checks. The merge gate,
+in `<ws>/worktrees/merge-train`, then takes one prepped PR at a time:
+
+- a PR whose files master gained since its prep goes back for one more update and review round, which spends one of
+  the `--rounds`: the review it has was made without those files;
+- the gate merges the PR into current master locally and runs the core tests on the two together. No CI run makes
+  that check: each PR's own checks ran before the other one landed.
+
+The rest -- the PRs that touch another queued PR's files, and the dependency chains -- follow after, one at a time in
+the gate worktree, as the whole train worked before. The script is `.claude/workflows/nogps-merge.js` and its
+scheduler is tested by `node .claude/workflows/nogps-merge-test.mjs` (stubbed agents, no network); the worktrees go
+away at the end of the run.
 
 IMPORTANT: nothing here rebases a PR branch or force-pushes it, with or without a lease. A branch of an open PR is
 only moved forward: master is merged into it, so every push is a fast-forward. This holds for the train, for a
