@@ -570,9 +570,10 @@ final class NoGpsBoxPage: MWMTableViewController {
 #endif
   }
 
-  /// A box that has taken the firmware restarts by itself.
+  /// A box that has taken the whole firmware checks it and restarts by itself: it ignores OTA_ABORT after that, so
+  /// the update can't be stopped any more.
   private static func canCancelFirmware(_ status: NoGpsStatus) -> Bool {
-    isFirmwareUpdating(status) && status.firmwareUpdate != .restarting
+    isFirmwareUpdating(status) && ![.verifying, .restarting].contains(status.firmwareUpdate)
   }
 
   /// The states follow a label elsewhere ("Box: name ·"), here they start the line.
