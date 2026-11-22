@@ -80,6 +80,8 @@ QUEUE_LINES = 12
 MIN_PAYLOAD = 20
 # What the panel shows of the lines; a minute of NGD at 50 Hz is 3000 lines.
 LINES_KEPT = 4000
+# The panel's Shut down waits this long, so its answer reaches the page before the program is gone.
+QUIT_DELAY_S = 0.3
 
 # Section 9.3, the bits of the data flags, in their order.
 FLAG_BITS = [('IMU_OK', 0x001), ('BIAS_OK', 0x002), ('UP_OK', 0x004), ('FWD_OK', 0x008), ('OBD_OK', 0x010),
@@ -252,6 +254,8 @@ class Box:
         self.rate = 0
         # The phones the panel asks to drop; the tick drops them, see keep_advertisement.
         self.dropping = set()
+        # When the panel's Shut down takes the program down, see tick.
+        self.quit_at = None
 
     def time_ms(self):
         """Section 9.3: the time of the box since it started, which overflows in 49 days."""
@@ -348,6 +352,9 @@ class Box:
             if now - self.rate_at >= 1.0:
                 self.rate = self.rate_sent
                 self.rate_at, self.rate_sent = now, 0
+            if self.quit_at is not None and now >= self.quit_at:
+                # The radio takes the service down as it stops, and main() closes the panel after it.
+                self.radio.stop()
 
     def keep_advertisement(self):
         """The advertisement follows the panel: the name, the flags of BLE-13 and the switch."""
@@ -412,6 +419,7 @@ class Box:
                 'radio': self.radio.name,
                 'manufacturer': self.radio.supports_manufacturer_data,
                 'advertising': state.advertising,
+                'quitting': self.quit_at is not None,
                 'name': state.name(),
                 'uptime_s': int(now - self.started),
                 'rate': self.rate,
@@ -470,6 +478,11 @@ class Box:
                 self.dropping.update(self.phones)
             elif action == 'disconnect':
                 self.dropping.update(p.id for p in self.phones.values() if p.label == label)
+            elif action == 'quit':
+                # Off the air at once, gone a moment later: the page gets the answer first.
+                self.state.advertising = False
+                self.dropping.update(self.phones)
+                self.quit_at = self.clock() + QUIT_DELAY_S
             elif action == 'clear':
                 self.log.clear()
         return self.panel_state()

@@ -330,6 +330,23 @@ class Session(unittest.TestCase):
         made.tick()
         self.assertEqual(radio.advertisement, ('NoGPS-S1', None))
 
+    def test_the_panel_shuts_the_simulator_down(self):
+        made, radio, clock = box()
+        connect(made)
+        made.tick()
+        state = made.panel_action('quit', '')
+        # Off the air at once, and the answer tells the page to stop asking.
+        self.assertFalse(state['advertising'])
+        self.assertTrue(state['quitting'])
+        self.assertFalse(radio.stopped.is_set())
+        # The program itself goes a moment later, so the answer reaches the page first.
+        made.tick()
+        self.assertFalse(radio.stopped.is_set())
+        clock.pass_s(sim.QUIT_DELAY_S)
+        made.tick()
+        self.assertTrue(radio.stopped.is_set())
+        self.assertEqual(made.phones, {})
+
     def test_the_panel_sees_the_phone_and_the_lines(self):
         made, radio, _ = box()
         connect(made)

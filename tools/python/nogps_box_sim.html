@@ -62,6 +62,7 @@ th { color: var(--muted); font-weight: 600; }
   <span id="name">—</span>
   <button id="start">Start</button>
   <button id="stop">Stop</button>
+  <button id="quit" title="Stop the simulator itself, not only its radio">Shut down</button>
   <span id="state">connecting…</span>
 </header>
 <main>
@@ -97,7 +98,7 @@ th { color: var(--muted); font-weight: 600; }
 <script>
 'use strict';
 const $ = (id) => document.getElementById(id);
-let since = 0, lastState = null, follow = true;
+let since = 0, lastState = null, polling = null;
 
 async function get(path) {
   const answer = await fetch(path, {headers: {'X-NoGPS-Box-Sim': '1'}});
@@ -142,6 +143,7 @@ function field(id, value) {
 
 function show(state) {
   lastState = state;
+  if (state.quitting) return stopped('the simulator is shutting down');
   $('name').textContent = state.name;
   $('live').className = 'dot' + (state.advertising ? ' on' : '');
   $('start').disabled = state.advertising;
@@ -197,7 +199,16 @@ function escape(text) {
   return span.innerHTML;
 }
 
+function stopped(why) {
+  if (polling) clearInterval(polling);
+  polling = null;
+  $('state').textContent = why;
+  $('live').className = 'dot';
+  for (const button of document.querySelectorAll('button')) button.disabled = true;
+}
+
 async function poll() {
+  if (!polling) return;
   try {
     show(await get('/api/state'));
     const answer = await get('/api/lines?since=' + since + '&ngd=' + ($('withData').checked ? '1' : '0'));
@@ -213,6 +224,7 @@ async function poll() {
     while (log.childElementCount > 1500) log.firstElementChild.remove();
     if (atEnd) log.scrollTop = log.scrollHeight;
   } catch (e) {
+    // Kept polling: a simulator that comes back fills the panel again, and a shut down one says this.
     $('state').textContent = 'the simulator is not answering: ' + e.message;
     $('live').className = 'dot';
   }
@@ -220,10 +232,13 @@ async function poll() {
 
 $('start').onclick = () => action('start');
 $('stop').onclick = () => action('stop');
+$('quit').onclick = () => {
+  if (confirm('Shut the simulator down? The panel stops with it.')) action('quit');
+};
 $('clear').onclick = () => { $('log').textContent = ''; action('clear'); };
 $('withData').onchange = () => { since = 0; $('log').textContent = ''; };
+polling = setInterval(poll, 500);
 poll();
-setInterval(poll, 500);
 </script>
 </body>
 </html>
