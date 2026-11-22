@@ -511,6 +511,20 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(counts['fork branch chosen'], dict(fired=1, ok=1, lost=0, tap=0))
         self.assertNotIn('loop', counts)
 
+    def test_speed_not_fresh_does_not_stretch_the_window(self):
+        # 10 m/s from the rule at 10 s, "speed=-1" (not fresh) from 20 s to 80 s: the car does not drive back, so the
+        # 300 m are driven by 98 s and the loss at 99 s is outside the window.
+        trip = self.trip([(10, 'Loop: the way driven lies on the roads 20 m away, moved there')],
+                         lambda s: dict(speed='-1') if 20 <= s < 80 else dict(lost='1') if s >= 99 else {})
+        self.assertEqual(trip.rule_counts()['loop'], dict(fired=1, ok=1, lost=0, tap=0))
+
+    def test_a_tap_of_the_panel_is_not_a_map_tap(self):
+        tap = 'ACTION tap ms=1760000020000 by=%s tap = ms::LatLon(10.0, 20.0) location = ms::LatLon(10.0, 20.0)'
+        for by, key in (('gps', 'ok'), ('user', 'tap')):
+            trip = self.trip([(10, 'Loop: the way driven lies on the roads 20 m away, moved there'),
+                              (20, tap % by)])
+            self.assertEqual(trip.rule_counts()['loop'][key], 1, by)
+
     def test_a_road_already_lost_is_not_a_new_loss(self):
         trip = self.trip([(30, 'Loop: the way driven lies on the roads 20 m away, moved there')],
                          lambda s: dict(lost='1') if 20 <= s < 60 else {})

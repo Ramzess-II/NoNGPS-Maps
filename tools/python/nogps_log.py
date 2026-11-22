@@ -792,9 +792,9 @@ class Trip:
 
     def rule_counts(self):
         """{rule name: dict(fired, ok, lost, tap)}: how often a rule of RULES fired in the trip, and what came next
-        within RULE_FOLLOW_M of driving: the road lost (a new loss), a tap of the user, or neither (ok). The loss
-        after "road lost" itself is not counted."""
-        taps = [e['t'] for e in self.events if e['cat'] == 'user' and e['name'] == 'tap']
+        within RULE_FOLLOW_M of driving: the road lost (a new loss), a tap of the user on the map, or neither (ok).
+        The loss after "road lost" itself is not counted."""
+        taps = self.group.map_taps()
         result = {}
         for e in self.events:
             name = next((n for n, rx in RULES if rx.search(e['text'])), None)
@@ -808,7 +808,8 @@ class Trip:
             was_lost = first < len(rows) and rows[first].get('lost') == '1'
             for row, after in zip(rows[first:], rows[first + 1:]):
                 lost = lost or (row.get('lost') == '1' and not was_lost)
-                kmh = num(row, 'speed') or num(row, 'gps_kmh') or 0
+                # The core drives the mark by the speed of the car; "speed=-1" is a speed not fresh.
+                kmh = max(0.0, num(row, 'speed') or 0)
                 walked += kmh / 3.6 * min(5, (after['t'] - row['t']) / 1000)
                 end = after['t']
                 if walked >= RULE_FOLLOW_M or after['t'] > self.end:
