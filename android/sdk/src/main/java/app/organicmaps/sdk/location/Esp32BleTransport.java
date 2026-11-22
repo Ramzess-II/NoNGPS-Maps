@@ -75,7 +75,8 @@ class Esp32BleTransport
   // The pieces of a new firmware of the box, section 18 of the same document.
   private static final UUID OTA = UUID.fromString("02CB0004-C0C3-40D0-819C-5A85998DCD99");
   private static final UUID CLIENT_CONFIG = UUID.fromString("00002902-0000-1000-8000-00805F9B34FB");
-  private static final String NAME_PREFIX = "NoGPS-";
+  // The name of the box is NonGPS-XXXX; the boxes that are not updated still say NoGPS-XXXX.
+  private static final String[] NAME_PREFIXES = {"NonGPS-", "NoGPS-"};
   // The box tells in its advertisement if it accepts a new phone now: company, format version 1, flags.
   private static final int MANUFACTURER_ID = 0xFFFF;
   private static final int FLAG_PAIRING_OPEN = 1;
@@ -322,7 +323,23 @@ class Esp32BleTransport
 
   static boolean isBoxOf(@Nullable String deviceName, @NonNull String id)
   {
-    return (NAME_PREFIX + id).equals(deviceName);
+    return id.equals(boxIdOfName(deviceName));
+  }
+
+  /**
+   * @return the four characters of a name that starts with a prefix of the box, null otherwise.
+   */
+  @Nullable
+  static String boxIdOfName(@Nullable String name)
+  {
+    if (name == null)
+      return null;
+    for (String prefix : NAME_PREFIXES)
+    {
+      if (name.startsWith(prefix))
+        return name.substring(prefix.length());
+    }
+    return null;
   }
 
   /**
@@ -736,7 +753,7 @@ class Esp32BleTransport
   }
 
   /**
-   * @return the four characters of the name of the box, NoGPS-XXXX, null if the box doesn't tell it.
+   * @return the four characters of the name of the box, NonGPS-XXXX or NoGPS-XXXX, null if the box doesn't tell it.
    */
   @SuppressLint("MissingPermission")
   @Nullable
@@ -746,7 +763,7 @@ class Esp32BleTransport
     String name = record != null ? record.getDeviceName() : null;
     if (name == null)
       name = result.getDevice().getName();
-    return name != null && name.startsWith(NAME_PREFIX) ? name.substring(NAME_PREFIX.length()) : null;
+    return boxIdOfName(name);
   }
 
   @NonNull
@@ -792,8 +809,7 @@ class Esp32BleTransport
   {
     for (BluetoothDevice device : adapter.getBondedDevices())
     {
-      final String name = device.getName();
-      if (name != null && name.startsWith(NAME_PREFIX))
+      if (boxIdOfName(device.getName()) != null)
         return true;
     }
     return false;
