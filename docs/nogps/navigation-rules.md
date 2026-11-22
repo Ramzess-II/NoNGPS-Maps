@@ -1086,6 +1086,29 @@
   паузу пропуском. Перевірки щосекунди (втрата GPS, блок, збережене місце машини) йдуть, як і раніше.
 - Позиції, відкинуті ручним режимом чи вимкненим GPS, пишуться лише в русі. Android не пише кожну позицію і
   супутники: позиції є в рядку TRIP (`gps=`, `fused=`, `net=`).
+- Формат журналу `LOGFMT 2` (`nogps::kLogFormat`, `libs/map/nogps/log_line.hpp`): рядок, який читають інструменти,
+  починається з тегу, для правил, подій і дій — ще зі сталої назви, далі `ms=<unix мс, UTC>`, ключі `key=value`
+  і вільне речення: `RULE road_lost ms=1763800000000 m=42 jump=0 The road is lost after …`. Інструменти читають тег,
+  назву й ключі, речення можна переформулювати. Час у `ms` не залежить від місцевого часу й початку запуску, тож
+  рік і північ не треба відновлювати, а журнали двох телефонів лежать на одній осі. Теги:
+  - `TRIP`, `ACC`, `ACCB`, `ACCB_BEFORE`, `GYRO`, `BOXACC`, `TURN`, `CALIBRATION`, `RPM`, `POTHOLE`, `SPRINT`:
+    дані, як і раніше, лише з `ms=` одразу після тегу;
+  - `RULE <назва>`: правила, що рухають позначку: `road_lost`, `late_turn`, `turn_moved_to_crossing`,
+    `turn_followed_roads`, `bend_confirmed`, `bend_moved`, `bend_moved_slow` (ключ `kind=bend|gentle`), `loop`,
+    `fork_branch`, `wait_ahead`, `wait_at_roundabout`, `roundabout_exit`, `followed_apart`, `back_on_road`,
+    `mark_switched_by_way`, `far_mark_taken`, `mark_switched_road_lost`, `mark_switched_turn`,
+    `mark_switched_stand_lost`, `mark_switched_by_user`;
+  - `ACTION <назва>`: що відтворення виконує знову: `start`, `stop`, `gps_off` (`disabled=`, `by=`), `manual`
+    (`enabled=`, `by=`), `tap`, `reverse`, `switch_mark`, `shift` (`m=`), `restore_car`. `by=` каже, хто перемкнув:
+    `user`, а решта (`core`, `gps_back`, `network_back`, `restore`, `box`, `tap`, `gps_mark`, `peer`) — ядро саме;
+  - `EVENT <назва>`: `position_source`, `gps_signal`, `box_state`, `box_ble`, `peer_role` (ключі `from=` і `to=`),
+    `gps_spoofed`, `gps_untrusted`, `gps_off_roads`, `gps_trusted`, `network_back`, `manual_by_itself`;
+  - `MAPS ms=… version=260714`: версія карт (`Storage::GetCurrentDataVersion`); ядро пише її на `Start` і після
+    `Event::TripStarted`, коли платформа вже почала новий файл.
+- Перший рядок кожного файлу пише платформа: `LOGFMT 2 ms=<unix мс> phone=<id> trip=<HHmmss> app=<версія>
+  build=<номер> commit=<хеш> om=<версія Organic Maps>` (Android `LogsManager.getLogFormatLine`, iOS `Logger.mm`).
+  Файл продовження після півночі має такий самий рядок із тим самим `trip=`. Інструмент, що зустрів інший `LOGFMT`,
+  відмовляється від файлу. Рядки застосунку (`file:line`) лишаються з префіксом платформи без змін.
 - Заголовок нового файлу має `NonGPS Maps: 2026.11.08 (26110807, abcdef12), Organic Maps 2026.10.27-10`: версію
   застосунку (на Android `versionName`, як-от `2026.11.08-7-Google`), номер збірки `yyMMddNN`, коміт збірки
   (`git describe --always --dirty`) і версію Organic Maps, на якій зроблено збірку. Їх дає git під час збірки, див.
