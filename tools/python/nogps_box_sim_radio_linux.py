@@ -6,8 +6,9 @@
 nogps_box_sim.py declares the package for uv, which keeps it out of the system Python.
 
 BlueZ gives what CoreBluetooth doesn't: the manufacturer data of BLE-13 is advertised, so the panel's flags of the
-pairing window reach the phone. A pairing with a passkey is BlueZ's to give too, through an agent, but the simulator
-doesn't ask for one yet, so the phone never pairs with it: a debug build of the application is needed here as well.
+pairing window reach the phone and a release build of iOS connects as it does to a box. A pairing with a passkey is
+BlueZ's to give too, through an agent, but the simulator doesn't ask for one yet, so the phone never pairs with it:
+Android takes the lines of a paired box alone, so a debug build is needed here as well.
 
 What it does differently from the box:
 - BlueZ tells the device of a write but not of a StartNotify, so a phone is known from its first command. The lines
