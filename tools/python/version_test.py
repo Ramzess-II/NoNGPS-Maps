@@ -2,22 +2,24 @@
 """Tests of tools/unix/version.sh.
 
 The Android versionCode has to stay inside the RR_yy_MM_dd_CC layout the script documents. A third digit in CC
-shifts the whole code left, and what the markets add to it then passes the signed int Gradle keeps a versionCode
-in: the Wear OS module multiplies the code by ten, which is how a day with 100 commits broke every Android build.
+shifts the whole code left, and android/wear/build.gradle, which multiplies the code by ten for the Wear OS
+artifact, then passes the signed int Gradle keeps a versionCode in: that is how a day with 100 commits broke every
+Android build. The Huawei flavor of android/app/build.gradle adds an offset to the same code and stays far below
+the ceiling, so the Wear OS factor is the one checked here.
 """
 
 import os
+import re
 import subprocess
 import tempfile
 import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 VERSION_SH = os.path.join(ROOT, "tools", "unix", "version.sh")
+WEAR_GRADLE = os.path.join(ROOT, "android", "wear", "build.gradle")
 
 INT_MAX = 2**31 - 1
 PLAY_MAX = 21_00_00_00_00  # The greatest versionCode Google Play takes.
-HUAWEI_BASE = 1_00_00_00_00  # 01_00_00_00_00 in android/app/build.gradle.
-WEAR_FACTOR = 10  # android/wear/build.gradle.
 
 DAY = "2026-11-22T12:00:00+0000"
 
@@ -34,6 +36,14 @@ def make_repo(path, commits, date=DAY):
     )
     env = dict(os.environ, GIT_AUTHOR_DATE=date, GIT_COMMITTER_DATE=date)
     subprocess.run(["bash", "-c", script, "bash", path, str(commits)], check=True, env=env)
+
+
+def wear_code(code):
+    """The versionCode android/wear/build.gradle derives from the phone one."""
+    with open(WEAR_GRADLE, encoding="utf-8") as gradle:
+        formula = re.search(r"versionCode rootProject\.ext\.versionCode \* (\d+) \+ (\d+)", gradle.read())
+    assert formula, "the Wear OS versionCode is written another way now: check that it still fits an int"
+    return code * int(formula.group(1)) + int(formula.group(2))
 
 
 def version(path, fmt):
@@ -57,15 +67,14 @@ class VersionTest(unittest.TestCase):
             # The version name keeps the true count, so such a day's builds are still told apart.
             self.assertEqual(version(repo, "android_name"), "2026.11.22-100")
 
-    def test_every_market_fits_an_int(self):
+    def test_the_wear_os_code_fits_an_int(self):
         with tempfile.TemporaryDirectory() as repo:
             # The script reads at most 128 commits, so this is the greatest count it can report, on the
             # last day it can report: the code of the year 2099 with the cap in place.
             make_repo(repo, 128, date="2099-12-31T12:00:00+0000")
             code = int(version(repo, "android_code"))
             self.assertEqual(code, 99_12_31_99)
-            self.assertLessEqual(HUAWEI_BASE + code, PLAY_MAX)
-            self.assertLessEqual(code * WEAR_FACTOR + 1, INT_MAX)
+            self.assertLessEqual(wear_code(code), min(INT_MAX, PLAY_MAX))
 
 
 if __name__ == "__main__":

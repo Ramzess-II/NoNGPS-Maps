@@ -7,6 +7,7 @@ on:
       - '.github/workflows/nogps-version-check.yaml'
       - 'tools/unix/version.sh'
       - 'tools/python/version_test.py'
+      - 'android/wear/build.gradle'  # The test reads the Wear OS versionCode formula from it.
 
 jobs:
   nogps-version-check:
