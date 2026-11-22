@@ -232,18 +232,24 @@ void SpeedUnit::Clear()
 std::string SpeedUnit::Serialize() const
 {
   char buf[64];
-  std::snprintf(buf, sizeof(buf), "%.1f:%.1f", m_mphM, m_kmhM);
+  // The unit itself is kept too: the share alone tells it only while it is over kMphShare, see UpdateUnit().
+  std::snprintf(buf, sizeof(buf), "%.1f:%.1f:%d", m_mphM, m_kmhM, m_mph ? 1 : 0);
   return buf;
 }
 
 void SpeedUnit::Deserialize(std::string_view unit)
 {
   Clear();
-  auto const distances = strings::Tokenize(unit, ":");
-  if (distances.size() != 2 || !strings::to_double(distances[0], m_mphM) || !strings::to_double(distances[1], m_kmhM))
+  auto const values = strings::Tokenize(unit, ":");
+  int mph = 0;
+  if (values.size() != 3 || !strings::to_double(values[0], m_mphM) || !strings::to_double(values[1], m_kmhM) ||
+      !strings::to_int(values[2], mph))
+  {
     Clear();
-  else
-    UpdateUnit();
+    return;
+  }
+  m_mph = mph != 0;
+  UpdateUnit();
 }
 
 bool SpeedFactor::IsGoodSample(double expectedKmh, double gpsKmh)

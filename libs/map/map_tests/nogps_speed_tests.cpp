@@ -345,9 +345,16 @@ UNIT_TEST(NoGps_SpeedUnit_HasHysteresis)
   for (int i = 0; i < 20; ++i)
     unit.OnSample(100, 100 / 3.6, 1, 0);
   TEST_EQUAL(unit.Get(), SpeedUnit::kMph, ());
+  // The unit the hysteresis keeps is restored as it is: the tables were learned in it.
+  SpeedUnit held;
+  held.Deserialize(unit.Serialize());
+  TEST_EQUAL(held.Get(), SpeedUnit::kMph, ());
   for (int i = 0; i < 60; ++i)
     unit.OnSample(100, 100 / 3.6, 1, 0);
   TEST_EQUAL(unit.Get(), 1, ());
+  SpeedUnit back;
+  back.Deserialize(unit.Serialize());
+  TEST_EQUAL(back.Get(), 1, ());
 }
 
 UNIT_TEST(NoGps_SpeedUnit_KeepsKmhCarsAndIgnoresBadSamples)

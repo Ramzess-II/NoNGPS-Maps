@@ -134,8 +134,9 @@ public:
   double Get() const;
 
   void Clear();
+  /// The distances and the unit they have told, "mphM:kmhM:mph".
   std::string Serialize() const;
-  /// Restores the distances kept before, a broken one is ignored.
+  /// Restores the distances and the unit kept before, a broken value is ignored.
   void Deserialize(std::string_view unit);
 
 private:
