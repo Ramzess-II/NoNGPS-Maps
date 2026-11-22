@@ -24,7 +24,7 @@
         android:layout_marginTop="@dimen/margin_base"
         android:layout_marginBottom="@dimen/margin_half"
         android:contentDescription="@string/app_name"
-        app:srcCompat="@drawable/logo"
+        app:srcCompat="@drawable/ic_logo_organicmaps"
         app:tint="?attr/colorLogo" />
 
     <TextView

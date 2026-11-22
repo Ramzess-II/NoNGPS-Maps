@@ -57,7 +57,7 @@
           android:layout_width="@dimen/about_logo"
           android:layout_height="@dimen/about_logo"
           android:contentDescription="@string/app_name"
-          app:srcCompat="@drawable/logo"
+          app:srcCompat="@drawable/ic_logo_organicmaps"
           app:layout_constraintBottom_toBottomOf="parent"
           app:layout_constraintEnd_toStartOf="@+id/linearLayout2"
           app:layout_constraintHorizontal_bias="0.5"

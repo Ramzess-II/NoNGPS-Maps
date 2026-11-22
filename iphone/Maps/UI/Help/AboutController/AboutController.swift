@@ -93,9 +93,10 @@ private extension AboutController {
       stackView.spacing = 15
     }
 
+    // The Organic Maps leaf, not the fork's icon: that one is on About NonGPS Maps.
     func setupLogo() {
       logoImageView.contentMode = .scaleAspectFit
-      logoImageView.image = UIImage(named: "logo")
+      logoImageView.image = UIImage(named: "ic_logo_organicmaps")
     }
 
     // The Organic Maps version the build is based on, not the fork's: that one is on About NonGPS Maps.

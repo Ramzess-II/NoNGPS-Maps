@@ -2,6 +2,7 @@ package app.organicmaps.help;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -18,6 +19,20 @@ import org.w3c.dom.NodeList;
 public class AboutLayoutTest
 {
   private static final String[] LAYOUTS = {"src/main/res/layout/about.xml", "src/main/res/layout-land/about.xml"};
+
+  /** The leaf is one color and the screen tints it per theme; @drawable/logo is the fork's full-color icon. */
+  @Test
+  public void bothOrientationsShowTheTintedOrganicMapsLeaf()
+  {
+    for (String layout : LAYOUTS)
+    {
+      final Element logo = elementWithAttribute(layout, "app:srcCompat", "@drawable/ic_logo_organicmaps");
+      assertNotNull(layout + " shows no @drawable/ic_logo_organicmaps", logo);
+      assertEquals(layout + " does not tint the leaf", "?attr/colorLogo", logo.getAttribute("app:tint"));
+      assertTrue(layout + " still shows the fork's @drawable/logo",
+                 elementWithAttribute(layout, "app:srcCompat", "@drawable/logo") == null);
+    }
+  }
 
   /**
    * A focusable version row swallows the first tap: View.onTouchEvent skips performClick() when the touch takes the
