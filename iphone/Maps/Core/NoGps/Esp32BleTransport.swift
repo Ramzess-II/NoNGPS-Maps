@@ -9,7 +9,9 @@ import UIKit
 /// It works in the background too (bluetooth-central in Info.plist): iOS wakes the app up for the events of the box.
 ///
 /// iOS doesn't tell an app if a device is paired, and pairs by itself when the box asks for it. So the boxes that have
-/// sent data are remembered as the paired ones, and a new box is connected only while it accepts a new phone.
+/// sent data are remembered as the paired ones, and a new box is connected only while it accepts a new phone. A box
+/// with phones that doesn't is tried once when the user adds a car, or has none and didn't forget this box: the
+/// system may still pair it.
 @objc
 final class Esp32BleTransport: NSObject {
   private enum Constants {
@@ -90,6 +92,13 @@ final class Esp32BleTransport: NSObject {
   /// Silent connections to a known box in a row, the last one ended at lastSilentTime.
   private var silentConnections = 0
   private var lastSilentTime: TimeInterval = 0
+  /// Too many silent connections: the lost-pairing hint is shown, and the search goes on once a minute.
+  private var isBondLost = false
+  /// The box with a closed window that has phones is connected once, as it may be paired in the system: its id and
+  /// the flags of its advertisement. Silent, it gets the hint of the flags.
+  private var closedTry: (id: UUID, flags: UInt8)?
+  /// The boxes tried so: not again while their advertisements come.
+  private var triedClosed = Set<UUID>()
   /// The last advertisement of a box that doesn't accept a new phone, and the check that it still comes.
   private var pairingClosedTime: TimeInterval = 0
   private var pairingClosedCheck: DispatchWorkItem?
@@ -120,7 +129,7 @@ final class Esp32BleTransport: NSObject {
   /// HELLO: the box answers as soon as the connection is encrypted.
   @objc
   var isPairing: Bool {
-    guard let peripheral, peripheral.state == .connected, !isHeard else { return false }
+    guard let peripheral, peripheral.state == .connected, !isHeard, closedTry == nil else { return false }
     return !knownBoxes.contains(peripheral.identifier.uuidString)
   }
 
@@ -130,6 +139,8 @@ final class Esp32BleTransport: NSObject {
     isOpen = true
     retryDelay = Constants.retryDelay
     silentConnections = 0
+    isBondLost = false
+    triedClosed.removeAll()
     // A scan started in the background reports a box once: start it again to see the boxes near now.
     foregroundObserver = NotificationCenter.default.addObserver(
       forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
@@ -168,12 +179,18 @@ final class Esp32BleTransport: NSObject {
     writeNext()
   }
 
-  /// The user asks to look for the box again after a failed pairing or a lost bond, which stop the search.
+  /// The user asks to look for the box again after a failed pairing or a lost bond. The search goes on while the
+  /// lost-pairing hint is shown, so a connection of the box may be open: it is dropped and the box is searched at once.
   @objc
   func retry() {
-    guard isOpen, peripheral == nil else { return }
+    guard Self.retrySearches(isOpen: isOpen, hasConnection: peripheral != nil, bondLost: isBondLost) else { return }
+    if peripheral != nil {
+      closeConnection()
+    }
     retryDelay = Constants.retryDelay
     silentConnections = 0
+    isBondLost = false
+    triedClosed.removeAll()
     start()
   }
 
@@ -188,6 +205,8 @@ final class Esp32BleTransport: NSObject {
     closeConnection()
     retryDelay = Constants.retryDelay
     silentConnections = 0
+    isBondLost = false
+    triedClosed.removeAll()
     start()
   }
 
@@ -262,14 +281,14 @@ final class Esp32BleTransport: NSObject {
       return
     default:
       // Bluetooth is starting, centralManagerDidUpdateState() follows.
-      setState(.searching)
+      setState(searchState)
       return
     }
     scan()
     scanStart = ProcessInfo.processInfo.systemUptime
     carIds = Set(NoGps.cars().map(\.carId))
     currentCar = NoGps.status().carId
-    setState(.searching)
+    setState(searchState)
     connectLinked()
     // The box of another car is refused for otherCarDelay: ask again when it has passed.
     guard peripheral == nil else { return }
@@ -296,10 +315,6 @@ final class Esp32BleTransport: NSObject {
   private func scan() {
     central?.scanForPeripherals(withServices: [Constants.service],
                                 options: [CBCentralManagerScanOptionAllowDuplicatesKey: true])
-  }
-
-  private func isPairingOpen(_ advertisementData: [String: Any]) -> Bool {
-    advertisedFlags(advertisementData) & Constants.pairingOpenFlag != 0
   }
 
   /// A box always advertises its flags (BLE-13). A debug build also takes a box that advertises no data at all as
@@ -354,15 +369,20 @@ final class Esp32BleTransport: NSObject {
     UserDefaults.standard.set(Array(forgottenBoxes), forKey: Constants.forgottenBoxesKey)
   }
 
-  private func connect(_ peripheral: CBPeripheral, id: String?, known: Bool, acceptsNewPhone: Bool) {
+  private func connect(_ peripheral: CBPeripheral, id: String?, known: Bool, acceptsNewPhone: Bool,
+                       closedFlags: UInt8? = nil) {
     central?.stopScan()
     cancelPairingClosedCheck()
     self.peripheral = peripheral
     boxId = id
     isKnown = known
     self.acceptsNewPhone = acceptsNewPhone
+    closedTry = closedFlags.map { (peripheral.identifier, $0) }
     peripheral.delegate = self
-    setState(.connecting)
+    // The lost-pairing hint stays while the search goes on.
+    if !isBondLost {
+      setState(.connecting)
+    }
     central?.connect(peripheral)
     scheduleWatchdog(after: Constants.connectWatchdog)
   }
@@ -407,7 +427,8 @@ final class Esp32BleTransport: NSObject {
       if left > 0 {
         schedulePairingClosedCheck(after: left)
       } else {
-        setState(.searching)
+        setState(searchState)
+        triedClosed.removeAll()
       }
     }
     pairingClosedCheck = item
@@ -438,6 +459,7 @@ final class Esp32BleTransport: NSObject {
     isReady = false
     isHeard = false
     acceptsNewPhone = false
+    closedTry = nil
     isKnown = false
     linkedTime = nil
     isWriting = false
@@ -446,13 +468,16 @@ final class Esp32BleTransport: NSObject {
   }
 
   private func restartLater() {
-    let worked = isReady
-    let linkedFor = linkedTime.map { ProcessInfo.processInfo.systemUptime - $0 } ?? 0
-    let silent = linkedFor >= Constants.minSilentLink && !isHeard
-    let known = isKnown
+    let now = ProcessInfo.processInfo.systemUptime
+    let end = Self.afterConnection(
+      heard: isHeard, known: isKnown, closedTry: closedTry != nil, worked: isReady,
+      linkedFor: linkedTime.map { now - $0 }, silentConnections: silentConnections,
+      sinceLastSilent: now - lastSilentTime, bondLost: isBondLost, retryDelay: retryDelay
+    )
+    let tried = closedTry
     closeConnection()
     guard isOpen else { return }
-    if silent, !known {
+    if end.pairingFailed {
       // The system has asked for the code: it was cancelled or wrong, or the box stopped accepting a new phone. Asked
       // again at once, the code window would come back every few seconds, and the box refuses for 60 s after 3 failures
       // (BLE-12).
@@ -460,13 +485,21 @@ final class Esp32BleTransport: NSObject {
       stopUntilRetry(.pairingFailed)
       return
     }
-    if silent, countSilentConnection() {
-      LOG(.warning, "The box has forgotten the phone: \(silentConnections) silent connections")
-      stopUntilRetry(.bondLost)
-      return
+    if end.isSilent {
+      lastSilentTime = now
     }
-    setState(.searching)
-    retryDelay = worked ? Constants.retryDelay : min(Constants.maxRetryDelay, retryDelay * 2)
+    if end.bondLost, !isBondLost {
+      LOG(.warning, "The box has forgotten the phone: \(end.silentConnections) silent connections")
+    }
+    silentConnections = end.silentConnections
+    isBondLost = end.bondLost
+    retryDelay = end.retryDelay
+    setState(searchState)
+    if let tried {
+      // Not paired in the system: the hint of its flags, and it is not tried again while its advertisements come.
+      triedClosed.insert(tried.id)
+      onPairingClosed(tried.flags)
+    }
     schedule(after: retryDelay) { [weak self] in self?.start() }
     // The search, a connection and the box wake the app up, the wait doesn't. The system gives some time to finish it
     // in the background, about 30 s; the box is searched earlier if that is not enough.
@@ -477,6 +510,11 @@ final class Esp32BleTransport: NSObject {
     }
   }
 
+  /// The state while the box is searched: the lost-pairing hint stays until the box is heard.
+  private var searchState: NoGpsBleState {
+    isBondLost ? .bondLost : .searching
+  }
+
   /// The box is not searched until the user asks for it: see retry().
   private func stopUntilRetry(_ newState: NoGpsBleState) {
     // Its end would search again.
@@ -484,13 +522,72 @@ final class Esp32BleTransport: NSObject {
     setState(newState)
   }
 
-  /// Returns true if there are too many silent connections in a row.
-  private func countSilentConnection() -> Bool {
-    let now = ProcessInfo.processInfo.systemUptime
-    let inRow = silentConnections > 0 && now - lastSilentTime <= Constants.silentConnectionsGap
-    silentConnections = inRow ? silentConnections + 1 : 1
-    lastSilentTime = now
-    return silentConnections >= Constants.maxSilentConnections
+  struct ConnectionEnd: Equatable {
+    /// The connection to a new box ended without data: the user has cancelled the code or entered a wrong one.
+    var pairingFailed = false
+    /// The connection to a known box lasted but gave no data.
+    var isSilent = false
+    var silentConnections = 0
+    /// Six silent connections in a row: the hint is shown, the search goes on.
+    var bondLost = false
+    var retryDelay: TimeInterval
+  }
+
+  /// What follows a connection that ended. A silent connection is not a proof of a lost bond (#154), so the search
+  /// goes on once a minute after the hint.
+  static func afterConnection(heard: Bool, known: Bool, closedTry: Bool, worked: Bool, linkedFor: TimeInterval?,
+                              silentConnections: Int, sinceLastSilent: TimeInterval, bondLost: Bool,
+                              retryDelay: TimeInterval) -> ConnectionEnd {
+    var end = ConnectionEnd(silentConnections: silentConnections, bondLost: bondLost,
+                            retryDelay: worked ? Constants.retryDelay
+                              : min(Constants.maxRetryDelay, retryDelay * 2))
+    // A box with a closed window that was tried is not paired, or the user can't tell: it is no silent connection.
+    guard !heard, !closedTry, let linkedFor, linkedFor >= Constants.minSilentLink else { return end }
+    guard known else {
+      end.pairingFailed = true
+      return end
+    }
+    let inRow = silentConnections > 0 && sinceLastSilent <= Constants.silentConnectionsGap
+    end.isSilent = true
+    end.silentConnections = inRow ? silentConnections + 1 : 1
+    // A gap of more than 3 min starts the count again, but only the data of the box take the hint away.
+    end.bondLost = bondLost || end.silentConnections >= Constants.maxSilentConnections
+    if end.bondLost {
+      end.retryDelay = Constants.maxRetryDelay
+    }
+    return end
+  }
+
+  /// Whether the user's Try again searches the box now. A connection open while the lost-pairing hint is shown is a
+  /// search connection of the box thought lost: the caller drops it. A link without the hint works, it is kept.
+  static func retrySearches(isOpen: Bool, hasConnection: Bool, bondLost: Bool) -> Bool {
+    isOpen && (!hasConnection || bondLost)
+  }
+
+  enum FoundBox: Equatable {
+    case connect
+    /// A box with a closed window that has phones: it may be paired in the system.
+    case connectClosed
+    case wait
+    /// Not connected: the hint of its flags.
+    case skip
+  }
+
+  /// Whether a box that is found is connected: |tried| is a box with a closed window that was connected already.
+  static func foundBox(known: Bool, pairingOpen: Bool, hasPhones: Bool, forgotten: Bool, addsCar: Bool, hasCars: Bool,
+                       hasKnownBoxes: Bool, sinceSearchStart: TimeInterval, tried: Bool) -> FoundBox {
+    if known {
+      return .connect
+    }
+    guard pairingOpen else {
+      // The app may have lost the box (a reinstall, the other build) while the system still has the pairing: a new car
+      // is looked for, or the user has none. The box of a forgotten car is not taken this way: it still has the
+      // pairing, so only setting it up again, while it accepts a new phone, brings the car back (#325), as on Android.
+      return hasPhones && (addsCar || (!hasCars && !forgotten)) && !tried ? .connectClosed : .skip
+    }
+    // A box paired already is taken first if it is near: the new one may be somebody else's. Without it the new box is
+    // a second or a replaced one of the user.
+    return !addsCar && hasKnownBoxes && sinceSearchStart < Constants.newBoxDelay ? .wait : .connect
   }
 
   private func endBackgroundWait() {
@@ -555,23 +652,32 @@ extension Esp32BleTransport: CBCentralManagerDelegate {
     // A known box without its name may be of a car: not while a new one is added.
     guard id.map({ isBoxWanted($0, known: known) }) ?? !((newBoxOnly && known) || (!known && isCarLimitReached))
     else { return }
-    let pairingOpen = isPairingOpen(advertisementData)
-    if !known {
+    let flags = advertisedFlags(advertisementData)
+    let pairingOpen = flags & Constants.pairingOpenFlag != 0
+    let forgotten = id.map { forgottenBoxes.contains($0) } == true
+    var closedFlags: UInt8?
+    switch Self.foundBox(
+      known: known, pairingOpen: pairingOpen,
+      hasPhones: flags & (Constants.hasPhonesFlag | Constants.fullFlag) != 0, forgotten: forgotten,
+      addsCar: newBoxOnly, hasCars: !carIds.isEmpty, hasKnownBoxes: !knownBoxes.isEmpty,
+      sinceSearchStart: ProcessInfo.processInfo.systemUptime - scanStart,
+      tried: triedClosed.contains(peripheral.identifier)
+    ) {
+    case .wait:
+      return
+    case .skip:
       // A box accepts a new phone for two minutes after it is powered, if it has no phones, or after a paired phone has
-      // let it. The system asks for the code.
-      guard pairingOpen else {
-        // The box of a forgotten car still knows this phone: powered on again, it takes it back.
-        onPairingClosed(id.map { forgottenBoxes.contains($0) } == true ? 0 : advertisedFlags(advertisementData))
-        return
-      }
-      // A box paired already is taken first if it is near: the new one may be somebody else's. Without it the new box
-      // is a second or a replaced one of the user.
-      if !newBoxOnly, !knownBoxes.isEmpty, ProcessInfo.processInfo.systemUptime - scanStart < Constants.newBoxDelay {
-        return
-      }
+      // let it. The system asks for the code. The box of a forgotten car still knows this phone: powered on again, it
+      // takes it back.
+      onPairingClosed(forgotten ? 0 : flags)
+      return
+    case .connectClosed:
+      closedFlags = forgotten ? 0 : flags
+    case .connect:
+      break
     }
     LOG(.info, "Found \(peripheral.identifier) \(id ?? "-") rssi \(RSSI) known \(known) pairing open \(pairingOpen)")
-    connect(peripheral, id: id, known: known, acceptsNewPhone: pairingOpen)
+    connect(peripheral, id: id, known: known, acceptsNewPhone: pairingOpen, closedFlags: closedFlags)
   }
 
   func centralManager(_: CBCentralManager, didConnect peripheral: CBPeripheral) {
@@ -579,7 +685,7 @@ extension Esp32BleTransport: CBCentralManagerDelegate {
     LOG(.info, "Connected")
     linkedTime = ProcessInfo.processInfo.systemUptime
     // The system asks for the code of a new box now, or of a known one the phone has forgotten.
-    if !isKnown || acceptsNewPhone {
+    if (!isKnown && closedTry == nil) || acceptsNewPhone {
       scheduleWatchdog(after: Constants.pairingWatchdog)
     }
     // Nothing else is asked for: the box asks for the connection it needs by itself.
@@ -639,7 +745,7 @@ extension Esp32BleTransport: CBPeripheralDelegate {
     setState(.connected)
     // A box accepting a new phone may wait for the user to enter its code, even a paired one: the phone may have
     // forgotten it. The data may come before this callback: the box keeps the subscription of a paired phone.
-    if !isHeard, knownBoxes.contains(peripheral.identifier.uuidString), !acceptsNewPhone {
+    if !isHeard, knownBoxes.contains(peripheral.identifier.uuidString) || closedTry != nil, !acceptsNewPhone {
       schedule(after: Constants.silenceTimeout) { [weak self] in
         LOG(.warning, "No data from the box")
         self?.restartLater()
@@ -652,6 +758,8 @@ extension Esp32BleTransport: CBPeripheralDelegate {
     if !isHeard {
       isHeard = true
       silentConnections = 0
+      isBondLost = false
+      closedTry = nil
       timer?.cancel()
       remember(peripheral)
       onBoxHeard()

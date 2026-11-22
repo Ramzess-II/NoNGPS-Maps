@@ -351,8 +351,9 @@ public:
   bool IsManualMode() const { return m_manualMode; }
   void SetManualMode(bool enabled);
   /// Puts the car on the road at the position, e.g. tapped on the map. Works only in the manual mode.
+  /// \param by who puts the car there, for the by= of the log line, see PutMark().
   /// \returns false if there is no road at the position: the car is always on a road.
-  bool SetManualLocation(ms::LatLon const & position);
+  bool SetManualLocation(ms::LatLon const & position, char const * by = "user");
   /// The next tap on the map shows where the car is, see PlaceMarkByTap(): the user has pressed the button for it.
   void SetMarkByTap(bool armed);
   bool IsMarkByTap() const { return m_markByTap; }
@@ -490,7 +491,12 @@ private:
   /// \param heading the way the car looks, nothing if it is not known.
   std::optional<RoadPoint> FindMarkRoad(ms::LatLon const & position, std::optional<double> heading,
                                         double radiusM = kManualSnapRadiusM);
-  void PutMark(ms::LatLon const & position, RoadPoint const & road, double accuracyM = kManualAccuracyM);
+  /// \param by who places the mark: "user" or "tap" for the user on the map, "gps_mark" for the GPS tap of the road
+  /// lost panel, "peer" for the place of the other phone, "core" for a place the core guesses itself. The manual mode
+  /// is already on when the panel or the peer places the mark, so SetManualMode() writes no line and the by= of this
+  /// one is the only way the tools tell a tap of the user from the rest.
+  void PutMark(ms::LatLon const & position, RoadPoint const & road, char const * by,
+               double accuracyM = kManualAccuracyM);
   void EnterManualModeByItself(std::string const & reason);
   void CheckGpsLost();
   void CheckMotionSourceStopped();

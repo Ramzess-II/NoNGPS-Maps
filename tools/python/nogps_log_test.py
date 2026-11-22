@@ -526,6 +526,112 @@ class RulesTest(unittest.TestCase):
         self.assertIn('rare: 1 trips', loop)
 
 
+class LossesTest(unittest.TestCase):
+    TAP = 'tap = ms::LatLon(10.0, 20.0) location = ms::LatLon(10.0, 20.0) bearing = 0'
+
+    def losses(self, fields, taps=(), seconds=60, by=None):
+        log = android_drive(seconds=seconds, stand=0, fields=fields)
+        for sec in taps:
+            head = 'ACTION tap ms=%d by=%s ' % (LOGFMT_MS, by) if by else ''
+            log.append(core('10-08', 18 * 3600 + sec, 'PutMark', head + self.TAP, ms=500))
+        return analyse(('app.log', log)).groups[0].road_losses()
+
+    def lost(self, first, after, **extra):
+        return lambda s: dict(lost='1', **extra) if first <= s < after else {}
+
+    def test_fresh_fix_near_the_mark_is_fixable(self):
+        (loss,) = self.losses(self.lost(10, 20))
+        self.assertEqual((loss['seconds'], loss['fixable_s'], loss['taps']), (10, 0, False))
+
+    def test_old_fix_is_fixed_when_a_new_one_comes(self):
+        def fields(s):
+            if 10 <= s < 20:
+                return dict(lost='1', gps='%.6f,%.6f/5.0/36.0/0/%d.0/3' % (START_LAT + s * 10 * DEG_PER_M, START_LON,
+                                                                          9 if s < 14 else 1))
+            return {}
+        (loss,) = self.losses(fields)
+        self.assertEqual(loss['fixable_s'], 4)
+
+    def test_reasons(self):
+        (loss,) = self.losses(self.lost(10, 20, spoofed='1'))
+        self.assertEqual((loss['fixable_s'], loss['why']), (None, 'GPS is spoofed'))
+        (loss,) = self.losses(self.lost(10, 20, gps='%.6f,%.6f/400.0/36.0/0/0.00/3' % (START_LAT, START_LON)))
+        self.assertEqual(loss['why'], 'fix accuracy over 300 m')
+        # The mark is 3 m ahead of the fix: 1000 m away is farther than the loss, the accuracies and 50 m allow.
+        (loss,) = self.losses(self.lost(10, 20, gps='%.6f,%.6f/5.0/36.0/0/0.00/3' % (START_LAT + 1000 * DEG_PER_M,
+                                                                                        START_LON)))
+        self.assertEqual(loss['why'], 'fix too far from the mark')
+
+    def test_distance_driven_since_the_loss_allows_a_farther_fix(self):
+        # 10 m/s: a fix 150 m behind the mark is within driven + 10 + 5 + 50 m once the car has driven 85 m.
+        def fields(s):
+            if 10 <= s < 30:
+                return dict(lost='1', gps='%.6f,%.6f/5.0/36.0/0/0.00/3' % (START_LAT + (s * 10 + 3 - 150) * DEG_PER_M,
+                                                                              START_LON))
+            return {}
+        (loss,) = self.losses(fields)
+        self.assertEqual(loss['fixable_s'], 9)
+
+    def test_tap_and_no_loss(self):
+        losses = self.losses(self.lost(10, 20, spoofed='1'), taps=[14])
+        self.assertTrue(losses[0]['taps'])
+        self.assertEqual(self.losses(lambda s: {}), [])
+
+    def test_the_gps_tap_of_the_panel_is_no_tap_on_the_map(self):
+        """Engine::PutMark writes the same line for the user, the road lost panel, the peer place and the guess of
+        the core: its by= tells them apart. The manual mode is on during a loss, so "ACTION manual" is not written
+        there and cannot tell."""
+        for by in ('gps_mark', 'peer', 'core'):
+            losses = self.losses(self.lost(10, 20, spoofed='1'), taps=[14], by=by)
+            self.assertFalse(losses[0]['taps'], by)
+        for by in ('tap', 'user'):
+            losses = self.losses(self.lost(10, 20, spoofed='1'), taps=[14], by=by)
+            self.assertTrue(losses[0]['taps'], by)
+
+    def test_a_stale_speed_drives_nothing(self):
+        """"speed=-1" is a speed not fresh: it neither drives the loss on nor takes back what the car has driven."""
+        # The fix is 9 s old for 200 s, then a fresh one comes 60 m behind the mark: the 10 m of the mark, the 5 m
+        # of the fix and the 50 m of margin allow it, and a speed of -1 km/h would have eaten them.
+        def fields(s):
+            if s < 10:
+                return {}
+            fresh = s >= 210
+            return dict(lost='1', speed='-1',
+                        gps='%.6f,%.6f/5.0/36.0/0/%d.00/3' % (START_LAT + (s * 10 + 3 - (60 if fresh else 0))
+                                                              * DEG_PER_M, START_LON, 1 if fresh else 9))
+        (loss,) = self.losses(fields, seconds=230)
+        self.assertEqual(loss['fixable_s'], 200)
+
+    def test_a_loss_across_a_stand_is_one_loss(self):
+        """The car stands lost between two drives: standing splits the trips, the loss is one."""
+        lost = self.lost(0, 10 ** 9)
+        log = android_drive(seconds=20, stand=0, fields=lost)
+        # The core writes a standing car every 35 s, see STAND_TRIP_S, and the stand is longer than STAND_SPLIT_S.
+        log += [core('10-08', 18 * 3600 + 22 + s, 'LogTrip',
+                     trip_line(lat=START_LAT + 200 * DEG_PER_M, kmh=0.0, lost='1', speed='0'),
+                     file='nogps/engine.cpp:1526') for s in range(0, 400, 35)]
+        log += android_drive(start=18 * 3600 + 422, seconds=20, stand=0, fields=lost, header=False)
+        analysis = analyse(('app.log', log))
+        self.assertEqual([trip.driven for trip in analysis.trips], [True, False, True])
+        (loss,) = analysis.groups[0].road_losses()
+        self.assertEqual((loss['t'], loss['seconds']), (DAY_MS + (18 * 3600 + 2) * 1000, 441))
+
+    def test_a_loss_after_a_pause_of_the_log_is_another_loss(self):
+        """The app was not running for an hour: what the core kept of the loss across it is not known."""
+        lost = self.lost(0, 10 ** 9)
+        log = android_drive(seconds=20, stand=0, fields=lost)
+        log += android_drive(start=18 * 3600 + 3600, seconds=20, stand=0, fields=lost, header=False)
+        first, second = analyse(('app.log', log)).groups[0].road_losses()
+        self.assertEqual((first['seconds'], second['seconds']), (19, 19))
+
+    def test_report_per_set(self):
+        log = android_drive(seconds=60, stand=0, fields=self.lost(10, 20))
+        out = io.StringIO()
+        with redirect_stdout(out):
+            nogps_log.print_losses(analyse(('app.log', log)))
+        self.assertIn('made from        1         1         0                 0', out.getvalue())
+
+
 class TaggedLinesTest(unittest.TestCase):
     """A line of LOGFMT 2 counts as the sentence of LOGFMT 1 did: a trip of an old log is compared with a replay."""
 
