@@ -59,6 +59,14 @@ class ViewerTest(unittest.TestCase):
         server = self.start()
         self.assertEqual(get(server, '/assets/../nogps_log.py')[0], 404)
         self.assertEqual(get(server, '/assets/README.txt')[0], 404)
+        self.assertEqual(get(server, '/assets/images/../../nogps_log.py')[0], 404)
+        self.assertEqual(get(server, '/assets/other/leaflet.css')[0], 404)
+
+    def test_layer_control_icon_is_served(self):
+        # The collapsed layer control is the only switch of the overlays, and leaflet.css draws it from images/.
+        server = self.start()
+        self.assertEqual(get(server, '/assets/images/layers.png')[0], 200)
+        self.assertEqual(get(server, '/assets/images/layers-2x.png')[0], 200)
 
     def test_the_map_limits_the_zoom(self):
         # Without a tile layer nothing else limits it, and fitBounds of a trip that stood still gives zoom Infinity.

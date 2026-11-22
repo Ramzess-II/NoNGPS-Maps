@@ -27,7 +27,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 import nogps_log
 
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nogps_log_viewer_assets')
-ASSET_TYPES = {'.css': 'text/css', '.js': 'text/javascript'}
+ASSET_TYPES = {'.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png'}
 CONFIG = os.path.expanduser('~/.nogps_log_viewer.json')
 TILE_PATH = re.compile(r'^/tiles/(\d{1,2})/(\d+)/(\d+)\.png$')
 LOCAL_TILES = '/tiles/{z}/{x}/{y}.png'
@@ -137,11 +137,12 @@ def handler(viewer):
                 if url.path.startswith('/assets/'):
                     name = url.path[len('/assets/'):]
                     ext = os.path.splitext(name)[1]
-                    # Only a file of the folder: no subfolders, no "..".
-                    if ext not in ASSET_TYPES or '/' in name or name.startswith('.') or \
-                            not os.path.isfile(os.path.join(ASSETS, name)):
+                    # Only a file of the folder or of its images/, which leaflet.css asks for: no "..".
+                    folder, _, base = name.rpartition('/')
+                    if ext not in ASSET_TYPES or folder not in ('', 'images') or base.startswith('.') or \
+                            not os.path.isfile(os.path.join(ASSETS, folder, base)):
                         return self.fail(404, 'not found')
-                    with open(os.path.join(ASSETS, name), 'rb') as f:
+                    with open(os.path.join(ASSETS, folder, base), 'rb') as f:
                         return self.send(f.read(), ASSET_TYPES[ext])
                 m = TILE_PATH.match(url.path)
                 if m:
