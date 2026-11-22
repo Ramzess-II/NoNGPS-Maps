@@ -230,6 +230,9 @@ void CarStorage::RenameCar(std::string const & id, std::string const & name)
   std::string text = name;
   std::replace(text.begin(), text.end(), '\n', ' ');
   strings::Trim(text);
+  // An empty name erased on the box reads as a wiped flash to another phone, which writes its name back.
+  if (text.empty())
+    return;
   SetCarValue(id, kCarName, text);
 }
 
