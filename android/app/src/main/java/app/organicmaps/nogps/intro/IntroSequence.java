@@ -32,6 +32,15 @@ public final class IntroSequence
   }
 
   /**
+   * Back to the first step: the How NonGPS works page plays the intro again on the same overlay.
+   */
+  public void restart()
+  {
+    mIndex = 0;
+    mTyped = false;
+  }
+
+  /**
    * The step shown now, null when the intro is over.
    */
   @Nullable

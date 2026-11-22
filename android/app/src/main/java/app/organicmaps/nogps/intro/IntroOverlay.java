@@ -104,6 +104,8 @@ public class IntroOverlay extends View
    */
   public void start(@NonNull Anchors anchors, @NonNull Runnable onModal, @NonNull Runnable onEnd)
   {
+    // The overlay outlives a played intro: a second start begins at the modal again.
+    mSequence.restart();
     mAnchors = anchors;
     mOnModal = onModal;
     mOnEnd = onEnd;

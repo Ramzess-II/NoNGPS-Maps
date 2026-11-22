@@ -23,10 +23,17 @@ final class NoGpsIntroController: NSObject {
   /// Tells what the app is and what its panels do, once on the first start on the map.
   @objc
   static func startIfNeeded(in owner: MapViewController) {
-    guard current == nil,
-          NoGpsIntroSequence.isNeeded(shown: UserDefaults.standard.bool(forKey: Constants.shownKey),
+    guard NoGpsIntroSequence.isNeeded(shown: UserDefaults.standard.bool(forKey: Constants.shownKey),
                                       navigating: MWMRouter.isRoutingActive())
     else { return }
+    play(in: owner)
+  }
+
+  /// Plays the intro whatever the flag says: the How NonGPS works page ends here. Every play builds its own
+  /// sequence, so it starts at the modal again.
+  @objc
+  static func play(in owner: MapViewController) {
+    guard current == nil else { return }
     let controller = NoGpsIntroController(owner: owner)
     current = controller
     DispatchQueue.main.asyncAfter(deadline: .now() + Constants.startDelay) {

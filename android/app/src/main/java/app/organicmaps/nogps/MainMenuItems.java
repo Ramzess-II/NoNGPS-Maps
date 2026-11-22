@@ -32,6 +32,8 @@ public final class MainMenuItems
 
     void addPlace();
 
+    void openHowItWorks();
+
     void openAboutNoGps();
 
     void openAboutOrganicMaps();
@@ -65,7 +67,8 @@ public final class MainMenuItems
       trip.add(new Row(R.string.placepage_add_place_button, R.drawable.ic_plus, handlers::addPlace));
 
     final List<Row> about = new ArrayList<>(
-        List.of(new Row(R.string.nogps_about_title, R.drawable.ic_question_mark, handlers::openAboutNoGps),
+        List.of(new Row(R.string.nogps_how_title, R.drawable.ic_question_mark, handlers::openHowItWorks),
+                new Row(R.string.nogps_about_title, R.drawable.ic_info, handlers::openAboutNoGps),
                 new Row(R.string.nogps_about_om_menu, R.drawable.ic_openstreetmap, handlers::openAboutOrganicMaps),
                 new Row(R.string.nogps_box_buy, R.drawable.ic_nogps_box, handlers::buyBox)));
     if (donate)

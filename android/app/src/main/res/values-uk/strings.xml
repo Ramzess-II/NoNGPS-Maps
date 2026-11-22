@@ -1502,4 +1502,16 @@
     <string name="nogps_intro_right_swipe">Проведіть по +/− для масштабу.</string>
     <!-- Balloon of the first start pointing at the panel with the car buttons -->
     <string name="nogps_intro_left">Поверніть машину або вкажіть її рукою. Утримання рухає панель.</string>
+    <!-- Menu row and title of the page that explains the app and plays the intro again -->
+    <string name="nogps_how_title">Як працює NonGPS</string>
+    <!-- Heading of the part of the How NonGPS works page about the panels of the map -->
+    <string name="nogps_how_panels">Панелі мапи</string>
+    <!-- Line of the How NonGPS works page about the bottom bar -->
+    <string name="nogps_how_bottom">Нижня панель: машини, датчик і GPS.</string>
+    <!-- Line of the How NonGPS works page about the panel with the zoom buttons -->
+    <string name="nogps_how_right">Права панель: масштаб і поворот мапи. Утримання рухає панель.</string>
+    <!-- Line of the How NonGPS works page about the panel with the car buttons -->
+    <string name="nogps_how_left">Ліва панель: повернути машину або вказати її рукою. Утримання рухає панель.</string>
+    <!-- Button of the How NonGPS works page that plays the intro of the first start again -->
+    <string name="nogps_how_intro_again">Показати підказки знову</string>
 </resources>

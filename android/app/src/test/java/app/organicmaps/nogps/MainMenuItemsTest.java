@@ -59,6 +59,12 @@ public class MainMenuItemsTest
     }
 
     @Override
+    public void openHowItWorks()
+    {
+      calls.add("howItWorks");
+    }
+
+    @Override
     public void openAboutNoGps()
     {
       calls.add("aboutNoGps");
@@ -115,12 +121,12 @@ public class MainMenuItemsTest
   public void threeGroupsUnderTheMapStyles()
   {
     final List<MenuBottomSheetItem> items = MainMenuItems.create(true, true, 0, new Taps());
-    assertEquals(
-        List.of(R.string.nogps_menu_profile, R.string.settings, R.string.share_my_location, R.string.bookmarks,
-                R.string.download_maps, R.string.start_track_recording, R.string.placepage_add_place_button,
-                R.string.nogps_about_title, R.string.nogps_about_om_menu, R.string.nogps_box_buy, R.string.donate),
-        titles(items));
-    assertEquals(List.of(R.string.nogps_menu_profile, R.string.bookmarks, R.string.nogps_about_title),
+    assertEquals(List.of(R.string.nogps_menu_profile, R.string.settings, R.string.share_my_location, R.string.bookmarks,
+                         R.string.download_maps, R.string.start_track_recording, R.string.placepage_add_place_button,
+                         R.string.nogps_how_title, R.string.nogps_about_title, R.string.nogps_about_om_menu,
+                         R.string.nogps_box_buy, R.string.donate),
+                 titles(items));
+    assertEquals(List.of(R.string.nogps_menu_profile, R.string.bookmarks, R.string.nogps_how_title),
                  groupStarts(items));
   }
 
@@ -128,8 +134,8 @@ public class MainMenuItemsTest
   public void everyRowOpensItsOwnScreen()
   {
     final Taps taps = new Taps();
-    assertEquals(List.of("profile", "settings", "share", "bookmarks", "download", "record", "addPlace", "aboutNoGps",
-                         "aboutOrganicMaps", "buyBox", "donate"),
+    assertEquals(List.of("profile", "settings", "share", "bookmarks", "download", "record", "addPlace", "howItWorks",
+                         "aboutNoGps", "aboutOrganicMaps", "buyBox", "donate"),
                  tapAll(MainMenuItems.create(true, true, 0, taps), taps));
   }
 
@@ -137,11 +143,12 @@ public class MainMenuItemsTest
   public void addPlaceOnlyWithMapEditing()
   {
     final List<MenuBottomSheetItem> items = MainMenuItems.create(false, true, 0, new Taps());
-    assertEquals(List.of(R.string.nogps_menu_profile, R.string.settings, R.string.share_my_location, R.string.bookmarks,
-                         R.string.download_maps, R.string.start_track_recording, R.string.nogps_about_title,
-                         R.string.nogps_about_om_menu, R.string.nogps_box_buy, R.string.donate),
-                 titles(items));
-    assertEquals(List.of(R.string.nogps_menu_profile, R.string.bookmarks, R.string.nogps_about_title),
+    assertEquals(
+        List.of(R.string.nogps_menu_profile, R.string.settings, R.string.share_my_location, R.string.bookmarks,
+                R.string.download_maps, R.string.start_track_recording, R.string.nogps_how_title,
+                R.string.nogps_about_title, R.string.nogps_about_om_menu, R.string.nogps_box_buy, R.string.donate),
+        titles(items));
+    assertEquals(List.of(R.string.nogps_menu_profile, R.string.bookmarks, R.string.nogps_how_title),
                  groupStarts(items));
   }
 
@@ -150,10 +157,10 @@ public class MainMenuItemsTest
   {
     final List<MenuBottomSheetItem> items = MainMenuItems.create(false, false, 0, new Taps());
     assertEquals(List.of(R.string.nogps_menu_profile, R.string.settings, R.string.share_my_location, R.string.bookmarks,
-                         R.string.download_maps, R.string.start_track_recording, R.string.nogps_about_title,
-                         R.string.nogps_about_om_menu, R.string.nogps_box_buy),
+                         R.string.download_maps, R.string.start_track_recording, R.string.nogps_how_title,
+                         R.string.nogps_about_title, R.string.nogps_about_om_menu, R.string.nogps_box_buy),
                  titles(items));
-    assertEquals(List.of(R.string.nogps_menu_profile, R.string.bookmarks, R.string.nogps_about_title),
+    assertEquals(List.of(R.string.nogps_menu_profile, R.string.bookmarks, R.string.nogps_how_title),
                  groupStarts(items));
   }
 

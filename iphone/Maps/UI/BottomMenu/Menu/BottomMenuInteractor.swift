@@ -7,6 +7,7 @@ protocol BottomMenuInteractorProtocol: AnyObject {
   func openSettings()
   func openBookmarks()
   func openProfile()
+  func openHowItWorks()
   func openAbout()
   func openAboutOrganicMaps()
   func buyBox()
@@ -77,6 +78,11 @@ extension BottomMenuInteractor: BottomMenuInteractorProtocol {
   func openProfile() {
     close()
     UIApplication.shared.open(NoGpsLinks.account)
+  }
+
+  func openHowItWorks() {
+    close()
+    mapViewController?.navigationController?.pushViewController(HowNoGpsController(), animated: true)
   }
 
   func openAbout() {

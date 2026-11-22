@@ -1492,4 +1492,16 @@
     <string name="nogps_intro_right_swipe">Slide +/− to zoom.</string>
     <!-- Balloon of the first start pointing at the panel with the car buttons -->
     <string name="nogps_intro_left">Turn the car or point it by hand. Hold to move it.</string>
+    <!-- Menu row and title of the page that explains the app and plays the intro again -->
+    <string name="nogps_how_title">How NonGPS works</string>
+    <!-- Heading of the part of the How NonGPS works page about the panels of the map -->
+    <string name="nogps_how_panels">The panels of the map</string>
+    <!-- Line of the How NonGPS works page about the bottom bar -->
+    <string name="nogps_how_bottom">Bottom bar: the cars, the box and GPS.</string>
+    <!-- Line of the How NonGPS works page about the panel with the zoom buttons -->
+    <string name="nogps_how_right">Right panel: zoom and the direction of the map. Hold it to move the panel.</string>
+    <!-- Line of the How NonGPS works page about the panel with the car buttons -->
+    <string name="nogps_how_left">Left panel: turn the car or point it by hand. Hold it to move the panel.</string>
+    <!-- Button of the How NonGPS works page that plays the intro of the first start again -->
+    <string name="nogps_how_intro_again">Show the intro again</string>
 </resources>

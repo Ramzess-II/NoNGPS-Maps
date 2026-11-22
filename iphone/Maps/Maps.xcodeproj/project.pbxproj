@@ -18,6 +18,7 @@
 		2C6B64E5A79043179FD58BDC /* SearchOnMapViewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D78F8A0D5C648C585DB2864 /* SearchOnMapViewTests.swift */; };
 		333A4718BABBBFC6A412D69B /* NoGpsBoxSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */; };
 		5C0A7E1B3D2F4A6890B1D004 /* AboutNoGpsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0A7E1B3D2F4A6890B1D003 /* AboutNoGpsController.swift */; };
+		N0GPS2A00000000000000002 /* HowNoGpsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS2A00000000000000001 /* HowNoGpsController.swift */; };
 		5C0A7E1B3D2F4A6890B1D007 /* BottomMenuPresenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0A7E1B3D2F4A6890B1D006 /* BottomMenuPresenterTests.swift */; };
 		34F73F9C1E082FF800AC1FD6 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 34F73F5F1E082FF700AC1FD6 /* InfoPlist.strings */; };
 		34F73F9F1E082FF800AC1FD6 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 34F73F611E082FF800AC1FD6 /* Localizable.strings */; };
@@ -1868,6 +1869,7 @@
 		EF08A25A7AB83AC0C2867A85 /* cy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = cy; path = cy.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsBoxSheet.swift; sourceTree = "<group>"; };
 		5C0A7E1B3D2F4A6890B1D003 /* AboutNoGpsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutNoGpsController.swift; sourceTree = "<group>"; };
+		N0GPS2A00000000000000001 /* HowNoGpsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HowNoGpsController.swift; sourceTree = "<group>"; };
 		5C0A7E1B3D2F4A6890B1D006 /* BottomMenuPresenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomMenuPresenterTests.swift; sourceTree = "<group>"; };
 		F0A0B0002FF2ABCD00FA103D /* BookmarksListCellConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarksListCellConfiguration.swift; sourceTree = "<group>"; };
 		F623DA6A1C9C2731006A3436 /* opening_hours_how_to_edit.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = opening_hours_how_to_edit.html; path = ../../data/opening_hours_how_to_edit.html; sourceTree = "<group>"; };
@@ -3747,6 +3749,7 @@
 			isa = PBXGroup;
 			children = (
 				5C0A7E1B3D2F4A6890B1D003 /* AboutNoGpsController.swift */,
+				N0GPS2A00000000000000001 /* HowNoGpsController.swift */,
 			);
 			path = NoGps;
 			sourceTree = "<group>";
@@ -4907,6 +4910,7 @@
 				N0GPS1B00000000000000005 /* NoGpsIntroController.swift in Sources */,
 				333A4718BABBBFC6A412D69B /* NoGpsBoxSheet.swift in Sources */,
 				5C0A7E1B3D2F4A6890B1D004 /* AboutNoGpsController.swift in Sources */,
+				N0GPS2A00000000000000002 /* HowNoGpsController.swift in Sources */,
 				3AB2A51C1DF5ED4103358BAF /* MWMNoGps.mm in Sources */,
 				9B5728946390BF79AAED06E1 /* Esp32BleTransport.swift in Sources */,
 				ED82BCB22F900F8200FA103D /* main.mm in Sources */,
