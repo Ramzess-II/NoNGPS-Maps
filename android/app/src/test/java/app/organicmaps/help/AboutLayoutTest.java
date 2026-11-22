@@ -64,6 +64,43 @@ public class AboutLayoutTest
     }
   }
 
+  /**
+   * The scrolled column is the only child of a fillViewport ScrollView: when the content is shorter than the
+   * viewport, ScrollView.onMeasure re-measures the column with EXACTLY the viewport height and
+   * LinearLayout.measureVertical gives a match_parent child all the height left, pushing the rows below it off
+   * the screen with nothing to scroll.
+   */
+  @Test
+  public void noScrolledRowTakesTheHeightLeftOver()
+  {
+    for (String layout : LAYOUTS)
+    {
+      final Element column = onlyElementChild(parse(layout).getDocumentElement());
+      assertEquals(layout + " does not scroll a LinearLayout", "LinearLayout", column.getTagName());
+      for (Element row : elementChildren(column))
+        assertTrue(layout + " lets the scrolled " + row.getTagName() + " \"" + row.getAttribute("android:text")
+                       + "\" take the height left over",
+                   !"match_parent".equals(row.getAttribute("android:layout_height")));
+    }
+  }
+
+  private static Element onlyElementChild(Element parent)
+  {
+    final List<Element> children = elementChildren(parent);
+    assertEquals("Expected one child of " + parent.getTagName(), 1, children.size());
+    return children.get(0);
+  }
+
+  private static List<Element> elementChildren(Element parent)
+  {
+    final List<Element> result = new ArrayList<>();
+    final NodeList nodes = parent.getChildNodes();
+    for (int i = 0; i < nodes.getLength(); ++i)
+      if (nodes.item(i) instanceof Element)
+        result.add((Element) nodes.item(i));
+    return result;
+  }
+
   private static Element elementWithAttribute(String layout, String attribute, String value)
   {
     for (Element element : elements(layout, attribute))

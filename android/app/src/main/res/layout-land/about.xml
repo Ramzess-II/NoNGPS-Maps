@@ -174,7 +174,6 @@
         android:text="@string/faq"
         app:drawableStartCompat="@drawable/ic_question_mark" />
 
-
       <TextView
         android:id="@+id/support_us"
         android:textAlignment="viewStart"
