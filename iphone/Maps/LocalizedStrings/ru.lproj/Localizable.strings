@@ -1477,6 +1477,9 @@
 /* Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code */
 "nogps_phone_add" = "Добавить телефон";
 
+/* Title of the dialog that adds a phone to the box of a car. %1$@ is the car name, e.g. "Add a phone to Kia" */
+"nogps_phone_add_to_car" = "Добавить телефон к %1$@";
+
 /* Shown with a one-time pairing code on the paired phone. %1$@ is the time left, e.g. 1:45 */
 "nogps_phone_add_code" = "На новом телефоне откройте «Блок» в NonGPS Maps. Когда телефон спросит код, введите этот. Он действует один раз, ещё %1$@.";
 
@@ -1987,13 +1990,13 @@
 "nogps_intro_title" = "Навигация без GPS";
 
 /* Text of the dialog of the first start: what the app is and that it needs the sensor box */
-"nogps_intro_text" = "Это приложение ведёт вашу машину по карте без GPS. Датчик NonGPS берёт скорость из машины, а повороты — со своих сенсоров, и приложение рисует машину по ним: в тоннеле, во дворе, под мостом, где GPS теряется. Без датчика это обычная офлайн-карта.";
+"nogps_intro_text" = "Приложение ведёт машину по карте там, где теряется GPS: в тоннеле, во дворе, под мостом. Нужен датчик NonGPS — без датчика это обычная офлайн-карта.";
 
 /* Button of the dialog of the first start, opens the video about the app */
-"nogps_intro_video" = "Посмотреть видео";
+"nogps_intro_video" = "Видео с объяснением";
 
-/* Checkbox that closes the dialog of the first start */
-"nogps_intro_understand" = "Да, я понял";
+/* Button that closes the dialog of the first start */
+"nogps_intro_understand" = "Да, я понял: работает с датчиком";
 
 /* Balloon of the first start pointing at the bottom bar */
 "nogps_intro_bottom" = "Машины, датчик и GPS — здесь.";

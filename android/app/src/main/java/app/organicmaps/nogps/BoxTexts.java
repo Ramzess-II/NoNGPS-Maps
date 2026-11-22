@@ -129,6 +129,16 @@ public final class BoxTexts
  && (BuildConfig.DEBUG || !status.bundledFirmware.equals(status.boxFirmware));
   }
 
+  /**
+   * A box that has taken the whole firmware checks it and restarts by itself: it ignores OTA_ABORT after that, so the
+   * update can't be stopped any more.
+   */
+  static boolean canCancelFirmware(@NonNull NoGps.Status status)
+  {
+    final NoGps.FirmwareUpdate update = status.getFirmwareUpdate();
+    return isUpdating(update) && update != NoGps.FirmwareUpdate.VERIFYING && update != NoGps.FirmwareUpdate.RESTARTING;
+  }
+
   static boolean isUpdating(@NonNull NoGps.FirmwareUpdate update)
   {
     return update == NoGps.FirmwareUpdate.STARTING || update == NoGps.FirmwareUpdate.SENDING

@@ -49,10 +49,14 @@
   return NSBundle.mainBundle.infoDictionary[@"NoGpsUpstreamVersion"] ?: @"";
 }
 
+- (NSString *)gitHash
+{
+  return NSBundle.mainBundle.infoDictionary[@"NoGpsGitHash"] ?: @"00000000";
+}
+
 - (NSString *)appVersion
 {
-  NSString * gitHash = NSBundle.mainBundle.infoDictionary[@"NoGpsGitHash"] ?: @"00000000";
-  return [NSString stringWithFormat:@"%@ (%@, %@)", self.bundleVersion, self.buildNumber, gitHash];
+  return [NSString stringWithFormat:@"%@ (%@, %@)", self.bundleVersion, self.buildNumber, self.gitHash];
 }
 
 - (NSString *)fullVersion

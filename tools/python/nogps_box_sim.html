@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoGPS box simulator</title>
+<style>
+:root {
+  --bg: #f7f7f5; --panel: #ffffff; --text: #1f2328; --muted: #6a737d; --line: #dcdcd7; --hover: #eef2f7;
+  --accent: #1c7ed6; --good: #2b8a3e; --bad: #c92a2a; --chip: #eceff3;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171a; --panel: #1d2024; --text: #e6e6e3; --muted: #9aa1a9; --line: #33373d; --hover: #262a30;
+    --accent: #4dabf7; --good: #51cf66; --bad: #ff6b6b; --chip: #2a2e34;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171a; --panel: #1d2024; --text: #e6e6e3; --muted: #9aa1a9; --line: #33373d; --hover: #262a30;
+  --accent: #4dabf7; --good: #51cf66; --bad: #ff6b6b; --chip: #2a2e34;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; overflow: hidden; }
+button, select, input { font: inherit; color: inherit; }
+select, input[type=text], input[type=number] { background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 2px 4px; }
+button { background: var(--panel); border: 1px solid var(--line); border-radius: 5px; padding: 3px 9px; cursor: pointer; }
+button:hover { background: var(--hover); }
+button[disabled] { opacity: .5; cursor: default; }
+header { display: flex; align-items: center; gap: 10px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--panel); flex: none; }
+header b { font-size: 14px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.dot.on { background: var(--good); }
+#state { color: var(--muted); margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+main { flex: 1; display: grid; grid-template-columns: 290px minmax(0, 1fr); min-height: 0; }
+aside { background: var(--panel); border-right: 1px solid var(--line); overflow: auto; padding: 8px 10px; }
+section { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+h4 { margin: 12px 0 4px; font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+h4:first-child { margin-top: 0; }
+label.row { display: flex; align-items: center; gap: 6px; padding: 2px 0; cursor: pointer; }
+label.row input { margin: 0; }
+label.row.off { color: var(--muted); cursor: default; }
+.field { display: flex; align-items: center; gap: 6px; padding: 2px 0; }
+.field span { color: var(--muted); width: 74px; flex: none; }
+.field input { width: 100%; }
+#phones { border-bottom: 1px solid var(--line); padding: 6px 10px; flex: none; max-height: 30%; overflow: auto; }
+table { border-collapse: collapse; width: 100%; }
+th, td { text-align: left; padding: 2px 8px 2px 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { color: var(--muted); font-weight: 600; }
+#logbar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--line); flex: none; }
+#log { flex: 1; overflow: auto; padding: 4px 10px; font: 12px/1.35 ui-monospace, SFMono-Regular, Menlo, monospace; }
+#log div { white-space: pre; }
+#log .in { color: var(--accent); }
+#log .note { color: var(--muted); }
+.hint { color: var(--muted); margin: 4px 0 0; }
+</style>
+</head>
+<body>
+<header>
+  <b>NoGPS box simulator</b>
+  <span class="dot" id="live"></span>
+  <span id="name">—</span>
+  <button id="start">Start</button>
+  <button id="stop">Stop</button>
+  <button id="quit" title="Stop the simulator itself, not only its radio">Shut down</button>
+  <span id="state">connecting…</span>
+</header>
+<main>
+<aside>
+  <h4>Data flags</h4>
+  <div id="flags"></div>
+  <h4>OBD adapter</h4>
+  <select id="obd"></select>
+  <h4>Shake, % of the still limit</h4>
+  <div class="field"><input id="shake" type="number" min="0" max="9999" step="1"></div>
+  <p class="hint">100 is at the limit the box calls still.</p>
+  <h4>Advertised flags (BLE-13)</h4>
+  <div id="adv"></div>
+  <p class="hint" id="advhint"></p>
+  <h4>The box</h4>
+  <div class="field"><span>id</span><input id="box_id" type="text" maxlength="4"></div>
+  <div class="field"><span>firmware</span><input id="firmware" type="text"></div>
+  <div class="field"><span>chip</span><input id="chip" type="text"></div>
+  <div class="field"><span>board</span><input id="board" type="text"></div>
+  <div class="field"><span>gyroscope</span><input id="imu_name" type="text"></div>
+  <p class="hint">A change sends NGI again.</p>
+</aside>
+<section>
+  <div id="phones"></div>
+  <div id="logbar">
+    <label class="row"><input type="checkbox" id="withData"> show NGD</label>
+    <button id="clear">Clear</button>
+    <span id="rate" style="margin-left:auto;color:var(--muted)"></span>
+  </div>
+  <div id="log"></div>
+</section>
+</main>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+let since = 0, lastState = null, polling = null;
+
+async function get(path) {
+  const answer = await fetch(path, {headers: {'X-NoGPS-Box-Sim': '1'}});
+  if (!answer.ok) throw new Error(await answer.text());
+  return answer.json();
+}
+
+async function post(path, body) {
+  const answer = await fetch(path, {method: 'POST', headers: {'X-NoGPS-Box-Sim': '1'}, body: JSON.stringify(body)});
+  if (!answer.ok) throw new Error(await answer.text());
+  show(await answer.json());
+}
+
+function set(values) { post('/api/set', values); }
+function action(name, phone) { post('/api/action', {action: name, phone: phone || ''}); }
+
+function checkboxes(into, values, kind, enabled) {
+  if (into.childElementCount === Object.keys(values).length) {
+    for (const box of into.querySelectorAll('input')) box.checked = !!values[box.dataset.name];
+    return;
+  }
+  into.textContent = '';
+  for (const name of Object.keys(values)) {
+    const label = document.createElement('label');
+    label.className = 'row' + (enabled ? '' : ' off');
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.checked = !!values[name];
+    box.dataset.name = name;
+    box.disabled = !enabled;
+    box.onchange = () => set({[kind]: {[name]: box.checked}});
+    label.append(box, document.createTextNode(name.replace(/_/g, ' ')));
+    into.append(label);
+  }
+}
+
+function field(id, value) {
+  const input = $(id);
+  if (document.activeElement !== input) input.value = value;
+  input.onchange = () => set({[id]: input.value});
+}
+
+function show(state) {
+  lastState = state;
+  if (state.quitting) return stopped('the simulator is shutting down');
+  $('name').textContent = state.name;
+  $('live').className = 'dot' + (state.advertising ? ' on' : '');
+  $('start').disabled = state.advertising;
+  $('stop').disabled = !state.advertising;
+  const phones = state.phones.length;
+  $('state').textContent = [
+    state.radio + ' radio',
+    state.advertising ? 'advertising' : 'off the air',
+    phones ? phones + (phones > 1 ? ' phones' : ' phone') : 'no phone',
+    'flags 0x' + state.flags_value,
+    'up ' + state.uptime_s + ' s',
+  ].join(' · ');
+  $('rate').textContent = state.rate + ' lines/s';
+  checkboxes($('flags'), state.flags, 'flags', true);
+  checkboxes($('adv'), state.adv, 'adv', state.manufacturer);
+  $('advhint').textContent = state.manufacturer
+    ? 'BlueZ advertises them, so a release build connects too.'
+    : 'CoreBluetooth can’t advertise them: a debug build of the app takes a box without them as open.';
+  if ($('obd').childElementCount !== state.obd_states.length) {
+    $('obd').textContent = '';
+    for (const name of state.obd_states) $('obd').append(new Option(name, name));
+    $('obd').onchange = () => set({obd: $('obd').value});
+  }
+  $('obd').value = state.obd;
+  if (document.activeElement !== $('shake')) $('shake').value = state.shake_pct;
+  $('shake').onchange = () => set({shake_pct: Number($('shake').value)});
+  for (const id of ['box_id', 'firmware', 'chip', 'board', 'imu_name']) field(id, state[id]);
+  showPhones(state.phones);
+}
+
+function showPhones(phones) {
+  if (!phones.length) {
+    $('phones').innerHTML = '<p class="hint">No phone. Open the app on a phone nearby: a debug build on macOS.</p>';
+    return;
+  }
+  const rows = phones.map((phone) => {
+    const hello = phone.hello_age_ms < 0 ? 'none' : (phone.hello_age_ms / 1000).toFixed(1) + ' s ago';
+    const name = phone.name || phone.label;
+    return '<tr><td>' + escape(name) + '</td><td>' + (phone.heard ? 'heard' : 'silent') +
+      '</td><td>HELLO ' + hello + '</td><td>' + phone.payload + ' bytes</td><td>' + phone.sent + ' sent</td><td>' +
+      phone.dropped + ' dropped</td><td><button data-phone="' + escape(phone.label) + '">Disconnect</button></td></tr>';
+  });
+  $('phones').innerHTML = '<table><tr><th>phone</th><th></th><th></th><th>notification</th><th></th><th></th><th></th></tr>' +
+    rows.join('') + '</table>';
+  for (const button of $('phones').querySelectorAll('button')) {
+    button.onclick = () => action('disconnect', button.dataset.phone);
+  }
+}
+
+function escape(text) {
+  const span = document.createElement('span');
+  span.textContent = text;
+  return span.innerHTML;
+}
+
+function stopped(why) {
+  if (polling) clearInterval(polling);
+  polling = null;
+  $('state').textContent = why;
+  $('live').className = 'dot';
+  for (const button of document.querySelectorAll('button')) button.disabled = true;
+}
+
+async function poll() {
+  if (!polling) return;
+  try {
+    show(await get('/api/state'));
+    const answer = await get('/api/lines?since=' + since + '&ngd=' + ($('withData').checked ? '1' : '0'));
+    since = answer.next;
+    const log = $('log');
+    const atEnd = log.scrollTop + log.clientHeight >= log.scrollHeight - 20;
+    for (const item of answer.lines) {
+      const div = document.createElement('div');
+      div.className = item.text.startsWith('$') ? (item.out ? 'out' : 'in') : 'note';
+      div.textContent = (item.out ? '→ ' : '← ') + item.text;
+      log.append(div);
+    }
+    while (log.childElementCount > 1500) log.firstElementChild.remove();
+    if (atEnd) log.scrollTop = log.scrollHeight;
+  } catch (e) {
+    // Kept polling: a simulator that comes back fills the panel again, and a shut down one says this.
+    $('state').textContent = 'the simulator is not answering: ' + e.message;
+    $('live').className = 'dot';
+  }
+}
+
+$('start').onclick = () => action('start');
+$('stop').onclick = () => action('stop');
+$('quit').onclick = () => {
+  if (confirm('Shut the simulator down? The panel stops with it.')) action('quit');
+};
+$('clear').onclick = () => { $('log').textContent = ''; action('clear'); };
+$('withData').onchange = () => { since = 0; $('log').textContent = ''; };
+polling = setInterval(poll, 500);
+poll();
+</script>
+</body>
+</html>

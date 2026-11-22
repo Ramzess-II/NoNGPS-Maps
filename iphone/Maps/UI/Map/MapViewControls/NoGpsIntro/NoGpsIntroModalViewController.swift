@@ -1,6 +1,6 @@
-/// The first step of the intro of the first start: what the app is and that it needs the sensor box. The buttons open
-/// the shop and the video and leave the modal open; the checkbox closes it and the balloons follow, see
-/// NoGpsIntroController.
+/// The first step of the intro of the first start: what the app is and that it needs the sensor box. The secondary
+/// buttons open the shop and the video and leave the modal open; the accent button closes it and the balloons follow,
+/// see NoGpsIntroController.
 final class NoGpsIntroModalViewController: UIViewController {
   private enum Constants {
     static let cardMaxWidth = CGFloat(380)
@@ -8,8 +8,9 @@ final class NoGpsIntroModalViewController: UIViewController {
     static let cardInset = CGFloat(20)
     static let cardPadding = CGFloat(20)
     static let dimAlpha = CGFloat(0.5)
-    static let spacing = CGFloat(12)
+    static let spacing = CGFloat(10)
     static let buttonHeight = CGFloat(44)
+    static let buttonPadding = CGFloat(10)
     static let buttonRadius = CGFloat(10)
   }
 
@@ -84,52 +85,46 @@ final class NoGpsIntroModalViewController: UIViewController {
   private func setupContent() {
     let title = UILabel()
     title.text = L("nogps_intro_title")
-    title.font = .boldSystemFont(ofSize: 22)
+    title.font = .systemFont(ofSize: 19, weight: .semibold)
     title.textColor = .label
     title.numberOfLines = 0
+    // Nobody reads a wall of text: the detail belongs to the video and the help, this stays short and quiet.
     let text = UILabel()
     text.text = L("nogps_intro_text")
-    text.font = .systemFont(ofSize: 15)
-    text.textColor = .label
+    text.font = .systemFont(ofSize: 13)
+    text.textColor = .secondaryLabel
     text.numberOfLines = 0
     stack.addArrangedSubview(title)
     stack.addArrangedSubview(text)
-    // The buttons do not close the modal: the user comes back to it from the shop or the video.
-    stack.addArrangedSubview(button(L("nogps_box_buy"), filled: true, action: #selector(buyTapped)))
+    // The shop and the video are secondary and do not close the modal: the user comes back to it.
+    stack.addArrangedSubview(button(L("nogps_box_buy"), filled: false, action: #selector(buyTapped)))
     stack.addArrangedSubview(button(L("nogps_intro_video"), filled: false, action: #selector(videoTapped)))
-    stack.addArrangedSubview(makeCheckbox())
+    stack.addArrangedSubview(button(L("nogps_intro_understand"), filled: true,
+                                    action: #selector(understandTapped)))
   }
 
+  /// The filled button is the only way out of the modal, the rest are quiet.
   private func button(_ title: String, filled: Bool, action: Selector) -> UIButton {
-    let button = UIButton(type: .system)
-    button.setTitle(title, for: .normal)
-    button.titleLabel?.font = .systemFont(ofSize: 17, weight: .medium)
-    button.layer.cornerRadius = Constants.buttonRadius
-    if filled {
-      button.backgroundColor = .linkBlue
-      button.setTitleColor(.white, for: .normal)
-    } else {
-      button.layer.borderWidth = 1
-      button.layer.borderColor = UIColor.linkBlue.cgColor
-      button.setTitleColor(.linkBlue, for: .normal)
+    var config = UIButton.Configuration.filled()
+    config.title = title
+    config.titleAlignment = .center
+    config.baseBackgroundColor = filled ? .linkBlue : .blackOpaque
+    config.baseForegroundColor = filled ? .white : .linkBlue
+    config.cornerStyle = .fixed
+    config.background.cornerRadius = Constants.buttonRadius
+    config.contentInsets = NSDirectionalEdgeInsets(top: Constants.buttonPadding,
+                                                   leading: Constants.buttonPadding,
+                                                   bottom: Constants.buttonPadding,
+                                                   trailing: Constants.buttonPadding)
+    config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+      var attributes = attributes
+      attributes.font = filled ? .systemFont(ofSize: 16, weight: .semibold) : .systemFont(ofSize: 15)
+      return attributes
     }
+    let button = UIButton(configuration: config)
     button.addTarget(self, action: action, for: .touchUpInside)
-    button.heightAnchor.constraint(equalToConstant: Constants.buttonHeight).isActive = true
+    button.heightAnchor.constraint(greaterThanOrEqualToConstant: Constants.buttonHeight).isActive = true
     return button
-  }
-
-  /// A checkmark and the text beside it: the only way out of the modal.
-  private func makeCheckbox() -> UIButton {
-    let checkbox = UIButton(type: .system)
-    checkbox.setImage(UIImage(systemName: "square"), for: .normal)
-    checkbox.setTitle(" " + L("nogps_intro_understand"), for: .normal)
-    checkbox.titleLabel?.font = .systemFont(ofSize: 16)
-    checkbox.titleLabel?.numberOfLines = 0
-    checkbox.contentHorizontalAlignment = .leading
-    checkbox.tintColor = .linkBlue
-    checkbox.setTitleColor(.label, for: .normal)
-    checkbox.addTarget(self, action: #selector(understandTapped(_:)), for: .touchUpInside)
-    return checkbox
   }
 
   @objc
@@ -143,8 +138,7 @@ final class NoGpsIntroModalViewController: UIViewController {
   }
 
   @objc
-  private func understandTapped(_ sender: UIButton) {
-    sender.setImage(UIImage(systemName: "checkmark.square.fill"), for: .normal)
+  private func understandTapped() {
     dismiss(animated: true) { [onClose] in onClose() }
   }
 }

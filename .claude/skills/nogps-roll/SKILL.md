@@ -19,7 +19,7 @@ confirmation at any step.
 1. **Paths.** `ws` is the folder that holds `app/` and `firmware/`. Run `git -C <ws>/app fetch -q origin` and
    `git -C <ws>/firmware fetch -q origin`.
 2. **Queue.** Issues by koloboid or Ramzess-II, open, oldest first, in both repos. Leave out issues labeled
-   `postponed`, firmware issues whose last comment is a roller postpone (koloboid can't label in `ELMandIMU`), and
+   `postponed`, firmware issues whose last comment is a roller postpone, and
    issues that an open PR fixes:
 
    ```bash

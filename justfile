@@ -85,3 +85,15 @@ test filter="NoGps_.*" dir="build/debug":
 [no-cd]
 logs *args:
     {{ if os_family() == "windows" { "python" } else { "python3" } }} {{ quote(justfile_directory() / "tools/python/nogps_log_viewer.py") }} {{args}}
+
+# Open the box simulator and its panel in the browser: a standing sensor box over this computer's Bluetooth
+[unix]
+[no-cd]
+box *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    script={{ quote(justfile_directory() / "tools/python/nogps_box_sim.py") }}
+    # The script declares the package its radio needs; uv puts it in an environment of its own.
+    if command -v uv > /dev/null; then exec uv run --script "$script" {{args}}; fi
+    echo "No uv (https://docs.astral.sh/uv): running with python3, which has no package for the radio" >&2
+    exec python3 "$script" {{args}}

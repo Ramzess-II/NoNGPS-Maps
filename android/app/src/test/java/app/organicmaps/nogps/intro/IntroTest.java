@@ -21,7 +21,7 @@ public class IntroTest
   {
     final IntroSequence sequence = new IntroSequence();
     assertEquals(IntroStep.MODAL, sequence.step());
-    // The modal is not typed: the checkbox opens the first balloon at once.
+    // The modal is not typed: the accent button opens the first balloon at once.
     assertFalse(sequence.isTyping(TEXT, 0));
     sequence.tap(TEXT, 0);
     assertEquals(IntroStep.BOTTOM, sequence.step());
@@ -49,18 +49,18 @@ public class IntroTest
   }
 
   @Test
-  public void typesAboutThreeCharactersASecond()
+  public void typesAboutTwentyCharactersASecond()
   {
     final IntroSequence sequence = new IntroSequence();
     sequence.tap(TEXT, 0);
     assertEquals(IntroStep.BOTTOM, sequence.step());
     assertEquals(0, sequence.revealed(TEXT, 0));
-    assertEquals(3, sequence.revealed(TEXT, 1));
-    assertEquals(30, sequence.revealed(TEXT, 10));
+    assertEquals(10, sequence.revealed(TEXT, 0.5));
+    assertEquals(20, sequence.revealed(TEXT, 1));
     // Never past the end of the text.
     assertEquals(TEXT, sequence.revealed(TEXT, 100));
     assertFalse(sequence.isTyping(TEXT, 100));
-    assertEquals(3, IntroSequence.TYPE_CHARS_PER_S, 0.001);
+    assertEquals(20, IntroSequence.TYPE_CHARS_PER_S, 0.001);
   }
 
   @Test
