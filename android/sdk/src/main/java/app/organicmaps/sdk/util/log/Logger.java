@@ -17,6 +17,7 @@ import java.util.Locale;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /// Thread-safe
@@ -205,12 +206,15 @@ public final class Logger
     private final String mData;
     @Nullable
     private final CountDownLatch mFlushLatch;
+    // Not a line: the lines after it go to a new file.
+    private final boolean mStartsFile;
 
     private LogEntry(@NonNull String logsFolder, @NonNull String data)
     {
       mLogsFolder = logsFolder;
       mData = data;
       mFlushLatch = null;
+      mStartsFile = false;
     }
 
     private LogEntry(@NonNull CountDownLatch flushLatch)
@@ -218,6 +222,15 @@ public final class Logger
       mLogsFolder = null;
       mData = "";
       mFlushLatch = flushLatch;
+      mStartsFile = false;
+    }
+
+    private LogEntry()
+    {
+      mLogsFolder = null;
+      mData = "";
+      mFlushLatch = null;
+      mStartsFile = true;
     }
 
     boolean isFlush()
@@ -240,6 +253,9 @@ public final class Logger
     private final ArrayBlockingQueue<LogEntry> mQueue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
     @NonNull
     private final AtomicInteger mDroppedCount = new AtomicInteger();
+    // A file switch is in the queue: writeSync() applies it before its line instead of jumping over it.
+    @NonNull
+    private final AtomicBoolean mStartFilePending = new AtomicBoolean();
     @NonNull
     private final Object mWriteLock = new Object();
     @NonNull
@@ -290,7 +306,10 @@ public final class Logger
       synchronized (mWriteLock)
       {
         // Error logs bypass the async queue so native CHECK/ASSERT messages are persisted
-        // before aborting, even if older debug/info logs are still waiting in the queue.
+        // before aborting, even if older debug/info logs are still waiting in the queue. A queued file switch is
+        // the exception: it and the lines before it are written first, so this line goes to the file it belongs to.
+        if (mStartFilePending.get())
+          drainQueueLocked();
         writeDroppedCountLocked(logsFolder);
         writeLineLocked(logsFolder, data);
         flushLocked();
@@ -340,15 +359,21 @@ public final class Logger
 
     void startFile()
     {
-      // Under the write lock like writeSync(): an error line is either before the switch or after it, never
-      // misplaced. The queued lines are written first, they are of the file before. The one entry that the writer
-      // thread took from the queue and has not written yet may still land in the new file.
+      // Not under the write lock: a drive starts on the UI thread and the lock is held for seconds while the logs
+      // are zipped. The flag goes up before the marker is queued: an error line logged after this returns finds
+      // the marker and applies it, instead of landing in the file before.
+      mStartFilePending.set(true);
+      final LogEntry entry = new LogEntry();
+      if (mQueue.offer(entry))
+        return;
+      if (mQueue.poll() != null)
+        mDroppedCount.incrementAndGet();
+      if (mQueue.offer(entry))
+        return;
       synchronized (mWriteLock)
       {
-        LogEntry entry;
-        while ((entry = mQueue.poll()) != null)
-          processEntry(entry);
         startFileLocked();
+        mStartFilePending.set(false);
       }
     }
 
@@ -401,12 +426,27 @@ public final class Logger
           return;
         }
 
+        if (entry.mStartsFile)
+        {
+          startFileLocked();
+          mStartFilePending.set(false);
+          return;
+        }
+
         if (entry.mLogsFolder == null)
           return;
 
         writeDroppedCountLocked(entry.mLogsFolder);
         writeLineLocked(entry.mLogsFolder, entry.mData);
       }
+    }
+
+    // The queued entries, the file switch among them, in their order.
+    private void drainQueueLocked()
+    {
+      LogEntry entry;
+      while ((entry = mQueue.poll()) != null)
+        processEntry(entry);
     }
 
     private void writeDroppedCountLocked(@NonNull String logsFolder)
