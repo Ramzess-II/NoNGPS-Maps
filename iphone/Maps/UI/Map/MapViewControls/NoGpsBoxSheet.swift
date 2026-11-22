@@ -415,10 +415,22 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
       field.clearButtonMode = .whileEditing
     }
     alert.addAction(UIAlertAction(title: L("cancel"), style: .cancel))
-    alert.addAction(UIAlertAction(title: L("save"), style: .default) { [weak alert] _ in
+    let save = UIAlertAction(title: L("save"), style: .default) { [weak alert] _ in
       NoGps.renameCar(car.carId, name: alert?.textFields?.first?.text ?? "")
       onRenamed()
-    })
+    }
+    // An empty name is refused: the core keeps the previous one.
+    func isBlank(_ text: String?) -> Bool {
+      (text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    save.isEnabled = !isBlank(car.name)
+    alert.addAction(save)
+    if let field = alert.textFields?.first {
+      NotificationCenter.default.addObserver(forName: UITextField.textDidChangeNotification, object: field,
+                                             queue: .main) { _ in
+        save.isEnabled = !isBlank(field.text)
+      }
+    }
     controller?.present(alert, animated: true)
   }
 
