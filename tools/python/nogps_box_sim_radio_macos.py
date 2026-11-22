@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """The radio of nogps_box_sim.py on macOS: CBPeripheralManager through PyObjC.
 
-  python3 -m pip install pyobjc-framework-CoreBluetooth
+  just boxsim
+
+nogps_box_sim.py declares the package for uv, which keeps it out of the system Python.
 
 macOS asks for Bluetooth of the program that started this one, usually the terminal, and keeps the answer. If it
 refuses, put the script into a small .app of its own: a bundle has an identity and an Info.plist with

@@ -1,7 +1,15 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#     "pyobjc-framework-CoreBluetooth>=10; sys_platform == 'darwin'",
+#     "dbus-next>=0.2.3; sys_platform == 'linux'",
+# ]
+# ///
 """The sensor box of NonGPS Maps, simulated on this computer so a phone can find it without the hardware.
 
-  nogps_box_sim.py [--radio auto|macos|linux|fake] [--id S1] [--port 0] [--no-browser]
+  just boxsim [--radio auto|macos|linux|fake] [--id S1] [--port 0] [--no-browser]
+  uv run --script tools/python/nogps_box_sim.py [the same]
 
 The box stands in a parked car: it advertises the service of the box over Bluetooth LE and sends the NGI, NGS and
 NGD lines of docs/nogps/esp32-firmware-spec.md section 9. A panel in the browser shows what is going on and changes
@@ -19,9 +27,9 @@ What it doesn't simulate, and why:
 - the firmware update, the car values, the phone list and the places of two phones: NGI tells the abilities "BLE"
   alone, and the application asks for none of them.
 
-The radio needs a package; the panel and the tests need none:
-  macOS: python3 -m pip install pyobjc-framework-CoreBluetooth
-  Linux: python3 -m pip install dbus-next
+The radio needs a package -- PyObjC on macOS, dbus-next on Linux -- and the script declares both above, each
+for its own platform, so uv puts them in an environment of its own and nothing is installed into the system
+Python. The panel and the tests need no package at all and run with plain python3, which is how CI runs them.
 
 A radio is a class Radio in nogps_box_sim_radio_<platform>.py with:
   name, supports_manufacturer_data
@@ -514,7 +522,9 @@ def make_radio(kind):
         return importlib.import_module(module_name).Radio()
     except ImportError as e:
         packages = {'macos': 'pyobjc-framework-CoreBluetooth', 'linux': 'dbus-next'}
-        sys.exit('%s needs a package: python3 -m pip install %s\n(%s)' % (module_name, packages.get(kind, '?'), e))
+        sys.exit('%s needs %s, which the script declares for uv: run it with `just boxsim`, or with\n'
+                 '`uv run --script` on this file. Without uv, put the package in a virtual environment of your own.\n'
+                 '(%s)' % (module_name, packages.get(kind, '?'), e))
 
 
 def handler(box):
@@ -594,6 +604,8 @@ def main():
     parser.add_argument('--no-browser', action='store_true')
     args = parser.parse_args()
 
+    # The lines below are a running log: they are of no use when a redirected stdout holds them back.
+    sys.stdout.reconfigure(line_buffering=True)
     radio = make_radio(args.radio)
     box = Box(State(args.id), radio)
     server = ThreadingHTTPServer(('127.0.0.1', args.port), handler(box))

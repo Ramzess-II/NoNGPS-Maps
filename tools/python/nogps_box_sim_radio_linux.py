@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """The radio of nogps_box_sim.py on Linux: a GATT server and an advertisement of BlueZ over D-Bus.
 
-  python3 -m pip install dbus-next
+  just boxsim
+
+nogps_box_sim.py declares the package for uv, which keeps it out of the system Python.
 
 BlueZ gives what CoreBluetooth doesn't: the manufacturer data of BLE-13 is advertised, so the panel's flags of the
 pairing window reach the phone and a release build of the application connects as it does to a box. A pairing with a
