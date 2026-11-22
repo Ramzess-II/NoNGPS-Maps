@@ -132,6 +132,11 @@ JNIEXPORT void Java_app_organicmaps_sdk_Map_nativeOnScroll(JNIEnv *, jclass, jdo
   g_framework->Scroll(distanceX, distanceY);
 }
 
+JNIEXPORT void Java_app_organicmaps_sdk_Map_nativeScale(JNIEnv *, jclass, jdouble factor)
+{
+  g_framework->NativeFramework()->Scale(factor, false);
+}
+
 JNIEXPORT void Java_app_organicmaps_sdk_Map_nativeOnScale(JNIEnv *, jclass, jdouble factor, jdouble focusX,
                                                           jdouble focusY, jboolean isAnim)
 {
