@@ -651,18 +651,22 @@ class TaggedLinesTest(unittest.TestCase):
                  'WAY misses the roads at 3 points where it was shown, at 1 there, marks 2'))]
         counts = analyse(('app.log', log)).trips[0].rule_counts()
         self.assertEqual({name for name, count in counts.items() if count['fired']},
-                         {'bend moved', 'bend moved, repeated', 'bend confirmed', 'loop', 'fork branch chosen', 'followed apart', 'late turn',
-                          'road lost', 'mark switched by the way'})
+                         {'bend moved', 'bend moved, repeated', 'bend confirmed', 'loop', 'fork branch chosen',
+                          'followed apart', 'late turn', 'road lost', 'mark switched by the way'})
 
     def test_repeated_bend_is_counted_apart_from_bend(self):
+        """Both kinds of bend_moved_repeated count, the ordinary bend and the gentle one."""
         for name, texts in (
                 ('LOGFMT 1', ['Bend: moved along the road by 20 m', 'Bend: moved along the road by 30 m, told '
-                              'repeatedly to a slow car', 'Bend: moved along the road by 40 m, told repeatedly']),
+                              'repeatedly to a slow car', 'Bend: moved along the road by 40 m, told repeatedly',
+                              'Gentle bend: moved along the road by 50 m, told repeatedly']),
                 ('LOGFMT 2', ['RULE bend_moved ms=1 kind=bend Bend: moved along the road by 20 m',
                               'RULE bend_moved_repeated ms=2 kind=bend Bend: moved along the road by 30 m, '
                               'told repeatedly',
                               'RULE bend_moved_repeated ms=3 kind=bend Bend: moved along the road by 40 m, '
-                              'told repeatedly'])):
+                              'told repeatedly',
+                              'RULE bend_moved_repeated ms=4 kind=gentle Gentle bend: moved along the road by '
+                              '50 m, told repeatedly'])):
             with self.subTest(name):
                 log = android_drive(seconds=120, stand=0)
                 log += [core('10-08', 18 * 3600 + 10 * (i + 1), 'F', t) for i, t in enumerate(texts)]
@@ -670,7 +674,7 @@ class TaggedLinesTest(unittest.TestCase):
                     log = logfmt2(log)
                 counts = analyse(('app.log', log)).trips[0].rule_counts()
                 self.assertEqual(counts['bend moved']['fired'], 1)
-                self.assertEqual(counts['bend moved, repeated']['fired'], 2)
+                self.assertEqual(counts['bend moved, repeated']['fired'], 3)
 
     def test_events_of_a_tagged_log_keep_their_category(self):
         day, t = '10-08', 18 * 3600

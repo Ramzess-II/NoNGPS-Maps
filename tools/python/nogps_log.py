@@ -145,8 +145,9 @@ RULES = [
     ('turn left by "followed the roads"', r'has followed the roads, the crossing'),
     ('late turn', r'^The car has turned by'),
     # The head of LOGFMT 2 is off by now, so the rule is told by its sentence: "told repeatedly" (bend_moved_repeated,
-    # a slow car or a far place) was "told repeatedly to a slow car" in older logs.
-    ('bend moved, repeated', r'^Bend: moved along the road.*, told repeatedly'),
+    # a slow car or a far place) was "told repeatedly to a slow car" in older logs. Both kinds of the rule, the
+    # ordinary bend and the gentle one, keep their tag in the sentence.
+    ('bend moved, repeated', r'^(?:Gentle bend|Bend): moved along the road.*, told repeatedly'),
     ('bend moved', r'^Bend: moved along the road'),
     ('bend confirmed', r'^Bend: the position fits the road'),
     ('loop', r'^Loop: the way driven'),
