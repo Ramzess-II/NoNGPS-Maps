@@ -93,7 +93,8 @@ private:
 
 // What the navigation has learned about the current car is taken from the settings of the application, nothing is
 // written back to them. A trip driven again as the first one knows no speed errors yet: the lag of the speed and the
-// accelerometer, learned apart from them, are still taken.
+// accelerometer, learned apart from them, are still taken. The unit of the car speed is not: the GYRO lines the trip
+// is driven from carry the speed of the car already converted by it, see InertialNavigator::OnSpeed().
 class ReplayStorage : public Storage
 {
 public:

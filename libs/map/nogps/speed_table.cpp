@@ -184,6 +184,74 @@ std::string SpeedTable::ToString() const
   return result;
 }
 
+void SpeedUnit::OnSample(double carSpeedKmh, double gpsSpeedMps, double dtSec, double accelerationMps2)
+{
+  if (carSpeedKmh < kMinSpeedKmh || dtSec <= 0 || dtSec > kMaxSampleDtSec ||
+      std::fabs(accelerationMps2) > kMaxAccelerationMps2)
+    return;
+  double const gpsKmh = gpsSpeedMps * 3.6;
+  if (gpsKmh < kMinSpeedKmh)
+    return;
+  double const ratio = gpsKmh / carSpeedKmh;
+  double const distanceM = gpsSpeedMps * dtSec;
+  if (ratio >= kMinMphRatio && ratio <= kMaxMphRatio)
+    m_mphM += distanceM;
+  else if (ratio >= 1 / kMaxScaleRatio && ratio <= kMaxScaleRatio)
+    m_kmhM += distanceM;
+  else
+    return;
+  while (m_mphM + m_kmhM > kMaxDistanceM)
+  {
+    m_mphM /= 2;
+    m_kmhM /= 2;
+  }
+  UpdateUnit();
+}
+
+void SpeedUnit::UpdateUnit()
+{
+  double const share = m_mphM / (m_mphM + m_kmhM);
+  if (m_mph)
+    m_mph = share >= kKmhShare;
+  else
+    m_mph = m_mphM >= kMinDistanceM && share >= kMphShare;
+}
+
+double SpeedUnit::Get() const
+{
+  return m_mph ? kMph : 1;
+}
+
+void SpeedUnit::Clear()
+{
+  m_mphM = 0;
+  m_kmhM = 0;
+  m_mph = false;
+}
+
+std::string SpeedUnit::Serialize() const
+{
+  char buf[64];
+  // The unit itself is kept too: the share alone tells it only while it is over kMphShare, see UpdateUnit().
+  std::snprintf(buf, sizeof(buf), "%.1f:%.1f:%d", m_mphM, m_kmhM, m_mph ? 1 : 0);
+  return buf;
+}
+
+void SpeedUnit::Deserialize(std::string_view unit)
+{
+  Clear();
+  auto const values = strings::Tokenize(unit, ":");
+  int mph = 0;
+  if (values.size() != 3 || !strings::to_double(values[0], m_mphM) || !strings::to_double(values[1], m_kmhM) ||
+      !strings::to_int(values[2], mph))
+  {
+    Clear();
+    return;
+  }
+  m_mph = mph != 0;
+  UpdateUnit();
+}
+
 bool SpeedFactor::IsGoodSample(double expectedKmh, double gpsKmh)
 {
   return std::fabs(gpsKmh - expectedKmh) <= std::max(kMaxSampleDiffKmh, kMaxSampleDiffRatio * expectedKmh);

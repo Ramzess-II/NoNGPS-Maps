@@ -2444,6 +2444,96 @@ UNIT_TEST(NoGps_Engine_CarSpeedChecksGpsOnceItsScaleIsMeasured)
   TEST(IsGpsSpoofedBySpeed(env), ());
 }
 
+UNIT_TEST(NoGps_Engine_MphCarSpeedIsConverted)
+{
+  // The box of this car tells 62 where the car drives 100 km/h, and GPS says so for a couple of kilometers.
+  int constexpr kRawKmh = 62;
+  double const realMps = kRawKmh * SpeedUnit::kMph / 3.6;
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  env.Drive(1000, kRawKmh, 0);
+  // Until GPS has told the unit the car speed is taken as it comes.
+  TEST_EQUAL(TripField(env, "speed"), std::to_string(kRawKmh), ());
+  for (int i = 0; i < 80; ++i)
+  {
+    env.Drive(1000, kRawKmh, 0);
+    auto const & position = env.Last().m_position;
+    env.m_engine.OnFix(GpsAt(env.m_clock, East(position), North(position), 90.0, realMps));
+  }
+  TEST_EQUAL(TripField(env, "speed"), "100", ());
+  // The tables learned in the other unit are cleared, the unit is kept for the next trip.
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedTableRanges, 0, ());
+  SpeedUnit saved;
+  saved.Deserialize(env.m_storage.Get<std::string>(Storage::kSpeedUnit, ""));
+  TEST_EQUAL(saved.Get(), SpeedUnit::kMph, ());
+
+  // The application starts again: the first speed of the box is converted already.
+  Env after(true /* inertial */, &roads, SavedBy(env));
+  after.Drive(1000, kRawKmh, 0);
+  TEST_EQUAL(TripField(after, "speed"), "100", ());
+}
+
+UNIT_TEST(NoGps_Engine_SpeedUnitChangeClearsWhatTheOtherUnitLearned)
+{
+  // The roads have measured the error of the raw speed of this car, as far as the clamp of the table allows, and the
+  // user has shifted the mark: both were learned with the car taken for a km/h one.
+  SpeedTable rough(false /* learnsOffset */);
+  rough.OnDistance(62, 400, 500);
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads, [&rough](TestStorage & storage)
+  {
+    storage.Set(Storage::kRoughSpeedTable, rough.Serialize());
+    storage.Set(Storage::kSpeedScale, 1.15);
+  });
+  MarkCar(env, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_roughSpeedTableRanges, 1, ());
+
+  // The box tells 62 where GPS drives 100 km/h: the unit of the car turns out to be mph.
+  int constexpr kRawKmh = 62;
+  double const realMps = kRawKmh * SpeedUnit::kMph / 3.6;
+  for (int i = 0; i < 80; ++i)
+  {
+    env.Drive(1000, kRawKmh, 0);
+    auto const & position = env.Last().m_position;
+    env.m_engine.OnFix(GpsAt(env.m_clock, East(position), North(position), 90.0, realMps));
+  }
+  TEST_EQUAL(TripField(env, "speed"), "100", ());
+  // Nothing learned in the other unit is kept.
+  TEST_EQUAL(env.m_engine.GetStatus().m_roughSpeedTableRanges, 0, ());
+  TEST_EQUAL(env.m_storage.Get<double>(Storage::kSpeedScale, 0), 1.0, ());
+}
+
+UNIT_TEST(NoGps_Engine_ResetOfTheSpeedCalibrationForgetsTheUnit)
+{
+  // The box of this car tells 62 where GPS drives 100 km/h: mph is learned.
+  int constexpr kRawKmh = 62;
+  double const realMps = kRawKmh * SpeedUnit::kMph / 3.6;
+  PieceRoads roads({{-300, 0, 10'000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, 0);
+  for (int i = 0; i < 80; ++i)
+  {
+    env.Drive(1000, kRawKmh, 0);
+    auto const & position = env.Last().m_position;
+    env.m_engine.OnFix(GpsAt(env.m_clock, East(position), North(position), 90.0, realMps));
+  }
+  TEST_EQUAL(TripField(env, "speed"), "100", ());
+
+  // The box is moved to a car that tells km/h and the user resets the calibration: the unit of the car before is
+  // forgotten too, otherwise the mark runs 61% too fast until tens of kilometers of GPS unlearn it.
+  env.m_engine.ClearSpeedCalibration();
+  TEST_EQUAL(TripField(env, "speed"), std::to_string(kRawKmh), ());
+  SpeedUnit saved;
+  saved.Deserialize(env.m_storage.Get<std::string>(Storage::kSpeedUnit, ""));
+  TEST_EQUAL(saved.Get(), 1.0, ());
+
+  // The application starts again: the raw speed of the box is taken as it comes.
+  Env after(true /* inertial */, &roads, SavedBy(env));
+  after.Drive(1000, kRawKmh, 0);
+  TEST_EQUAL(TripField(after, "speed"), std::to_string(kRawKmh), ());
+}
+
 UNIT_TEST(NoGps_SpeedHint_ShownAtSpeedGpsHasNotMeasured)
 {
   // GPS has measured 50-60 km/h.
@@ -3493,6 +3583,22 @@ UNIT_TEST(NoGps_Engine_PotholeIsWhereTheMarkHitsIt)
   TEST_EQUAL(env.m_engine.GetPotholes().size(), 1, ());
 }
 
+UNIT_TEST(NoGps_Engine_PotholeTakesTheConvertedSpeed)
+{
+  // The box of this car tells 7 where the car drives 11 km/h: a hit of a driving car, over PotholeDetector::kMinKmh.
+  SpeedUnit mph;
+  for (int i = 0; i < 60; ++i)
+    mph.OnSample(62, 100 / 3.6, 1, 0);
+  TEST_EQUAL(mph.Get(), SpeedUnit::kMph, ());
+  Env env(true /* inertial */, nullptr,
+          [&mph](TestStorage & storage) { storage.Set(Storage::kSpeedUnit, mph.Serialize()); });
+  MarkCar(env, 50);
+  env.Drive(2000, 7, 0);
+  env.Jolt(7, 12);
+  env.Drive(1500, 7, 0);
+  TEST_EQUAL(env.m_engine.GetPotholes().size(), 1, ());
+}
+
 UNIT_TEST(NoGps_Engine_NoPotholeWhileRoadIsLost)
 {
   Env env(true /* inertial */);
@@ -3625,6 +3731,32 @@ UNIT_TEST(NoGps_BoxCarValues_PhonesOfCarShareItsValues)
   box.Connect(firstAgain);
   TEST_EQUAL(firstAgain.m_engine.GetStatus().m_roughSpeedTableRanges, 0, ());
   TEST_EQUAL(firstAgain.m_engine.GetCars()[0].m_name, "Ауді, моя", ());
+}
+
+UNIT_TEST(NoGps_BoxCarValues_UnitOfCarSpeedGoesWithTheTables)
+{
+  // The phone has learned the box of the car tells mph, and the tables with the speed converted from it.
+  SpeedUnit unit;
+  for (int i = 0; i < 60; ++i)
+    unit.OnSample(62, 100 / 3.6, 1, 0);
+  TEST_EQUAL(unit.Get(), SpeedUnit::kMph, ());
+  SpeedTable table;
+  table.OnDistance(100, 400, 400);
+  CarBox box;
+  Env first(true /* inertial */, nullptr, [&unit, &table](TestStorage & storage)
+  {
+    storage.Set(Storage::kSpeedUnit, unit.Serialize());
+    storage.Set(Storage::kSpeedTable, table.Serialize());
+  });
+  box.Connect(first);
+  TEST_EQUAL(box.m_values["spd_unit"], BoxCarValues::Encode(Storage::kSpeedUnit, unit.Serialize())[0].second, ());
+
+  // Another phone takes the unit with them: the tables are of no use with the raw speed.
+  Env second(true /* inertial */);
+  box.Connect(second);
+  TEST_EQUAL(second.m_engine.GetStatus().m_speedTableRanges, 1, ());
+  second.Drive(1000, 62, 0);
+  TEST_EQUAL(TripField(second, "speed"), "100", ());
 }
 
 UNIT_TEST(NoGps_BoxCarValues_ValueChangedByPhoneIsWritten)
