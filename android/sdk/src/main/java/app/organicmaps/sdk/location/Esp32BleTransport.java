@@ -574,7 +574,7 @@ class Esp32BleTransport
       setState(STATE_CONNECTING);
     mMtu = 23;
     mBonded = bonded;
-    mSimulator = data == null && BuildConfig.DEBUG;
+    mSimulator = isSimulator(BuildConfig.DEBUG, bonded);
     mLinkedMs = -1;
     mHeard = false;
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
@@ -627,13 +627,24 @@ class Esp32BleTransport
 
   /**
    * The subscription needs no encryption: bytes of a device that is not paired in the system may be a fake box's or a
-   * neighbour's. The box simulator of a debug build is taken as it is: its characteristics ask for no pairing, and a
-   * Mac is never bonded, see onBoxFound().
+   * neighbour's. The box simulator of a debug build is taken as it is, see isSimulator().
    */
   @VisibleForTesting
   static boolean takesLines(int bondState, boolean simulator)
   {
     return bondState == BluetoothDevice.BOND_BONDED || simulator;
+  }
+
+  /**
+   * Whether the device connected may be the box simulator (#468), whose characteristics ask for no encryption: the
+   * phone never pairs with it, and the manufacturer data don't tell it apart (BlueZ on Linux advertises them, macOS
+   * doesn't). A real box sends nothing at all until the link is encrypted (BLE-11), so an unpaired device that talks
+   * is the simulator or a fake, and only a debug build listens to it.
+   */
+  @VisibleForTesting
+  static boolean isSimulator(boolean debugBuild, boolean bonded)
+  {
+    return debugBuild && !bonded;
   }
 
   /**

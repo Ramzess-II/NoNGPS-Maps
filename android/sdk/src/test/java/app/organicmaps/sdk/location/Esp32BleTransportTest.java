@@ -122,11 +122,20 @@ public class Esp32BleTransportTest
     assertFalse(Esp32BleTransport.takesLines(BluetoothDevice.BOND_NONE, false));
   }
 
-  // A debug build talks to the box simulator, which asks for no pairing: a Mac is never bonded.
+  // A debug build talks to the box simulator, which asks for no pairing: a computer is never bonded.
   @Test
   public void linesOfTheBoxSimulator_areTaken()
   {
     assertTrue(Esp32BleTransport.takesLines(BluetoothDevice.BOND_NONE, true));
+  }
+
+  // The simulator advertises the manufacturer data on Linux and none on macOS: the pairing tells it apart, not them.
+  @Test
+  public void anUnpairedDeviceOfADebugBuild_isTheSimulator()
+  {
+    assertTrue(Esp32BleTransport.isSimulator(true, false));
+    assertFalse(Esp32BleTransport.isSimulator(true, true));
+    assertFalse(Esp32BleTransport.isSimulator(false, false));
   }
 
   @Test
