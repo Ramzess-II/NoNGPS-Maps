@@ -21,8 +21,9 @@ A debug build of the application is needed on Android: the simulator asks for no
 the lines of a paired box alone. iOS doesn't check the pairing, but on macOS CoreBluetooth can't advertise the
 manufacturer data of BLE-13, so the pairing window flag never reaches the phone, and only a debug build takes an
 advertisement without that data as a box that accepts a new phone. BlueZ on Linux does advertise it, the panel sets
-the flags there, and an iOS release build connects to the simulator as it does to a box. The radio on Windows
-advertises it through a publisher of its own, written without a machine to try it on: see its docstring.
+the flags there, and an iOS release build connects to the simulator as it does to a box. Windows keeps the name
+and the manufacturer data of an advertisement for itself, so the radio there advertises neither and a debug build
+is needed as on macOS; it is written without a machine to try it on, see its docstring.
 
 What it doesn't simulate, and why:
 - the pairing rules (BLE-11, BLE-12, BLE-15, BLE-16): on macOS pairing belongs to the system, with no bt_pin and no

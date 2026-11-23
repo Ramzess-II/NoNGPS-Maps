@@ -4,7 +4,10 @@
   python3 tools/python/nogps_box_sim_test.py
 """
 
+import asyncio
+import contextlib
 import importlib
+import io
 import os
 import sys
 import types
@@ -502,6 +505,12 @@ class WindowsRadioTest(unittest.TestCase):
         return radio
 
     @staticmethod
+    def provider():
+        calls = []
+        return types.SimpleNamespace(calls=calls, start_advertising=lambda parameters: calls.append('start'),
+                                     stop_advertising=lambda: calls.append('stop'))
+
+    @staticmethod
     def client(phone_id, size):
         return types.SimpleNamespace(session=types.SimpleNamespace(device_id=types.SimpleNamespace(id=phone_id)),
                                      max_notification_size=size)
@@ -553,6 +562,20 @@ class WindowsRadioTest(unittest.TestCase):
         radio.disconnect('dev-a')
         radio.disconnect('dev-a')
         self.assertEqual([e for e in radio.events if e[0] == 'disconnect'], [('disconnect', 'dev-a')])
+
+    def test_the_advertisement_is_the_service_alone(self):
+        """Windows reserves the name and the flags of BLE-13, so the panel changes nothing in the advertisement."""
+        self.assertFalse(self.module.Radio.supports_manufacturer_data)
+        radio = self.radio()
+        radio.provider = self.provider()
+        radio.wanted = (sim.NAME_PREFIX + 'S1', None)
+        with contextlib.redirect_stdout(io.StringIO()):
+            asyncio.run(radio.apply())
+            asyncio.run(radio.apply())
+            self.assertEqual(radio.provider.calls, ['start'])
+            radio.wanted = None
+            asyncio.run(radio.apply())
+        self.assertEqual(radio.provider.calls, ['start', 'stop'])
 
     def test_default_radio_of_each_platform(self):
         self.assertEqual([sim.default_radio(p) for p in ('darwin', 'linux', 'win32', 'freebsd')],

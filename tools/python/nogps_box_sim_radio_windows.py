@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
-"""The radio of nogps_box_sim.py on Windows: GattServiceProvider and an advertisement publisher of winsdk.
+"""The radio of nogps_box_sim.py on Windows: a GattServiceProvider of winsdk.
 
   just box
 
-nogps_box_sim.py declares the package for uv, which keeps it out of the system Python.
+nogps_box_sim.py declares the package for uv, which keeps it out of the system Python. winsdk has no wheel past
+Python 3.12, so it is declared for those alone and the radio needs an interpreter of 3.10 to 3.12.
 
 Written without a Windows machine and not tried on one yet: the names of winsdk follow the WinRT documentation, and
 the tests only drive the bookkeeping of the phones over a stub of the package. What a person on Windows has to see:
-the box is found by a phone, the phone subscribes and gets the lines, a write reaches the panel's log, and with
-the pairing window flag set a release build of the application takes the advertisement as a box that accepts a
-new phone (BLE-13).
+the box is found by a phone, the phone subscribes and gets the lines, and a write reaches the panel's log. A debug
+build of the application is needed, as on macOS: the flags of BLE-13 don't go out, see below.
 
-Two advertisements run side by side: the one of the GATT service provider (the service UUID, connectable) and the
-one of the publisher, which carries what the provider's can't: the local name and the manufacturer data of BLE-13.
-If the system refuses the second one next to the first, the log says so and the phone finds the box by its service
-alone, the way it does on macOS.
+One advertisement goes out, the one of the GATT service provider: the service UUID, connectable. The local name
+(0x08, 0x09), the flags (0x01) and the lists of service UUIDs (0x02-0x07) are reserved for the system in the
+advertisement of a publisher, so a publisher can add neither the name of the box nor the service to its own
+advertisement, and the manufacturer data of BLE-13 it may carry would go out without the service UUID. Both
+applications scan with a filter on the service and read the flags of the advertisement that passed it, so that data
+reaches neither of them: supports_manufacturer_data is False, the flags stay here as they do on macOS, and the name
+stays here too, so the application sees a box that doesn't tell which one it is.
 
 What it does differently from the box:
 - the pairing of BLE-11 is the system's: the simulator asks for no passkey, so Android takes the lines of a paired
@@ -30,8 +33,6 @@ import traceback
 import uuid
 
 from winsdk.windows.devices.bluetooth import BluetoothError
-from winsdk.windows.devices.bluetooth.advertisement import (BluetoothLEAdvertisementPublisher,
-                                                            BluetoothLEManufacturerData)
 from winsdk.windows.devices.bluetooth.genericattributeprofile import (GattCharacteristicProperties,
                                                                       GattLocalCharacteristicParameters,
                                                                       GattProtectionLevel, GattServiceProvider,
@@ -57,7 +58,8 @@ def from_buffer(buffer):
 
 class Radio:
     name = 'windows'
-    supports_manufacturer_data = True
+    # Windows keeps the manufacturer data out of the advertisement that carries the service UUID: see the docstring.
+    supports_manufacturer_data = False
 
     def __init__(self):
         self.on_event = lambda *args: None
@@ -66,10 +68,8 @@ class Radio:
         self.provider = None
         self.tx = None
         self.rx = None
-        self.publisher = None
         self.provider_on = False
-        self.publisher_on = False
-        # What the panel wants: (name, manufacturer) or None.
+        # What the panel wants: (name, manufacturer) or None. The manufacturer data is always None here.
         self.wanted = None
         # The phones the box knows -> the length of a notification each takes, and the subscribed ones' handles.
         self.phones = {}
@@ -222,12 +222,9 @@ class Radio:
         return created.characteristic
 
     async def apply(self):
-        """Brings the two advertisements to what the panel wants."""
+        """Brings the advertisement of the service to what the panel wants."""
         if self.provider is None:
             return
-        if self.publisher_on:
-            self.publisher.stop()
-            self.publisher_on = False
         if self.wanted is None:
             if self.provider_on:
                 self.provider.stop_advertising()
@@ -235,19 +232,12 @@ class Radio:
             for phone_id in list(self.phones):
                 self.forget(phone_id)
             return
-        if not self.provider_on:
-            parameters = GattServiceProviderAdvertisingParameters()
-            parameters.is_connectable = True
-            parameters.is_discoverable = True
-            self.provider.start_advertising(parameters)
-            self.provider_on = True
-        name, manufacturer = self.wanted
-        # A publisher is read when it starts, so a new name or new flags need a new one.
-        self.publisher = BluetoothLEAdvertisementPublisher()
-        self.publisher.advertisement.local_name = name
-        # Windows puts the company id in itself: only the format version and the flags go in the data.
-        self.publisher.advertisement.manufacturer_data.append(
-            BluetoothLEManufacturerData(sim.COMPANY_ID, to_buffer(bytes(manufacturer[2:]))))
-        self.publisher.start()
-        self.publisher_on = True
-        print('Advertising as', name)
+        if self.provider_on:
+            # The advertisement holds the service UUID alone, so a new name or new flags change nothing in it.
+            return
+        parameters = GattServiceProviderAdvertisingParameters()
+        parameters.is_connectable = True
+        parameters.is_discoverable = True
+        self.provider.start_advertising(parameters)
+        self.provider_on = True
+        print('Advertising the service of', self.wanted[0], '(Windows keeps the name and the flags out of it)')
