@@ -1588,6 +1588,7 @@
 "nogps_map_data" = "Данные карт © OpenStreetMap и Organic Maps";
 "nogps_source_code" = "Исходный код на GitHub";
 "nogps_box_sleeping" = "спит: двигатель заглушен";
+"nogps_box_battery_lock" = "выключился: низкий заряд аккумулятора. Выньте блок и вставьте снова";
 "nogps_box_obd_sleeping" = "OBD спит: двигатель заглушен";
 "nogps_engine_running" = "работает";
 "nogps_engine_stopped" = "заглушен";
