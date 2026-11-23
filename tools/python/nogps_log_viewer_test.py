@@ -217,6 +217,12 @@ out.folder = await drop({items: [{webkitGetAsEntry: () => dirEntry('/logs', [dir
   [dirEntry('/logs/iPhone_14-1a2b/2026-10-08', [fileEntry('/logs/iPhone_14-1a2b/2026-10-08/181500.log'),
                                                 fileEntry('/logs/iPhone_14-1a2b/2026-10-08/181600.log')])])])}],
                         files: []});
+out.mixed = await drop({items: [{webkitGetAsEntry: () => dirEntry('/logs', [
+  fileEntry('/logs/.DS_Store'), fileEntry('/logs/nogps-replay-out.txt'), fileEntry('/logs/logs.zip'),
+  dirEntry('/logs/Pixel_7-a3f9', [dirEntry('/logs/Pixel_7-a3f9/2026-10-08', [
+    fileEntry('/logs/Pixel_7-a3f9/2026-10-08/181500.log'),
+    fileEntry('/logs/Pixel_7-a3f9/2026-10-08/logcat.log')])])])}],
+                        files: []});
 out.file = await drop({items: [{webkitGetAsEntry: () => fileEntry('/180000.log')}], files: [file('180000.log')]});
 out.text = await drop({items: [{webkitGetAsEntry: () => null}], files: [file('180000.log')]});
 sent.length = 0;
@@ -254,6 +260,12 @@ class PageUploadTest(unittest.TestCase):
                                                     'logs/iPhone_14-1a2b/2026-10-08/181600.log'])
         self.assertEqual(self.query(sent, 'last'), ['0', '1'])
         self.assertEqual([s['body'] for s in sent], ['181500.log', '181600.log'])
+
+    def test_a_dropped_folder_sends_only_its_logs(self):
+        """What the tools take from a folder on the command line: *.log and *.zip, without logcat* and
+        nogps-replay* (LOG_NAME, NOT_LOG_NAME in nogps_trip_log.py). Everything else would be noted as skipped."""
+        self.assertEqual(self.query(self.sent['mixed'], 'name'),
+                         ['logs/logs.zip', 'logs/Pixel_7-a3f9/2026-10-08/181500.log'])
 
     def test_a_dropped_file_sends_its_name(self):
         self.assertEqual(self.query(self.sent['file'], 'name'), ['180000.log'])

@@ -915,20 +915,25 @@ document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click
 // The files of a drop with their path inside a dropped folder: the phone of an OSLog text of iOS comes from the path
 // logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, and a File knows only its name.
 async function droppedFiles(transfer) {
+  // A folder gives only its logs, as log_files() and unpack() do (LOG_NAME, NOT_LOG_NAME in nogps_trip_log.py): a
+  // folder of logs also holds the system log of Android, the files of a replay and whatever else lies next to them.
+  // A file dropped by itself is sent as it is, so the page tells what is wrong with it.
+  const logName = /\.(log|zip)$/i, notLogName = /^(logcat|nogps-replay)/i;
   const entries = [...transfer.items].map(item => item.webkitGetAsEntry && item.webkitGetAsEntry());
   if (!entries.length || entries.includes(null)) return [...transfer.files].map(file => ({file, name: file.name}));
   const result = [];
-  async function walk(entry) {
+  async function walk(entry, inFolder) {
     if (entry.isFile) {
+      if (inFolder && (!logName.test(entry.name) || notLogName.test(entry.name))) return;
       const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
       result.push({file, name: entry.fullPath.replace(/^\//, '')});
       return;
     }
     const reader = entry.createReader();
     for (let batch; (batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject))).length;)
-      for (const child of batch) await walk(child);
+      for (const child of batch) await walk(child, true);
   }
-  for (const entry of entries) await walk(entry);
+  for (const entry of entries) await walk(entry, false);
   return result;
 }
 
