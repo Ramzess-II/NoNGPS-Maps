@@ -254,7 +254,8 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
 }
 
 /// Whether the file goes on, over midnights, in the folder of one of the days: it has the same name in the folder of
-/// the next day, and the trip's calibration is only in the first file.
+/// the next day, so a trip that crossed midnight travels with the file it began in. A trip whose file reached
+/// kMaxLogFileSize before midnight goes on under a new name, so the file with its CALIBRATION line is not taken.
 + (BOOL)logFile:(NSString *)name goesOnInto:(NSSet<NSString *> *)days among:(NSSet<NSString *> *)all
 {
   NSArray<NSString *> * parts = name.pathComponents;

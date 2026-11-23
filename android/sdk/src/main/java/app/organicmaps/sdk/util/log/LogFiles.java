@@ -73,8 +73,9 @@ final class LogFiles
   }
 
   /// The log files of the days, "yyyy-MM-dd", of every phone of the folder, and the files they go on from: a file
-  /// that was started the day before has the same name in the folder of the previous day, with the calibration of the
-  /// trip. The files come in the order of the tree.
+  /// that was started the day before has the same name in the folder of the previous day, so a trip that crossed
+  /// midnight travels with the file it began in. A trip whose file reached MAX_FILE_SIZE before midnight goes on
+  /// under a new name, so the file with its CALIBRATION line is not taken. The files come in the order of the tree.
   @NonNull
   static List<File> ofDays(@NonNull File folder, @NonNull Collection<String> days)
   {
