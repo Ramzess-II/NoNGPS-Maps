@@ -2,13 +2,13 @@ package app.organicmaps.nogps;
 
 /**
  * The pages of the project the app sends the user to: the shop of the Box sheet, of the intro of the first start and
- * of the main menu, the video of the intro, the sources and the project the app is based on. There is no video yet, so
- * it points at the site; it is the single line to change when there is one.
+ * of the main menu, the video of the intro (the YouTube channel), the sources and the project the app is
+ * based on.
  */
 public final class NoGpsLinks
 {
   public static final String SHOP_URL = "https://non-gps.com";
-  public static final String VIDEO_URL = "https://non-gps.com";
+  public static final String VIDEO_URL = "https://www.youtube.com/@openFrimeTv/videos";
   public static final String SOURCE_CODE_URL = "https://github.com/Ramzess-II/NoGPSMaps";
   public static final String ORGANIC_MAPS_URL = "https://organicmaps.app";
 

@@ -29,12 +29,12 @@ std::string Sha256Hex(std::string const & data)
   return hex;
 }
 
-// A build may add a suffix to the version of the box ("0.3.3-dirty"): the numbers tell the firmware.
-std::string_view VersionNumbers(std::string_view version)
+}  // namespace
+
+std::string_view FirmwareVersionNumbers(std::string_view version)
 {
   return version.substr(0, version.find_first_not_of("0123456789."));
 }
-}  // namespace
 
 Esp32Update::Esp32Update(Link & link, Scheduler & scheduler, Clock const & clock)
   : m_link(link)
@@ -242,7 +242,7 @@ bool Esp32Update::IsLateTimeout() const
 // The box has restarted with the new firmware and not with the one it had.
 bool Esp32Update::IsNewFirmware(std::string const & version) const
 {
-  if (VersionNumbers(version) != VersionNumbers(m_version))
+  if (FirmwareVersionNumbers(version) != FirmwareVersionNumbers(m_version))
     return false;
   // The numbers are the same, so only a build suffix can differ ("0.3.3-dirty" for the firmware 0.3.3). A box that
   // tells exactly what it told before an update to another text has the firmware it had.

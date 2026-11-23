@@ -759,6 +759,45 @@ UNIT_TEST(NoGps_Esp32Source_WakingBoxIsConnecting)
   TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_LostPairingProbeIsNoLink)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,14,OFF,,12480"));
+  source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, esp32::kFlagImuOk));
+  source.OnBleState(BleState::BondLost, true);
+  clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+  clock.Advance(Esp32Source::kWakingLinkGapMs);
+  TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
+
+  // Every retry connects for the HELLO the box waits for, and finds nothing: the box stays asleep.
+  for (int i = 0; i < 3; ++i)
+  {
+    size_t const sent = delegate.m_esp32BleSent.size();
+    source.OnBleState(BleState::Connected, true);
+    TEST_EQUAL(delegate.m_esp32BleSent.size(), sent + 1, ());
+    TEST(source.IsBondLost(), ());
+    TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
+    clock.Advance(Esp32Source::kWakingLinkGapMs);
+    source.OnBleState(BleState::BondLost, true);
+    clock.Advance(Esp32Source::kWakingLinkGapMs);
+    TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
+  }
+
+  // The box is heard: the link is a link, with no new connection.
+  source.OnBleState(BleState::Connected, true);
+  source.OnBleState(BleState::Connected, false);
+  TEST(!source.IsBondLost(), ());
+  TEST_EQUAL(source.GetBleState(), BleState::Connected, ());
+  TEST_EQUAL(source.GetState(), SourceState::Connecting, ());
+  source.OnBleBytes(BoxDataLine(2, 60000, 0, 0, esp32::kFlagImuOk));
+  TEST_EQUAL(source.GetState(), SourceState::NoCarData, ());
+}
+
 // The box connected over Bluetooth that has told about itself and takes firmwares.
 class UpdatedBox
 {
@@ -872,6 +911,15 @@ public:
   }
 
   size_t SentCount() const { return m_delegate.m_esp32BleSent.size(); }
+
+  /// \returns how many times the list was asked among the commands sent after the first \a from of them.
+  size_t ListsSince(size_t from) const
+  {
+    size_t lists = 0;
+    for (size_t i = from; i < SentCount(); ++i)
+      lists += m_delegate.m_esp32BleSent[i].find(",BT_LIST*") != std::string::npos ? 1 : 0;
+    return lists;
+  }
 };
 
 UNIT_TEST(NoGps_Esp32Source_ListsAndForgetsPhones)
@@ -927,6 +975,32 @@ UNIT_TEST(NoGps_Esp32Source_ListsAndForgetsPhones)
   box.m_source.ListPhones();
   TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
   TEST_GREATER(box.SentCount(), asked, ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_LostListReplyIsAskedAgain)
+{
+  // The reply to the first list of the connection is lost: without it the role of this phone is unknown.
+  PhonesBox box;
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  TEST(!box.m_source.GetPhones(), ());
+  size_t asked = box.SentCount();
+  box.m_clock.Advance(Esp32Source::kCarReplyTimeoutMs + Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(box.ListsSince(asked), 1, ());
+
+  // The reply to the second ask comes and the role follows it.
+  box.List(false);
+  TEST(box.m_source.IsReadOnly(), ());
+
+  // The other phone leaves, the list is asked and its reply is lost too.
+  box.Line("NGE,1,0,1000,I,PHONE_LOST,D0:56:FB:11:00:88");
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  asked = box.SentCount();
+  box.m_clock.Advance(Esp32Source::kCarReplyTimeoutMs + Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(box.ListsSince(asked), 1, ());
+
+  // This phone changes the box now, the new list says so.
+  box.List();
+  TEST(!box.m_source.IsReadOnly(), ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_AddsPhoneWithCode)

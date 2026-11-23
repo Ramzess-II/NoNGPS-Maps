@@ -452,7 +452,9 @@ NS_SWIFT_NAME(NoGps)
 
 /// The bytes of the ESP32 sensor box and the state of the connection to it.
 + (void)onEsp32BleBytes:(NSData *)data;
-+ (void)onEsp32BleState:(MWMNoGpsBleState)state;
+/// `bondLost`: the pairing is thought lost, MWMNoGpsBleStateConnected then is a probe that carries nothing until the
+/// box is heard.
++ (void)onEsp32BleState:(MWMNoGpsBleState)state bondLost:(BOOL)bondLost;
 
 @end
 

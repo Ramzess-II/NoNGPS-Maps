@@ -21,7 +21,9 @@ namespace nogps
 //                                 where the application kept the car when it was started anew: the next start shows
 //                                 the car there, unless the trip driven again has kept a car of its own by then
 //   J <ms>                        the time jumps on: nothing has happened meanwhile
-//   L <ms> <state>                Bluetooth of the box, as DebugPrint(BleState) tells it
+//   L <ms> <state> [<bond lost 0|1>]
+//                                 Bluetooth of the box, as DebugPrint(BleState) tells it, and whether its pairing is
+//                                 thought lost: a Connected with the flag is a probe and no link
 //   B <ms> <duration ms> <yaw mdeg> <km/h> <flags hex> <h1> <h2> <up> [<jolt>]
 //                                 a part of a second of the box that ends at the time: its rotation, the speed of
 //                                 the car, the acceleration and its jolt in mm/s2 or "-" without it
