@@ -118,6 +118,17 @@ class AddTest(unittest.TestCase):
         viewer.add('180000.log', self.log('Pixel_7-a3f9', 86400000), False)
         self.assertEqual(len(viewer.sources), 2)
 
+    def test_an_oslog_text_is_read_with_the_phone_of_its_path(self):
+        """The page sends the path of a file of a dropped folder as its name."""
+        text = b'10-08 18:00:01.000 (main) I/OMcore: nogps/engine.cpp:1 Start(): Start\n'
+        viewer = v.Viewer([], None)
+        viewer.add('logs/iPhone_14-1a2b/2026-10-08/181500.log', text, True)
+        self.assertEqual([f['phone'] for f in viewer.analysis.files], ['iPhone_14-1a2b'])
+
+    def test_an_oslog_text_dropped_alone_is_refused_with_a_hint(self):
+        with self.assertRaisesRegex(v.nogps_trip_log.LogFormatError, 'give the logs.zip or the folder'):
+            v.Viewer([], None).add('181500.log', b'Datetime: 2026-10-08 18:00:00.000\n', True)
+
     def test_a_file_of_the_earlier_versions_is_refused(self):
         with self.assertRaises(v.nogps_trip_log.LogFormatError):
             v.Viewer([], None).add('app.log', b'Datetime: 2026-10-08 18:00:00.000\n', True)

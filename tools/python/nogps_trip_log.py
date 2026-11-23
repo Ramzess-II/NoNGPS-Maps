@@ -91,8 +91,12 @@ def parse_header(name, first_line):
         tree = tree_path(name)
         if tree:
             return dict(logfmt=None, ms=None, phone=tree.group(1), trip=tree.group(2))
+        hint = ''
+        if re.fullmatch(r'\d{6}(?:-\d+)?\.log', re.split(r'[/\\]', name)[-1], re.I):
+            hint = ('; an OSLog text of iOS is read from logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log: '
+                    'give the logs.zip or the folder')
         raise LogFormatError('%s: not a log of LOGFMT %s, its first line is not a LOGFMT line (logs of the earlier '
-                             'versions are not read)' % (name, ', '.join(map(str, LOG_FORMATS))))
+                             'versions are not read%s)' % (name, ', '.join(map(str, LOG_FORMATS)), hint))
     if int(m.group(1)) not in LOG_FORMATS:
         raise LogFormatError('%s: LOGFMT %s is not known, the tools read %s' % (
             name, m.group(1), ', '.join(map(str, LOG_FORMATS))))

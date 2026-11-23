@@ -107,7 +107,7 @@ body.dragging #drop { display: flex; }
   <label class="button">Open logs…<input type="file" id="files" multiple hidden></label>
   <button id="clear">Clear</button>
   <label><input type="checkbox" id="showStationary"> stationary trips</label>
-  <span id="status">Drop .log files or logs.zip anywhere</span>
+  <span id="status">Drop .log files, a logs folder or logs.zip anywhere</span>
 </header>
 <main>
   <aside id="trips"><div class="empty">No logs yet.</div></aside>
@@ -912,13 +912,33 @@ function showTab(name) {
 }
 document.querySelectorAll('#tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
 
+// The files of a drop with their path inside a dropped folder: the phone of an OSLog text of iOS comes from the path
+// logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, and a File knows only its name.
+async function droppedFiles(transfer) {
+  const entries = [...transfer.items].map(item => item.webkitGetAsEntry && item.webkitGetAsEntry());
+  if (!entries.length || entries.includes(null)) return [...transfer.files].map(file => ({file, name: file.name}));
+  const result = [];
+  async function walk(entry) {
+    if (entry.isFile) {
+      const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+      result.push({file, name: entry.fullPath.replace(/^\//, '')});
+      return;
+    }
+    const reader = entry.createReader();
+    for (let batch; (batch = await new Promise((resolve, reject) => reader.readEntries(resolve, reject))).length;)
+      for (const child of batch) await walk(child);
+  }
+  for (const entry of entries) await walk(entry);
+  return result;
+}
+
 async function upload(files) {
-  files = [...files];
+  files = [...files].map(f => f.file ? f : {file: f, name: f.webkitRelativePath || f.name});
   if (!files.length) return;
   let data = null;
   for (let i = 0; i < files.length; ++i) {
     $('#status').textContent = `Reading ${files[i].name} (${i + 1} of ${files.length})…`;
-    data = await api(`/api/add?name=${encodeURIComponent(files[i].name)}&last=${i === files.length - 1 ? 1 : 0}`, {method: 'POST', body: files[i]});
+    data = await api(`/api/add?name=${encodeURIComponent(files[i].name)}&last=${i === files.length - 1 ? 1 : 0}`, {method: 'POST', body: files[i].file});
   }
   trip = null;
   renderTrips(data);
@@ -935,7 +955,7 @@ window.addEventListener('drop', e => {
   e.preventDefault();
   dragDepth = 0;
   document.body.classList.remove('dragging');
-  upload(e.dataTransfer.files).catch(error => alert(error.message));
+  droppedFiles(e.dataTransfer).then(upload).catch(error => alert(error.message));
 });
 let resizeTimer = null;
 window.addEventListener('resize', () => {
