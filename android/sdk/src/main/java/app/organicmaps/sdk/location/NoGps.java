@@ -920,6 +920,12 @@ public final class NoGps
   public static native Sprint[] nativeGetSprints();
 
   /**
+   * The timed runs kept for the car, newest first; none for a car that is not there.
+   */
+  @NonNull
+  public static native Sprint[] nativeGetSprints(@NonNull String carId);
+
+  /**
    * No car is added over this many: the user can't add one.
    */
   public static native int nativeGetMaxCars();
