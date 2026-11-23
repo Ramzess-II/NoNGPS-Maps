@@ -6,6 +6,7 @@ final class AboutNoGpsController: MWMViewController {
     static let versionSpacing: CGFloat = 4
     static let stackSpacing: CGFloat = 15
     static let stackInset: CGFloat = 20
+    static let actionsSpacing: CGFloat = 12
     static let hintSpacing: CGFloat = 2
     static let osmCopyrightURL = URL(string: "https://www.openstreetmap.org/copyright")!
   }
@@ -24,6 +25,9 @@ final class AboutNoGpsController: MWMViewController {
   private let descriptionLabel = UILabel()
   /// A text view, not a label: both names of the credit are links of their own.
   private let mapDataTextView = UITextView()
+  /// Buy the box, accented, and the source code under it: the full width of the text above.
+  private let actionsView = UIStackView()
+  /// The documents and the bug report, as on About Organic Maps.
   private let linksView = ButtonsStackView()
 
   // MARK: - Lifecycle
@@ -89,12 +93,18 @@ private extension AboutNoGpsController {
 
     setupMapData()
 
-    linksView.addButton(title: L("nogps_source_code")) {
-      UIApplication.shared.open(NoGpsLinks.sourceCode)
-    }
-    linksView.addButton(title: L("nogps_box_buy")) {
+    actionsView.axis = .vertical
+    actionsView.spacing = Constants.actionsSpacing
+    actionsView.distribution = .fill
+    actionsView.alignment = .fill
+    actionsView.addArrangedSubview(NoGpsButton.filled(title: L("nogps_box_buy")) {
       UIApplication.shared.open(NoGpsLinks.shop)
-    }
+    })
+    actionsView.addArrangedSubview(NoGpsButton.outlined(title: L("nogps_source_code"),
+                                                        icon: UIImage(named: "ic_social_media_github"),
+                                                        background: .clear) {
+        UIApplication.shared.open(NoGpsLinks.sourceCode)
+      })
     linksView.addButton(title: L("report_a_bug")) {
       MailComposer.sendBugReportWith(title: "NonGPS Maps Bug Report")
     }
@@ -157,6 +167,7 @@ private extension AboutNoGpsController {
     stackView.setCustomSpacing(Constants.hintSpacing, after: globeHintLabel)
     stackView.addArrangedSubview(descriptionLabel)
     stackView.addArrangedSubview(mapDataTextView)
+    stackView.addArrangedSubview(actionsView)
     stackView.addArrangedSubview(linksView)
   }
 
@@ -171,6 +182,7 @@ private extension AboutNoGpsController {
     globeJammedLabel.translatesAutoresizingMaskIntoConstraints = false
     descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
     mapDataTextView.translatesAutoresizingMaskIntoConstraints = false
+    actionsView.translatesAutoresizingMaskIntoConstraints = false
     linksView.translatesAutoresizingMaskIntoConstraints = false
 
     NSLayoutConstraint.activate([
@@ -198,6 +210,7 @@ private extension AboutNoGpsController {
       globeJammedLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       descriptionLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       mapDataTextView.widthAnchor.constraint(equalTo: stackView.widthAnchor),
+      actionsView.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       linksView.widthAnchor.constraint(equalTo: stackView.widthAnchor),
     ])
   }

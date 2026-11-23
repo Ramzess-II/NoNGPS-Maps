@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		N0GPS1B00000000000000B01 /* NoGpsButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS1A00000000000000B01 /* NoGpsButton.swift */; };
 		N0GPS3B00000000000000008 /* NoGpsGlobeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B00000000000000007 /* NoGpsGlobeTests.swift */; };
 		N0GPS3B00000000000000006 /* GlobeCoastline.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B00000000000000005 /* GlobeCoastline.swift */; };
 		N0GPS3B00000000000000004 /* GlobeSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B00000000000000003 /* GlobeSceneView.swift */; };
@@ -1876,6 +1877,7 @@
 		EE026F0511D6AC0D00645242 /* classificator.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = classificator.txt; path = ../../data/classificator.txt; sourceTree = SOURCE_ROOT; };
 		EF08A25A7AB83AC0C2867A85 /* cy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = cy; path = cy.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsBoxSheet.swift; sourceTree = "<group>"; };
+		N0GPS1A00000000000000B01 /* NoGpsButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsButton.swift; sourceTree = "<group>"; };
 		5C0A7E1B3D2F4A6890B1D003 /* AboutNoGpsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutNoGpsController.swift; sourceTree = "<group>"; };
 		N0GPS2A00000000000000001 /* HowNoGpsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HowNoGpsController.swift; sourceTree = "<group>"; };
 		5C0A7E1B3D2F4A6890B1D006 /* BottomMenuPresenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomMenuPresenterTests.swift; sourceTree = "<group>"; };
@@ -3758,6 +3760,7 @@
 			isa = PBXGroup;
 			children = (
 				5C0A7E1B3D2F4A6890B1D003 /* AboutNoGpsController.swift */,
+				N0GPS1A00000000000000B01 /* NoGpsButton.swift */,
 				N0GPS2A00000000000000001 /* HowNoGpsController.swift */,
 				N0GPS3B00000000000000001 /* GlobeScene.swift */,
 				N0GPS3B00000000000000003 /* GlobeSceneView.swift */,
@@ -4922,6 +4925,7 @@
 				N0GPS1B00000000000000005 /* NoGpsIntroController.swift in Sources */,
 				333A4718BABBBFC6A412D69B /* NoGpsBoxSheet.swift in Sources */,
 				5C0A7E1B3D2F4A6890B1D004 /* AboutNoGpsController.swift in Sources */,
+				N0GPS1B00000000000000B01 /* NoGpsButton.swift in Sources */,
 				N0GPS2A00000000000000002 /* HowNoGpsController.swift in Sources */,
 				N0GPS3B00000000000000002 /* GlobeScene.swift in Sources */,
 				N0GPS3B00000000000000004 /* GlobeSceneView.swift in Sources */,
