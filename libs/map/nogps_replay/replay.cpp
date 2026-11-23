@@ -473,6 +473,7 @@ private:
       }
       break;
     }
+    case 'K': OnCalibration(in); break;
     case 'I':
     {
       // The box the trip was driven with: what the navigation has learned about another box is not taken.
@@ -586,6 +587,30 @@ private:
   {
     m_engine.reset();
     m_engine = std::make_unique<Engine>(m_delegate, m_map, m_storage, m_clock, m_clock);
+  }
+
+  // The car the trip started with, as its CALIBRATION line of the log: "K <ms> car=C47D scale=1.04 table=…". The box
+  // is heard first, so the values are of its car, and they win over the settings, which fill what the line lacks. The
+  // speed unit is not taken, see ReplayStorage. Comes before the start of the application: the engine reads it then.
+  void OnCalibration(std::istringstream & in)
+  {
+    static std::pair<std::string_view, std::string_view> constexpr kKeys[] = {
+        {"scale", Storage::kSpeedScale},   {"table", Storage::kSpeedTable}, {"rough", Storage::kRoughSpeedTable},
+        {"factor", Storage::kSpeedFactor}, {"lag", Storage::kSpeedLag},     {"accel", Storage::kBoxAccel}};
+    CarStorage cars(m_storage);
+    std::string token;
+    std::map<std::string, std::string> values;
+    while (in >> token)
+    {
+      auto const eq = token.find('=');
+      if (eq != std::string::npos)
+        values[token.substr(0, eq)] = token.substr(eq + 1);
+    }
+    if (auto const car = values.find("car"); car != values.end() && car->second != "-")
+      cars.OnBoxHeard(car->second, "", m_clock.UnixNowMs());
+    for (auto const & [name, key] : kKeys)
+      if (auto const it = values.find(std::string(name)); it != values.end())
+        cars.SetString(key, it->second);
   }
 
   void OnBoxInfo(std::string const & id)
