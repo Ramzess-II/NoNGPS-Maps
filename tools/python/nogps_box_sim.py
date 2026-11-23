@@ -34,10 +34,15 @@ What it doesn't simulate, and why:
   AUTH" and no more, and the application asks for none of the others.
 
 The box proves itself as section 9.5 says: AUTH_SET takes a key of a phone, AUTH answers with the proof of it. A key
-is kept by the id the radio gives a phone, as the firmware keeps it with the bond, and outlives the program in the file
-of --keys, as the firmware keeps it in NVS over a restart: otherwise the application, which keeps its key, would refuse
-the simulator from its second run on. The panel's "Forget the keys" is a box that has lost them, which the application
-refuses until the car is forgotten in it.
+outlives the program in the file of --keys, as the firmware keeps it in NVS over a restart: otherwise the application,
+which keeps its key, would refuse the simulator from its second run on. The keys of each box id are its own, so the
+id the panel sets brings its own keys. The panel's "Forget the keys" is a box that has lost them, which the
+application refuses until the car is forgotten in it.
+
+A key belongs to the phone whose name is in its HELLO (9.2), not to the id the radio gives the link: the simulator
+asks for no pairing, so the system can't resolve the private address of a phone and gives a new id about every 15
+minutes (CBCentral.identifier on macOS, the BlueZ device path on Linux), while the firmware keeps the key with the
+bond. So two phones that give one name share a key here, which the firmware would keep apart.
 
 The radio needs a package -- PyObjC on macOS, dbus-next on Linux, winsdk on Windows -- and the script declares
 them above, each for its own platform, so uv puts them in an environment of its own and nothing is installed into
@@ -420,14 +425,21 @@ class Box:
             return
         self.queue(phone, line('NGA,%s,ERR,UNKNOWN' % command_id))
 
+    @staticmethod
+    def auth_phone(phone):
+        """The phone a key belongs to: the name of its HELLO, the radio's id until it has given one. See the docstring
+        of the module: the id changes with the private address of the phone, the name does not."""
+        return phone.name or phone.id
+
     def auth_set(self, phone, rest):
         """AUTH_SET,<32 hex>: the key is taken once; the same key again is taken, another one is refused."""
         key = hex_bytes(rest[0], AUTH_KEY_BYTES) if rest else None
         if key is None:
             return 'ERR,VALUE'
-        if self.auth_keys.get(phone.id, key) != key:
+        name = self.auth_phone(phone)
+        if self.auth_keys.get(name, key) != key:
             return 'ERR,EXISTS'
-        self.auth_keys[phone.id] = key
+        self.auth_keys[name] = key
         self.save_keys()
         return 'OK'
 
@@ -465,7 +477,7 @@ class Box:
         nonce = hex_bytes(rest[0], AUTH_NONCE_BYTES) if rest else None
         if nonce is None:
             return 'ERR,VALUE'
-        key = self.auth_keys.get(phone.id)
+        key = self.auth_keys.get(self.auth_phone(phone))
         if key is None:
             return 'ERR,NOKEY'
         return 'OK,' + auth_proof(key, nonce)
@@ -607,11 +619,15 @@ class Box:
                 state.obd = values['obd']
             if 'shake_pct' in values:
                 state.shake_pct = max(0, min(9999, int(values['shake_pct'])))
+            box_id = state.box_id
             for name in ('box_id', 'firmware', 'chip', 'board', 'imu_name'):
                 if values.get(name):
                     # The id is the four characters of the name of a box, as --id takes them. Only macOS
                     # drops an advertised name over 8 characters: the panel's name tells when it does.
                     setattr(state, name, str(values[name])[:4 if name == 'box_id' else 32])
+            if state.box_id != box_id:
+                # Another id is another box: it has the keys of that id, and those of the old one stay in the file.
+                self.auth_keys = self.load_keys()
             if 'legacy_name' in values:
                 state.legacy_name = bool(values['legacy_name'])
             if 'advertising' in values:

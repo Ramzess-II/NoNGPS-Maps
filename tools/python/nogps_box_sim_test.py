@@ -295,6 +295,43 @@ class Commands(unittest.TestCase):
             last, _, _ = box(keys_path=path)
             self.assertEqual(last.auth_keys, {})
 
+    def test_the_key_follows_the_phone_through_a_new_address(self):
+        made, radio, _ = box()
+        connect(made)
+        made.on_event('write', PHONE, command(1, 'AUTH_SET,000102030405060708090a0b0c0d0e0f'))
+        made.on_event('disconnect', PHONE)
+        # The private address of the phone has changed, so the radio gives the link another id; the name of its
+        # HELLO is the same, and the key is the phone's.
+        made.on_event('connect', 'phone-2', 'Test phone')
+        made.on_event('subscribe', 'phone-2', 182)
+        made.on_event('write', 'phone-2', command(2, 'HELLO,Test phone,1794685761'))
+        made.on_event('write', 'phone-2', command(3, 'AUTH,a1b2c3d4e5f60718'))
+        made.tick()
+        self.assertEqual(fields(radio.lines('NGA')[-1])[1:], ['3', 'OK', '0620aee41375224a'])
+        self.assertEqual(made.panel_state()['keys'], 1)
+
+    def test_the_keys_follow_the_id_the_panel_sets(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, 'keys.json')
+            made, radio, _ = box(keys_path=path)
+            connect(made)
+            first = '000102030405060708090a0b0c0d0e0f'
+            made.on_event('write', PHONE, command(1, 'AUTH_SET,' + first))
+            # Another id is another box: it has no key of this phone, and takes the one the application gives it.
+            made.panel_set({'box_id': 'S2'})
+            self.assertEqual(made.panel_state()['keys'], 0)
+            made.on_event('write', PHONE, command(2, 'AUTH_SET,' + 'ff' * 16))
+            made.tick()
+            self.assertEqual(fields(radio.lines('NGA')[-1])[1:], ['2', 'OK'])
+            # Back at the first id, the first key is the one the box proves itself with.
+            made.panel_set({'box_id': 'S1'})
+            made.on_event('write', PHONE, command(3, 'AUTH,a1b2c3d4e5f60718'))
+            made.tick()
+            self.assertEqual(fields(radio.lines('NGA')[-1])[1:], ['3', 'OK', '0620aee41375224a'])
+            # Both boxes have their keys in the file.
+            with open(path, encoding='utf-8') as kept:
+                self.assertEqual(sorted(sim.json.load(kept)), ['S1', 'S2'])
+
     def test_the_panel_makes_the_box_forget_the_keys(self):
         made, radio, _ = box()
         connect(made)
