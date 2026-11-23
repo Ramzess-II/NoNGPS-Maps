@@ -36,5 +36,5 @@ The pages live in `android/app/src/main/res/layout/nogps_box_sheet.xml`, the row
   title, `.secondaryLabel` for its colour.
 - The bar of the sheet is the system one, filled with `pressBackground`, the colour the list is drawn on, so the
   bar and the top of the page are one surface. `NoGpsBoxSheet.plainBar` sets it: a bar with no style of its own
-  gets the green bar of Organic Maps.
+  gets the NonGPS bar colour (`nogpsPrimary`).
 - A page of values shows every row of its range with `nogps_unknown` until the box tells them.
