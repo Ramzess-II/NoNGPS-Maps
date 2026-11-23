@@ -3,7 +3,7 @@
 /// video and no account screen yet, so both point at the site; each is the single line to change when there is one.
 enum NoGpsLinks {
   static let shop = URL(string: "https://non-gps.com")!
-  static let video = URL(string: "https://non-gps.com")!
+  static let video = URL(string: "https://www.youtube.com/@openFrimeTv/videos")!
   static let account = URL(string: "https://non-gps.com")!
   static let sourceCode = URL(string: "https://github.com/Ramzess-II/NoGPSMaps")!
   static let organicMaps = URL(string: "https://organicmaps.app")!
