@@ -44,7 +44,8 @@ function  android_name {
 
 function android_code {
   # RR_yy_MM_dd_CC
-  # RR - reserved to identify special markets, max value is 21.
+  # RR - reserved to identify special markets, max value is 21. Not part of the code printed here:
+  #      the Huawei flavor adds 1_000_000_000 in android/app/build.gradle.
   # yy - year
   # MM - month
   # dd - day

@@ -85,8 +85,8 @@ android {
   flavorDimensions += 'default'
 
   productFlavors {
-    // 01 is a historical artefact, sorry.
-    final int HUAWEI_VERSION_CODE_BASE = 01_00_00_00_00
+    // Decimal: a leading 0 would make it an octal literal (16777216).
+    final int HUAWEI_VERSION_CODE_BASE = 1_000_000_000
 
     google {
       dimension 'default'
