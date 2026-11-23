@@ -440,8 +440,8 @@ report "ci" with the names of the failing checks and the run's URL; the PR stays
 Claude review check are not failures. If three minutes after the push no check ran at all for the \
 new head, the hooks missed it: gh pr close ${pr.number} -R ${repo} && gh pr reopen ${pr.number} -R ${repo}, then \
 watch again.`
-      : `No CI to wait for: ${repo} has no checks (no .github/workflows), so step 5's build is the whole \
-verification. Go straight on to the merge.`
+      : `No CI to wait for: GitHub Actions has started no run in ${repo}, so it reports no checks and \
+step 5's build is the whole verification. Go straight on to the merge.`
   }
 7. Merge: gh pr merge ${pr.number} -R ${repo} --merge --delete-branch. Both repos merge with a merge commit, as \
 their history shows; don't squash and don't rebase-merge. A warning that the local branch can't be deleted is \
