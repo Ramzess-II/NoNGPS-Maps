@@ -229,4 +229,21 @@ UNIT_TEST(NoGps_Replay_KeptCarOfDriveWins)
   }
   TEST_GREATER_OR_EQUAL(second, 3, ());
 }
+
+UNIT_TEST(NoGps_Replay_CalibrationOfLog)
+{
+  // The K record puts the car of the log and its values to the navigation before it starts.
+  std::string const input =
+      "D 11-02\n"
+      "K 36000000 car=C47D scale=1.234\n"
+      "S 36000000 2\n"
+      "C 36000000 53.9040184 27.5567595 90.0 1 60000\n"
+      "S 36000000 1\n"
+      "L 36000000 CONNECTED\n"
+      "J 36001000\n" +
+      Standing(36001000, 36003000) + "S 36003000 0\n";
+  auto const log = Drive(input);
+  TEST(log.find("CALIBRATION") != std::string::npos, (log));
+  TEST(log.find(" car=C47D scale=1.234") != std::string::npos, (log));
+}
 }  // namespace nogps_replay_tests

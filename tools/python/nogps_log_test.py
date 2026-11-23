@@ -557,6 +557,17 @@ class ReplayInputTest(unittest.TestCase):
         self.assertEqual(got[0][2:], ['car=C47D', 'scale=1.04', 'table=3:1,2', 'rough=3:4', 'factor=1.01',
                                       'lag=0.30', 'accel=C47D:0.9,1'])
 
+    def test_calibration_written_after_the_start_of_the_file(self):
+        """The file begins with the start of the app: the line it writes a moment later is the one taken."""
+        lines = self.drive(60, tagged=True)
+        lines[0:0] = [core('10-08', 18 * 3600 - 9, 'LogCalibration', 'CALIBRATION ms=1 car=OLD1 scale=2'),
+                      core('10-08', 18 * 3600 - 3, 'LogCalibration', 'CALIBRATION ms=2 car=C47D scale=1.04')]
+        records = self.records(lines)
+        started = min(int(r[1]) for r in records if r[0] == 'S')
+        got = [r for r in records if r[0] == 'K']
+        self.assertEqual([r[2:] for r in got], [['car=C47D', 'scale=1.04']])
+        self.assertLessEqual(started, int(got[0][1]))
+
     def test_no_calibration_in_the_log(self):
         self.assertEqual(self.calibration_records(self.drive(60, tagged=True)), [])
 

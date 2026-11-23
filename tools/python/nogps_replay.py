@@ -13,8 +13,8 @@ and <output>.done when it is over. Two programs run it:
   adb shell run-as <package> cat files/settings.ini > settings.ini). Without it the car is new.
   The car comes from the CALIBRATION line the log wrote before the box data of the file begins: its car, scale,
   tables, factor, lag and accelerometer, with the box id first, so a trip in another car is not driven with the
-  values of this one. settings.ini only fills what that line does not carry, and the car speed unit is never taken
-  from it. `run` tells for each day which of the two the car was driven with.
+  values of this one. what that line does not carry is the default, not what settings.ini has, which fills only a day with no such line;
+  the car speed unit is never taken from it. `run` tells for each day which of the two the car was driven with.
   The accelerometer of a box is taken only for the box the trip was driven with (the logs tell it): the settings of
   another box give the same replay as without them.
 - a debug build of the Android application, on Windows: it drives the file nogps-replay-in.txt put to its folder
@@ -247,7 +247,7 @@ def car_calibration(others, first, data_start):
     """The record "K <ms> car=<id> key=value..." of the last CALIBRATION line the log wrote before the box data of
     the file begins (the car still stands then, and the lines after the box connects come in that time), or None.
     The file begins at |first|; a line of the day before it is the state the car was left in. What the line does
-    not carry is not in the record: the replay takes it from the settings."""
+    not carry is not in the record: the car has not learned it, and the replay takes the default."""
     lines = [(ms, text) for ms, text, _ in others if text.startswith('CALIBRATION ') and ms <= data_start]
     if not lines:
         return None
@@ -516,11 +516,13 @@ def make_input(args):
     if any(start <= ms <= first for ms in started):
         first = max(ms for ms in started if start <= ms <= first)
 
+    # The box data only: the start of the application of the file is not counted in.
+    data_start = min(r[0] for r in records)
     for ms, order, text, by_user in actions:
         if first <= ms <= end and not (by_user and args.no_taps):
             records.append((ms, order, text))
 
-    calibration = car_calibration(others, first, min(r[0] for r in records))
+    calibration = car_calibration(others, first, data_start)
     if calibration:
         # Before the start of the application: the engine reads it from the storage when it is made.
         records.append((first, -5, calibration))

@@ -590,8 +590,9 @@ private:
   }
 
   // The car the trip started with, as its CALIBRATION line of the log: "K <ms> car=C47D scale=1.04 table=…". The box
-  // is heard first, so the values are of its car, and they win over the settings, which fill what the line lacks. The
-  // speed unit is not taken, see ReplayStorage. Comes before the start of the application: the engine reads it then.
+  // is heard first, so the values are of its car. The line leaves out what the car has not learned: that is not taken
+  // from the settings either, which are the state of the day they were pulled. The speed unit is not taken, see
+  // ReplayStorage. Comes before the start of the application: the engine reads it then.
   void OnCalibration(std::istringstream & in)
   {
     static std::pair<std::string_view, std::string_view> constexpr kKeys[] = {
@@ -611,6 +612,8 @@ private:
     for (auto const & [name, key] : kKeys)
       if (auto const it = values.find(std::string(name)); it != values.end())
         cars.SetString(key, it->second);
+      else
+        cars.Remove(key);
   }
 
   void OnBoxInfo(std::string const & id)
