@@ -85,6 +85,36 @@ public class MapPanelDragger
   }
 
   /**
+   * One slide of a finger on a zoom button. It keeps the part of the slide already applied to the map, so each move
+   * zooms only by the new part of it: the zoom follows the distance of the finger, not the rate of the touch events,
+   * and a finger at rest holds the zoom.
+   */
+  static class ZoomSlide
+  {
+    private float mApplied;
+
+    /**
+     * The slide becomes a zoom up px from where the finger went down: the zoom counts from here, so it never jumps
+     * when the finger comes back.
+     */
+    void start(float up)
+    {
+      mApplied = up;
+    }
+
+    /**
+     * @return the factor to scale the map by for a finger now up px from where it went down, in a frame of the given
+     *         height; 1 when the finger has not moved since the previous step.
+     */
+    double step(float up, float frameHeight)
+    {
+      final float slide = up - mApplied;
+      mApplied = up;
+      return zoomFactor(slide, frameHeight);
+    }
+  }
+
+  /**
    * Whether a slide becomes a zoom: it went down on a zoom button and slid dy px, up or down, past the start of the
    * zoom on a screen of the given density. A shorter slide, or one from another button, stays a tap.
    */
@@ -132,8 +162,9 @@ public class MapPanelDragger
   // The finger went down on a zoom button, and whether its slide has become a zoom.
   private boolean mOnZoomButton;
   private boolean mZooming;
-  // The slide of the finger up already applied to the zoom, px.
-  private float mZoomApplied;
+  // The zoom of the slide going on: it keeps the part of the slide already applied to the map.
+  @NonNull
+  private final ZoomSlide mZoomSlide = new ZoomSlide();
   // In dp from the top of the travel.
   private float mY;
   // dp/s.
@@ -253,15 +284,14 @@ public class MapPanelDragger
       // The slide is a zoom now, it is not a long press or a tap. Zoom counts from here, so it never jumps when
       // the finger comes back.
       mZooming = true;
-      mZoomApplied = up;
+      mZoomSlide.start(up);
       cancelPress();
     }
     final View frame = (View) mPanel.getParent();
     // Only the new part of the slide zooms: a resting finger holds the zoom, whatever the rate of touch events.
-    final float slide = up - mZoomApplied;
-    mZoomApplied = up;
-    if (slide != 0)
-      Map.scale(zoomFactor(slide, frame.getHeight()));
+    final double factor = mZoomSlide.step(up, frame.getHeight());
+    if (factor != 1)
+      Map.scale(factor);
   }
 
   // The panel moves under the finger: the speed is taken on the screen.

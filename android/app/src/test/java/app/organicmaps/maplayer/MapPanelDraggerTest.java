@@ -91,10 +91,32 @@ public class MapPanelDraggerTest
   public void zoomSlideFollowsDistanceNotEventRate()
   {
     // The same finger travel zooms the same whether the panel reports it in 2 moves or in 20.
-    double split = 1;
-    for (int i = 0; i < 20; i++)
-      split *= MapPanelDragger.zoomFactor(10, 800);
-    assertEquals(MapPanelDragger.zoomFactor(200, 800), split, 1e-6);
+    final MapPanelDragger.ZoomSlide coarse = new MapPanelDragger.ZoomSlide();
+    coarse.start(0);
+    final double twoMoves = coarse.step(100, 800) * coarse.step(200, 800);
+    final MapPanelDragger.ZoomSlide fine = new MapPanelDragger.ZoomSlide();
+    fine.start(0);
+    double manyMoves = 1;
+    for (int i = 1; i <= 20; i++)
+      manyMoves *= fine.step(i * 10, 800);
+    // The float travel of 20 steps rounds a little differently from one of 2.
+    assertEquals(twoMoves, manyMoves, 1e-6);
+    assertEquals(MapPanelDragger.zoomFactor(200, 800), manyMoves, 1e-6);
+  }
+
+  @Test
+  public void zoomSlideHoldsUnderARestingFinger()
+  {
+    final MapPanelDragger.ZoomSlide slide = new MapPanelDragger.ZoomSlide();
+    // The zoom counts from where the slide became a zoom: the first move does not jump.
+    slide.start(72);
+    assertEquals(1, slide.step(72, 800), 0);
+    assertEquals(MapPanelDragger.zoomFactor(28, 800), slide.step(100, 800), 1e-9);
+    // The same finger position reported again zooms no further, whatever the rate of the touch events.
+    assertEquals(1, slide.step(100, 800), 0);
+    assertEquals(1, slide.step(100, 800), 0);
+    // The finger comes back: the zoom goes back with it.
+    assertEquals(1 / MapPanelDragger.zoomFactor(28, 800), slide.step(72, 800), 1e-9);
   }
 
   @Test
