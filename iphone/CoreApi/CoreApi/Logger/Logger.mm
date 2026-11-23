@@ -36,6 +36,8 @@
 + (void)closeFile;
 + (void)deleteOldestFiles;
 + (NSArray<NSString *> *)logFiles;
++ (BOOL)logFile:(NSString *)name goesOnInto:(NSSet<NSString *> *)days among:(NSSet<NSString *> *)all;
++ (nullable NSString *)dayAfter:(NSString *)day;
 + (NSString *)logFileNameStarted:(NSDate *)started now:(NSDate *)now;
 + (NSString *)freeLogFileNameStarted:(NSDate *)started now:(NSDate *)now;
 + (NSString *)phoneId;
@@ -235,17 +237,53 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
   __block NSURL * zipURL;
   [self runSyncOnFileLoggingQueue:^{
     NSMutableArray<NSString *> * files = [NSMutableArray array];
-    for (NSString * name in [self logFiles])
+    NSArray<NSString *> * names = [self logFiles];
+    NSSet<NSString *> * all = [NSSet setWithArray:names];
+    for (NSString * name in names)
     {
       // "<phone>/<yyyy-MM-dd>/<HHmmss>.log": of every phone id.
       NSArray<NSString *> * parts = name.pathComponents;
-      if (parts.count == 3 && [days containsObject:parts[1]] && [name.pathExtension isEqualToString:@"log"])
+      if (parts.count == 3 && [name.pathExtension isEqualToString:@"log"] &&
+          ([days containsObject:parts[1]] || [self logFile:name goesOnInto:days among:all]))
         [files addObject:name];
     }
     if (files.count > 0)
       zipURL = [self zipLogFiles:files inFolder:kLogsFolderPath];
   }];
   return zipURL;
+}
+
+/// Whether the file goes on, over midnights, in the folder of one of the days: it has the same name in the folder of
+/// the next day, and the trip's calibration is only in the first file.
++ (BOOL)logFile:(NSString *)name goesOnInto:(NSSet<NSString *> *)days among:(NSSet<NSString *> *)all
+{
+  NSArray<NSString *> * parts = name.pathComponents;
+  NSString * day = parts[1];
+  while ((day = [self dayAfter:day]) != nil)
+  {
+    NSString * next = [NSString stringWithFormat:@"%@/%@/%@", parts[0], day, parts[2]];
+    if (![all containsObject:next])
+      return NO;
+    if ([days containsObject:day])
+      return YES;
+  }
+  return NO;
+}
+
+/// The day after a folder name "yyyy-MM-dd", nil when it is not a day.
++ (nullable NSString *)dayAfter:(NSString *)day
+{
+  static NSDateFormatter * formatter;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    formatter = [[NSDateFormatter alloc] init];
+    formatter.dateFormat = @"yyyy-MM-dd";
+    formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+    // No daylight saving: a day is always 24 hours.
+    formatter.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
+  });
+  NSDate * date = [formatter dateFromString:day];
+  return date ? [formatter stringFromDate:[date dateByAddingTimeInterval:24 * 60 * 60]] : nil;
 }
 
 + (void)startTrip

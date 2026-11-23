@@ -4,6 +4,7 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import java.io.File;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,6 +14,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.TimeZone;
 
 /// The log files under the logs folder: "<phone>/<yyyy-MM-dd>/<HHmmss>.log", one per launch and per drive, so that
 /// the folders of any phones and days merge into one tree.
@@ -70,17 +72,57 @@ final class LogFiles
     return name;
   }
 
-  /// The log files of the days, "yyyy-MM-dd", of every phone of the folder.
+  /// The log files of the days, "yyyy-MM-dd", of every phone of the folder, and the files they go on from: a file
+  /// that was started the day before has the same name in the folder of the previous day, with the calibration of the
+  /// trip. The files come in the order of the tree.
   @NonNull
   static List<File> ofDays(@NonNull File folder, @NonNull Collection<String> days)
   {
     final List<File> files = new ArrayList<>();
     for (File phone : sorted(folder.listFiles(File::isDirectory)))
     {
-      for (File day : sorted(phone.listFiles(dir -> dir.isDirectory() && days.contains(dir.getName()))))
-        files.addAll(Arrays.asList(sorted(day.listFiles(file -> file.isFile() && file.getName().endsWith(".log")))));
+      for (File day : sorted(phone.listFiles(File::isDirectory)))
+      {
+        final String name = day.getName();
+        for (File file : sorted(day.listFiles(file -> file.isFile() && file.getName().endsWith(".log"))))
+        {
+          if (days.contains(name) || goesOnInto(phone, name, file.getName(), days))
+            files.add(file);
+        }
+      }
     }
     return files;
+  }
+
+  /// Whether the file goes on, over midnights, in the folder of one of the days.
+  private static boolean goesOnInto(@NonNull File phone, @NonNull String day, @NonNull String fileName,
+                                    @NonNull Collection<String> days)
+  {
+    for (String next = nextDay(day); next != null && new File(new File(phone, next), fileName).isFile();
+         next = nextDay(next))
+    {
+      if (days.contains(next))
+        return true;
+    }
+    return false;
+  }
+
+  /// The day after the folder name of a day, null when it is not a day.
+  @Nullable
+  private static String nextDay(@NonNull String day)
+  {
+    final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
+    // No daylight saving: a day is always 24 hours.
+    format.setTimeZone(TimeZone.getTimeZone("UTC"));
+    try
+    {
+      final Date date = format.parse(day);
+      return date == null ? null : format.format(new Date(date.getTime() + 24 * 60 * 60 * 1000L));
+    }
+    catch (ParseException e)
+    {
+      return null;
+    }
   }
 
   /// Every file of the folder and its subfolders: the files named as before the tree too.
