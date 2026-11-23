@@ -168,6 +168,12 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     var detent = UISheetPresentationController.Detent.Identifier.medium
     if #available(iOS 16.0, *) {
       detent = .init(Constants.fitDetent)
+    } else {
+      // No fit detent before iOS 16: a page longer than half the window opens full height.
+      let window = view.window?.bounds.height ?? UIScreen.main.bounds.height
+      if sheetHeight > window / 2 {
+        detent = .large
+      }
     }
     // Nothing selected is the first detent, the fitted one.
     let selected = sheet.selectedDetentIdentifier

@@ -28,7 +28,7 @@ The pages live in `android/app/src/main/res/layout/nogps_box_sheet.xml`, the row
 - **Nothing from the box**: a page of values keeps its rows and shows `@string/nogps_unknown` in each, so it never
   collapses to a header with nothing under it.
 
-Android: the sheet is as wide as the window (`MwmWidget.BottomSheetDialog` drops the 640dp cap and the side
+Android: the sheet is as wide as the window (`MwmWidget.BoxBottomSheetDialog` drops the 640dp cap and the side
 margins; the content clears the side insets) and at least half the window high (`BoxBottomSheet.minSheetHeight`).
 
 ## iOS

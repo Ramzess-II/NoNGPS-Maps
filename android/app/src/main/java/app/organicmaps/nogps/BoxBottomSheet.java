@@ -559,7 +559,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     behavior.setSkipCollapsed(true);
     behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
     mScroll = (NestedScrollView) view;
-    mScroll.setMinimumHeight(minSheetHeight(getResources().getDisplayMetrics().heightPixels));
+    mScroll.setMinimumHeight(minSheetHeight(windowHeight()));
   }
 
   @Override
@@ -567,7 +567,18 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   {
     super.onConfigurationChanged(newConfig);
     if (mScroll != null)
-      mScroll.setMinimumHeight(minSheetHeight(getResources().getDisplayMetrics().heightPixels));
+      mScroll.setMinimumHeight(minSheetHeight(windowHeight()));
+  }
+
+  private int windowHeight()
+  {
+    return requireActivity().getWindow().getDecorView().getHeight();
+  }
+
+  @Override
+  public int getTheme()
+  {
+    return R.style.MwmTheme_BoxBottomSheetDialog;
   }
 
   // A short page is not a sliver at the bottom: the sheet is at least half the window.
