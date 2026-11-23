@@ -6689,4 +6689,26 @@ UNIT_TEST(NoGps_LogFormat_RuleHasItsNameAndTime)
   TEST(lost[0].find(" The road is lost after ") != std::string::npos, (lost[0]));
   TEST(env.m_engine.GetTripLine().starts_with("TRIP ms="), (env.m_engine.GetTripLine()));
 }
+
+UNIT_TEST(NoGps_LogFormat_ProseLinesHaveTagAndTime)
+{
+  TestClock clock;
+  TestStorage storage;
+  TestDelegate delegate;
+  TestMap map;
+  storage.Set(Storage::kInertialEnabled, true);
+  storage.Set(Storage::kLastTrusted, std::string("10.0000000,20.0000000,") + std::to_string(clock.UnixNowMs()));
+  Engine engine(delegate, map, storage, clock, clock);
+  LoggedLines lines;
+  engine.Start();
+  auto const ms = " ms=" + std::to_string(clock.UnixNowMs());
+  auto const trusted = LoggedLines::Starting("EVENT last_trusted" + ms);
+  TEST_EQUAL(trusted.size(), 1, ());
+  TEST(trusted[0].find(" Last trusted position = ") != std::string::npos, (trusted[0]));
+  TEST_EQUAL(LoggedLines::Starting("EVENT speed_table" + ms).size(), 1, ());
+  engine.OnEsp32BleState(BleState::Connected);
+  auto const ble = LoggedLines::Starting("ACTION ble_state" + ms);
+  TEST_EQUAL(ble.size(), 1, ());
+  TEST(ble[0].find(" Bluetooth = ") != std::string::npos, (ble[0]));
+}
 }  // namespace nogps_engine_tests

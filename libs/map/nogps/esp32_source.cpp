@@ -334,8 +334,8 @@ void Esp32Source::ForgetPhoneRequests()
 void Esp32Source::OnInfo(esp32::Info const & info)
 {
   if (!m_info || m_info->m_firmware != info.m_firmware)
-    LOG(LINFO, ("Box", info.m_id, "firmware =", info.m_firmware, info.m_chip, info.m_board, info.m_revision,
-                "updates =", info.m_canUpdate));
+    LOG(LINFO, (LogHead(m_clock, "ACTION", "box_info"), "Box", info.m_id, "firmware =", info.m_firmware, info.m_chip,
+                info.m_board, info.m_revision, "updates =", info.m_canUpdate));
   bool const phonesNew = info.m_hasPhones && (!m_info || !m_info->m_hasPhones);
   m_info = info;
   m_update.OnBoxFirmware(info.m_firmware);
@@ -379,7 +379,7 @@ void Esp32Source::OnBleState(BleState state)
 {
   if (!m_running || state == m_bleState)
     return;
-  LOG(LINFO, ("Bluetooth =", state));
+  LOG(LINFO, (LogHead(m_clock, "ACTION", "ble_state"), "Bluetooth =", state));
   // A connection may be pending all the time the box sleeps: only a made one tells that the box is awake.
   if (IsLinked(state) || (IsLinked(m_bleState) && m_wakingLinkMs))
     m_wakingLinkMs = m_clock.NowMs();
@@ -509,7 +509,7 @@ void Esp32Source::OnLine(std::string_view text)
   auto const obdState = esp32::ParseObdState(*fields);
   if (obdState && obdState != m_obdState)
   {
-    LOG(LINFO, ("OBD state =", *obdState));
+    LOG(LINFO, (LogHead(m_clock, "EVENT", "obd_state"), "OBD state =", *obdState));
     m_obdState = obdState;
     if (*obdState == "NO_ADAPTER")
       m_obdAdapterMissing = true;
@@ -672,9 +672,11 @@ void Esp32Source::OnEvent(esp32::Event const & event)
     m_loggedEvents.erase(m_loggedEvents.begin());
   // The errors of the box are logged to find later why the speed or the gyroscope was lost.
   if (event.m_level == "I")
-    LOG(LINFO, ("Box event #", event.m_number, "at", event.m_timeMs, "ms:", event.m_code, event.m_text));
+    LOG(LINFO, (LogHead(m_clock, "EVENT", "box_event"), "Box event #", event.m_number, "at", event.m_timeMs,
+                "ms:", event.m_code, event.m_text));
   else
-    LOG(LWARNING, ("Box event #", event.m_number, "at", event.m_timeMs, "ms:", event.m_code, event.m_text));
+    LOG(LWARNING, (LogHead(m_clock, "EVENT", "box_event"), "Box event #", event.m_number, "at", event.m_timeMs,
+                   "ms:", event.m_code, event.m_text));
   // The box compares the raw voltage, the status has the corrected one.
   if (event.m_code == "VOLT_MISMATCH")
     m_voltageMismatch = true;

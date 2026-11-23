@@ -1151,7 +1151,8 @@
     `fork_branch`, `wait_ahead`, `wait_at_roundabout`, `roundabout_exit`, `followed_apart`, `back_on_road`,
     `mark_switched_by_way`, `far_mark_taken`, `mark_switched_road_lost`, `mark_switched_turn`,
     `mark_switched_stand_lost`, `mark_switched_by_user`;
-  - `ACTION <назва>`: що відтворення виконує знову: `start`, `stop`, `gps_off` (`disabled=`, `by=`), `manual`
+  - `ACTION <назва>`: що відтворення виконує знову: `start`, `stop`, `ble_state` (рядок `Bluetooth = …`, дія `L`),
+    `box_info` (рядок `Box <id> firmware = …`, дія `I`), `gps_off` (`disabled=`, `by=`), `manual`
     (`enabled=`, `by=`), `tap` (`by=`), `reverse`, `switch_mark`, `shift` (`m=`), `restore_car`. `by=` каже, хто
     перемкнув: `user`, а решта (`core`, `gps_back`, `network_back`, `restore`, `box`, `tap`, `gps_mark`, `peer`) —
     ядро саме. У `tap` `by=` каже, хто поставив позначку: `user` або `tap` — користувач на карті, `gps_mark` — тап
@@ -1160,7 +1161,10 @@
     втрати дороги ручний режим уже ввімкнений, тож тап на панелі (`by=gps_mark`) рядка `manual` не має і лише `by=`
     у рядку позначки відрізняє його від тапу користувача на карті (`Engine::PutMark`, `nogps_log.py losses`);
   - `EVENT <назва>`: `position_source`, `gps_signal`, `box_state`, `box_ble`, `peer_role` (ключі `from=` і `to=`),
-    `gps_spoofed`, `gps_untrusted`, `gps_off_roads`, `gps_trusted`, `network_back`, `manual_by_itself`;
+    `gps_spoofed`, `gps_untrusted`, `gps_off_roads`, `gps_trusted`, `network_back`, `manual_by_itself`,
+    `last_trusted`, `obd_state`, `box_event`, `speed_factor`, `speed_rough_table`, `speed_table`,
+    `speed_table_cleared`; рядки `Routing session state`, `Calculating the route` і `EnableFollowMode`
+    пишуть платформи й `libs/routing`, без тегу (#498);
   - `MAPS ms=… version=261101,260714`: версії карт на диску, від новішої (`MapApi::GetMapsVersion`) — версії
     зареєстрованих карт країн, без World, бо дороги навігації беруться з карт країн; без карт — `version=-`. Це не
     версія списку країн (`Storage::GetCurrentDataVersion`): карта лежить такою, якою її завантажили, доки її не
@@ -1190,8 +1194,9 @@
   першої поїздки файлу, — першої. Якщо в одному файлі двигун запускали вдруге (застосунок повертався з фону), поїздка
   того запуску починається від його `ACTION start`: рядки, які `Engine::Start` пише за кілька мілісекунд до першого
   TRIP (`start`, `MAPS`, `CALIBRATION`, `restore_car`, `gps_off by=restore`, перша подія стану), належать їй, а не
-  попередній поїздці, хоч і стоять раніше за її `started_ms`. Id коробки, стан Bluetooth і маршрути лежать у журналі лише реченнями без часу,
-  тож у базі їх поки немає.
+  попередній поїздці, хоч і стоять раніше за її `started_ms`. Маршрути лежать у журналі лише реченнями без часу, тож
+  у базі їх поки немає; id коробки й стан Bluetooth — теговані рядки (`ACTION box_info` і `ble_state`), вони лежать
+  у `action`.
 - Заголовок нового файлу має `NonGPS Maps: 2026.11.08 (26110807, abcdef12), Organic Maps 2026.10.27-10`: версію
   застосунку (на Android `versionName`, як-от `2026.11.08-7-Google`), номер збірки `yyMMddNN`, коміт збірки
   (`git describe --always --dirty`) і версію Organic Maps, на якій зроблено збірку. Їх дає git під час збірки, див.

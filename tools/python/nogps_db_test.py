@@ -73,6 +73,23 @@ RESTARTED = [
 ]
 
 
+# The lines of the core that carry a tag and a name but no keys: their sentence is the data (#563).
+PROSE = [
+    ('OnBleState', 'ACTION ble_state', 'Bluetooth = CONNECTED'),
+    ('OnInfo', 'ACTION box_info', 'Box C47D firmware = 1.2 ESP32 S3 rev 1 updates = 1'),
+    ('RestoreTrustedPosition', 'EVENT last_trusted', 'Last trusted position = 10.000000,20.000000,%d' % T0),
+    ('OnLine', 'EVENT obd_state', 'OBD state = NO_ADAPTER'),
+    ('OnEvent', 'EVENT box_event', 'Box event # 4 at 11 ms: MOUNT_MOVED the mount moved'),
+    ('LearnRoughSpeed', 'EVENT speed_factor',
+     'Speed factor: the turn tells the calculated distance is 5 m off in 100 m, factor = 1.02'),
+    ('LearnRoughSpeed', 'EVENT speed_rough_table',
+     'Rough speed table: the turn tells the calculated distance is 5 m off in 100 m, table = 1:2:3'),
+    ('LogSpeedCalibration', 'EVENT speed_table',
+     'Speed table = 1:2:3 factor = 1.0 unit = KMH lag = 0.3 measured = 1 scale = 1.04 rough = 1:2:3'),
+    ('ClearSpeedCalibration', 'EVENT speed_table_cleared', 'Speed table was 1:2:3 factor 1.0 rough 1:2:3 unit KMH'),
+]
+
+
 def write(folder, name, lines):
     path = os.path.join(folder, *name.split('/'))
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -161,6 +178,19 @@ class ImportTest(unittest.TestCase):
         self.assertEqual(conn.execute('SELECT trip_id FROM calibration').fetchone()[0], second)
         self.assertEqual(conn.execute('SELECT trip_id FROM event').fetchone()[0], second)
         self.assertEqual(conn.execute("SELECT trip_id FROM note WHERE tag = 'MAPS'").fetchone()[0], second)
+
+    def test_prose_lines_of_the_core(self):
+        """The lines the core tags with a name but writes as a sentence: every name has a table (#563)."""
+        self.run_import([HEADER] + [core(func, '%s ms=%d %s' % (head, T0 + 100 + i, rest)) for i, (func, head, rest)
+                                    in enumerate(PROSE)])
+        conn = self.db()
+        self.assertEqual([r[0] for r in conn.execute('SELECT kind FROM action ORDER BY ms')],
+                         ['ble_state', 'box_info'])
+        self.assertEqual([r[0] for r in conn.execute('SELECT name FROM event ORDER BY ms')],
+                         ['last_trusted', 'obd_state', 'box_event', 'speed_factor', 'speed_rough_table',
+                          'speed_table', 'speed_table_cleared'])
+        self.assertEqual(conn.execute("SELECT text FROM action WHERE kind = 'ble_state'").fetchone()[0],
+                         'Bluetooth = CONNECTED')
 
     def test_reimport_replaces(self):
         self.run_import(GOOD)
