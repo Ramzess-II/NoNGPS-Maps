@@ -3954,6 +3954,27 @@ UNIT_TEST(NoGps_Engine_ThisPhoneRemovedFromBox)
   TEST(env.m_delegate.HasEvent(Event::ThisPhoneRemoved), ());
 }
 
+UNIT_TEST(NoGps_Engine_KeepsRecoveryCodeOfBox)
+{
+  Env env(true /* inertial */);
+  auto const last = [&env] { return *esp32::Parse(env.m_delegate.m_esp32BleSent.back()); };
+  TEST(env.m_engine.GetStatus().m_boxRecoveryCode.empty(), ());
+  env.m_engine.OnEsp32BleBytes(
+      BoxLine("NGI,1,0.4.5,2026-11-20T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE "
+              "OTA CAR PHONES MULTI RECOVERY,3"));
+  env.Drive(1000, 0, 0);
+  auto const sent = env.m_delegate.m_esp32BleSent;
+  auto const list = std::find_if(sent.begin(), sent.end(),
+                                 [](auto const & line) { return line.find(",BT_LIST*") != std::string::npos; });
+  TEST(list != sent.end(), ());
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + (*esp32::Parse(*list))[1] + ",OK,BC:D0:74:A9:71:92|Pixel 8|1|1,1"));
+  env.Drive(1000, 0, 0);
+  auto const ask = last();
+  TEST_EQUAL(ask[2], "BT_RECOVERY", ());
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + ask[1] + ",OK,123456"));
+  TEST_EQUAL(env.m_engine.GetStatus().m_boxRecoveryCode, "123456", ());
+}
+
 UNIT_TEST(NoGps_BoxCarValues_PlaceIsWrittenSeldom)
 {
   CarBox box;

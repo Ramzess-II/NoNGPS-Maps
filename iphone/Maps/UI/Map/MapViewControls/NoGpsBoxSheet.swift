@@ -367,7 +367,8 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
   }
 
   /// What the user does for the phone to reach the box, nil if nothing: the steps and their button tell the rest.
-  static func linkHintText(_ ble: NoGpsBleState) -> String? {
+  /// The system dialog of the pairing wants the recovery code of the box, when the box has told it, not 123456.
+  static func linkHintText(_ ble: NoGpsBleState, recoveryCode: String = "") -> String? {
     let text: String
     switch ble {
     case .pairingClosed: text = L("nogps_box_bt_pairing_closed")
@@ -379,7 +380,11 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     case .bondLost: text = L("nogps_box_bt_bond_lost")
     default: return nil
     }
-    return NoGpsBoxPage.sentenceCase(text)
+    var hint = NoGpsBoxPage.sentenceCase(text)
+    if !recoveryCode.isEmpty, [.pairingByPhone, .pairingFull, .pairing].contains(ble) {
+      hint += ". " + String(format: L("nogps_box_bt_recovery_code"), recoveryCode)
+    }
+    return hint
   }
 
   /// The button of the steps and of a box set up, nil if none. Bluetooth is turned on by the user: iOS asks for it
@@ -929,7 +934,12 @@ final class CarPageViewController: MWMTableViewController {
   }
 
   private func phoneFooter() -> String? {
-    phonesKnown && status.boxReadOnly ? L("nogps_box_read_only") : nil
+    let texts = [
+      phonesKnown && status.boxReadOnly ? L("nogps_box_read_only") : nil,
+      // The code the box told this phone before: shown while the box is out of reach too, to be written down.
+      status.boxRecoveryCode.isEmpty ? nil : String(format: L("nogps_phone_recovery_code"), status.boxRecoveryCode),
+    ].compactMap { $0 }
+    return texts.isEmpty ? nil : texts.joined(separator: "\n\n")
   }
 
   /// Every car with its state: picking one drives it, Add a car looks for the box of a new one.
@@ -1372,7 +1382,7 @@ private final class BoxSearchView: UIView {
     }
     stepViews[0].label.text = L(ble == .noPermission ? "nogps_box_step_bluetooth_denied"
       : bluetoothFailed ? "nogps_box_step_bluetooth_off" : "nogps_box_step_bluetooth")
-    let hint = NoGpsBoxSheet.linkHintText(ble)
+    let hint = NoGpsBoxSheet.linkHintText(ble, recoveryCode: status.boxRecoveryCode)
     hintLabel.text = hint
     hintLabel.isHidden = hint == nil
     let action = NoGpsBoxSheet.linkActionText(ble)

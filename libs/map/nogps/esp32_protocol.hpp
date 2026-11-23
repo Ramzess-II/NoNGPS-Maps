@@ -101,6 +101,8 @@ struct Info
   bool m_twoPhones = false;
   // The box passes the places of the phones between them, see Peer.
   bool m_canPeer = false;
+  // The box tells the code of its recovery window to the phone it listens to: BT_RECOVERY.
+  bool m_hasRecovery = false;
   // The four characters of the name of the box, NoGPS-XXXX.
   std::string m_id;
   // How many times the box was powered on, nothing from a firmware that doesn't count it.
@@ -186,6 +188,8 @@ struct Phones
 };
 
 int constexpr kMaxPhones = 4;
+// The code of the recovery window of the box: this many digits.
+size_t constexpr kRecoveryCodeSize = 6;
 size_t constexpr kMaxPhoneNameSize = 20;
 // A new phone pairs with a code of this many digits, the box takes it this long.
 int constexpr kPairingCodeDigits = 6;
@@ -250,6 +254,10 @@ std::optional<Event> ParseEvent(Fields const & fields);
 std::optional<Info> ParseInfo(Fields const & fields);
 /// \returns the phones from the reply to BT_LIST.
 std::optional<Phones> ParsePhones(Reply const & reply);
+
+/// \returns the code from the reply to BT_RECOVERY, nothing if the box has refused or the code is not kRecoveryCodeSize
+/// digits.
+std::optional<std::string> ParseRecoveryCode(Reply const & reply);
 /// \returns the place of the other phone from an NGX line.
 std::optional<Peer> ParsePeer(Fields const & fields);
 /// \returns the progress of a firmware update from an NGO line.

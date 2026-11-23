@@ -183,6 +183,9 @@ struct Status
   // The code to enter on the new phone while m_addPhone is Open, and how long the box takes it.
   std::string m_addPhoneCode;
   int m_addPhoneSecondsLeft = 0;
+  // The code of the recovery window of the box of the current car, six digits, as the box told it to this phone:
+  // empty until then. The system dialog of the pairing wants it while the box is in the window, see BLE-16.
+  std::string m_boxRecoveryCode;
 
   // The phone that changes the box leads the place, the other one follows it: it shows the place of the leader and
   // sends its corrections. None without the ability of the box or with one phone.
@@ -467,6 +470,7 @@ private:
   void OnBoxHeard(std::string const & id, std::string const & firmware) override;
   void OnBoxCarValues(std::map<std::string, std::string> const & values) override;
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
+  void OnBoxRecoveryCode(std::string const & code) override;
   void OnThisPhoneRemoved() override;
   void OnBoxStopping() override;
   /// The link to the box is made or has ended: one made after kTripFileLinkGapMs without it starts a trip.

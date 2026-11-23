@@ -122,6 +122,8 @@ public:
   };
   // The name the user has given the car, kept by the keys of the car as its values: NoGpsCar.C47D.Name.
   static std::string_view constexpr kCarName = "NoGpsName";
+  // The code of the recovery window of the box, six digits, as the box told it to this phone the last time.
+  static std::string_view constexpr kCarRecoveryCode = "NoGpsRecoveryCode";
   // A box heard when the user has this many cars is not added. Cars already over it are kept.
   static size_t constexpr kMaxCars = 4;
   // The values the box of the car keeps too, see BoxCarValues.

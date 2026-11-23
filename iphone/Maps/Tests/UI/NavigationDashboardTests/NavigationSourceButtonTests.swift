@@ -119,6 +119,17 @@ extension NavigationSourceButtonTests {
     }
   }
 
+  /// The system dialog wants the recovery code of the box in the pairing window, when the box has told it.
+  func test_GivenRecoveryCode_WhenBoxIsNotPaired_ThenTheHintHasTheCode() {
+    for ble: NoGpsBleState in [.pairingByPhone, .pairingFull, .pairing] {
+      XCTAssertTrue(NoGpsBoxSheet.linkHintText(ble, recoveryCode: "654321")?.hasSuffix("654321") ?? false,
+                    "Bluetooth \(ble.rawValue)")
+    }
+    for ble: NoGpsBleState in [.pairingClosed, .bondLost, .pairingFailed] {
+      XCTAssertEqual(NoGpsBoxSheet.linkHintText(ble, recoveryCode: "654321"), NoGpsBoxSheet.linkHintText(ble))
+    }
+  }
+
   /// The box is heard but the car gives no speed: the hint names what to check. It doesn't flip while the box searches
   /// the car protocol again.
   func test_GivenObdState_WhenBoxIsHeard_ThenTheHintTellsWhatToCheck() {

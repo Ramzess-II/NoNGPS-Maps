@@ -34,6 +34,25 @@ public class BoxHintsTest
                  BoxBottomSheet.linkHintText(status(SourceState.CONNECTING, BleState.BOND_LOST)));
   }
 
+  // The system dialog wants the recovery code of the box in the pairing window, when the box has told it.
+  @Test
+  public void pairingHintsHaveRecoveryCode()
+  {
+    for (BleState ble : new BleState[] {BleState.PAIRING_BY_PHONE, BleState.PAIRING_FULL, BleState.PAIRING})
+    {
+      final NoGps.Status status = status(SourceState.CONNECTING, ble);
+      assertFalse(BoxBottomSheet.hintHasRecoveryCode(status));
+      status.boxRecoveryCode = "123456";
+      assertTrue(BoxBottomSheet.hintHasRecoveryCode(status));
+    }
+    for (BleState ble : new BleState[] {BleState.PAIRING_CLOSED, BleState.BOND_LOST, BleState.SEARCHING})
+    {
+      final NoGps.Status status = status(SourceState.CONNECTING, ble);
+      status.boxRecoveryCode = "123456";
+      assertFalse(BoxBottomSheet.hintHasRecoveryCode(status));
+    }
+  }
+
   // The steps tell the search and the connection themselves.
   @Test
   public void noLinkHintWhileItGoes()

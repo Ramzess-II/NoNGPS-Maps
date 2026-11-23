@@ -1138,6 +1138,13 @@ void Engine::OnBoxCarWritten(std::string const & key, std::string const & value,
   m_boxCarValues.OnWritten(key, value, error);
 }
 
+void Engine::OnBoxRecoveryCode(std::string const & code)
+{
+  // The code is of the box heard last: its car is the current one.
+  if (auto const car = m_cars.GetCurrentCar(); !car.empty())
+    m_cars.SetCarValue(car, CarStorage::kCarRecoveryCode, code);
+}
+
 void Engine::OnThisPhoneRemoved()
 {
   LOG(LINFO, ("This phone is removed from the box of the car", m_cars.GetCurrentCar()));
@@ -2153,6 +2160,8 @@ Status Engine::GetStatus()
   status.m_inertialEnabled = IsInertialNavigationEnabled();
   status.m_esp32Source = m_storage.IsEsp32Source();
   status.m_carId = m_cars.GetCurrentCar();
+  if (!status.m_carId.empty())
+    status.m_boxRecoveryCode = m_cars.GetCarValue(status.m_carId, CarStorage::kCarRecoveryCode).value_or("");
   status.m_elm327Address = m_storage.Get<std::string>(Storage::kElm327Address, "");
   status.m_inertialStarted = status.m_inertialEnabled && m_inertial;
   if (status.m_inertialStarted)
