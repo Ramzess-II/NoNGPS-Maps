@@ -10,6 +10,7 @@ import importlib
 import io
 import os
 import sys
+import tempfile
 import types
 import unittest
 
@@ -55,10 +56,10 @@ class Radio(sim.FakeRadio):
         return [raw for raw in found if kind is None or raw[1:4] == kind]
 
 
-def box(take=None, box_id='S1'):
+def box(take=None, box_id='S1', keys_path=None):
     clock = Clock()
     radio = Radio(take)
-    made = sim.Box(sim.State(box_id), radio, clock)
+    made = sim.Box(sim.State(box_id), radio, clock, keys_path=keys_path)
     return made, radio, clock
 
 
@@ -269,6 +270,30 @@ class Commands(unittest.TestCase):
         made.on_event('write', PHONE, command(1, 'AUTH,a1b2c3d4e5f60718'))
         made.tick()
         self.assertEqual(fields(radio.lines('NGA')[-1])[2:], ['OK', '0620aee41375224a'])
+
+    def test_the_keys_of_the_phones_outlive_the_program(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, 'keys.json')
+            first, _, _ = box(keys_path=path)
+            connect(first)
+            first.on_event('write', PHONE, command(1, 'AUTH_SET,000102030405060708090a0b0c0d0e0f'))
+            first.tick()
+            # The program starts again, as the box restarts: the key of the phone is where NVS keeps it.
+            again, radio, _ = box(keys_path=path)
+            connect(again)
+            again.on_event('write', PHONE, command(2, 'AUTH,a1b2c3d4e5f60718'))
+            again.tick()
+            self.assertEqual(fields(radio.lines('NGA')[-1])[2:], ['OK', '0620aee41375224a'])
+            # A box of another id has its own keys in the same file.
+            other, other_radio, _ = box(box_id='S2', keys_path=path)
+            connect(other)
+            other.on_event('write', PHONE, command(3, 'AUTH,a1b2c3d4e5f60718'))
+            other.tick()
+            self.assertEqual(fields(other_radio.lines('NGA')[-1])[2:], ['ERR', 'NOKEY'])
+            # The keys the panel makes the box forget are gone from the file too.
+            again.panel_action('forget_keys', '')
+            last, _, _ = box(keys_path=path)
+            self.assertEqual(last.auth_keys, {})
 
     def test_the_panel_makes_the_box_forget_the_keys(self):
         made, radio, _ = box()

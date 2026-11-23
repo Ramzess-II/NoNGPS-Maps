@@ -33,9 +33,11 @@ What it doesn't simulate, and why:
 - the firmware update, the car values, the phone list and the places of two phones: NGI tells the abilities "BLE
   AUTH" and no more, and the application asks for none of the others.
 
-The box proves itself as section 9.5 says: AUTH_SET takes a key of a phone, AUTH answers with the proof of it. The keys
-live as long as the program does, by the id the radio gives a phone, as the firmware keeps them with the bond: the
-panel's "Forget the keys" is a box that has lost them, which the application refuses.
+The box proves itself as section 9.5 says: AUTH_SET takes a key of a phone, AUTH answers with the proof of it. A key
+is kept by the id the radio gives a phone, as the firmware keeps it with the bond, and outlives the program in the file
+of --keys, as the firmware keeps it in NVS over a restart: otherwise the application, which keeps its key, would refuse
+the simulator from its second run on. The panel's "Forget the keys" is a box that has lost them, which the application
+refuses until the car is forgotten in it.
 
 The radio needs a package -- PyObjC on macOS, dbus-next on Linux, winsdk on Windows -- and the script declares
 them above, each for its own platform, so uv puts them in an environment of its own and nothing is installed into
@@ -122,6 +124,8 @@ ABILITIES = 'BLE AUTH'
 AUTH_KEY_BYTES = 16
 AUTH_NONCE_BYTES = 8
 AUTH_PROOF_BYTES = 8
+# The keys of the phones, by the id of the box: the firmware keeps them in NVS, the simulator in this file.
+DEFAULT_KEYS_PATH = os.path.expanduser('~/.nogps-box-sim-keys.json')
 FLAG = dict(FLAG_BITS)
 # A command of section 7.2 or 7.3 sets the flags its calibration would set.
 CALIBRATION = {'CAL_BIAS': {'BIAS_OK': True},
@@ -305,7 +309,7 @@ class Phone:
 class Box:
     """The box: it keeps the state, answers the commands and sends the lines through a radio."""
 
-    def __init__(self, state, radio, clock=time.monotonic):
+    def __init__(self, state, radio, clock=time.monotonic, keys_path=None):
         self.lock = threading.RLock()
         self.state = state
         self.radio = radio
@@ -313,8 +317,9 @@ class Box:
         # Monotonic seconds; the tests drive their own.
         self.clock = clock
         self.phones = {}
-        # Section 9.5: the key of each phone, kept with its bond.
-        self.auth_keys = {}
+        # Section 9.5: the key of each phone, kept with its bond; the file keeps them over a restart, as NVS does.
+        self.keys_path = keys_path
+        self.auth_keys = self.load_keys()
         self.seq = 0
         self.started = clock()
         self.log = collections.deque(maxlen=LINES_KEPT)
@@ -423,7 +428,37 @@ class Box:
         if self.auth_keys.get(phone.id, key) != key:
             return 'ERR,EXISTS'
         self.auth_keys[phone.id] = key
+        self.save_keys()
         return 'OK'
+
+    def load_keys(self):
+        """The keys this box has kept in the file of --keys, none without one or when it can not be read."""
+        if not self.keys_path:
+            return {}
+        try:
+            with open(self.keys_path, encoding='utf-8') as f:
+                kept = json.load(f)[self.state.box_id]
+            return {phone: bytes.fromhex(key) for phone, key in kept.items()}
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            return {}
+
+    def save_keys(self):
+        """The keys of this box go into the file of --keys, beside those of the other box ids in it."""
+        if not self.keys_path:
+            return
+        try:
+            with open(self.keys_path, encoding='utf-8') as f:
+                kept = json.load(f)
+            if not isinstance(kept, dict):
+                kept = {}
+        except (OSError, ValueError):
+            kept = {}
+        kept[self.state.box_id] = {phone: key.hex() for phone, key in self.auth_keys.items()}
+        try:
+            with open(self.keys_path, 'w', encoding='utf-8') as f:
+                json.dump(kept, f)
+        except OSError as error:
+            print('the keys are not kept in %s: %s' % (self.keys_path, error))
 
     def auth(self, phone, rest):
         """AUTH,<16 hex nonce>: OK,<proof>, NOKEY if the phone has no key."""
@@ -603,6 +638,7 @@ class Box:
                 self.log.clear()
             elif action == 'forget_keys':
                 self.auth_keys.clear()
+                self.save_keys()
         return self.panel_state()
 
 
@@ -744,6 +780,9 @@ def main():
                                                    'character fits after NonGPS- and two after NoGPS- there')
     parser.add_argument('--legacy-name', action='store_true',
                         help='advertise NoGPS-XXXX as a box that is not updated does')
+    parser.add_argument('--keys', default=DEFAULT_KEYS_PATH,
+                        help='the file with the keys the phones have given the box, as NVS keeps them over a restart; '
+                             'empty keeps them in memory alone')
     parser.add_argument('--port', type=int, default=0, help='0 takes a free one')
     parser.add_argument('--no-browser', action='store_true')
     args = parser.parse_args()
@@ -753,7 +792,7 @@ def main():
     radio = make_radio(args.radio)
     state = State(args.id)
     state.legacy_name = args.legacy_name
-    box = Box(state, radio)
+    box = Box(state, radio, keys_path=args.keys or None)
     server = ThreadingHTTPServer(('127.0.0.1', args.port), handler(box))
     url = 'http://127.0.0.1:%d/' % server.server_address[1]
     threading.Thread(target=server.serve_forever, daemon=True).start()
