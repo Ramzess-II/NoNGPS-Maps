@@ -10,6 +10,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
@@ -48,6 +49,7 @@ import androidx.appcompat.widget.ListPopupWindow;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
+import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.FragmentManager;
 import androidx.transition.Slide;
 import androidx.transition.TransitionManager;
@@ -192,6 +194,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     }
   };
   private ViewGroup mRoot;
+  private NestedScrollView mScroll;
   private View mMain;
   private View mTitleRow;
   private TextView mTitle;
@@ -555,6 +558,22 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final BottomSheetBehavior<?> behavior = getBehavior();
     behavior.setSkipCollapsed(true);
     behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+    mScroll = (NestedScrollView) view;
+    mScroll.setMinimumHeight(minSheetHeight(getResources().getDisplayMetrics().heightPixels));
+  }
+
+  @Override
+  public void onConfigurationChanged(@NonNull Configuration newConfig)
+  {
+    super.onConfigurationChanged(newConfig);
+    if (mScroll != null)
+      mScroll.setMinimumHeight(minSheetHeight(getResources().getDisplayMetrics().heightPixels));
+  }
+
+  // A short page is not a sliver at the bottom: the sheet is at least half the window.
+  static int minSheetHeight(int windowHeight)
+  {
+    return windowHeight / 2;
   }
 
   @Override

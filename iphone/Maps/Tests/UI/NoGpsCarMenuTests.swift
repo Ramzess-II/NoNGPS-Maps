@@ -14,6 +14,12 @@ final class NoGpsCarMenuTests: XCTestCase {
                          maxCars: maxCars)
   }
 
+  func testSheetHeightIsContentBetweenHalfWindowAndMaximum() {
+    XCTAssertEqual(NoGpsBoxSheet.sheetHeight(content: 200, window: 800, maximum: 800), 400)
+    XCTAssertEqual(NoGpsBoxSheet.sheetHeight(content: 600, window: 800, maximum: 800), 600)
+    XCTAssertEqual(NoGpsBoxSheet.sheetHeight(content: 1500, window: 800, maximum: 760), 760)
+  }
+
   func testOneCarAndAdd() {
     XCTAssertEqual(entries([car("C47D")]),
                    [.car(carId: "C47D", name: "Car C47D", state: .current), .add])

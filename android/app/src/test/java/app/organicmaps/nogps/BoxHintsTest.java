@@ -14,6 +14,13 @@ import org.junit.Test;
 
 public class BoxHintsTest
 {
+  @Test
+  public void sheetIsAtLeastHalfTheWindow()
+  {
+    assertEquals(1000, BoxBottomSheet.minSheetHeight(2000));
+    assertEquals(400, BoxBottomSheet.minSheetHeight(801));
+  }
+
   // The phone can't reach the box by itself: the user is told what to do.
   @Test
   public void linkHintTellsWhatToDo()
