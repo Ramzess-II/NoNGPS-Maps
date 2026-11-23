@@ -87,6 +87,8 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
   private float mLastX;
   private float mLastY;
   private boolean mMoved;
+  /** The finger that turns the globe: the others do not move it. */
+  private int mPointerId = MotionEvent.INVALID_POINTER_ID;
   @Nullable
   private VelocityTracker mTracker;
 
@@ -204,6 +206,7 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
     case MotionEvent.ACTION_DOWN:
       // The screen scrolls; here the finger turns the globe, in any direction.
       getParent().requestDisallowInterceptTouchEvent(true);
+      mPointerId = event.getPointerId(0);
       mDownX = mLastX = event.getX();
       mDownY = mLastY = event.getY();
       mMoved = false;
@@ -211,38 +214,55 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
       mTracker.addMovement(event);
       return true;
     case MotionEvent.ACTION_MOVE:
+    {
       if (mTracker == null)
         return false;
       mTracker.addMovement(event);
-      if (!mMoved && Math.hypot(event.getX() - mDownX, event.getY() - mDownY) > mTouchSlop)
+      // The place of the finger that started the drag, not of the first in the list: with a second finger down the
+      // first one is not index 0 any more, and the globe would jump the distance between them.
+      final int index = event.findPointerIndex(mPointerId);
+      if (index < 0)
+        return true;
+      final float x = event.getX(index);
+      final float y = event.getY(index);
+      if (!mMoved && Math.hypot(x - mDownX, y - mDownY) > mTouchSlop)
       {
         mMoved = true;
         mScene.beginDrag();
       }
       if (mMoved)
       {
-        mScene.drag((event.getX() - mLastX) / mDensity, (event.getY() - mLastY) / mDensity);
-        mLastX = event.getX();
-        mLastY = event.getY();
+        mScene.drag((x - mLastX) / mDensity, (y - mLastY) / mDensity);
+        mLastX = x;
+        mLastY = y;
         invalidate();
       }
       return true;
+    }
+    case MotionEvent.ACTION_POINTER_UP:
+      // The finger that turns the globe is up while another is still down: the gesture ends with it.
+      if (mTracker == null || event.getPointerId(event.getActionIndex()) != mPointerId)
+        return super.onTouchEvent(event);
+      mTracker.addMovement(event);
+      finishDrag();
+      invalidate();
+      return true;
     case MotionEvent.ACTION_UP:
+    {
       if (mTracker == null)
         return false;
       mTracker.addMovement(event);
-      if (mMoved)
-      {
-        mTracker.computeCurrentVelocity(1000);
-        mScene.endDrag(mTracker.getXVelocity() / mDensity, mTracker.getYVelocity() / mDensity);
-      }
+      final int index = event.findPointerIndex(mPointerId);
+      if (mMoved || index < 0)
+        finishDrag();
       else
       {
-        tap(event.getX() / mDensity, event.getY() / mDensity);
+        tap(event.getX(index) / mDensity, event.getY(index) / mDensity);
+        release();
       }
-      release();
       invalidate();
       return true;
+    }
     case MotionEvent.ACTION_CANCEL:
       if (mMoved)
         mScene.endDrag(0, 0);
@@ -252,12 +272,24 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
     }
   }
 
+  /** The finger that turns the globe is up: the flick carries on, if it was fast enough. */
+  private void finishDrag()
+  {
+    if (mMoved && mTracker != null)
+    {
+      mTracker.computeCurrentVelocity(1000);
+      mScene.endDrag(mTracker.getXVelocity(mPointerId) / mDensity, mTracker.getYVelocity(mPointerId) / mDensity);
+    }
+    release();
+  }
+
   private void release()
   {
     if (mTracker != null)
       mTracker.recycle();
     mTracker = null;
     mMoved = false;
+    mPointerId = MotionEvent.INVALID_POINTER_ID;
   }
 
   private void tap(float x, float y)
