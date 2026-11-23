@@ -16,3 +16,6 @@
 #define USER_BINDING_PKCS12 ""
 #define USER_BINDING_PKCS12_PASSWORD ""
 #define KAYAK_AFFILIATE_ID "kan_267335"
+// Crash reports to Sentry, one project per platform. An empty value disables them on that platform.
+#define SENTRY_DSN_IOS ""
+#define SENTRY_DSN_ANDROID ""
