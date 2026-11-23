@@ -151,7 +151,7 @@
     <string name="description">Նշումներ</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Ձեզ հետ կիսվել են NonGPS Maps-ի էջանիշներով</string>
-    <string name="share_bookmarks_email_body">Ողջույն!\nԿից ներկայացված են իմ էջանիշները: Խնդրում եմ բացել դրանք NonGPS Maps-ում: Եթե այն տեղադրված չէ, կարող եք ներբեռնել այստեղ՝ https://github.com/Ramzess-II/NoGPSMaps\nՎայելեք ճանապարհորդությունը NonGPS Maps-ի հետ:</string>
+    <string name="share_bookmarks_email_body">Ողջույն!\nԿից ներկայացված են իմ էջանիշները: Խնդրում եմ բացել դրանք NonGPS Maps-ում: Եթե այն տեղադրված չէ, կարող եք ներբեռնել այստեղ՝ https://github.com/Ramzess-II/NoNGPS-Maps\nՎայելեք ճանապարհորդությունը NonGPS Maps-ի հետ:</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Էջանիշների բեռնում</string>
     <!-- Kmz file successful loading -->

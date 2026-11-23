@@ -428,7 +428,7 @@ public:
   void OnElm327Bytes(std::string_view data);
   void OnElm327Closed(std::string const & reason);
   void OnEsp32BleBytes(std::string_view bytes);
-  void OnEsp32BleState(BleState state);
+  void OnEsp32BleState(BleState state, bool bondLost);
 
   bool IsReady() const;
   bool HasPosition() const { return m_deadReckoning.HasPosition(); }
@@ -471,6 +471,7 @@ public:
   std::string GetDeviceName() const;
   /// What the platform does about Bluetooth to reach the ESP32 sensor box.
   BleState GetBleState() const;
+  bool IsBleBondLost() const;
   /// \returns nothing if the car movement doesn't come from the ESP32 sensor box.
   std::optional<Esp32Source::DataRate> GetEsp32DataRate() const;
   /// \returns the ESP32 sensor box, nullptr if the source is another one.

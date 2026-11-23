@@ -151,7 +151,7 @@
     <string name="description">Примечание</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">С вами поделились метками NonGPS Maps</string>
-    <string name="share_bookmarks_email_body">Здравствуйте!\n\nВ прикреплённом файле мои метки из офлайновых карт NonGPS Maps. Для того чтобы открыть этот файл, вам потребуется приложение NonGPS Maps, которое можно установить по ссылке: https://github.com/Ramzess-II/NoGPSMaps\n\nСпасибо!</string>
+    <string name="share_bookmarks_email_body">Здравствуйте!\n\nВ прикреплённом файле мои метки из офлайновых карт NonGPS Maps. Для того чтобы открыть этот файл, вам потребуется приложение NonGPS Maps, которое можно установить по ссылке: https://github.com/Ramzess-II/NoNGPS-Maps\n\nСпасибо!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Загрузка меток</string>
     <!-- Kmz file successful loading -->
@@ -1104,7 +1104,7 @@
     <!-- Message: this phone has been removed from the sensor box on its own request -->
     <string name="nogps_phone_removed">Этот телефон удалён из блока, машина забыта</string>
     <!-- Message on Android: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and the app could not remove it -->
-    <string name="nogps_phone_removed_unpair">Этот телефон удалён из блока, машина забыта. Удалите NoGPS-%1$s в настройках Bluetooth</string>
+    <string name="nogps_phone_removed_unpair">Этот телефон удалён из блока, машина забыта. Удалите блок, имя которого заканчивается на %1$s, в настройках Bluetooth</string>
     <!-- Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code -->
     <string name="nogps_phone_add">Добавить телефон</string>
     <!-- Title of the dialog that adds a phone to the box of a car. %1$@ is the car name, e.g. "Add a phone to Kia" -->
@@ -1172,8 +1172,10 @@
     <string name="nogps_clear_speed">Сбросить</string>
     <string name="nogps_clear_speed_title">Сбросить калибровку скорости?</string>
     <string name="nogps_clear_speed_message">Поправки скорости, измеренные по GPS на разных скоростях и по вашим сдвигам, будут забыты. Делайте это после смены шин или машины. Пока работает GPS, они измеряются заново.</string>
-    <!-- Main menu row opening the account of the user on the site -->
+    <!-- Main menu row opening the screen with the records of every car of the user -->
     <string name="nogps_menu_profile">Профиль</string>
+    <!-- Footer of the Profile screen: what the screen will hold later -->
+    <string name="nogps_profile_soon">Здесь появятся аккаунт, устройства, гарантия и заказы</string>
     <string name="nogps_about_title">О NonGPS Maps</string>
     <!-- Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on -->
     <string name="nogps_about_om_menu">О приложении Organic Maps</string>

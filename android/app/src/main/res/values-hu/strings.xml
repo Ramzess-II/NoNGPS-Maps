@@ -151,7 +151,7 @@
     <string name="description">Jegyzetek</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Egy NonGPS Maps könyvjelzőt osztottak meg Önnel</string>
-    <string name="share_bookmarks_email_body">Üdvözlöm!\n\nMellékeltem a könyvjelzőimet; nyissa meg őket a NonGPS Maps alkalmazásban. Ha még nem telepítette, akkor innen tudja letölteni: https://github.com/Ramzess-II/NoGPSMaps\n\nJó utat kívánok a NonGPS Maps alkalmazással!</string>
+    <string name="share_bookmarks_email_body">Üdvözlöm!\n\nMellékeltem a könyvjelzőimet; nyissa meg őket a NonGPS Maps alkalmazásban. Ha még nem telepítette, akkor innen tudja letölteni: https://github.com/Ramzess-II/NoNGPS-Maps\n\nJó utat kívánok a NonGPS Maps alkalmazással!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Könyvjelzők betöltése</string>
     <!-- Kmz file successful loading -->

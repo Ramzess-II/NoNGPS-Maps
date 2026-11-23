@@ -207,6 +207,38 @@ extension MapControlsPanel {
   }
 }
 
+/// One slide of a finger on a zoom button. It keeps the part of the slide already applied to the map, so each move
+/// zooms only by the new part of it: the zoom follows the distance of the finger, not the rate of the touch events,
+/// and a finger at rest holds the zoom.
+@objc
+final class ZoomSlide: NSObject {
+  /// A slide of a whole frame height zooms by exp(gain).
+  static let gain = CGFloat(3)
+
+  private var applied = CGFloat(0)
+
+  /// The slide becomes a zoom dy pt from where the finger went down: the zoom counts from here, so it never jumps
+  /// when the finger comes back.
+  @objc(startAt:)
+  func start(at dy: CGFloat) {
+    applied = dy
+  }
+
+  /// The factor to scale the map by for a finger now dy pt up from where it went down, in a frame of the given
+  /// height. 1 when the finger has not moved since the previous step.
+  @objc(stepTo:frameHeight:)
+  func step(to dy: CGFloat, frameHeight: CGFloat) -> CGFloat {
+    let slide = dy - applied
+    applied = dy
+    return ZoomSlide.factor(slide: slide, frameHeight: frameHeight)
+  }
+
+  /// The scale factor of a slide of dy pt up in a frame of the given height.
+  static func factor(slide dy: CGFloat, frameHeight: CGFloat) -> CGFloat {
+    exp(dy / frameHeight * gain)
+  }
+}
+
 /// A button of a panel. Its tint shows its state: UIKit resets the tint when the press ends, so it is set again then.
 @objc
 final class NoGpsPanelButton: MWMButton {

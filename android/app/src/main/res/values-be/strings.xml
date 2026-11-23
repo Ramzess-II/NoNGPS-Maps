@@ -151,7 +151,7 @@
     <string name="description">Нататкі</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">З вамі падзяліліся закладкамі NonGPS Maps</string>
-    <string name="share_bookmarks_email_body">Вітаю!\n\nУ далучаным файле мае закладкі, яны адкрываюцца праграмай NonGPS Maps. Калі такая праграма ў вас не ўсталявана, яе можна спампаваць тут: https://github.com/Ramzess-II/NoGPSMaps\n\nПрыемных падарожжаў з NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Вітаю!\n\nУ далучаным файле мае закладкі, яны адкрываюцца праграмай NonGPS Maps. Калі такая праграма ў вас не ўсталявана, яе можна спампаваць тут: https://github.com/Ramzess-II/NoNGPS-Maps\n\nПрыемных падарожжаў з NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Загрузка закладак</string>
     <!-- Kmz file successful loading -->

@@ -105,7 +105,7 @@
     <string name="description">ບັນທຶກ</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">ມີການແບ່ງປັນບຸກມາກ NonGPS Maps ໃຫ້ທ່ານ</string>
-    <string name="share_bookmarks_email_body">ສະບາຍດີ!\n\nນີ້ແມ່ນບຸກມາກຂອງຂ້ອຍ; ກະລຸນາເປີດໃນ NonGPS Maps. ຫາກທ່ານຍັງບໍ່ໄດ້ຕິດຕັ້ງ, ສາມາດດາວໂຫລດໄດ້ທີ່ນີ້: https://github.com/Ramzess-II/NoGPSMaps\n\nຂໍໃຫ້ມ່ວນກັບການເດີນທາງດ້ວຍ NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">ສະບາຍດີ!\n\nນີ້ແມ່ນບຸກມາກຂອງຂ້ອຍ; ກະລຸນາເປີດໃນ NonGPS Maps. ຫາກທ່ານຍັງບໍ່ໄດ້ຕິດຕັ້ງ, ສາມາດດາວໂຫລດໄດ້ທີ່ນີ້: https://github.com/Ramzess-II/NoNGPS-Maps\n\nຂໍໃຫ້ມ່ວນກັບການເດີນທາງດ້ວຍ NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">ກຳລັງໂຫລດບຸກມາກ</string>
     <!-- Kmz file successful loading -->

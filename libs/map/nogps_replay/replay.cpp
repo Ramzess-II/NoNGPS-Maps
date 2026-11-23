@@ -461,13 +461,17 @@ private:
     case 'L':
     {
       std::string name;
+      int bondLost = 0;
       in >> name;
+      // The flag of a pairing thought lost is the last field: the records of the trips driven before it have none.
+      if (!(in >> bondLost))
+        bondLost = 0;
       for (auto const state :
            {BleState::Off, BleState::NoPermission, BleState::Disabled, BleState::Searching, BleState::PairingClosed,
             BleState::Connecting, BleState::Pairing, BleState::Connected, BleState::PairingFailed, BleState::BondLost})
       {
         if (DebugPrint(state) == name)
-          engine.OnEsp32BleState(state);
+          engine.OnEsp32BleState(state, bondLost != 0);
       }
       break;
     }

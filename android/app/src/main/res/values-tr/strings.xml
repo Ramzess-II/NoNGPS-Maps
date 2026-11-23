@@ -151,7 +151,7 @@
     <string name="description">Notlar</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Seninle paylaşılan NonGPS Maps yer imleri</string>
-    <string name="share_bookmarks_email_body">Merhaba! \n \nEktekiler yer imlerim, lütfen bunları NonGPS Maps\'te açın. Eğer uygulama kurulmamışsa, şu bağlantıyla iOS ve Android aygıtınıza kurabilirsiniz: https://github.com/Ramzess-II/NoGPSMaps\n \nNonGPS Maps ile gezintinin tadını çıkarın!</string>
+    <string name="share_bookmarks_email_body">Merhaba! \n \nEktekiler yer imlerim, lütfen bunları NonGPS Maps\'te açın. Eğer uygulama kurulmamışsa, şu bağlantıyla iOS ve Android aygıtınıza kurabilirsiniz: https://github.com/Ramzess-II/NoNGPS-Maps\n \nNonGPS Maps ile gezintinin tadını çıkarın!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Yer İmleri Yükleniyor</string>
     <!-- Kmz file successful loading -->

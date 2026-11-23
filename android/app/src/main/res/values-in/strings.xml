@@ -151,7 +151,7 @@
     <string name="description">Catatan</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Bagikan penanda NonGPS Maps</string>
-    <string name="share_bookmarks_email_body">Halo!\n\nTerlampir adalah bookmark saya; silakan buka di NonGPS Maps. Jika Anda belum memasangnya, Anda dapat mengunduhnya di sini: https://github.com/Ramzess-II/NoGPSMaps\n\nNikmati perjalanan Anda dengan NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Halo!\n\nTerlampir adalah bookmark saya; silakan buka di NonGPS Maps. Jika Anda belum memasangnya, Anda dapat mengunduhnya di sini: https://github.com/Ramzess-II/NoNGPS-Maps\n\nNikmati perjalanan Anda dengan NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Memuat Penanda</string>
     <!-- Kmz file successful loading -->

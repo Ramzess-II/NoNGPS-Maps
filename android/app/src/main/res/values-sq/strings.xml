@@ -151,7 +151,7 @@
     <string name="description">Shënime</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Faqeshënuesit e NonGPS Maps u ndanë me ju</string>
-    <string name="share_bookmarks_email_body">Përshëndetje!\n\nBashkëngjitur janë faqeshënuesit e mi; ju lutemi hapini ato në NonGPS Maps. Nëse nuk e keni të instaluar, mund ta shkarkoni këtu: https://github.com/Ramzess-II/NoGPSMaps\n\nShijoni udhëtimin me NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Përshëndetje!\n\nBashkëngjitur janë faqeshënuesit e mi; ju lutemi hapini ato në NonGPS Maps. Nëse nuk e keni të instaluar, mund ta shkarkoni këtu: https://github.com/Ramzess-II/NoNGPS-Maps\n\nShijoni udhëtimin me NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Duke ngarkuar Faqeshënuesit</string>
     <!-- Kmz file successful loading -->

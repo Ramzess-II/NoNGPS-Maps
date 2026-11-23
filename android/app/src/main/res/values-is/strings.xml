@@ -151,7 +151,7 @@
     <string name="description">Minnispunktar</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">NonGPS Maps bókamerkjum var deilt með þér</string>
-    <string name="share_bookmarks_email_body">Halló!\n\nMeðfylgjandi eru bókamerkin mín; endilega opnaðu þau í NonGPS Maps forritinu. Ef þú ert ekki með það uppsett geturðu sótt það hér: https://github.com/Ramzess-II/NoGPSMaps \n\nNjóttu ferðarinnar með NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Halló!\n\nMeðfylgjandi eru bókamerkin mín; endilega opnaðu þau í NonGPS Maps forritinu. Ef þú ert ekki með það uppsett geturðu sótt það hér: https://github.com/Ramzess-II/NoNGPS-Maps \n\nNjóttu ferðarinnar með NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Hleð inn bókamerkjum</string>
     <!-- Kmz file successful loading -->

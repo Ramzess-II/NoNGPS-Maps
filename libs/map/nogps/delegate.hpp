@@ -101,7 +101,9 @@ enum class BleState
   // The user has cancelled the code or entered a wrong one: the box is not tried again until the user asks.
   PairingFailed,
   // A paired box connects but sends nothing again and again: it has forgotten the phone. The user should remove the
-  // box in the Bluetooth settings and power it again. Not tried again until the user asks.
+  // box in the Bluetooth settings and power it again. Not tried again until the user asks. After a few silent
+  // connections the platform searches again to see whether the box is back: that connection is Connected, for the
+  // HELLO the box waits for, with the bond-lost flag of Engine::OnEsp32BleState() set until the box is heard.
   BondLost,
   // A box is found, but it doesn't know the phone and has phones: a new one is added on one of them, see
   // Engine::StartAddPhone().

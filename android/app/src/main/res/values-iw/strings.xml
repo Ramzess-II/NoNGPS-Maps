@@ -151,7 +151,7 @@
     <string name="description">הערות</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">סימניות של NonGPS Maps שותפו איתך</string>
-    <string name="share_bookmarks_email_body">שלום!\n\nמצורפות הסימניות שלי, אפשר לפתוח אותן ב-NonGPS Maps. אם צריך, ניתן להוריד את האפליקצייה מכאן: https://github.com/Ramzess-II/NoGPSMaps\n\nתהנו לנווט עם NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">שלום!\n\nמצורפות הסימניות שלי, אפשר לפתוח אותן ב-NonGPS Maps. אם צריך, ניתן להוריד את האפליקצייה מכאן: https://github.com/Ramzess-II/NoNGPS-Maps\n\nתהנו לנווט עם NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">טוען סימניות</string>
     <!-- Kmz file successful loading -->

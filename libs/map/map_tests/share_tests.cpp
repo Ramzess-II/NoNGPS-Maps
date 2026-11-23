@@ -64,7 +64,7 @@ UNIT_TEST(Share_Build_Poi)
        (r.m_html));
   TEST(r.m_html.find("Open in Organic Maps or in a browser") != std::string::npos, (r.m_html));
   TEST(r.m_html.find("<a href=\"geo:") != std::string::npos, (r.m_html));
-  TEST(r.m_html.find("https://github.com/Ramzess-II/NoGPSMaps") != std::string::npos, (r.m_html));
+  TEST(r.m_html.find("https://github.com/Ramzess-II/NoNGPS-Maps") != std::string::npos, (r.m_html));
 }
 
 UNIT_TEST(Share_Build_MyPosition)

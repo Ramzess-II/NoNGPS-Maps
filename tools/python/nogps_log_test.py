@@ -288,6 +288,7 @@ class EventsTest(unittest.TestCase):
             core(day, t + 9, 'SetState', 'Routing session state: RouteNotStarted -> RouteBuilding',
                  file='routing/routing_session.cpp:273'),
             core(day, t + 10, 'Something', 'A new line of the core'),
+            core(day, t + 10, 'OnBoxEvent', 'EVENT box_event ms=1791417610000 Box event # 4 at 11 ms: MOUNT_MOVED'),
             '%s (main) D/LocationState: LocationHelper.java:525 start(): ' % android_time(day, t + 11),
             '%s (main) I/Other: Other.java:1 run(): not a NoGPS line' % android_time(day, t + 12),
         ]
@@ -295,7 +296,7 @@ class EventsTest(unittest.TestCase):
         self.assertEqual([(e['cat'], e['name']) for e in events if e['name'] not in ('app started',
                                                                                    'navigation started')], [
             ('user', 'tap'), ('state', 'GPS signal'), ('road', 'road lost'), ('box', 'box event'),
-            ('route', 'route asked for'), ('other', 'A new line of'), ('app', 'location started')])
+            ('route', 'route asked for'), ('other', 'A new line of'), ('box', 'box event'), ('app', 'location started')])
         self.assertEqual((events[2]['lat'], events[2]['lon']), (10.0001, 20.0002))
 
 
@@ -574,6 +575,24 @@ class ReplayInputTest(unittest.TestCase):
                if r[0] in ('T', 'H', 'W', 'S') and int(r[1]) >= (18 * 3600 + 20) * 1000]
         self.assertEqual(got, ['T', 'H', 'W', 'S'])
 
+    def ble_states(self, texts):
+        """The L records of the Bluetooth states written while the car drives."""
+        lines = self.drive(60)
+        lines[30:30] = [core('10-08', 18 * 3600 + 20 + i, 'OnBleState', t) for i, t in enumerate(texts)]
+        return [r for r in self.records(lines) if r[0] == 'L' and int(r[1]) >= (18 * 3600 + 20) * 1000]
+
+    def test_bond_lost_flag(self):
+        """The connection that probes a pairing thought lost is driven again as a probe and not as a link."""
+        got = self.ble_states(['Bluetooth = BOND_LOST bond lost = 1', 'Bluetooth = CONNECTED bond lost = 1',
+                               'Bluetooth = CONNECTED bond lost = 0'])
+        self.assertEqual([(r[2], r[3]) for r in got],
+                         [('BOND_LOST', '1'), ('CONNECTED', '1'), ('CONNECTED', '0')])
+
+    def test_bond_lost_flag_of_older_logs(self):
+        """A log written before the flag has none: the connection is a link, as it was then."""
+        got = self.ble_states(['Bluetooth = CONNECTED'])
+        self.assertEqual([(r[2], r[3]) for r in got], [('CONNECTED', '0')])
+
     def test_initial_gps_off(self):
         lines = [core('10-08', 18 * 3600 - 5, 'SetGpsDisabled', 'GPS ignored by the user = 1')]
         lines += self.drive(30)
@@ -810,22 +829,28 @@ class TaggedLinesTest(unittest.TestCase):
         for name, texts in (
                 ('LOGFMT 1', ['Bend: moved along the road by 20 m', 'Bend: moved along the road by 30 m, told '
                               'repeatedly to a slow car', 'Bend: moved along the road by 40 m, told repeatedly',
-                              'Gentle bend: moved along the road by 50 m, told repeatedly']),
+                              'Gentle bend: moved along the road by 50 m, told repeatedly',
+                              'Gentle bend: moved along the road by 60 m',
+                              'Gentle bend: the position fits the road, ahead by 2 m']),
                 ('LOGFMT 2', ['RULE bend_moved ms=1 kind=bend Bend: moved along the road by 20 m',
                               'RULE bend_moved_repeated ms=2 kind=bend Bend: moved along the road by 30 m, '
                               'told repeatedly',
                               'RULE bend_moved_repeated ms=3 kind=bend Bend: moved along the road by 40 m, '
                               'told repeatedly',
                               'RULE bend_moved_repeated ms=4 kind=gentle Gentle bend: moved along the road by '
-                              '50 m, told repeatedly'])):
+                              '50 m, told repeatedly',
+                              'RULE bend_moved ms=5 kind=gentle Gentle bend: moved along the road by 60 m',
+                              'RULE bend_confirmed ms=6 kind=gentle Gentle bend: the position fits the road, '
+                              'ahead by 2 m'])):
             with self.subTest(name):
                 log = android_drive(seconds=120, stand=0)
                 log += [core('10-08', 18 * 3600 + 10 * (i + 1), 'F', t) for i, t in enumerate(texts)]
                 if name == 'LOGFMT 2':
                     log = logfmt2(log)
                 counts = analyse(('app.log', log)).trips[0].rule_counts()
-                self.assertEqual(counts['bend moved']['fired'], 1)
+                self.assertEqual(counts['bend moved']['fired'], 2)
                 self.assertEqual(counts['bend moved, repeated']['fired'], 3)
+                self.assertEqual(counts['bend confirmed']['fired'], 1)
 
     def test_events_of_a_tagged_log_keep_their_category(self):
         day, t = '10-08', 18 * 3600
