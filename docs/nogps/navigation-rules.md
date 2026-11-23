@@ -1066,7 +1066,8 @@
   - `Engine::CalibrateWhenStill` нічого не робить без зв'язку з блоком і для блока, що лише читає. Ядро перевіряє `STILL`
     кожні 200 мс (`kCalibrateWhenStillIntervalMs`).
 - Пропозицію прошивки блока (`Event::FirmwareUpdateAvailable`, раз на пару версій) ядро тримає в
-  `Status::m_firmwareOfferPending`, доки застосунок не покаже її й не викличе `Engine::FirmwareOfferShown()`: подія
+  `Status::m_firmwareOfferPending` (версії порівнюються за цифрами, суфікс збірки на кшталт `0.3.3-dirty` ігнорується; те саме
+  робить кнопка встановлення в застосунках), доки застосунок не покаже її й не викличе `Engine::FirmwareOfferShown()`: подія
   могла прийти, коли застосунок у фоні (Android: `onResumeFragments`, iOS: таймер `NoGpsControls`). Старт оновлення,
   їзда й зникнення блока її знімають.
 
