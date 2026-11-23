@@ -32,8 +32,9 @@ check_ccache() {
       echo "nogps_worktree: macOS reclaims ~/Library/Caches on a full disk, so ccache loses its cache there:" >&2
       # Not ~/.ccache: that directory switches ccache to its legacy config file, which drops base_dir, hash_dir
       # and max_size set below.
-      echo "  mkdir -p ~/.cache && mv \"$dir\" ~/.cache/ccache &&" >&2
-      echo "    ccache --set-config cache_dir=\"\$HOME/.cache/ccache\"" >&2 ;;
+      # The move is skipped when the cache dir is not there yet: ccache creates it at the first compilation.
+      echo "  mkdir -p ~/.cache; [ -d \"$dir\" ] && mv \"$dir\" ~/.cache/ccache" >&2
+      echo "  ccache --set-config cache_dir=\"\$HOME/.cache/ccache\"" >&2 ;;
   esac
   base=$(ccache --get-config base_dir)
   hash=$(ccache --get-config hash_dir)

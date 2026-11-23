@@ -47,7 +47,8 @@ the same time its own worktree made by `tools/unix/nogps_worktree.sh`:
 - The first build in a new worktree is mostly ccache hits once ccache is set up on the machine:
   `ccache --set-config base_dir=<ws>`, `hash_dir=false` and `max_size=20G`. `add` warns when they aren't set. Also
   keep `cache_dir` out of `~/Library/Caches` (macOS reclaims it on a full disk): `mkdir -p ~/.cache`,
-  `mv <old cache_dir> ~/.cache/ccache` and `ccache --set-config cache_dir="$HOME/.cache/ccache"`. Not `~/.ccache`:
+  `mv <old cache_dir> ~/.cache/ccache` when that directory exists (ccache creates it at the first compilation) and
+  `ccache --set-config cache_dir="$HOME/.cache/ccache"` in any case. Not `~/.ccache`:
   that directory makes ccache read its legacy config file `~/.ccache/ccache.conf` instead and lose the three
   settings above. `add` warns about the cache_dir too.
 - Build iOS in the main checkout: Xcode's DerivedData is per path, so a worktree builds it from scratch.
