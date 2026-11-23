@@ -151,7 +151,7 @@
     <string name="description">Muistiinpanot</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Jaetut NonGPS Maps-kirjanmerkit</string>
-    <string name="share_bookmarks_email_body">Hei! \n\nLiitteenä ovat kirjamerkkini; Avaa ne NonGPS Maps -sovelluksessa. Mikäli sinulla ei ole vielä sovellusta asennettuna, voit ladata sen osoitteesta: https://github.com/Ramzess-II/NoGPSMaps \n\nNauti matkustamisesta NonGPS Maps:n kanssa!</string>
+    <string name="share_bookmarks_email_body">Hei! \n\nLiitteenä ovat kirjamerkkini; Avaa ne NonGPS Maps -sovelluksessa. Mikäli sinulla ei ole vielä sovellusta asennettuna, voit ladata sen osoitteesta: https://github.com/Ramzess-II/NoNGPS-Maps \n\nNauti matkustamisesta NonGPS Maps:n kanssa!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Ladataan kirjanmerkkejä</string>
     <!-- Kmz file successful loading -->

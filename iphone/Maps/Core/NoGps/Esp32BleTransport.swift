@@ -30,7 +30,8 @@ final class Esp32BleTransport: NSObject {
     static let knownBoxesKey = "NoGpsKnownBoxes"
     // The boxes of the cars the user has forgotten: still paired, they are not connected until the user adds the car.
     static let forgottenBoxesKey = "NoGpsForgottenBoxes"
-    static let namePrefix = "NoGPS-"
+    // The name of the box is NonGPS-XXXX; the boxes that are not updated still say NoGPS-XXXX.
+    static let namePrefixes = ["NonGPS-", "NoGPS-"]
     static let retryDelay: TimeInterval = 2
     // A box that is found but can't be connected and subscribed to is tried less and less often, e.g. the user has
     // refused to pair with it. One that was is tried again soon: after a parking, the first connections may stay
@@ -337,11 +338,11 @@ final class Esp32BleTransport: NSObject {
     return bytes.count >= 4 && Array(bytes[0 ..< 2]) == Constants.manufacturerId ? bytes[3] : 0
   }
 
-  /// The four characters of the name of the box, NoGPS-XXXX, nil if the box doesn't tell it.
+  /// The four characters of the name of the box, NonGPS-XXXX or NoGPS-XXXX, nil if the box doesn't tell it.
   private static func boxId(_ peripheral: CBPeripheral, _ advertisementData: [String: Any]) -> String? {
     let name = advertisementData[CBAdvertisementDataLocalNameKey] as? String ?? peripheral.name
-    guard let name, name.hasPrefix(Constants.namePrefix) else { return nil }
-    return String(name.dropFirst(Constants.namePrefix.count))
+    guard let name, let prefix = Constants.namePrefixes.first(where: { name.hasPrefix($0) }) else { return nil }
+    return String(name.dropFirst(prefix.count))
   }
 
   /// The user has the most cars: a box that is not of one of them would drive the mark under the current car's values.

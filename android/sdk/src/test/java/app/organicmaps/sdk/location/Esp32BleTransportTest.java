@@ -2,6 +2,7 @@ package app.organicmaps.sdk.location;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import android.bluetooth.BluetoothDevice;
@@ -38,9 +39,21 @@ public class Esp32BleTransportTest
   public void unpair_takesOnlyTheBoxOfTheCar()
   {
     assertTrue(Esp32BleTransport.isBoxOf("NoGPS-C47D", "C47D"));
+    assertTrue(Esp32BleTransport.isBoxOf("NonGPS-C47D", "C47D"));
     assertFalse(Esp32BleTransport.isBoxOf("NoGPS-A1B2", "C47D"));
+    assertFalse(Esp32BleTransport.isBoxOf("NonGPS-A1B2", "C47D"));
     assertFalse(Esp32BleTransport.isBoxOf("ELM327", "C47D"));
     assertFalse(Esp32BleTransport.isBoxOf(null, "C47D"));
+  }
+
+  // A box of the new firmware is NonGPS-XXXX, one that is not updated NoGPS-XXXX: both are found.
+  @Test
+  public void boxId_isTakenFromBothPrefixes()
+  {
+    assertEquals("C47D", Esp32BleTransport.boxIdOfName("NonGPS-C47D"));
+    assertEquals("C47D", Esp32BleTransport.boxIdOfName("NoGPS-C47D"));
+    assertNull(Esp32BleTransport.boxIdOfName("ELM327"));
+    assertNull(Esp32BleTransport.boxIdOfName(null));
   }
 
   @Test

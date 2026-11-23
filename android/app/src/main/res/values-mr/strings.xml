@@ -151,7 +151,7 @@
     <string name="description">चिठ्ठया</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">NonGPS Maps द्वारे तुम्हाला खूणपत्रे सामायिक केले</string>
-    <string name="share_bookmarks_email_body">नमस्कार!\n\nNonGPS Maps ऍप मधील माझे खूणपत्रे संलग्न केले आहेत. तुम्ही NonGPS Maps इन्स्टॉल केले असल्यास हे खूणपत्रे उघडा. इन्स्टॉल केले नसल्यास, पुढील दुव्यावर जाऊन तुमच्या iOS किंवा अँड्रॉइड उपकरणावर हे डाउनलोड करा: https://github.com/Ramzess-II/NoGPSMaps\n\nNonGPS Maps सह प्रवासाचा आनंद घ्या!</string>
+    <string name="share_bookmarks_email_body">नमस्कार!\n\nNonGPS Maps ऍप मधील माझे खूणपत्रे संलग्न केले आहेत. तुम्ही NonGPS Maps इन्स्टॉल केले असल्यास हे खूणपत्रे उघडा. इन्स्टॉल केले नसल्यास, पुढील दुव्यावर जाऊन तुमच्या iOS किंवा अँड्रॉइड उपकरणावर हे डाउनलोड करा: https://github.com/Ramzess-II/NoNGPS-Maps\n\nNonGPS Maps सह प्रवासाचा आनंद घ्या!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">खूणपत्रे वाचत आहे</string>
     <!-- Kmz file successful loading -->

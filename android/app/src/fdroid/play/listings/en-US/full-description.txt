@@ -16,4 +16,4 @@ NonGPS Maps is offline navigation for drivers that keeps guiding the car when GP
 Dead reckoning accumulates errors. Check the road and the signs, keep your attention on driving.
 
 Based on Organic Maps (organicmaps.app). Map data © OpenStreetMap contributors and Organic Maps.
-Source code: github.com/Ramzess-II/NoGPSMaps
+Source code: github.com/Ramzess-II/NoNGPS-Maps

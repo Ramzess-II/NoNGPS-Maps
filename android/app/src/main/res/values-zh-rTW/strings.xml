@@ -151,7 +151,7 @@
     <string name="description">註釋</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">已與您分享 NonGPS Maps 書籤</string>
-    <string name="share_bookmarks_email_body">您好！\n\n附件是我的書籤，請在 NonGPS Maps 中打開。如果您沒有安裝 NonGPS Maps，可以在這裡下載: https://github.com/Ramzess-II/NoGPSMaps\n\n祝您使用 NonGPS Maps 旅行愉快！</string>
+    <string name="share_bookmarks_email_body">您好！\n\n附件是我的書籤，請在 NonGPS Maps 中打開。如果您沒有安裝 NonGPS Maps，可以在這裡下載: https://github.com/Ramzess-II/NoNGPS-Maps\n\n祝您使用 NonGPS Maps 旅行愉快！</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">正在載入書籤</string>
     <!-- Kmz file successful loading -->

@@ -151,7 +151,7 @@
     <string name="description">Noti</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">NonGPS Maps bookmarks maqsuma miegħek</string>
-    <string name="share_bookmarks_email_body">Helow!\n\nMehmuża huma il-bookmarks; iftaħhom ġo NonGPS Maps. Jekk mhuwiex installat tista tniżżlu min hawn: https://github.com/Ramzess-II/NoGPSMaps\n\nĦu pjaċir ivvjaġġa ġo NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Helow!\n\nMehmuża huma il-bookmarks; iftaħhom ġo NonGPS Maps. Jekk mhuwiex installat tista tniżżlu min hawn: https://github.com/Ramzess-II/NoNGPS-Maps\n\nĦu pjaċir ivvjaġġa ġo NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Tgħobijja tal-bookmarks</string>
     <!-- Kmz file successful loading -->

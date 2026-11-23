@@ -74,7 +74,7 @@
     <!-- SECTION: Other translations -->
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Los favoritos de NonGPS Maps se han compartido contigo</string>
-    <string name="share_bookmarks_email_body">Hola!\n\Adjunto mis marcadores de la aplicación NonGPS Maps. Por favor, ábralos si tiene instalado NonGPS Maps. O, si no lo tiene, descargue la aplicación para su dispositivo iOS o Android siguiendo este enlace: https://github.com/Ramzess-II/NoGPSMaps\n¡Disfrute viajando con NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Hola!\n\Adjunto mis marcadores de la aplicación NonGPS Maps. Por favor, ábralos si tiene instalado NonGPS Maps. O, si no lo tiene, descargue la aplicación para su dispositivo iOS o Android siguiendo este enlace: https://github.com/Ramzess-II/NoNGPS-Maps\n¡Disfrute viajando con NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Cargando favoritos</string>
     <!-- Kmz file successful loading -->

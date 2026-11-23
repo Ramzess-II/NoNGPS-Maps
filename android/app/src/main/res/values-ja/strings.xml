@@ -151,7 +151,7 @@
     <string name="description">メモ</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">NonGPS Mapsのお気に入りリストが共有されました</string>
-    <string name="share_bookmarks_email_body">こんにちは！\n\n添付ファイルNonGPS Mapsのお気に入りリストです。もしインストールされていない場合はここからダウンロードができます： https://github.com/Ramzess-II/NoGPSMaps\n\n旅行を楽しむときはNonGPS Mapsを使用してください!</string>
+    <string name="share_bookmarks_email_body">こんにちは！\n\n添付ファイルNonGPS Mapsのお気に入りリストです。もしインストールされていない場合はここからダウンロードができます： https://github.com/Ramzess-II/NoNGPS-Maps\n\n旅行を楽しむときはNonGPS Mapsを使用してください!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">お気に入りをロード中</string>
     <!-- Kmz file successful loading -->

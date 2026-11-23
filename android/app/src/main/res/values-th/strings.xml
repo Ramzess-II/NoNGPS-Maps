@@ -151,7 +151,7 @@
     <string name="description">บันทึก</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">แชร์บุ๊กมาร์กของ NonGPS Maps แล้ว</string>
-    <string name="share_bookmarks_email_body">สวัสดีครับ\n\nแนบมาด้วยบุ๊กมาร์กของผม; กรุณาเปิดใน NonGPS Maps หากคุณยังไม่ได้ติดตั้ง คุณสามารถดาวน์โหลดได้ที่นี่: https://github.com/Ramzess-II/NoGPSMaps\n\nขอให้สนุกกับการเดินทางด้วย NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">สวัสดีครับ\n\nแนบมาด้วยบุ๊กมาร์กของผม; กรุณาเปิดใน NonGPS Maps หากคุณยังไม่ได้ติดตั้ง คุณสามารถดาวน์โหลดได้ที่นี่: https://github.com/Ramzess-II/NoNGPS-Maps\n\nขอให้สนุกกับการเดินทางด้วย NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">กำลังโหลดบุ๊กมาร์ก</string>
     <!-- Kmz file successful loading -->

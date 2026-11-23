@@ -151,7 +151,7 @@
     <string name="description">Opombe</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Z vami so bili deljeni zaznamki NonGPS Maps</string>
-    <string name="share_bookmarks_email_body">Živjo!\n\nV priponki so moji zaznamki; odprite jih v NonGPS Maps. Če aplikacije nimate nameščene, jo lahko prenesete tukaj: https://github.com/Ramzess-II/NoGPSMaps\n\nUživajte v potovanju z NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Živjo!\n\nV priponki so moji zaznamki; odprite jih v NonGPS Maps. Če aplikacije nimate nameščene, jo lahko prenesete tukaj: https://github.com/Ramzess-II/NoNGPS-Maps\n\nUživajte v potovanju z NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Nalaganje zaznamkov</string>
     <!-- Kmz file successful loading -->

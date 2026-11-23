@@ -3,6 +3,6 @@
 enum NoGpsLinks {
   static let shop = URL(string: "https://non-gps.com")!
   static let video = URL(string: "https://www.youtube.com/@openFrimeTv/videos")!
-  static let sourceCode = URL(string: "https://github.com/Ramzess-II/NoGPSMaps")!
+  static let sourceCode = URL(string: "https://github.com/Ramzess-II/NoNGPS-Maps")!
   static let organicMaps = URL(string: "https://organicmaps.app")!
 }

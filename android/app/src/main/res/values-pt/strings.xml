@@ -151,7 +151,7 @@
     <string name="description">Notas</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Os favoritos do NonGPS Maps foram partilhados consigo</string>
-    <string name="share_bookmarks_email_body">Olá!\n\nSegue em anexo os meus favoritos da aplicação NonGPS Maps. Por favor abra-os se tiver o NonGPS Maps instalado. Caso não tenha, descarregue a aplicação para o seu dispositivo iOS ou Android com a hiperligação https://github.com/Ramzess-II/NoGPSMaps\n\nDivirta-se a viajar com o NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Olá!\n\nSegue em anexo os meus favoritos da aplicação NonGPS Maps. Por favor abra-os se tiver o NonGPS Maps instalado. Caso não tenha, descarregue a aplicação para o seu dispositivo iOS ou Android com a hiperligação https://github.com/Ramzess-II/NoNGPS-Maps\n\nDivirta-se a viajar com o NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">A carregar favoritos</string>
     <!-- Kmz file successful loading -->

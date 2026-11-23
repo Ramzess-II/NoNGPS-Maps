@@ -200,7 +200,7 @@ Result Build(Place const & place, Strings const & strings)
   html += "<br>\n";
   AppendText(html, coords);
   html += "<br>\n";
-  AppendAnchor(html, "https://github.com/Ramzess-II/NoGPSMaps", strings.m_getApp);
+  AppendAnchor(html, "https://github.com/Ramzess-II/NoNGPS-Maps", strings.m_getApp);
 
   return result;
 }

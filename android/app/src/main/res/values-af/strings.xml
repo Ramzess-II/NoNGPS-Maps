@@ -151,7 +151,7 @@
     <string name="description">Notas</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">NonGPS Maps-boekmerke is met u gedeel</string>
-    <string name="share_bookmarks_email_body">Hallo!\n\nMy boekmerke is aangeheg; open dit asb. in NonGPS Maps. Indien dit nie geïnstalleer is nie, kan u dit hier aflaai: https://github.com/Ramzess-II/NoGPSMaps\n\nGeniet dit om met NonGPS Maps te reis!</string>
+    <string name="share_bookmarks_email_body">Hallo!\n\nMy boekmerke is aangeheg; open dit asb. in NonGPS Maps. Indien dit nie geïnstalleer is nie, kan u dit hier aflaai: https://github.com/Ramzess-II/NoNGPS-Maps\n\nGeniet dit om met NonGPS Maps te reis!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Laai tans boekmerke</string>
     <!-- Kmz file successful loading -->
