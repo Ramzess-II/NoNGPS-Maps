@@ -1155,7 +1155,7 @@
     `fork_branch`, `wait_ahead`, `wait_at_roundabout`, `roundabout_exit`, `followed_apart`, `back_on_road`,
     `mark_switched_by_way`, `far_mark_taken`, `mark_switched_road_lost`, `mark_switched_turn`,
     `mark_switched_stand_lost`, `mark_switched_by_user`;
-  - `ACTION <назва>`: що відтворення виконує знову: `start`, `stop`, `ble_state` (рядок `Bluetooth = …`, дія `L`),
+  - `ACTION <назва>`: що відтворення виконує знову: `start`, `stop`, `ble_state` (рядок `Bluetooth = … bond lost = 0|1`, дія `L`, де прапорець — останнє поле),
     `box_info` (рядок `Box <id> firmware = …`, дія `I`), `gps_off` (`disabled=`, `by=`), `manual`
     (`enabled=`, `by=`), `tap` (`by=`), `reverse`, `switch_mark`, `shift` (`m=`), `restore_car`. `by=` каже, хто
     перемкнув: `user`, а решта (`core`, `gps_back`, `network_back`, `restore`, `box`, `tap`, `gps_mark`, `peer`) —
