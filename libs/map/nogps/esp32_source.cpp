@@ -680,9 +680,10 @@ void Esp32Source::OnEvent(esp32::Event const & event)
     m_voltageMismatch = true;
   else if (event.m_code == "VOLT_CAL")
     m_voltageMismatch = false;
-  // The box has switched itself off until it is unplugged: a start after it, in the journal replayed, drops it.
+  // The box has switched itself off until it is unplugged. A journal replay of an event older than one seen (a later
+  // BOOT, say) must not bring the lock back.
   else if (event.m_code == "BATT_LOCK")
-    m_batteryLock = true;
+    m_batteryLock = event.m_number > lastNumber;
   // "fw 0.3.3 reset POWERON": the box was plugged in. It restarts by itself for other reasons.
   else if (event.m_code == "BOOT")
   {

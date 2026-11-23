@@ -752,6 +752,24 @@ UNIT_TEST(NoGps_Esp32Source_BatteryLockedBox)
   TEST_NOT_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_ReplayedBatteryLockAfterBootIsIgnored)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,14,OFF,,12480"));
+  source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, esp32::kFlagImuOk));
+  source.OnBleBytes(BoxLine("NGE,1,6,100,I,BOOT,fw 0.3.3 reset POWERON"));
+  // The journal replays the lock of the former power-on after the new boot.
+  source.OnBleBytes(BoxLine("NGE,1,5,6100,W,BATT_LOCK,10800 mV"));
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+  TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
+}
+
 UNIT_TEST(NoGps_Esp32Source_WakingBoxIsConnecting)
 {
   TestClock clock;
