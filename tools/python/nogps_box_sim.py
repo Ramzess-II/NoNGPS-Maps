@@ -4,7 +4,7 @@
 # dependencies = [
 #     "pyobjc-framework-CoreBluetooth>=10; sys_platform == 'darwin'",
 #     "dbus-next>=0.2.3; sys_platform == 'linux'",
-#     "winsdk>=1.0.0b10; sys_platform == 'win32'",
+#     "winsdk>=1.0.0b10; sys_platform == 'win32' and python_version < '3.13'",
 # ]
 # ///
 """The sensor box of NonGPS Maps, simulated on this computer so a phone can find it without the hardware.
@@ -34,8 +34,10 @@ What it doesn't simulate, and why:
   alone, and the application asks for none of them.
 
 The radio needs a package -- PyObjC on macOS, dbus-next on Linux, winsdk on Windows -- and the script declares
-them above, each for its own platform, so uv puts them in an environment of its own and nothing is installed into the system
-Python. The panel and the tests need no package at all and run with plain python3, which is how CI runs them.
+them above, each for its own platform, so uv puts them in an environment of its own and nothing is installed into
+the system Python. winsdk has no wheel past Python 3.12 and is declared for those alone: the radio of Windows needs
+an interpreter of 3.10 to 3.12, `uv run --python 3.12 --script`. The panel and the tests need no package at
+all and run with plain python3, which is how CI runs them.
 
 A radio is a class Radio in nogps_box_sim_radio_<platform>.py with:
   name, supports_manufacturer_data
@@ -594,6 +596,10 @@ def make_radio(kind):
         return importlib.import_module(module_name).Radio()
     except ImportError as e:
         packages = {'macos': 'pyobjc-framework-CoreBluetooth', 'linux': 'dbus-next', 'windows': 'winsdk'}
+        if kind == 'windows' and sys.version_info >= (3, 13):
+            sys.exit('winsdk, which the radio of Windows needs, has no wheel for Python %d.%d: run this file with\n'
+                     '`uv run --python 3.12 --script`, or take the panel alone with --radio fake.\n(%s)'
+                     % (sys.version_info[0], sys.version_info[1], e))
         sys.exit('%s needs %s, which the script declares for uv: run it with `just box`, or with\n'
                  '`uv run --script` on this file. Without uv, put the package in a virtual environment of your own.\n'
                  '(%s)' % (module_name, packages.get(kind, '?'), e))
