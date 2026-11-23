@@ -55,9 +55,13 @@ public class AboutNoGpsFragment extends BaseMwmFragment implements View.OnClickL
     // The map data is credited with clickable names, as Organic Maps and OpenStreetMap ask.
     linkNames(root.findViewById(R.id.map_data), "OpenStreetMap", OSM_COPYRIGHT_URL, "Organic Maps",
               NoGpsLinks.ORGANIC_MAPS_URL);
-    setupItem(R.id.github, true, root);
     setupItem(R.id.box_buy, false, root);
+    setupItem(R.id.github, false, root);
     setupItem(R.id.report, true, root);
+
+    final TextView sats = root.findViewById(R.id.globe_sats);
+    final GlobeSceneView globe = root.findViewById(R.id.globe);
+    globe.setListener((on, total) -> sats.setText(getString(R.string.nogps_about_globe_sats, on, total)));
 
     shareLauncher = SharingUtils.RegisterLauncher(this);
 

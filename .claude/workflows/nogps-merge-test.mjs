@@ -358,6 +358,7 @@ const base = (label) => {
   check('gh is pointed at the firmware repo', /-R Ramzess-II\/ELMandIMU/.test(u) && !/-R Ramzess-II\/NoNGPS-Maps/.test(u), u)
   const g = prompts['merge:fw#19']
   check('the gate builds the firmware', /idf\.py build/.test(g), g.slice(0, 200))
+  check('an unbuilt firmware PR is refused, not merged', /don't merge it/.test(g) && /"blocked" with "not built/.test(g) && !/landed unbuilt/.test(g), g)
   check('the gate waits for no CI', /No CI to wait for/.test(g) && !/gh pr checks/.test(g), g.slice(0, 200))
   check('the gate merges into main', /checkout --force -B train\/gate refs\/remotes\/origin\/main/.test(g), g.slice(0, 200))
   // The app PR is untouched by all this.
