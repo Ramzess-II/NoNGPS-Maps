@@ -111,15 +111,18 @@ session and for an agent, and a push that would need a force is a reason to stop
 
 A PR it can't land stays open and the train goes on to the next one: a merge conflict that isn't plain, a failing
 check, findings still open after the last round. It never takes a PR with a commit of anyone but koloboid or
-Ramzess-II, one waiting for the other person's review, one from a fork, or one whose branch is checked out in the
-main checkout or a worktree -- the train would push commits under the session working there.
+Ramzess-II, one waiting for the other person's review, one from a fork of anyone but the two of us, or one whose
+branch is checked out in the main checkout or a worktree -- the train would push commits under the session working
+there.
 
 The train lands the PRs of both repos: each PR of its queue carries its repo, and a firmware PR is prepped in a
-worktree of `firmware/` whose name ends in `-fw`, off `origin/main` (that repo has no `master`). `ELMandIMU` runs
-no CI, so the gate's `idf.py build` of the PR merged into `main` is the only check it gets; the worktree needs
-`keys/` linked and `sdkconfig` copied from the main checkout, both gitignored there, or the build is unsigned or
-built for the wrong chip. Two PRs that touch `iphone/` or `xcode/` are never prepped at once: nothing in the train
-builds iOS, so only one of them goes into the parallel set.
+worktree of `firmware/` whose name ends in `-fw`, off `origin/main` (that repo has no `master`). `ELMandIMU` gets a
+CI build of a PR for S3 and C3 (`.github/workflows/build.yml`, a throwaway signing key) in ELMandIMU#28, but GitHub
+Actions has started no run in that repo yet (ELMandIMU#29), so the gate's `idf.py build` of the PR merged into `main`
+is still the only check a firmware PR gets and the train waits for no check there; the worktree needs `keys/` linked
+and `sdkconfig` copied from the main checkout, both gitignored there, or the build is unsigned or built for the wrong
+chip. Two PRs that touch `iphone/` or `xcode/` are never prepped at once: nothing in the train builds iOS, so only
+one of them goes into the parallel set.
 
 ## Versions
 

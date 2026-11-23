@@ -6,6 +6,9 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include <boost/hash2/hmac.hpp>
+#include <boost/hash2/sha2.hpp>
+
 namespace nogps
 {
 namespace esp32
@@ -121,6 +124,49 @@ uint16_t Crc16(std::string_view text)
       crc = (crc & 0x8000) ? static_cast<uint16_t>((crc << 1) ^ 0x1021) : static_cast<uint16_t>(crc << 1);
   }
   return crc;
+}
+
+std::string AuthProof(std::string_view keyHex, std::string_view nonceHex)
+{
+  auto const decode = [](std::string_view hex, size_t size) -> std::optional<std::string>
+  {
+    if (hex.size() != size * 2)
+      return {};
+    std::string bytes;
+    for (size_t i = 0; i < hex.size(); i += 2)
+    {
+      unsigned value = 0;
+      for (char const c : hex.substr(i, 2))
+      {
+        value <<= 4;
+        if (c >= '0' && c <= '9')
+          value += c - '0';
+        else if (c >= 'a' && c <= 'f')
+          value += c - 'a' + 10;
+        else if (c >= 'A' && c <= 'F')
+          value += c - 'A' + 10;
+        else
+          return {};
+      }
+      bytes += static_cast<char>(value);
+    }
+    return bytes;
+  };
+  auto const key = decode(keyHex, kAuthKeyBytes);
+  auto const nonce = decode(nonceHex, kAuthNonceBytes);
+  if (!key || !nonce)
+    return {};
+  boost::hash2::hmac<boost::hash2::sha2_256> hmac(key->data(), key->size());
+  hmac.update(nonce->data(), nonce->size());
+  auto const digest = hmac.result();
+  char constexpr kHex[] = "0123456789abcdef";
+  std::string proof;
+  for (size_t i = 0; i < kAuthProofBytes; ++i)
+  {
+    proof += kHex[digest[i] >> 4];
+    proof += kHex[digest[i] & 15];
+  }
+  return proof;
 }
 
 std::string Command(int id, std::string_view command)
@@ -270,6 +316,8 @@ std::optional<Info> ParseInfo(Fields const & fields)
         info.m_twoPhones = true;
       else if (ability == "PEER")
         info.m_canPeer = true;
+      else if (ability == "AUTH")
+        info.m_canAuth = true;
   }
   if (fields.size() > 6)
     info.m_id = fields[6];

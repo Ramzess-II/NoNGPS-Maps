@@ -144,6 +144,8 @@ public:
   void Esp32BleSend(std::string const &) override {}
   void Esp32BleSendFirmware(std::string const &) override {}
   void Esp32BleClose() override {}
+  // The boxes of the recorded days did not prove themselves.
+  bool Esp32BoxMustProveItself() override { return false; }
   void OnPosition(Fix const & fix) override { m_onPosition(fix); }
   void OnEvent(Event event) override { LOG(LINFO, ("EVENT", DebugPrint(event))); }
 

@@ -86,6 +86,26 @@ final class NavigationSourceButtonTests: XCTestCase {
 
 /// A status with the values a test sets.
 extension NavigationSourceButtonTests {
+  /// A box that locked itself out does not come back with the engine: a warning, not a search.
+  func test_GivenBatteryLock_WhenBoxLookIsTaken_ThenItIsAWarning() {
+    let status = FakeStatus(source: .gps, gpsState: .good, inertialEnabled: true, sourceState: .boxBatteryLock)
+    let look = NoGpsStatusBar.boxLook(status)
+    XCTAssertEqual(look.color, .systemOrange)
+    XCTAssertEqual(look.badge?.symbol, "exclamationmark")
+    XCTAssertFalse(look.pulsing)
+  }
+
+  /// Bluetooth off matters more than the lockout: the box would not be heard after it is plugged back in.
+  func test_GivenBatteryLock_WhenBluetoothIsOff_ThenItIsToldToo() {
+    let status = FakeStatus(source: .gps, gpsState: .good, inertialEnabled: true, sourceState: .boxBatteryLock)
+    status.fakeBleState = .disabled
+    let look = NoGpsStatusBar.boxLook(status)
+    XCTAssertEqual(look.symbol, NavigationLiveActivitySymbol.asset("ic_nogps_bluetooth_off"))
+    XCTAssertNil(look.badge)
+    XCTAssertFalse(look.pulsing)
+    XCTAssertEqual(NoGpsBoxPage.boxStateText(status), L("nogps_box_battery_lock") + " · " + L("nogps_box_bt_disabled"))
+  }
+
   /// A failed pairing or a box that forgot the phone stops the search until the user acts: no waves.
   func test_GivenLinkFailed_WhenBoxLookIsTaken_ThenItAsksTheUser() {
     for ble in [NoGpsBleState.pairingFailed, .bondLost] {
