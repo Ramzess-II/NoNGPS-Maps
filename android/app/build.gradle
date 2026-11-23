@@ -85,8 +85,9 @@ android {
   flavorDimensions += 'default'
 
   productFlavors {
-    // Decimal: a leading 0 would make it an octal literal (16777216).
-    final int HUAWEI_VERSION_CODE_BASE = 1_000_000_000
+    // The market field RR = 01 of the RR_yy_MM_dd_CC versionCode layout (see tools/unix/version.sh), written in
+    // decimal: a leading zero would make it an octal literal (16777216).
+    final int HUAWEI_VERSION_CODE_BASE = 100_000_000
 
     google {
       dimension 'default'
