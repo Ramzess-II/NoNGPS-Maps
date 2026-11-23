@@ -759,6 +759,45 @@ UNIT_TEST(NoGps_Esp32Source_WakingBoxIsConnecting)
   TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_LostPairingProbeIsNoLink)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,14,OFF,,12480"));
+  source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, esp32::kFlagImuOk));
+  source.OnBleState(BleState::BondLost, true);
+  clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+  clock.Advance(Esp32Source::kWakingLinkGapMs);
+  TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
+
+  // Every retry connects for the HELLO the box waits for, and finds nothing: the box stays asleep.
+  for (int i = 0; i < 3; ++i)
+  {
+    size_t const sent = delegate.m_esp32BleSent.size();
+    source.OnBleState(BleState::Connected, true);
+    TEST_EQUAL(delegate.m_esp32BleSent.size(), sent + 1, ());
+    TEST(source.IsBondLost(), ());
+    TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
+    clock.Advance(Esp32Source::kWakingLinkGapMs);
+    source.OnBleState(BleState::BondLost, true);
+    clock.Advance(Esp32Source::kWakingLinkGapMs);
+    TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
+  }
+
+  // The box is heard: the link is a link, with no new connection.
+  source.OnBleState(BleState::Connected, true);
+  source.OnBleState(BleState::Connected, false);
+  TEST(!source.IsBondLost(), ());
+  TEST_EQUAL(source.GetBleState(), BleState::Connected, ());
+  TEST_EQUAL(source.GetState(), SourceState::Connecting, ());
+  source.OnBleBytes(BoxDataLine(2, 60000, 0, 0, esp32::kFlagImuOk));
+  TEST_EQUAL(source.GetState(), SourceState::NoCarData, ());
+}
+
 // The box connected over Bluetooth that has told about itself and takes firmwares.
 class UpdatedBox
 {

@@ -692,8 +692,11 @@
 - `PairingFailed` — користувач скасував код або ввів неправильний: блок не шукається, доки користувач не попросить;
 - `BondLost` — спарений блок з'єднується, але нічого не шле: можливо, він забув телефон. Користувач видаляє блок у
   налаштуваннях Bluetooth і вмикає його знову. Пошук триває раз на хвилину (`maxRetryDelay`), і стан скидають лише
-  дані блока. Поки чергове з'єднання пошуку підписане, стан — `Connected` (iOS — 5 с, Android — до 20 с), тобто
-  підказка на цей час зникає (#474).
+  дані блока. Поки чергове з'єднання пошуку підписане, платформа каже ядру `Connected` із прапорцем `bondLost`
+  (`Engine::OnEsp32BleState`): блок чекає `HELLO` і без цього зв'язку не озветься. Таке з'єднання — проба: для
+  `Status::m_bleState` це й далі `BondLost`, тож підказка не зникає, а `OnBoxLink` і `m_wakingLinkMs` його не рахують,
+  тому `IsSleeping()` не скидається щохвилини. Дані блока скидають прапорець, і стан лишається `Connected` без
+  нового `HELLO`.
 
 `Pairing` і `Connected` — зв'язок є (`IsLinked`). Будь-який інший стан забуває відомості блока (`NGI`), його значення,
 обриває оновлення прошивки, а калібрування, що йшло, стає `CalibrationState::LinkLost`.
@@ -1152,7 +1155,7 @@
     `fork_branch`, `wait_ahead`, `wait_at_roundabout`, `roundabout_exit`, `followed_apart`, `back_on_road`,
     `mark_switched_by_way`, `far_mark_taken`, `mark_switched_road_lost`, `mark_switched_turn`,
     `mark_switched_stand_lost`, `mark_switched_by_user`;
-  - `ACTION <назва>`: що відтворення виконує знову: `start`, `stop`, `ble_state` (рядок `Bluetooth = …`, дія `L`),
+  - `ACTION <назва>`: що відтворення виконує знову: `start`, `stop`, `ble_state` (рядок `Bluetooth = … bond lost = 0|1`, дія `L`, де прапорець — останнє поле),
     `box_info` (рядок `Box <id> firmware = …`, дія `I`), `gps_off` (`disabled=`, `by=`), `manual`
     (`enabled=`, `by=`), `tap` (`by=`), `reverse`, `switch_mark`, `shift` (`m=`), `restore_car`. `by=` каже, хто
     перемкнув: `user`, а решта (`core`, `gps_back`, `network_back`, `restore`, `box`, `tap`, `gps_mark`, `peer`) —

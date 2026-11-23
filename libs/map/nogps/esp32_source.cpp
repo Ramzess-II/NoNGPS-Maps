@@ -375,14 +375,19 @@ void Esp32Source::Send(std::string_view command, int id)
     m_delegate.Esp32BleSend(esp32::Command(id, command));
 }
 
-void Esp32Source::OnBleState(BleState state)
+void Esp32Source::OnBleState(BleState state, bool bondLost)
 {
-  if (!m_running || state == m_bleState)
+  if (!m_running || (state == m_bleState && bondLost == m_bondLost))
     return;
-  LOG(LINFO, (LogHead(m_clock, "ACTION", "ble_state"), "Bluetooth =", state));
-  // A connection may be pending all the time the box sleeps: only a made one tells that the box is awake.
-  if (IsLinked(state) || (IsLinked(m_bleState) && m_wakingLinkMs))
+  LOG(LINFO, (LogHead(m_clock, "ACTION", "ble_state"), "Bluetooth =", state, "bond lost =", bondLost));
+  // A connection may be pending all the time the box sleeps: only a made one tells that the box is awake. The one
+  // that probes a pairing thought lost carries nothing, until the box is heard.
+  bool const wasLinked = IsLinked(m_bleState) && !m_bondLost;
+  if ((IsLinked(state) && !bondLost) || (wasLinked && m_wakingLinkMs))
     m_wakingLinkMs = m_clock.NowMs();
+  m_bondLost = bondLost;
+  if (state == m_bleState)
+    return;
   m_bleState = state;
   m_bleLine.clear();
   if (state != BleState::Connected)
@@ -806,7 +811,8 @@ bool Esp32Source::IsSleeping() const
   // after a parking may stay silent, and the phone connects again and again.
   if (!m_lastDataMs)
     return false;
-  if (m_wakingLinkMs && (IsLinked(m_bleState) || m_clock.NowMs() - *m_wakingLinkMs <= kWakingLinkGapMs))
+  if (m_wakingLinkMs &&
+      ((IsLinked(m_bleState) && !m_bondLost) || m_clock.NowMs() - *m_wakingLinkMs <= kWakingLinkGapMs))
     return false;
   return m_obdState == "SLEEP" || (m_carInfo && m_carInfo->m_engineRunning == false);
 }

@@ -186,6 +186,21 @@ UNIT_TEST(NoGps_Replay_BoxOfTrip)
   TEST(log.find("Box 42FD firmware") != std::string::npos, (log));
 }
 
+UNIT_TEST(NoGps_Replay_LostPairingProbe)
+{
+  // The flag of the Bluetooth record reaches the box source: the connection that probes a pairing thought lost is
+  // driven again as a probe and not as a working link, see Esp32Source::OnBleState().
+  std::string const input =
+      "D 11-02\n"
+      "S 36000000 2\n"
+      "S 36000000 1\n"
+      "L 36000000 CONNECTED 1\n"
+      "J 36001000\n" +
+      Standing(36001000, 36002000) + "S 36002000 0\n";
+  auto const log = Drive(input);
+  TEST(log.find("Bluetooth = CONNECTED bond lost = 1") != std::string::npos, (log));
+}
+
 UNIT_TEST(NoGps_Replay_KeptCarOfDriveWins)
 {
   // The drive keeps the car it has shown when the application is started anew: the car the application kept on

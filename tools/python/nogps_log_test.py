@@ -575,6 +575,24 @@ class ReplayInputTest(unittest.TestCase):
                if r[0] in ('T', 'H', 'W', 'S') and int(r[1]) >= (18 * 3600 + 20) * 1000]
         self.assertEqual(got, ['T', 'H', 'W', 'S'])
 
+    def ble_states(self, texts):
+        """The L records of the Bluetooth states written while the car drives."""
+        lines = self.drive(60)
+        lines[30:30] = [core('10-08', 18 * 3600 + 20 + i, 'OnBleState', t) for i, t in enumerate(texts)]
+        return [r for r in self.records(lines) if r[0] == 'L' and int(r[1]) >= (18 * 3600 + 20) * 1000]
+
+    def test_bond_lost_flag(self):
+        """The connection that probes a pairing thought lost is driven again as a probe and not as a link."""
+        got = self.ble_states(['Bluetooth = BOND_LOST bond lost = 1', 'Bluetooth = CONNECTED bond lost = 1',
+                               'Bluetooth = CONNECTED bond lost = 0'])
+        self.assertEqual([(r[2], r[3]) for r in got],
+                         [('BOND_LOST', '1'), ('CONNECTED', '1'), ('CONNECTED', '0')])
+
+    def test_bond_lost_flag_of_older_logs(self):
+        """A log written before the flag has none: the connection is a link, as it was then."""
+        got = self.ble_states(['Bluetooth = CONNECTED'])
+        self.assertEqual([(r[2], r[3]) for r in got], [('CONNECTED', '0')])
+
     def test_initial_gps_off(self):
         lines = [core('10-08', 18 * 3600 - 5, 'SetGpsDisabled', 'GPS ignored by the user = 1')]
         lines += self.drive(30)

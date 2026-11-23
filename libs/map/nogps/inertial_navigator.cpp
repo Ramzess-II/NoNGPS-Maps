@@ -1193,10 +1193,15 @@ void InertialNavigator::OnEsp32BleBytes(std::string_view bytes)
     m_esp32->OnBleBytes(bytes);
 }
 
-void InertialNavigator::OnEsp32BleState(BleState state)
+void InertialNavigator::OnEsp32BleState(BleState state, bool bondLost)
 {
   if (m_esp32)
-    m_esp32->OnBleState(state);
+    m_esp32->OnBleState(state, bondLost);
+}
+
+bool InertialNavigator::IsBleBondLost() const
+{
+  return m_esp32 && m_esp32->IsBondLost();
 }
 
 BleState InertialNavigator::GetBleState() const
