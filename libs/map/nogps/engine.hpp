@@ -410,6 +410,8 @@ public:
   std::vector<Car> GetCars() const { return m_cars.GetCars(); }
   /// \returns the timed runs of the current car, newest first, see SprintTimer.
   std::vector<Sprint> GetSprints() const;
+  /// \returns the timed runs kept for the car, newest first; empty for a car that is not there.
+  std::vector<Sprint> GetSprints(std::string const & carId) const;
   /// The user drives the car, e.g. two boxes are near: the platform connects to its box if it is near too.
   void SelectCar(std::string const & id);
   /// An empty name gives the car its usual name back.

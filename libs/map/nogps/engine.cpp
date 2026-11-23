@@ -1150,6 +1150,13 @@ std::vector<Sprint> Engine::GetSprints() const
   return sprints;
 }
 
+std::vector<Sprint> Engine::GetSprints(std::string const & carId) const
+{
+  auto sprints = ParseSprints(m_cars.GetCarValue(carId, Storage::kSprints).value_or(""));
+  std::reverse(sprints.begin(), sprints.end());
+  return sprints;
+}
+
 void Engine::OnSprint(SprintTimer::Result const & result)
 {
   Sprint const sprint{result.m_kind, m_clock.UnixNowMs(), std::round(result.m_sec * 100) / 100,
