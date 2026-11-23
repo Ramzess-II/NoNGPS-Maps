@@ -336,6 +336,8 @@ using namespace storage;
 - (nullable NSString *)countryForViewportCenter
 {
   auto & f = GetFramework();
+  if (!f.HasVisibleViewport())
+    return nil;
   auto const country = f.GetCountryInfoGetter().GetRegionCountryId(f.GetViewportCenter());
   if (!IsCountryIdValid(country))
     return nil;

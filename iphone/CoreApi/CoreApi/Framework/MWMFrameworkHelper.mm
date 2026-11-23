@@ -204,6 +204,8 @@ static Framework::ProductsPopupCloseReason ConvertProductPopupCloseReasonToCore(
 
 + (BOOL)canEditMapAtViewportCenter
 {
+  if (!GetFramework().HasVisibleViewport())
+    return NO;
   return [self canEditMapAtMercatorPoint:[self mercatorViewportCenter]];
 }
 

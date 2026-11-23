@@ -85,7 +85,8 @@ train doesn't push commits under the session working there.
    A firmware PR runs the same way in a worktree of `<ws>/firmware` whose name ends in `-fw`, made by plain
    `git worktree add` from `origin/main` with `keys/` linked and `sdkconfig` copied from the main checkout -- both
    are gitignored there, and without them the build is unsigned or built for the wrong chip. `ELMandIMU` has no CI,
-   so the gate's `idf.py build` is the only check a firmware PR gets and it does not wait for checks.
+   so the gate's `idf.py build` is the only check a firmware PR gets and it does not wait for checks. Where it cannot run (no ESP-IDF, no
+   signing key) the PR is reported `blocked` with `not built: <why>` and is not merged.
 5. **Report.** Print the table it returns: PR → merged (with the merge commit) / open (with the reason) / blocked,
    with its set, the rounds it took and the number of findings; name the PRs that went back for another round
    because master moved under them (`staleRounds`), and any whose core tests failed only once merged into master
