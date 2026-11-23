@@ -151,7 +151,7 @@
     <string name="description">Σημειώσεις</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Κοινοποιήθηκαν τα αγαπημένα από το NonGPS Maps σε εσάς</string>
-    <string name="share_bookmarks_email_body">Γειa!\n\nΣου επισυνάπτω τα αγαπημένα μου. Παρακαλώ άνοιξέ τα με το NonGPS Maps. Αν δεν το έχεις εγκαταστήσει, μπορείς να το κατεβάσεις από εδώ: https://github.com/Ramzess-II/NoGPSMaps\n\nΚαλή διασκέδαση ταξιδεύοντας με το NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Γειa!\n\nΣου επισυνάπτω τα αγαπημένα μου. Παρακαλώ άνοιξέ τα με το NonGPS Maps. Αν δεν το έχεις εγκαταστήσει, μπορείς να το κατεβάσεις από εδώ: https://github.com/Ramzess-II/NoNGPS-Maps\n\nΚαλή διασκέδαση ταξιδεύοντας με το NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Φορτώνονται τα αγαπημένα</string>
     <!-- Kmz file successful loading -->

@@ -3229,6 +3229,22 @@ UNIT_TEST(NoGps_TripStarted_FirstConnectionLongAfterStart)
   TEST(user.m_delegate.HasEvent(Event::TripStarted), ());
 }
 
+UNIT_TEST(NoGps_TripStarted_LostPairingProbeIsNoLink)
+{
+  NewUser user;
+  user.m_storage.Set(Storage::kInertialEnabled, true);
+  user.Start();
+  user.m_clock.Advance(Engine::kTripFileLinkGapMs);
+  // The search for a box with a lost pairing connects to it: the UI keeps the hint, no trip starts.
+  user.m_engine.OnEsp32BleState(BleState::Connected, true /* bondLost */);
+  TEST(!user.m_delegate.HasEvent(Event::TripStarted), ());
+  TEST_EQUAL(user.m_engine.GetStatus().m_bleState, BleState::BondLost, ());
+  // The box is heard: the same connection is a link now.
+  user.m_engine.OnEsp32BleState(BleState::Connected, false /* bondLost */);
+  TEST(user.m_delegate.HasEvent(Event::TripStarted), ());
+  TEST_EQUAL(user.m_engine.GetStatus().m_bleState, BleState::Connected, ());
+}
+
 UNIT_TEST(NoGps_TripStarted_LinkLostForLong)
 {
   Env env(true /* inertial */);
@@ -4176,6 +4192,14 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
     env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
     TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 0, ());
     TEST_EQUAL(env.m_engine.GetStatus().m_bundledFirmware, "0.3.3", ());
+  }
+  {
+    // Only a build suffix differs: the numbers tell the firmware, the box is not offered the update again.
+    Env env(true /* inertial */);
+    env.m_engine.SetFirmwares(firmwares);
+    connect(env, "0.3.3-dirty");
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 0, ());
   }
   {
     // The car drives: the user is asked before the next trip, when the box is connected again.
@@ -6577,6 +6601,30 @@ UNIT_TEST(NoGps_Sprint_RecordsKeptForEachCar)
        ());
 }
 
+UNIT_TEST(NoGps_Sprints_PerCar)
+{
+  Env env(true /* inertial */);
+  HearBox(env, "C47D");
+  sprint::Run(env, 9, 105);
+  sprint::Run(env, 8, 105);
+  HearBox(env, "42FD");
+  sprint::Run(env, 12, 105);
+
+  auto const a = env.m_engine.GetSprints("C47D");
+  TEST_EQUAL(a.size(), 2, ());
+  TestAlmostEqualAbs(a[0].m_sec, 8, 0.15);
+  TestAlmostEqualAbs(a[1].m_sec, 9, 0.15);
+  auto const b = env.m_engine.GetSprints("42FD");
+  TEST_EQUAL(b.size(), 1, ());
+  TestAlmostEqualAbs(b[0].m_sec, 12, 0.15);
+  TEST(env.m_engine.GetSprints("0000").empty(), ());
+
+  // The current car's runs are the same as by its id, and the other car keeps its own.
+  env.m_engine.SelectCar("C47D");
+  TEST_EQUAL(env.m_engine.GetSprints().size(), 2, ());
+  TEST_EQUAL(env.m_engine.GetSprints("42FD").size(), 1, ());
+}
+
 UNIT_TEST(NoGps_Sprint_SpeedTableApplied)
 {
   // The speedometer shows 95 km/h at the real 104.5.
@@ -6688,5 +6736,27 @@ UNIT_TEST(NoGps_LogFormat_RuleHasItsNameAndTime)
   // The sentence follows the tag, the name and the keys.
   TEST(lost[0].find(" The road is lost after ") != std::string::npos, (lost[0]));
   TEST(env.m_engine.GetTripLine().starts_with("TRIP ms="), (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_LogFormat_ProseLinesHaveTagAndTime)
+{
+  TestClock clock;
+  TestStorage storage;
+  TestDelegate delegate;
+  TestMap map;
+  storage.Set(Storage::kInertialEnabled, true);
+  storage.Set(Storage::kLastTrusted, std::string("10.0000000,20.0000000,") + std::to_string(clock.UnixNowMs()));
+  Engine engine(delegate, map, storage, clock, clock);
+  LoggedLines lines;
+  engine.Start();
+  auto const ms = " ms=" + std::to_string(clock.UnixNowMs());
+  auto const trusted = LoggedLines::Starting("EVENT last_trusted" + ms);
+  TEST_EQUAL(trusted.size(), 1, ());
+  TEST(trusted[0].find(" Last trusted position = ") != std::string::npos, (trusted[0]));
+  TEST_EQUAL(LoggedLines::Starting("EVENT speed_table" + ms).size(), 1, ());
+  engine.OnEsp32BleState(BleState::Connected);
+  auto const ble = LoggedLines::Starting("ACTION ble_state" + ms);
+  TEST_EQUAL(ble.size(), 1, ());
+  TEST(ble[0].find(" Bluetooth = ") != std::string::npos, (ble[0]));
 }
 }  // namespace nogps_engine_tests

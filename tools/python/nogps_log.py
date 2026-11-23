@@ -150,8 +150,8 @@ RULES = [
     # a slow car or a far place) was "told repeatedly to a slow car" in older logs. Both kinds of the rule, the
     # ordinary bend and the gentle one, keep their tag in the sentence.
     ('bend moved, repeated', r'^(?:Gentle bend|Bend): moved along the road.*, told repeatedly'),
-    ('bend moved', r'^Bend: moved along the road'),
-    ('bend confirmed', r'^Bend: the position fits the road'),
+    ('bend moved', r'^(?:Gentle bend|Bend): moved along the road'),
+    ('bend confirmed', r'^(?:Gentle bend|Bend): the position fits the road'),
     ('loop', r'^Loop: the way driven'),
     ('fork branch chosen', r'^FORK '),
     ('wait ahead', r'the mark is ahead, it waits'),

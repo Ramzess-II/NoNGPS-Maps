@@ -168,7 +168,7 @@ class Radio:
 
     def __init__(self):
         self.on_event = lambda *args: None
-        self.local_name = sim.NAME_PREFIX + 'S1'
+        self.local_name = sim.NAME_PREFIX + 'S'
         self.manufacturer = bytes([0, 0, sim.ADV_FORMAT, 0])
         self.bus = None
         self.adapter = None

@@ -151,7 +151,7 @@
     <string name="description">Notities</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Bladwijzers van NonGPS Maps zijn met u gedeeld</string>
-    <string name="share_bookmarks_email_body">Hallo!\n\nBijgesloten zijn mijn bladwijzers uit de NonGPS Maps app. Open ze als je NonGPS Maps geïnstalleerd hebt. Of, als je dat niet hebt, download de app hier: https://github.com/Ramzess-II/NoGPSMaps\n\nGeniet van het reizen met NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Hallo!\n\nBijgesloten zijn mijn bladwijzers uit de NonGPS Maps app. Open ze als je NonGPS Maps geïnstalleerd hebt. Of, als je dat niet hebt, download de app hier: https://github.com/Ramzess-II/NoNGPS-Maps\n\nGeniet van het reizen met NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Bladwijzers worden geladen</string>
     <!-- Kmz file successful loading -->

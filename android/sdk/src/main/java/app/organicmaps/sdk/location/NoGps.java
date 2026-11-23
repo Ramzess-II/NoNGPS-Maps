@@ -847,8 +847,10 @@ public final class NoGps
 
   /**
    * @param state one of the states of {@link Esp32BleTransport}.
+   * @param bondLost the pairing is thought lost: STATE_CONNECTED then is a probe that carries nothing until the box is
+   *                 heard.
    */
-  static native void nativeOnEsp32BleState(int state);
+  static native void nativeOnEsp32BleState(int state, boolean bondLost);
 
   /// The next tap on the map shows where the car is, it ends this: the user has pressed the button for it.
   public static native void nativeSetMarkByTap(boolean armed);
@@ -920,6 +922,12 @@ public final class NoGps
    */
   @NonNull
   public static native Sprint[] nativeGetSprints();
+
+  /**
+   * The timed runs kept for the car, newest first; none for a car that is not there.
+   */
+  @NonNull
+  public static native Sprint[] nativeGetSprints(@NonNull String carId);
 
   /**
    * No car is added over this many: the user can't add one.

@@ -151,7 +151,7 @@
     <string name="description">یادداشت‌ها</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">نشانک‌های NonGPS Maps با شما هم‌رسانی شده‌اند</string>
-    <string name="share_bookmarks_email_body">سلام!\n\nنشانک‌های من ضمیمه شده‌اند؛ لطفا آن‌ها را در NonGPS Maps باز کنید. اگر برنامه نصب نشده است، می‌توانید آن را از اینجا دانلود کنید: https://github.com/Ramzess-II/NoGPSMaps \n\nاز سفر با NonGPS Maps لذت ببرید!</string>
+    <string name="share_bookmarks_email_body">سلام!\n\nنشانک‌های من ضمیمه شده‌اند؛ لطفا آن‌ها را در NonGPS Maps باز کنید. اگر برنامه نصب نشده است، می‌توانید آن را از اینجا دانلود کنید: https://github.com/Ramzess-II/NoNGPS-Maps \n\nاز سفر با NonGPS Maps لذت ببرید!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">در حال بارگیری نشانک‌ها</string>
     <!-- Kmz file successful loading -->

@@ -25,7 +25,17 @@ json_field() {  # <field>: a string field of the JSON on stdin.
 
 check_ccache() {
   command -v ccache >/dev/null || return 0
-  local base hash
+  local base hash dir
+  dir=$(ccache --get-config cache_dir)
+  case "$dir" in
+    */Library/Caches/*)
+      echo "nogps_worktree: macOS reclaims ~/Library/Caches on a full disk, so ccache loses its cache there:" >&2
+      # Not ~/.ccache: that directory switches ccache to its legacy config file, which drops base_dir, hash_dir
+      # and max_size set below.
+      # The move is skipped when the cache dir is not there yet: ccache creates it at the first compilation.
+      echo "  mkdir -p ~/.cache; [ -d \"$dir\" ] && mv \"$dir\" ~/.cache/ccache" >&2
+      echo "  ccache --set-config cache_dir=\"\$HOME/.cache/ccache\"" >&2 ;;
+  esac
   base=$(ccache --get-config base_dir)
   hash=$(ccache --get-config hash_dir)
   if [ "$base" != "$WS" ] || [ "$hash" != false ]; then

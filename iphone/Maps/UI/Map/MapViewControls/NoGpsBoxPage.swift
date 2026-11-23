@@ -560,6 +560,11 @@ final class NoGpsBoxPage: MWMTableViewController {
     [.starting, .sending, .verifying, .restarting].contains(status.firmwareUpdate)
   }
 
+  /// A build may add a suffix to the version ("0.3.3-dirty"): the numbers tell the firmware.
+  private static func firmwareNumbers(_ version: String) -> Substring {
+    version.prefix { $0.isNumber || $0 == "." }
+  }
+
   /// The box works with the firmware the app is tested with: there is nothing to install. A debug build sends it again
   /// to try the update itself.
   static func canInstallFirmware(_ status: NoGpsStatus) -> Bool {
@@ -567,7 +572,7 @@ final class NoGpsBoxPage: MWMTableViewController {
 #if DEBUG
     return true
 #else
-    return status.bundledFirmware != status.boxFirmware
+    return firmwareNumbers(status.bundledFirmware) != firmwareNumbers(status.boxFirmware)
 #endif
   }
 

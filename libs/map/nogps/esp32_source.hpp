@@ -114,8 +114,11 @@ public:
 
   /// The bytes of the box as they come over Bluetooth: a line may be cut in pieces, a piece may have several lines.
   void OnBleBytes(std::string_view bytes);
-  void OnBleState(BleState state);
+  /// `bondLost`: the box is thought to have forgotten the phone, see BleState::BondLost. A link made then, Connected
+  /// for the HELLO the box waits for, is a probe: it is not a working link until the box is heard.
+  void OnBleState(BleState state, bool bondLost = false);
   BleState GetBleState() const { return m_bleState; }
+  bool IsBondLost() const { return m_bondLost; }
   DataRate GetDataRate() const;
 
   /// \returns when the box was powered on, if this is how it has started and its data come. Nothing after a
@@ -218,6 +221,7 @@ private:
   int m_helloId = 0;
 
   BleState m_bleState = BleState::Off;
+  bool m_bondLost = false;
   // The line being received over Bluetooth, from its "$" on.
   std::string m_bleLine;
   // When the data lines of the last second came.

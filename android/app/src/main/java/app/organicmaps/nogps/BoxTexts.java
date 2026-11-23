@@ -120,6 +120,15 @@ public final class BoxTexts
     };
   }
 
+  /** A build may add a suffix to the version ("0.3.3-dirty"): the numbers tell the firmware. */
+  private static String versionNumbers(@NonNull String version)
+  {
+    int end = 0;
+    while (end < version.length() && (Character.isDigit(version.charAt(end)) || version.charAt(end) == '.'))
+      ++end;
+    return version.substring(0, end);
+  }
+
   /**
    * The box works with the firmware the application is tested with: there is nothing to install. A debug build sends
    * it again to try the update itself.
@@ -127,7 +136,7 @@ public final class BoxTexts
   static boolean canInstallFirmware(@NonNull NoGps.Status status)
   {
     return !isUpdating(status.getFirmwareUpdate()) && !status.bundledFirmware.isEmpty()
- && (BuildConfig.DEBUG || !status.bundledFirmware.equals(status.boxFirmware));
+ && (BuildConfig.DEBUG || !versionNumbers(status.bundledFirmware).equals(versionNumbers(status.boxFirmware)));
   }
 
   /**

@@ -151,7 +151,7 @@
     <string name="description">Pastabos</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Su jumis bendrinamas „NonGPS Maps“ žymių sąrašas</string>
-    <string name="share_bookmarks_email_body">Labas! \n \nČia prisegtas mano žymių sąrašas iš „NonGPS Maps“ programėlės. Jei jos neturi, gali ją parsisiųsti iš https://github.com/Ramzess-II/NoGPSMaps \n \nSmagių kelionių su „NonGPS Maps“!</string>
+    <string name="share_bookmarks_email_body">Labas! \n \nČia prisegtas mano žymių sąrašas iš „NonGPS Maps“ programėlės. Jei jos neturi, gali ją parsisiųsti iš https://github.com/Ramzess-II/NoNGPS-Maps \n \nSmagių kelionių su „NonGPS Maps“!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Žymių sąrašas įkeliamas</string>
     <!-- Kmz file successful loading -->

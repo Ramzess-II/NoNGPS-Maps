@@ -437,6 +437,14 @@ static CLLocation * lastPlatformLocation;
   return sprints;
 }
 
++ (NSArray<MWMNoGpsSprint *> *)sprintsOfCar:(NSString *)carId
+{
+  NSMutableArray<MWMNoGpsSprint *> * sprints = [NSMutableArray array];
+  for (auto const & sprint : Engine().GetSprints(carId.UTF8String))
+    [sprints addObject:[[MWMNoGpsSprint alloc] initWithSprint:sprint]];
+  return sprints;
+}
+
 + (NSInteger)maxCars
 {
   return nogps::CarStorage::kMaxCars;
@@ -540,9 +548,9 @@ static CLLocation * lastPlatformLocation;
   Engine().OnEsp32BleBytes({static_cast<char const *>(data.bytes), data.length});
 }
 
-+ (void)onEsp32BleState:(MWMNoGpsBleState)state
++ (void)onEsp32BleState:(MWMNoGpsBleState)state bondLost:(BOOL)bondLost
 {
-  Engine().OnEsp32BleState(static_cast<nogps::BleState>(state));
+  Engine().OnEsp32BleState(static_cast<nogps::BleState>(state), bondLost);
 }
 
 @end

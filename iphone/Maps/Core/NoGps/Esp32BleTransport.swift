@@ -30,7 +30,8 @@ final class Esp32BleTransport: NSObject {
     static let knownBoxesKey = "NoGpsKnownBoxes"
     // The boxes of the cars the user has forgotten: still paired, they are not connected until the user adds the car.
     static let forgottenBoxesKey = "NoGpsForgottenBoxes"
-    static let namePrefix = "NoGPS-"
+    // The name of the box is NonGPS-XXXX; the boxes that are not updated still say NoGPS-XXXX.
+    static let namePrefixes = ["NonGPS-", "NoGPS-"]
     static let retryDelay: TimeInterval = 2
     // A box that is found but can't be connected and subscribed to is tried less and less often, e.g. the user has
     // refused to pair with it. One that was is tried again soon: after a parking, the first connections may stay
@@ -94,6 +95,8 @@ final class Esp32BleTransport: NSObject {
   private var lastSilentTime: TimeInterval = 0
   /// Too many silent connections: the lost-pairing hint is shown, and the search goes on once a minute.
   private var isBondLost = false
+  /// What the core was told with the last state.
+  private var reportedBondLost = false
   /// The box with a closed window that has phones is connected once, as it may be paired in the system: its id and
   /// the flags of its advertisement. Silent, it gets the hint of the flags.
   private var closedTry: (id: UUID, flags: UInt8)?
@@ -249,10 +252,13 @@ final class Esp32BleTransport: NSObject {
   }
 
   private func setState(_ newState: NoGpsBleState) {
-    guard newState != state else { return }
-    LOG(.info, "state = \(newState.rawValue)")
+    guard newState != state || isBondLost != reportedBondLost else { return }
+    LOG(.info, "state = \(newState.rawValue)\(isBondLost ? " bond lost" : "")")
     state = newState
-    NoGps.onEsp32BleState(newState)
+    reportedBondLost = isBondLost
+    // .connected while the pairing is thought lost is a probe: the core sends HELLO, which the box waits for, but it
+    // is not a working link until the box is heard.
+    NoGps.onEsp32BleState(newState, bondLost: isBondLost)
   }
 
   private func schedule(after delay: TimeInterval, _ action: @escaping () -> Void) {
@@ -332,11 +338,11 @@ final class Esp32BleTransport: NSObject {
     return bytes.count >= 4 && Array(bytes[0 ..< 2]) == Constants.manufacturerId ? bytes[3] : 0
   }
 
-  /// The four characters of the name of the box, NoGPS-XXXX, nil if the box doesn't tell it.
+  /// The four characters of the name of the box, NonGPS-XXXX or NoGPS-XXXX, nil if the box doesn't tell it.
   private static func boxId(_ peripheral: CBPeripheral, _ advertisementData: [String: Any]) -> String? {
     let name = advertisementData[CBAdvertisementDataLocalNameKey] as? String ?? peripheral.name
-    guard let name, name.hasPrefix(Constants.namePrefix) else { return nil }
-    return String(name.dropFirst(Constants.namePrefix.count))
+    guard let name, let prefix = Constants.namePrefixes.first(where: { name.hasPrefix($0) }) else { return nil }
+    return String(name.dropFirst(prefix.count))
   }
 
   /// The user has the most cars: a box that is not of one of them would drive the mark under the current car's values.
@@ -759,6 +765,8 @@ extension Esp32BleTransport: CBPeripheralDelegate {
       isHeard = true
       silentConnections = 0
       isBondLost = false
+      // The probe is a link now.
+      setState(state)
       closedTry = nil
       timer?.cancel()
       remember(peripheral)

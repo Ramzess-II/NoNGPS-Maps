@@ -4,8 +4,13 @@
   python3 tools/python/nogps_box_sim_test.py
 """
 
+import asyncio
+import contextlib
+import importlib
+import io
 import os
 import sys
+import types
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -145,7 +150,7 @@ class Lines(unittest.TestCase):
             self.assertNotIn(ability, got[11].split(' '))
 
     def test_the_name_fits_the_advertisement(self):
-        made, _, _ = box()
+        made, _, _ = box(box_id='S')
         # macOS drops a longer name when the service UUID of 16 bytes is in the packet.
         self.assertLessEqual(len(made.state.name()), 8)
         self.assertEqual(made.state.manufacturer(), bytes([0xFF, 0xFF, 1, 1]))
@@ -397,7 +402,14 @@ class Session(unittest.TestCase):
         self.assertIsNone(radio.advertisement)
         made.panel_action('start', '')
         made.tick()
-        self.assertEqual(radio.advertisement, ('NoGPS-S1', None))
+        self.assertEqual(radio.advertisement, ('NonGPS-S1', None))
+
+    def test_a_box_that_is_not_updated_advertises_the_old_name(self):
+        made, radio, _ = box()
+        made.panel_set({'legacy_name': True})
+        self.assertEqual(made.state.name(), 'NoGPS-S1')
+        made.panel_set({'legacy_name': False})
+        self.assertEqual(made.state.name(), 'NonGPS-S1')
 
     def test_the_panel_shuts_the_simulator_down(self):
         made, radio, clock = box()
@@ -447,9 +459,20 @@ class Session(unittest.TestCase):
         self.assertNotIn('NOPE', made.state.flags)
         self.assertEqual(made.state.shake_pct, 9999)
         self.assertEqual(made.state.obd, 'NO_ADAPTER')
-        # The id is the four characters of the name of a box, and macOS drops a longer name.
+        # The id is the four characters of the name of a box.
         made.panel_set({'box_id': 'TOOLONG'})
+        self.assertEqual(made.state.name(), 'NonGPS-TOOL')
+        made.panel_set({'legacy_name': True})
+        self.assertEqual(made.panel_state()['legacy_name'], True)
         self.assertEqual(made.state.name(), 'NoGPS-TOOL')
+
+    def test_the_panel_takes_the_id_of_a_real_box(self):
+        made, _, _ = box()
+        # The panel takes a four-character id whole, as --id does: a box of a known car can be stood in for.
+        made.panel_set({'box_id': 'C47D'})
+        self.assertEqual(made.panel_state()['box_id'], 'C47D')
+        self.assertEqual(made.state.name(), 'NonGPS-C47D')
+        self.assertEqual(fields(made.state.info().decode('ascii').strip())[6], 'C47D')
 
 
 class SilenceWatchTest(unittest.TestCase):
@@ -470,6 +493,111 @@ class SilenceWatchTest(unittest.TestCase):
         watch.forget('b')
         clock.pass_s(sim.SILENT_GONE_S)
         self.assertEqual(watch.gone(), ['a'])
+
+
+class WindowsRadioTest(unittest.TestCase):
+    """The bookkeeping of the radio of Windows, over a stub of winsdk: nothing here touches Bluetooth."""
+
+    @classmethod
+    def setUpClass(cls):
+        from unittest import mock
+        names = ['winsdk', 'winsdk.windows', 'winsdk.windows.devices', 'winsdk.windows.devices.bluetooth',
+                 'winsdk.windows.devices.bluetooth.advertisement',
+                 'winsdk.windows.devices.bluetooth.genericattributeprofile', 'winsdk.windows.storage',
+                 'winsdk.windows.storage.streams']
+        cls.patch = mock.patch.dict(sys.modules, {name: mock.MagicMock() for name in names})
+        cls.patch.start()
+        sys.modules.pop('nogps_box_sim_radio_windows', None)
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        cls.module = importlib.import_module('nogps_box_sim_radio_windows')
+
+    @classmethod
+    def tearDownClass(cls):
+        sys.modules.pop('nogps_box_sim_radio_windows', None)
+        cls.patch.stop()
+
+    def radio(self):
+        radio = self.module.Radio()
+        radio.events = []
+        radio.on_event = lambda *args: radio.events.append(args)
+        return radio
+
+    @staticmethod
+    def provider():
+        calls = []
+        return types.SimpleNamespace(calls=calls, start_advertising=lambda parameters: calls.append('start'),
+                                     stop_advertising=lambda: calls.append('stop'))
+
+    @staticmethod
+    def client(phone_id, size):
+        return types.SimpleNamespace(session=types.SimpleNamespace(device_id=types.SimpleNamespace(id=phone_id)),
+                                     max_notification_size=size)
+
+    def test_write_after_silence_keeps_the_client(self):
+        radio = self.radio()
+        radio.tx = types.SimpleNamespace(subscribed_clients=[self.client('dev-a', 182)])
+        radio.sync_clients(radio.tx.subscribed_clients)
+        radio.forget('dev-a')
+        radio.on_write('dev-a', b'HELLO')
+        self.assertIn('dev-a', radio.clients)
+        self.assertEqual(radio.phones['dev-a'], 182)
+
+    def test_subscribed_client_is_a_phone(self):
+        radio = self.radio()
+        radio.sync_clients([self.client('dev-a', 182)])
+        self.assertEqual(radio.events, [('connect', 'dev-a', 'dev-a'), ('subscribe', 'dev-a', 182)])
+        radio.sync_clients([self.client('dev-a', 182)])
+        self.assertEqual(len(radio.events), 2)
+        radio.sync_clients([self.client('dev-a', 20)])
+        self.assertEqual(radio.events[-1], ('subscribe', 'dev-a', 20))
+        radio.sync_clients([])
+        self.assertEqual(radio.events[-1], ('disconnect', 'dev-a'))
+        self.assertEqual(radio.phones, {})
+
+    def test_notification_is_never_shorter_than_the_smallest(self):
+        radio = self.radio()
+        radio.sync_clients([self.client('dev-a', 5)])
+        self.assertEqual(radio.events[-1], ('subscribe', 'dev-a', sim.MIN_PAYLOAD))
+
+    def test_write_from_an_unknown_phone_makes_it_a_phone(self):
+        radio = self.radio()
+        radio.on_write('dev-a', b'HELLO')
+        self.assertEqual([e[0] for e in radio.events], ['connect', 'subscribe', 'write'])
+        self.assertEqual(radio.events[-1], ('write', 'dev-a', b'HELLO'))
+
+    def test_send_needs_a_subscribed_phone_and_room(self):
+        radio = self.radio()
+        self.assertFalse(radio.send('dev-a', b'x'))
+        radio.on_write('dev-a', b'HELLO')
+        self.assertFalse(radio.send('dev-a', b'x'))
+        radio.sync_clients([self.client('dev-a', 182)])
+        radio.pending = sim.QUEUE_LINES
+        self.assertFalse(radio.send('dev-a', b'x'))
+
+    def test_disconnect_forgets_the_phone_once(self):
+        radio = self.radio()
+        radio.sync_clients([self.client('dev-a', 182)])
+        radio.disconnect('dev-a')
+        radio.disconnect('dev-a')
+        self.assertEqual([e for e in radio.events if e[0] == 'disconnect'], [('disconnect', 'dev-a')])
+
+    def test_the_advertisement_is_the_service_alone(self):
+        """Windows reserves the name and the flags of BLE-13, so the panel changes nothing in the advertisement."""
+        self.assertFalse(self.module.Radio.supports_manufacturer_data)
+        radio = self.radio()
+        radio.provider = self.provider()
+        radio.wanted = (sim.NAME_PREFIX + 'S1', None)
+        with contextlib.redirect_stdout(io.StringIO()):
+            asyncio.run(radio.apply())
+            asyncio.run(radio.apply())
+            self.assertEqual(radio.provider.calls, ['start'])
+            radio.wanted = None
+            asyncio.run(radio.apply())
+        self.assertEqual(radio.provider.calls, ['start', 'stop'])
+
+    def test_default_radio_of_each_platform(self):
+        self.assertEqual([sim.default_radio(p) for p in ('darwin', 'linux', 'win32', 'freebsd')],
+                         ['macos', 'linux', 'windows', 'fake'])
 
 
 if __name__ == '__main__':

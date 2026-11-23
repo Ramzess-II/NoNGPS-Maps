@@ -151,7 +151,7 @@
     <string name="description">Anteckningar</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">NonGPS Maps bokmärken har delats med dig</string>
-    <string name="share_bookmarks_email_body">Hej! \n \nJag bifogar mina bokmärken, öppna gärna dem med NonGPS Maps. Om du inte redan har appen installerad, kan du ladda ner den här: https://github.com/Ramzess-II/NoGPSMaps \n \nTrevlig resa med NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Hej! \n \nJag bifogar mina bokmärken, öppna gärna dem med NonGPS Maps. Om du inte redan har appen installerad, kan du ladda ner den här: https://github.com/Ramzess-II/NoNGPS-Maps \n \nTrevlig resa med NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Läser in bokmärken</string>
     <!-- Kmz file successful loading -->

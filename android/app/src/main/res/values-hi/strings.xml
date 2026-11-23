@@ -151,7 +151,7 @@
     <string name="description">टिप्पणियाँ</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">NonGPS Maps बुकमार्क आपके साथ साझा किए गए थे</string>
-    <string name="share_bookmarks_email_body">नमस्ते!\n\nसंलग्न हैं मेरे बुकमार्क; कृपया उन्हें NonGPS Maps में खोलें। यदि आपने इसे इंस्टॉल नहीं किया है तो आप इसे यहाँ डाउनलोड कर सकते हैं: https://github.com/Ramzess-II/NoGPSMaps\n\nNonGPS Maps के साथ यात्रा का आनंद लें!</string>
+    <string name="share_bookmarks_email_body">नमस्ते!\n\nसंलग्न हैं मेरे बुकमार्क; कृपया उन्हें NonGPS Maps में खोलें। यदि आपने इसे इंस्टॉल नहीं किया है तो आप इसे यहाँ डाउनलोड कर सकते हैं: https://github.com/Ramzess-II/NoNGPS-Maps\n\nNonGPS Maps के साथ यात्रा का आनंद लें!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">बुकमार्क लोड हो रहे हैं</string>
     <!-- Kmz file successful loading -->

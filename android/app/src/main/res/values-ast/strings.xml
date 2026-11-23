@@ -78,7 +78,7 @@
     <!-- SECTION: Other translations -->
     <!-- Notes field in Bookmarks view -->
     <string name="description">Notes</string>
-    <string name="share_bookmarks_email_body">¡Hola!\n\nLos mios marcadores tán axuntos; ábrilos en NonGPS Maps. Si nun lu tienes instaláu, te lu puedes baxar equí: https://github.com/Ramzess-II/NoGPSMaps\n\n¡Gocia viaxar con NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">¡Hola!\n\nLos mios marcadores tán axuntos; ábrilos en NonGPS Maps. Si nun lu tienes instaláu, te lu puedes baxar equí: https://github.com/Ramzess-II/NoNGPS-Maps\n\n¡Gocia viaxar con NonGPS Maps!</string>
     <!-- resource for context menu -->
     <string name="edit">Editar</string>
     <!-- Email subject when sharing a place. %1$@ is the place name or address. -->

@@ -4,11 +4,12 @@
 # dependencies = [
 #     "pyobjc-framework-CoreBluetooth>=10; sys_platform == 'darwin'",
 #     "dbus-next>=0.2.3; sys_platform == 'linux'",
+#     "winsdk>=1.0.0b10; sys_platform == 'win32' and python_version < '3.13'",
 # ]
 # ///
 """The sensor box of NonGPS Maps, simulated on this computer so a phone can find it without the hardware.
 
-  just box [--radio auto|macos|linux|fake] [--id S1] [--port 0] [--no-browser]
+  just box [--radio auto|macos|linux|windows|fake] [--id S] [--port 0] [--no-browser]
   uv run --script tools/python/nogps_box_sim.py [the same]
 
 The box stands in a parked car: it advertises the service of the box over Bluetooth LE and sends the NGI, NGS and
@@ -20,7 +21,9 @@ A debug build of the application is needed on Android: the simulator asks for no
 the lines of a paired box alone. iOS doesn't check the pairing, but on macOS CoreBluetooth can't advertise the
 manufacturer data of BLE-13, so the pairing window flag never reaches the phone, and only a debug build takes an
 advertisement without that data as a box that accepts a new phone. BlueZ on Linux does advertise it, the panel sets
-the flags there, and an iOS release build connects to the simulator as it does to a box.
+the flags there, and an iOS release build connects to the simulator as it does to a box. Windows keeps the name
+and the manufacturer data of an advertisement for itself, so the radio there advertises neither and a debug build
+is needed as on macOS; it is written without a machine to try it on, see its docstring.
 
 What it doesn't simulate, and why:
 - the pairing rules (BLE-11, BLE-12, BLE-15, BLE-16): on macOS pairing belongs to the system, with no bt_pin and no
@@ -30,9 +33,11 @@ What it doesn't simulate, and why:
 - the firmware update, the car values, the phone list and the places of two phones: NGI tells the abilities "BLE"
   alone, and the application asks for none of them.
 
-The radio needs a package -- PyObjC on macOS, dbus-next on Linux -- and the script declares both above, each
-for its own platform, so uv puts them in an environment of its own and nothing is installed into the system
-Python. The panel and the tests need no package at all and run with plain python3, which is how CI runs them.
+The radio needs a package -- PyObjC on macOS, dbus-next on Linux, winsdk on Windows -- and the script declares
+them above, each for its own platform, so uv puts them in an environment of its own and nothing is installed into
+the system Python. winsdk has no wheel past Python 3.12 and is declared for those alone: the radio of Windows needs
+an interpreter of 3.10 to 3.12, `uv run --python 3.12 --script`. The panel and the tests need no package at
+all and run with plain python3, which is how CI runs them.
 
 A radio is a class Radio in nogps_box_sim_radio_<platform>.py with:
   name, supports_manufacturer_data
@@ -66,7 +71,9 @@ VERSION = 1
 SERVICE_UUID = '02CB0001-C0C3-40D0-819C-5A85998DCD99'
 TX_UUID = '02CB0002-C0C3-40D0-819C-5A85998DCD99'
 RX_UUID = '02CB0003-C0C3-40D0-819C-5A85998DCD99'
-NAME_PREFIX = 'NoGPS-'
+# NET-9: NonGPS-XXXX; a box that is not updated says NoGPS-XXXX, see State.legacy_name.
+NAME_PREFIX = 'NonGPS-'
+LEGACY_NAME_PREFIX = 'NoGPS-'
 # BLE-13: the company id, a byte of the format version and a byte of the flags.
 COMPANY_ID = 0xFFFF
 ADV_FORMAT = 1
@@ -170,9 +177,10 @@ class State:
         self.flags = {name: name in ('IMU_OK', 'BIAS_OK', 'UP_OK', 'STILL') for name in PANEL_FLAGS}
         self.adv = {'pairing_open': True, 'full': False, 'has_phones': False}
         self.advertising = True
+        self.legacy_name = False
 
     def name(self):
-        return NAME_PREFIX + self.box_id
+        return (LEGACY_NAME_PREFIX if self.legacy_name else NAME_PREFIX) + self.box_id
 
     def manufacturer(self):
         flags = 0
@@ -481,6 +489,7 @@ class Box:
                 'obd_states': OBD_STATES,
                 'shake_pct': state.shake_pct,
                 'box_id': state.box_id,
+                'legacy_name': state.legacy_name,
                 'firmware': state.firmware,
                 'chip': state.chip,
                 'board': state.board,
@@ -511,8 +520,11 @@ class Box:
                 state.shake_pct = max(0, min(9999, int(values['shake_pct'])))
             for name in ('box_id', 'firmware', 'chip', 'board', 'imu_name'):
                 if values.get(name):
-                    # The id is the four characters of the name of a box; macOS drops a name over 8 characters.
+                    # The id is the four characters of the name of a box, as --id takes them. Only macOS
+                    # drops an advertised name over 8 characters: the panel's name tells when it does.
                     setattr(state, name, str(values[name])[:4 if name == 'box_id' else 32])
+            if 'legacy_name' in values:
+                state.legacy_name = bool(values['legacy_name'])
             if 'advertising' in values:
                 state.advertising = bool(values['advertising'])
             self.status_dirty = True
@@ -574,9 +586,15 @@ class FakeRadio:
         self.stopped.set()
 
 
+def default_radio(platform):
+    if platform.startswith('linux'):
+        return 'linux'
+    return {'darwin': 'macos', 'win32': 'windows'}.get(platform, 'fake')
+
+
 def make_radio(kind):
     if kind == 'auto':
-        kind = {'darwin': 'macos'}.get(sys.platform, 'linux' if sys.platform.startswith('linux') else 'fake')
+        kind = default_radio(sys.platform)
     if kind == 'fake':
         return FakeRadio()
     module_name = 'nogps_box_sim_radio_' + kind
@@ -584,7 +602,11 @@ def make_radio(kind):
     try:
         return importlib.import_module(module_name).Radio()
     except ImportError as e:
-        packages = {'macos': 'pyobjc-framework-CoreBluetooth', 'linux': 'dbus-next'}
+        packages = {'macos': 'pyobjc-framework-CoreBluetooth', 'linux': 'dbus-next', 'windows': 'winsdk'}
+        if kind == 'windows' and sys.version_info >= (3, 13):
+            sys.exit('winsdk, which the radio of Windows needs, has no wheel for Python %d.%d: run this file with\n'
+                     '`uv run --python 3.12 --script`, or take the panel alone with --radio fake.\n(%s)'
+                     % (sys.version_info[0], sys.version_info[1], e))
         sys.exit('%s needs %s, which the script declares for uv: run it with `just box`, or with\n'
                  '`uv run --script` on this file. Without uv, put the package in a virtual environment of your own.\n'
                  '(%s)' % (module_name, packages.get(kind, '?'), e))
@@ -660,9 +682,12 @@ def handler(box):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--radio', default='auto', choices=['auto', 'macos', 'linux', 'fake'])
-    parser.add_argument('--id', default='S1', help='the characters after NoGPS- in the name of the box; macOS drops '
-                                                   'a name over 8 characters from the advertisement')
+    parser.add_argument('--radio', default='auto', choices=['auto', 'macos', 'linux', 'windows', 'fake'])
+    parser.add_argument('--id', default='S', help='the four characters after NonGPS- in the name of a box; macOS '
+                                                   'drops a name over 8 characters from the advertisement, so one '
+                                                   'character fits after NonGPS- and two after NoGPS- there')
+    parser.add_argument('--legacy-name', action='store_true',
+                        help='advertise NoGPS-XXXX as a box that is not updated does')
     parser.add_argument('--port', type=int, default=0, help='0 takes a free one')
     parser.add_argument('--no-browser', action='store_true')
     args = parser.parse_args()
@@ -670,7 +695,9 @@ def main():
     # The lines below are a running log: they are of no use when a redirected stdout holds them back.
     sys.stdout.reconfigure(line_buffering=True)
     radio = make_radio(args.radio)
-    box = Box(State(args.id), radio)
+    state = State(args.id)
+    state.legacy_name = args.legacy_name
+    box = Box(state, radio)
     server = ThreadingHTTPServer(('127.0.0.1', args.port), handler(box))
     url = 'http://127.0.0.1:%d/' % server.server_address[1]
     threading.Thread(target=server.serve_forever, daemon=True).start()
