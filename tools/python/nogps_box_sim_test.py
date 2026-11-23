@@ -133,14 +133,14 @@ class Lines(unittest.TestCase):
         got = fields(made.state.status().decode('ascii').strip())
         self.assertEqual([got[5], got[6], got[12], got[13]], ['OK', sim.OBD_PROTOCOL, 'NONE', '38400'])
 
-    def test_info_tells_bluetooth_alone(self):
+    def test_info_tells_bluetooth_and_the_proof_alone(self):
         made, _, _ = box()
         got = fields(made.state.info().decode('ascii').strip())
         self.assertEqual(len(got), 14)
         self.assertEqual([got[0], got[1], got[2], got[4], got[5], got[6]],
                          ['NGI', '1', '0.4.4', 'esp32s3', 's3zero', 'S1'])
-        # The abilities the application looks for are not there: it asks for none of them.
-        self.assertEqual(got[11], 'BLE')
+        # The abilities the application looks for are not there but the proof: it asks for none of them.
+        self.assertEqual(got[11], 'BLE AUTH')
         for ability in ('OTA', 'CAR', 'PHONES', 'MULTI', 'PEER'):
             self.assertNotIn(ability, got[11].split(' '))
 
@@ -226,6 +226,55 @@ class Commands(unittest.TestCase):
             made.on_event('write', PHONE, command(number, text))
         made.tick()
         self.assertEqual([fields(raw)[2:] for raw in radio.lines('NGA')], [['ERR', 'UNKNOWN']] * 3)
+
+    def test_the_box_takes_a_key_and_proves_itself(self):
+        made, radio, _ = box()
+        connect(made)
+        key = '000102030405060708090a0b0c0d0e0f'
+        made.on_event('write', PHONE, command(10, 'AUTH,a1b2c3d4e5f60718'))
+        made.on_event('write', PHONE, command(11, 'AUTH_SET,' + key))
+        made.on_event('write', PHONE, command(12, 'AUTH,a1b2c3d4e5f60718'))
+        made.on_event('write', PHONE, command(13, 'AUTH,A1B2C3D4E5F60718'))
+        made.tick()
+        got = [fields(raw)[1:] for raw in radio.lines('NGA')]
+        # The vector is the one of the core's test of esp32::AuthProof.
+        self.assertEqual(got, [['10', 'ERR', 'NOKEY'], ['11', 'OK'], ['12', 'OK', '0620aee41375224a'],
+                               ['13', 'OK', '0620aee41375224a']])
+
+    def test_the_key_is_taken_once_and_kept_for_the_phone(self):
+        made, radio, _ = box()
+        connect(made)
+        key = '000102030405060708090a0b0c0d0e0f'
+        other = 'ff' * 16
+        made.on_event('write', PHONE, command(1, 'AUTH_SET,' + key))
+        # The same key again is taken (its answer may have been lost), another one is not.
+        made.on_event('write', PHONE, command(2, 'AUTH_SET,' + key))
+        made.on_event('write', PHONE, command(3, 'AUTH_SET,' + other))
+        made.on_event('write', PHONE, command(4, 'AUTH_SET,' + key[:-2]))
+        made.on_event('write', PHONE, command(5, 'AUTH_SET,' + 'zz' * 16))
+        made.on_event('write', PHONE, command(6, 'AUTH,a1b2c3d4e5f6071'))
+        made.on_event('write', PHONE, command(7, 'AUTH'))
+        made.tick()
+        got = [fields(raw)[1:] for raw in radio.lines('NGA')]
+        self.assertEqual(got, [['1', 'OK'], ['2', 'OK'], ['3', 'ERR', 'EXISTS'], ['4', 'ERR', 'VALUE'],
+                               ['5', 'ERR', 'VALUE'], ['6', 'ERR', 'VALUE'], ['7', 'ERR', 'VALUE']])
+        # The key stays after the phone has gone and comes back.
+        made.on_event('disconnect', PHONE)
+        connect(made)
+        made.on_event('write', PHONE, command(1, 'AUTH,a1b2c3d4e5f60718'))
+        made.tick()
+        self.assertEqual(fields(radio.lines('NGA')[-1])[2:], ['OK', '0620aee41375224a'])
+
+    def test_the_panel_makes_the_box_forget_the_keys(self):
+        made, radio, _ = box()
+        connect(made)
+        made.on_event('write', PHONE, command(1, 'AUTH_SET,' + '00' * 16))
+        self.assertEqual(made.panel_state()['keys'], 1)
+        made.panel_action('forget_keys', '')
+        self.assertEqual(made.panel_state()['keys'], 0)
+        made.on_event('write', PHONE, command(2, 'AUTH,a1b2c3d4e5f60718'))
+        made.tick()
+        self.assertEqual(fields(radio.lines('NGA')[-1])[2:], ['ERR', 'NOKEY'])
 
     def test_a_line_with_a_wrong_checksum_is_dropped(self):
         made, radio, _ = box()

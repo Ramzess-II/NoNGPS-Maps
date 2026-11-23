@@ -27,8 +27,12 @@ What it doesn't simulate, and why:
   "display only" capability; so no drop of a link that stays unencrypted and no BT_UNSECURE event, and the
   write queue of BLE-5 is the radio's, not ours;
 - any motion: no speed, no turns, no jolts;
-- the firmware update, the car values, the phone list and the places of two phones: NGI tells the abilities "BLE"
-  alone, and the application asks for none of them.
+- the firmware update, the car values, the phone list and the places of two phones: NGI tells the abilities "BLE
+  AUTH" and no more, and the application asks for none of the others.
+
+The box proves itself as section 9.5 says: AUTH_SET takes a key of a phone, AUTH answers with the proof of it. The keys
+live as long as the program does, by the id the radio gives a phone, as the firmware keeps them with the bond: the
+panel's "Forget the keys" is a box that has lost them, which the application refuses.
 
 The radio needs a package -- PyObjC on macOS, dbus-next on Linux -- and the script declares both above, each
 for its own platform, so uv puts them in an environment of its own and nothing is installed into the system
@@ -49,6 +53,8 @@ advertise, send, disconnect and on_event all happen on the thread that runs run(
 
 import argparse
 import collections
+import hashlib
+import hmac
 import importlib
 import json
 import os
@@ -102,9 +108,13 @@ OBD_ABSENT_STATES = {'DISABLED', 'NO_ADAPTER', 'SLEEP'}
 # Section 4.4, the last error of the OBD, from the state the panel sets.
 OBD_ERRORS = {'NO_ADAPTER': 'NO_ADAPTER', 'NO_CAR': 'NO_CAR', 'NO_DATA': 'NO_SPEED', 'ERROR': 'BUS_ERROR'}
 OBD_PROTOCOL = 'ISO 15765-4 (CAN 11/500)'
-# The abilities of NGI: only the lines of the box itself. The application gates CAR_GET, BT_LIST, PEER and the
-# firmware update on this field, so it asks for nothing the simulator hasn't got.
-ABILITIES = 'BLE'
+# The abilities of NGI: only the lines of the box itself and the proof of the box (AUTH_SET, AUTH). The application
+# gates CAR_GET, BT_LIST, PEER and the firmware update on this field, so it asks for nothing the simulator hasn't got.
+ABILITIES = 'BLE AUTH'
+# Section 9.5: the key is 16 bytes, the nonce 8, and the box answers the first 8 bytes of HMAC-SHA256(key, nonce).
+AUTH_KEY_BYTES = 16
+AUTH_NONCE_BYTES = 8
+AUTH_PROOF_BYTES = 8
 FLAG = dict(FLAG_BITS)
 # A command of section 7.2 or 7.3 sets the flags its calibration would set.
 CALIBRATION = {'CAL_BIAS': {'BIAS_OK': True},
@@ -120,6 +130,21 @@ def crc16(text):
         for _ in range(8):
             crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF
     return crc
+
+
+def hex_bytes(text, size):
+    """The bytes of a hex text of exactly |size| bytes, None if it is not one."""
+    if len(text) != size * 2:
+        return None
+    try:
+        return bytes.fromhex(text)
+    except ValueError:
+        return None
+
+
+def auth_proof(key, nonce):
+    """The answer to AUTH, in lowercase hex; the key and the nonce are the bytes of their hex texts."""
+    return hmac.new(key, nonce, hashlib.sha256).hexdigest()[:AUTH_PROOF_BYTES * 2]
 
 
 def line(body):
@@ -280,6 +305,8 @@ class Box:
         # Monotonic seconds; the tests drive their own.
         self.clock = clock
         self.phones = {}
+        # Section 9.5: the key of each phone, kept with its bond.
+        self.auth_keys = {}
         self.seq = 0
         self.started = clock()
         self.log = collections.deque(maxlen=LINES_KEPT)
@@ -372,7 +399,33 @@ class Box:
             self.status_dirty = True
             self.queue(phone, line('NGA,%s,OK' % command_id))
             return
+        if name == 'AUTH_SET':
+            self.queue(phone, line('NGA,%s,%s' % (command_id, self.auth_set(phone, rest))))
+            return
+        if name == 'AUTH':
+            self.queue(phone, line('NGA,%s,%s' % (command_id, self.auth(phone, rest))))
+            return
         self.queue(phone, line('NGA,%s,ERR,UNKNOWN' % command_id))
+
+    def auth_set(self, phone, rest):
+        """AUTH_SET,<32 hex>: the key is taken once; the same key again is taken, another one is refused."""
+        key = hex_bytes(rest[0], AUTH_KEY_BYTES) if rest else None
+        if key is None:
+            return 'ERR,VALUE'
+        if self.auth_keys.get(phone.id, key) != key:
+            return 'ERR,EXISTS'
+        self.auth_keys[phone.id] = key
+        return 'OK'
+
+    def auth(self, phone, rest):
+        """AUTH,<16 hex nonce>: OK,<proof>, NOKEY if the phone has no key."""
+        nonce = hex_bytes(rest[0], AUTH_NONCE_BYTES) if rest else None
+        if nonce is None:
+            return 'ERR,VALUE'
+        key = self.auth_keys.get(phone.id)
+        if key is None:
+            return 'ERR,NOKEY'
+        return 'OK,' + auth_proof(key, nonce)
 
     def queue(self, phone, data):
         """An answer or a status waits its turn; the oldest is dropped when the queue is full (BLE-8)."""
@@ -485,6 +538,7 @@ class Box:
                 'chip': state.chip,
                 'board': state.board,
                 'imu_name': state.imu_name,
+                'keys': len(self.auth_keys),
                 'phones': [{'label': p.label, 'name': p.name, 'unix_s': p.unix_s, 'payload': p.payload,
                             'subscribed': p.subscribed, 'heard': p.heard(now), 'sent': p.sent, 'dropped': p.dropped,
                             'hello_age_ms': int((now - p.hello_at) * 1000) if p.hello_at else -1}
@@ -535,6 +589,8 @@ class Box:
                 self.quit_at = self.clock() + QUIT_DELAY_S
             elif action == 'clear':
                 self.log.clear()
+            elif action == 'forget_keys':
+                self.auth_keys.clear()
         return self.panel_state()
 
 
