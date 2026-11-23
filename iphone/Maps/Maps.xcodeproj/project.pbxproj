@@ -19,6 +19,8 @@
 		333A4718BABBBFC6A412D69B /* NoGpsBoxSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */; };
 		5C0A7E1B3D2F4A6890B1D004 /* AboutNoGpsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0A7E1B3D2F4A6890B1D003 /* AboutNoGpsController.swift */; };
 		N0GPS2A00000000000000002 /* HowNoGpsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS2A00000000000000001 /* HowNoGpsController.swift */; };
+		A0C47D0200000000000000B2 /* NoGpsProfileController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C47D0200000000000000B1 /* NoGpsProfileController.swift */; };
+		A0C47D0200000000000000B4 /* NoGpsProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C47D0200000000000000B3 /* NoGpsProfileTests.swift */; };
 		5C0A7E1B3D2F4A6890B1D007 /* BottomMenuPresenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0A7E1B3D2F4A6890B1D006 /* BottomMenuPresenterTests.swift */; };
 		34F73F9C1E082FF800AC1FD6 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 34F73F5F1E082FF700AC1FD6 /* InfoPlist.strings */; };
 		34F73F9F1E082FF800AC1FD6 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 34F73F611E082FF800AC1FD6 /* Localizable.strings */; };
@@ -1870,6 +1872,8 @@
 		EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsBoxSheet.swift; sourceTree = "<group>"; };
 		5C0A7E1B3D2F4A6890B1D003 /* AboutNoGpsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutNoGpsController.swift; sourceTree = "<group>"; };
 		N0GPS2A00000000000000001 /* HowNoGpsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HowNoGpsController.swift; sourceTree = "<group>"; };
+		A0C47D0200000000000000B1 /* NoGpsProfileController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsProfileController.swift; sourceTree = "<group>"; };
+		A0C47D0200000000000000B3 /* NoGpsProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsProfileTests.swift; sourceTree = "<group>"; };
 		5C0A7E1B3D2F4A6890B1D006 /* BottomMenuPresenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomMenuPresenterTests.swift; sourceTree = "<group>"; };
 		F0A0B0002FF2ABCD00FA103D /* BookmarksListCellConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarksListCellConfiguration.swift; sourceTree = "<group>"; };
 		F623DA6A1C9C2731006A3436 /* opening_hours_how_to_edit.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = opening_hours_how_to_edit.html; path = ../../data/opening_hours_how_to_edit.html; sourceTree = "<group>"; };
@@ -2430,6 +2434,7 @@
 				E4B1C0DE7A52C3F100A1B2C4 /* Esp32BleTransportTests.swift */,
 				N0GPS1A00000000000000006 /* NoGpsIntroTests.swift */,
 				A0C47D010000000000000001 /* NoGpsCarMenuTests.swift */,
+				A0C47D0200000000000000B3 /* NoGpsProfileTests.swift */,
 				6DCDADA4CA235047EE2F0639 /* NavigationSearchWheelTests.swift */,
 				E79F77A472014212B40FDE97 /* PlacePageTests */,
 				ED810EC32D566E7600ECDE2C /* SearchOnMapTests */,
@@ -3750,6 +3755,7 @@
 			children = (
 				5C0A7E1B3D2F4A6890B1D003 /* AboutNoGpsController.swift */,
 				N0GPS2A00000000000000001 /* HowNoGpsController.swift */,
+				A0C47D0200000000000000B1 /* NoGpsProfileController.swift */,
 			);
 			path = NoGps;
 			sourceTree = "<group>";
@@ -4911,6 +4917,7 @@
 				333A4718BABBBFC6A412D69B /* NoGpsBoxSheet.swift in Sources */,
 				5C0A7E1B3D2F4A6890B1D004 /* AboutNoGpsController.swift in Sources */,
 				N0GPS2A00000000000000002 /* HowNoGpsController.swift in Sources */,
+				A0C47D0200000000000000B2 /* NoGpsProfileController.swift in Sources */,
 				3AB2A51C1DF5ED4103358BAF /* MWMNoGps.mm in Sources */,
 				9B5728946390BF79AAED06E1 /* Esp32BleTransport.swift in Sources */,
 				ED82BCB22F900F8200FA103D /* main.mm in Sources */,
@@ -5436,6 +5443,7 @@
 				5C0A7E1B3D2F4A6890B1D007 /* BottomMenuPresenterTests.swift in Sources */,
 				N0GPS1B00000000000000006 /* NoGpsIntroTests.swift in Sources */,
 				A0C47D010000000000000002 /* NoGpsCarMenuTests.swift in Sources */,
+				A0C47D0200000000000000B4 /* NoGpsProfileTests.swift in Sources */,
 				57A0D9ACD3DDA2D29AF02FC5 /* NavigationSearchWheelTests.swift in Sources */,
 				A13418010000000000000004 /* CarPlayManeuverMapperTests.swift in Sources */,
 				B26883EF0814407A8B1D73AF /* PlacePageUserDescriptionWebViewTests.swift in Sources */,
