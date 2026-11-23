@@ -4,11 +4,12 @@
 # dependencies = [
 #     "pyobjc-framework-CoreBluetooth>=10; sys_platform == 'darwin'",
 #     "dbus-next>=0.2.3; sys_platform == 'linux'",
+#     "winsdk>=1.0.0b10; sys_platform == 'win32' and python_version < '3.13'",
 # ]
 # ///
 """The sensor box of NonGPS Maps, simulated on this computer so a phone can find it without the hardware.
 
-  just box [--radio auto|macos|linux|fake] [--id S1] [--port 0] [--no-browser]
+  just box [--radio auto|macos|linux|windows|fake] [--id S1] [--port 0] [--no-browser]
   uv run --script tools/python/nogps_box_sim.py [the same]
 
 The box stands in a parked car: it advertises the service of the box over Bluetooth LE and sends the NGI, NGS and
@@ -20,18 +21,23 @@ A debug build of the application is needed on Android: the simulator asks for no
 the lines of a paired box alone. iOS doesn't check the pairing, but on macOS CoreBluetooth can't advertise the
 manufacturer data of BLE-13, so the pairing window flag never reaches the phone, and only a debug build takes an
 advertisement without that data as a box that accepts a new phone. BlueZ on Linux does advertise it, the panel sets
-the flags there, and an iOS release build connects to the simulator as it does to a box.
+the flags there, and an iOS release build connects to the simulator as it does to a box. Windows keeps the name
+and the manufacturer data of an advertisement for itself, so the radio there advertises neither and a debug build
+is needed as on macOS; it is written without a machine to try it on, see its docstring.
 
 What it doesn't simulate, and why:
 - the pairing rules (BLE-11, BLE-12, BLE-15, BLE-16): on macOS pairing belongs to the system, with no bt_pin and no
-  "display only" capability;
+  "display only" capability; so no drop of a link that stays unencrypted and no BT_UNSECURE event, and the
+  write queue of BLE-5 is the radio's, not ours;
 - any motion: no speed, no turns, no jolts;
 - the firmware update, the car values, the phone list and the places of two phones: NGI tells the abilities "BLE"
   alone, and the application asks for none of them.
 
-The radio needs a package -- PyObjC on macOS, dbus-next on Linux -- and the script declares both above, each
-for its own platform, so uv puts them in an environment of its own and nothing is installed into the system
-Python. The panel and the tests need no package at all and run with plain python3, which is how CI runs them.
+The radio needs a package -- PyObjC on macOS, dbus-next on Linux, winsdk on Windows -- and the script declares
+them above, each for its own platform, so uv puts them in an environment of its own and nothing is installed into
+the system Python. winsdk has no wheel past Python 3.12 and is declared for those alone: the radio of Windows needs
+an interpreter of 3.10 to 3.12, `uv run --python 3.12 --script`. The panel and the tests need no package at
+all and run with plain python3, which is how CI runs them.
 
 A radio is a class Radio in nogps_box_sim_radio_<platform>.py with:
   name, supports_manufacturer_data
@@ -71,10 +77,10 @@ COMPANY_ID = 0xFFFF
 ADV_FORMAT = 1
 ADV_FLAGS = [('pairing_open', 1), ('full', 2), ('has_phones', 4)]
 
-# Section 9.2: without a HELLO for this long the box stops sending the data.
-HELLO_TIMEOUT_S = 3.0
-# A radio that can't see a link drop takes a central as gone after this long without a write: far above the
-# HELLO timeout, as a connected phone that doesn't write is kept by a real box and only gets no data.
+# Section 9.2: without any command for this long the box stops sending the data.
+HELLO_TIMEOUT_S = 10.0
+# A radio that can't see a link drop takes a central as gone after this long without a write: well above the
+# session timeout, as a connected phone that doesn't write is kept by a real box and only gets no data.
 SILENT_GONE_S = 60.0
 # Section 9.3: NGD 50 times a second, 9.4: NGS once a second and at once on a change.
 DATA_PERIOD_S = 0.02
@@ -251,6 +257,8 @@ class Phone:
         self.subscribed = False
         self.payload = MIN_PAYLOAD
         self.hello_at = 0.0
+        # Section 9.2: the last command that keeps the session, 0 until the first HELLO starts one.
+        self.cmd_at = 0.0
         self.info_sent = False
         self.queue = collections.deque(maxlen=QUEUE_LINES)
         # The tail of a line that has started going out: BLE-4 sends it whole.
@@ -258,8 +266,12 @@ class Phone:
         self.sent = 0
         self.dropped = 0
 
+    def in_session(self, now):
+        """Section 9.2: a HELLO has started a session and a command has come within the timeout."""
+        return bool(self.cmd_at) and now - self.cmd_at < HELLO_TIMEOUT_S
+
     def heard(self, now):
-        return self.subscribed and self.hello_at and now - self.hello_at < HELLO_TIMEOUT_S
+        return self.subscribed and self.in_session(now)
 
 
 class Box:
@@ -333,9 +345,13 @@ class Box:
     def on_command(self, phone, fields):
         """Section 9.5. The box has the abilities of ABILITIES only: anything else is unknown."""
         command_id, name, rest = fields[1], fields[2], fields[3:]
+        # Section 9.2: any command but PEER, which the box relays before it looks at the commands, keeps a
+        # session that is still on. An ended one the box restarts on HELLO alone: it has freed the phone's slot.
+        if phone.in_session(self.clock()) and name != 'PEER':
+            phone.cmd_at = self.clock()
         if name == 'HELLO':
             # HELLO,<name>,<Unix s> from a newer application; the box remembers both for its list of phones.
-            phone.hello_at = self.clock()
+            phone.hello_at = phone.cmd_at = self.clock()
             if rest:
                 phone.name = rest[0]
             if len(rest) > 1 and rest[1].isdigit():
@@ -563,9 +579,15 @@ class FakeRadio:
         self.stopped.set()
 
 
+def default_radio(platform):
+    if platform.startswith('linux'):
+        return 'linux'
+    return {'darwin': 'macos', 'win32': 'windows'}.get(platform, 'fake')
+
+
 def make_radio(kind):
     if kind == 'auto':
-        kind = {'darwin': 'macos'}.get(sys.platform, 'linux' if sys.platform.startswith('linux') else 'fake')
+        kind = default_radio(sys.platform)
     if kind == 'fake':
         return FakeRadio()
     module_name = 'nogps_box_sim_radio_' + kind
@@ -573,7 +595,11 @@ def make_radio(kind):
     try:
         return importlib.import_module(module_name).Radio()
     except ImportError as e:
-        packages = {'macos': 'pyobjc-framework-CoreBluetooth', 'linux': 'dbus-next'}
+        packages = {'macos': 'pyobjc-framework-CoreBluetooth', 'linux': 'dbus-next', 'windows': 'winsdk'}
+        if kind == 'windows' and sys.version_info >= (3, 13):
+            sys.exit('winsdk, which the radio of Windows needs, has no wheel for Python %d.%d: run this file with\n'
+                     '`uv run --python 3.12 --script`, or take the panel alone with --radio fake.\n(%s)'
+                     % (sys.version_info[0], sys.version_info[1], e))
         sys.exit('%s needs %s, which the script declares for uv: run it with `just box`, or with\n'
                  '`uv run --script` on this file. Without uv, put the package in a virtual environment of your own.\n'
                  '(%s)' % (module_name, packages.get(kind, '?'), e))
@@ -649,7 +675,7 @@ def handler(box):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--radio', default='auto', choices=['auto', 'macos', 'linux', 'fake'])
+    parser.add_argument('--radio', default='auto', choices=['auto', 'macos', 'linux', 'windows', 'fake'])
     parser.add_argument('--id', default='S1', help='the characters after NoGPS- in the name of the box; macOS drops '
                                                    'a name over 8 characters from the advertisement')
     parser.add_argument('--port', type=int, default=0, help='0 takes a free one')

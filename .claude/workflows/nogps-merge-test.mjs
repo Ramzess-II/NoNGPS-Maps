@@ -289,7 +289,114 @@ const base = (label) => {
   check('merged', r.out.merged === 1)
 }
 
-// --- 15. a bigger mixed run, repeated: it always terminates and merges everything ---
+// --- 15. two PRs that touch iOS are never prepped at once ---
+{
+  const r = await runScript({
+    args: {
+      ws: '/ws',
+      parallel: [
+        pr(1, { files: ['iphone/Maps/Core/NoGps/MWMNoGps.mm'] }),
+        pr(2, { files: ['libs/map/nogps/engine.cpp'] }),
+        pr(3, { files: ['xcode/map/map.xcodeproj/project.pbxproj'] }),
+        pr(4, { files: ['iphone/Maps/UI/Help/AboutController/AboutController.swift'] }),
+      ],
+      slots: 4,
+    },
+    reply: base,
+  })
+  console.log('15. three of four PRs touch iphone/ or xcode/')
+  check('all four merged', r.out.merged === 4, r.out.results.map((x) => [x.pr, x.outcome, x.set]))
+  const sets = Object.fromEntries(r.out.results.map((x) => [x.pr, x.set]))
+  check('the first iOS PR stays parallel', sets[1] === 'parallel', sets)
+  check('the one PR with no iOS files stays parallel', sets[2] === 'parallel', sets)
+  check('the other iOS PRs moved to serial', sets[3] === 'serial' && sets[4] === 'serial', sets)
+  check('only two slots were asked for', r.out.slots === 2, r.out.slots)
+  check('the log says why', r.logs.some((m) => /#3, #4 moved to the serial set/.test(m)), r.logs)
+  // The moved ones run one at a time, after the parallel merges: that is the point of moving them.
+  const m3 = r.order.indexOf('+merge:#3')
+  const u4 = r.order.indexOf('+update:#4')
+  check('#4 starts only after #3 merged', u4 > m3 && m3 > 0, { m3, u4 })
+}
+
+// --- 16. one iOS PR alone still goes in parallel ---
+{
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1, { files: ['iphone/Maps/Core/NoGps/MWMNoGps.mm'] }), pr(2, { files: ['libs/a.cpp'] })], slots: 2 },
+    reply: base,
+  })
+  console.log('16. a single iOS PR in the parallel set')
+  check('both stay parallel', r.out.results.every((x) => x.set === 'parallel'), r.out.results.map((x) => [x.pr, x.set]))
+  check('two preps at once', prepPeak(r.peak) === 2, r.peak)
+  check('nothing was moved', !r.logs.some((m) => /moved to the serial set/.test(m)), r.logs)
+}
+
+// --- 18. a firmware PR: its own repo, branch, worktree and no CI ---
+{
+  const prompts = {}
+  const r = await runScript({
+    args: {
+      ws: '/ws',
+      parallel: [pr(1), pr(19, { repo: 'Ramzess-II/ELMandIMU', files: ['main/power.c'] })],
+      slots: 2,
+    },
+    reply: (label, opts, prompt) => {
+      prompts[label] = prompt
+      return base(label)
+    },
+  })
+  console.log('18. one app PR and one firmware PR')
+  check('both merged', r.out.merged === 2, r.out.results.map((x) => [x.pr, x.repo, x.outcome]))
+  const fw = r.out.results.find((x) => x.pr === 19)
+  check('the repo is in the report', fw.repo === 'Ramzess-II/ELMandIMU', fw)
+  check('the firmware steps are labelled apart', Object.keys(prompts).some((l) => l === 'update:fw#19'), Object.keys(prompts))
+  const u = prompts['update:fw#19']
+  check('it works in the -fw worktree', /\/ws\/worktrees\/merge-\d-fw/.test(u), u.slice(0, 400))
+  check('main, not master', /origin\/main/.test(u) && !/origin\/master/.test(u), u.slice(0, 600))
+  check('the worktree is made with plain git and keys linked', /git -C \/ws\/firmware worktree add/.test(u) && /ln -sfn \/ws\/firmware\/keys/.test(u), u)
+  // Without the main checkout's sdkconfig the build takes the esp32 target and secure boot v1, and signing fails.
+  check('sdkconfig is copied in too', /cp \/ws\/firmware\/sdkconfig/.test(u), u)
+  check('gh is pointed at the firmware repo', /-R Ramzess-II\/ELMandIMU/.test(u) && !/-R Ramzess-II\/NoNGPS-Maps/.test(u), u)
+  const g = prompts['merge:fw#19']
+  check('the gate builds the firmware', /idf\.py build/.test(g), g.slice(0, 200))
+  check('an unbuilt firmware PR is refused, not merged', /don't merge it/.test(g) && /"blocked" with "not built/.test(g) && !/landed unbuilt/.test(g), g)
+  check('the gate waits for no CI', /No CI to wait for/.test(g) && !/gh pr checks/.test(g), g.slice(0, 200))
+  check('the gate merges into main', /checkout --force -B train\/gate refs\/remotes\/origin\/main/.test(g), g.slice(0, 200))
+  // The app PR is untouched by all this.
+  const a = prompts['update:#1']
+  check('the app PR still uses master and the helper', /origin\/master/.test(a) && /nogps_worktree\.sh add merge-\d/.test(a), a.slice(0, 400))
+  check('the app gate still waits for CI', /gh pr checks/.test(prompts['merge:#1']), prompts['merge:#1'].slice(0, 200))
+}
+
+// --- 19. the two repos number their PRs apart ---
+{
+  const r = await runScript({
+    args: {
+      ws: '/ws',
+      parallel: [pr(19), pr(19, { repo: 'Ramzess-II/ELMandIMU' })],
+      serial: [pr(19, { repo: 'Ramzess-II/ELMandIMU' })], // the same firmware PR again: taken once
+      slots: 2,
+    },
+    reply: base,
+  })
+  console.log('19. #19 in both repos')
+  check('both are taken', r.out.results.length === 2, r.out.results.map((x) => [x.pr, x.repo]))
+  check('one of each repo', new Set(r.out.results.map((x) => x.repo)).size === 2, r.out.results.map((x) => x.repo))
+  check('both merged', r.out.merged === 2)
+}
+
+// --- 20. a repo the train doesn't know ---
+{
+  let err = null
+  try {
+    await runScript({ args: { ws: '/ws', parallel: [pr(1, { repo: 'someone/else' })] }, reply: base })
+  } catch (e) {
+    err = e
+  }
+  console.log('20. a PR of an unknown repo')
+  check('the queue is refused before any agent runs', err !== null && /unknown repo someone\/else/.test(String(err)), String(err))
+}
+
+// --- 17. a bigger mixed run, repeated: it always terminates and merges everything ---
 {
   let bad = 0
   for (let i = 0; i < 25; i++) {
@@ -310,7 +417,7 @@ const base = (label) => {
     })
     if (r.out.results.length !== 8) bad++
   }
-  console.log('15. 25 runs of 8 PRs with random findings and stale masters')
+  console.log('17. 25 runs of 8 PRs with random findings and stale masters')
   check('every PR is accounted for in every run', bad === 0, { bad })
 }
 
