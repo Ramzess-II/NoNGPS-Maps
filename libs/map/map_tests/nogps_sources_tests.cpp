@@ -776,10 +776,41 @@ UNIT_TEST(NoGps_Esp32Source_ReplayedBootKeepsBatteryLock)
   clock.Advance(Esp32Source::kDataTimeoutMs + 1);
   TEST_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
 
-  // The box is plugged back in: the BOOT of the new power-on drops the hint before any data.
+  // The box is plugged back in. Its BOOT comes only in the journal of the new link, after the events of this link,
+  // so it can't be told from the replayed BOOT of the locked power-on: the data of the box drop the hint.
   source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxLine("NGE,1,2,200,I,PHONE_CONNECTED,ble"));
   source.OnBleBytes(BoxLine("NGE,1,1,100,I,BOOT,fw 0.3.3 reset POWERON"));
+  TEST_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
+  source.OnBleBytes(BoxDataLine(2, 220, 0, 0, esp32::kFlagImuOk));
   TEST_NOT_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_BatteryLockedBoxHeardAgainWithoutTimeReset)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,14,OFF,,12480"));
+  // The box was plugged into a car with a low battery and locked out 20 s after its power-on.
+  source.OnBleBytes(BoxDataLine(1, 20'000, 0, 0, esp32::kFlagImuOk));
+  source.OnBleBytes(BoxLine("NGE,1,5,20100,W,BATT_LOCK,10800 mV"));
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+  TEST_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
+
+  // The box is plugged back in and the phone hears it a minute after that power-on: the time of the box doesn't go
+  // back, only the link made again tells that the box works.
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,14,OFF,,12480"));
+  source.OnBleBytes(BoxDataLine(2, 60'000, 0, 0, esp32::kFlagImuOk));
+  TEST_NOT_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+  TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_ReplayedBatteryLockAfterBootIsIgnored)
