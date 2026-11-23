@@ -603,8 +603,10 @@ void Esp32Source::OnAuthInfo(esp32::Fields const & fields)
   if (!info->m_canAuth)
   {
     // A box that could prove itself must not become one that can't: a box of a firmware before the proof is taken
-    // only for a car that has never proved its box.
-    if (!key.empty())
+    // only for a car whose box has never proved one. An unconfirmed key is no proof -- the box may never have taken
+    // it, and the firmware that took it may be rolled back (FW-6) -- so such a box is taken and keeps its key for the
+    // day it can prove itself again.
+    if (confirmed)
       return RefuseBox("the box of a car that proved it no longer can");
     LOG(LWARNING, ("The firmware", info->m_firmware, "of the box", info->m_id, "can not prove itself"));
     m_authCar = info->m_id;

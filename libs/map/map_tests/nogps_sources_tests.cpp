@@ -1809,6 +1809,20 @@ UNIT_TEST(NoGps_Esp32Source_BoxWithoutProofOfFirmware)
     TEST_EQUAL(box.listener.m_speeds.size(), 0, ());
     TEST(box.listener.m_heard.empty(), ());
   }
+  // A car with an unconfirmed key has never seen its box prove itself: the key may never have been taken, or the
+  // firmware that took it is rolled back. The box is taken and the key stays for the day the box can prove itself.
+  {
+    ProvedBox box;
+    box.listener.m_keys["C47D"] = {kAuthKey, false};
+    box.source.OnBleBytes(BoxLine(kOldInfo));
+    TEST(box.source.IsBoxProven(), ());
+    TEST_EQUAL(box.Sent("AUTH"), 0, ());
+    TEST_EQUAL(box.Sent("AUTH_SET"), 0, ());
+    TEST_EQUAL(box.listener.m_heard, std::vector<std::string>{"C47D"}, ());
+    box.SendData();
+    TEST_EQUAL(box.listener.m_speeds.size(), 5, ());
+    TEST_EQUAL(box.listener.m_keys["C47D"], std::make_pair(kAuthKey, false), ());
+  }
 }
 
 UNIT_TEST(NoGps_Esp32Source_AuthIsSentAgainThenRefused)
