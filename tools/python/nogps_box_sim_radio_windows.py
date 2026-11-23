@@ -155,6 +155,9 @@ class Radio:
             self.silence.wrote(phone_id)
 
     def on_write(self, phone_id, data):
+        if phone_id not in self.clients and self.tx is not None:
+            # A phone dropped by the silence watch is still subscribed in Windows, which tells of it no more.
+            self.sync_clients_now()
         self.remember(phone_id, self.phones.get(phone_id) or sim.MIN_PAYLOAD)
         self.silence.wrote(phone_id)
         self.on_event('write', phone_id, data)

@@ -506,6 +506,15 @@ class WindowsRadioTest(unittest.TestCase):
         return types.SimpleNamespace(session=types.SimpleNamespace(device_id=types.SimpleNamespace(id=phone_id)),
                                      max_notification_size=size)
 
+    def test_write_after_silence_keeps_the_client(self):
+        radio = self.radio()
+        radio.tx = types.SimpleNamespace(subscribed_clients=[self.client('dev-a', 182)])
+        radio.sync_clients(radio.tx.subscribed_clients)
+        radio.forget('dev-a')
+        radio.on_write('dev-a', b'HELLO')
+        self.assertIn('dev-a', radio.clients)
+        self.assertEqual(radio.phones['dev-a'], 182)
+
     def test_subscribed_client_is_a_phone(self):
         radio = self.radio()
         radio.sync_clients([self.client('dev-a', 182)])
