@@ -1240,6 +1240,12 @@
 /* Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. */
 "nogps_flag_mic_denied" = "Флаг сохранён без голосовой заметки: разрешите микрофон в настройках системы.";
 
+/* Settings switch: send a report to the developers when the app crashes */
+"nogps_crash_reports" = "Отправлять отчёты о сбоях";
+
+/* Hint under the Send crash reports switch */
+"nogps_crash_reports_hint" = "Отправляются только сведения о сбое, модель телефона и версия приложения. Данные о местоположении не покидают телефон.";
+
 /* Settings row and screen title: the list of the flags saved in test drives, to send them with the trip logs to the developers by email */
 "nogps_flags_send_title" = "Отправить логи";
 
