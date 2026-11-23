@@ -278,7 +278,10 @@ def make_input(args):
         elif function == 'Stop' and text == 'Stop':
             actions.append((ms, 1, 'S %d 0' % ms, False))
         elif function == 'OnBleState' and text.startswith('Bluetooth = '):
-            actions.append((ms, 2, 'L %d %s' % (ms, text.split()[2]), False))
+            # The connection that probes a pairing thought lost is no link: the flag is written since #474, and the
+            # logs of the trips driven before it have no field for it.
+            lost = '1' if text.endswith('bond lost = 1') else '0'
+            actions.append((ms, 2, 'L %d %s %s' % (ms, text.split()[2], lost), False))
         elif function == 'OnInfo' and BOX_INFO.match(text):
             actions.append((ms, 2, 'I %d %s' % (ms, BOX_INFO.match(text).group(1)), False))
         elif function == 'SetGpsDisabled' and GPS_OFF.match(text):
@@ -510,7 +513,9 @@ def make_input(args):
                 round(number(state, 'markAge', 0) * 1000))))
         records.append((first, -3, 'S %d 1' % first))
         if state.get('link', '').endswith('/CONNECTED'):
-            records.append((first, -3, 'L %d CONNECTED' % first))
+            # The trip line tells the state and not the flag: it is the one of the last state written before.
+            lost = [r[2].split()[-1] for r in actions if r[2].startswith('L ') and r[0] <= first]
+            records.append((first, -3, 'L %d CONNECTED %s' % (first, lost[-1] if lost else '0')))
             # The box the application has heard before the file begins.
             box = [BOX_INFO.match(text).group(1) for ms, text, function in others
                    if function == 'OnInfo' and ms <= first and BOX_INFO.match(text)]
