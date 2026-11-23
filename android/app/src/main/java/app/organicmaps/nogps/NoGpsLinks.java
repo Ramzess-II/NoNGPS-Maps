@@ -2,8 +2,8 @@ package app.organicmaps.nogps;
 
 /**
  * The pages of the project the app sends the user to: the shop of the Box sheet, of the intro of the first start and
- * of the main menu, the video of the intro, the account, the sources and the project the app is based on. There is no
- * video and no account screen yet, so both point at the site; each is the single line to change when there is one.
+ * of the main menu, the video of the intro (the YouTube channel), the account, the sources and the project the app is
+ * based on. There is no account screen yet, so the account points at the site; it is the single line to change then.
  */
 public final class NoGpsLinks
 {
