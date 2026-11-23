@@ -30,6 +30,11 @@ enum NoGpsProfile {
     }
   }
 
+  /// With no cars the groups are replaced by two sections with a footer each: the note and the closing line.
+  static func sectionCount(of groups: [Group]) -> Int {
+    groups.isEmpty ? 2 : groups.count
+  }
+
   private static func bestText(of kind: NoGpsSprintKind, in runs: [Run], locale: Locale) -> String {
     // The runs come newest first: of equal times the older one is the record.
     guard let best = runs.reversed().filter({ $0.kind == kind }).min(by: { $0.sec < $1.sec }) else {
@@ -71,9 +76,8 @@ final class NoGpsProfileController: MWMTableViewController {
     tableView.reloadData()
   }
 
-  /// With no cars the groups are replaced by two sections with a footer each: the note and the closing line.
   override func numberOfSections(in _: UITableView) -> Int {
-    max(groups.count, 2)
+    NoGpsProfile.sectionCount(of: groups)
   }
 
   override func tableView(_: UITableView, numberOfRowsInSection section: Int) -> Int {

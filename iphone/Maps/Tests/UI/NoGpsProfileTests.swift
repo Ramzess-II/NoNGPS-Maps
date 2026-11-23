@@ -28,6 +28,13 @@ final class NoGpsProfileTests: XCTestCase {
     XCTAssertEqual(rows.map(\.value), [L("nogps_unknown"), L("nogps_unknown")])
   }
 
+  func testSectionCountIsOnePerCarAndTwoWithoutCars() {
+    // The two sections carry the footers of the empty state; with cars the table must not ask for a group it has not.
+    XCTAssertEqual(NoGpsProfile.sectionCount(of: groups([], [:])), 2)
+    XCTAssertEqual(NoGpsProfile.sectionCount(of: groups([car("C47D")], [:])), 1)
+    XCTAssertEqual(NoGpsProfile.sectionCount(of: groups([car("A111"), car("B222")], [:])), 2)
+  }
+
   func testBestOfSeveralRunsOfAKind() {
     // Newest first, as the core gives them.
     let runs: [NoGpsProfile.Run] = [
