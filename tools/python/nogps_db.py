@@ -73,10 +73,19 @@ LAT_LON = re.compile(r'ms::LatLon\((-?[\d.]+), (-?[\d.]+)\)')
 TAP = re.compile(r'tap = ms::LatLon\((-?[\d.]+), (-?[\d.]+)\) location = ms::LatLon\((-?[\d.]+), (-?[\d.]+)\) '
                  r'bearing = (-?[\d.]+)')
 MAPS_VERSION = re.compile(r'version=(\S+)$')
+# Every position of a log is written as a pair of numbers: "pos=10.0,20.0", "gps=10.0,20.0/5.0/...",
+# "ms::LatLon(10.0, 20.0)". An error quotes the line it could not map, so the pairs are taken out of it first.
+NUMBER_PAIR = re.compile(r'-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?')
 
 
 class ImportError_(ValueError):
     """A line or a file that the schema has no place for."""
+
+
+def without_positions(text_):
+    """|text_| with every pair of numbers replaced by "<pos>", so that an error message has no coordinate (the
+    promise of nogps_logs.py). The slices of a sensor line go with them, which a message can live without."""
+    return NUMBER_PAIR.sub('<pos>', text_)
 
 
 def number(text, kind=float):
@@ -367,7 +376,8 @@ def trip_starts(lines, bounds):
 
 
 def read_file(path, data, header):
-    """The mapped lines of a file: ImportError_ with the file and the line number for the first that can't be."""
+    """The mapped lines of a file: ImportError_ with the file, the line number and the line without its positions for
+    the first that can't be."""
     lines = []
     for number_, raw in enumerate(data.decode('utf-8', errors='replace').split('\n'), 1):
         raw = raw.rstrip('\r')
@@ -388,7 +398,9 @@ def read_file(path, data, header):
                     raise ValueError('MAPS has no version=')
             lines.append(line)
         except ValueError as e:
-            raise ImportError_('%s:%d: %s: %s' % (path, number_, e, raw[:200])) from None
+            # The positions go out before the cut: a cut of the raw line could leave one half of a pair behind.
+            raise ImportError_('%s:%d: %s: %s' %
+                               (path, number_, without_positions(str(e)), without_positions(raw)[:200])) from None
     return lines
 
 

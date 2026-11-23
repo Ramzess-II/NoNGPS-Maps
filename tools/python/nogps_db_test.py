@@ -196,6 +196,18 @@ class ImportTest(unittest.TestCase):
             self.run_import([HEADER, 'ordinary', core('X', 'NEWTAG ms=1 x')])
         self.assertIn('180000.log:3:', str(e.exception))
 
+    def test_error_has_no_coordinate(self):
+        """The quoted line is printed (nogps_logs.py) and must have no position in it."""
+        for line in [trip(T0, newkey=1),
+                     core('X', 'ACTION tap ms=%d by=user tap = ms::LatLon(10.0, 20.0) nowhere' % T0)]:
+            with self.subTest(line[:60]):
+                with self.assertRaises(nogps_db.ImportError_) as e:
+                    self.run_import([HEADER, line])
+                message = str(e.exception)
+                self.assertNotIn('10.0', message)
+                self.assertNotIn('20.0', message)
+                self.assertIn('<pos>', message)
+
     def test_unknown_logfmt(self):
         with self.assertRaises(nogps_trip_log.LogFormatError):
             self.run_import([HEADER.replace('LOGFMT 2', 'LOGFMT 9')] + GOOD[1:])
