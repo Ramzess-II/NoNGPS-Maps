@@ -3442,6 +3442,24 @@ UNIT_TEST(NoGps_Cars_LegacyValuesGoToCarOfLearnedAccelerometer)
   TEST_EQUAL(otherCars.Get<std::string>(Storage::kSpeedLag, ""), "lag", ());
 }
 
+UNIT_TEST(NoGps_Cars_AuthKeyBelongsToTheCar)
+{
+  TestStorage storage;
+  CarStorage cars(storage);
+  cars.OnBoxHeard("C47D", "0.5.0", 1000);
+  cars.OnBoxHeard("42FD", "0.5.0", 2000);
+  std::string const key = "000102030405060708090a0b0c0d0e0f";
+  cars.SetCarValue("C47D", CarStorage::kCarAuthKey, key);
+  TEST_EQUAL(cars.GetCarValue("C47D", CarStorage::kCarAuthKey), key, ());
+  TEST(!cars.GetCarValue("42FD", CarStorage::kCarAuthKey), ());
+  // The key is not one of the values the car keeps on the box or moves to the first car.
+  TEST(!cars.GetString(CarStorage::kCarAuthKey), ());
+  for (auto const value : CarStorage::kValuesOnBox)
+    TEST_NOT_EQUAL(value, CarStorage::kCarAuthKey, ());
+  cars.ForgetCar("C47D");
+  TEST(!cars.GetCarValue("C47D", CarStorage::kCarAuthKey), ());
+}
+
 UNIT_TEST(NoGps_Cars_ForgetRemovesOnlyThatCar)
 {
   TestStorage storage;

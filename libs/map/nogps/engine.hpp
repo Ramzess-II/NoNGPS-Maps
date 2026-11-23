@@ -461,6 +461,8 @@ private:
   void OnTurnsReversed() override;
   void OnMarkSwitched() override;
   void OnBoxHeard(std::string const & id, std::string const & firmware) override;
+  std::string GetBoxAuthKey(std::string const & id) override;
+  void OnBoxAuthKey(std::string const & id, std::string const & key) override;
   void OnBoxCarValues(std::map<std::string, std::string> const & values) override;
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
   void OnThisPhoneRemoved() override;

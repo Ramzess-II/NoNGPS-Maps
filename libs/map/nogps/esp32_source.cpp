@@ -8,6 +8,7 @@
 #include "base/logging.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <random>
 
@@ -47,6 +48,7 @@ void Esp32Source::Start()
     return;
   LOG(LINFO, ("ESP32 started"));
   m_running = true;
+  ForgetAuth();
   m_phoneName = esp32::PhoneName(m_delegate.GetPhoneName());
   m_delegate.Esp32BleOpen();
   SendHello();
@@ -73,6 +75,7 @@ void Esp32Source::Stop()
   m_hellosWithoutInfo = 0;
   m_peer.Reset();
   m_update.Reset();
+  ForgetAuth();
   ForgetCarRequests();
   ForgetPhoneRequests();
   m_addPhone.reset();
@@ -84,10 +87,18 @@ void Esp32Source::SendHello()
   Send(esp32::Hello(m_phoneName, m_clock.UnixNowMs()), ++m_helloId);
   // The box tells about itself when a connection starts, the application may have missed it: the box was
   // talking to it before it was restarted.
-  if (!m_info && IsConnected() && m_hellosWithoutInfo < kInfoRequestHellos * kMaxInfoRequests &&
-      ++m_hellosWithoutInfo % kInfoRequestHellos == 0)
+  if (!m_info &&
+      (IsConnected() || (!m_proven && !m_unprovenInfo && !m_authRefused && m_bleState == BleState::Connected)) &&
+      m_hellosWithoutInfo < kInfoRequestHellos * kMaxInfoRequests && ++m_hellosWithoutInfo % kInfoRequestHellos == 0)
   {
     Send("INFO", m_nextCommandId++);
+  }
+  if (m_authId != 0 && m_clock.NowMs() - m_authSentMs > kAuthReplyTimeoutMs)
+  {
+    if (m_authSends >= kMaxAuthSends)
+      RefuseBox("no reply to the proof");
+    else
+      SendAuth();
   }
   if (m_carRead && m_clock.NowMs() - m_carRead->m_sentMs > kCarReplyTimeoutMs)
   {
@@ -383,6 +394,7 @@ void Esp32Source::OnBleState(BleState state)
     m_wakingLinkMs = m_clock.NowMs();
   m_bleState = state;
   m_bleLine.clear();
+  ForgetAuth();
   if (state != BleState::Connected)
   {
     // Another box may be found, or this one with a new firmware.
@@ -458,6 +470,11 @@ void Esp32Source::OnLine(std::string_view text)
   auto const fields = esp32::Parse(text);
   if (!fields)
     return;
+  if (!m_proven)
+  {
+    OnUnprovenLine(*fields);
+    return;
+  }
   if (auto const data = esp32::ParseData(*fields))
   {
     OnData(*data);
@@ -519,6 +536,128 @@ void Esp32Source::OnLine(std::string_view text)
     m_carSilent = true;
   else if (obdState && obdState != "SEARCHING")
     m_carSilent = false;
+}
+
+void Esp32Source::ForgetAuth()
+{
+  m_proven = !m_delegate.Esp32BoxMustProveItself();
+  m_authRefused = false;
+  m_unprovenInfo.reset();
+  m_authId = 0;
+  m_authSends = 0;
+  m_authCar.clear();
+  m_authKey.clear();
+  m_authNonce.clear();
+  m_authSetsKey = false;
+}
+
+void Esp32Source::OnUnprovenLine(esp32::Fields const & fields)
+{
+  if (m_authRefused)
+    return;
+  if (auto const reply = esp32::ParseReply(fields))
+  {
+    if (reply->m_id == m_authId)
+      OnAuthReply(*reply);
+    return;
+  }
+  if (esp32::ParseInfo(fields))
+    OnAuthInfo(fields);
+}
+
+void Esp32Source::OnAuthInfo(esp32::Fields const & fields)
+{
+  auto const info = esp32::ParseInfo(fields);
+  CHECK(info, ());
+  // The box says who it is: what it says is taken only when it has proved it, the info is kept till then.
+  m_unprovenInfo = fields;
+  if (m_authId != 0 || info->m_id.empty())
+    return;
+  auto const key = m_listener.GetBoxAuthKey(info->m_id);
+  if (!info->m_canAuth)
+  {
+    // A box that could prove itself must not become one that can't: a box of a firmware before the proof is taken
+    // only for a car that has never proved its box.
+    if (!key.empty())
+      return RefuseBox("the box of a car that proved it no longer can");
+    LOG(LWARNING, ("The firmware", info->m_firmware, "of the box", info->m_id, "can not prove itself"));
+    m_proven = true;
+    OnInfo(*info);
+    StoreBoxValues(fields);
+    m_unprovenInfo.reset();
+    return;
+  }
+  m_authCar = info->m_id;
+  m_authSetsKey = key.empty();
+  m_authKey = key;
+  if (m_authSetsKey)
+  {
+    std::random_device device;
+    std::uniform_int_distribution<int> digit(0, 15);
+    for (size_t i = 0; i < esp32::kAuthKeyBytes * 2; ++i)
+      m_authKey += "0123456789abcdef"[digit(device)];
+  }
+  SendAuth();
+}
+
+void Esp32Source::SendAuth()
+{
+  m_authId = m_nextCommandId++;
+  m_authSentMs = m_clock.NowMs();
+  ++m_authSends;
+  if (m_authSetsKey)
+  {
+    Send("AUTH_SET," + m_authKey, m_authId);
+    return;
+  }
+  // A new nonce for every try: a proof heard before is of no use.
+  m_authNonce.clear();
+  std::random_device device;
+  std::uniform_int_distribution<int> digit(0, 15);
+  for (size_t i = 0; i < esp32::kAuthNonceBytes * 2; ++i)
+    m_authNonce += "0123456789abcdef"[digit(device)];
+  Send("AUTH," + m_authNonce, m_authId);
+}
+
+void Esp32Source::OnAuthReply(esp32::Reply const & reply)
+{
+  if (reply.m_progress)
+    return;
+  if (!reply.m_ok)
+    return RefuseBox("the box says " + reply.m_error);
+  if (m_authSetsKey)
+  {
+    // The first session of a pairing is trusted: the system has bonded the box, and the key goes over that link.
+    m_listener.OnBoxAuthKey(m_authCar, m_authKey);
+  }
+  else
+  {
+    auto const proof = esp32::AuthProof(m_authKey, m_authNonce);
+    std::string answer = reply.m_values.empty() ? "" : reply.m_values.front();
+    std::transform(answer.begin(), answer.end(), answer.begin(), [](unsigned char c) { return std::tolower(c); });
+    if (proof.empty() || answer != proof)
+      return RefuseBox("the proof is wrong");
+  }
+  LOG(LINFO, ("The box", m_authCar, m_authSetsKey ? "has taken a key" : "has proved itself"));
+  m_proven = true;
+  m_authId = 0;
+  auto const fields = std::move(*m_unprovenInfo);
+  m_unprovenInfo.reset();
+  m_authKey.clear();
+  if (auto const info = esp32::ParseInfo(fields))
+  {
+    OnInfo(*info);
+    StoreBoxValues(fields);
+  }
+}
+
+void Esp32Source::RefuseBox(std::string const & reason)
+{
+  LOG(LWARNING, ("The box", m_authCar, "is refused:", reason));
+  m_authRefused = true;
+  m_authId = 0;
+  m_unprovenInfo.reset();
+  m_authKey.clear();
 }
 
 void Esp32Source::OnData(esp32::Data const & data)

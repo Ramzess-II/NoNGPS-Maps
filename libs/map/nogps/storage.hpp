@@ -122,6 +122,9 @@ public:
   };
   // The name the user has given the car, kept by the keys of the car as its values: NoGpsCar.C47D.Name.
   static std::string_view constexpr kCarName = "NoGpsName";
+  // The key the box of the car proves itself with, kept by the keys of the car only: neither the box nor the other
+  // values of the car carry it, see Esp32Source.
+  static std::string_view constexpr kCarAuthKey = "NoGpsAuthKey";
   // A box heard when the user has this many cars is not added. Cars already over it are kept.
   static size_t constexpr kMaxCars = 4;
   // The values the box of the car keeps too, see BoxCarValues.

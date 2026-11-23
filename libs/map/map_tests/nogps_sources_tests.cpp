@@ -1540,4 +1540,222 @@ UNIT_TEST(NoGps_PhoneMotion_CalibrationFailsWhileDriving)
   TEST_EQUAL(phone.GetCalibrationState(), CalibrationState::FailedMoving, ());
   TEST(!phone.IsCalibrated(), ());
 }
+
+// Keeps the keys of the boxes in a map, as the engine keeps them with the cars.
+class AuthRecorder : public MotionRecorder
+{
+public:
+  std::string GetBoxAuthKey(std::string const & id) override
+  {
+    auto const it = m_keys.find(id);
+    return it == m_keys.end() ? "" : it->second;
+  }
+  void OnBoxAuthKey(std::string const & id, std::string const & key) override { m_keys[id] = key; }
+  void OnBoxHeard(std::string const & id, std::string const &) override { m_heard.push_back(id); }
+
+  std::map<std::string, std::string> m_keys;
+  std::vector<std::string> m_heard;
+};
+
+std::string const kAuthKey = "000102030405060708090a0b0c0d0e0f";
+std::string const kAuthInfo =
+    "NGI,1,0.5.0,2026-11-23T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES AUTH,5,R1";
+std::string const kOldInfo =
+    "NGI,1,0.4.5,2026-11-23T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES,5,R1";
+
+// The text after "AUTH," or "AUTH_SET," of the last command of the phone that has it, empty if there is none.
+std::string LastAuthArgument(TestDelegate const & delegate, std::string const & command, int & id)
+{
+  for (auto it = delegate.m_esp32BleSent.rbegin(); it != delegate.m_esp32BleSent.rend(); ++it)
+  {
+    auto const at = it->find("," + command + ",");
+    if (at == std::string::npos)
+      continue;
+    id = std::atoi(it->c_str() + 5);
+    auto const start = at + command.size() + 2;
+    return it->substr(start, it->find('*', start) - start);
+  }
+  return {};
+}
+
+struct ProvedBox
+{
+  ProvedBox()
+  {
+    delegate.m_boxMustProveItself = true;
+    source.Start();
+    source.OnBleState(BleState::Connected);
+  }
+
+  size_t Sent(std::string const & command) const
+  {
+    return std::count_if(delegate.m_esp32BleSent.begin(), delegate.m_esp32BleSent.end(),
+                         [&](std::string const & line) { return line.find("," + command + ",") != std::string::npos; });
+  }
+
+  // 50 lines of data, as of a second of the box.
+  void SendData()
+  {
+    for (int i = 0; i < 5; ++i)
+    {
+      clock.Advance(20);
+      source.OnBleBytes(BoxDataLine(++seq, 5000 + seq * 20, 0, 36, kCalibratedFlags));
+    }
+  }
+
+  TestClock clock;
+  TestDelegate delegate;
+  AuthRecorder listener;
+  Esp32Source source{delegate, clock, clock, listener};
+  int64_t seq = 0;
+};
+
+UNIT_TEST(NoGps_Esp32Source_NewBoxTakesKeyBeforeItsLinesAreTaken)
+{
+  ProvedBox box;
+  box.SendData();
+  TEST(!box.source.IsBoxProven(), ());
+  TEST_EQUAL(box.listener.m_speeds.size(), 0, ());
+
+  // The info is kept, not taken: the car of the box is not heard yet.
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  TEST(box.listener.m_heard.empty(), ());
+  TEST(!box.source.GetInfo(), ());
+  int id = 0;
+  auto const key = LastAuthArgument(box.delegate, "AUTH_SET", id);
+  TEST_EQUAL(key.size(), 32, (key));
+  TEST_EQUAL(box.Sent("AUTH"), 0, ());
+  box.SendData();
+  TEST_EQUAL(box.listener.m_speeds.size(), 0, ());
+  // The key is kept only when the box has taken it.
+  TEST(box.listener.m_keys.empty(), ());
+
+  // The reply of another command is not the answer.
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id + 1) + ",OK"));
+  TEST(!box.source.IsBoxProven(), ());
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",OK"));
+  TEST(box.source.IsBoxProven(), ());
+  TEST_EQUAL(box.listener.m_keys["C47D"], key, ());
+  TEST_EQUAL(box.listener.m_heard, std::vector<std::string>{"C47D"}, ());
+  TEST(box.source.GetInfo(), ());
+  box.SendData();
+  TEST_EQUAL(box.listener.m_speeds.size(), 5, ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_KnownBoxProvesItselfWithKey)
+{
+  ProvedBox box;
+  box.listener.m_keys["C47D"] = kAuthKey;
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  int id = 0;
+  auto const nonce = LastAuthArgument(box.delegate, "AUTH", id);
+  TEST_EQUAL(nonce.size(), 16, (nonce));
+  TEST_EQUAL(box.Sent("AUTH_SET"), 0, ());
+  box.SendData();
+  TEST_EQUAL(box.listener.m_speeds.size(), 0, ());
+
+  // The proof of another nonce is not one.
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",OK," + esp32::AuthProof(kAuthKey, "0000000000000000")));
+  TEST(box.source.IsBoxRefused(), ());
+  box.SendData();
+  TEST_EQUAL(box.listener.m_speeds.size(), 0, ());
+  TEST(box.listener.m_heard.empty(), ());
+  // A refused box is not asked again, even with the right proof.
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",OK," + esp32::AuthProof(kAuthKey, nonce)));
+  TEST(!box.source.IsBoxProven(), ());
+
+  // A new connection starts anew: the nonce is another one, the proof of it is taken.
+  box.source.OnBleState(BleState::Searching);
+  box.source.OnBleState(BleState::Connected);
+  TEST(!box.source.IsBoxRefused(), ());
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  int id2 = 0;
+  auto const nonce2 = LastAuthArgument(box.delegate, "AUTH", id2);
+  TEST_NOT_EQUAL(id, id2, ());
+  std::string proof = esp32::AuthProof(kAuthKey, nonce2);
+  for (auto & c : proof)
+    c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id2) + ",OK," + proof));
+  TEST(box.source.IsBoxProven(), ());
+  TEST_EQUAL(box.listener.m_heard, std::vector<std::string>{"C47D"}, ());
+  box.SendData();
+  TEST_EQUAL(box.listener.m_speeds.size(), 5, ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_RefusesBoxThatAnswersWithError)
+{
+  for (std::string const error : {"ERR,NOKEY", "ERR,UNKNOWN"})
+  {
+    ProvedBox box;
+    box.listener.m_keys["C47D"] = kAuthKey;
+    box.source.OnBleBytes(BoxLine(kAuthInfo));
+    int id = 0;
+    LastAuthArgument(box.delegate, "AUTH", id);
+    box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + "," + error));
+    TEST(box.source.IsBoxRefused(), (error));
+    box.SendData();
+    TEST_EQUAL(box.listener.m_speeds.size(), 0, ());
+  }
+
+  // The box keeps a key the phone has lost.
+  ProvedBox box;
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  int id = 0;
+  LastAuthArgument(box.delegate, "AUTH_SET", id);
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",ERR,EXISTS"));
+  TEST(box.source.IsBoxRefused(), ());
+  TEST(box.listener.m_keys.empty(), ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_BoxWithoutProofOfFirmware)
+{
+  // A box of a firmware before the proof is taken for a car that never proved its box.
+  {
+    ProvedBox box;
+    box.source.OnBleBytes(BoxLine(kOldInfo));
+    TEST(box.source.IsBoxProven(), ());
+    TEST_EQUAL(box.Sent("AUTH"), 0, ());
+    TEST_EQUAL(box.Sent("AUTH_SET"), 0, ());
+    TEST_EQUAL(box.listener.m_heard, std::vector<std::string>{"C47D"}, ());
+    box.SendData();
+    TEST_EQUAL(box.listener.m_speeds.size(), 5, ());
+  }
+  // A device of a car that has proved its box can't say it has not the ability.
+  {
+    ProvedBox box;
+    box.listener.m_keys["C47D"] = kAuthKey;
+    box.source.OnBleBytes(BoxLine(kOldInfo));
+    TEST(box.source.IsBoxRefused(), ());
+    box.SendData();
+    TEST_EQUAL(box.listener.m_speeds.size(), 0, ());
+    TEST(box.listener.m_heard.empty(), ());
+  }
+}
+
+UNIT_TEST(NoGps_Esp32Source_AuthIsSentAgainThenRefused)
+{
+  ProvedBox box;
+  box.listener.m_keys["C47D"] = kAuthKey;
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  TEST_EQUAL(box.Sent("AUTH"), 1, ());
+  for (int i = 1; i < Esp32Source::kMaxAuthSends; ++i)
+  {
+    box.clock.Advance(Esp32Source::kHelloIntervalMs * 3);
+    TEST_EQUAL(box.Sent("AUTH"), i + 1, ());
+    TEST(!box.source.IsBoxRefused(), ());
+  }
+  box.clock.Advance(Esp32Source::kHelloIntervalMs * 3);
+  TEST(box.source.IsBoxRefused(), ());
+  TEST_EQUAL(box.Sent("AUTH"), Esp32Source::kMaxAuthSends, ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_AsksInfoBeforeProof)
+{
+  ProvedBox box;
+  for (int i = 0; i < Esp32Source::kInfoRequestHellos; ++i)
+    box.clock.Advance(Esp32Source::kHelloIntervalMs);
+  TEST(std::any_of(box.delegate.m_esp32BleSent.begin(), box.delegate.m_esp32BleSent.end(),
+                   [](std::string const & line) { return line.find(",INFO*") != std::string::npos; }),
+       ());
+}
 }  // namespace nogps_sources_tests

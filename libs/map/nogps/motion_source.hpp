@@ -95,6 +95,13 @@ public:
     /// The sensor box has told about itself: its identifier is the car, see CarStorage.
     virtual void OnBoxHeard(std::string const & /* id */, std::string const & /* firmware */) {}
 
+    /// \returns the key the box of the car |id| was given to prove itself with, empty if it has none, see
+    /// esp32::AuthProof().
+    virtual std::string GetBoxAuthKey(std::string const & /* id */) { return {}; }
+
+    /// The box of the car |id| has taken a new key: it is kept with the car.
+    virtual void OnBoxAuthKey(std::string const & /* id */, std::string const & /* key */) {}
+
     /// The values of the car read from the sensor box by their keys, empty if the box doesn't have one, see
     /// BoxCarValues.
     virtual void OnBoxCarValues(std::map<std::string, std::string> const & /* values */) {}

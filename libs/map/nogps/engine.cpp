@@ -1107,6 +1107,16 @@ void Engine::OnBoxHeard(std::string const & id, std::string const & firmware)
     m_boxCarValues.Forget();
 }
 
+std::string Engine::GetBoxAuthKey(std::string const & id)
+{
+  return m_cars.GetCarValue(id, CarStorage::kCarAuthKey).value_or("");
+}
+
+void Engine::OnBoxAuthKey(std::string const & id, std::string const & key)
+{
+  m_cars.SetCarValue(id, CarStorage::kCarAuthKey, key);
+}
+
 void Engine::OnBoxCarValues(std::map<std::string, std::string> const & values)
 {
   auto * box = m_inertial->GetEsp32();
