@@ -115,8 +115,9 @@ Ramzess-II, one waiting for the other person's review, one from a fork, or one w
 main checkout or a worktree -- the train would push commits under the session working there.
 
 The train lands the PRs of both repos: each PR of its queue carries its repo, and a firmware PR is prepped in a
-worktree of `firmware/` whose name ends in `-fw`, off `origin/main` (that repo has no `master`). `ELMandIMU` runs
-no CI, so the gate's `idf.py build` of the PR merged into `main` is the only check it gets; the worktree needs
+worktree of `firmware/` whose name ends in `-fw`, off `origin/main` (that repo has no `master`). `ELMandIMU`'s CI
+(`.github/workflows/build.yml`, a throwaway signing key) builds a PR for S3 and C3, and the gate's `idf.py build` of the
+PR merged into `main` is the check before the merge; the worktree needs
 `keys/` linked and `sdkconfig` copied from the main checkout, both gitignored there, or the build is unsigned or
 built for the wrong chip. Two PRs that touch `iphone/` or `xcode/` are never prepped at once: nothing in the train
 builds iOS, so only one of them goes into the parallel set.
