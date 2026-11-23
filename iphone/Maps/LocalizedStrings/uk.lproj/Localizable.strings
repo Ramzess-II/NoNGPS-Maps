@@ -1571,8 +1571,11 @@
 "nogps_clear_speed_title" = "Скинути калібрування швидкості?";
 "nogps_clear_speed_message" = "Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або авто. Поки працює GPS, вони вимірюються наново.";
 
-/* Main menu row opening the account of the user on the site */
+/* Main menu row opening the screen with the records of every car of the user */
 "nogps_menu_profile" = "Профіль";
+
+/* Footer of the Profile screen: what the screen will hold later */
+"nogps_profile_soon" = "Тут з'являться обліковий запис, пристрої, гарантія та замовлення";
 "nogps_about_title" = "Про NonGPS Maps";
 
 /* Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on */
