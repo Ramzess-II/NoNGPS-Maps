@@ -96,11 +96,13 @@ public:
     virtual void OnBoxHeard(std::string const & /* id */, std::string const & /* firmware */) {}
 
     /// \returns the key the box of the car |id| was given to prove itself with, empty if it has none, see
-    /// esp32::AuthProof().
-    virtual std::string GetBoxAuthKey(std::string const & /* id */) { return {}; }
+    /// esp32::AuthProof(). |confirmed| tells that the box is known to have taken it: a key that was sent to the box
+    /// without a reply, or the key of a car the user has forgotten, comes back unconfirmed.
+    virtual std::string GetBoxAuthKey(std::string const & /* id */, bool & /* confirmed */) { return {}; }
 
-    /// The box of the car |id| has taken a new key: it is kept with the car.
-    virtual void OnBoxAuthKey(std::string const & /* id */, std::string const & /* key */) {}
+    /// The box of the car |id| has taken a new key, or has proved itself with the one it had: it is kept with the car,
+    /// |confirmed| as GetBoxAuthKey() returns it.
+    virtual void OnBoxAuthKey(std::string const & /* id */, std::string const & /* key */, bool /* confirmed */) {}
 
     /// The values of the car read from the sensor box by their keys, empty if the box doesn't have one, see
     /// BoxCarValues.

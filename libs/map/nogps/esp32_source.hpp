@@ -208,6 +208,7 @@ private:
   void SendAuth();
   void OnAuthReply(esp32::Reply const & reply);
   void RefuseBox(std::string const & reason);
+  std::string NewAuthHex(size_t bytes) const;
   void ForgetAuth();
   void SendHello();
   void Send(std::string_view command, int id);
@@ -285,6 +286,7 @@ private:
 
   // The box proves itself when a connection starts (spec 9.2): it answers AUTH with the proof of the key of its car, or
   // takes a new key with AUTH_SET if the phone has none. Its lines are dropped until then, only its info is kept.
+  bool m_mustProve = false;
   bool m_proven = true;
   bool m_authRefused = false;
   // The info of the box heard before the proof: it is taken when the box has proved itself.
@@ -293,11 +295,14 @@ private:
   int m_authId = 0;
   int m_authSends = 0;
   int64_t m_authSentMs = 0;
-  // The car of the box and its key: the one that proves the box, or the new one the box is given.
+  // The car of the box, kept while the connection lasts: the box has given this id in its info, and the proof is of
+  // it. Its key is the one that proves the box, or the new one the box is given.
   std::string m_authCar;
   std::string m_authKey;
   std::string m_authNonce;
   bool m_authSetsKey = false;
+  // The box may not have the key, see CarStorage::kAuthKeyUnconfirmed: it is given it again when it says it has none.
+  bool m_authKeyUnconfirmed = false;
 
   PeerSync m_peer;
   std::optional<esp32::Info> m_info;

@@ -1615,19 +1615,25 @@ UNIT_TEST(NoGps_PhoneMotion_CalibrationFailsWhileDriving)
   TEST(!phone.IsCalibrated(), ());
 }
 
-// Keeps the keys of the boxes in a map, as the engine keeps them with the cars.
+// Keeps the keys of the boxes in a map, each with the mark of a confirmed one, as the engine keeps them with the cars.
 class AuthRecorder : public MotionRecorder
 {
 public:
-  std::string GetBoxAuthKey(std::string const & id) override
+  std::string GetBoxAuthKey(std::string const & id, bool & confirmed) override
   {
     auto const it = m_keys.find(id);
-    return it == m_keys.end() ? "" : it->second;
+    if (it == m_keys.end())
+      return "";
+    confirmed = it->second.second;
+    return it->second.first;
   }
-  void OnBoxAuthKey(std::string const & id, std::string const & key) override { m_keys[id] = key; }
+  void OnBoxAuthKey(std::string const & id, std::string const & key, bool confirmed) override
+  {
+    m_keys[id] = {key, confirmed};
+  }
   void OnBoxHeard(std::string const & id, std::string const &) override { m_heard.push_back(id); }
 
-  std::map<std::string, std::string> m_keys;
+  std::map<std::string, std::pair<std::string, bool>> m_keys;
   std::vector<std::string> m_heard;
 };
 
@@ -1701,15 +1707,15 @@ UNIT_TEST(NoGps_Esp32Source_NewBoxTakesKeyBeforeItsLinesAreTaken)
   TEST_EQUAL(box.Sent("AUTH"), 0, ());
   box.SendData();
   TEST_EQUAL(box.listener.m_speeds.size(), 0, ());
-  // The key is kept only when the box has taken it.
-  TEST(box.listener.m_keys.empty(), ());
+  // The key is kept at once, unconfirmed: the box may take it and its reply be lost.
+  TEST_EQUAL(box.listener.m_keys["C47D"], std::make_pair(key, false), ());
 
   // The reply of another command is not the answer.
   box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id + 1) + ",OK"));
   TEST(!box.source.IsBoxProven(), ());
   box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",OK"));
   TEST(box.source.IsBoxProven(), ());
-  TEST_EQUAL(box.listener.m_keys["C47D"], key, ());
+  TEST_EQUAL(box.listener.m_keys["C47D"], std::make_pair(key, true), ());
   TEST_EQUAL(box.listener.m_heard, std::vector<std::string>{"C47D"}, ());
   TEST(box.source.GetInfo(), ());
   box.SendData();
@@ -1719,7 +1725,7 @@ UNIT_TEST(NoGps_Esp32Source_NewBoxTakesKeyBeforeItsLinesAreTaken)
 UNIT_TEST(NoGps_Esp32Source_KnownBoxProvesItselfWithKey)
 {
   ProvedBox box;
-  box.listener.m_keys["C47D"] = kAuthKey;
+  box.listener.m_keys["C47D"] = {kAuthKey, true};
   box.source.OnBleBytes(BoxLine(kAuthInfo));
   int id = 0;
   auto const nonce = LastAuthArgument(box.delegate, "AUTH", id);
@@ -1761,7 +1767,7 @@ UNIT_TEST(NoGps_Esp32Source_RefusesBoxThatAnswersWithError)
   for (std::string const error : {"ERR,NOKEY", "ERR,UNKNOWN"})
   {
     ProvedBox box;
-    box.listener.m_keys["C47D"] = kAuthKey;
+    box.listener.m_keys["C47D"] = {kAuthKey, true};
     box.source.OnBleBytes(BoxLine(kAuthInfo));
     int id = 0;
     LastAuthArgument(box.delegate, "AUTH", id);
@@ -1778,7 +1784,6 @@ UNIT_TEST(NoGps_Esp32Source_RefusesBoxThatAnswersWithError)
   LastAuthArgument(box.delegate, "AUTH_SET", id);
   box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",ERR,EXISTS"));
   TEST(box.source.IsBoxRefused(), ());
-  TEST(box.listener.m_keys.empty(), ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_BoxWithoutProofOfFirmware)
@@ -1797,7 +1802,7 @@ UNIT_TEST(NoGps_Esp32Source_BoxWithoutProofOfFirmware)
   // A device of a car that has proved its box can't say it has not the ability.
   {
     ProvedBox box;
-    box.listener.m_keys["C47D"] = kAuthKey;
+    box.listener.m_keys["C47D"] = {kAuthKey, true};
     box.source.OnBleBytes(BoxLine(kOldInfo));
     TEST(box.source.IsBoxRefused(), ());
     box.SendData();
@@ -1809,7 +1814,7 @@ UNIT_TEST(NoGps_Esp32Source_BoxWithoutProofOfFirmware)
 UNIT_TEST(NoGps_Esp32Source_AuthIsSentAgainThenRefused)
 {
   ProvedBox box;
-  box.listener.m_keys["C47D"] = kAuthKey;
+  box.listener.m_keys["C47D"] = {kAuthKey, true};
   box.source.OnBleBytes(BoxLine(kAuthInfo));
   TEST_EQUAL(box.Sent("AUTH"), 1, ());
   for (int i = 1; i < Esp32Source::kMaxAuthSends; ++i)
@@ -1821,6 +1826,76 @@ UNIT_TEST(NoGps_Esp32Source_AuthIsSentAgainThenRefused)
   box.clock.Advance(Esp32Source::kHelloIntervalMs * 3);
   TEST(box.source.IsBoxRefused(), ());
   TEST_EQUAL(box.Sent("AUTH"), Esp32Source::kMaxAuthSends, ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_BoxCanNotBecomeAnotherBox)
+{
+  // A device that has been taken for a box of a car without a key can not say later that it is another box.
+  {
+    ProvedBox box;
+    box.source.OnBleBytes(
+        BoxLine("NGI,1,0.4.5,2026-11-23T10:00,esp32s3,s3zero,42FD,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES,5,R1"));
+    TEST(box.source.IsBoxProven(), ());
+    box.source.OnBleBytes(BoxLine(kOldInfo));
+    TEST(box.source.IsBoxRefused(), ());
+    TEST_EQUAL(box.listener.m_heard, std::vector<std::string>{"42FD"}, ());
+    box.SendData();
+    TEST_EQUAL(box.listener.m_speeds.size(), 0, ());
+  }
+  // The same with the proof: the info that comes while it waits is not another box's.
+  {
+    ProvedBox box;
+    box.listener.m_keys["C47D"] = {kAuthKey, true};
+    box.source.OnBleBytes(BoxLine(
+        "NGI,1,0.5.0,2026-11-23T10:00,esp32s3,s3zero,42FD,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES AUTH,5,R1"));
+    int id = 0;
+    auto const key = LastAuthArgument(box.delegate, "AUTH_SET", id);
+    TEST_EQUAL(key.size(), 32, (key));
+    box.source.OnBleBytes(BoxLine(kAuthInfo));
+    TEST(box.source.IsBoxRefused(), ());
+    // The answer of the device proves the box it has given its id for, and that one is not taken either.
+    box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",OK"));
+    TEST(!box.source.IsBoxProven(), ());
+    TEST(box.listener.m_heard.empty(), ());
+  }
+}
+
+UNIT_TEST(NoGps_Esp32Source_BoxTakesTheSameKeyAgainWhenItHasNone)
+{
+  ProvedBox box;
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  int id = 0;
+  auto const key = LastAuthArgument(box.delegate, "AUTH_SET", id);
+  // The reply is lost with the link: the key stays unconfirmed, the box may have taken it.
+  box.source.OnBleState(BleState::Searching);
+  box.source.OnBleState(BleState::Connected);
+  TEST_EQUAL(box.listener.m_keys["C47D"], std::make_pair(key, false), ());
+
+  // The next session asks for the proof of that key, not for a new one the box would refuse.
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  int authId = 0;
+  auto const nonce = LastAuthArgument(box.delegate, "AUTH", authId);
+  TEST_EQUAL(nonce.size(), 16, (nonce));
+  TEST_EQUAL(box.Sent("AUTH_SET"), 1, ());
+  // The box has not got it after all: it is given the same key, and the car keeps it when the box has taken it.
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(authId) + ",ERR,NOKEY"));
+  TEST(!box.source.IsBoxRefused(), ());
+  int setId = 0;
+  TEST_EQUAL(LastAuthArgument(box.delegate, "AUTH_SET", setId), key, ());
+  TEST_EQUAL(box.Sent("AUTH_SET"), 2, ());
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(setId) + ",OK"));
+  TEST(box.source.IsBoxProven(), ());
+  TEST_EQUAL(box.listener.m_keys["C47D"], std::make_pair(key, true), ());
+
+  // A box that says it has no key the car has proved it with is refused.
+  box.source.OnBleState(BleState::Searching);
+  box.source.OnBleState(BleState::Connected);
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  int lastId = 0;
+  LastAuthArgument(box.delegate, "AUTH", lastId);
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(lastId) + ",ERR,NOKEY"));
+  TEST(box.source.IsBoxRefused(), ());
+  TEST_EQUAL(box.Sent("AUTH_SET"), 2, ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_AsksInfoBeforeProof)

@@ -504,6 +504,9 @@ void Esp32Source::OnLine(std::string_view text)
   }
   if (auto const info = esp32::ParseInfo(*fields))
   {
+    // The box has proved the id it gave: a device that says it is another box is not taken for it.
+    if (m_mustProve && info->m_id != m_authCar)
+      return RefuseBox("it says it is " + info->m_id + ", not " + m_authCar);
     OnInfo(*info);
     StoreBoxValues(*fields);
     return;
@@ -547,7 +550,8 @@ void Esp32Source::OnLine(std::string_view text)
 
 void Esp32Source::ForgetAuth()
 {
-  m_proven = !m_delegate.Esp32BoxMustProveItself();
+  m_mustProve = m_delegate.Esp32BoxMustProveItself();
+  m_proven = !m_mustProve;
   m_authRefused = false;
   m_unprovenInfo.reset();
   m_authId = 0;
@@ -556,6 +560,17 @@ void Esp32Source::ForgetAuth()
   m_authKey.clear();
   m_authNonce.clear();
   m_authSetsKey = false;
+  m_authKeyUnconfirmed = false;
+}
+
+std::string Esp32Source::NewAuthHex(size_t bytes) const
+{
+  std::random_device device;
+  std::uniform_int_distribution<int> digit(0, 15);
+  std::string hex;
+  for (size_t i = 0; i < bytes * 2; ++i)
+    hex += "0123456789abcdef"[digit(device)];
+  return hex;
 }
 
 void Esp32Source::OnUnprovenLine(esp32::Fields const & fields)
@@ -576,11 +591,15 @@ void Esp32Source::OnAuthInfo(esp32::Fields const & fields)
 {
   auto const info = esp32::ParseInfo(fields);
   CHECK(info, ());
+  // The proof is of the id the box has given: a device that says it is another box meanwhile is not taken for it.
+  if (!m_authCar.empty() && info->m_id != m_authCar)
+    return RefuseBox("it says it is " + info->m_id + ", not " + m_authCar);
   // The box says who it is: what it says is taken only when it has proved it, the info is kept till then.
   m_unprovenInfo = fields;
   if (m_authId != 0 || info->m_id.empty())
     return;
-  auto const key = m_listener.GetBoxAuthKey(info->m_id);
+  bool confirmed = false;
+  auto const key = m_listener.GetBoxAuthKey(info->m_id, confirmed);
   if (!info->m_canAuth)
   {
     // A box that could prove itself must not become one that can't: a box of a firmware before the proof is taken
@@ -588,6 +607,7 @@ void Esp32Source::OnAuthInfo(esp32::Fields const & fields)
     if (!key.empty())
       return RefuseBox("the box of a car that proved it no longer can");
     LOG(LWARNING, ("The firmware", info->m_firmware, "of the box", info->m_id, "can not prove itself"));
+    m_authCar = info->m_id;
     m_proven = true;
     OnInfo(*info);
     StoreBoxValues(fields);
@@ -597,12 +617,14 @@ void Esp32Source::OnAuthInfo(esp32::Fields const & fields)
   m_authCar = info->m_id;
   m_authSetsKey = key.empty();
   m_authKey = key;
+  m_authKeyUnconfirmed = !key.empty() && !confirmed;
   if (m_authSetsKey)
   {
-    std::random_device device;
-    std::uniform_int_distribution<int> digit(0, 15);
-    for (size_t i = 0; i < esp32::kAuthKeyBytes * 2; ++i)
-      m_authKey += "0123456789abcdef"[digit(device)];
+    m_authKey = NewAuthHex(esp32::kAuthKeyBytes);
+    // The box may take the key and the reply be lost with the link: the key is kept at once, unconfirmed, so that the
+    // next session proves the box with it instead of making another one the box would refuse.
+    m_authKeyUnconfirmed = true;
+    m_listener.OnBoxAuthKey(m_authCar, m_authKey, false /* confirmed */);
   }
   SendAuth();
 }
@@ -618,11 +640,7 @@ void Esp32Source::SendAuth()
     return;
   }
   // A new nonce for every try: a proof heard before is of no use.
-  m_authNonce.clear();
-  std::random_device device;
-  std::uniform_int_distribution<int> digit(0, 15);
-  for (size_t i = 0; i < esp32::kAuthNonceBytes * 2; ++i)
-    m_authNonce += "0123456789abcdef"[digit(device)];
+  m_authNonce = NewAuthHex(esp32::kAuthNonceBytes);
   Send("AUTH," + m_authNonce, m_authId);
 }
 
@@ -631,13 +649,21 @@ void Esp32Source::OnAuthReply(esp32::Reply const & reply)
   if (reply.m_progress)
     return;
   if (!reply.m_ok)
-    return RefuseBox("the box says " + reply.m_error);
-  if (m_authSetsKey)
   {
-    // The first session of a pairing is trusted: the system has bonded the box, and the key goes over that link.
-    m_listener.OnBoxAuthKey(m_authCar, m_authKey);
+    // The box has not got the key the phone keeps unconfirmed: the phone gives it the same one. Nothing is given away
+    // that a new pairing would not get, as a car whose box never took its key trusts the first box that answers.
+    if (reply.m_error == "NOKEY" && m_authKeyUnconfirmed && !m_authSetsKey)
+    {
+      LOG(LINFO, ("The box", m_authCar, "has not got the key it was given: it is given it again"));
+      m_authSetsKey = true;
+      m_authSends = 0;
+      m_authId = 0;
+      SendAuth();
+      return;
+    }
+    return RefuseBox("the box says " + reply.m_error);
   }
-  else
+  if (!m_authSetsKey)
   {
     auto const proof = esp32::AuthProof(m_authKey, m_authNonce);
     std::string answer = reply.m_values.empty() ? "" : reply.m_values.front();
@@ -645,6 +671,10 @@ void Esp32Source::OnAuthReply(esp32::Reply const & reply)
     if (proof.empty() || answer != proof)
       return RefuseBox("the proof is wrong");
   }
+  // The box has it: the first session of a pairing is trusted, the system has bonded the box and the key goes over
+  // that link.
+  if (m_authKeyUnconfirmed)
+    m_listener.OnBoxAuthKey(m_authCar, m_authKey, true /* confirmed */);
   LOG(LINFO, ("The box", m_authCar, m_authSetsKey ? "has taken a key" : "has proved itself"));
   m_proven = true;
   m_authId = 0;
@@ -661,6 +691,7 @@ void Esp32Source::OnAuthReply(esp32::Reply const & reply)
 void Esp32Source::RefuseBox(std::string const & reason)
 {
   LOG(LWARNING, ("The box", m_authCar, "is refused:", reason));
+  m_proven = false;
   m_authRefused = true;
   m_authId = 0;
   m_unprovenInfo.reset();

@@ -1108,14 +1108,19 @@ void Engine::OnBoxHeard(std::string const & id, std::string const & firmware)
     m_boxCarValues.Forget();
 }
 
-std::string Engine::GetBoxAuthKey(std::string const & id)
+std::string Engine::GetBoxAuthKey(std::string const & id, bool & confirmed)
 {
-  return m_cars.GetCarValue(id, CarStorage::kCarAuthKey).value_or("");
+  auto key = m_cars.GetCarValue(id, CarStorage::kCarAuthKey).value_or("");
+  confirmed = !key.empty() && key.front() != CarStorage::kAuthKeyUnconfirmed;
+  if (!key.empty() && !confirmed)
+    key.erase(0, 1);
+  return key;
 }
 
-void Engine::OnBoxAuthKey(std::string const & id, std::string const & key)
+void Engine::OnBoxAuthKey(std::string const & id, std::string const & key, bool confirmed)
 {
-  m_cars.SetCarValue(id, CarStorage::kCarAuthKey, key);
+  m_cars.SetCarValue(id, CarStorage::kCarAuthKey,
+                     key.empty() || confirmed ? key : CarStorage::kAuthKeyUnconfirmed + key);
 }
 
 void Engine::OnBoxCarValues(std::map<std::string, std::string> const & values)
