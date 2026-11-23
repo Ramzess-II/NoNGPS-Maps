@@ -62,6 +62,8 @@ public final class NoGps
     NO_CAR_DATA,
     // The sensor box has gone after the engine was stopped: it switches its Wi-Fi off to save the car battery.
     BOX_SLEEPING,
+    // The sensor box has switched itself off because the car battery was low: it comes back after it is unplugged.
+    BOX_BATTERY_LOCK,
     // The sensor box is connected and doesn't talk to the car with the engine stopped.
     OBD_SLEEPING,
     CONNECTED,
