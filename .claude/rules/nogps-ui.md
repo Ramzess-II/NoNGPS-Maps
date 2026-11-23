@@ -28,6 +28,9 @@ The pages live in `android/app/src/main/res/layout/nogps_box_sheet.xml`, the row
 - **Nothing from the box**: a page of values keeps its rows and shows `@string/nogps_unknown` in each, so it never
   collapses to a header with nothing under it.
 
+Android: the sheet is as wide as the window (`MwmWidget.BottomSheetDialog` drops the 640dp cap and the side
+margins; the content clears the side insets) and at least half the window high (`BoxBottomSheet.minSheetHeight`).
+
 ## iOS
 
 `iphone/Maps/UI/Map/MapViewControls/NoGpsBoxSheet.swift` and `NoGpsBoxPage.swift`.
@@ -37,4 +40,9 @@ The pages live in `android/app/src/main/res/layout/nogps_box_sheet.xml`, the row
 - The bar of the sheet is the system one, filled with `pressBackground`, the colour the list is drawn on, so the
   bar and the top of the page are one surface. `NoGpsBoxSheet.plainBar` sets it: a bar with no style of its own
   gets the green bar of Organic Maps.
+- The sheet is the system one and keeps its look: inset and floating on iOS 26 and newer, edge-attached before it.
+  UIKit draws any detent below full height as a floating card and offers no partial detent attached to the screen
+  edges, so don't file "flush at a short height"; it would mean presenting on `ModalPresentationStepsController`.
+- Every page is as high as its content, at least half the window (`NoGpsBoxSheet.sheetHeight`); `.large` stays for
+  dragging to the full height.
 - A page of values shows every row of its range with `nogps_unknown` until the box tells them.
