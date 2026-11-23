@@ -42,6 +42,8 @@ public class MapPanelDragger
   static final float DEFAULT_FRACTION = 0.5f;
   // A slide on a zoom button shorter than this is a tap, dp.
   static final float ZOOM_SLIDE_START_DP = 24;
+  // A slide of a whole frame height zooms by exp(ZOOM_SLIDE_GAIN).
+  static final float ZOOM_SLIDE_GAIN = 3;
   private static final float LIFTED_SCALE = 1.08f;
   private static final int LIFTED_TINT_ALPHA = 0x33;
 
@@ -74,11 +76,12 @@ public class MapPanelDragger
   }
 
   /**
-   * The scale factor of a zoom slide: a finger slid up by dy px in a frame of the given height zooms in.
+   * The scale factor of a zoom slide: a finger slid up by dy px in a frame of the given height zooms in. It follows
+   * the distance of the finger, not the rate of the touch events.
    */
   static double zoomFactor(float dy, float frameHeight)
   {
-    return Math.exp(dy / frameHeight);
+    return Math.exp(dy / frameHeight * ZOOM_SLIDE_GAIN);
   }
 
   /**
@@ -129,8 +132,8 @@ public class MapPanelDragger
   // The finger went down on a zoom button, and whether its slide has become a zoom.
   private boolean mOnZoomButton;
   private boolean mZooming;
-  // The slide of the finger up when it became a zoom, px.
-  private float mZoomOrigin;
+  // The slide of the finger up already applied to the zoom, px.
+  private float mZoomApplied;
   // In dp from the top of the travel.
   private float mY;
   // dp/s.
@@ -250,11 +253,15 @@ public class MapPanelDragger
       // The slide is a zoom now, it is not a long press or a tap. Zoom counts from here, so it never jumps when
       // the finger comes back.
       mZooming = true;
-      mZoomOrigin = up;
+      mZoomApplied = up;
       cancelPress();
     }
     final View frame = (View) mPanel.getParent();
-    Map.scale(zoomFactor(up - mZoomOrigin, frame.getHeight()));
+    // Only the new part of the slide zooms: a resting finger holds the zoom, whatever the rate of touch events.
+    final float slide = up - mZoomApplied;
+    mZoomApplied = up;
+    if (slide != 0)
+      Map.scale(zoomFactor(slide, frame.getHeight()));
   }
 
   // The panel moves under the finger: the speed is taken on the screen.

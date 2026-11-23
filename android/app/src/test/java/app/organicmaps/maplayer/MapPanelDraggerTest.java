@@ -82,9 +82,19 @@ public class MapPanelDraggerTest
   public void zoomSlideScalesByExponent()
   {
     assertEquals(1, MapPanelDragger.zoomFactor(0, 1000), 1e-9);
-    assertEquals(Math.E, MapPanelDragger.zoomFactor(1000, 1000), 1e-9);
+    assertEquals(Math.exp(MapPanelDragger.ZOOM_SLIDE_GAIN), MapPanelDragger.zoomFactor(1000, 1000), 1e-9);
     // Up zooms in, down zooms out, by the same amount.
     assertEquals(1 / MapPanelDragger.zoomFactor(300, 1000), MapPanelDragger.zoomFactor(-300, 1000), 1e-9);
+  }
+
+  @Test
+  public void zoomSlideFollowsDistanceNotEventRate()
+  {
+    // The same finger travel zooms the same whether the panel reports it in 2 moves or in 20.
+    double split = 1;
+    for (int i = 0; i < 20; i++)
+      split *= MapPanelDragger.zoomFactor(10, 800);
+    assertEquals(MapPanelDragger.zoomFactor(200, 800), split, 1e-6);
   }
 
   @Test

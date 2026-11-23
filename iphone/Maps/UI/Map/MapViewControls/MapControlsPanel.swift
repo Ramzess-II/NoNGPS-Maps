@@ -190,6 +190,16 @@ extension MapControlsPanel {
 
   /// The visible button a tap at the point goes to: the nearest one whose edge is within tapMargin of it, the upper one
   /// when they are equally near. The point and the frames are in the coordinates of the buttons' superview.
+  /// A slide of a whole frame height zooms by exp(zoomSlideGain).
+  static let zoomSlideGain = CGFloat(3)
+
+  /// The scale factor of a zoom slide of dy pt up in a frame of the given height: the zoom follows the distance of
+  /// the finger, not the rate of the touch events.
+  @objc(zoomFactorForSlide:frameHeight:)
+  static func zoomFactor(slide dy: CGFloat, frameHeight: CGFloat) -> CGFloat {
+    exp(dy / frameHeight * zoomSlideGain)
+  }
+
   @objc(buttonAt:inButtons:)
   static func button(at point: CGPoint, in buttons: [UIView]) -> UIView? {
     var best: (button: UIView, distance: CGFloat)?

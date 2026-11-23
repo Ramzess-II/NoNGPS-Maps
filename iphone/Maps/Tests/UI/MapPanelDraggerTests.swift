@@ -105,3 +105,24 @@ final class MapControlsPanelTests: XCTestCase {
     XCTAssertFalse(pill.point(inside: CGPoint(x: 120, y: 10), with: nil))
   }
 }
+
+final class ZoomSlideTests: XCTestCase {
+  func testFactorFollowsDistance() {
+    XCTAssertEqual(MapControlsPanel.zoomFactor(slide: 0, frameHeight: 1000), 1, accuracy: 1e-9)
+    XCTAssertEqual(MapControlsPanel.zoomFactor(slide: 1000, frameHeight: 1000), exp(MapControlsPanel.zoomSlideGain),
+                   accuracy: 1e-9)
+    // Up zooms in, down zooms out, by the same amount.
+    let up = MapControlsPanel.zoomFactor(slide: 300, frameHeight: 1000)
+    XCTAssertEqual(MapControlsPanel.zoomFactor(slide: -300, frameHeight: 1000), 1 / up, accuracy: 1e-9)
+  }
+
+  func testSlideSplitInStepsZoomsAsOneSlide() {
+    // The same finger travel zooms the same on a 60 Hz and a 120 Hz panel.
+    let whole = MapControlsPanel.zoomFactor(slide: 200, frameHeight: 800)
+    var split = CGFloat(1)
+    for _ in 0 ..< 20 {
+      split *= MapControlsPanel.zoomFactor(slide: 10, frameHeight: 800)
+    }
+    XCTAssertEqual(split, whole, accuracy: 1e-9)
+  }
+}
