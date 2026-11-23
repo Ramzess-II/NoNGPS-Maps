@@ -70,7 +70,7 @@ const RM_WT = (name) =>
     ? `git -C ${FIRMWARE} worktree remove --force ${WT(name)}`
     : `${APP}/tools/unix/nogps_worktree.sh remove ${WT(name)}`
 // The firmware build, the only check of a firmware PR. A missing toolchain or signing key is not a test failure:
-// nothing was built, and the step says so.
+// nothing was built, so the gate refuses to merge the PR ("blocked") and says why.
 const FW_BUILD = (name) => `cd ${WT(name)} && . ~/esp/esp-idf/export.sh >/dev/null && idf.py build`
 
 // The skill splits the queue in step 3. args.queue, the single queue of the serial train, is taken as the serial
@@ -391,8 +391,9 @@ ${
 ${FIRMWARE}/keys linked and ${FIRMWARE}/sdkconfig copied in, which its setup did; a build that complains about an \
 "Incorrect ECDSA private key" or a target mismatch is missing one of them, so put it there, run idf.py fullclean \
 and build again before calling anything a failure. A build that cannot run at all -- no ~/esp/esp-idf/export.sh, \
-no keys/ to link -- is not a failure of the PR: report "merged" after step 7 with "not built: <why>" in \
-combinedTest, so the report says the PR landed unbuilt.`
+no keys/ to link -- is not a failure of the PR but it is not a build either: nothing else checks this PR, so \
+don't merge it. Report "blocked" with "not built: <why>" in reason and combinedTest, and stop; the PR stays open \
+and a machine that can build it (or a person) lands it.`
     : `   - libs/: cd ${wt} && cmake --preset debug -B ${BUILD(GATE)} -DSKIP_QT_GUI=ON && \
 just test "NoGps_.*" ${BUILD_REL(GATE)}
      The cd comes first: cmake --preset takes the source tree from the working directory, so running it from \
