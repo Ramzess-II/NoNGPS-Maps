@@ -920,7 +920,7 @@ void Engine::RestoreTrustedPosition()
   }
   int64_t const timeMs = m_clock.NowMs() - (m_clock.UnixNowMs() - unixTimeMs);
   m_spoofingDetector.RestoreTrusted({lat, lon}, timeMs);
-  LOG(LINFO, ("Last trusted position =", saved));
+  LOG(LINFO, (LogHead(m_clock, "EVENT", "last_trusted"), "Last trusted position =", saved));
 }
 
 void Engine::SaveCarPosition(bool now)
