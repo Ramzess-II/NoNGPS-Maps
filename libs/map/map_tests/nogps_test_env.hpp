@@ -103,6 +103,7 @@ public:
   void Esp32BleSend(std::string const & line) override { m_esp32BleSent.push_back(line); }
   void Esp32BleSendFirmware(std::string const & piece) override { m_firmwarePieces.push_back(piece); }
   void Esp32BleClose() override { m_esp32BleOpen = false; }
+  bool Esp32BoxMustProveItself() override { return m_boxMustProveItself; }
   std::string GetPhoneName() override { return m_phoneName; }
   void OnPosition(nogps::Fix const & fix) override { m_positions.push_back(fix); }
   void OnEvent(nogps::Event event) override { m_events.push_back(event); }
@@ -118,6 +119,8 @@ public:
   std::vector<std::string> m_elm327Writes;
   int m_elm327Closes = 0;
   bool m_esp32BleOpen = false;
+  // Most tests drive a box that sends its lines without a proof: the ones of the proof turn it on.
+  bool m_boxMustProveItself = false;
   std::vector<std::string> m_esp32BleSent;
   std::vector<std::string> m_firmwarePieces;
   std::string m_phoneName;
