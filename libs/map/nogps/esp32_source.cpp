@@ -537,7 +537,6 @@ void Esp32Source::OnData(esp32::Data const & data)
   int const lastFlags = m_flags;
   m_lastDataMs = now;
   m_wakingLinkMs.reset();
-  m_batteryLock = false;
   m_dataTimesMs.push_back(now);
   while (now - m_dataTimesMs.front() >= kDataTimeoutMs)
     m_dataTimesMs.pop_front();
@@ -588,6 +587,8 @@ void Esp32Source::OnData(esp32::Data const & data)
     LOG(LINFO, ("The box has restarted"));
     ForgetJournal();
     m_hasLast = false;
+    // Only a restart drops the lockout hint: after BATT_LOCK the box goes on sending data for a second.
+    m_batteryLock = false;
   }
 
   // The box sends the totals: a lost line loses nothing, the next one has the rotation.

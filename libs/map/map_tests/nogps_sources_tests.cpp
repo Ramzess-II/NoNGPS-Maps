@@ -737,15 +737,21 @@ UNIT_TEST(NoGps_Esp32Source_BatteryLockedBox)
   source.OnBleState(BleState::Connected);
   source.OnBleBytes(BoxDataLine(2, 6000, 0, 0, esp32::kFlagImuOk));
   source.OnBleBytes(BoxLine("NGE,1,5,6100,W,BATT_LOCK,10800 mV"));
+  // The box switches off a second after the event and goes on sending data meanwhile: that is not a box that came
+  // back.
+  clock.Advance(20);
+  source.OnBleBytes(BoxDataLine(3, 6020, 0, 0, esp32::kFlagImuOk));
+  clock.Advance(20);
+  source.OnBleBytes(BoxDataLine(4, 6040, 0, 0, esp32::kFlagImuOk));
   source.OnBleState(BleState::Searching);
   clock.Advance(Esp32Source::kDataTimeoutMs + 1);
   TEST_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
   source.OnBleState(BleState::Connecting);
   TEST_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
 
-  // The box is plugged back in and talks: the hint is dropped.
+  // The box is plugged back in: its time starts anew, so it has restarted and the hint is dropped.
   source.OnBleState(BleState::Connected);
-  source.OnBleBytes(BoxDataLine(3, 100, 0, 0, esp32::kFlagImuOk));
+  source.OnBleBytes(BoxDataLine(5, 100, 0, 0, esp32::kFlagImuOk));
   TEST_NOT_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
   source.OnBleState(BleState::Searching);
   clock.Advance(Esp32Source::kDataTimeoutMs + 1);
