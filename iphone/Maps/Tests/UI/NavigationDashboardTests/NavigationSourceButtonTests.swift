@@ -86,6 +86,15 @@ final class NavigationSourceButtonTests: XCTestCase {
 
 /// A status with the values a test sets.
 extension NavigationSourceButtonTests {
+  /// A box that locked itself out does not come back with the engine: a warning, not a search.
+  func test_GivenBatteryLock_WhenBoxLookIsTaken_ThenItIsAWarning() {
+    let status = FakeStatus(source: .gps, gpsState: .good, inertialEnabled: true, sourceState: .boxBatteryLock)
+    let look = NoGpsStatusBar.boxLook(status)
+    XCTAssertEqual(look.color, .systemOrange)
+    XCTAssertEqual(look.badge?.symbol, "exclamationmark")
+    XCTAssertFalse(look.pulsing)
+  }
+
   /// A failed pairing or a box that forgot the phone stops the search until the user acts: no waves.
   func test_GivenLinkFailed_WhenBoxLookIsTaken_ThenItAsksTheUser() {
     for ble in [NoGpsBleState.pairingFailed, .bondLost] {

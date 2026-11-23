@@ -50,6 +50,7 @@ public final class BoxTexts
       case OBD_ERROR -> R.string.nogps_elm_error;
       case NO_CAR_DATA -> R.string.nogps_elm_no_car;
       case BOX_SLEEPING -> R.string.nogps_box_sleeping;
+      case BOX_BATTERY_LOCK -> R.string.nogps_box_battery_lock;
       case OBD_SLEEPING -> R.string.nogps_box_obd_sleeping;
       case CONNECTED -> R.string.nogps_elm_connected;
       case UPDATING -> R.string.nogps_box_updating;

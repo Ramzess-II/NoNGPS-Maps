@@ -65,6 +65,7 @@ void Esp32Source::Stop()
   m_dataTimesMs.clear();
   m_hasLast = false;
   m_lastDataMs.reset();
+  m_batteryLock = false;
   m_speedKmh = -1;
   m_wakingLinkMs.reset();
   m_info.reset();
@@ -529,6 +530,7 @@ void Esp32Source::OnData(esp32::Data const & data)
   int const lastFlags = m_flags;
   m_lastDataMs = now;
   m_wakingLinkMs.reset();
+  m_batteryLock = false;
   m_dataTimesMs.push_back(now);
   while (now - m_dataTimesMs.front() >= kDataTimeoutMs)
     m_dataTimesMs.pop_front();
@@ -678,9 +680,15 @@ void Esp32Source::OnEvent(esp32::Event const & event)
     m_voltageMismatch = true;
   else if (event.m_code == "VOLT_CAL")
     m_voltageMismatch = false;
+  // The box has switched itself off until it is unplugged: a start after it, in the journal replayed, drops it.
+  else if (event.m_code == "BATT_LOCK")
+    m_batteryLock = true;
   // "fw 0.3.3 reset POWERON": the box was plugged in. It restarts by itself for other reasons.
   else if (event.m_code == "BOOT")
+  {
     m_poweredOn = event.m_text.ends_with("reset POWERON");
+    m_batteryLock = false;
+  }
   else if (event.m_code == "BT_PAIR_OPEN" && m_addPhone && m_addPhone->m_openEvent < 0 &&
            event.m_number > m_addPhone->m_lastEvent)
   {
@@ -772,7 +780,11 @@ SourceState Esp32Source::GetState() const
   if (m_update.IsActive())
     return SourceState::Updating;
   if (!IsConnected())
+  {
+    if (m_batteryLock)
+      return SourceState::BoxBatteryLock;
     return IsSleeping() ? SourceState::BoxSleeping : SourceState::Connecting;
+  }
   if (m_flags & esp32::kFlagObdOk)
     return SourceState::Connected;
   if (m_obdState == "SLEEP")

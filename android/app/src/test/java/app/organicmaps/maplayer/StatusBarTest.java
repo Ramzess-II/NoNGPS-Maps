@@ -69,6 +69,15 @@ public class StatusBarTest
     assertEquals(R.drawable.ic_nogps_badge_sleep, look.badge);
   }
 
+  // A box that locked itself out does not come back with the engine: a warning, not a search.
+  @Test
+  public void batteryLockedBoxShowsWarning()
+  {
+    final StatusBar.Look look = StatusBar.getBoxLook(boxStatus(SourceState.BOX_BATTERY_LOCK, BleState.SEARCHING));
+    assertEquals(R.drawable.ic_nogps_badge_alert, look.badge);
+    assertFalse(look.pulsing);
+  }
+
   // Bluetooth off matters more than the sleep: the box would not be found when it wakes.
   @Test
   public void sleepingBoxWithBluetoothOffShowsIt()

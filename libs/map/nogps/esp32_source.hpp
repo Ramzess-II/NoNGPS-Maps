@@ -248,6 +248,8 @@ private:
   std::optional<CarInfo> m_carInfo;
   // The box has told that its voltage and the one of ELM327 differ. Kept until they come close again.
   bool m_voltageMismatch = false;
+  // The box has told it is off until it is unplugged (BATT_LOCK). Kept over the lost link until the box talks again.
+  bool m_batteryLock = false;
   // The numbers of the events of the box written to the log.
   std::set<int64_t> m_loggedEvents;
   std::optional<int64_t> m_eventsRequestMs;

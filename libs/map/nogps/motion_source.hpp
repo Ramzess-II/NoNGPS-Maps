@@ -45,6 +45,8 @@ enum class SourceState
   NoCarData,
   // The sensor box has gone after the engine was stopped: it switches its radio off to save the car battery.
   BoxSleeping,
+  // The sensor box has switched itself off because the car battery was low: it comes back after it is unplugged.
+  BoxBatteryLock,
   // The sensor box is connected and doesn't talk to the car with the engine stopped.
   ObdSleeping,
   Connected,

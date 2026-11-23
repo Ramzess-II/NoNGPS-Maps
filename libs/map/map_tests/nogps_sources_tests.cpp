@@ -718,6 +718,40 @@ UNIT_TEST(NoGps_Esp32Source_SilentCarIsNotSearchedAgain)
   TEST_EQUAL(source.GetState(), SourceState::ObdConnecting, ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_BatteryLockedBox)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxLine("NGS,1,0.2.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,14,OFF,,12480"));
+  source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, esp32::kFlagImuOk));
+  // The engine is stopped and the box has gone without the event: it sleeps.
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+  TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
+
+  // The box tells it is locked out, then it is gone: it doesn't come back with the engine.
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxDataLine(2, 6000, 0, 0, esp32::kFlagImuOk));
+  source.OnBleBytes(BoxLine("NGE,1,5,6100,W,BATT_LOCK,10800 mV"));
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+  TEST_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
+  source.OnBleState(BleState::Connecting);
+  TEST_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
+
+  // The box is plugged back in and talks: the hint is dropped.
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxDataLine(3, 100, 0, 0, esp32::kFlagImuOk));
+  TEST_NOT_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+  TEST_NOT_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
+}
+
 UNIT_TEST(NoGps_Esp32Source_WakingBoxIsConnecting)
 {
   TestClock clock;

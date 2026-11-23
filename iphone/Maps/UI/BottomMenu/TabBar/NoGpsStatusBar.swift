@@ -177,7 +177,7 @@ final class NoGpsStatusBar: UIView {
       }
       return look
     case .obdSleeping: return Look(symbol: chip, color: .secondaryLabel, badge: ("moon.fill", .systemGray))
-    case .noCarData, .obdDisabled, .obdConnecting, .obdError, .noAdapter:
+    case .boxBatteryLock, .noCarData, .obdDisabled, .obdConnecting, .obdError, .noAdapter:
       return Look(symbol: chip, color: .systemOrange, badge: ("exclamationmark", .systemOrange))
     case .disconnected, .connecting: return boxSearchLook(status)
     @unknown default: return boxSearchLook(status)

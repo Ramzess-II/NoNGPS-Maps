@@ -625,8 +625,8 @@ void Engine::CheckMotionSourceStopped()
     m_motionSourceWarnedMs.reset();
     return;
   }
-  // The box sleeps with the engine stopped: the car stands, nothing is lost.
-  if (state == SourceState::BoxSleeping || state == SourceState::ObdSleeping)
+  // The box sleeps with the engine stopped or has locked itself out: the car stands, nothing is lost.
+  if (state == SourceState::BoxSleeping || state == SourceState::BoxBatteryLock || state == SourceState::ObdSleeping)
     return;
   if (!m_motionSourceWorked || !m_manualMode || MsSince(m_motionSourceWarnedMs) < kMotionSourceWarningIntervalMs)
     return;

@@ -35,6 +35,8 @@ typedef NS_ENUM(NSInteger, MWMNoGpsSourceState) {
   MWMNoGpsSourceStateObdError,
   MWMNoGpsSourceStateNoCarData,
   MWMNoGpsSourceStateBoxSleeping,
+  // The sensor box has switched itself off because the car battery was low: it comes back after it is unplugged.
+  MWMNoGpsSourceStateBoxBatteryLock,
   MWMNoGpsSourceStateObdSleeping,
   MWMNoGpsSourceStateConnected,
   // The sensor box takes a new firmware: it sends no data until it restarts with it.
