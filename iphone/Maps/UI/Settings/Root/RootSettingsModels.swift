@@ -102,7 +102,8 @@ extension RootSettings {
          .logging,
          .perspectiveView,
          .autoZoom,
-         .searchHistory:
+         .searchHistory,
+         .crashReports:
       return nil
     }
   }
