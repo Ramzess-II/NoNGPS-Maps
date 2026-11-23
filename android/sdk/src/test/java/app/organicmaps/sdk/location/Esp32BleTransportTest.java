@@ -70,8 +70,8 @@ public class Esp32BleTransportTest
   private static Esp32BleTransport.ConnectionEnd end(boolean heard, boolean bonded, long linkedMs, int silent,
                                                      long sinceMs, boolean lost, long delayMs)
   {
-    return Esp32BleTransport.afterConnection(heard, bonded, false /* worked */, linkedMs, silent, sinceMs, lost,
-                                             delayMs);
+    return Esp32BleTransport.afterConnection(heard, bonded, false /* worked */, linkedMs, silent, 0, false, sinceMs,
+                                             lost, delayMs);
   }
 
   @Test
@@ -91,11 +91,64 @@ public class Esp32BleTransportTest
     assertEquals(60_000, seventh.retryDelayMs);
   }
 
+  private static Esp32BleTransport.ConnectionEnd refusedEnd(long linkedMs, int silent, int refused, boolean isRefused,
+                                                            long sinceMs)
+  {
+    return Esp32BleTransport.afterConnection(false, true, false, linkedMs, silent, refused, isRefused, sinceMs, false,
+                                             2000);
+  }
+
+  @Test
+  public void secondRefusedConnection_givesTheHintAtOnce()
+  {
+    final Esp32BleTransport.ConnectionEnd first = refusedEnd(4000, 0, 0, true, 10_000);
+    assertEquals(1, first.refusedConnections);
+    assertFalse(first.bondLost);
+    final Esp32BleTransport.ConnectionEnd second = refusedEnd(4000, 1, 1, true, 10_000);
+    assertEquals(2, second.refusedConnections);
+    assertEquals(2, second.silentConnections);
+    assertTrue(second.bondLost);
+    assertEquals(60_000, second.retryDelayMs);
+  }
+
+  @Test
+  public void silentConnectionWithoutRefusal_breaksTheRefusedRow()
+  {
+    final Esp32BleTransport.ConnectionEnd result = refusedEnd(4000, 1, 1, false, 10_000);
+    assertEquals(0, result.refusedConnections);
+    assertEquals(2, result.silentConnections);
+    assertFalse(result.bondLost);
+    assertEquals(1, refusedEnd(4000, 2, 0, true, 10_000).refusedConnections);
+  }
+
+  @Test
+  public void refusedConnectionsFarApart_areNotCountedTogether()
+  {
+    final Esp32BleTransport.ConnectionEnd result = refusedEnd(4000, 1, 1, true, 4 * 60 * 1000);
+    assertEquals(1, result.refusedConnections);
+    assertFalse(result.bondLost);
+  }
+
+  @Test
+  public void refusedLongSilentConnection_stillCountsSixSilentOnes()
+  {
+    assertTrue(refusedEnd(4000, 5, 0, false, 10_000).bondLost);
+  }
+
+  @Test
+  public void refusalIsAnAuthenticationOrEncryptionStatus()
+  {
+    assertTrue(Esp32BleTransport.isRefusal(5));
+    assertTrue(Esp32BleTransport.isRefusal(15));
+    assertFalse(Esp32BleTransport.isRefusal(0));
+    assertFalse(Esp32BleTransport.isRefusal(133));
+  }
+
   @Test
   public void heardConnection_isNotSilent()
   {
     final Esp32BleTransport.ConnectionEnd result =
-        Esp32BleTransport.afterConnection(true, true, true /* worked */, 4000, 3, 10_000, true, 60_000);
+        Esp32BleTransport.afterConnection(true, true, true /* worked */, 4000, 3, 0, false, 10_000, true, 60_000);
     assertFalse(result.silent);
     assertEquals(2000, result.retryDelayMs);
   }

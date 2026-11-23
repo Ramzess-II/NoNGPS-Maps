@@ -1,13 +1,47 @@
+import CoreBluetooth
 @testable import Organic_Maps__Debug_
 import XCTest
 
 final class Esp32BleTransportTests: XCTestCase {
   private func end(heard: Bool = false, known: Bool = true, closedTry: Bool = false, worked: Bool = false,
-                   linkedFor: TimeInterval? = 4, silent: Int = 0, since: TimeInterval = 10, lost: Bool = false,
+                   linkedFor: TimeInterval? = 4, silent: Int = 0, refusedRow: Int = 0, refused: Bool = false, since: TimeInterval = 10, lost: Bool = false,
                    delay: TimeInterval = 2) -> Esp32BleTransport.ConnectionEnd {
     Esp32BleTransport.afterConnection(heard: heard, known: known, closedTry: closedTry, worked: worked,
-                                      linkedFor: linkedFor, silentConnections: silent, sinceLastSilent: since,
+                                      linkedFor: linkedFor, silentConnections: silent, refusedConnections: refusedRow, refused: refused,
+                                      sinceLastSilent: since,
                                       bondLost: lost, retryDelay: delay)
+  }
+
+  func testSecondRefusedConnectionGivesTheHintAtOnce() {
+    let first = end(refused: true)
+    XCTAssertEqual(first.refusedConnections, 1)
+    XCTAssertFalse(first.bondLost)
+    let second = end(silent: 1, refusedRow: 1, refused: true)
+    XCTAssertEqual(second.refusedConnections, 2)
+    XCTAssertEqual(second.silentConnections, 2)
+    XCTAssertTrue(second.bondLost)
+    XCTAssertEqual(second.retryDelay, 60)
+  }
+
+  func testSilentConnectionWithoutRefusalBreaksTheRefusedRow() {
+    let result = end(silent: 1, refusedRow: 1)
+    XCTAssertEqual(result.refusedConnections, 0)
+    XCTAssertEqual(result.silentConnections, 2)
+    XCTAssertFalse(result.bondLost)
+    XCTAssertEqual(end(silent: 2, refused: true).refusedConnections, 1)
+  }
+
+  func testRefusedConnectionsFarApartAreNotCountedTogether() {
+    let result = end(silent: 1, refusedRow: 1, refused: true, since: 4 * 60)
+    XCTAssertEqual(result.refusedConnections, 1)
+    XCTAssertFalse(result.bondLost)
+  }
+
+  func testRefusalIsAnAuthenticationOrEncryptionError() {
+    XCTAssertTrue(Esp32BleTransport.isRefusal(CBATTError(.insufficientAuthentication)))
+    XCTAssertTrue(Esp32BleTransport.isRefusal(CBATTError(.insufficientEncryption)))
+    XCTAssertFalse(Esp32BleTransport.isRefusal(CBATTError(.invalidHandle)))
+    XCTAssertFalse(Esp32BleTransport.isRefusal(nil))
   }
 
   func testSixthSilentConnectionGivesTheHintAndSearchesOnceAMinute() {

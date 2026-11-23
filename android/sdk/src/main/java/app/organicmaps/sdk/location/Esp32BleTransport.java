@@ -107,6 +107,9 @@ class Esp32BleTransport
   // A paired box that connects but sends nothing again and again has forgotten the phone (BLE-15). After a parking
   // up to 3 connections in a row stay silent, the next one works (#154).
   private static final int MAX_SILENT_CONNECTIONS = 6;
+  // A connection whose HELLO write the box refused for its whole length is a certain answer, not a guess: two in a
+  // row show the hint. One may be a connection the phone still encrypts (#154).
+  private static final int MAX_REFUSED_CONNECTIONS = 2;
   // Silent connections further apart are not counted together: the box has slept in between.
   private static final long SILENT_CONNECTIONS_GAP_MS = 3 * 60 * 1000;
   // A shorter connection was lost by the radio, it is not counted: the box asks for the encryption 1.5 s after the
@@ -162,7 +165,11 @@ class Esp32BleTransport
   private boolean mHeard;
   // Silent connections to a paired box in a row, the last one ended at mLastSilentMs.
   private int mSilentConnections;
+  // Of them, the connections whose HELLO write was refused to the end, BLE-15.
+  private int mRefusedConnections;
   private long mLastSilentMs;
+  // The last write before the box was heard was refused as Insufficient Authentication or Encryption.
+  private boolean mRefused;
   // Too many silent connections: the lost-pairing hint is shown, and the search goes on once a minute.
   private boolean mBondLost;
   // What the core was told with the last state.
@@ -209,6 +216,7 @@ class Esp32BleTransport
     mOpen = true;
     mRetryDelayMs = RETRY_DELAY_MS;
     mSilentConnections = 0;
+    mRefusedConnections = 0;
     mBondLost = false;
     final IntentFilter filter = new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED);
     filter.addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED);
@@ -257,6 +265,7 @@ class Esp32BleTransport
       return;
     mRetryDelayMs = RETRY_DELAY_MS;
     mSilentConnections = 0;
+    mRefusedConnections = 0;
     mBondLost = false;
     start();
   }
@@ -277,6 +286,7 @@ class Esp32BleTransport
     closeGatt();
     mRetryDelayMs = RETRY_DELAY_MS;
     mSilentConnections = 0;
+    mRefusedConnections = 0;
     mBondLost = false;
     start();
   }
@@ -601,6 +611,7 @@ class Esp32BleTransport
     mSimulator = isSimulator(BuildConfig.DEBUG, bonded);
     mLinkedMs = -1;
     mHeard = false;
+    mRefused = false;
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
       mGatt = device.connectGatt(mContext, false, mGattCallback, BluetoothDevice.TRANSPORT_LE);
     else
@@ -672,6 +683,16 @@ class Esp32BleTransport
   }
 
   /**
+   * The box refuses a write of a link that is not encrypted (BLE-15).
+   */
+  @VisibleForTesting
+  static boolean isRefusal(int status)
+  {
+    return status == BluetoothGatt.GATT_INSUFFICIENT_AUTHENTICATION
+ || status == BluetoothGatt.GATT_INSUFFICIENT_ENCRYPTION;
+  }
+
+  /**
    * What follows a connection that ended.
    */
   @VisibleForTesting
@@ -680,22 +701,26 @@ class Esp32BleTransport
     // The connection to a paired box lasted but gave no data.
     boolean silent;
     int silentConnections;
-    // Six silent connections in a row: the hint is shown, the search goes on.
+    // Silent connections of them that ended with a refused HELLO write.
+    int refusedConnections;
+    // Six silent or two refused connections in a row: the hint is shown, the search goes on.
     boolean bondLost;
     long retryDelayMs;
   }
 
   /**
    * A silent connection is not a proof of a lost bond (#154), so the search goes on once a minute after the hint.
+   * @param refused the last HELLO write of the connection was refused as insufficient authentication (BLE-15).
    * @param linkedMs how long the connection lasted, -1 if it was not made.
    */
   @VisibleForTesting
   static ConnectionEnd afterConnection(boolean heard, boolean bonded, boolean worked, long linkedMs,
-                                       int silentConnections, long sinceLastSilentMs, boolean bondLost,
-                                       long retryDelayMs)
+                                       int silentConnections, int refusedConnections, boolean refused,
+                                       long sinceLastSilentMs, boolean bondLost, long retryDelayMs)
   {
     final ConnectionEnd end = new ConnectionEnd();
     end.silentConnections = silentConnections;
+    end.refusedConnections = refusedConnections;
     end.bondLost = bondLost;
     end.retryDelayMs = worked ? RETRY_DELAY_MS : Math.min(MAX_RETRY_DELAY_MS, retryDelayMs * 2);
     if (!bonded || heard || linkedMs < MIN_SILENT_LINK_MS)
@@ -704,7 +729,10 @@ class Esp32BleTransport
     end.silent = true;
     end.silentConnections = inRow ? silentConnections + 1 : 1;
     // A gap of more than 3 min starts the count again, but only the data of the box take the hint away.
-    end.bondLost = bondLost || end.silentConnections >= MAX_SILENT_CONNECTIONS;
+    // A refused connection in a row of refused ones; a silent one that was not refused breaks that row.
+    end.refusedConnections = refused ? (inRow ? refusedConnections + 1 : 1) : 0;
+    end.bondLost = bondLost || end.silentConnections >= MAX_SILENT_CONNECTIONS
+                || end.refusedConnections >= MAX_REFUSED_CONNECTIONS;
     if (end.bondLost)
       end.retryDelayMs = MAX_RETRY_DELAY_MS;
     return end;
@@ -852,8 +880,9 @@ class Esp32BleTransport
   private void restartLater()
   {
     final long now = SystemClock.elapsedRealtime();
-    final ConnectionEnd end = afterConnection(mHeard, mBonded, mReady, mLinkedMs >= 0 ? now - mLinkedMs : -1,
-                                              mSilentConnections, now - mLastSilentMs, mBondLost, mRetryDelayMs);
+    final ConnectionEnd end =
+        afterConnection(mHeard, mBonded, mReady, mLinkedMs >= 0 ? now - mLinkedMs : -1, mSilentConnections,
+                        mRefusedConnections, mRefused, now - mLastSilentMs, mBondLost, mRetryDelayMs);
     final BluetoothDevice box = mGatt != null ? mGatt.getDevice() : null;
     closeGatt();
     if (!mOpen)
@@ -862,10 +891,12 @@ class Esp32BleTransport
       mLastSilentMs = now;
     if (end.bondLost && !mBondLost)
     {
-      Logger.w(TAG, "The box has forgotten the phone: " + end.silentConnections + " silent connections");
+      Logger.w(TAG, "The box has forgotten the phone: " + end.silentConnections + " silent connections, "
+                        + end.refusedConnections + " with a refused HELLO");
       mBondLostBox = box;
     }
     mSilentConnections = end.silentConnections;
+    mRefusedConnections = end.refusedConnections;
     mBondLost = end.bondLost;
     mRetryDelayMs = end.retryDelayMs;
     setState(searchState());
@@ -970,6 +1001,14 @@ class Esp32BleTransport
         if (gatt != mGatt)
           return;
         mWriting = false;
+        // Before the box is heard HELLO goes with a response, and Insufficient Authentication is the box saying that
+        // it has forgotten the phone, if it lasts (BLE-15). The status of a write without a response is local.
+        if (!mHeard)
+        {
+          mRefused = isRefusal(status);
+          if (status != BluetoothGatt.GATT_SUCCESS)
+            Logger.w(TAG, "HELLO not written, status " + status);
+        }
         writeNext();
       });
     }
@@ -1005,6 +1044,7 @@ class Esp32BleTransport
       {
         mHeard = true;
         mSilentConnections = 0;
+        mRefusedConnections = 0;
         mBondLost = false;
         // The probe is a link now.
         setState(mState);
@@ -1163,19 +1203,20 @@ class Esp32BleTransport
     if (mWriting || gatt == null || characteristic == null || queue.isEmpty())
       return;
     final byte[] data = queue.peek();
+    // Until the box is heard a write with a response tells whether the box refuses it (BLE-15). Afterwards without
+    // one: the box answers a command with a line, and it tells how much of a firmware it has got in lines too.
+    final int type =
+        mHeard ? BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE : BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT;
     try
     {
       final boolean started;
-      // Without a response: the box answers a command with a line, and its data are the answer to HELLO. It
-      // tells how much of a firmware it has got in lines too.
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
       {
-        started = gatt.writeCharacteristic(characteristic, data, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
-               == BluetoothStatusCodes.SUCCESS;
+        started = gatt.writeCharacteristic(characteristic, data, type) == BluetoothStatusCodes.SUCCESS;
       }
       else
       {
-        characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+        characteristic.setWriteType(type);
         characteristic.setValue(data);
         started = gatt.writeCharacteristic(characteristic);
       }
