@@ -122,13 +122,14 @@
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/github"
-        style="?borderlessButtonStyle"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:insetLeft="0dp"
         android:insetRight="0dp"
         android:text="@string/nogps_source_code"
         android:textAllCaps="false"
+        android:textColor="?colorAccent"
         app:icon="@drawable/ic_github"
         app:iconGravity="textStart"
         app:iconTint="?colorAccent" />
