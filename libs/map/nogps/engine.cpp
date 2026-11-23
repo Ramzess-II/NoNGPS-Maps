@@ -1097,6 +1097,8 @@ void Engine::OnBoxHeard(std::string const & id, std::string const & firmware)
     SaveCarPosition(true /* now */);
   }
   m_cars.OnBoxHeard(id, firmware, m_clock.UnixNowMs());
+  // Over kMaxCars the box is no car of ours and keeps nothing of it, see OnBoxRecoveryCode().
+  m_boxHeardId = m_cars.GetCurrentCar() == id ? id : std::string();
   if (m_cars.GetCurrentCar() != before)
   {
     LOG(LINFO, ("The car of the box", id, "was", before.empty() ? "-" : before));
@@ -1140,9 +1142,9 @@ void Engine::OnBoxCarWritten(std::string const & key, std::string const & value,
 
 void Engine::OnBoxRecoveryCode(std::string const & code)
 {
-  // The code is of the box heard last: its car is the current one.
-  if (auto const car = m_cars.GetCurrentCar(); !car.empty())
-    m_cars.SetCarValue(car, CarStorage::kCarRecoveryCode, code);
+  // The code is of the box this link is to, not of the car the user may have chosen meanwhile.
+  if (!m_boxHeardId.empty())
+    m_cars.SetCarValue(m_boxHeardId, CarStorage::kCarRecoveryCode, code);
 }
 
 void Engine::OnThisPhoneRemoved()

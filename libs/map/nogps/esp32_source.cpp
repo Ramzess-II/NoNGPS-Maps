@@ -730,8 +730,9 @@ void Esp32Source::OnEvent(esp32::Event const & event)
     m_addPhone->m_state = AddPhone::Added;
     ListPhones();
   }
-  // The phones are erased but this one and the code is renewed: the list is asked, the code follows it.
-  else if (event.m_code == "BT_RESET")
+  // The phones are erased but this one and the code is renewed: the list is asked, the code follows it. Only a live
+  // event: the same one replayed from the journal after a reconnect would blink the phone rows and spend a BT_LIST.
+  else if (event.m_code == "BT_RESET" && event.m_number > lastNumber)
   {
     m_recoveryAsked = false;
     m_recoveryId = 0;

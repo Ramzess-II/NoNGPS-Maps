@@ -645,6 +645,8 @@ private:
 
   // The values of the car on its box. The navigator writes them when it stops: it is destroyed before them.
   BoxCarValues m_boxCarValues{m_cars, m_clock};
+  // The car of the box this link is to, empty when the box is over kMaxCars and is no car of ours.
+  std::string m_boxHeardId;
   // The box has told that the engine of the car is stopped: it sleeps in a minute.
   bool m_boxEngineStopped = false;
   std::unique_ptr<InertialNavigator> m_inertial;

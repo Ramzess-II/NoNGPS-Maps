@@ -1061,6 +1061,31 @@ UNIT_TEST(NoGps_Esp32Source_AsksRecoveryCodeOfOwnerPhone)
   TEST_EQUAL(box.m_listener.m_recoveryCodes.size(), 2, ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_ReplayedBoxResetChangesNothing)
+{
+  PhonesBox box;
+  box.m_source.OnBleState(BleState::Searching);
+  box.m_source.OnBleState(BleState::Connected);
+  box.Line(
+      "NGI,1,0.4.5,2026-11-20T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES MULTI PEER "
+      "RECOVERY,3");
+  box.List(true);
+  box.m_clock.Advance(Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(box.LastCommand().second, "BT_RECOVERY", ());
+  box.Accept(",123456");
+  box.Line("NGE,1,8,5000,I,PHONE_CONNECTED,BC:D0:74:A9:71:92");
+  size_t const sent = box.SentCount();
+  // The journal of the box brings a reset of this power cycle that was answered before: nothing is asked again and
+  // the phones stay as the list told them.
+  box.Line("NGE,1,3,2000,W,BT_RESET,3 erased");
+  TEST_EQUAL(box.ListsSince(sent), 0, ());
+  TEST_EQUAL(CountSent(box, "BT_RECOVERY"), 1, ());
+  TEST(box.m_source.GetPhones().has_value(), ());
+  // A reset that happens now is answered.
+  box.Line("NGE,1,9,6000,W,BT_RESET,3 erased");
+  TEST_EQUAL(box.ListsSince(sent), 1, ());
+}
+
 UNIT_TEST(NoGps_Esp32Source_LostListReplyIsAskedAgain)
 {
   // The reply to the first list of the connection is lost: without it the role of this phone is unknown.
