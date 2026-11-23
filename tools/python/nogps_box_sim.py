@@ -520,8 +520,9 @@ class Box:
                 state.shake_pct = max(0, min(9999, int(values['shake_pct'])))
             for name in ('box_id', 'firmware', 'chip', 'board', 'imu_name'):
                 if values.get(name):
-                    # One character: macOS drops an advertised name over 8 characters, and NonGPS- is 7.
-                    setattr(state, name, str(values[name])[:1 if name == 'box_id' else 32])
+                    # The id is the four characters of the name of a box, as --id takes them. Only macOS
+                    # drops an advertised name over 8 characters: the panel's name tells when it does.
+                    setattr(state, name, str(values[name])[:4 if name == 'box_id' else 32])
             if 'legacy_name' in values:
                 state.legacy_name = bool(values['legacy_name'])
             if 'advertising' in values:
@@ -682,9 +683,9 @@ def handler(box):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--radio', default='auto', choices=['auto', 'macos', 'linux', 'windows', 'fake'])
-    parser.add_argument('--id', default='S', help='the characters after NonGPS- in the name of the box; macOS drops '
-                                                   'a name over 8 characters from the advertisement, so one '
-                                                   'character fits after NonGPS- and two after NoGPS-')
+    parser.add_argument('--id', default='S', help='the four characters after NonGPS- in the name of a box; macOS '
+                                                   'drops a name over 8 characters from the advertisement, so one '
+                                                   'character fits after NonGPS- and two after NoGPS- there')
     parser.add_argument('--legacy-name', action='store_true',
                         help='advertise NoGPS-XXXX as a box that is not updated does')
     parser.add_argument('--port', type=int, default=0, help='0 takes a free one')

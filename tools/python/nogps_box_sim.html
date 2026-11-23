@@ -78,8 +78,9 @@ th { color: var(--muted); font-weight: 600; }
   <div id="adv"></div>
   <p class="hint" id="advhint"></p>
   <h4>The box</h4>
-  <div class="field"><span>id</span><input id="box_id" type="text" maxlength="1"></div>
+  <div class="field"><span>id</span><input id="box_id" type="text" maxlength="4"></div>
   <div class="field"><span>old name</span><input id="legacy_name" type="checkbox"></div>
+  <p class="hint" id="namehint"></p>
   <div class="field"><span>firmware</span><input id="firmware" type="text"></div>
   <div class="field"><span>chip</span><input id="chip" type="text"></div>
   <div class="field"><span>board</span><input id="board" type="text"></div>
@@ -173,6 +174,9 @@ function show(state) {
   $('shake').onchange = () => set({shake_pct: Number($('shake').value)});
   $('legacy_name').checked = state.legacy_name;
   $('legacy_name').onchange = () => set({legacy_name: $('legacy_name').checked});
+  $('namehint').textContent = state.radio === 'macos' && state.name.length > 8
+    ? 'macOS drops ' + state.name + ' from the advertisement: over 8 characters, the service UUID leaves no room.'
+    : '';
   for (const id of ['box_id', 'firmware', 'chip', 'board', 'imu_name']) field(id, state[id]);
   showPhones(state.phones);
 }
