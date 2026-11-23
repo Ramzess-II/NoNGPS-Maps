@@ -396,6 +396,58 @@ const base = (label) => {
   check('the queue is refused before any agent runs', err !== null && /unknown repo someone\/else/.test(String(err)), String(err))
 }
 
+// --- 21. a PR opened from one of our own forks: its head and its push go to that fork's remote ---
+{
+  const prompts = {}
+  const r = await runScript({
+    args: {
+      ws: '/ws',
+      parallel: [
+        pr(19, { repo: 'Ramzess-II/ELMandIMU', headOwner: 'koloboid', files: ['components/net/net.c'] }),
+        pr(1), // a PR of a branch of the repo itself, to show nothing changed for it
+      ],
+      slots: 2,
+    },
+    reply: (label, opts, prompt) => {
+      prompts[label] = prompt
+      return base(label)
+    },
+  })
+  console.log('21. a PR from our own fork')
+  check('both merged', r.out.merged === 2, r.out.results.map((x) => [x.pr, x.repo, x.outcome]))
+  const u = prompts['update:fw#19']
+  check('the fork is added as a remote of the main checkout',
+    /git -C \/ws\/firmware remote add koloboid git@github\.com:koloboid\/ELMandIMU\.git/.test(u), u.slice(0, 900))
+  check('the head comes from the fork', /refs\/remotes\/koloboid\/feature\/p19/.test(u), u.slice(0, 900))
+  check('the push goes back to the fork', /push koloboid HEAD:refs\/heads\/feature\/p19/.test(u), u)
+  check('the base still comes from origin', /fetch -q origin/.test(u) && /merge --no-edit origin\/main/.test(u), u)
+  const f = prompts['fix:fw#19:1'] || prompts['fix:fw#19']
+  check('a fix is pushed to the fork too', f === undefined || /push koloboid HEAD:refs\/heads\/feature\/p19/.test(f), f)
+  const g = prompts['merge:fw#19']
+  check('the gate merges the fork ref', /merge --no-edit refs\/remotes\/koloboid\/feature\/p19/.test(g), g.slice(0, 2000))
+  check('the gate takes the base from origin', /-B train\/gate refs\/remotes\/origin\/main/.test(g), g.slice(0, 2000))
+  // A PR of a branch of the repo keeps origin and adds no remote.
+  const a = prompts['update:#1']
+  check('a PR of the repo itself still uses origin',
+    /refs\/remotes\/origin\/feature\/p1/.test(a) && /push origin HEAD:refs\/heads\/feature\/p1/.test(a), a.slice(0, 900))
+  check('no remote is added for it', !/remote add/.test(a), a.slice(0, 900))
+}
+
+// --- 22. a fork of somebody else: refused before any agent runs ---
+{
+  let err = null
+  try {
+    await runScript({
+      args: { ws: '/ws', parallel: [pr(1, { headOwner: 'stranger' })] },
+      reply: base,
+    })
+  } catch (e) {
+    err = e
+  }
+  console.log('22. a PR from a stranger\'s fork')
+  check('the queue is refused', err !== null && /fork of stranger/.test(String(err)), String(err))
+}
+
 // --- 17. a bigger mixed run, repeated: it always terminates and merges everything ---
 {
   let bad = 0

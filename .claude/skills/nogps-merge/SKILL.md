@@ -31,7 +31,7 @@ train doesn't push commits under the session working there.
      --json number,title,headRefName,headRefOid,headRepositoryOwner,isDraft,createdAt,reviewDecision,reviewRequests,labels,url \
      --jq '[.[] | select(.isDraft | not)
            | {number, title, repo: "Ramzess-II/NoNGPS-Maps", branch: .headRefName, head: .headRefOid, createdAt,
-              reviewDecision, url, fork: (.headRepositoryOwner.login != "Ramzess-II"),
+              reviewDecision, url, headOwner: .headRepositoryOwner.login,
               reviewers: [.reviewRequests[].login], labels: [.labels[].name]}] | sort_by(.createdAt)'
    git -C <ws>/app worktree list --porcelain | sed -n 's|^branch refs/heads/||p'
    ```
@@ -44,7 +44,10 @@ train doesn't push commits under the session working there.
      `CHANGES_REQUESTED`. They approve it;
    - its branch is one of those `git worktree list` printed: a session works in it, and the train would push
      commits under it;
-   - `fork` is true: the train can't push to another owner's branch.
+   - `headOwner` is neither `koloboid` nor `Ramzess-II`: the head is in somebody else's fork and the train
+     can't push to a branch of theirs. A fork of one of the two is taken, not left out: the train reads the head
+     from a remote named after the fork's owner and pushes the update and the fixes back to that same branch, so
+     `headOwner` goes into the PR object of step 4 whenever it differs from the repo's owner.
 
    Then the same for `Ramzess-II/ELMandIMU`, the box firmware: the train lands its PRs too. Run the same two
    commands with `-R Ramzess-II/ELMandIMU`, `Ramzess-II` still the owner to compare against, and

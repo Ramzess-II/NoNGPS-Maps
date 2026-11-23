@@ -119,10 +119,36 @@ worktree lock of the main checkout the worktree belongs to) is run again after a
 // --ignore-other-worktrees: a PR the gate sends back as stale is prepped by whichever worker takes it next, while
 // the slot that prepped it before still has train/<n> checked out, and git refuses that branch without the flag
 // (--force doesn't cover it). Only one worker holds a PR at a time, so the two never write the branch at once.
-const CHECKOUT = (pr, wt) => `git -C ${wt} fetch -q origin && git -C ${wt} checkout --force \
---ignore-other-worktrees -B train/${pr.number} refs/remotes/origin/${pr.branch} && git -C ${wt} submodule update \
+// Both of us open a PR from a branch of the repo and from our own fork. A fork's branch is in no remote of the
+// checkout, so the head comes from a remote named after the fork's owner, and the update's and the fix's push go
+// back to that fork's branch -- the one the PR is open from. The remote is added to the main checkout, the only
+// place git keeps them: its worktrees all see it, and adding one touches no working tree. A fork of anyone but the
+// two of us never reaches the train: the skill leaves it out of the queue, and REMOTE throws on it.
+const OWNERS = ['koloboid', 'Ramzess-II']
+const repoOwner = (pr) => repoName(pr).split('/')[0]
+const headOwner = (pr) => pr.headOwner || repoOwner(pr)
+const REMOTE = (pr) => {
+  const owner = headOwner(pr)
+  if (owner === repoOwner(pr)) return 'origin'
+  if (!OWNERS.includes(owner))
+    throw new Error(`PR #${pr.number}: head is in a fork of ${owner}, not of ${OWNERS.join(' or ')}`)
+  return owner
+}
+const ADD_REMOTE = (pr) =>
+  `(git -C ${R(pr).dir} remote get-url ${REMOTE(pr)} >/dev/null 2>&1 || git -C ${R(pr).dir} remote add \
+${REMOTE(pr)} git@github.com:${headOwner(pr)}/${repoName(pr).split('/')[1]}.git)`
+// The base always comes from origin, the head from its own remote: both are fetched when they differ.
+const FETCH = (pr, wt) =>
+  REMOTE(pr) === 'origin'
+    ? `git -C ${wt} fetch -q origin`
+    : `${ADD_REMOTE(pr)} && git -C ${wt} fetch -q origin && git -C ${wt} fetch -q ${REMOTE(pr)}`
+const HEAD_REF = (pr) => `refs/remotes/${REMOTE(pr)}/${pr.branch}`
+const CHECKOUT = (pr, wt) => `${FETCH(pr, wt)} && git -C ${wt} checkout --force \
+--ignore-other-worktrees -B train/${pr.number} ${HEAD_REF(pr)} && git -C ${wt} submodule update \
 --init --recursive`
-const PUSH = (pr, wt) => `git -C ${wt} push origin HEAD:refs/heads/${pr.branch}`
+const PUSH = (pr, wt) => `git -C ${wt} push ${REMOTE(pr)} HEAD:refs/heads/${pr.branch}`
+// Like R() above: the whole queue is checked before any agent runs, not when a step first builds its prompt.
+;[...pending, ...serial].forEach((pr) => REMOTE(pr))
 // The label of a step, and of the PR in the log: the firmware's numbers are its own, so they are told apart.
 const tag = (pr) => `${R(pr).suffix ? 'fw' : ''}#${pr.number}`
 
@@ -354,13 +380,13 @@ function gatePrompt(pr) {
   const wt = WT(GATE + suffix)
   const staleStep = pr.prepMaster
     ? `Its prep merged ${base} ${pr.prepMaster} into it and reviewed the result.
-   git -C ${wt} fetch -q origin
+   ${FETCH(pr, wt)}
    git -C ${wt} diff --name-only ${pr.prepMaster} origin/${base}   -- what ${base} gained since
    gh pr view ${pr.number} -R ${repo} --json files --jq '.files[].path'   -- the PR's own files
    A file in both lists: the review didn't see it. Report "stale" with those files in staleFiles and stop -- the \
 train sends the PR back for one more update and review round. Nothing in both lists: go on, whatever else ${base} \
 gained.`
-    : `Its prep didn't report the ${base} it merged, so this can't be checked: git -C ${wt} fetch -q origin and go \
+    : `Its prep didn't report the ${base} it merged, so this can't be checked: ${FETCH(pr, wt)} and go \
 on. The local merge of step 4 and the tests of step 5 are then the only check of the two together.`
   return `${ENV}
 
@@ -378,7 +404,7 @@ requested from the other person, CHANGES_REQUESTED or REVIEW_REQUIRED: report "b
 mergeStateStatus DIRTY: report "conflict". Already MERGED or CLOSED: report "blocked" with that.
 4. Merge the PR into current ${base} locally, to have the two together: \
 git -C ${wt} checkout --force -B train/gate refs/remotes/origin/${base} && git -C ${wt} submodule update --init \
---recursive && git -C ${wt} merge --no-edit refs/remotes/origin/${pr.branch}
+--recursive && git -C ${wt} merge --no-edit ${HEAD_REF(pr)}
    A conflict: git -C ${wt} merge --abort, report "conflict" with the files, and stop; the PR stays open. \
 train/gate is local and thrown away after the run: don't push it.
 5. Build and test the two together -- this is the only run that sees them together, as the PR's own checks ran \
@@ -432,7 +458,8 @@ a prep slot is made only when a PR needed it. A name ending in -fw is a worktree
 ${APP}; the default branch is main there and master here.
 1. In each: git -C <path> status --short and git -C <path> log --oneline origin/<its default branch>..HEAD. A \
 commit nobody pushed belongs to a PR the train left open (${left || 'none'}): push it to its PR's branch first \
-(git -C <path> push origin HEAD:refs/heads/<branch>) and say so in the report. The exception is the branch \
+(git -C <path> push <that PR's remote> HEAD:refs/heads/<branch>: origin for a PR opened from a branch of the repo, \
+the remote named after the fork's owner for one opened from a fork) and say so in the report. The exception is the branch \
 train/gate: its commits are the gate's local merges of a PR into its default branch, nobody's work, and they go \
 away with the branch.
 2. In each: git -C <path> checkout --force feature/<the worktree's name> && git -C <path> reset --hard && \
