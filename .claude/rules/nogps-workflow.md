@@ -111,8 +111,9 @@ session and for an agent, and a push that would need a force is a reason to stop
 
 A PR it can't land stays open and the train goes on to the next one: a merge conflict that isn't plain, a failing
 check, findings still open after the last round. It never takes a PR with a commit of anyone but koloboid or
-Ramzess-II, one waiting for the other person's review, one from a fork, or one whose branch is checked out in the
-main checkout or a worktree -- the train would push commits under the session working there.
+Ramzess-II, one waiting for the other person's review, one from a fork of anyone but the two of us, or one whose
+branch is checked out in the main checkout or a worktree -- the train would push commits under the session working
+there.
 
 The train lands the PRs of both repos: each PR of its queue carries its repo, and a firmware PR is prepped in a
 worktree of `firmware/` whose name ends in `-fw`, off `origin/main` (that repo has no `master`). `ELMandIMU`'s CI
