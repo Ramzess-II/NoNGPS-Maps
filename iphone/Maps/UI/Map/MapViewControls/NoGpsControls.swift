@@ -4,7 +4,7 @@
 /// user can move the panel up and down.
 @objc
 final class NoGpsControls: NSObject {
-  private enum Constants {
+  enum Constants {
     // As the side buttons on the right in MWMSideButtonsView.xib: both panels are equally wide.
     static let buttonWidth = CGFloat(56)
     static let buttonHeight = CGFloat(48)
@@ -23,6 +23,12 @@ final class NoGpsControls: NSObject {
     static let panelPlaceKey = "NoGpsLeftPanelY"
     // Of the speed from the corner of the free area, and from the panel above it.
     static let speedMargin = CGFloat(10)
+    /// The free band at the bottom of the map in navigation: the car mark's lowest point is this far above the
+    /// bottom of the free area, the speed button and its bars (`speedMargin` + `NoGpsSpeedView.side`) stay under it.
+    static let markClearance = CGFloat(78)
+    /// 2 x `Arrow3d::GetMaxBottomSize()`.
+    static let markHeight = CGFloat(64)
+    static let sprintGap = CGFloat(8)
     /// Of a flag screenshot: the street names stay readable, the png stays small for the mail.
     static let screenshotScale = CGFloat(2)
     /// A thick line above the buttons of the testers: they stand apart from those correcting the car.
@@ -94,6 +100,13 @@ final class NoGpsControls: NSObject {
 
   deinit {
     timer?.invalidate()
+  }
+
+  /// The core takes pixels: the mark rises by the band above the bottom of the free area. CarPlay gives the offset back
+  /// to the default when it leaves the phone, see CarPlayService.
+  static func updateMarkOffset() {
+    guard let scale = shared?.buttons.traitCollection.displayScale else { return }
+    FrameworkHelper.updatePositionArrowOffset(false, offset: Int32(Constants.markClearance * scale))
   }
 
   static func updateAvailableArea(_ frame: CGRect) {
@@ -245,6 +258,7 @@ final class NoGpsControls: NSObject {
                               onLift: { [weak self] in self?.panel.isLifted = $0 },
                               onMove: { [weak self] in self?.updateLayout() })
     updateLayout()
+    Self.updateMarkOffset()
   }
 
   /// \param animated moves the buttons as the side buttons on the right move, when a panel opens or closes.
@@ -271,8 +285,8 @@ final class NoGpsControls: NSObject {
       self.calibrationBottom.constant = area.maxY - Constants.speedMargin
       self.calibrationCenterX.constant = area.midX
       self.calibrationMaxWidth.constant = min(Constants.statusMaxWidth, max(0, area.width - 2 * speedWidth))
-      // In the bottom third, above the speed and the bar of its calibration: the mark and the road ahead stay seen.
-      self.sprintBottom.constant = area.maxY - Constants.speedMargin - speedWidth
+      // Above the mark: the mark and the road ahead stay seen.
+      self.sprintBottom.constant = area.maxY - Constants.markClearance - Constants.markHeight - Constants.sprintGap
       self.sprintCenterX.constant = area.midX
       self.sprintView.setMaxWidth(area.width - 2 * Constants.speedMargin)
     }

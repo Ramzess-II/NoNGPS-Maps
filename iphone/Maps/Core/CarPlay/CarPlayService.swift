@@ -304,6 +304,7 @@ final class CarPlayService: NSObject {
     FrameworkHelper.updatePositionArrowOffset(toDevice, offset: toDevice ? 0 : 5)
     if toDevice {
       CarPlayWindowScaleAdjuster.restorePhoneScale()
+      NoGpsControls.updateMarkOffset()
     } else if let destinationWindow = window(for: destination) {
       CarPlayWindowScaleAdjuster.applyCarPlayScale(destinationWindow)
     }

@@ -73,6 +73,7 @@
 		9DC9A4FCC5894DEAADADDC00 /* NoGpsSpeedHintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2F0A00185F941D49EBD1B60 /* NoGpsSpeedHintTests.swift */; };
 		4600F5A2B1B3897D21E3C780 /* NoGpsCalibrationBarTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE81D97813169B91B394591B /* NoGpsCalibrationBarTests.swift */; };
 		5C0A7E1B3D2F4A6890B1C2D6 /* NoGpsSprintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0A7E1B3D2F4A6890B1C2D5 /* NoGpsSprintTests.swift */; };
+		5C0A7E1B3D2F4A6890B1C2E6 /* NoGpsMarkBandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0A7E1B3D2F4A6890B1C2E5 /* NoGpsMarkBandTests.swift */; };
 		6B9978361C89A316003B8AA0 /* editor.config in Resources */ = {isa = PBXBuildFile; fileRef = 6B9978341C89A316003B8AA0 /* editor.config */; };
 		716A012EE67AD0D686628FE0 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C317E5E5F544EEF9E19ADDE8 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		80922D600D3BF8807B842D7F /* NavigationSearchWheel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56B428D46BB4A3B861570920 /* NavigationSearchWheel.swift */; };
@@ -954,6 +955,7 @@
 		E2F0A00185F941D49EBD1B60 /* NoGpsSpeedHintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsSpeedHintTests.swift; sourceTree = "<group>"; };
 		EE81D97813169B91B394591B /* NoGpsCalibrationBarTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsCalibrationBarTests.swift; sourceTree = "<group>"; };
 		5C0A7E1B3D2F4A6890B1C2D5 /* NoGpsSprintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsSprintTests.swift; sourceTree = "<group>"; };
+		5C0A7E1B3D2F4A6890B1C2E5 /* NoGpsMarkBandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsMarkBandTests.swift; sourceTree = "<group>"; };
 		5605022E1B6211E100169CAD /* sound-strings */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "sound-strings"; path = "../../data/sound-strings"; sourceTree = "<group>"; };
 		56B428D46BB4A3B861570920 /* NavigationSearchWheel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationSearchWheel.swift; sourceTree = "<group>"; };
 		59AD00D34DB2B35248B0A4DE /* TTSVoicePreviewPlayerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSVoicePreviewPlayerTests.swift; sourceTree = "<group>"; };
@@ -2221,6 +2223,7 @@
 				E2F0A00185F941D49EBD1B60 /* NoGpsSpeedHintTests.swift */,
 				EE81D97813169B91B394591B /* NoGpsCalibrationBarTests.swift */,
 				5C0A7E1B3D2F4A6890B1C2D5 /* NoGpsSprintTests.swift */,
+				5C0A7E1B3D2F4A6890B1C2E5 /* NoGpsMarkBandTests.swift */,
 			);
 			path = NavigationDashboardTests;
 			sourceTree = "<group>";
@@ -5501,6 +5504,7 @@
 				9DC9A4FCC5894DEAADADDC00 /* NoGpsSpeedHintTests.swift in Sources */,
 				4600F5A2B1B3897D21E3C780 /* NoGpsCalibrationBarTests.swift in Sources */,
 				5C0A7E1B3D2F4A6890B1C2D6 /* NoGpsSprintTests.swift in Sources */,
+				5C0A7E1B3D2F4A6890B1C2E6 /* NoGpsMarkBandTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
