@@ -28,6 +28,7 @@ enum RootSettings: String, Hashable {
   case voiceInstructions
   case routingOptions
   case searchHistory
+  case crashReports
 }
 
 extension RootSettingsSection {
@@ -44,7 +45,8 @@ extension RootSettingsSection {
 
   var footer: String? {
     switch self {
-    case .profile, .map, .navigation, .network, .privacy: nil
+    case .profile, .map, .navigation, .network: nil
+    case .privacy: L("nogps_crash_reports_hint")
     case .general: L("enable_logging_warning_message")
     }
   }
@@ -73,6 +75,7 @@ extension RootSettings {
     case .voiceInstructions: return L("pref_tts_enable_title")
     case .routingOptions: return L("driving_options_title")
     case .searchHistory: return L("search_history_title")
+    case .crashReports: return L("nogps_crash_reports")
     }
   }
 }
@@ -188,6 +191,7 @@ struct RootSettingsState {
   let fileLoggingEnabled: Bool
   let logFileSize: UInt64
   let searchHistoryEnabled: Bool
+  let crashReportsEnabled: Bool
 }
 
 typealias RootSettingsViewController = SettingsViewController<RootSettingsSection, RootSettings>
