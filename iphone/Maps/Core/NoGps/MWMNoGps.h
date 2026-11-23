@@ -411,6 +411,8 @@ NS_SWIFT_NAME(NoGps)
 + (NSArray<MWMNoGpsCar *> *)cars;
 /// The timed runs of the current car, newest first.
 + (NSArray<MWMNoGpsSprint *> *)sprints;
+/// The timed runs kept for the car, newest first; none for a car that is not there.
++ (NSArray<MWMNoGpsSprint *> *)sprintsOfCar:(NSString *)carId;
 /// No car is added over this many: the user can't add one.
 + (NSInteger)maxCars;
 /// The user drives the car: its values are used, the box of the car is looked for.

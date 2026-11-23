@@ -164,6 +164,17 @@ void SetNoGpsString(JNIEnv * env, jobject obj, char const * name, std::string co
   jni::TScopedLocalRef str(env, jni::ToJavaString(env, value));
   env->SetObjectField(obj, env->GetFieldID(env->GetObjectClass(obj), name, "Ljava/lang/String;"), str.get());
 }
+
+jobjectArray SprintsToJava(JNIEnv * env, std::vector<nogps::Sprint> const & sprints)
+{
+  static jclass const sprintClass = jni::GetGlobalClassRef(env, "app/organicmaps/sdk/location/NoGps$Sprint");
+  static jmethodID const ctor = jni::GetConstructorID(env, sprintClass, "(IJDI)V");
+  return jni::ToJavaArray(env, sprintClass, sprints, [](JNIEnv * env, nogps::Sprint const & sprint)
+  {
+    return env->NewObject(sprintClass, ctor, static_cast<jint>(sprint.m_kind), static_cast<jlong>(sprint.m_unixTimeMs),
+                          static_cast<jdouble>(sprint.m_sec), static_cast<jint>(sprint.m_trapKmh));
+  });
+}
 }  // namespace
 
 extern "C"
@@ -357,15 +368,16 @@ JNIEXPORT jobjectArray Java_app_organicmaps_sdk_location_NoGps_nativeGetCars(JNI
   });
 }
 
-JNIEXPORT jobjectArray Java_app_organicmaps_sdk_location_NoGps_nativeGetSprints(JNIEnv * env, jclass)
+JNIEXPORT jobjectArray Java_app_organicmaps_sdk_location_NoGps_nativeGetSprints__(JNIEnv * env, jclass)
 {
-  static jclass const sprintClass = jni::GetGlobalClassRef(env, "app/organicmaps/sdk/location/NoGps$Sprint");
-  static jmethodID const ctor = jni::GetConstructorID(env, sprintClass, "(IJDI)V");
-  return jni::ToJavaArray(env, sprintClass, NoGpsEngine().GetSprints(), [](JNIEnv * env, nogps::Sprint const & sprint)
-  {
-    return env->NewObject(sprintClass, ctor, static_cast<jint>(sprint.m_kind), static_cast<jlong>(sprint.m_unixTimeMs),
-                          static_cast<jdouble>(sprint.m_sec), static_cast<jint>(sprint.m_trapKmh));
-  });
+  return SprintsToJava(env, NoGpsEngine().GetSprints());
+}
+
+JNIEXPORT jobjectArray Java_app_organicmaps_sdk_location_NoGps_nativeGetSprints__Ljava_lang_String_2(JNIEnv * env,
+                                                                                                     jclass,
+                                                                                                     jstring carId)
+{
+  return SprintsToJava(env, NoGpsEngine().GetSprints(jni::ToNativeString(env, carId)));
 }
 
 JNIEXPORT jint Java_app_organicmaps_sdk_location_NoGps_nativeGetMaxCars(JNIEnv *, jclass)

@@ -6601,6 +6601,30 @@ UNIT_TEST(NoGps_Sprint_RecordsKeptForEachCar)
        ());
 }
 
+UNIT_TEST(NoGps_Sprints_PerCar)
+{
+  Env env(true /* inertial */);
+  HearBox(env, "C47D");
+  sprint::Run(env, 9, 105);
+  sprint::Run(env, 8, 105);
+  HearBox(env, "42FD");
+  sprint::Run(env, 12, 105);
+
+  auto const a = env.m_engine.GetSprints("C47D");
+  TEST_EQUAL(a.size(), 2, ());
+  TestAlmostEqualAbs(a[0].m_sec, 8, 0.15);
+  TestAlmostEqualAbs(a[1].m_sec, 9, 0.15);
+  auto const b = env.m_engine.GetSprints("42FD");
+  TEST_EQUAL(b.size(), 1, ());
+  TestAlmostEqualAbs(b[0].m_sec, 12, 0.15);
+  TEST(env.m_engine.GetSprints("0000").empty(), ());
+
+  // The current car's runs are the same as by its id, and the other car keeps its own.
+  env.m_engine.SelectCar("C47D");
+  TEST_EQUAL(env.m_engine.GetSprints().size(), 2, ());
+  TEST_EQUAL(env.m_engine.GetSprints("42FD").size(), 1, ());
+}
+
 UNIT_TEST(NoGps_Sprint_SpeedTableApplied)
 {
   // The speedometer shows 95 km/h at the real 104.5.

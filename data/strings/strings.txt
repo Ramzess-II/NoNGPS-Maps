@@ -46569,11 +46569,18 @@ ru = Поправки скорости, измеренные по GPS на ра�
 uk = Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або авто. Поки працює GPS, вони вимірюються наново.
 
 [nogps_menu_profile]
-comment = Main menu row opening the account of the user on the site
+comment = Main menu row opening the screen with the records of every car of the user
 tags = android-app,apple-maps
 en = Profile
 ru = Профиль
 uk = Профіль
+
+[nogps_profile_soon]
+comment = Footer of the Profile screen: what the screen will hold later
+tags = android-app,apple-maps
+en = The account, the boxes, the warranty and the orders will be here
+ru = Здесь появятся аккаунт, устройства, гарантия и заказы
+uk = Тут з'являться обліковий запис, пристрої, гарантія та замовлення
 
 [nogps_about_title]
 tags = android-app,apple-maps

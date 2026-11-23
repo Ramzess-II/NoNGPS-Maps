@@ -437,6 +437,14 @@ static CLLocation * lastPlatformLocation;
   return sprints;
 }
 
++ (NSArray<MWMNoGpsSprint *> *)sprintsOfCar:(NSString *)carId
+{
+  NSMutableArray<MWMNoGpsSprint *> * sprints = [NSMutableArray array];
+  for (auto const & sprint : Engine().GetSprints(carId.UTF8String))
+    [sprints addObject:[[MWMNoGpsSprint alloc] initWithSprint:sprint]];
+  return sprints;
+}
+
 + (NSInteger)maxCars
 {
   return nogps::CarStorage::kMaxCars;
