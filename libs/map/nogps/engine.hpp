@@ -549,6 +549,7 @@ private:
   std::optional<double> GetCarBearing() const;
   int GetSpeedLimitKmh();
   void ShowCarHeading();
+  bool IsCarFollowedApart() const;
   void NotifyLocationUpdated();
   /// GPS gives a position every second, and the map moves the mark to a new one in 0.2 s: it would jump and stand.
   /// Between GPS positions the car is shown by the inertial navigation, which continues from every good GPS position.

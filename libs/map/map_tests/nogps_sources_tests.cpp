@@ -911,6 +911,15 @@ public:
   }
 
   size_t SentCount() const { return m_delegate.m_esp32BleSent.size(); }
+
+  /// \returns how many times the list was asked among the commands sent after the first \a from of them.
+  size_t ListsSince(size_t from) const
+  {
+    size_t lists = 0;
+    for (size_t i = from; i < SentCount(); ++i)
+      lists += m_delegate.m_esp32BleSent[i].find(",BT_LIST*") != std::string::npos ? 1 : 0;
+    return lists;
+  }
 };
 
 UNIT_TEST(NoGps_Esp32Source_ListsAndForgetsPhones)
@@ -966,6 +975,32 @@ UNIT_TEST(NoGps_Esp32Source_ListsAndForgetsPhones)
   box.m_source.ListPhones();
   TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
   TEST_GREATER(box.SentCount(), asked, ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_LostListReplyIsAskedAgain)
+{
+  // The reply to the first list of the connection is lost: without it the role of this phone is unknown.
+  PhonesBox box;
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  TEST(!box.m_source.GetPhones(), ());
+  size_t asked = box.SentCount();
+  box.m_clock.Advance(Esp32Source::kCarReplyTimeoutMs + Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(box.ListsSince(asked), 1, ());
+
+  // The reply to the second ask comes and the role follows it.
+  box.List(false);
+  TEST(box.m_source.IsReadOnly(), ());
+
+  // The other phone leaves, the list is asked and its reply is lost too.
+  box.Line("NGE,1,0,1000,I,PHONE_LOST,D0:56:FB:11:00:88");
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  asked = box.SentCount();
+  box.m_clock.Advance(Esp32Source::kCarReplyTimeoutMs + Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(box.ListsSince(asked), 1, ());
+
+  // This phone changes the box now, the new list says so.
+  box.List();
+  TEST(!box.m_source.IsReadOnly(), ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_AddsPhoneWithCode)

@@ -8,8 +8,10 @@ there is one, at the same moment (the two have different ages): along the course
 and across it (+ the mark is to the right). With "Disable GPS" on, the platform position is the car itself.
 
 Logs: logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, written with "Enable logging" on in the settings: a file per launch
-of the app and per drive. A folder given is read with its subfolders: give the folder of one phone, or of one day
-of it. The names of the earlier versions are read too: log-dd-MM-yy-<phone>[.N].log, iOS log.txt, Android app*.log.
+of the app and per drive. A folder given is read with its subfolders: give the folder of one phone, or of one day of
+it, as the rows of two phones would be mixed. Every file begins with the LOGFMT line that tells its phone, except
+the OSLog text of iOS, whose phone comes from its path; a file of another layout, or of a format the tools do not
+know, is refused. The names of the earlier versions (log-dd-MM-yy-<phone>.log, log.txt, app*.log) are not read.
   iOS: Documents/logs/. Times are UTC.
   Android: Android/data/<app id>/files/logs/, or the zip of "Report a bug" unpacked. Times are the local time of
   the phone, the log has no year: --year.
@@ -37,13 +39,18 @@ TRIP_LINE = re.compile(r' TRIP (?:ms=\d+ )?(?=src=)')
 # gps= and fused= are "lat,lon/accuracy/km/h/course/age".
 PLATFORM_FIELDS = ('acc', 'kmh', 'bear', 'age')
 EARTH_RADIUS_M = 6371000
-LOG_NAME = re.compile(r'\.(log|txt)$', re.I)
+LOG_NAME = re.compile(r'\.log$', re.I)
 # Android "Report a bug" saves the system log next to the logs of the app; a replay writes its files.
 NOT_LOG_NAME = re.compile(r'^(logcat|nogps-replay)', re.I)
-# "logs/Pixel_7-a3f9/2026-11-01/081500.log": the phone, the day and when the file was started.
-PHONE_FOLDER = re.compile(r'(?:^|/)([^/]+)/\d{4}-\d\d-\d\d/\d{6}\.log$')
-# The name of the earlier versions, "log-01-11-26-Pixel_7-a3f9.2.log": the day, the phone and the part.
-PHONE_NAME = re.compile(r'^log-\d\d-\d\d-\d\d-(.+?)(?:\.\d+)?\.log$')
+# The formats of the first line of a log, "LOGFMT <n> ms=<unix ms> phone=<id> trip=<HHmmss> app=<version> build=<number>
+# commit=<hash> om=<Organic Maps version>", see libs/map/nogps/log_line.hpp. A tool refuses any other.
+LOG_FORMATS = (2,)
+LOGFMT_LINE = re.compile(r'LOGFMT (\d+)((?: \w+=\S*)*)\s*$')
+HEADER_KEYS = ('ms', 'phone', 'trip')
+# "logs/Pixel_7-a3f9/2026-11-01/081500.log": the phone and the time the file was started at. iOS with the record in a
+# file off writes the OSLog text of "Report a bug" into such a file without the LOGFMT line (Logger.mm), so a file of
+# the tree is read with the phone of its path. "." and ".." are no phone, see tree_path().
+TREE_PATH = re.compile(r'(?:^|/)(?!\.\.?/)([^/]+)/\d{4}-\d\d-\d\d/(\d{6}(?:-\d+)?)\.log$', re.I)
 FIRST_COLUMNS = ['time', 'src', 'lat', 'lon', 'acc', 'bear', 'age', 'ref', 'err_m', 'along_m', 'across_m']
 
 
@@ -61,11 +68,81 @@ def log_files(paths, log_name=LOG_NAME):
     return result
 
 
-def phone_of(name):
-    """The <phone> of a log file: its folder, or of its name as the earlier versions had it. '' when neither tells."""
-    name = name.replace('\\', '/')
-    m = PHONE_FOLDER.search(name) or PHONE_NAME.match(os.path.basename(name))
-    return m.group(1) if m else ''
+class LogFormatError(ValueError):
+    """A file that is not a log of a format the tools read."""
+
+
+def tree_path(name):
+    """The match of logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log in |name|, None when it is not such a path. A file on disk
+    is matched by its absolute path: the <phone> folder can be above the path given, as it is for "." and for
+    "<yyyy-MM-dd>/<HHmmss>.log" given inside the folder of one phone."""
+    if os.path.isfile(name):
+        name = os.path.abspath(name)
+    return TREE_PATH.search(name.replace('\\', '/'))
+
+
+def parse_header(name, first_line):
+    """The fields of the LOGFMT line of the file |name| as a dictionary of strings, with 'logfmt' the number: the file
+    identifies itself. A file of the tree without that line is the OSLog text of iOS, and its path tells the phone and
+    the time it was started at; 'logfmt' is then None. LogFormatError for any other file that has no such line, one of
+    a format not in LOG_FORMATS, or one that lacks a field the tools need."""
+    m = LOGFMT_LINE.match(first_line.lstrip('\ufeff').rstrip('\r\n'))
+    if not m:
+        tree = tree_path(name)
+        if tree:
+            return dict(logfmt=None, ms=None, phone=tree.group(1), trip=tree.group(2))
+        hint = ''
+        if re.fullmatch(r'\d{6}(?:-\d+)?\.log', re.split(r'[/\\]', name)[-1], re.I):
+            hint = ('; an OSLog text of iOS is read from logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log: '
+                    'give the logs.zip or the folder')
+        raise LogFormatError('%s: not a log of LOGFMT %s, its first line is not a LOGFMT line (logs of the earlier '
+                             'versions are not read%s)' % (name, ', '.join(map(str, LOG_FORMATS)), hint))
+    if int(m.group(1)) not in LOG_FORMATS:
+        raise LogFormatError('%s: LOGFMT %s is not known, the tools read %s' % (
+            name, m.group(1), ', '.join(map(str, LOG_FORMATS))))
+    header = dict(token.split('=', 1) for token in m.group(2).split())
+    missing = [key for key in HEADER_KEYS if not header.get(key)]
+    if missing:
+        raise LogFormatError('%s: the LOGFMT line has no %s' % (name, ', '.join(missing)))
+    header['logfmt'] = int(m.group(1))
+    return header
+
+
+def header_of(name, data):
+    """parse_header() of the bytes of a file."""
+    return parse_header(name, data[:4096].decode('utf-8', errors='replace').split('\n', 1)[0])
+
+
+def read_header(path):
+    with open(path, 'rb') as f:
+        return header_of(path, f.read(4096))
+
+
+def readable_files(paths):
+    """log_files() without the files of no known format, each skipped with a note on stderr; LogFormatError when none
+    can be read."""
+    result = []
+    errors = []
+    for path in log_files(paths):
+        try:
+            read_header(path)
+            result.append(path)
+        except LogFormatError as e:
+            errors.append(e)
+    if errors and not result:
+        raise errors[0]
+    for e in errors:
+        print(f'Skipped: {e}', file=sys.stderr)
+    return result
+
+
+def files_by_phone(paths):
+    """{phone: [file, …]} of the log files of the paths, a folder with its subfolders; each file's own header tells
+    its phone. A file that can't be placed is skipped as in readable_files()."""
+    result = {}
+    for path in readable_files(paths):
+        result.setdefault(read_header(path)['phone'], []).append(path)
+    return result
 
 
 def parse_time(line, launch, year):
@@ -186,7 +263,14 @@ def main():
     parser.add_argument('--gpx', help='also write the shown and the platform positions as GPX tracks')
     args = parser.parse_args()
 
-    rows = read_rows(log_files(args.logs), args.year)
+    try:
+        by_phone = files_by_phone(args.logs)
+    except LogFormatError as e:
+        parser.error(str(e))
+    if len(by_phone) > 1:
+        parser.error('the logs of %s: give the logs of one phone, their rows and tracks would be mixed'
+                     % ', '.join(sorted(by_phone)))
+    rows = read_rows([path for paths in by_phone.values() for path in paths], args.year)
     columns = FIRST_COLUMNS + list(dict.fromkeys(k for row in rows for k in row if k not in FIRST_COLUMNS))
     out = csv.DictWriter(sys.stdout, columns)
     out.writeheader()

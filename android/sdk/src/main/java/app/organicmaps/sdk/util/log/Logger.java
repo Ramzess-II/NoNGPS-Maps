@@ -205,15 +205,15 @@ public final class Logger
     private final String mData;
     @Nullable
     private final CountDownLatch mFlushLatch;
-    // Not a line: the lines after it go to a new file.
-    private final boolean mStartsFile;
+    // How many times the file was switched when the line was logged: it goes to the file of that switch.
+    private final int mStartFileSeq;
 
-    private LogEntry(@NonNull String logsFolder, @NonNull String data)
+    private LogEntry(@NonNull String logsFolder, @NonNull String data, int startFileSeq)
     {
       mLogsFolder = logsFolder;
       mData = data;
       mFlushLatch = null;
-      mStartsFile = false;
+      mStartFileSeq = startFileSeq;
     }
 
     private LogEntry(@NonNull CountDownLatch flushLatch)
@@ -221,15 +221,7 @@ public final class Logger
       mLogsFolder = null;
       mData = "";
       mFlushLatch = flushLatch;
-      mStartsFile = false;
-    }
-
-    private LogEntry()
-    {
-      mLogsFolder = null;
-      mData = "";
-      mFlushLatch = null;
-      mStartsFile = true;
+      mStartFileSeq = 0;
     }
 
     boolean isFlush()
@@ -252,6 +244,10 @@ public final class Logger
     private final ArrayBlockingQueue<LogEntry> mQueue = new ArrayBlockingQueue<>(QUEUE_CAPACITY);
     @NonNull
     private final AtomicInteger mDroppedCount = new AtomicInteger();
+    // How many times startFile() was called: every line carries the number it was logged at, so whoever writes it
+    // puts it into the file it belongs to.
+    @NonNull
+    private final AtomicInteger mStartFileSeq = new AtomicInteger();
     @NonNull
     private final Object mWriteLock = new Object();
     @NonNull
@@ -272,6 +268,8 @@ public final class Logger
     private long mRetryOpenMs;
     // The size of the open file in chars, which are bytes for the ASCII log.
     private long mFileSize;
+    // The number of the last applied file switch, guarded by mWriteLock.
+    private int mAppliedStartFileSeq;
 
     LogFileWriter()
     {
@@ -282,7 +280,7 @@ public final class Logger
 
     void writeAsync(@NonNull String logsFolder, int level, @NonNull String data)
     {
-      final LogEntry entry = new LogEntry(logsFolder, data);
+      final LogEntry entry = new LogEntry(logsFolder, data, mStartFileSeq.get());
       if (mQueue.offer(entry))
         return;
 
@@ -302,7 +300,15 @@ public final class Logger
       synchronized (mWriteLock)
       {
         // Error logs bypass the async queue so native CHECK/ASSERT messages are persisted
-        // before aborting, even if older debug/info logs are still waiting in the queue.
+        // before aborting, even if older debug/info logs are still waiting in the queue. A file switch since the
+        // last written line is the exception: the queued lines are written first, each one into the file it was
+        // logged for, so this line goes to the new file and not to the one before it.
+        final int startFileSeq = mStartFileSeq.get();
+        if (startFileSeq > mAppliedStartFileSeq)
+        {
+          drainQueueLocked();
+          applyStartFileLocked(startFileSeq);
+        }
         writeDroppedCountLocked(logsFolder);
         writeLineLocked(logsFolder, data);
         flushLocked();
@@ -352,18 +358,10 @@ public final class Logger
 
     void startFile()
     {
-      // In the queue: the lines logged before it are of the file before.
-      final LogEntry entry = new LogEntry();
-      if (mQueue.offer(entry))
-        return;
-      if (mQueue.poll() != null)
-        mDroppedCount.incrementAndGet();
-      if (mQueue.offer(entry))
-        return;
-      synchronized (mWriteLock)
-      {
-        startFileLocked();
-      }
+      // Neither the write lock nor the queue: a drive starts on the UI thread, the lock is held for seconds while
+      // the logs are zipped, and a full queue would drop the switch. Raising the number is enough: every line
+      // logged after this carries it and opens the new file, whichever thread writes the line.
+      mStartFileSeq.incrementAndGet();
     }
 
     void runExclusively(@NonNull Runnable action)
@@ -415,18 +413,32 @@ public final class Logger
           return;
         }
 
-        if (entry.mStartsFile)
-        {
-          startFileLocked();
-          return;
-        }
-
         if (entry.mLogsFolder == null)
           return;
 
+        applyStartFileLocked(entry.mStartFileSeq);
         writeDroppedCountLocked(entry.mLogsFolder);
         writeLineLocked(entry.mLogsFolder, entry.mData);
       }
+    }
+
+    // The queued entries in their order, each into the file it was logged for.
+    private void drainQueueLocked()
+    {
+      LogEntry entry;
+      while ((entry = mQueue.poll()) != null)
+        processEntry(entry);
+    }
+
+    // Switches the file if the line to write was logged after a switch that is not applied yet. A line logged
+    // before it is not written back to the file before: the file switches forward only.
+    private void applyStartFileLocked(int startFileSeq)
+    {
+      if (startFileSeq <= mAppliedStartFileSeq)
+        return;
+
+      startFileLocked();
+      mAppliedStartFileSeq = startFileSeq;
     }
 
     private void writeDroppedCountLocked(@NonNull String logsFolder)

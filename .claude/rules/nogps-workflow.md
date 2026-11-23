@@ -45,7 +45,12 @@ the same time its own worktree made by `tools/unix/nogps_worktree.sh`:
 - `remove <path>` refuses a worktree with uncommitted changes. It deletes the branch when all its commits are on a
   remote and it is merged or was never pushed. `list` shows the worktrees and the size of their build dirs.
 - The first build in a new worktree is mostly ccache hits once ccache is set up on the machine:
-  `ccache --set-config base_dir=<ws>`, `hash_dir=false` and `max_size=20G`. `add` warns when they aren't set.
+  `ccache --set-config base_dir=<ws>`, `hash_dir=false` and `max_size=20G`. `add` warns when they aren't set. Also
+  keep `cache_dir` out of `~/Library/Caches` (macOS reclaims it on a full disk): `mkdir -p ~/.cache`,
+  `mv <old cache_dir> ~/.cache/ccache` when that directory exists (ccache creates it at the first compilation) and
+  `ccache --set-config cache_dir="$HOME/.cache/ccache"` in any case. Not `~/.ccache`:
+  that directory makes ccache read its legacy config file `~/.ccache/ccache.conf` instead and lose the three
+  settings above. `add` warns about the cache_dir too.
 - Build iOS in the main checkout: Xcode's DerivedData is per path, so a worktree builds it from scratch.
 - Claude Code's `--worktree`, EnterWorktree and `isolation: "worktree"` use the script through hooks in
   `.claude/settings.local.json` of the folder you start Claude in (drop `app/` from the path when that is `app/`):
@@ -78,11 +83,11 @@ them such a PR says "Not replayed".
 
 ## Merge train
 
-`/nogps-merge [<PR numbers>] [--no-roll] [--rounds N] [--slots N] [--dry]` lands the open PRs of this repo. It runs
-the issue roller first, unless `--no-roll` or PR numbers are given, then splits what is left into two sets and takes
-each PR through: merge current master into the PR branch and push, review with Fable which posts its findings on the
-PR, fix with Opus which replies on the same PR, review again, and merge with a merge commit once a review comes back
-clean and CI is green. Up to `--rounds` rounds (default 3).
+`/nogps-merge [<PR numbers>] [--no-roll] [--rounds N] [--slots N] [--dry]` lands the open PRs of both repos. It
+runs the issue roller first, unless `--no-roll` or PR numbers are given, then splits what is left into two sets and
+takes each PR through: merge the PR's own default branch into it and push, review with Fable which posts its
+findings on the PR, fix with Opus which replies on the same PR, review again, and merge with a merge commit once a
+review comes back clean and CI is green. Up to `--rounds` rounds (default 3).
 
 Only the merge is serial. The PRs whose files no other queued PR touches and that are in no dependency chain with
 one are prepped in parallel, up to `--slots` of them at once (default 4), each in its own worktree
@@ -107,8 +112,14 @@ session and for an agent, and a push that would need a force is a reason to stop
 A PR it can't land stays open and the train goes on to the next one: a merge conflict that isn't plain, a failing
 check, findings still open after the last round. It never takes a PR with a commit of anyone but koloboid or
 Ramzess-II, one waiting for the other person's review, one from a fork, or one whose branch is checked out in the
-main checkout or a worktree -- the train would push commits under the session working there. Firmware PRs are not
-in the train, which works in one repo (#504); both of us can merge them by hand.
+main checkout or a worktree -- the train would push commits under the session working there.
+
+The train lands the PRs of both repos: each PR of its queue carries its repo, and a firmware PR is prepped in a
+worktree of `firmware/` whose name ends in `-fw`, off `origin/main` (that repo has no `master`). `ELMandIMU` runs
+no CI, so the gate's `idf.py build` of the PR merged into `main` is the only check it gets; the worktree needs
+`keys/` linked and `sdkconfig` copied from the main checkout, both gitignored there, or the build is unsigned or
+built for the wrong chip. Two PRs that touch `iphone/` or `xcode/` are never prepped at once: nothing in the train
+builds iOS, so only one of them goes into the parallel set.
 
 ## Versions
 

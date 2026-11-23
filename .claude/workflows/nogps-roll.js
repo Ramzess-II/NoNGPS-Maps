@@ -51,14 +51,15 @@ git -C ${FW} worktree remove <path> for firmware.`
 // Replay on macOS: the skill passes args.maps and args.settings only when this machine has them.
 const REPLAY_RULES = REPLAY
   ? `A change to how the mark moves is replayed, not postponed: this machine replays the recorded trips. \
-Maps: ${MAPS}, settings: ${SETTINGS}. Logs, <logs> below: the day files at the top of ${LOGS} (${LOGS}/*.log) when \
-there are some, else the folder ${LOGS}/<phone> of the Android phone with the most days: the script reads a folder \
-with its subfolders, logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, and the lines of two phones must not be mixed. Build \
+Maps: ${MAPS}, settings: ${SETTINGS}. Logs, <logs> below: the folder ${LOGS}. The script reads it with its \
+subfolders and takes the files of the tree logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, skipping the files of the \
+earlier versions with a note; it drives each phone apart, into <folder>/<phone>. Build \
 the tool as the docstring of tools/python/nogps_replay.py says, in <worktree>/build-<name>-o2: first from the worktree before your change (copy the binary to \
 nogps_replay_tool.before), then after it. Drive the days of both with nogps_replay.py run <logs> --tool <tool> \
 --data_path ${MAPS} --settings ${SETTINGS} -j 3 -o <folder in the scratchpad>. Put both tables, the held-out days \
 and the others apart, into "tested". Fix a rule that is worse on the held-out days, or postpone when the numbers \
-don't settle what to change. Say "Not replayed" only when the tool fails to build or run, and why.`
+don't settle what to change. Say "Not replayed" only when the tool fails to build or run, or ${LOGS} holds no \
+file of that tree, and why.`
   : `This run has no replay data (args.maps, args.settings): a change to how the mark moves is replayed by nobody, \
 so its PR says "Not replayed".`
 

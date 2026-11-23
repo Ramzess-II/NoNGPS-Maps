@@ -105,3 +105,43 @@ final class MapControlsPanelTests: XCTestCase {
     XCTAssertFalse(pill.point(inside: CGPoint(x: 120, y: 10), with: nil))
   }
 }
+
+final class ZoomSlideTests: XCTestCase {
+  func testFactorFollowsDistance() {
+    XCTAssertEqual(ZoomSlide.factor(slide: 0, frameHeight: 1000), 1, accuracy: 1e-9)
+    XCTAssertEqual(ZoomSlide.factor(slide: 1000, frameHeight: 1000), exp(ZoomSlide.gain), accuracy: 1e-9)
+    // Up zooms in, down zooms out, by the same amount.
+    let up = ZoomSlide.factor(slide: 300, frameHeight: 1000)
+    XCTAssertEqual(ZoomSlide.factor(slide: -300, frameHeight: 1000), 1 / up, accuracy: 1e-9)
+  }
+
+  func testSlideSplitInStepsZoomsAsOneSlide() {
+    // The same finger travel zooms the same on a 60 Hz and a 120 Hz panel.
+    let coarse = ZoomSlide()
+    coarse.start(at: 0)
+    let twoMoves = coarse.step(to: 100, frameHeight: 800) * coarse.step(to: 200, frameHeight: 800)
+    let fine = ZoomSlide()
+    fine.start(at: 0)
+    var manyMoves = CGFloat(1)
+    for i in 1 ... 20 {
+      manyMoves *= fine.step(to: CGFloat(i) * 10, frameHeight: 800)
+    }
+    XCTAssertEqual(manyMoves, twoMoves, accuracy: 1e-9)
+    XCTAssertEqual(manyMoves, ZoomSlide.factor(slide: 200, frameHeight: 800), accuracy: 1e-9)
+  }
+
+  func testRestingFingerHoldsTheZoom() {
+    let slide = ZoomSlide()
+    // The zoom counts from where the slide became a zoom: the first move does not jump.
+    slide.start(at: 24)
+    XCTAssertEqual(slide.step(to: 24, frameHeight: 800), 1)
+    XCTAssertEqual(slide.step(to: 100, frameHeight: 800), ZoomSlide.factor(slide: 76, frameHeight: 800),
+                   accuracy: 1e-9)
+    // The same finger position reported again zooms no further, whatever the rate of the touch events.
+    XCTAssertEqual(slide.step(to: 100, frameHeight: 800), 1)
+    XCTAssertEqual(slide.step(to: 100, frameHeight: 800), 1)
+    // The finger comes back: the zoom goes back with it.
+    XCTAssertEqual(slide.step(to: 24, frameHeight: 800), 1 / ZoomSlide.factor(slide: 76, frameHeight: 800),
+                   accuracy: 1e-9)
+  }
+}
