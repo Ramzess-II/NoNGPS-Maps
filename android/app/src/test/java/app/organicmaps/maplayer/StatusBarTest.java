@@ -78,6 +78,16 @@ public class StatusBarTest
     assertFalse(look.pulsing);
   }
 
+  // Bluetooth off matters more than the lockout: the box would not be heard after it is plugged back in.
+  @Test
+  public void batteryLockedBoxWithBluetoothOffShowsIt()
+  {
+    final StatusBar.Look look = StatusBar.getBoxLook(boxStatus(SourceState.BOX_BATTERY_LOCK, BleState.DISABLED));
+    assertEquals(R.drawable.ic_nogps_bluetooth_off, look.icon);
+    assertFalse(look.pulsing);
+    assertEquals(0, look.badge);
+  }
+
   // Bluetooth off matters more than the sleep: the box would not be found when it wakes.
   @Test
   public void sleepingBoxWithBluetoothOffShowsIt()

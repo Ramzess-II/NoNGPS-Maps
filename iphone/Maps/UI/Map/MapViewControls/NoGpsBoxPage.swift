@@ -491,11 +491,21 @@ final class NoGpsBoxPage: MWMTableViewController {
     case .obdError: return L("nogps_elm_error")
     case .noCarData: return L("nogps_elm_no_car")
     case .boxSleeping: return L("nogps_box_sleeping") + " · " + boxSearchText(status)
-    case .boxBatteryLock: return L("nogps_box_battery_lock")
+    // A locked-out box comes back only after it is unplugged, and a phone that can't reach it says so too.
+    case .boxBatteryLock:
+      return L("nogps_box_battery_lock") + (isBoxSearched(status) ? "" : " · " + boxSearchText(status))
     case .obdSleeping: return L("nogps_box_obd_sleeping")
     case .connected: return L("nogps_elm_connected")
     case .updating: return L("nogps_box_updating")
     @unknown default: return L("nogps_unknown")
+    }
+  }
+
+  /// The phone looks for the box, or waits for it: Bluetooth is on and the box doesn't have to be paired again.
+  private static func isBoxSearched(_ status: NoGpsStatus) -> Bool {
+    switch status.bleState {
+    case .off, .noPermission, .disabled, .pairingFailed, .bondLost: return false
+    default: return true
     }
   }
 
