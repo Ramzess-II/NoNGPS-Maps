@@ -62,6 +62,9 @@ public:
   static int64_t constexpr kCarReplyTimeoutMs = 5000;
   // The list of the phones is asked again because of BUSY or an event not more often than this.
   static int64_t constexpr kListIntervalMs = 2000;
+  // The box answers AUTH at once: a command without a reply is sent again, this many times in all.
+  static int64_t constexpr kAuthReplyTimeoutMs = 2000;
+  static int constexpr kMaxAuthSends = 5;
 
   /// What the box does about a new phone, see StartAddPhone().
   enum class AddPhone
@@ -145,6 +148,12 @@ public:
   void CancelUpdate() { m_update.Cancel(); }
   Esp32Update const & GetUpdate() const { return m_update; }
 
+  /// \returns true if the box has proved itself in this connection, or has not to: its lines are taken. Before that
+  /// only its answer to AUTH and its info are, see OnUnprovenLine().
+  bool IsBoxProven() const { return m_proven; }
+  /// \returns true if the box has failed to prove itself: its lines are not taken until the link is made again.
+  bool IsBoxRefused() const { return m_authRefused; }
+
   /// \returns true if the box is connected and keeps the values of its car, see BoxCarValues.
   bool CanStoreCarValues() const;
   /// Reads the values of the car one by one: the listener gets all of them, or nothing if the box refuses one or the
@@ -205,6 +214,13 @@ private:
   void SendFirmwarePiece(std::string const & piece) override;
 
   void OnLine(std::string_view text);
+  void OnUnprovenLine(esp32::Fields const & fields);
+  void OnAuthInfo(esp32::Fields const & fields);
+  void SendAuth();
+  void OnAuthReply(esp32::Reply const & reply);
+  void RefuseBox(std::string const & reason);
+  std::string NewAuthHex(size_t bytes) const;
+  void ForgetAuth();
   void SendHello();
   void Send(std::string_view command, int id);
   void OnData(esp32::Data const & data);
@@ -281,6 +297,26 @@ private:
   // that tell the result.
   std::optional<int64_t> m_calibrationLinkLostMs;
   std::optional<int64_t> m_calibratedMs;
+
+  // The box proves itself when a connection starts (spec 9.2): it answers AUTH with the proof of the key of its car, or
+  // takes a new key with AUTH_SET if the phone has none. Its lines are dropped until then, only its info is kept.
+  bool m_mustProve = false;
+  bool m_proven = true;
+  bool m_authRefused = false;
+  // The info of the box heard before the proof: it is taken when the box has proved itself.
+  std::optional<esp32::Fields> m_unprovenInfo;
+  // The command waiting for its reply, 0 if none.
+  int m_authId = 0;
+  int m_authSends = 0;
+  int64_t m_authSentMs = 0;
+  // The car of the box, kept while the connection lasts: the box has given this id in its info, and the proof is of
+  // it. Its key is the one that proves the box, or the new one the box is given.
+  std::string m_authCar;
+  std::string m_authKey;
+  std::string m_authNonce;
+  bool m_authSetsKey = false;
+  // The box may not have the key, see CarStorage::kAuthKeyUnconfirmed: it is given it again when it says it has none.
+  bool m_authKeyUnconfirmed = false;
 
   PeerSync m_peer;
   std::optional<esp32::Info> m_info;
