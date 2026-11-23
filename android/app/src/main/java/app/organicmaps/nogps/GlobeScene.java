@@ -300,7 +300,10 @@ final class GlobeScene
       return BEAM_NONE;
     final double[] s = satellite(i);
     final double[] c = car();
-    if (s[0] * c[0] + s[1] * c[1] + s[2] * c[2] <= 0)
+    // The horizon of the car is the plane tangent to the Earth at it, and the unit is the Earth radius: a satellite
+    // above the horizon lies further than one radius along the car. The hemisphere of the car is not enough -- a
+    // satellite behind the Earth disc is in it and the beam would cross the disc.
+    if (s[0] * c[0] + s[1] * c[1] + s[2] * c[2] <= 1)
       return BEAM_NONE;
     return isCarJammed() ? BEAM_BROKEN : BEAM_REACHES;
   }

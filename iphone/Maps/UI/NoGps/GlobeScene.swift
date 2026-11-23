@@ -221,8 +221,11 @@ final class GlobeScene {
   }
 
   /// The line from satellite i to the car: none below the horizon of the car or when it is off, broken when jammed.
+  /// The horizon of the car is the plane tangent to the Earth at it, and the unit is the Earth radius: a satellite
+  /// above the horizon lies further than one radius along the car. The hemisphere of the car is not enough -- a
+  /// satellite behind the Earth disc is in it and the beam would cross the disc.
   func beam(_ i: Int) -> Beam {
-    guard on[i], simd_dot(satellite(i), car) > 0 else { return .none }
+    guard on[i], simd_dot(satellite(i), car) > 1 else { return .none }
     return isCarJammed ? .broken : .reaches
   }
 

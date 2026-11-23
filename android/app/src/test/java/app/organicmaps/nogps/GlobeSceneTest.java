@@ -229,7 +229,7 @@ public class GlobeSceneTest
     int none = 0;
     for (int i = 0; i < GlobeScene.SATELLITES; i++)
     {
-      final boolean above = dot(mScene.satellite(i), car) > 0;
+      final boolean above = dot(mScene.satellite(i), car) > 1;
       final int beam = mScene.beam(i);
       if (above)
       {
@@ -248,13 +248,35 @@ public class GlobeSceneTest
     // A switched-off satellite above the horizon has no beam.
     for (int i = 0; i < GlobeScene.SATELLITES; i++)
     {
-      if (dot(mScene.satellite(i), car) > 0)
+      if (dot(mScene.satellite(i), car) > 1)
       {
         mScene.toggle(i);
         assertEquals(GlobeScene.BEAM_NONE, mScene.beam(i));
         return;
       }
     }
+  }
+
+  @Test
+  public void aSatelliteBehindTheEarthHasNoBeam()
+  {
+    // The idle spin carries the car towards the limb: a satellite hidden by the disc must never get a beam over it.
+    mScene.faceJam();
+    int hidden = 0;
+    for (int frame = 0; frame < 7500; frame++)
+    {
+      mScene.step(16);
+      if (mScene.car()[2] <= 0)
+        continue;
+      for (int i = 0; i < GlobeScene.SATELLITES; i++)
+      {
+        if (!mScene.isHidden(mScene.satellite(i)))
+          continue;
+        hidden++;
+        assertEquals(GlobeScene.BEAM_NONE, mScene.beam(i));
+      }
+    }
+    assertTrue(hidden > 0);
   }
 
   @Test

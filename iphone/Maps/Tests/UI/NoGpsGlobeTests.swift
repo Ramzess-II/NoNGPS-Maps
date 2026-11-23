@@ -147,7 +147,7 @@ final class NoGpsGlobeTests: XCTestCase {
     var beams = 0
     var none = 0
     for i in 0 ..< Scene.satellites {
-      if simd_dot(scene.satellite(i), car) > 0 {
+      if simd_dot(scene.satellite(i), car) > 1 {
         XCTAssertEqual(scene.beam(i), .broken)
         beams += 1
       } else {
@@ -158,9 +158,24 @@ final class NoGpsGlobeTests: XCTestCase {
     XCTAssertGreaterThan(beams, 0)
     XCTAssertGreaterThan(none, 0)
     // A switched-off satellite above the horizon has no beam.
-    let above = try XCTUnwrap((0 ..< Scene.satellites).first { simd_dot(scene.satellite($0), car) > 0 })
+    let above = try XCTUnwrap((0 ..< Scene.satellites).first { simd_dot(scene.satellite($0), car) > 1 })
     scene.toggle(above)
     XCTAssertEqual(scene.beam(above), .none)
+  }
+
+  func testASatelliteBehindTheEarthHasNoBeam() {
+    // The idle spin carries the car towards the limb: a satellite hidden by the disc must never get a beam over it.
+    scene.faceJam()
+    var hidden = 0
+    for _ in 0 ..< 7500 {
+      scene.step(dtMs: 16)
+      guard scene.car.z > 0 else { continue }
+      for i in 0 ..< Scene.satellites where scene.isHidden(scene.satellite(i)) {
+        hidden += 1
+        XCTAssertEqual(scene.beam(i), .none)
+      }
+    }
+    XCTAssertGreaterThan(hidden, 0)
   }
 
   func testCarStaysInTheJammedAreaWhateverTheRotation() {
