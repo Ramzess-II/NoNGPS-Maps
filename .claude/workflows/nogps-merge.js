@@ -40,6 +40,16 @@ const slotName = (i) => `merge-${i}`
 const pending = [...(A.parallel || [])]
 const taken = new Set(pending.map((pr) => pr.number))
 const serial = (A.serial || A.queue || []).filter((pr) => !taken.has(pr.number))
+
+// Nothing in the train builds iOS: the gate leaves iphone/ and xcode/ to each PR's own CI, and that ran before the
+// other PRs of the parallel set landed. Disjoint files are not disjoint code -- a method changed in MWMNoGps.h, its
+// caller in a Swift file the other PR never touches -- so a pair that breaks only the iOS build would land and
+// leave master red. At most one PR that touches iOS is prepped at a time; the rest go to the front of the serial
+// set, where each is reviewed on the master the one before it made.
+const touchesIos = (pr) => (pr.files || []).some((f) => f.startsWith('iphone/') || f.startsWith('xcode/'))
+const movedIos = pending.filter(touchesIos).slice(1)
+movedIos.forEach((pr) => pending.splice(pending.indexOf(pr), 1))
+serial.unshift(...movedIos)
 const SLOTS = pending.length ? Math.max(1, Math.min(A.slots ?? 4, pending.length)) : 0
 const NAMES = [GATE, ...Array.from({ length: SLOTS }, (_, i) => slotName(i + 1))]
 const STEPS = Math.max(SLOTS, 1) // steps of the train running at once: one per prep slot, or the single serial one
@@ -517,6 +527,9 @@ async function worker(name) {
 
 log(`${pending.length} PRs prepped in parallel in up to ${SLOTS} slots, ${serial.length} one at a time, \
 up to ${ROUNDS} rounds each`)
+if (movedIos.length)
+  log(`${movedIos.map((pr) => '#' + pr.number).join(', ')} moved to the serial set: nothing builds iOS, so two \
+PRs that touch iphone/ or xcode/ are never prepped at once`)
 phase('Setup')
 const setup = await agent(setupPrompt(), { label: 'setup', phase: 'Setup', effort: 'low', schema: SETUP_SCHEMA })
 if (!setup || !setup.ok)
