@@ -3949,7 +3949,10 @@ UNIT_TEST(NoGps_Engine_ThisPhoneRemovedFromBox)
   env.m_engine.ForgetBoxPhone("BC:D0:74:A9:71:92");
   auto const forget = last();
   TEST_EQUAL(forget[2], "BT_FORGET", ());
+  CarStorage cars(env.m_storage);
+  cars.SetCarValue("C47D", CarStorage::kCarAuthKey, "00112233445566778899aabbccddeeff");
   env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + forget[1] + ",OK"));
+  TEST(cars.GetCarValue("C47D", CarStorage::kCarAuthKey).value_or("").empty(), ());
   // The platform forgets the car after the box has been read.
   TEST(!env.m_delegate.HasEvent(Event::ThisPhoneRemoved), ());
   env.m_clock.Advance(1);

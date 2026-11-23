@@ -1149,7 +1149,10 @@ void Engine::OnBoxCarWritten(std::string const & key, std::string const & value,
 
 void Engine::OnThisPhoneRemoved()
 {
-  LOG(LINFO, ("This phone is removed from the box of the car", m_cars.GetCurrentCar()));
+  auto const car = m_cars.GetCurrentCar();
+  LOG(LINFO, ("This phone is removed from the box of the car", car));
+  // The box has dropped its key of this phone with the record: the next session gives it a new one.
+  m_cars.SetCarValue(car, CarStorage::kCarAuthKey, "");
   m_phoneRemovedTimer.Start(0, [this] { m_delegate.OnEvent(Event::ThisPhoneRemoved); });
 }
 
