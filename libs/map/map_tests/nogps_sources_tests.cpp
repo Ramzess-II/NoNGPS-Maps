@@ -929,6 +929,27 @@ UNIT_TEST(NoGps_Esp32Source_ListsAndForgetsPhones)
   TEST_GREATER(box.SentCount(), asked, ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_LostListReplyIsAskedAgain)
+{
+  PhonesBox box;
+  box.List();
+  TEST(!box.m_source.IsReadOnly(), ());
+
+  // The other phone leaves, the list is asked and its reply is lost.
+  box.Line("NGE,1,0,1000,I,PHONE_LOST,D0:56:FB:11:00:88");
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  size_t const asked = box.SentCount();
+  box.m_clock.Advance(Esp32Source::kCarReplyTimeoutMs + Esp32Source::kHelloIntervalMs);
+  size_t lists = 0;
+  for (size_t i = asked; i < box.SentCount(); ++i)
+    lists += box.m_delegate.m_esp32BleSent[i].find(",BT_LIST*") != std::string::npos ? 1 : 0;
+  TEST_EQUAL(lists, 1, ());
+
+  // The second reply comes and the role follows it.
+  box.List(false);
+  TEST(box.m_source.IsReadOnly(), ());
+}
+
 UNIT_TEST(NoGps_Esp32Source_AddsPhoneWithCode)
 {
   PhonesBox box;

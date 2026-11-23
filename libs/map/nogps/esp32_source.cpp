@@ -94,11 +94,14 @@ void Esp32Source::SendHello()
     LOG(LWARNING, ("No reply to the reading of", m_carRead->m_keys.front()));
     m_carRead.reset();
   }
-  // A lost reply doesn't keep the phones from being asked again.
+  // A lost reply doesn't keep the phones from being asked again. With a list known, its role may be stale:
+  // ask at once, the next hello asks again when this one is lost too.
   if (m_listId != 0 && m_clock.NowMs() - m_listSentMs > kCarReplyTimeoutMs)
   {
     LOG(LWARNING, ("No reply to the list of the phones"));
     m_listId = 0;
+    if (m_phones)
+      ListPhones();
   }
   // The box may have dropped the command: the list is asked again, the code is not kept.
   if (m_addPhone && m_addPhone->m_state == AddPhone::Opening &&
