@@ -6,6 +6,7 @@ final class AboutNoGpsController: MWMViewController {
     static let versionSpacing: CGFloat = 4
     static let stackSpacing: CGFloat = 15
     static let stackInset: CGFloat = 20
+    static let hintSpacing: CGFloat = 2
     static let osmCopyrightURL = URL(string: "https://www.openstreetmap.org/copyright")!
   }
 
@@ -16,6 +17,10 @@ final class AboutNoGpsController: MWMViewController {
   private let versionLabel = UILabel()
   private let upstreamVersionLabel = UILabel()
   private let headlineLabel = UILabel()
+  private let globeView = GlobeSceneView()
+  private let globeHintLabel = UILabel()
+  private let globeCountLabel = UILabel()
+  private let globeJammedLabel = UILabel()
   private let descriptionLabel = UILabel()
   /// A text view, not a label: both names of the credit are links of their own.
   private let mapDataTextView = UITextView()
@@ -76,6 +81,8 @@ private extension AboutNoGpsController {
     headlineLabel.textAlignment = .center
     headlineLabel.numberOfLines = 0
 
+    setupGlobe()
+
     descriptionLabel.setFontStyle(.regular16, color: .blackPrimary)
     descriptionLabel.text = L("nogps_about_description")
     descriptionLabel.numberOfLines = 0
@@ -90,6 +97,22 @@ private extension AboutNoGpsController {
     }
     linksView.addButton(title: L("report_a_bug")) {
       MailComposer.sendBugReportWith(title: "NonGPS Maps Bug Report")
+    }
+  }
+
+  /// The Earth and the GPS constellation the finger can spin, with what is left of them under it.
+  func setupGlobe() {
+    globeHintLabel.setFontStyle(.regular13, color: .blackSecondary)
+    globeHintLabel.text = L("nogps_about_globe_hint")
+    globeCountLabel.setFontStyle(.semibold14, color: .blackPrimary)
+    globeJammedLabel.setFontStyle(.regular13, color: .blackSecondary)
+    globeJammedLabel.text = L("nogps_about_globe_jammed")
+    for label in [globeHintLabel, globeCountLabel, globeJammedLabel] {
+      label.textAlignment = .center
+      label.numberOfLines = 0
+    }
+    globeView.onSatellitesChanged = { [weak self] on, total in
+      self?.globeCountLabel.text = String(format: L("nogps_about_globe_sats"), on, total)
     }
   }
 
@@ -126,6 +149,12 @@ private extension AboutNoGpsController {
     stackView.setCustomSpacing(Constants.versionSpacing, after: appNameLabel)
     stackView.setCustomSpacing(Constants.versionSpacing, after: versionLabel)
     stackView.addArrangedSubview(headlineLabel)
+    stackView.addArrangedSubview(globeView)
+    stackView.addArrangedSubview(globeHintLabel)
+    stackView.addArrangedSubview(globeCountLabel)
+    stackView.addArrangedSubview(globeJammedLabel)
+    stackView.setCustomSpacing(Constants.hintSpacing, after: globeView)
+    stackView.setCustomSpacing(Constants.hintSpacing, after: globeHintLabel)
     stackView.addArrangedSubview(descriptionLabel)
     stackView.addArrangedSubview(mapDataTextView)
     stackView.addArrangedSubview(linksView)
@@ -136,6 +165,10 @@ private extension AboutNoGpsController {
     stackView.translatesAutoresizingMaskIntoConstraints = false
     logoImageView.translatesAutoresizingMaskIntoConstraints = false
     headlineLabel.translatesAutoresizingMaskIntoConstraints = false
+    globeView.translatesAutoresizingMaskIntoConstraints = false
+    globeHintLabel.translatesAutoresizingMaskIntoConstraints = false
+    globeCountLabel.translatesAutoresizingMaskIntoConstraints = false
+    globeJammedLabel.translatesAutoresizingMaskIntoConstraints = false
     descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
     mapDataTextView.translatesAutoresizingMaskIntoConstraints = false
     linksView.translatesAutoresizingMaskIntoConstraints = false
@@ -158,6 +191,11 @@ private extension AboutNoGpsController {
       logoImageView.widthAnchor.constraint(equalTo: logoImageView.heightAnchor),
 
       headlineLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
+      globeView.widthAnchor.constraint(equalTo: stackView.widthAnchor),
+      globeView.heightAnchor.constraint(equalToConstant: GlobeScene.sceneHeightPt),
+      globeHintLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
+      globeCountLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
+      globeJammedLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       descriptionLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       mapDataTextView.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       linksView.widthAnchor.constraint(equalTo: stackView.widthAnchor),

@@ -1170,6 +1170,12 @@
     <!-- Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on -->
     <string name="nogps_about_om_menu">About Organic Maps</string>
     <string name="nogps_about_headline">Navigation when GPS is jammed or spoofed</string>
+    <!-- About NonGPS Maps, under the globe with the GPS satellites that the finger spins -->
+    <string name="nogps_about_globe_hint">Drag the Earth, tap a satellite to switch it off.</string>
+    <!-- About NonGPS Maps, under the globe: the car stands in the jammed area -->
+    <string name="nogps_about_globe_jammed">Inside the jammed area not one of them reaches the car.</string>
+    <!-- About NonGPS Maps, under the globe: %1$d is how many satellites are on, %2$d how many there are -->
+    <string name="nogps_about_globe_sats">%1$d of %2$d satellites on</string>
     <string name="nogps_about_description">Without GPS the car is driven by the inertial navigation: the turns come from the gyroscope, the distance from the car speed via OBD-II. The car is kept on the roads of the offline map.</string>
     <!-- NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) -->
     <string name="nogps_version">Version %s</string>
