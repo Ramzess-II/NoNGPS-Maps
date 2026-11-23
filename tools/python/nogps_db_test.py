@@ -54,6 +54,25 @@ GOOD = [
 ]
 
 
+# A second run of the engine in one file: the application went to the background and came back 10 minutes later.
+RESTARTED = [
+    HEADER,
+    core('Start', 'ACTION start ms=%d Start' % (T0 + 100)),
+    trip(T0 + 110),
+    trip(T0 + 1110),
+    core('Stop', 'ACTION stop ms=%d Stop' % (T0 + 1200)),
+    core('Start', 'ACTION start ms=%d Start' % (T0 + 600_000)),
+    core('LogMapsVersion', 'MAPS ms=%d version=261101,260714' % (T0 + 600_001)),
+    core('LogCalibration', 'CALIBRATION ms=%d car=C47D scale=1.04' % (T0 + 600_001)),
+    core('RestoreCarPosition', 'ACTION restore_car ms=%d The car is where it was left = ms::LatLon(10.0, 20.0)'
+         % (T0 + 600_002)),
+    core('SetGpsDisabled', 'ACTION gps_off ms=%d disabled=1 by=restore GPS ignored = 1' % (T0 + 600_002)),
+    core('LogStateChanges', 'EVENT position_source ms=%d Position source = INERTIAL' % (T0 + 600_004)),
+    trip(T0 + 600_005),
+    trip(T0 + 601_005),
+]
+
+
 def write(folder, name, lines):
     path = os.path.join(folder, *name.split('/'))
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -127,6 +146,21 @@ class ImportTest(unittest.TestCase):
         self.assertEqual(sorted(r[0] for r in conn.execute('SELECT tag FROM note')), ['BOXACC', 'MAPS'])
         # The lines before the first TRIP and in the pause belong to the first trip and the line after it.
         self.assertEqual({r[0] for r in conn.execute('SELECT trip_id FROM action')}, {trips[0]['id']})
+
+    def test_lines_of_a_second_start_belong_to_its_trip(self):
+        """The lines Engine::Start writes a few ms before the first TRIP line of its run belong to that trip."""
+        self.run_import(RESTARTED)
+        conn = self.db()
+        trips = conn.execute('SELECT * FROM trip ORDER BY id').fetchall()
+        self.assertEqual([(t['started_ms'], t['ended_ms']) for t in trips],
+                         [(T0 + 110, T0 + 1110), (T0 + 600_005, T0 + 601_005)])
+        first, second = trips[0]['id'], trips[1]['id']
+        self.assertEqual([(r['kind'], r['trip_id']) for r in conn.execute('SELECT * FROM action ORDER BY ms')],
+                         [('start', first), ('stop', first), ('start', second), ('restore_car', second),
+                          ('gps_off', second)])
+        self.assertEqual(conn.execute('SELECT trip_id FROM calibration').fetchone()[0], second)
+        self.assertEqual(conn.execute('SELECT trip_id FROM event').fetchone()[0], second)
+        self.assertEqual(conn.execute("SELECT trip_id FROM note WHERE tag = 'MAPS'").fetchone()[0], second)
 
     def test_reimport_replaces(self):
         self.run_import(GOOD)

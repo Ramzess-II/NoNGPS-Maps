@@ -15,8 +15,9 @@ yet, so the tables below do not have them.
 Tables (times are unix ms, UTC, as the core writes them):
   file        one row per log file: the LOGFMT line, the maps (the first MAPS line)
   trip        a run of TRIP lines without a pause of TRIP_SPLIT_S; the other lines belong to the trip they were
-              written in, the ones before the first trip to the first one. in_check_set and check_reason are filled
-              by the check set query, not by the import
+              written in (trip_starts(): the lines a second Engine::Start writes in one file belong to the trip of
+              that run, a little before its started_ms), the ones before the first trip to the first one.
+              in_check_set and check_reason are filled by the check set query, not by the import
   sample      a TRIP line: the shown position, the state of the core and of the box (TRIP_COLUMNS)
   fix         the positions of the platform of a TRIP line: gps (satellites only), fused, net
   sensor      ACC, ACCB (the accelerometers: v1..v3 the mean acceleration, v4 the jolt) and GYRO (v1 the rotation
@@ -345,6 +346,26 @@ def split_trips(trip_ms):
     return runs
 
 
+def trip_starts(lines, bounds):
+    """The time the lines of each trip begin at, for the |bounds| (first and last TRIP line) of the trips of a file.
+    A trip of a second run of the engine in one file -- the application went to the background and came back -- is
+    preceded by the lines Engine::Start writes a few milliseconds before the first TRIP line of the run: ACTION
+    start, MAPS, CALIBRATION, restore_car, gps_off by=restore and the first EVENT of the run. They belong to that
+    trip, so it begins at its ACTION start when there is one after the trip before. The tail of a trip -- its stop
+    and what follows it in the pause -- stays with it, and the first trip takes everything before it."""
+    starts = []
+    for i, (first, _) in enumerate(bounds):
+        begin = first
+        if i:
+            previous_end = bounds[i - 1][1]
+            opened = [line.ms for line in lines
+                      if line.tag == 'ACTION' and line.name == 'start' and previous_end < line.ms <= first]
+            if opened:
+                begin = min(opened)
+        starts.append(begin)
+    return starts
+
+
 def read_file(path, data, header):
     """The mapped lines of a file: ImportError_ with the file and the line number for the first that can't be."""
     lines = []
@@ -396,7 +417,7 @@ def insert_file(conn, path, data, phone, day, imported_at):
         moving = [0.0]
     trip_ids = [conn.execute('INSERT INTO trip(file_id, started_ms, ended_ms, moving_s) VALUES (?,?,?,?)',
                              (file_id, start, end, m)).lastrowid for (start, end), m in zip(bounds, moving)]
-    starts = [start for start, _ in bounds]
+    starts = trip_starts(lines, bounds)
 
     def trip_of(ms):
         i = max(0, sum(s <= ms for s in starts) - 1)
