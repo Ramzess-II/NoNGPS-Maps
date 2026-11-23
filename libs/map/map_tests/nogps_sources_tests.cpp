@@ -758,6 +758,30 @@ UNIT_TEST(NoGps_Esp32Source_BatteryLockedBox)
   TEST_NOT_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_ReplayedBootKeepsBatteryLock)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxDataLine(1, 9000, 0, 0, esp32::kFlagImuOk));
+  // The lock is the first event the phone hears, so the journal of this power-on is asked and replayed after it: its
+  // BOOT is older than the lock.
+  source.OnBleBytes(BoxLine("NGE,1,9,9500,W,BATT_LOCK,10800 mV"));
+  source.OnBleBytes(BoxLine("NGE,1,1,100,I,BOOT,fw 0.3.3 reset POWERON"));
+  source.OnBleBytes(BoxLine("NGE,1,2,200,I,WIFI_ON,engine on 12900 mV"));
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+  TEST_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
+
+  // The box is plugged back in: the BOOT of the new power-on drops the hint before any data.
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxLine("NGE,1,1,100,I,BOOT,fw 0.3.3 reset POWERON"));
+  TEST_NOT_EQUAL(source.GetState(), SourceState::BoxBatteryLock, ());
+}
+
 UNIT_TEST(NoGps_Esp32Source_ReplayedBatteryLockAfterBootIsIgnored)
 {
   TestClock clock;

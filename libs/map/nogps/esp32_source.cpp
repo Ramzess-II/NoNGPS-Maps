@@ -698,7 +698,9 @@ void Esp32Source::OnEvent(esp32::Event const & event)
   else if (event.m_code == "BOOT")
   {
     m_poweredOn = event.m_text.ends_with("reset POWERON");
-    m_batteryLock = false;
+    // The journal replayed after the lock has the BOOT of the same power-on: only a newer boot drops the lock.
+    if (event.m_number > lastNumber)
+      m_batteryLock = false;
   }
   else if (event.m_code == "BT_PAIR_OPEN" && m_addPhone && m_addPhone->m_openEvent < 0 &&
            event.m_number > m_addPhone->m_lastEvent)
