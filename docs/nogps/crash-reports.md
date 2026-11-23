@@ -17,7 +17,7 @@ Crashes of both apps go to Sentry (organization `nongps`, EU region), one projec
   of the logs folder is dropped in `beforeSend`. Tracing, profiling, session replay, app hangs and user feedback are off.
 - What a report carries: the stack, OS and device model, release `<version>+<build>`, tags `screen`, `box`,
   `box.firmware`, `nogps.source`, and for a failed `CHECK`/`ASSERT` the extras `assert.message` and `assert.source`
-  (condition and `file:line`). The core's assert function calls `Logger.setAssertHandler` (iOS) /
+  (condition and `file:line`; a decimal with 4 or more digits after the point is replaced by `<num>`, as it may be a coordinate). The core's assert function calls `Logger.setAssertHandler` (iOS) /
   `Logger.setAssertListener` (Android) before the process aborts; it only puts the text on the Sentry scope, the
   native handler writes it to the report on disk and the report is sent at the next launch.
 - The widget extension and Wear OS are not covered.

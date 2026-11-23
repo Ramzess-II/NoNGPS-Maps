@@ -31,7 +31,7 @@ def sentryDsn = {
   def match = rootProject.file('../private.h').text =~ /#define\s+SENTRY_DSN_ANDROID\s+"([^"]*)"/
   return match.find() ? match.group(1) : ''
 }()
-def sentryUploadEnabled = !isFdroid && System.getenv('SENTRY_AUTH_TOKEN')
+def sentryUploadEnabled = !isFdroid && !(System.getenv('SENTRY_AUTH_TOKEN') ?: '').isEmpty()
 if (sentryUploadEnabled) {
   apply plugin: 'io.sentry.android.gradle'
   sentry {
@@ -39,6 +39,8 @@ if (sentryUploadEnabled) {
     projectName = 'nongps-maps-android'
     authToken = System.getenv('SENTRY_AUTH_TOKEN')
     autoInstallation.enabled = false
+    ignoredBuildTypes = ['debug']
+    ignoredFlavors = ['fdroid']
     tracingInstrumentation.enabled = false
     uploadNativeSymbols = true
     includeNativeSources = false

@@ -72,10 +72,18 @@ public final class CrashReporter
   {
     if (!Sentry.isEnabled())
       return;
+    final String redacted = redactNumbers(message);
     Sentry.configureScope(scope -> {
-      scope.setExtra("assert.message", message);
+      scope.setExtra("assert.message", redacted);
       scope.setExtra("assert.source", source);
     });
+  }
+
+  /// A decimal with 4 or more digits after the point may be a coordinate: the message of a CHECK can print one.
+  @VisibleForTesting
+  static String redactNumbers(@NonNull String text)
+  {
+    return text.replaceAll("-?\\d+\\.\\d{4,}", "<num>");
   }
 
   /// An event that carries a path of the logs folder is not sent: the trip logs hold coordinates.

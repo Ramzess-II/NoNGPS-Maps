@@ -181,7 +181,7 @@ public class MwmApplication extends Application implements Application.ActivityL
       if (status.getBoxValueId(i) == NoGps.BoxValue.FIRMWARE)
         firmware = status.boxValues[i];
     }
-    CrashReporter.setTag("box", status.esp32Source ? status.getSourceState().name() : "none");
+    CrashReporter.setTag("box", status.getSourceState().name());
     CrashReporter.setTag("box.firmware", firmware);
     CrashReporter.setTag("nogps.source", status.getSource().name());
   }

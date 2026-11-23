@@ -46,7 +46,7 @@ final class CrashReporter: NSObject {
     }
   }
 
-  fileprivate static func configure(_ options: Options, dsn: String, environment: String, release: String) {
+  static func configure(_ options: Options, dsn: String, environment: String, release: String) {
     options.dsn = dsn
     options.environment = environment
     options.releaseName = release
@@ -79,10 +79,16 @@ final class CrashReporter: NSObject {
   /// process, the report is written to the disk and sent on the next launch.
   static func reportAssert(source: String, message: String) {
     guard SentrySDK.isEnabled else { return }
+    let message = redactNumbers(message)
     SentrySDK.configureScope { scope in
       scope.setExtra(value: message, key: "assert.message")
       scope.setExtra(value: source, key: "assert.source")
     }
+  }
+
+  /// A decimal with 4 or more digits after the point may be a coordinate: the message of a CHECK can print one.
+  static func redactNumbers(_ text: String) -> String {
+    text.replacingOccurrences(of: #"-?\d+\.\d{4,}"#, with: "<num>", options: .regularExpression)
   }
 
   static func setTag(_ key: String, _ value: String) {
@@ -94,8 +100,10 @@ final class CrashReporter: NSObject {
   static func screenAppeared(_ viewController: UIViewController) {
     guard SentrySDK.isEnabled else { return }
     setTag("screen", String(describing: type(of: viewController)))
+    // The map screen exists only after the framework is created: the status would create it earlier.
+    guard viewController is MapViewController else { return }
     let status = NoGps.status()
-    setTag("box", status.boxFirmware.isEmpty ? "none" : "connected")
+    setTag("box", String(describing: status.sourceState))
     setTag("box.firmware", status.boxFirmware)
     setTag("nogps.source", String(describing: status.source.rawValue))
   }
