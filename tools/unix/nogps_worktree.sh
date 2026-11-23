@@ -25,7 +25,13 @@ json_field() {  # <field>: a string field of the JSON on stdin.
 
 check_ccache() {
   command -v ccache >/dev/null || return 0
-  local base hash
+  local base hash dir
+  dir=$(ccache --get-config cache_dir)
+  case "$dir" in
+    */Library/Caches/*)
+      echo "nogps_worktree: macOS reclaims ~/Library/Caches on a full disk, so ccache loses its cache there:" >&2
+      echo "  mv \"$dir\" ~/.ccache && ccache --set-config cache_dir=~/.ccache" >&2 ;;
+  esac
   base=$(ccache --get-config base_dir)
   hash=$(ccache --get-config hash_dir)
   if [ "$base" != "$WS" ] || [ "$hash" != false ]; then
