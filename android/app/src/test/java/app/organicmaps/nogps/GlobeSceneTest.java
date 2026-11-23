@@ -101,10 +101,13 @@ public class GlobeSceneTest
     int steps = 0;
     while (mScene.spinDegPerS() > 0)
     {
-      final double[] before = mScene.rotation();
+      final double[] poleBefore = GlobeScene.apply(mScene.rotation(), new double[] {0, 1, 0});
       mScene.step(16);
-      // The flick is about its own axis: not the polar axis, the idle spin does not run while it carries.
-      assertNotEquals(0, dot(before, mScene.rotation()), 0);
+      // The flick is about its own axis: the pole moves, which the idle spin about the pole would not do.
+      final double[] poleNow = GlobeScene.apply(mScene.rotation(), new double[] {0, 1, 0});
+      assertTrue(
+          length(new double[] {poleBefore[0] - poleNow[0], poleBefore[1] - poleNow[1], poleBefore[2] - poleNow[2]})
+          > 1e-6);
       assertTrue("the flick never stops", ++steps < 2000);
     }
     // The idle spin: about the polar axis of the Earth, kIdleSpinDegPerS.

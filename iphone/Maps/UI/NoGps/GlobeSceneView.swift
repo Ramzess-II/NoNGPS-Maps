@@ -84,6 +84,14 @@ final class GlobeSceneView: UIView {
                                            name: UIAccessibility.reduceMotionStatusDidChangeNotification, object: nil)
   }
 
+  /// The palette is resolved in draw(); without the display link nothing else redraws on a theme change.
+  override func traitCollectionDidChange(_ previous: UITraitCollection?) {
+    super.traitCollectionDidChange(previous)
+    if traitCollection.hasDifferentColorAppearance(comparedTo: previous) {
+      setNeedsDisplay()
+    }
+  }
+
   deinit {
     NotificationCenter.default.removeObserver(self)
   }
