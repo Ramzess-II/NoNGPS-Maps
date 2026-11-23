@@ -289,7 +289,48 @@ const base = (label) => {
   check('merged', r.out.merged === 1)
 }
 
-// --- 15. a bigger mixed run, repeated: it always terminates and merges everything ---
+// --- 15. two PRs that touch iOS are never prepped at once ---
+{
+  const r = await runScript({
+    args: {
+      ws: '/ws',
+      parallel: [
+        pr(1, { files: ['iphone/Maps/Core/NoGps/MWMNoGps.mm'] }),
+        pr(2, { files: ['libs/map/nogps/engine.cpp'] }),
+        pr(3, { files: ['xcode/map/map.xcodeproj/project.pbxproj'] }),
+        pr(4, { files: ['iphone/Maps/UI/Help/AboutController/AboutController.swift'] }),
+      ],
+      slots: 4,
+    },
+    reply: base,
+  })
+  console.log('15. three of four PRs touch iphone/ or xcode/')
+  check('all four merged', r.out.merged === 4, r.out.results.map((x) => [x.pr, x.outcome, x.set]))
+  const sets = Object.fromEntries(r.out.results.map((x) => [x.pr, x.set]))
+  check('the first iOS PR stays parallel', sets[1] === 'parallel', sets)
+  check('the one PR with no iOS files stays parallel', sets[2] === 'parallel', sets)
+  check('the other iOS PRs moved to serial', sets[3] === 'serial' && sets[4] === 'serial', sets)
+  check('only two slots were asked for', r.out.slots === 2, r.out.slots)
+  check('the log says why', r.logs.some((m) => /#3, #4 moved to the serial set/.test(m)), r.logs)
+  // The moved ones run one at a time, after the parallel merges: that is the point of moving them.
+  const m3 = r.order.indexOf('+merge:#3')
+  const u4 = r.order.indexOf('+update:#4')
+  check('#4 starts only after #3 merged', u4 > m3 && m3 > 0, { m3, u4 })
+}
+
+// --- 16. one iOS PR alone still goes in parallel ---
+{
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1, { files: ['iphone/Maps/Core/NoGps/MWMNoGps.mm'] }), pr(2, { files: ['libs/a.cpp'] })], slots: 2 },
+    reply: base,
+  })
+  console.log('16. a single iOS PR in the parallel set')
+  check('both stay parallel', r.out.results.every((x) => x.set === 'parallel'), r.out.results.map((x) => [x.pr, x.set]))
+  check('two preps at once', prepPeak(r.peak) === 2, r.peak)
+  check('nothing was moved', !r.logs.some((m) => /moved to the serial set/.test(m)), r.logs)
+}
+
+// --- 17. a bigger mixed run, repeated: it always terminates and merges everything ---
 {
   let bad = 0
   for (let i = 0; i < 25; i++) {
@@ -310,7 +351,7 @@ const base = (label) => {
     })
     if (r.out.results.length !== 8) bad++
   }
-  console.log('15. 25 runs of 8 PRs with random findings and stale masters')
+  console.log('17. 25 runs of 8 PRs with random findings and stale masters')
   check('every PR is accounted for in every run', bad === 0, { bad })
 }
 

@@ -61,6 +61,11 @@ train doesn't push commits under the session working there.
      that depend on it, then the others oldest first, and a PR that touches the files of several others last, so
      master is merged into it and not the other way round.
 
+   At most one PR that touches `iphone/` or `xcode/` goes into **parallel**; the others go to **serial**, however
+   disjoint their files are. Nothing in the train builds iOS -- the gate leaves it to each PR's own CI, which ran
+   before the other PRs of the parallel set landed -- so a pair that breaks only the iOS build would land unseen
+   (#513). The script enforces this too, and says so in its log.
+
    Print both sets with one line each: number, title, its set and why. With `--dry` stop here.
 4. **Run.** Start the saved workflow by its path, which works from both `<ws>` and `app/`:
    `Workflow({scriptPath: "<ws>/app/.claude/workflows/nogps-merge.js", args: {ws, parallel, serial, rounds, slots}})`,
