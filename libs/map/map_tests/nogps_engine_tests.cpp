@@ -1335,6 +1335,48 @@ UNIT_TEST(NoGps_Engine_TurnFitsCrossingOtherMarkHasPassed)
   TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
 }
 
+UNIT_TEST(NoGps_Engine_OtherMarkSearchesCrossingByItsOwnAlongError)
+{
+  // The car turns left beside two streets going north, 40 m apart: the shown mark is on the street at 200, an other
+  // mark is on the one at 240. The car drives 25 km north, and the bends of the shown street tell its place: the
+  // shown mark is known then, the other one has the along error of 190 m still. A street goes east from the other
+  // street 150 m ahead of where the car turns east: the shown street has none, and the other mark is moved to that
+  // street, because it searches by its own along error, not by the shown one.
+  double constexpr kTurnNorthM = 26'100;
+  double const bend = math::DegToRad(25.0);
+  PieceRoads roads({{-300, 0, 400, 0},
+                    {200, 0, 200, 25'000},
+                    {200, 25'000, 200 + 800 * std::sin(bend), 25'000 + 800 * std::cos(bend)},
+                    {200 + 800 * std::sin(bend), 25'000 + 800 * std::cos(bend), 200 + 800 * std::sin(bend), 28'000},
+                    {240, -10, 240, 25'000},
+                    {240, 25'000, 240 + 800 * std::sin(bend), 25'000 + 800 * std::cos(bend)},
+                    {240 + 800 * std::sin(bend), 25'000 + 800 * std::cos(bend), 240 + 800 * std::sin(bend), 28'000},
+                    {240 + 800 * std::sin(bend), kTurnNorthM + 150, 1500, kTurnNorthM + 150}},
+                   {{200, 0}, {240 + 800 * std::sin(bend), kTurnNorthM + 150}});
+  Env env(true /* inertial */, &roads);
+  TurnLeftBesideCrossing(env);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+  for (int i = 0; i < 25; ++i)
+    env.Drive(33'333, 108, 0);
+  env.Drive(500, 108, 0);
+  env.Drive(1000, 36, 25);
+  env.Drive(79'000, 36, 0);
+  env.Drive(1000, 36, -25);
+  env.Drive(30'000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_otherMarks, 1, (env.m_engine.GetTripLine()));
+  TEST_LESS(env.Last().m_accuracyM, 30, (env.m_engine.GetTripLine()));
+  // The car turns right where the calculation has it at 26'100 m.
+  while (North(env.Last().m_position) < kTurnNorthM - 12)
+    env.Drive(100, 36, 0);
+  env.Drive(3000, 36, 30);
+  // The turn is moved to the crossing of the other mark when it ends, not when the shown road is lost 30 m later.
+  env.Drive(2500, 36, 0);
+  TestAlmostEqualAbs(North(env.Last().m_position), kTurnNorthM + 150, 3);
+  env.Drive(5000, 36, 0);
+  TEST_GREATER(East(env.Last().m_position), 600, ());
+  TEST(!env.m_delegate.HasEvent(Event::RoadLost), (env.m_engine.GetTripLine()));
+}
+
 UNIT_TEST(NoGps_Engine_TurnStartedWithoutCrossingIsMatchedLate)
 {
   // The car turns left 40 m before the crossing at 200 m by the calculation: no crossing is in reach then. It drives
@@ -1736,6 +1778,53 @@ UNIT_TEST(NoGps_Engine_TurnAfterLongWayIsNotMovedFartherThanAlongError)
   // the test fails if the search takes the cap instead of the along error. The car has turned somewhere else.
   TEST_EQUAL(TripField(env, "turn"), "NaN", ());
   TEST_LESS(East(env.Last().m_position), 25'200, ());
+}
+
+// A street going east for 20 km, then bends by 25 degrees left and right in turn every 800 m, 4 km on.
+PieceRoads ZigzagAfterLongWay()
+{
+  std::vector<PieceRoads::Piece> pieces = {{-300, 0, 20'000, 0}};
+  double x = 20'000;
+  double y = 0;
+  for (int i = 1; i < 6; ++i)
+  {
+    double const heading = math::DegToRad(i % 2 == 1 ? 65.0 : 90.0);
+    pieces.push_back({x, y, x + 800 * std::sin(heading), y + 800 * std::cos(heading)});
+    x = pieces.back()[2];
+    y = pieces.back()[3];
+  }
+  return PieceRoads(pieces, {});
+}
+
+// The car marked |markShiftM| from itself drives 20 km without a known place: the along error is 155 m. Then it drives
+// the zigzag at 36 km/h and rotates through 10 m of each bend.
+// \returns where the mark is at the end.
+ms::LatLon DriveZigzagAfterLongWay(double markShiftM)
+{
+  auto roads = ZigzagAfterLongWay();
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, markShiftM);
+  for (int i = 0; i < 26; ++i)
+    env.Drive(25'000, 108, 0);
+  env.Drive(16'167, 108, 0);
+  env.Drive(1000, 36, -25);
+  for (int i = 2; i < 6; ++i)
+  {
+    env.Drive(79'000, 36, 0);
+    env.Drive(1000, 36, i % 2 == 0 ? 25 : -25);
+  }
+  env.Drive(20'000, 36, 0);
+  return env.Last().m_position;
+}
+
+UNIT_TEST(NoGps_Engine_BendsMoveMarkBehindFartherThanNearSearch)
+{
+  // The mark put 140 m behind the car is ~100 m behind it at the first bend, farther than kMaxBendShiftM: only the
+  // search up to the along error finds the bends where the car rotated, and moves the mark there after it has been
+  // told 3 times. The car that was marked right is the reference.
+  auto const exact = DriveZigzagAfterLongWay(0);
+  auto const behind = DriveZigzagAfterLongWay(-140);
+  TestAlmostEqualAbs(Distance(behind, exact), 0, 15);
 }
 
 UNIT_TEST(NoGps_Engine_StopsCarThatLeftRoads)
@@ -3140,6 +3229,22 @@ UNIT_TEST(NoGps_TripStarted_FirstConnectionLongAfterStart)
   TEST(user.m_delegate.HasEvent(Event::TripStarted), ());
 }
 
+UNIT_TEST(NoGps_TripStarted_LostPairingProbeIsNoLink)
+{
+  NewUser user;
+  user.m_storage.Set(Storage::kInertialEnabled, true);
+  user.Start();
+  user.m_clock.Advance(Engine::kTripFileLinkGapMs);
+  // The search for a box with a lost pairing connects to it: the UI keeps the hint, no trip starts.
+  user.m_engine.OnEsp32BleState(BleState::Connected, true /* bondLost */);
+  TEST(!user.m_delegate.HasEvent(Event::TripStarted), ());
+  TEST_EQUAL(user.m_engine.GetStatus().m_bleState, BleState::BondLost, ());
+  // The box is heard: the same connection is a link now.
+  user.m_engine.OnEsp32BleState(BleState::Connected, false /* bondLost */);
+  TEST(user.m_delegate.HasEvent(Event::TripStarted), ());
+  TEST_EQUAL(user.m_engine.GetStatus().m_bleState, BleState::Connected, ());
+}
+
 UNIT_TEST(NoGps_TripStarted_LinkLostForLong)
 {
   Env env(true /* inertial */);
@@ -3370,8 +3475,11 @@ UNIT_TEST(NoGps_Cars_ForgetRemovesOnlyThatCar)
 
   cars.RenameCar("C47D", " My\ncar ");
   TEST_EQUAL(cars.GetCars()[0].m_name, "My car", ());
+  // An empty name keeps the previous one.
   cars.RenameCar("C47D", "");
-  TEST_EQUAL(cars.GetCars()[0].m_name, "", ());
+  TEST_EQUAL(cars.GetCars()[0].m_name, "My car", ());
+  cars.RenameCar("C47D", " \n ");
+  TEST_EQUAL(cars.GetCars()[0].m_name, "My car", ());
   cars.RenameCar("C47D", "Kia");
 
   // The current car is forgotten: the one heard the last time is the current one.
@@ -4086,6 +4194,14 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
     TEST_EQUAL(env.m_engine.GetStatus().m_bundledFirmware, "0.3.3", ());
   }
   {
+    // Only a build suffix differs: the numbers tell the firmware, the box is not offered the update again.
+    Env env(true /* inertial */);
+    env.m_engine.SetFirmwares(firmwares);
+    connect(env, "0.3.3-dirty");
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 0, ());
+  }
+  {
     // The car drives: the user is asked before the next trip, when the box is connected again.
     Env env(true /* inertial */);
     env.m_engine.SetFirmwares(firmwares);
@@ -4344,6 +4460,15 @@ UNIT_TEST(NoGps_Engine_ManeuveringCarIsFollowedApart)
     TestAlmostEqualAbs(North(env.Last().m_position), -24, 3);
     TestAlmostEqualAbs(East(env.Last().m_position), 7, 3);
     TestAlmostEqualAbs(*env.Last().m_bearingDeg, 180, 1);
+    // The map does not draw it on the route or on a road.
+    TEST(env.m_map.m_followedApart, (navigating));
+
+    // The engine stopped, e.g. real GPS is back: the map matches its positions again.
+    {
+      env.m_engine.Stop();
+      TEST(!env.m_map.m_followedApart, (navigating));
+      env.m_engine.Start();
+    }
 
     // The car turns left and drives east, the other street is 15 m to the right of it. It is not the street of
     // the car at once.
@@ -4355,6 +4480,7 @@ UNIT_TEST(NoGps_Engine_ManeuveringCarIsFollowedApart)
     TEST(!FollowedApart(env), (navigating));
     TestAlmostEqualAbs(North(env.Last().m_position), -40, 0.5);
     TestAlmostEqualAbs(*env.Last().m_bearingDeg, 90, 0.5);
+    TEST(!env.m_map.m_followedApart, (navigating));
     double const east = East(env.Last().m_position);
     TEST_GREATER(east, 20, ());
     env.Drive(4000, 9, 0);
@@ -6475,6 +6601,30 @@ UNIT_TEST(NoGps_Sprint_RecordsKeptForEachCar)
        ());
 }
 
+UNIT_TEST(NoGps_Sprints_PerCar)
+{
+  Env env(true /* inertial */);
+  HearBox(env, "C47D");
+  sprint::Run(env, 9, 105);
+  sprint::Run(env, 8, 105);
+  HearBox(env, "42FD");
+  sprint::Run(env, 12, 105);
+
+  auto const a = env.m_engine.GetSprints("C47D");
+  TEST_EQUAL(a.size(), 2, ());
+  TestAlmostEqualAbs(a[0].m_sec, 8, 0.15);
+  TestAlmostEqualAbs(a[1].m_sec, 9, 0.15);
+  auto const b = env.m_engine.GetSprints("42FD");
+  TEST_EQUAL(b.size(), 1, ());
+  TestAlmostEqualAbs(b[0].m_sec, 12, 0.15);
+  TEST(env.m_engine.GetSprints("0000").empty(), ());
+
+  // The current car's runs are the same as by its id, and the other car keeps its own.
+  env.m_engine.SelectCar("C47D");
+  TEST_EQUAL(env.m_engine.GetSprints().size(), 2, ());
+  TEST_EQUAL(env.m_engine.GetSprints("42FD").size(), 1, ());
+}
+
 UNIT_TEST(NoGps_Sprint_SpeedTableApplied)
 {
   // The speedometer shows 95 km/h at the real 104.5.
@@ -6586,5 +6736,27 @@ UNIT_TEST(NoGps_LogFormat_RuleHasItsNameAndTime)
   // The sentence follows the tag, the name and the keys.
   TEST(lost[0].find(" The road is lost after ") != std::string::npos, (lost[0]));
   TEST(env.m_engine.GetTripLine().starts_with("TRIP ms="), (env.m_engine.GetTripLine()));
+}
+
+UNIT_TEST(NoGps_LogFormat_ProseLinesHaveTagAndTime)
+{
+  TestClock clock;
+  TestStorage storage;
+  TestDelegate delegate;
+  TestMap map;
+  storage.Set(Storage::kInertialEnabled, true);
+  storage.Set(Storage::kLastTrusted, std::string("10.0000000,20.0000000,") + std::to_string(clock.UnixNowMs()));
+  Engine engine(delegate, map, storage, clock, clock);
+  LoggedLines lines;
+  engine.Start();
+  auto const ms = " ms=" + std::to_string(clock.UnixNowMs());
+  auto const trusted = LoggedLines::Starting("EVENT last_trusted" + ms);
+  TEST_EQUAL(trusted.size(), 1, ());
+  TEST(trusted[0].find(" Last trusted position = ") != std::string::npos, (trusted[0]));
+  TEST_EQUAL(LoggedLines::Starting("EVENT speed_table" + ms).size(), 1, ());
+  engine.OnEsp32BleState(BleState::Connected);
+  auto const ble = LoggedLines::Starting("ACTION ble_state" + ms);
+  TEST_EQUAL(ble.size(), 1, ());
+  TEST(ble[0].find(" Bluetooth = ") != std::string::npos, (ble[0]));
 }
 }  // namespace nogps_engine_tests

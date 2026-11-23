@@ -17,7 +17,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.TextWatcher;
 import android.text.format.DateUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -969,16 +971,34 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final FrameLayout frame = new FrameLayout(context);
     frame.setPadding(dp(24), dp(8), dp(24), 0);
     frame.addView(name);
-    new MaterialAlertDialogBuilder(context)
-        .setTitle(R.string.nogps_car_name)
-        .setView(frame)
-        .setPositiveButton(R.string.save,
-                           (dialog, which) -> {
-                             NoGps.nativeRenameCar(car.id, name.getText().toString());
-                             update();
-                           })
-        .setNegativeButton(R.string.cancel, null)
-        .show();
+    final AlertDialog dialog = new MaterialAlertDialogBuilder(context)
+                                   .setTitle(R.string.nogps_car_name)
+                                   .setView(frame)
+                                   .setPositiveButton(R.string.save,
+                                                      (d, which) -> {
+                                                        NoGps.nativeRenameCar(car.id, name.getText().toString());
+                                                        update();
+                                                      })
+                                   .setNegativeButton(R.string.cancel, null)
+                                   .show();
+    // An empty name is refused: the core keeps the previous one.
+    final Button save = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+    save.setEnabled(!name.getText().toString().trim().isEmpty());
+    name.addTextChangedListener(new TextWatcher() {
+      @Override
+      public void beforeTextChanged(CharSequence s, int start, int count, int after)
+      {}
+
+      @Override
+      public void onTextChanged(CharSequence s, int start, int before, int count)
+      {}
+
+      @Override
+      public void afterTextChanged(Editable s)
+      {
+        save.setEnabled(!s.toString().trim().isEmpty());
+      }
+    });
   }
 
   private void confirmForgetCar(@NonNull NoGps.Car car)

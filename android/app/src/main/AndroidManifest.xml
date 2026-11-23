@@ -494,6 +494,13 @@
         android:exported="false" />
 
     <activity
+        android:name="app.organicmaps.nogps.ProfileActivity"
+        android:screenOrientation="portrait"
+        android:label="@string/nogps_menu_profile"
+        android:parentActivityName="app.organicmaps.MwmActivity"
+        android:exported="false" />
+
+    <activity
         android:name="app.organicmaps.help.HelpActivity"
         android:label="@string/nogps_about_om_menu"
         android:parentActivityName="app.organicmaps.MwmActivity"

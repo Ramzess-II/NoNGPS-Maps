@@ -25,6 +25,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
 import nogps_log
+import nogps_trip_log
 
 ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nogps_log_viewer_assets')
 ASSET_TYPES = {'.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png'}
@@ -66,11 +67,26 @@ class Viewer:
         self.analysis = nogps_log.Analysis(sources, year)
 
     def add(self, name, data, analyse):
-        """Adds a log, read with the others when |analyse|: the page sends a few files one by one."""
+        """Adds a log, read with the others when |analyse|: the page sends a few files one by one. A file given again
+        replaces the one of the same name, phone, start and trip: the page knows only the name of a file, and trips of
+        two phones or two days have files of the same name."""
         with self.lock:
-            sources = [s for s in self.sources if s[0] != name] + [(name, data)]
-            # A file that can't be read is not kept.
-            nogps_log.unpack(name, data)
+            def identity(source):
+                """The (phone, start, trip) of the files of the source that can be read, empty for a source of no
+                such file. A file of an earlier version is left out, as nogps_log.load_paths() leaves it out; the
+                analysis notes it, and refuses only when no file of any source is left."""
+                result = set()
+                for n, d in nogps_log.unpack(*source):
+                    try:
+                        header = nogps_trip_log.header_of(n, d)
+                    except nogps_trip_log.LogFormatError:
+                        continue
+                    result.add(tuple(header[k] for k in ('phone', 'ms', 'trip')))
+                return result
+
+            new = (name, data)
+            same = identity(new)
+            sources = [s for s in self.sources if s[0] != name or identity(s) != same] + [new]
             if analyse:
                 self.analysis = nogps_log.Analysis(sources, self.year)
             self.sources = sources
@@ -207,8 +223,8 @@ def handler(viewer):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('logs', nargs='*', help='the logs folder, logs.zip or log files; log-*.log, app*.log, '
-                        'log.txt and log.zip of the earlier versions too')
+    parser.add_argument('logs', nargs='*', help='the logs tree logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, '
+                        'logs.zip or log files')
     parser.add_argument('--year', type=int, help='the year of an Android log without its header')
     parser.add_argument('--port', type=int, default=0, help='0 takes a free one')
     parser.add_argument('--no-browser', action='store_true')
@@ -216,7 +232,11 @@ def main():
                         'or "off"; kept for the next runs. Without it the map has no tiles')
     args = parser.parse_args()
 
-    viewer = Viewer(nogps_log.load_paths(args.logs), args.year, load_tiles(args.tiles))
+    try:
+        sources = nogps_log.load_paths(args.logs)
+    except nogps_trip_log.LogFormatError as e:
+        parser.error(str(e))
+    viewer = Viewer(sources, args.year, load_tiles(args.tiles))
     for note in viewer.analysis.notes:
         print(note)
     print('tiles:', viewer.tiles or 'none')

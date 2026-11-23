@@ -165,6 +165,8 @@ class Esp32BleTransport
   private long mLastSilentMs;
   // Too many silent connections: the lost-pairing hint is shown, and the search goes on once a minute.
   private boolean mBondLost;
+  // What the core was told with the last state.
+  private boolean mReportedBondLost;
   // The box that has forgotten the phone: the search starts again when its pairing is removed.
   @Nullable
   private BluetoothDevice mBondLostBox;
@@ -380,13 +382,18 @@ class Esp32BleTransport
     return ContextCompat.checkSelfPermission(mContext, permission) == PackageManager.PERMISSION_GRANTED;
   }
 
+  /**
+   * The core gets the state with mBondLost: STATE_CONNECTED while the pairing is thought lost is a probe, it needs the
+   * link to send HELLO but is not a working one until the box is heard.
+   */
   private void setState(int state)
   {
-    if (state == mState)
+    if (state == mState && mBondLost == mReportedBondLost)
       return;
-    Logger.i(TAG, "state = " + state);
+    Logger.i(TAG, "state = " + state + (mBondLost ? " bond lost" : ""));
     mState = state;
-    NoGps.nativeOnEsp32BleState(state);
+    mReportedBondLost = mBondLost;
+    NoGps.nativeOnEsp32BleState(state, mBondLost);
   }
 
   /**
@@ -999,6 +1006,8 @@ class Esp32BleTransport
         mHeard = true;
         mSilentConnections = 0;
         mBondLost = false;
+        // The probe is a link now.
+        setState(mState);
         mMainHandler.removeCallbacks(mWatchdog);
         onBoxHeard();
       }

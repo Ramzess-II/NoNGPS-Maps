@@ -46569,11 +46569,18 @@ ru = Поправки скорости, измеренные по GPS на ра�
 uk = Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або авто. Поки працює GPS, вони вимірюються наново.
 
 [nogps_menu_profile]
-comment = Main menu row opening the account of the user on the site
+comment = Main menu row opening the screen with the records of every car of the user
 tags = android-app,apple-maps
 en = Profile
 ru = Профиль
 uk = Профіль
+
+[nogps_profile_soon]
+comment = Footer of the Profile screen: what the screen will hold later
+tags = android-app,apple-maps
+en = The account, the boxes, the warranty and the orders will be here
+ru = Здесь появятся аккаунт, устройства, гарантия и заказы
+uk = Тут з'являться обліковий запис, пристрої, гарантія та замовлення
 
 [nogps_about_title]
 tags = android-app,apple-maps
@@ -46593,6 +46600,24 @@ tags = android-app,apple-maps
 en = Navigation when GPS is jammed or spoofed
 ru = Навигация, когда GPS глушат или подменяют
 uk = Навігація, коли GPS глушать або підміняють
+
+[nogps_about_globe_hint]
+comment = About NonGPS Maps, under the globe with the GPS satellites that the finger spins
+tags = android-app,apple-maps
+en = Drag the Earth, tap a satellite to switch it off.
+uk = Потягніть Землю, торкніться супутника, щоб вимкнути його.
+
+[nogps_about_globe_jammed]
+comment = About NonGPS Maps, under the globe: the car stands in the jammed area
+tags = android-app,apple-maps
+en = Inside the jammed area not one of them reaches the car.
+uk = У зоні глушіння жоден із них не досягає авто.
+
+[nogps_about_globe_sats]
+comment = About NonGPS Maps, under the globe: %1$d is how many satellites are on, %2$d how many there are
+tags = android-app,apple-maps
+en = %1$d of %2$d satellites on
+uk = Увімкнено супутників: %1$d з %2$d
 
 [nogps_about_description]
 tags = android-app,apple-maps

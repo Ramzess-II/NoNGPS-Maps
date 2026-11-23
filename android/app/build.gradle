@@ -85,15 +85,18 @@ android {
   flavorDimensions += 'default'
 
   productFlavors {
-    // 01 is a historical artefact, sorry.
-    final int HUAWEI_VERSION_CODE_BASE = 01_00_00_00_00
+    // The market field RR = 01 of the RR_yy_MM_dd_CC versionCode layout (see tools/unix/version.sh), written in
+    // decimal: a leading zero would make it an octal literal (16777216).
+    final int HUAWEI_VERSION_CODE_BASE = 100_000_000
 
     google {
       dimension 'default'
       isDefault = true
-      // The automatic protection of Google Play, which checks the installer of the app, needs Android 7.
+      // The market build takes Android 12+ only: there BLUETOOTH_SCAN with neverForLocation scans for the box
+      // without any location permission, while Android 10 and 11 count a scan as a location use and from the
+      // background want ACCESS_BACKGROUND_LOCATION, which the app doesn't ask for.
       // The native code is built in the sdk module for the common minSdk and is not rebuilt for it.
-      minSdk = 24
+      minSdk = 31
       versionName = android.defaultConfig.versionName + '-Google'
       buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
     }

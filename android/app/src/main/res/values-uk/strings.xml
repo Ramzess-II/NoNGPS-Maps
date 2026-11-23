@@ -1174,12 +1174,20 @@
     <string name="nogps_clear_speed">Скинути</string>
     <string name="nogps_clear_speed_title">Скинути калібрування швидкості?</string>
     <string name="nogps_clear_speed_message">Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або авто. Поки працює GPS, вони вимірюються наново.</string>
-    <!-- Main menu row opening the account of the user on the site -->
+    <!-- Main menu row opening the screen with the records of every car of the user -->
     <string name="nogps_menu_profile">Профіль</string>
+    <!-- Footer of the Profile screen: what the screen will hold later -->
+    <string name="nogps_profile_soon">Тут з\'являться обліковий запис, пристрої, гарантія та замовлення</string>
     <string name="nogps_about_title">Про NonGPS Maps</string>
     <!-- Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on -->
     <string name="nogps_about_om_menu">Про застосунок Organic Maps</string>
     <string name="nogps_about_headline">Навігація, коли GPS глушать або підміняють</string>
+    <!-- About NonGPS Maps, under the globe with the GPS satellites that the finger spins -->
+    <string name="nogps_about_globe_hint">Потягніть Землю, торкніться супутника, щоб вимкнути його.</string>
+    <!-- About NonGPS Maps, under the globe: the car stands in the jammed area -->
+    <string name="nogps_about_globe_jammed">У зоні глушіння жоден із них не досягає авто.</string>
+    <!-- About NonGPS Maps, under the globe: %1$d is how many satellites are on, %2$d how many there are -->
+    <string name="nogps_about_globe_sats">Увімкнено супутників: %1$d з %2$d</string>
     <string name="nogps_about_description">Без GPS авто веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю авто з OBD-II. Авто тримається доріг офлайн-карти.</string>
     <!-- NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) -->
     <string name="nogps_version">Версія %s</string>

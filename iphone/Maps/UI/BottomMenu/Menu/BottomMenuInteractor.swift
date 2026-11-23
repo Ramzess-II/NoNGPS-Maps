@@ -74,10 +74,9 @@ extension BottomMenuInteractor: BottomMenuInteractorProtocol {
     mapViewController?.bookmarksCoordinator.open()
   }
 
-  /// The site until the account has a screen of its own, see issue #458.
   func openProfile() {
     close()
-    UIApplication.shared.open(NoGpsLinks.account)
+    mapViewController?.navigationController?.pushViewController(NoGpsProfileController(), animated: true)
   }
 
   func openHowItWorks() {

@@ -1172,8 +1172,10 @@
     <string name="nogps_clear_speed">Сбросить</string>
     <string name="nogps_clear_speed_title">Сбросить калибровку скорости?</string>
     <string name="nogps_clear_speed_message">Поправки скорости, измеренные по GPS на разных скоростях и по вашим сдвигам, будут забыты. Делайте это после смены шин или машины. Пока работает GPS, они измеряются заново.</string>
-    <!-- Main menu row opening the account of the user on the site -->
+    <!-- Main menu row opening the screen with the records of every car of the user -->
     <string name="nogps_menu_profile">Профиль</string>
+    <!-- Footer of the Profile screen: what the screen will hold later -->
+    <string name="nogps_profile_soon">Здесь появятся аккаунт, устройства, гарантия и заказы</string>
     <string name="nogps_about_title">О NonGPS Maps</string>
     <!-- Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on -->
     <string name="nogps_about_om_menu">О приложении Organic Maps</string>

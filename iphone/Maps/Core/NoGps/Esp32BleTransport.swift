@@ -95,6 +95,8 @@ final class Esp32BleTransport: NSObject {
   private var lastSilentTime: TimeInterval = 0
   /// Too many silent connections: the lost-pairing hint is shown, and the search goes on once a minute.
   private var isBondLost = false
+  /// What the core was told with the last state.
+  private var reportedBondLost = false
   /// The box with a closed window that has phones is connected once, as it may be paired in the system: its id and
   /// the flags of its advertisement. Silent, it gets the hint of the flags.
   private var closedTry: (id: UUID, flags: UInt8)?
@@ -250,10 +252,13 @@ final class Esp32BleTransport: NSObject {
   }
 
   private func setState(_ newState: NoGpsBleState) {
-    guard newState != state else { return }
-    LOG(.info, "state = \(newState.rawValue)")
+    guard newState != state || isBondLost != reportedBondLost else { return }
+    LOG(.info, "state = \(newState.rawValue)\(isBondLost ? " bond lost" : "")")
     state = newState
-    NoGps.onEsp32BleState(newState)
+    reportedBondLost = isBondLost
+    // .connected while the pairing is thought lost is a probe: the core sends HELLO, which the box waits for, but it
+    // is not a working link until the box is heard.
+    NoGps.onEsp32BleState(newState, bondLost: isBondLost)
   }
 
   private func schedule(after delay: TimeInterval, _ action: @escaping () -> Void) {
@@ -760,6 +765,8 @@ extension Esp32BleTransport: CBPeripheralDelegate {
       isHeard = true
       silentConnections = 0
       isBondLost = false
+      // The probe is a link now.
+      setState(state)
       closedTry = nil
       timer?.cancel()
       remember(peripheral)

@@ -109,7 +109,8 @@ struct Status
   // The rest is known while the inertial navigation works.
   bool m_inertialStarted = false;
   SourceState m_sourceState = SourceState::Disconnected;
-  // What the platform does to reach the ESP32 sensor box over Bluetooth.
+  // What the platform does to reach the ESP32 sensor box over Bluetooth. BondLost also while it probes a lost pairing
+  // with a connection that carries nothing, see Engine::OnEsp32BleState().
   BleState m_bleState = BleState::Off;
   std::string m_deviceName;
   // -1 if unknown.
@@ -346,7 +347,8 @@ public:
   void OnElm327Closed(std::string const & reason);
   // The ESP32 sensor box over Bluetooth LE, see Delegate::Esp32BleOpen().
   void OnEsp32BleBytes(std::string_view bytes);
-  void OnEsp32BleState(BleState state);
+  /// `bondLost`: see Esp32Source::OnBleState().
+  void OnEsp32BleState(BleState state, bool bondLost = false);
 
   bool IsManualMode() const { return m_manualMode; }
   void SetManualMode(bool enabled);
@@ -410,6 +412,8 @@ public:
   std::vector<Car> GetCars() const { return m_cars.GetCars(); }
   /// \returns the timed runs of the current car, newest first, see SprintTimer.
   std::vector<Sprint> GetSprints() const;
+  /// \returns the timed runs kept for the car, newest first; empty for a car that is not there.
+  std::vector<Sprint> GetSprints(std::string const & carId) const;
   /// The user drives the car, e.g. two boxes are near: the platform connects to its box if it is near too.
   void SelectCar(std::string const & id);
   /// An empty name gives the car its usual name back.
@@ -547,6 +551,7 @@ private:
   std::optional<double> GetCarBearing() const;
   int GetSpeedLimitKmh();
   void ShowCarHeading();
+  bool IsCarFollowedApart() const;
   void NotifyLocationUpdated();
   /// GPS gives a position every second, and the map moves the mark to a new one in 0.2 s: it would jump and stand.
   /// Between GPS positions the car is shown by the inertial navigation, which continues from every good GPS position.

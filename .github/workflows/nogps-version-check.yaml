@@ -8,6 +8,7 @@ on:
       - 'tools/unix/version.sh'
       - 'tools/python/version_test.py'
       - 'android/wear/build.gradle'  # The test reads the Wear OS versionCode formula from it.
+      - 'android/app/build.gradle'  # The test reads the Huawei versionCode offset from it.
 
 jobs:
   nogps-version-check:

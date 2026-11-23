@@ -327,15 +327,17 @@ bool InertialNavigator::LearnRoughSpeed(double aheadM, char const * where)
       return true;
     m_speedFactor.OnDistance(stretch.m_tableM * kRoadFactorWeight, realM * kRoadFactorWeight);
     m_storage.Set(Storage::kSpeedFactor, m_speedFactor.Serialize());
-    LOG(LINFO, ("Speed factor: the", where, "tells the calculated distance is", std::round(errorM), "m off in",
-                std::round(calculatedM), "m, factor =", m_speedFactor.Get()));
+    LOG(LINFO,
+        (LogHead(m_clock, "EVENT", "speed_factor"), "Speed factor: the", where, "tells the calculated distance is",
+         std::round(errorM), "m off in", std::round(calculatedM), "m, factor =", m_speedFactor.Get()));
     return true;
   }
   for (int i = 0; i < SpeedTable::kRanges; ++i)
     m_roughSpeedTable.OnDistance((i + 0.5) * SpeedTable::kRangeKmh, stretch.m_carM[i], stretch.m_calculatedM[i] * real);
   m_storage.Set(Storage::kRoughSpeedTable, m_roughSpeedTable.Serialize());
-  LOG(LINFO, ("Rough speed table: the", where, "tells the calculated distance is", std::round(errorM), "m off in",
-              std::round(calculatedM), "m, table =", m_roughSpeedTable.ToString()));
+  LOG(LINFO, (LogHead(m_clock, "EVENT", "speed_rough_table"), "Rough speed table: the", where,
+              "tells the calculated distance is", std::round(errorM), "m off in", std::round(calculatedM),
+              "m, table =", m_roughSpeedTable.ToString()));
   return true;
 }
 
@@ -393,9 +395,9 @@ void InertialNavigator::SaveSpeedTable()
 void InertialNavigator::LogSpeedCalibration() const
 {
   // For the trip log: the path of a trip is calculated again with these.
-  LOG(LINFO, ("Speed table =", m_speedTable.ToString(), "factor =", m_speedFactor.Get(), "unit =", m_speedUnit.Get(),
-              "lag =", m_speedLag.Get(), "measured =", m_speedLag.IsMeasured(), "scale =", m_speedScale.Get(),
-              "rough =", m_roughSpeedTable.ToString()));
+  LOG(LINFO, (LogHead(m_clock, "EVENT", "speed_table"), "Speed table =", m_speedTable.ToString(),
+              "factor =", m_speedFactor.Get(), "unit =", m_speedUnit.Get(), "lag =", m_speedLag.Get(), "measured =",
+              m_speedLag.IsMeasured(), "scale =", m_speedScale.Get(), "rough =", m_roughSpeedTable.ToString()));
 }
 
 std::string InertialNavigator::GetCalibrationLine() const
@@ -425,8 +427,8 @@ void InertialNavigator::LogCalibration() const
 
 void InertialNavigator::ClearSpeedCalibration(bool keepUnit)
 {
-  LOG(LINFO, ("Speed table was", m_speedTable.ToString(), "factor", m_speedFactor.Get(), "rough",
-              m_roughSpeedTable.ToString(), "unit", m_speedUnit.Get()));
+  LOG(LINFO, (LogHead(m_clock, "EVENT", "speed_table_cleared"), "Speed table was", m_speedTable.ToString(), "factor",
+              m_speedFactor.Get(), "rough", m_roughSpeedTable.ToString(), "unit", m_speedUnit.Get()));
   m_speedTable.Clear();
   m_speedFactor.Clear();
   m_speedLag.Clear();
@@ -1191,10 +1193,15 @@ void InertialNavigator::OnEsp32BleBytes(std::string_view bytes)
     m_esp32->OnBleBytes(bytes);
 }
 
-void InertialNavigator::OnEsp32BleState(BleState state)
+void InertialNavigator::OnEsp32BleState(BleState state, bool bondLost)
 {
   if (m_esp32)
-    m_esp32->OnBleState(state);
+    m_esp32->OnBleState(state, bondLost);
+}
+
+bool InertialNavigator::IsBleBondLost() const
+{
+  return m_esp32 && m_esp32->IsBondLost();
 }
 
 BleState InertialNavigator::GetBleState() const

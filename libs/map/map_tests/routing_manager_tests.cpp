@@ -5,6 +5,7 @@
 
 #include "drape_frontend/visual_params.hpp"
 
+#include "routing/routing_helpers.hpp"
 #include "routing/ruler_router.hpp"
 
 #include "storage/routing_helpers.hpp"
@@ -227,6 +228,42 @@ double GetRouteLengthMeters(RoutingManager const & manager)
   for (size_t i = 1; i < points.size(); ++i)
     length += mercator::DistanceOnEarth(points[i - 1].m_position, points[i].m_position);
   return length;
+}
+
+// A straight route of real segments: a car near it is matched onto it, unlike a fake (ruler) route.
+routing::Route MakeRealRoute(std::vector<m2::PointD> const & points)
+{
+  std::vector<geometry::PointWithAltitude> junctions;
+  for (auto const & point : points)
+    junctions.emplace_back(point, geometry::kDefaultAltitudeMeters);
+
+  std::vector<routing::RouteSegment> segments;
+  std::vector<double> times;
+  for (size_t i = 1; i < points.size(); ++i)
+  {
+    segments.emplace_back(
+        routing::Segment(0 /* mwmId */, 0 /* featureId */, static_cast<uint32_t>(i - 1), true /* forward */),
+        routing::turns::TurnItem(static_cast<uint32_t>(i), routing::turns::CarDirection::None), junctions[i],
+        routing::RouteSegment::RoadNameInfo());
+    times.push_back(10.0);
+  }
+  routing::FillSegmentInfo(times, segments);
+
+  routing::Route route;
+  route.SetGeometry(points.begin(), points.end());
+  route.SetRouteSegments(std::move(segments));
+  route.SetSubroutes(std::vector<routing::Route::SubrouteAttrs>(
+      {routing::Route::SubrouteAttrs(junctions.front(), junctions.back(), 0, points.size() - 1)}));
+  return route;
+}
+
+location::GpsInfo GpsAt(m2::PointD const & point)
+{
+  location::GpsInfo info;
+  info.m_latitude = mercator::YToLat(point.y);
+  info.m_longitude = mercator::XToLon(point.x);
+  info.m_horizontalAccuracy = 10;
+  return info;
 }
 }  // namespace
 
@@ -986,5 +1023,37 @@ UNIT_TEST(RoutingManager_RebuildClearsUnavailableAlternatives)
   while (!recovered)
     guiThread->RunNext();
   TEST(session.SwapActiveAlternative(1), ("Fresh alternatives must become selectable."));
+}
+
+// The car followed apart off the roads is drawn where it is, and the renderer still gets the distance it has
+// passed along the route: it hides the passed part of the line by it.
+UNIT_TEST(NoGps_RoutingManager_FollowedApartKeepsRouteDistanceFromBegin)
+{
+  Platform::ThreadRunner const threadRunner;
+
+  class Delegate final : public RoutingManager::Delegate
+  {
+  public:
+    void OnRouteFollow(routing::RouterType) override {}
+  } delegate;
+
+  RoutingManager manager(RoutingManager::Callbacks(nullptr, nullptr, nullptr, nullptr, nullptr), delegate);
+  std::vector<m2::PointD> const points = {{1.0, 1.0}, {1.001, 1.0}, {1.002, 1.0}};
+  manager.RoutingSession().AssignRouteForTesting(MakeRealRoute(points), routing::RouterResultCode::NoError);
+
+  auto onRoute = GpsAt({1.0004, 1.00005});
+  auto const matched = manager.GetRouteMatchingInfoForTesting(onRoute);
+  TEST(manager.IsOnRoute(), ());
+  TEST(matched.HasDistanceFromBegin(), ());
+  TEST_GREATER(matched.GetDistanceFromBegin(), 0.0, ());
+  TEST_ALMOST_EQUAL_ABS(onRoute.m_latitude, mercator::YToLat(1.0), 1e-9, ("A car on the route is drawn on it."));
+
+  manager.GetSessionRoute().SetFollowedApart(true);
+  auto apart = GpsAt({1.0008, 1.00005});
+  auto const matchedApart = manager.GetRouteMatchingInfoForTesting(apart);
+  TEST(matchedApart.HasDistanceFromBegin(), ("The renderer needs the distance of the passed part."));
+  TEST_GREATER(matchedApart.GetDistanceFromBegin(), matched.GetDistanceFromBegin(), ());
+  TEST_EQUAL(apart.m_latitude, mercator::YToLat(1.00005), ("A car followed apart is not moved onto the route."));
+  TEST_EQUAL(apart.m_longitude, mercator::XToLon(1.0008), ());
 }
 }  // namespace routing_manager_tests
