@@ -1,6 +1,7 @@
 #include "map/nogps/engine.hpp"
 
 #include "map/nogps/clock.hpp"
+#include "map/nogps/esp32_update.hpp"
 #include "map/nogps/geo.hpp"
 #include "map/nogps/log_line.hpp"
 #include "map/nogps/map_api.hpp"
@@ -777,7 +778,7 @@ void Engine::CheckFirmwareUpdate()
   // checked together: the firmware of the application is offered to a box with a newer one too.
   auto const * firmware = FindBoxFirmware();
   if (m_drivenWithBox || now - *m_boxKnownSinceMs < kFirmwareOfferDelayMs || !firmware ||
-      firmware->m_version == box->GetInfo()->m_firmware)
+      FirmwareVersionNumbers(firmware->m_version) == FirmwareVersionNumbers(box->GetInfo()->m_firmware))
   {
     DropFirmwareOffer();
     return;

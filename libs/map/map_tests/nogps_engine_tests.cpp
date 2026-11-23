@@ -4178,6 +4178,14 @@ UNIT_TEST(NoGps_Engine_OffersFirmwareOfApplication)
     TEST_EQUAL(env.m_engine.GetStatus().m_bundledFirmware, "0.3.3", ());
   }
   {
+    // Only a build suffix differs: the numbers tell the firmware, the box is not offered the update again.
+    Env env(true /* inertial */);
+    env.m_engine.SetFirmwares(firmwares);
+    connect(env, "0.3.3-dirty");
+    env.m_clock.Advance(Engine::kFirmwareOfferDelayMs * 2);
+    TEST_EQUAL(count(env, Event::FirmwareUpdateAvailable), 0, ());
+  }
+  {
     // The car drives: the user is asked before the next trip, when the box is connected again.
     Env env(true /* inertial */);
     env.m_engine.SetFirmwares(firmwares);
