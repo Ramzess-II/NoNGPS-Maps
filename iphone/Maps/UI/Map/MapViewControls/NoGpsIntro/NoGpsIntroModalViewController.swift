@@ -9,9 +9,6 @@ final class NoGpsIntroModalViewController: UIViewController {
     static let cardPadding = CGFloat(20)
     static let dimAlpha = CGFloat(0.5)
     static let spacing = CGFloat(10)
-    static let buttonHeight = CGFloat(44)
-    static let buttonPadding = CGFloat(10)
-    static let buttonRadius = CGFloat(10)
   }
 
   private let onClose: () -> Void
@@ -97,47 +94,22 @@ final class NoGpsIntroModalViewController: UIViewController {
     stack.addArrangedSubview(title)
     stack.addArrangedSubview(text)
     // The shop and the video are secondary and do not close the modal: the user comes back to it.
-    stack.addArrangedSubview(button(L("nogps_box_buy"), filled: false, action: #selector(buyTapped)))
-    stack.addArrangedSubview(button(L("nogps_intro_video"), filled: false, action: #selector(videoTapped)))
-    stack.addArrangedSubview(button(L("nogps_intro_understand"), filled: true,
-                                    action: #selector(understandTapped)))
+    // The filled button is the only way out of the modal, the rest are quiet.
+    stack.addArrangedSubview(NoGpsButton.outlined(title: L("nogps_box_buy")) { [weak self] in self?.buyTapped() })
+    stack.addArrangedSubview(NoGpsButton.outlined(title: L("nogps_intro_video")) { [weak self] in self?.videoTapped() })
+    stack.addArrangedSubview(NoGpsButton.filled(title: L("nogps_intro_understand")) { [weak self] in
+      self?.understandTapped()
+    })
   }
 
-  /// The filled button is the only way out of the modal, the rest are quiet.
-  private func button(_ title: String, filled: Bool, action: Selector) -> UIButton {
-    var config = UIButton.Configuration.filled()
-    config.title = title
-    config.titleAlignment = .center
-    config.baseBackgroundColor = filled ? .linkBlue : .blackOpaque
-    config.baseForegroundColor = filled ? .white : .linkBlue
-    config.cornerStyle = .fixed
-    config.background.cornerRadius = Constants.buttonRadius
-    config.contentInsets = NSDirectionalEdgeInsets(top: Constants.buttonPadding,
-                                                   leading: Constants.buttonPadding,
-                                                   bottom: Constants.buttonPadding,
-                                                   trailing: Constants.buttonPadding)
-    config.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
-      var attributes = attributes
-      attributes.font = filled ? .systemFont(ofSize: 16, weight: .semibold) : .systemFont(ofSize: 15)
-      return attributes
-    }
-    let button = UIButton(configuration: config)
-    button.addTarget(self, action: action, for: .touchUpInside)
-    button.heightAnchor.constraint(greaterThanOrEqualToConstant: Constants.buttonHeight).isActive = true
-    return button
-  }
-
-  @objc
   private func buyTapped() {
     UIApplication.shared.open(NoGpsLinks.shop)
   }
 
-  @objc
   private func videoTapped() {
     UIApplication.shared.open(NoGpsLinks.video)
   }
 
-  @objc
   private func understandTapped() {
     dismiss(animated: true) { [onClose] in onClose() }
   }
