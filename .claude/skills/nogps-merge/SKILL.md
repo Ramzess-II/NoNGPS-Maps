@@ -22,35 +22,39 @@ into the branch, so every push is a fast-forward. Step 2 still leaves out a bran
 train doesn't push commits under the session working there.
 
 1. **Roll first.** Unless `--no-roll` or PR numbers were given, invoke the `nogps-roll` skill and follow it to the
-   end; the PRs it opens join the queue. Then `git -C <ws>/app fetch -q origin`. `ws` is the folder that holds
-   `app/`.
-2. **Queue.** Open PRs of `Ramzess-II/NoNGPS-Maps`, oldest first:
+   end; the PRs it opens join the queue. Then `git -C <ws>/app fetch -q origin` and
+   `git -C <ws>/firmware fetch -q origin`. `ws` is the folder that holds `app/` and `firmware/`.
+2. **Queue.** Open PRs of both repos, oldest first. First `Ramzess-II/NoNGPS-Maps`:
 
    ```bash
    gh pr list -R Ramzess-II/NoNGPS-Maps --state open --limit 100 \
      --json number,title,headRefName,headRefOid,headRepositoryOwner,isDraft,createdAt,reviewDecision,reviewRequests,labels,url \
      --jq '[.[] | select(.isDraft | not)
-           | {number, title, branch: .headRefName, head: .headRefOid, createdAt, reviewDecision, url,
-              fork: (.headRepositoryOwner.login != "Ramzess-II"), reviewers: [.reviewRequests[].login],
-              labels: [.labels[].name]}] | sort_by(.createdAt)'
+           | {number, title, repo: "Ramzess-II/NoNGPS-Maps", branch: .headRefName, head: .headRefOid, createdAt,
+              reviewDecision, url, fork: (.headRepositoryOwner.login != "Ramzess-II"),
+              reviewers: [.reviewRequests[].login], labels: [.labels[].name]}] | sort_by(.createdAt)'
    git -C <ws>/app worktree list --porcelain | sed -n 's|^branch refs/heads/||p'
    ```
 
    Leave a PR out, with a line in the report for each:
    - a commit of it is authored by anyone but koloboid or Ramzess-II, including an upstream sync PR. A person
      merges those, as `.claude/rules/nogps-workflow.md` says:
-     `gh api --paginate repos/Ramzess-II/NoNGPS-Maps/pulls/<n>/commits --jq '.[].author.login // "unknown"' | sort -u`
+     `gh api --paginate repos/<its repo>/pulls/<n>/commits --jq '.[].author.login // "unknown"' | sort -u`
    - it waits for the other person's review: `reviewers` is not empty, or `reviewDecision` is `REVIEW_REQUIRED` or
      `CHANGES_REQUESTED`. They approve it;
    - its branch is one of those `git worktree list` printed: a session works in it, and the train would push
      commits under it;
    - `fork` is true: the train can't push to another owner's branch.
 
-   PRs of `Ramzess-II/ELMandIMU` don't go into the queue: the train works in one repo (#504). Both of us can merge
-   there, so list the open ones for the user (`gh pr list -R Ramzess-II/ELMandIMU --state open`) as ready to merge
-   by hand, with the same author check.
-3. **Two sets.** For each PR left: `gh pr view <n> --json files,additions,deletions,body`. Then split them:
-   - **parallel**: the PRs whose files no other queued PR touches and that are in no dependency pair with another
+   Then the same for `Ramzess-II/ELMandIMU`, the box firmware: the train lands its PRs too. Run the same two
+   commands with `-R Ramzess-II/ELMandIMU`, `Ramzess-II` still the owner to compare against, and
+   `git -C <ws>/firmware worktree list --porcelain` for the checked-out branches. Give every PR a `repo` field with
+   its repo, the app's included, and keep the two lists in one queue sorted by `createdAt`: the train takes a PR of
+   either repo in any slot.
+3. **Two sets.** For each PR left: `gh pr view <n> -R <its repo> --json files,additions,deletions,body`. Files
+   and dependencies are compared only within one repo: a path of the app and the same path of the firmware are
+   different files, and neither repo's history reaches the other's. Then split them:
+   - **parallel**: the PRs whose files no other queued PR of the same repo touches and that are in no dependency pair with another
      queued PR -- neither depended on by one nor depending on one, smallest diff first. Nothing the train merges can
      break them, so their prep and their CI runs go at the same time. A PR depends on another when its body says
      "Depends on #N" for a queued PR, or when that PR's head is an ancestor of its head
@@ -69,16 +73,24 @@ train doesn't push commits under the session working there.
    Print both sets with one line each: number, title, its set and why. With `--dry` stop here.
 4. **Run.** Start the saved workflow by its path, which works from both `<ws>` and `app/`:
    `Workflow({scriptPath: "<ws>/app/.claude/workflows/nogps-merge.js", args: {ws, parallel, serial, rounds, slots}})`,
-   with `parallel` and `serial` as JSON arrays of the PR objects of step 3, not strings. Up to `slots` workers each
-   prep one PR of the parallel set in their own worktree `<ws>/worktrees/merge-<slot>` -- master merged in, reviewed
-   by Fable, fixed by Opus, pushed -- so the PRs' checks run together. The merge gate then takes one prepped PR at a
-   time, in `<ws>/worktrees/merge-train`: it sends a PR back for one more round when master gained a file the PR
-   touches since its prep, merges the PR into current master locally and runs the core tests on the two together,
-   and merges on GitHub when CI is green. The serial set follows, one PR at a time in the gate worktree. A PR the
-   train can't merge stays open and it goes on to the next one.
+   with `parallel` and `serial` as JSON arrays of the PR objects of step 3, each carrying its `repo`, not strings.
+   The script refuses a `repo` that is neither of the two before any agent runs. Up to `slots` workers each prep one
+   PR of the parallel set in their own worktree `<ws>/worktrees/merge-<slot>` -- its default branch merged in,
+   reviewed by Fable, fixed by Opus, pushed -- so the PRs' checks run together. The merge gate then takes one
+   prepped PR at a time, in `<ws>/worktrees/merge-train`: it sends a PR back for one more round when its branch
+   gained a file the PR touches since its prep, merges the PR into that branch locally and runs the tests on the two
+   together, and merges on GitHub when CI is green. The serial set follows, one PR at a time in the gate worktree. A
+   PR the train can't merge stays open and it goes on to the next one.
+
+   A firmware PR runs the same way in a worktree of `<ws>/firmware` whose name ends in `-fw`, made by plain
+   `git worktree add` from `origin/main` with `keys/` linked and `sdkconfig` copied from the main checkout -- both
+   are gitignored there, and without them the build is unsigned or built for the wrong chip. `ELMandIMU` has no CI,
+   so the gate's `idf.py build` is the only check a firmware PR gets and it does not wait for checks.
 5. **Report.** Print the table it returns: PR → merged (with the merge commit) / open (with the reason) / blocked,
    with its set, the rounds it took and the number of findings; name the PRs that went back for another round
    because master moved under them (`staleRounds`), and any whose core tests failed only once merged into master
-   (`combinedTest`). Then `git -C <ws>/app log origin/master --oneline -<merged count>` for what landed, and
-   `<ws>/app/tools/unix/nogps_worktree.sh list`: name a worktree the train left behind and don't remove it, it may
-   hold work. Last, the PRs left out in step 2 and who has to act on them.
+   (`combinedTest`). Name the repo of each row: the two repos number their PRs apart. Then
+   `git -C <ws>/app log origin/master --oneline -<merged count>` and, when a firmware PR landed,
+   `git -C <ws>/firmware log origin/main --oneline -<count>` for what landed. Then
+   `<ws>/app/tools/unix/nogps_worktree.sh list` and `git -C <ws>/firmware worktree list`: name a worktree the train
+   left behind and don't remove it, it may hold work. Last, the PRs left out in step 2 and who has to act on them.

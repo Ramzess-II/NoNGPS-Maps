@@ -330,6 +330,71 @@ const base = (label) => {
   check('nothing was moved', !r.logs.some((m) => /moved to the serial set/.test(m)), r.logs)
 }
 
+// --- 18. a firmware PR: its own repo, branch, worktree and no CI ---
+{
+  const prompts = {}
+  const r = await runScript({
+    args: {
+      ws: '/ws',
+      parallel: [pr(1), pr(19, { repo: 'Ramzess-II/ELMandIMU', files: ['main/power.c'] })],
+      slots: 2,
+    },
+    reply: (label, opts, prompt) => {
+      prompts[label] = prompt
+      return base(label)
+    },
+  })
+  console.log('18. one app PR and one firmware PR')
+  check('both merged', r.out.merged === 2, r.out.results.map((x) => [x.pr, x.repo, x.outcome]))
+  const fw = r.out.results.find((x) => x.pr === 19)
+  check('the repo is in the report', fw.repo === 'Ramzess-II/ELMandIMU', fw)
+  check('the firmware steps are labelled apart', Object.keys(prompts).some((l) => l === 'update:fw#19'), Object.keys(prompts))
+  const u = prompts['update:fw#19']
+  check('it works in the -fw worktree', /\/ws\/worktrees\/merge-\d-fw/.test(u), u.slice(0, 400))
+  check('main, not master', /origin\/main/.test(u) && !/origin\/master/.test(u), u.slice(0, 600))
+  check('the worktree is made with plain git and keys linked', /git -C \/ws\/firmware worktree add/.test(u) && /ln -sfn \/ws\/firmware\/keys/.test(u), u)
+  // Without the main checkout's sdkconfig the build takes the esp32 target and secure boot v1, and signing fails.
+  check('sdkconfig is copied in too', /cp \/ws\/firmware\/sdkconfig/.test(u), u)
+  check('gh is pointed at the firmware repo', /-R Ramzess-II\/ELMandIMU/.test(u) && !/-R Ramzess-II\/NoNGPS-Maps/.test(u), u)
+  const g = prompts['merge:fw#19']
+  check('the gate builds the firmware', /idf\.py build/.test(g), g.slice(0, 200))
+  check('the gate waits for no CI', /No CI to wait for/.test(g) && !/gh pr checks/.test(g), g.slice(0, 200))
+  check('the gate merges into main', /checkout --force -B train\/gate refs\/remotes\/origin\/main/.test(g), g.slice(0, 200))
+  // The app PR is untouched by all this.
+  const a = prompts['update:#1']
+  check('the app PR still uses master and the helper', /origin\/master/.test(a) && /nogps_worktree\.sh add merge-\d/.test(a), a.slice(0, 400))
+  check('the app gate still waits for CI', /gh pr checks/.test(prompts['merge:#1']), prompts['merge:#1'].slice(0, 200))
+}
+
+// --- 19. the two repos number their PRs apart ---
+{
+  const r = await runScript({
+    args: {
+      ws: '/ws',
+      parallel: [pr(19), pr(19, { repo: 'Ramzess-II/ELMandIMU' })],
+      serial: [pr(19, { repo: 'Ramzess-II/ELMandIMU' })], // the same firmware PR again: taken once
+      slots: 2,
+    },
+    reply: base,
+  })
+  console.log('19. #19 in both repos')
+  check('both are taken', r.out.results.length === 2, r.out.results.map((x) => [x.pr, x.repo]))
+  check('one of each repo', new Set(r.out.results.map((x) => x.repo)).size === 2, r.out.results.map((x) => x.repo))
+  check('both merged', r.out.merged === 2)
+}
+
+// --- 20. a repo the train doesn't know ---
+{
+  let err = null
+  try {
+    await runScript({ args: { ws: '/ws', parallel: [pr(1, { repo: 'someone/else' })] }, reply: base })
+  } catch (e) {
+    err = e
+  }
+  console.log('20. a PR of an unknown repo')
+  check('the queue is refused before any agent runs', err !== null && /unknown repo someone\/else/.test(String(err)), String(err))
+}
+
 // --- 17. a bigger mixed run, repeated: it always terminates and merges everything ---
 {
   let bad = 0
