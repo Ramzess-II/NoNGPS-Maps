@@ -4,11 +4,12 @@
 # dependencies = [
 #     "pyobjc-framework-CoreBluetooth>=10; sys_platform == 'darwin'",
 #     "dbus-next>=0.2.3; sys_platform == 'linux'",
+#     "winsdk>=1.0.0b10; sys_platform == 'win32'",
 # ]
 # ///
 """The sensor box of NonGPS Maps, simulated on this computer so a phone can find it without the hardware.
 
-  just box [--radio auto|macos|linux|fake] [--id S1] [--port 0] [--no-browser]
+  just box [--radio auto|macos|linux|windows|fake] [--id S1] [--port 0] [--no-browser]
   uv run --script tools/python/nogps_box_sim.py [the same]
 
 The box stands in a parked car: it advertises the service of the box over Bluetooth LE and sends the NGI, NGS and
@@ -20,7 +21,8 @@ A debug build of the application is needed on Android: the simulator asks for no
 the lines of a paired box alone. iOS doesn't check the pairing, but on macOS CoreBluetooth can't advertise the
 manufacturer data of BLE-13, so the pairing window flag never reaches the phone, and only a debug build takes an
 advertisement without that data as a box that accepts a new phone. BlueZ on Linux does advertise it, the panel sets
-the flags there, and an iOS release build connects to the simulator as it does to a box.
+the flags there, and an iOS release build connects to the simulator as it does to a box. The radio on Windows
+advertises it through a publisher of its own, written without a machine to try it on: see its docstring.
 
 What it doesn't simulate, and why:
 - the pairing rules (BLE-11, BLE-12, BLE-15, BLE-16): on macOS pairing belongs to the system, with no bt_pin and no
@@ -30,8 +32,8 @@ What it doesn't simulate, and why:
 - the firmware update, the car values, the phone list and the places of two phones: NGI tells the abilities "BLE"
   alone, and the application asks for none of them.
 
-The radio needs a package -- PyObjC on macOS, dbus-next on Linux -- and the script declares both above, each
-for its own platform, so uv puts them in an environment of its own and nothing is installed into the system
+The radio needs a package -- PyObjC on macOS, dbus-next on Linux, winsdk on Windows -- and the script declares
+them above, each for its own platform, so uv puts them in an environment of its own and nothing is installed into the system
 Python. The panel and the tests need no package at all and run with plain python3, which is how CI runs them.
 
 A radio is a class Radio in nogps_box_sim_radio_<platform>.py with:
@@ -574,9 +576,15 @@ class FakeRadio:
         self.stopped.set()
 
 
+def default_radio(platform):
+    if platform.startswith('linux'):
+        return 'linux'
+    return {'darwin': 'macos', 'win32': 'windows'}.get(platform, 'fake')
+
+
 def make_radio(kind):
     if kind == 'auto':
-        kind = {'darwin': 'macos'}.get(sys.platform, 'linux' if sys.platform.startswith('linux') else 'fake')
+        kind = default_radio(sys.platform)
     if kind == 'fake':
         return FakeRadio()
     module_name = 'nogps_box_sim_radio_' + kind
@@ -584,7 +592,7 @@ def make_radio(kind):
     try:
         return importlib.import_module(module_name).Radio()
     except ImportError as e:
-        packages = {'macos': 'pyobjc-framework-CoreBluetooth', 'linux': 'dbus-next'}
+        packages = {'macos': 'pyobjc-framework-CoreBluetooth', 'linux': 'dbus-next', 'windows': 'winsdk'}
         sys.exit('%s needs %s, which the script declares for uv: run it with `just box`, or with\n'
                  '`uv run --script` on this file. Without uv, put the package in a virtual environment of your own.\n'
                  '(%s)' % (module_name, packages.get(kind, '?'), e))
@@ -660,7 +668,7 @@ def handler(box):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--radio', default='auto', choices=['auto', 'macos', 'linux', 'fake'])
+    parser.add_argument('--radio', default='auto', choices=['auto', 'macos', 'linux', 'windows', 'fake'])
     parser.add_argument('--id', default='S1', help='the characters after NoGPS- in the name of the box; macOS drops '
                                                    'a name over 8 characters from the advertisement')
     parser.add_argument('--port', type=int, default=0, help='0 takes a free one')
