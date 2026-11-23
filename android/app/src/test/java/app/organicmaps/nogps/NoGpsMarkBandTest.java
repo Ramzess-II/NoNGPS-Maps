@@ -3,33 +3,43 @@ package app.organicmaps.nogps;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.Test;
 
 public class NoGpsMarkBandTest
 {
-  // dp values of dimens.xml: margin_half + speed_view_size, nogps_mark_clearance, nogps_mark_height,
-  // sprint_margin_bottom.
-  private static final int BAR_TOP = 8 + 60;
-  private static final int CLEARANCE = 76;
-  private static final int MARK_HEIGHT = 64;
-  private static final int SPRINT_MARGIN = 148;
+  private static final String DIMENS = Files.exists(Paths.get("src/main/res/values/dimens.xml"))
+                                         ? "src/main/res/values/dimens.xml"
+                                         : "app/src/main/res/values/dimens.xml";
+
+  private static int dp(String name) throws IOException
+  {
+    Matcher m = Pattern.compile("<dimen name=\"" + name + "\">(\\d+)dp</dimen>")
+                    .matcher(new String(Files.readAllBytes(Paths.get(DIMENS))));
+    assertTrue(name, m.find());
+    return Integer.parseInt(m.group(1));
+  }
 
   @Test
   public void routingOffset_isSheetPlusClearance()
   {
-    assertEquals(180, NoGpsMarkBand.routingOffsetPx(104, CLEARANCE));
-    assertEquals(CLEARANCE, NoGpsMarkBand.routingOffsetPx(0, CLEARANCE));
+    assertEquals(180, NoGpsMarkBand.routingOffsetPx(104, 76));
+    assertEquals(76, NoGpsMarkBand.routingOffsetPx(0, 76));
   }
 
   @Test
-  public void bars_endBelowTheMark()
+  public void bars_endBelowTheMark() throws IOException
   {
-    assertTrue(BAR_TOP < CLEARANCE);
+    assertTrue(dp("margin_half") + dp("speed_view_size") < dp("nogps_mark_clearance"));
   }
 
   @Test
-  public void sprintAlert_staysAboveTheMark()
+  public void sprintAlert_staysAboveTheMark() throws IOException
   {
-    assertTrue(SPRINT_MARGIN >= NoGpsMarkBand.topPx(CLEARANCE, MARK_HEIGHT));
+    assertTrue(dp("sprint_margin_bottom") >= NoGpsMarkBand.topPx(dp("nogps_mark_clearance"), dp("nogps_mark_height")));
   }
 }

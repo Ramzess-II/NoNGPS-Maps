@@ -12,8 +12,8 @@ final class NoGpsMarkBandTests: XCTestCase {
 
   /// The alert of a timed run starts above the top of the mark.
   func test_GivenBand_WhenSprintAlert_ThenItsBottomIsAboveTheMark() {
-    XCTAssertGreaterThanOrEqual(Constants.markClearance + Constants.markHeight + Constants.sprintGap,
-                                Constants.markClearance + Constants.markHeight)
-    XCTAssertGreaterThan(Constants.sprintGap, 0)
+    let areaMaxY = CGFloat(800)
+    let markTop = areaMaxY - Constants.markClearance - Constants.markHeight
+    XCTAssertLessThan(NoGpsControls.sprintBottomConstant(areaMaxY: areaMaxY), markTop)
   }
 }
