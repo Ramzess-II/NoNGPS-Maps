@@ -5,10 +5,13 @@ import io
 import json
 import os
 import re
+import shutil
+import subprocess
 import tempfile
 import threading
 import unittest
 import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 from http.server import ThreadingHTTPServer
@@ -118,6 +121,17 @@ class AddTest(unittest.TestCase):
         viewer.add('180000.log', self.log('Pixel_7-a3f9', 86400000), False)
         self.assertEqual(len(viewer.sources), 2)
 
+    def test_an_oslog_text_is_read_with_the_phone_of_its_path(self):
+        """The page sends the path of a file of a dropped folder as its name."""
+        text = b'10-08 18:00:01.000 (main) I/OMcore: nogps/engine.cpp:1 Start(): Start\n'
+        viewer = v.Viewer([], None)
+        viewer.add('logs/iPhone_14-1a2b/2026-10-08/181500.log', text, True)
+        self.assertEqual([f['phone'] for f in viewer.analysis.files], ['iPhone_14-1a2b'])
+
+    def test_an_oslog_text_dropped_alone_is_refused_with_a_hint(self):
+        with self.assertRaisesRegex(v.nogps_trip_log.LogFormatError, 'give the logs.zip or the folder'):
+            v.Viewer([], None).add('181500.log', b'Datetime: 2026-10-08 18:00:00.000\n', True)
+
     def test_a_file_of_the_earlier_versions_is_refused(self):
         with self.assertRaises(v.nogps_trip_log.LogFormatError):
             v.Viewer([], None).add('app.log', b'Datetime: 2026-10-08 18:00:00.000\n', True)
@@ -148,6 +162,122 @@ class AddTest(unittest.TestCase):
         self.assertEqual([n for n in viewer.analysis.notes if 'Skipped' in n],
                          ['Skipped: logs.zip/logs/log-07-10-26-Pixel_7-a3f9.log: not a log of LOGFMT 2, its first '
                           'line is not a LOGFMT line (logs of the earlier versions are not read)'])
+
+
+NODE = shutil.which('node')
+
+# droppedFiles() and upload() of the page, run outside a browser: the page is read, the two functions are taken out of
+# its script and called with a stub of the drop entries and of api(), which prints what each call would send.
+PAGE_HARNESS = r"""
+import {readFileSync} from 'node:fs';
+
+const html = readFileSync(process.argv[2], 'utf8');
+const script = html.slice(html.lastIndexOf('<script>') + '<script>'.length, html.lastIndexOf('</script>'));
+
+// The text of a top-level async function of the page, by counting its braces.
+function source(name) {
+  const start = script.indexOf('async function ' + name + '(');
+  if (start < 0) throw new Error(name + ' is not in the page');
+  for (let i = script.indexOf('{', start), depth = 0; i < script.length; ++i) {
+    if (script[i] === '{') ++depth;
+    else if (script[i] === '}' && --depth === 0) return script.slice(start, i + 1);
+  }
+  throw new Error(name + ' is not closed');
+}
+
+const sent = [];
+const page = new Function('$', 'api', 'renderTrips', 'loadTrip',
+                          source('droppedFiles') + '\n' + source('upload') + '\nreturn {droppedFiles, upload};')(
+  () => ({}),
+  async (url, options) => { sent.push({url, body: options.body.name}); return {trips: []}; },
+  () => {}, () => {});
+
+const file = (name, relative) => ({name, webkitRelativePath: relative || ''});
+const name = path => path.split('/').pop();
+const fileEntry = path => (
+  {isFile: true, name: name(path), fullPath: path, file: resolve => resolve(file(name(path)))});
+const dirEntry = (path, children) => ({
+  isFile: false,
+  name: name(path),
+  fullPath: path,
+  createReader() {
+    let left = children;
+    return {readEntries(resolve) { const batch = left; left = []; resolve(batch); }};
+  },
+});
+
+async function drop(transfer) {
+  sent.length = 0;
+  await page.upload(await page.droppedFiles(transfer));
+  return sent.slice();
+}
+
+const out = {};
+out.folder = await drop({items: [{webkitGetAsEntry: () => dirEntry('/logs', [dirEntry('/logs/iPhone_14-1a2b',
+  [dirEntry('/logs/iPhone_14-1a2b/2026-10-08', [fileEntry('/logs/iPhone_14-1a2b/2026-10-08/181500.log'),
+                                                fileEntry('/logs/iPhone_14-1a2b/2026-10-08/181600.log')])])])}],
+                        files: []});
+out.mixed = await drop({items: [{webkitGetAsEntry: () => dirEntry('/logs', [
+  fileEntry('/logs/.DS_Store'), fileEntry('/logs/nogps-replay-out.txt'), fileEntry('/logs/logs.zip'),
+  dirEntry('/logs/Pixel_7-a3f9', [dirEntry('/logs/Pixel_7-a3f9/2026-10-08', [
+    fileEntry('/logs/Pixel_7-a3f9/2026-10-08/181500.log'),
+    fileEntry('/logs/Pixel_7-a3f9/2026-10-08/logcat.log')])])])}],
+                        files: []});
+out.file = await drop({items: [{webkitGetAsEntry: () => fileEntry('/180000.log')}], files: [file('180000.log')]});
+out.text = await drop({items: [{webkitGetAsEntry: () => null}], files: [file('180000.log')]});
+sent.length = 0;
+await page.upload([file('181500.log', 'logs/iPhone_14-1a2b/2026-10-08/181500.log')]);
+out.picked = sent.slice();
+
+console.log(JSON.stringify(out));
+"""
+
+
+@unittest.skipUnless(NODE, 'node is needed to run the script of the page')
+class PageUploadTest(unittest.TestCase):
+    """What the page sends to /api/add for a dropped folder, a dropped file and a folder picked in the input."""
+
+    @classmethod
+    def setUpClass(cls):
+        directory = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(directory.cleanup)
+        harness = os.path.join(directory.name, 'page.mjs')
+        with open(harness, 'w') as f:
+            f.write(PAGE_HARNESS)
+        run = subprocess.run([NODE, harness, v.PAGE], capture_output=True, text=True)
+        if run.returncode:
+            raise AssertionError('the script of the page did not run: %s' % run.stderr.strip())
+        cls.sent = json.loads(run.stdout)
+
+    @staticmethod
+    def query(sent, key):
+        return [urllib.parse.parse_qs(urllib.parse.urlparse(s['url']).query)[key][0] for s in sent]
+
+    def test_a_dropped_folder_sends_the_path_of_each_file_inside_it(self):
+        """The phone of an OSLog text of iOS comes from the path, so the name of the file alone is not enough."""
+        sent = self.sent['folder']
+        self.assertEqual(self.query(sent, 'name'), ['logs/iPhone_14-1a2b/2026-10-08/181500.log',
+                                                    'logs/iPhone_14-1a2b/2026-10-08/181600.log'])
+        self.assertEqual(self.query(sent, 'last'), ['0', '1'])
+        self.assertEqual([s['body'] for s in sent], ['181500.log', '181600.log'])
+
+    def test_a_dropped_folder_sends_only_its_logs(self):
+        """What the tools take from a folder on the command line: *.log and *.zip, without logcat* and
+        nogps-replay* (LOG_NAME, NOT_LOG_NAME in nogps_trip_log.py). Everything else would be noted as skipped."""
+        self.assertEqual(self.query(self.sent['mixed'], 'name'),
+                         ['logs/logs.zip', 'logs/Pixel_7-a3f9/2026-10-08/181500.log'])
+
+    def test_a_dropped_file_sends_its_name(self):
+        self.assertEqual(self.query(self.sent['file'], 'name'), ['180000.log'])
+        self.assertEqual([s['body'] for s in self.sent['file']], ['180000.log'])
+
+    def test_a_drop_of_an_item_that_is_no_entry_sends_the_files_of_the_transfer(self):
+        self.assertEqual(self.query(self.sent['text'], 'name'), ['180000.log'])
+        self.assertEqual([s['body'] for s in self.sent['text']], ['180000.log'])
+
+    def test_a_folder_picked_in_the_input_sends_the_path_inside_it(self):
+        self.assertEqual(self.query(self.sent['picked'], 'name'), ['logs/iPhone_14-1a2b/2026-10-08/181500.log'])
+        self.assertEqual([s['body'] for s in self.sent['picked']], ['181500.log'])
 
 
 if __name__ == '__main__':

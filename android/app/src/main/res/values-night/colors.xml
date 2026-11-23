@@ -72,4 +72,13 @@
   <color name="source_connecting">#FF4AA3FF</color>
   <color name="source_warning">#FFFF9F0A</color>
   <color name="source_inertial">#FFBF5AF2</color>
+
+  <color name="nogps_globe_sea">#FF22384A</color>
+  <color name="nogps_globe_graticule">#FF6E97B8</color>
+  <color name="nogps_globe_land">#FF6FA77C</color>
+  <color name="nogps_globe_satellite">#FFE3EEF8</color>
+  <color name="nogps_globe_satellite_off">#FF7B8086</color>
+  <color name="nogps_globe_beam">#FF5BB4E6</color>
+  <color name="nogps_globe_jam">#FFFFA040</color>
+  <color name="nogps_globe_car">#FFF2F4F5</color>
 </resources>

@@ -97,3 +97,8 @@ box *args:
     if command -v uv > /dev/null; then exec uv run --script "$script" {{args}}; fi
     echo "No uv (https://docs.astral.sh/uv): running with python3, which has no package for the radio" >&2
     exec python3 "$script" {{args}}
+
+[windows]
+[no-cd]
+box *args:
+    $script = {{ quote(justfile_directory() / "tools/python/nogps_box_sim.py") }}; if (Get-Command uv -ErrorAction SilentlyContinue) { uv run --script $script {{args}} } else { Write-Host "No uv (https://docs.astral.sh/uv): running with python, which has no package for the radio"; python $script {{args}} }
