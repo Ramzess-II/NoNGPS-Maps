@@ -55,7 +55,7 @@
   </style>
 
   <style name="MwmTheme.DialogFragment.Fullscreen" parent="Theme.AppCompat.DayNight">
-    <item name="colorPrimary">@color/bg_primary</item>
+    <item name="colorPrimary">@color/nogps_primary</item>
     <item name="android:colorPrimaryDark">?statusBar</item>
     <item name="colorAccent">@color/base_accent</item>
     <item name="clickableBackground">?selectableItemBackground</item>
@@ -72,7 +72,7 @@
   <style name="MwmTheme.DialogFragment.Fullscreen.Opaque" parent="MwmTheme.DialogFragment.Fullscreen">
     <item name="android:windowTranslucentStatus">false</item>
     <item name="android:windowSoftInputMode">adjustResize</item>
-    <item name="android:statusBarColor">@color/bg_primary</item>
+    <item name="android:statusBarColor">@color/nogps_primary</item>
   </style>
 
   <style name="MwmTheme.DialogFragment.NoFullscreen" parent="MwmTheme.DialogFragment.Fullscreen">

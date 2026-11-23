@@ -35,7 +35,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:indeterminateTint="@color/text_light"
+        android:indeterminateTint="@color/toolbar_text"
         android:visibility="invisible"
         tools:visibility="visible" />
     <LinearLayout
@@ -61,7 +61,7 @@
             android:id="@+id/user_profile_name"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:textColor="@color/text_light"
+            android:textColor="@color/toolbar_text"
             tools:ignore="UnusedAttribute"
             android:breakStrategy="balanced"
             android:autoSizeMinTextSize="@dimen/text_size_body_3"
@@ -72,7 +72,7 @@
             android:id="@+id/user_sent_edits"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:textColor="@color/text_light"
+            android:textColor="@color/toolbar_text"
             android:textSize="35sp"
             android:textStyle="bold"
             tools:text="2,000,000" />
@@ -82,7 +82,7 @@
             android:layout_height="match_parent"
             android:textSize="@dimen/text_size_body_1"
             android:text="@string/editor_profile_changes"
-            android:textColor="@color/white_primary" />
+            android:textColor="@color/toolbar_text" />
       </LinearLayout>
     </LinearLayout>
   </FrameLayout>
