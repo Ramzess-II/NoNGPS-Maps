@@ -6,10 +6,14 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <string_view>
 
 namespace nogps
 {
 class Clock;
+
+/// A build may add a suffix to the version of the box ("0.3.3-dirty"): the numbers tell the firmware.
+std::string_view FirmwareVersionNumbers(std::string_view version);
 
 /// A firmware of the ESP32 sensor box that comes with the application: the one the application is tested with.
 struct Firmware
