@@ -1,5 +1,6 @@
 enum TextColorStyleSheet: String, CaseIterable {
   case whitePrimary = "whitePrimaryText"
+  case nogpsPrimary = "nogpsPrimaryText"
   case blackSecondary = "blackSecondaryText"
   case blackPrimary = "blackPrimaryText"
   case linkBlue = "linkBlueText"
@@ -16,6 +17,7 @@ extension TextColorStyleSheet: IStyleSheet {
     let color: UIColor = {
       switch self {
       case .whitePrimary: .whitePrimaryText
+      case .nogpsPrimary: .nogpsPrimaryText
       case .blackSecondary: .blackSecondaryText
       case .blackPrimary: .blackPrimaryText
       case .linkBlue: .linkBlue
