@@ -47,7 +47,7 @@ the same time its own worktree made by `tools/unix/nogps_worktree.sh`:
 - The first build in a new worktree is mostly ccache hits once ccache is set up on the machine:
   `ccache --set-config base_dir=<ws>`, `hash_dir=false` and `max_size=20G`. `add` warns when they aren't set. Also keep `cache_dir` out of
   `~/Library/Caches` (macOS reclaims it on a full disk): `mv <old cache_dir> ~/.ccache` and
-  `ccache --set-config cache_dir=~/.ccache`. `add` warns about that too.
+  `ccache --set-config cache_dir="$HOME/.ccache"`. `add` warns about that too.
 - Build iOS in the main checkout: Xcode's DerivedData is per path, so a worktree builds it from scratch.
 - Claude Code's `--worktree`, EnterWorktree and `isolation: "worktree"` use the script through hooks in
   `.claude/settings.local.json` of the folder you start Claude in (drop `app/` from the path when that is `app/`):
