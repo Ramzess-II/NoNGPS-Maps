@@ -85,6 +85,9 @@ public:
     virtual void OnMarkSwitched() = 0;
     /// The sensor box has told about itself, see MotionSource::Listener::OnBoxHeard().
     virtual void OnBoxHeard(std::string const & /* id */, std::string const & /* firmware */) {}
+    /// See MotionSource::Listener::GetBoxAuthKey() and OnBoxAuthKey().
+    virtual std::string GetBoxAuthKey(std::string const & /* id */, bool & /* confirmed */) { return {}; }
+    virtual void OnBoxAuthKey(std::string const & /* id */, std::string const & /* key */, bool /* confirmed */) {}
     /// See MotionSource::Listener::OnBoxCarValues() and OnBoxCarWritten().
     virtual void OnBoxCarValues(std::map<std::string, std::string> const & /* values */) {}
     /// See MotionSource::Listener::OnThisPhoneRemoved().
@@ -536,6 +539,14 @@ private:
   void OnMotion(double yawDeltaDeg, double dtSec, int64_t timestampNs) override;
   void OnSourceAccel(std::array<double, 3> const & accel) override;
   void OnBoxHeard(std::string const & id, std::string const & firmware) override;
+  std::string GetBoxAuthKey(std::string const & id, bool & confirmed) override
+  {
+    return m_listener.GetBoxAuthKey(id, confirmed);
+  }
+  void OnBoxAuthKey(std::string const & id, std::string const & key, bool confirmed) override
+  {
+    m_listener.OnBoxAuthKey(id, key, confirmed);
+  }
   void OnBoxCarValues(std::map<std::string, std::string> const & values) override;
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
   void OnThisPhoneRemoved() override { m_listener.OnThisPhoneRemoved(); }
