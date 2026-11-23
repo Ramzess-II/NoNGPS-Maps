@@ -410,6 +410,8 @@ const base = (label) => {
     },
     reply: (label, opts, prompt) => {
       prompts[label] = prompt
+      // Round 1 of the fork PR's review finds something, so the fix step runs and its prompt can be checked.
+      if (label === 'review:fw#19/1') return { findings: [{ file: 'components/net/net.c', summary: 'a finding' }] }
       return base(label)
     },
   })
@@ -421,8 +423,9 @@ const base = (label) => {
   check('the head comes from the fork', /refs\/remotes\/koloboid\/feature\/p19/.test(u), u.slice(0, 900))
   check('the push goes back to the fork', /push koloboid HEAD:refs\/heads\/feature\/p19/.test(u), u)
   check('the base still comes from origin', /fetch -q origin/.test(u) && /merge --no-edit origin\/main/.test(u), u)
-  const f = prompts['fix:fw#19:1'] || prompts['fix:fw#19']
-  check('a fix is pushed to the fork too', f === undefined || /push koloboid HEAD:refs\/heads\/feature\/p19/.test(f), f)
+  const f = prompts['fix:fw#19/1']
+  check('the fix step ran', f !== undefined, Object.keys(prompts))
+  check('a fix is pushed to the fork too', f !== undefined && /push koloboid HEAD:refs\/heads\/feature\/p19/.test(f), f)
   const g = prompts['merge:fw#19']
   check('the gate merges the fork ref', /merge --no-edit refs\/remotes\/koloboid\/feature\/p19/.test(g), g.slice(0, 2000))
   check('the gate takes the base from origin', /-B train\/gate refs\/remotes\/origin\/main/.test(g), g.slice(0, 2000))
