@@ -34,6 +34,7 @@ import json
 import os
 import re
 import sqlite3
+import sys
 import tempfile
 import time
 from datetime import datetime, timezone
@@ -456,11 +457,14 @@ def import_day(files, db_path, phone, day):
 
 def tree_days(paths):
     """{(phone, day): [file, …]} of the logs of the paths, the phone from the LOGFMT line of each file and the day
-    from its folder in logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log. Files that can't be read are an error here, as
-    nothing is to be left out of a database silently."""
+    from its folder in logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log. A file without a LOGFMT line (the OSLog text of iOS) is
+    skipped with a note; any other file that can't be read is an error."""
     result = {}
     for path in nogps_trip_log.log_files(paths):
         header = nogps_trip_log.read_header(path)
+        if header['logfmt'] is None:
+            print('%s: no LOGFMT line (OSLog text), skipped' % path, file=sys.stderr)
+            continue
         tree = nogps_trip_log.tree_path(path)
         if not tree:
             raise ImportError_('%s: not in logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log' % path)

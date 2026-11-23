@@ -167,7 +167,18 @@ class ImportTest(unittest.TestCase):
             self.run_import([HEADER.replace('LOGFMT 2', 'LOGFMT 9')] + GOOD[1:])
 
     def test_file_without_logfmt(self):
-        self.fails(['I(1) 0.5 plain OSLog text'], 'no LOGFMT line')
+        with self.assertRaises((nogps_db.ImportError_, nogps_db.nogps_trip_log.LogFormatError)) as e:
+            nogps_db.import_day([('a.log', b'I(1) 0.5 plain OSLog text\n')], os.path.join(self.out, 'x.sqlite'),
+                                'Pixel_7-a3f9', '2026-11-22')
+        self.assertIn('LOGFMT', str(e.exception))
+
+    def test_tree_skips_file_without_logfmt(self):
+        write(self.logs, 'Pixel_7-a3f9/2026-11-22/180000.log', GOOD)
+        write(self.logs, 'Pixel_7-a3f9/2026-11-22/190000.log', ['I(1) 0.5 plain OSLog text'])
+        write(self.logs, 'Pixel_7-a3f9/2026-11-23/000000.log', GOOD)
+        got = nogps_db.import_tree([self.logs], self.out)
+        self.assertEqual(sorted(os.path.basename(p) for p, _ in got),
+                         ['Pixel_7-a3f9-2026-11-22.sqlite', 'Pixel_7-a3f9-2026-11-23.sqlite'])
 
     def test_file_with_no_trip(self):
         self.run_import(GOOD[:3])
