@@ -46677,6 +46677,12 @@ en = sleeps: the engine is stopped
 ru = спит: двигатель заглушен
 uk = спить: двигун заглушено
 
+[nogps_box_battery_lock]
+tags = android-app,apple-maps
+en = switched off: the battery was low. Unplug the box and plug it back in
+ru = выключился: низкий заряд аккумулятора. Выньте блок и вставьте снова
+uk = вимкнувся: низький заряд акумулятора. Витягніть блок і вставте знову
+
 [nogps_box_obd_sleeping]
 tags = android-app,apple-maps
 en = OBD sleeps: the engine is stopped

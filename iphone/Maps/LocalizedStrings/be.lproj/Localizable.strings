@@ -1606,6 +1606,7 @@
 "nogps_map_data" = "Map data © OpenStreetMap and Organic Maps";
 "nogps_source_code" = "Source code on GitHub";
 "nogps_box_sleeping" = "sleeps: the engine is stopped";
+"nogps_box_battery_lock" = "switched off: the battery was low. Unplug the box and plug it back in";
 "nogps_box_obd_sleeping" = "OBD sleeps: the engine is stopped";
 "nogps_engine_running" = "running";
 "nogps_engine_stopped" = "stopped";

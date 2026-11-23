@@ -1191,6 +1191,7 @@
     <string name="nogps_source_code">Source code on GitHub</string>
     <string name="nogps_delete_recent_query">Delete from the history?</string>
     <string name="nogps_box_sleeping">sleeps: the engine is stopped</string>
+    <string name="nogps_box_battery_lock">switched off: the battery was low. Unplug the box and plug it back in</string>
     <string name="nogps_box_obd_sleeping">OBD sleeps: the engine is stopped</string>
     <string name="nogps_engine_running">running</string>
     <string name="nogps_engine_stopped">stopped</string>

@@ -1606,6 +1606,7 @@
 "nogps_map_data" = "Дані карт © OpenStreetMap і Organic Maps";
 "nogps_source_code" = "Вихідний код на GitHub";
 "nogps_box_sleeping" = "спить: двигун заглушено";
+"nogps_box_battery_lock" = "вимкнувся: низький заряд акумулятора. Витягніть блок і вставте знову";
 "nogps_box_obd_sleeping" = "OBD спить: двигун заглушено";
 "nogps_engine_running" = "працює";
 "nogps_engine_stopped" = "заглушено";

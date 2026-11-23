@@ -1201,6 +1201,7 @@
     <string name="nogps_source_code">Вихідний код на GitHub</string>
     <string name="nogps_delete_recent_query">Видалити з історії?</string>
     <string name="nogps_box_sleeping">спить: двигун заглушено</string>
+    <string name="nogps_box_battery_lock">вимкнувся: низький заряд акумулятора. Витягніть блок і вставте знову</string>
     <string name="nogps_box_obd_sleeping">OBD спить: двигун заглушено</string>
     <string name="nogps_engine_running">працює</string>
     <string name="nogps_engine_stopped">заглушено</string>
