@@ -1108,6 +1108,21 @@ void Engine::OnBoxHeard(std::string const & id, std::string const & firmware)
     m_boxCarValues.Forget();
 }
 
+std::string Engine::GetBoxAuthKey(std::string const & id, bool & confirmed)
+{
+  auto key = m_cars.GetCarValue(id, CarStorage::kCarAuthKey).value_or("");
+  confirmed = !key.empty() && key.front() != CarStorage::kAuthKeyUnconfirmed;
+  if (!key.empty() && !confirmed)
+    key.erase(0, 1);
+  return key;
+}
+
+void Engine::OnBoxAuthKey(std::string const & id, std::string const & key, bool confirmed)
+{
+  m_cars.SetCarValue(id, CarStorage::kCarAuthKey,
+                     key.empty() || confirmed ? key : CarStorage::kAuthKeyUnconfirmed + key);
+}
+
 void Engine::OnBoxCarValues(std::map<std::string, std::string> const & values)
 {
   auto * box = m_inertial->GetEsp32();
@@ -1140,7 +1155,10 @@ void Engine::OnBoxCarWritten(std::string const & key, std::string const & value,
 
 void Engine::OnThisPhoneRemoved()
 {
-  LOG(LINFO, ("This phone is removed from the box of the car", m_cars.GetCurrentCar()));
+  auto const car = m_cars.GetCurrentCar();
+  LOG(LINFO, ("This phone is removed from the box of the car", car));
+  // The box has dropped its key of this phone with the record: the next session gives it a new one.
+  m_cars.SetCarValue(car, CarStorage::kCarAuthKey, "");
   m_phoneRemovedTimer.Start(0, [this] { m_delegate.OnEvent(Event::ThisPhoneRemoved); });
 }
 

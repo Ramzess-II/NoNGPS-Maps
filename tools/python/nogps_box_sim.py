@@ -30,8 +30,19 @@ What it doesn't simulate, and why:
   "display only" capability; so no drop of a link that stays unencrypted and no BT_UNSECURE event, and the
   write queue of BLE-5 is the radio's, not ours;
 - any motion: no speed, no turns, no jolts;
-- the firmware update, the car values, the phone list and the places of two phones: NGI tells the abilities "BLE"
-  alone, and the application asks for none of them.
+- the firmware update, the car values, the phone list and the places of two phones: NGI tells the abilities "BLE
+  AUTH" and no more, and the application asks for none of the others.
+
+The box proves itself as section 9.5 says: AUTH_SET takes a key of a phone, AUTH answers with the proof of it. A key
+outlives the program in the file of --keys, as the firmware keeps it in NVS over a restart: otherwise the application,
+which keeps its key, would refuse the simulator from its second run on. The keys of each box id are its own, so the
+id the panel sets brings its own keys. The panel's "Forget the keys" is a box that has lost them, which the
+application refuses until the car is forgotten in it.
+
+A key belongs to the phone whose name is in its HELLO (9.2), not to the id the radio gives the link: the simulator
+asks for no pairing, so the system can't resolve the private address of a phone and gives a new id about every 15
+minutes (CBCentral.identifier on macOS, the BlueZ device path on Linux), while the firmware keeps the key with the
+bond. So two phones that give one name share a key here, which the firmware would keep apart.
 
 The radio needs a package -- PyObjC on macOS, dbus-next on Linux, winsdk on Windows -- and the script declares
 them above, each for its own platform, so uv puts them in an environment of its own and nothing is installed into
@@ -54,6 +65,8 @@ advertise, send, disconnect and on_event all happen on the thread that runs run(
 
 import argparse
 import collections
+import hashlib
+import hmac
 import importlib
 import json
 import os
@@ -109,9 +122,15 @@ OBD_ABSENT_STATES = {'DISABLED', 'NO_ADAPTER', 'SLEEP'}
 # Section 4.4, the last error of the OBD, from the state the panel sets.
 OBD_ERRORS = {'NO_ADAPTER': 'NO_ADAPTER', 'NO_CAR': 'NO_CAR', 'NO_DATA': 'NO_SPEED', 'ERROR': 'BUS_ERROR'}
 OBD_PROTOCOL = 'ISO 15765-4 (CAN 11/500)'
-# The abilities of NGI: only the lines of the box itself. The application gates CAR_GET, BT_LIST, PEER and the
-# firmware update on this field, so it asks for nothing the simulator hasn't got.
-ABILITIES = 'BLE'
+# The abilities of NGI: only the lines of the box itself and the proof of the box (AUTH_SET, AUTH). The application
+# gates CAR_GET, BT_LIST, PEER and the firmware update on this field, so it asks for nothing the simulator hasn't got.
+ABILITIES = 'BLE AUTH'
+# Section 9.5: the key is 16 bytes, the nonce 8, and the box answers the first 8 bytes of HMAC-SHA256(key, nonce).
+AUTH_KEY_BYTES = 16
+AUTH_NONCE_BYTES = 8
+AUTH_PROOF_BYTES = 8
+# The keys of the phones, by the id of the box: the firmware keeps them in NVS, the simulator in this file.
+DEFAULT_KEYS_PATH = os.path.expanduser('~/.nogps-box-sim-keys.json')
 FLAG = dict(FLAG_BITS)
 # A command of section 7.2 or 7.3 sets the flags its calibration would set.
 CALIBRATION = {'CAL_BIAS': {'BIAS_OK': True},
@@ -127,6 +146,21 @@ def crc16(text):
         for _ in range(8):
             crc = ((crc << 1) ^ 0x1021) & 0xFFFF if crc & 0x8000 else (crc << 1) & 0xFFFF
     return crc
+
+
+def hex_bytes(text, size):
+    """The bytes of a hex text of exactly |size| bytes, None if it is not one."""
+    if len(text) != size * 2:
+        return None
+    try:
+        return bytes.fromhex(text)
+    except ValueError:
+        return None
+
+
+def auth_proof(key, nonce):
+    """The answer to AUTH, in lowercase hex; the key and the nonce are the bytes of their hex texts."""
+    return hmac.new(key, nonce, hashlib.sha256).hexdigest()[:AUTH_PROOF_BYTES * 2]
 
 
 def line(body):
@@ -280,7 +314,7 @@ class Phone:
 class Box:
     """The box: it keeps the state, answers the commands and sends the lines through a radio."""
 
-    def __init__(self, state, radio, clock=time.monotonic):
+    def __init__(self, state, radio, clock=time.monotonic, keys_path=None):
         self.lock = threading.RLock()
         self.state = state
         self.radio = radio
@@ -288,6 +322,9 @@ class Box:
         # Monotonic seconds; the tests drive their own.
         self.clock = clock
         self.phones = {}
+        # Section 9.5: the key of each phone, kept with its bond; the file keeps them over a restart, as NVS does.
+        self.keys_path = keys_path
+        self.auth_keys = self.load_keys()
         self.seq = 0
         self.started = clock()
         self.log = collections.deque(maxlen=LINES_KEPT)
@@ -380,7 +417,70 @@ class Box:
             self.status_dirty = True
             self.queue(phone, line('NGA,%s,OK' % command_id))
             return
+        if name == 'AUTH_SET':
+            self.queue(phone, line('NGA,%s,%s' % (command_id, self.auth_set(phone, rest))))
+            return
+        if name == 'AUTH':
+            self.queue(phone, line('NGA,%s,%s' % (command_id, self.auth(phone, rest))))
+            return
         self.queue(phone, line('NGA,%s,ERR,UNKNOWN' % command_id))
+
+    @staticmethod
+    def auth_phone(phone):
+        """The phone a key belongs to: the name of its HELLO, the radio's id until it has given one. See the docstring
+        of the module: the id changes with the private address of the phone, the name does not."""
+        return phone.name or phone.id
+
+    def auth_set(self, phone, rest):
+        """AUTH_SET,<32 hex>: the key is taken once; the same key again is taken, another one is refused."""
+        key = hex_bytes(rest[0], AUTH_KEY_BYTES) if rest else None
+        if key is None:
+            return 'ERR,VALUE'
+        name = self.auth_phone(phone)
+        if self.auth_keys.get(name, key) != key:
+            return 'ERR,EXISTS'
+        self.auth_keys[name] = key
+        self.save_keys()
+        return 'OK'
+
+    def load_keys(self):
+        """The keys this box has kept in the file of --keys, none without one or when it can not be read."""
+        if not self.keys_path:
+            return {}
+        try:
+            with open(self.keys_path, encoding='utf-8') as f:
+                kept = json.load(f)[self.state.box_id]
+            return {phone: bytes.fromhex(key) for phone, key in kept.items()}
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            return {}
+
+    def save_keys(self):
+        """The keys of this box go into the file of --keys, beside those of the other box ids in it."""
+        if not self.keys_path:
+            return
+        try:
+            with open(self.keys_path, encoding='utf-8') as f:
+                kept = json.load(f)
+            if not isinstance(kept, dict):
+                kept = {}
+        except (OSError, ValueError):
+            kept = {}
+        kept[self.state.box_id] = {phone: key.hex() for phone, key in self.auth_keys.items()}
+        try:
+            with open(self.keys_path, 'w', encoding='utf-8') as f:
+                json.dump(kept, f)
+        except OSError as error:
+            print('the keys are not kept in %s: %s' % (self.keys_path, error))
+
+    def auth(self, phone, rest):
+        """AUTH,<16 hex nonce>: OK,<proof>, NOKEY if the phone has no key."""
+        nonce = hex_bytes(rest[0], AUTH_NONCE_BYTES) if rest else None
+        if nonce is None:
+            return 'ERR,VALUE'
+        key = self.auth_keys.get(self.auth_phone(phone))
+        if key is None:
+            return 'ERR,NOKEY'
+        return 'OK,' + auth_proof(key, nonce)
 
     def queue(self, phone, data):
         """An answer or a status waits its turn; the oldest is dropped when the queue is full (BLE-8)."""
@@ -494,6 +594,7 @@ class Box:
                 'chip': state.chip,
                 'board': state.board,
                 'imu_name': state.imu_name,
+                'keys': len(self.auth_keys),
                 'phones': [{'label': p.label, 'name': p.name, 'unix_s': p.unix_s, 'payload': p.payload,
                             'subscribed': p.subscribed, 'heard': p.heard(now), 'sent': p.sent, 'dropped': p.dropped,
                             'hello_age_ms': int((now - p.hello_at) * 1000) if p.hello_at else -1}
@@ -518,11 +619,15 @@ class Box:
                 state.obd = values['obd']
             if 'shake_pct' in values:
                 state.shake_pct = max(0, min(9999, int(values['shake_pct'])))
+            box_id = state.box_id
             for name in ('box_id', 'firmware', 'chip', 'board', 'imu_name'):
                 if values.get(name):
                     # The id is the four characters of the name of a box, as --id takes them. Only macOS
                     # drops an advertised name over 8 characters: the panel's name tells when it does.
                     setattr(state, name, str(values[name])[:4 if name == 'box_id' else 32])
+            if state.box_id != box_id:
+                # Another id is another box: it has the keys of that id, and those of the old one stay in the file.
+                self.auth_keys = self.load_keys()
             if 'legacy_name' in values:
                 state.legacy_name = bool(values['legacy_name'])
             if 'advertising' in values:
@@ -547,6 +652,9 @@ class Box:
                 self.quit_at = self.clock() + QUIT_DELAY_S
             elif action == 'clear':
                 self.log.clear()
+            elif action == 'forget_keys':
+                self.auth_keys.clear()
+                self.save_keys()
         return self.panel_state()
 
 
@@ -688,6 +796,9 @@ def main():
                                                    'character fits after NonGPS- and two after NoGPS- there')
     parser.add_argument('--legacy-name', action='store_true',
                         help='advertise NoGPS-XXXX as a box that is not updated does')
+    parser.add_argument('--keys', default=DEFAULT_KEYS_PATH,
+                        help='the file with the keys the phones have given the box, as NVS keeps them over a restart; '
+                             'empty keeps them in memory alone')
     parser.add_argument('--port', type=int, default=0, help='0 takes a free one')
     parser.add_argument('--no-browser', action='store_true')
     args = parser.parse_args()
@@ -697,7 +808,7 @@ def main():
     radio = make_radio(args.radio)
     state = State(args.id)
     state.legacy_name = args.legacy_name
-    box = Box(state, radio)
+    box = Box(state, radio, keys_path=args.keys or None)
     server = ThreadingHTTPServer(('127.0.0.1', args.port), handler(box))
     url = 'http://127.0.0.1:%d/' % server.server_address[1]
     threading.Thread(target=server.serve_forever, daemon=True).start()
