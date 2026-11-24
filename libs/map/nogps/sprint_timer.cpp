@@ -4,6 +4,7 @@
 #include "base/string_utils.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace nogps
@@ -66,21 +67,22 @@ std::vector<SprintTimer::Result> SprintTimer::OnSample(double kmh, int64_t timeM
     m_run.reset();
   }
   m_window.push_back(*m_raw);
-  if (m_window.size() < 3)
+  if (m_window.size() < kWindow)
     return results;
-  if (m_window.size() > 3)
+  if (m_window.size() > kWindow)
     m_window.erase(m_window.begin());
 
-  // A single 0 before the speed rises is the start, though the median of it is not 0. It restarts a run that
-  // has not got past a creep, as a 0 did before; in a faster run it is a bad sample.
-  if ((!m_run || m_run->m_maxKmh < kSprintDropKmh) && m_window[0].m_kmh <= 0 && m_window[1].m_kmh > 0 &&
+  // A single 0 before the speed rises is the start, though the median of it is not 0. It restarts a run that is
+  // still a creep (the last median is under kSprintDropKmh), as a 0 did before; in a faster run it is a bad sample.
+  if ((!m_run || m_last->m_kmh < kSprintDropKmh) && m_window[0].m_kmh <= 0 && m_window[1].m_kmh > 0 &&
       m_window[2].m_kmh >= m_window[1].m_kmh)
     OnFilteredSample(0, m_window[0].m_timeMs);
 
-  // The median of three drops a bad sample of the car speed, it is told at the time of the middle one.
-  double const median = std::max(std::min(m_window[0].m_kmh, m_window[1].m_kmh),
-                                 std::min(std::max(m_window[0].m_kmh, m_window[1].m_kmh), m_window[2].m_kmh));
-  return OnFilteredSample(median, m_window[1].m_timeMs);
+  // The median drops the bad samples of the car speed, it is told at the time of the middle one.
+  std::array<double, kWindow> speeds;
+  std::transform(m_window.begin(), m_window.end(), speeds.begin(), [](Sample const & s) { return s.m_kmh; });
+  std::nth_element(speeds.begin(), speeds.begin() + kWindow / 2, speeds.end());
+  return OnFilteredSample(speeds[kWindow / 2], m_window[kWindow / 2].m_timeMs);
 }
 
 std::vector<SprintTimer::Result> SprintTimer::OnFilteredSample(double kmh, int64_t timeMs)

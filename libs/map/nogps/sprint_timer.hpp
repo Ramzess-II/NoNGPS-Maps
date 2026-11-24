@@ -53,6 +53,8 @@ public:
   // The box repeats a speed sample in its lines until the next one, 100 ms later: a sample this close to the last one
   // with the same speed is that one again.
   static int64_t constexpr kMinSampleGapMs = 50;
+  // The samples the median is taken of.
+  static size_t constexpr kWindow = 5;
 
   struct Result
   {
@@ -64,7 +66,7 @@ public:
 
   /// \param kmh the real speed: the car speed corrected by the speed table.
   /// \returns the results the sample has finished. A sample is timed once the next one comes: the car speed has
-  /// single-sample outliers, so the timer takes the median of three.
+  /// outliers of one or two samples, so the timer takes the median of five.
   std::vector<Result> OnSample(double kmh, int64_t timeMs);
 
 private:
@@ -84,7 +86,7 @@ private:
     bool m_quarterDone = false;
   };
 
-  // The samples as they came, and the last three of them kept after the previous one: the median of them is timed.
+  // The samples as they came, and the last kWindow of them: the median of them is timed.
   std::optional<Sample> m_raw;
   std::vector<Sample> m_window;
   // The last median.
