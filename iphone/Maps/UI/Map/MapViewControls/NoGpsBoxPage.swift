@@ -72,6 +72,12 @@ final class NoGpsBoxPage: MWMTableViewController {
     fatalError("init(coder:) has not been implemented")
   }
 
+  /// The sheet follows the rows of this page.
+  override func viewDidLayoutSubviews() {
+    super.viewDidLayoutSubviews()
+    (navigationController?.viewControllers.first as? NoGpsBoxSheet)?.refit()
+  }
+
   override func viewDidLoad() {
     super.viewDidLoad()
     navigationItem.backButtonDisplayMode = .minimal

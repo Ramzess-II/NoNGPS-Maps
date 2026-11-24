@@ -5,8 +5,9 @@ export const meta = {
   phases: [
     { title: 'Setup', detail: 'the merge gate worktree, and one per prep slot when a PR needs it' },
     { title: 'Update', detail: 'merge current master into the PR branch, push fast-forward' },
-    { title: 'Review', detail: 'correctness only, the findings posted on the PR', model: 'fable' },
-    { title: 'Fix', detail: 'check each finding, fix the ones that hold, push', model: 'opus' },
+    { title: 'Review', detail: 'correctness only, the findings posted on the PR', model: 'opus' },
+    { title: 'Fix', detail: 'check each finding, fix the ones that hold, push', model: 'sonnet' },
+    { title: 'Confirm', detail: 'a PR clean on the first pass, read once more before the gate', model: 'fable' },
     { title: 'Merge', detail: 'the serial gate: did master move, the pair tested together, CI, merge commit' },
     { title: 'Clean', detail: 'remove the train worktrees' },
   ],
@@ -287,7 +288,7 @@ git -C ${wt} diff origin/${base}...HEAD against the PR's own diff on GitHub (gh 
 Don't build and don't write on GitHub beyond this push.`
 }
 
-function reviewPrompt(pr, round, before, name) {
+function reviewPrompt(pr, round, before, name, confirm) {
   const wt = WT(name)
   const { base } = R(pr)
   const repo = repoName(pr)
@@ -295,7 +296,11 @@ function reviewPrompt(pr, round, before, name) {
     ? `\nThis is round ${round}. Your findings of the round before and what the fixer did with them: \
 ${JSON.stringify(before)}. Check each of them in the code again: a fix that doesn't hold is a finding again, and so \
 is a new bug the fix brought. Don't repeat a finding you now agree was wrong.`
-    : ''
+    : confirm
+      ? `\nAnother reviewer has just read this PR and found nothing, and you are the last read before the gate \
+merges it: nobody else looks at it. Read the diff yourself and judge it on what you see -- that the review before \
+you came back empty is no reason to come back empty, and no reason to find something either.`
+      : ''
   return `${ENV}
 
 Review PR #${pr.number} "${pr.title}" of ${repo} in ${wt}, with current ${base} just merged in: git -C ${wt} diff \
@@ -319,8 +324,9 @@ formatting, lint, translation keys, the other-platform check.${
   }
 Give every finding a file, a line and a concrete failing scenario. Say nothing about the PR that isn't a finding.
 Then post exactly one comment on the PR: gh pr comment ${pr.number} -R ${repo} --body-file - with a first line \
-"**Merge-train review, round ${round} (Fable).**" and then the findings as a list, \`file:line\` — summary, and the \
-scenario under it; or "No findings." when there are none. Report the comment's URL.
+"**Merge-train review, round ${round} (${confirm ? 'Fable, confirming a clean first pass' : 'Opus'}).**" and then \
+the findings as a list, \`file:line\` — summary, and the scenario under it; or "No findings." when there are none. \
+Report the comment's URL.
 Change nothing else: no edits, no commits, no other GitHub writes.`
 }
 
@@ -368,7 +374,7 @@ report "failed" with the output and push nothing.`
   }
 6. Push: ${PUSH(pr, wt)} (no rewriting here, the fixes are new commits). Report the new head.
 7. Then reply once on the PR: gh pr comment ${pr.number} -R ${repo} --body-file - with a first line \
-"**Merge-train fixes, round ${round} (Opus).**", what was fixed with the short shas of the commits, what was \
+"**Merge-train fixes, round ${round} (Sonnet).**", what was fixed with the short shas of the commits, what was \
 rejected and why, any issue you opened, and the result of the tests you ran.
 If every finding is wrong, report "nothing" with your reasons in the reply, push nothing, and post the reply all \
 the same: the train then merges the PR.`
@@ -440,8 +446,8 @@ report "ci" with the names of the failing checks and the run's URL; the PR stays
 Claude review check are not failures. If three minutes after the push no check ran at all for the \
 new head, the hooks missed it: gh pr close ${pr.number} -R ${repo} && gh pr reopen ${pr.number} -R ${repo}, then \
 watch again.`
-      : `No CI to wait for: ${repo} has no checks (no .github/workflows), so step 5's build is the whole \
-verification. Go straight on to the merge.`
+      : `No CI to wait for: GitHub Actions has started no run in ${repo}, so it reports no checks and \
+step 5's build is the whole verification. Go straight on to the merge.`
   }
 7. Merge: gh pr merge ${pr.number} -R ${repo} --merge --delete-branch. Both repos merge with a merge commit, as \
 their history shows; don't squash and don't rebase-merge. A warning that the local branch can't be deleted is \
@@ -516,22 +522,42 @@ async function prep(pr, slot) {
   let rejected = 0
   while (pr.round < ROUNDS) {
     const round = ++pr.round
-    const rev = await agent(reviewPrompt(pr, round, before, name), {
+    const rev = await agent(reviewPrompt(pr, round, before, name, false), {
       label: `review:${tg}/${round}`,
       phase: 'Review',
-      model: 'fable',
+      model: 'opus',
       schema: REVIEW_SCHEMA,
     })
     if (!rev) {
       record(pr, 'open', 'the review agent stopped')
       return false
     }
-    const findings = rev.findings.length
-    if (!findings) return true
-    const fix = await agent(fixPrompt(pr, round, rev.findings, name), {
+    let found = rev.findings
+    // Opus reviews and Sonnet fixes. Fable, the most capable model and four times the price of Sonnet, reads a PR
+    // that came back clean on the first pass: nothing found in one pass is weak evidence the diff was read at all,
+    // and the gate merges a clean review with nobody else looking. It is not a round of its own -- a round is a
+    // review and a fix -- so it costs the PR none of its rounds, and it happens once: a later clean round already
+    // re-read the fixes of the round before it, and a prep the gate sent back starts past round 1.
+    if (!found.length && round === 1) {
+      log(`${tg}: round 1 found nothing, Fable reads it before the gate takes it`)
+      const conf = await agent(reviewPrompt(pr, round, null, name, true), {
+        label: `confirm:${tg}/${round}`,
+        phase: 'Confirm',
+        model: 'fable',
+        schema: REVIEW_SCHEMA,
+      })
+      if (!conf) {
+        record(pr, 'open', 'the confirming review agent stopped')
+        return false
+      }
+      found = conf.findings
+    }
+    if (!found.length) return true
+    const findings = found.length
+    const fix = await agent(fixPrompt(pr, round, found, name), {
       label: `fix:${tg}/${round}`,
       phase: 'Fix',
-      model: 'opus',
+      model: 'sonnet',
       schema: FIX_SCHEMA,
     })
     if (!fix) {
@@ -549,7 +575,7 @@ async function prep(pr, slot) {
     }
     pr.head = fix.head || pr.head
     rejected = fix.rejected
-    before = { findings: rev.findings, fixer: { fixed: fix.fixed, rejected: fix.rejected, reply: fix.reply } }
+    before = { findings: found, fixer: { fixed: fix.fixed, rejected: fix.rejected, reply: fix.reply } }
   }
   record(pr, 'open', `still ${rejected} open findings after ${ROUNDS} rounds`)
   return false

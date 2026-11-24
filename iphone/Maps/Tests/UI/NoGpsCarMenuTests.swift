@@ -14,13 +14,19 @@ final class NoGpsCarMenuTests: XCTestCase {
                          maxCars: maxCars)
   }
 
+  func testSheetHeightIsContentBetweenHalfWindowAndMaximum() {
+    XCTAssertEqual(NoGpsBoxSheet.sheetHeight(content: 200, window: 800, maximum: 800), 400)
+    XCTAssertEqual(NoGpsBoxSheet.sheetHeight(content: 600, window: 800, maximum: 800), 600)
+    XCTAssertEqual(NoGpsBoxSheet.sheetHeight(content: 1500, window: 800, maximum: 760), 760)
+  }
+
   func testOneCarAndAdd() {
     XCTAssertEqual(entries([car("C47D")]),
                    [.car(carId: "C47D", name: "Car C47D", state: .current), .add])
   }
 
   func testCurrentCarKeepsItsPlaceAndIsMarked() {
-    let menu = entries([car("A111", lastSeen: Self.seen), car("C47D"), car("B222")], connected: true)
+    let menu = entries([car("A111", lastSeen: Self.seen), car("C47D"), car("B222")], connected: true, maxCars: 4)
     XCTAssertEqual(menu, [.car(carId: "A111", name: "Car A111", state: .lastSeen(Self.seen)),
                           .car(carId: "C47D", name: "Car C47D", state: .connected),
                           .car(carId: "B222", name: "Car B222", state: nil),

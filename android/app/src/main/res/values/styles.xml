@@ -489,6 +489,19 @@
     <item name="shapeAppearance">?attr/shapeAppearanceLargeComponent</item>
   </style>
 
+  <style name="MwmTheme.BoxBottomSheetDialog" parent="MwmTheme.BottomSheetDialog">
+    <item name="bottomSheetStyle">@style/MwmWidget.BoxBottomSheetDialog</item>
+  </style>
+
+  <style name="MwmWidget.BoxBottomSheetDialog" parent="MwmWidget.BottomSheetDialog">
+    <!-- As wide as the window: the content, not the sheet, clears the side insets. -->
+    <item name="android:maxWidth">@dimen/nogps_sheet_max_width</item>
+    <item name="marginLeftSystemWindowInsets">false</item>
+    <item name="marginRightSystemWindowInsets">false</item>
+    <item name="paddingLeftSystemWindowInsets">true</item>
+    <item name="paddingRightSystemWindowInsets">true</item>
+  </style>
+
   <style name="MwmWidget.BottomSheet" parent="MwmWidget.BottomSheetDialog">
     <item name="android:background">?cardBackground</item>
     <item name="behavior_hideable">false</item>
