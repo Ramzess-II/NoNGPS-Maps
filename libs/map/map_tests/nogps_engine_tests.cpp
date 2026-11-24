@@ -6225,6 +6225,30 @@ double DriveWithLateSpeed(bool accelerometer)
   return maxError;
 }
 
+// The ECU of a car that wakes answers 255 km/h, the top of the byte, before it has a speed.
+UNIT_TEST(NoGps_Engine_ObdSpeed255AfterWakeDoesNotMoveMark)
+{
+  PieceRoads roads({{-2000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, false /* accelerometer */);
+  car.Drive(5, 0, 0);
+  double const east = East(env.Last().m_position);
+  int64_t seq = 5000;
+  int64_t boxTimeMs = 400'000;
+  // The standing car says 255 for 10 s, then its real speed: 0.
+  for (int step = 0; step < 10 * 50; ++step)
+  {
+    env.m_clock.Advance(20);
+    boxTimeMs += 20;
+    char body[160];
+    std::snprintf(body, sizeof(body), "NGD,1,%lld,%lld,0,0,0,255,0,%X", static_cast<long long>(++seq),
+                  static_cast<long long>(boxTimeMs), kCalibratedFlags);
+    env.m_engine.OnEsp32BleBytes(BoxLine(body));
+  }
+  TestAlmostEqualAbs(East(env.Last().m_position), east, 2);
+}
+
 UNIT_TEST(NoGps_Engine_BoxAccelerometerTellsSpeedBeforeCar)
 {
   // The car reports the new speed late. The distance it has driven meanwhile is added when it does, so the

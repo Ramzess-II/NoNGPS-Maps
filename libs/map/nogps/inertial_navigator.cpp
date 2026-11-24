@@ -1223,6 +1223,9 @@ int InertialNavigator::ConvertSpeed(int rawSpeedKmh) const
 
 void InertialNavigator::OnSpeed(int rawSpeedKmh, int64_t timeMs)
 {
+  // The speed stays as it was and goes stale: the mark waits instead of driving 70 m a second.
+  if (rawSpeedKmh == kObdNoSpeedKmh && !(IsSpeedFresh() && m_rawSpeedKmh >= kObdNoSpeedPrevKmh))
+    return;
   m_rawSpeedKmh = rawSpeedKmh;
   int const speedKmh = ConvertSpeed(rawSpeedKmh);
   m_speedKmh = speedKmh;
