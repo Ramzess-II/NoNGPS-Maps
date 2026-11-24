@@ -37,16 +37,19 @@ public final class BoxTexts
   @NonNull
   public static String boxStateText(@NonNull Context context, @NonNull NoGps.Status status)
   {
-    // The phone keeps looking for a sleeping box.
-    if (status.getSourceState() == NoGps.SourceState.BOX_SLEEPING)
+    // The sleep is told only while the phone looks for the box: a phone that can't reach it knows nothing of the car.
+    if (status.getSourceState() == NoGps.SourceState.BOX_SLEEPING && isBoxSearched(status))
       return context.getString(R.string.nogps_box_sleeping) + " · " + context.getString(boxSearchText(context, status));
     // A locked-out box comes back only after it is unplugged, and a phone that can't reach it says so too: the box
     // may be plugged back in already.
-    if (status.getSourceState() == NoGps.SourceState.BOX_BATTERY_LOCK && !isBoxSearched(context, status))
+    if (status.getSourceState() == NoGps.SourceState.BOX_BATTERY_LOCK && !isBoxSearched(status))
     {
       final String search = context.getString(boxSearchText(context, status));
       return context.getString(R.string.nogps_box_battery_lock) + " · " + search;
     }
+    // A sleeping box that is not searched is told by the link alone.
+    if (status.getSourceState() == NoGps.SourceState.BOX_SLEEPING)
+      return context.getString(boxSearchText(context, status));
     return context.getString(switch (status.getSourceState())
     {
       case DISCONNECTED -> R.string.nogps_elm_disconnected;
@@ -67,10 +70,9 @@ public final class BoxTexts
   /**
    * The phone looks for the box, or waits for it: Bluetooth is on and the box doesn't have to be paired again.
    */
-  private static boolean isBoxSearched(@NonNull Context context, @NonNull NoGps.Status status)
+  // Location off for the scan is DISABLED too.
+  static boolean isBoxSearched(@NonNull NoGps.Status status)
   {
-    if (NoGps.isLocationOffForBox(context, status))
-      return false;
     return switch (status.getBleState())
     {
       case OFF, NO_PERMISSION, DISABLED, PAIRING_FAILED, BOND_LOST -> false;

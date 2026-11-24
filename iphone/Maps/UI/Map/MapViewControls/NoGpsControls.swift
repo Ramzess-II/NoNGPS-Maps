@@ -4,7 +4,7 @@
 /// user can move the panel up and down.
 @objc
 final class NoGpsControls: NSObject {
-  private enum Constants {
+  enum Constants {
     // As the side buttons on the right in MWMSideButtonsView.xib: both panels are equally wide.
     static let buttonWidth = CGFloat(56)
     static let buttonHeight = CGFloat(48)
@@ -23,6 +23,12 @@ final class NoGpsControls: NSObject {
     static let panelPlaceKey = "NoGpsLeftPanelY"
     // Of the speed from the corner of the free area, and from the panel above it.
     static let speedMargin = CGFloat(10)
+    /// The free band at the bottom of the map in navigation: the car mark's lowest point is this far above the
+    /// bottom of the free area, the speed button and its bars (`speedMargin` + `NoGpsSpeedView.side`) stay under it.
+    static let markClearance = CGFloat(78)
+    /// 2 x `Arrow3d::GetMaxBottomSize()`.
+    static let markHeight = CGFloat(64)
+    static let sprintGap = CGFloat(8)
     /// Of a flag screenshot: the street names stay readable, the png stays small for the mail.
     static let screenshotScale = CGFloat(2)
     /// A thick line above the buttons of the testers: they stand apart from those correcting the car.
@@ -34,6 +40,9 @@ final class NoGpsControls: NSObject {
   private static var logFlags = 0
   private static var lastFlag = ""
   private static var availableArea = CGRect.zero
+  private static var visibleViewportMaxY = CGFloat(0)
+  /// What the core got last: every send restarts the follow animation, so an unchanged offset is not sent again.
+  private static var sentMarkOffset: Int32?
   /// The bottom of the turns of the navigation in the window, 0 without them. They are at the edge of the panel.
   private static var turnsBottom = CGFloat(0)
   /// The intro of the first start points at the panels: they are held open while it runs.
@@ -94,6 +103,34 @@ final class NoGpsControls: NSObject {
 
   deinit {
     timer?.invalidate()
+  }
+
+  /// The core takes pixels from the bottom of the visible viewport: the mark rises by the band above the bottom of the
+  /// free area. CarPlay gives the offset back to the default when it leaves the phone, see CarPlayService.
+  /// `force` sends it again after CarPlay changed the offset of the core.
+  static func updateMarkOffset(force: Bool = false) {
+    guard shared != nil, !CarPlayService.shared.isCarplayActivated else { return }
+    let scale = MapViewController.shared()?.mapView.contentScaleFactor ?? 1
+    let offset = Int32(markOffset(areaMaxY: availableArea.maxY, viewportMaxY: visibleViewportMaxY) * scale)
+    guard force || offset != sentMarkOffset else { return }
+    sentMarkOffset = offset
+    FrameworkHelper.updatePositionArrowOffset(false, offset: offset)
+  }
+
+  /// In points: the viewport can end below the free area (a sheet under it) or above it.
+  static func markOffset(areaMaxY: CGFloat, viewportMaxY: CGFloat) -> CGFloat {
+    max(0, Constants.markClearance + viewportMaxY - areaMaxY)
+  }
+
+  /// The bottom of the visible viewport the core got, see VisibleArea.
+  static func updateVisibleViewport(_ frame: CGRect) {
+    visibleViewportMaxY = frame.maxY
+    updateMarkOffset()
+  }
+
+  /// The bottom of the alert of a timed run: above the mark and a gap.
+  static func sprintBottomConstant(areaMaxY: CGFloat) -> CGFloat {
+    areaMaxY - Constants.markClearance - Constants.markHeight - Constants.sprintGap
   }
 
   static func updateAvailableArea(_ frame: CGRect) {
@@ -271,8 +308,8 @@ final class NoGpsControls: NSObject {
       self.calibrationBottom.constant = area.maxY - Constants.speedMargin
       self.calibrationCenterX.constant = area.midX
       self.calibrationMaxWidth.constant = min(Constants.statusMaxWidth, max(0, area.width - 2 * speedWidth))
-      // In the bottom third, above the speed and the bar of its calibration: the mark and the road ahead stay seen.
-      self.sprintBottom.constant = area.maxY - Constants.speedMargin - speedWidth
+      // Above the mark: the mark and the road ahead stay seen.
+      self.sprintBottom.constant = Self.sprintBottomConstant(areaMaxY: area.maxY)
       self.sprintCenterX.constant = area.midX
       self.sprintView.setMaxWidth(area.width - 2 * Constants.speedMargin)
     }
@@ -283,6 +320,7 @@ final class NoGpsControls: NSObject {
     }
     // A panel can leave no place for the buttons.
     showPanel(hasButtons && height <= panelArea)
+    Self.updateMarkOffset()
   }
 
   /// The panel moves above the speed.
