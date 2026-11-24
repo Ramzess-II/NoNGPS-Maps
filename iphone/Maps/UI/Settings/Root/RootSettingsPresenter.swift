@@ -187,6 +187,8 @@ final class RootSettingsPresenter {
     [
       SettingsItemViewModel(setting: .searchHistory,
                             kind: .switcher(isOn: state.searchHistoryEnabled, isEnabled: true)),
+      SettingsItemViewModel(setting: .crashReports,
+                            kind: .switcher(isOn: state.crashReportsEnabled, isEnabled: true)),
     ]
   }
 
