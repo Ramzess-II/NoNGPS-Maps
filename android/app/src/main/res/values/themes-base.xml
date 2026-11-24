@@ -19,6 +19,7 @@
     <item name="android:windowActionBarOverlay">true</item>
     <item name="clickableBackground">?selectableItemBackground</item>
     <item name="android:statusBarColor">?colorPrimary</item>
+    <item name="android:windowLightStatusBar">@bool/nogps_light_bars</item>
     <item name="android:windowTranslucentNavigation">false</item>
     <item name="alertDialogTheme">@style/MwmTheme.AlertDialog</item>
     <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.App.SmallComponent</item>
@@ -27,11 +28,11 @@
     <item name="windowBackgroundForced">@color/bg_window</item>
     <item name="cardBackground">@color/bg_cards</item>
     <item name="searchToolbarTextAppearance">@style/MwmTextAppearance.Toolbar.Search</item>
-    <item name="searchToolbarEndIconTint">@android:color/white</item>
+    <item name="searchToolbarEndIconTint">@color/toolbar_text</item>
     <item name="titleDialogTheme">@color/black_primary</item>
     <item name="textDialogTheme">@color/black_secondary</item>
     <item name="fullscreenDialogTheme">@style/MwmTheme.DialogFragment.Fullscreen</item>
-    <item name="colorPrimary">@color/bg_primary</item>
+    <item name="colorPrimary">@color/nogps_primary</item>
     <item name="colorControlNormal">?secondary</item>
     <item name="colorAccent">@color/base_accent</item>
     <item name="colorAccentTransparent">@color/base_accent_transparent</item>

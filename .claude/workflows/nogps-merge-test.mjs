@@ -55,7 +55,8 @@ async function runScript({ args, reply, quiet = true }) {
 }
 
 // The prep steps of one PR: whichever of them a worker is in, it holds that PR's slot.
-const prepPeak = (peak) => Math.max(peak.disk || 0, peak.update || 0, peak.review || 0, peak.fix || 0)
+const prepPeak = (peak) =>
+  Math.max(peak.disk || 0, peak.update || 0, peak.review || 0, peak.confirm || 0, peak.fix || 0)
 
 const pr = (n, extra = {}) => ({ number: n, title: `PR ${n}`, branch: `feature/p${n}`, head: `h${n}`, url: `u${n}`, ...extra })
 
@@ -73,6 +74,7 @@ const base = (label) => {
   if (label.startsWith('disk')) return { freeGb: 100 }
   if (label.startsWith('update')) return { status: 'ok', head: 'nh', prepMaster: 'm0' }
   if (label.startsWith('review')) return { findings: [] }
+  if (label.startsWith('confirm')) return { findings: [] }
   if (label.startsWith('fix')) return { status: 'pushed', fixed: 1, rejected: 0, head: 'fh' }
   if (label.startsWith('merge')) return { status: 'merged', mergeCommit: 'c' + label.slice(7) }
   if (label === 'clean') return 'cleaned'
@@ -449,6 +451,72 @@ const base = (label) => {
   }
   console.log('22. a PR from a stranger\'s fork')
   check('the queue is refused', err !== null && /fork of stranger/.test(String(err)), String(err))
+}
+
+// --- 23. a PR clean on the first pass is confirmed by Fable; Opus reviews, Sonnet fixes ---
+{
+  const models = {}
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1, rounds: 3 },
+    reply: (label, opts) => {
+      models[label] = opts.model
+      return base(label)
+    },
+  })
+  console.log('23. a clean first pass is confirmed')
+  check('the review runs on Opus', models['review:#1/1'] === 'opus', models)
+  check('the confirmation runs on Fable', models['confirm:#1/1'] === 'fable', models)
+  check('the PR merges after it', r.out.merged === 1, r.out.results)
+  check('it spent no round of its own', r.out.results[0].rounds === 1, r.out.results)
+}
+
+// --- 24. the confirmation finds something: Sonnet fixes it, Opus reads it again ---
+{
+  const models = {}
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1, rounds: 3 },
+    reply: (label, opts) => {
+      models[label] = opts.model
+      if (label === 'confirm:#1/1') return { findings: [{ file: 'a.cpp', summary: 's', scenario: 'x' }] }
+      return base(label)
+    },
+  })
+  console.log('24. the confirmation finds something')
+  check('the fix runs on Sonnet', models['fix:#1/1'] === 'sonnet', models)
+  check('round 2 is a plain Opus review, not a second confirmation', models['review:#1/2'] === 'opus', models)
+  check('no second confirmation', models['confirm:#1/2'] === undefined, models)
+  check('the PR merges after the fix', r.out.merged === 1 && r.out.results[0].rounds === 2, r.out.results)
+}
+
+// --- 25. a round that found something is not confirmed: its fixes were re-read ---
+{
+  const seen = []
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1, rounds: 3 },
+    reply: (label) => {
+      seen.push(label)
+      if (label === 'review:#1/1') return { findings: [{ file: 'a.cpp', summary: 's', scenario: 'x' }] }
+      return base(label)
+    },
+  })
+  console.log('25. no confirmation after a find-and-fix round')
+  check('Fable never ran', !seen.some((l) => l.startsWith('confirm')), seen)
+  check('merged in two rounds', r.out.merged === 1 && r.out.results[0].rounds === 2, r.out.results)
+}
+
+// --- 26. rounds=1: the confirmation still runs, it is not a round ---
+{
+  const seen = []
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1, rounds: 1 },
+    reply: (label) => {
+      seen.push(label)
+      return base(label)
+    },
+  })
+  console.log('26. rounds=1')
+  check('the confirmation runs', seen.includes('confirm:#1/1'), seen)
+  check('the PR merges', r.out.merged === 1 && r.out.results[0].rounds === 1, r.out.results)
 }
 
 // --- 17. a bigger mixed run, repeated: it always terminates and merges everything ---

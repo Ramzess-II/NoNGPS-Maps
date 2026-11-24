@@ -95,17 +95,33 @@ final class LogFiles
     return files;
   }
 
-  /// Whether the file goes on, over midnights, in the folder of one of the days.
+  /// Whether the file goes on, over midnights, in the folder of one of the days. A drive that began in the same
+  /// second as another is "<HHmmss>-2.log", but goes on as "<HHmmss>.log" after midnight, so the files of the next
+  /// day are matched by their time without the suffix. Both drives of that second are taken then.
   private static boolean goesOnInto(@NonNull File phone, @NonNull String day, @NonNull String fileName,
                                     @NonNull Collection<String> days)
   {
-    for (String next = nextDay(day); next != null && new File(new File(phone, next), fileName).isFile();
-         next = nextDay(next))
+    final String stem = startOf(fileName);
+    for (String next = nextDay(day); next != null && hasStart(new File(phone, next), stem); next = nextDay(next))
     {
       if (days.contains(next))
         return true;
     }
     return false;
+  }
+
+  /// The time a drive started at, "HHmmss", of the name of its file: without the ".log" and the "-N" of a second
+  /// drive of the same second.
+  @NonNull
+  private static String startOf(@NonNull String fileName)
+  {
+    return fileName.replaceFirst("(-\\d+)?\\.log$", "");
+  }
+
+  private static boolean hasStart(@NonNull File dayFolder, @NonNull String stem)
+  {
+    final File[] files = dayFolder.listFiles(file -> file.isFile() && startOf(file.getName()).equals(stem));
+    return files != null && files.length > 0;
   }
 
   /// The day after the folder name of a day, null when it is not a day.
