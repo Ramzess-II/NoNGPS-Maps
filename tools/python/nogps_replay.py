@@ -210,11 +210,15 @@ def tool_map_version(data_path):
 
 def wrong_maps(args, others):
     """Why the day is not driven on --data_path, or None: its log says the maps of other versions. Only the MAPS
-    lines before the end of the --to window count: what the phone downloads later is not driven."""
+    lines of the --from/--to window and the last one before its start count: what the phone downloaded before was
+    replaced, what it downloads later is not driven."""
     if args.any_maps:
         return None
     end = parse_clock(args.end) if args.end else 86_400_000
+    begin = parse_clock(args.start) if args.start else 0
     lines = logged_map_versions([o for o in others if o[0] < end])
+    before = logged_map_versions([o for o in others if o[0] < begin])
+    lines = lines[len(before) - 1:] if before else lines
     if not lines:
         return None
     logged = list(dict.fromkeys(v for line in lines for v in line))

@@ -385,14 +385,14 @@ class ReplayLogsTest(unittest.TestCase):
                 with open(target) as f:
                     self.assertEqual(f.readline().rstrip('\n'), first)
 
-    def run_with_maps(self, logged, version, *flags):
+    def run_with_maps(self, logged, version, *flags, step=1800):
         """Whether `run` drove a day logged on the maps |logged| (None: no MAPS line) with --data_path <version>, and
         its output."""
         with tempfile.TemporaryDirectory() as folder:
             lines = self.drive(20)
             # A tuple is a MAPS line after each other, as when maps are downloaded in the middle of the day.
             for at, version_line in enumerate((logged,) if isinstance(logged, str) else logged or ()):
-                lines.insert(1 + at, core('10-08', 18 * 3600 + 1800 * at, 'Start',
+                lines.insert(1 + at, core('10-08', 18 * 3600 + step * at, 'Start',
                                           'MAPS ms=%d version=%s' % (LOGFMT_MS, version_line)))
             write_tree(folder, {'Pixel_7-a3f9/2026-10-08/180000.log': with_logfmt(lines)})
             maps = os.path.join(folder, 'maps')
@@ -432,6 +432,13 @@ class ReplayLogsTest(unittest.TestCase):
         driven, _ = self.run_with_maps(('260714', '261101'), '260714', '--to', '18:10')
         self.assertTrue(driven)
         driven, _ = self.run_with_maps(('260714', '261101'), '260714', '--to', '19:00')
+        self.assertFalse(driven)
+
+    def test_run_checks_the_maps_only_from_from(self):
+        # The maps of 18:00:00 were replaced at 18:00:05: a window after that is driven on the later ones.
+        driven, _ = self.run_with_maps(('260714', '261101'), '261101', '--from', '18:00:10', step=5)
+        self.assertTrue(driven)
+        driven, _ = self.run_with_maps(('260714', '261101'), '260714', '--from', '18:00:10', step=5)
         self.assertFalse(driven)
 
     def test_warn_builds_names_a_dirty_build_and_skips_a_build_without_git(self):
