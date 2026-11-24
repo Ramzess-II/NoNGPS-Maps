@@ -46320,6 +46320,13 @@ en = This phone will not connect to the box any more, and the car will be forgot
 ru = Этот телефон больше не будет подключаться к блоку, а машина на нём будет забыта.
 uk = Цей телефон більше не підключатиметься до блока, а авто на ньому буде забуто.
 
+[nogps_box_refused]
+comment = Message: the sensor box has not proved that it is the box of the car, and it is not used. If it is the user's box, its car has to be forgotten and the box paired again
+tags = android-app,apple-maps
+en = The box did not prove it is yours and is not used. If it is yours, forget the car and pair the box again.
+ru = Блок не доказал, что он ваш, и не используется. Если он ваш, забудьте машину и подключите блок заново.
+uk = Блок не довів, що він ваш, і не використовується. Якщо він ваш, забудьте авто й підключіть блок знову.
+
 [nogps_phone_removed]
 comment = Message: this phone has been removed from the sensor box on its own request
 tags = android-app

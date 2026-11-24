@@ -189,6 +189,9 @@ typedef NS_ENUM(NSInteger, MWMNoGpsEvent) {
   /// The box has connected after 5 minutes or more without it: a drive starts. A new file of the trip log is started
   /// before the notification is posted.
   MWMNoGpsEventTripStarted,
+  /// The box has not proved itself and is not used until the link is made again: the user may have to forget the car
+  /// and pair the box again.
+  MWMNoGpsEventBoxRefused,
 } NS_SWIFT_NAME(NoGpsEvent);
 
 /// The kinds of the runs from a standing start.

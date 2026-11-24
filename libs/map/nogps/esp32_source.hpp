@@ -65,6 +65,9 @@ public:
   // The box answers AUTH at once: a command without a reply is sent again, this many times in all.
   static int64_t constexpr kAuthReplyTimeoutMs = 2000;
   static int constexpr kMaxAuthSends = 5;
+  // A box that is still refused is told again after this long: the first notice may have fallen on an app in the
+  // background.
+  static int64_t constexpr kRefusalRepeatMs = 10 * 60 * 1000;
 
   /// What the box does about a new phone, see StartAddPhone().
   enum class AddPhone
@@ -221,6 +224,7 @@ private:
   void SendAuth();
   void OnAuthReply(esp32::Reply const & reply);
   void RefuseBox(std::string const & reason);
+  void TellRefusal();
   std::string NewAuthHex(size_t bytes) const;
   void ForgetAuth();
   void SendHello();
@@ -306,6 +310,8 @@ private:
   bool m_mustProve = false;
   bool m_proven = true;
   bool m_authRefused = false;
+  // When OnBoxRefused() was called last, if no box has proved itself since; kept over links.
+  std::optional<int64_t> m_refusalToldMs;
   // The info of the box heard before the proof: it is taken when the box has proved itself.
   std::optional<esp32::Fields> m_unprovenInfo;
   // The command waiting for its reply, 0 if none.

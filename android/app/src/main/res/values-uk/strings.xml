@@ -1109,6 +1109,8 @@
     <string name="nogps_phone_remove_text">Той телефон більше не підключатиметься до блока. Щоб знову ним користуватися, додайте його знову.</string>
     <!-- Asked before this phone is removed from the sensor box -->
     <string name="nogps_phone_remove_this_text">Цей телефон більше не підключатиметься до блока, а авто на ньому буде забуто.</string>
+    <!-- Message: the sensor box has not proved that it is the box of the car, and it is not used. If it is the user's box, its car has to be forgotten and the box paired again -->
+    <string name="nogps_box_refused">Блок не довів, що він ваш, і не використовується. Якщо він ваш, забудьте авто й підключіть блок знову.</string>
     <!-- Message: this phone has been removed from the sensor box on its own request -->
     <string name="nogps_phone_removed">Цей телефон видалено з блока, авто забуто</string>
     <!-- Message on Android: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and the app could not remove it -->

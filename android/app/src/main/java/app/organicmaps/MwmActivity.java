@@ -1096,6 +1096,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
       case SPRINT_MEASURED -> 0;
       // LocationHelper has started a new file of the trip log.
       case TRIP_STARTED -> 0;
+      case BOX_REFUSED -> R.string.nogps_box_refused;
       // The buttons show the mode, they are updated every second.
       case MANUAL_MODE_CHANGED -> 0;
       case GPS_BACK -> R.string.nogps_gps_back_auto;

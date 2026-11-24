@@ -3997,8 +3997,16 @@ UNIT_TEST(NoGps_Engine_BoxProvesItselfWithTheKeyOfItsCar)
   // A proof of another key is not one: the box is refused and its lines are dropped until a new link.
   env.m_engine.OnEsp32BleBytes(
       BoxLine("NGA," + authId + ",OK," + esp32::AuthProof("ffeeddccbbaa99887766554433221100", nonce)));
+  // The user is told, once: nothing else shows why the box does not work.
+  auto const refused = [&env]
+  {
+    auto const & events = env.m_delegate.m_events;
+    return std::count(events.begin(), events.end(), Event::BoxRefused);
+  };
+  TEST_EQUAL(refused(), 1, ());
   env.Drive(2500, 36, 0);
   TEST_EQUAL(env.m_engine.GetStatus().m_speedKmh, -1, ());
+  TEST_EQUAL(refused(), 1, ());
   env.m_engine.OnEsp32BleState(BleState::Searching);
   env.ConnectBox();
   env.m_engine.OnEsp32BleBytes(BoxLine(authInfo));

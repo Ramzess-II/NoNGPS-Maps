@@ -94,6 +94,8 @@ public:
     virtual void OnBoxRecoveryCode(std::string const & /* code */) {}
     /// See MotionSource::Listener::OnThisPhoneRemoved().
     virtual void OnThisPhoneRemoved() {}
+    /// See MotionSource::Listener::OnBoxRefused().
+    virtual void OnBoxRefused() {}
     /// See MotionSource::Listener::OnPeerPlace().
     virtual void OnPeerPlace(PeerPlace const & /* place */) {}
     virtual void OnBoxCarWritten(std::string const & /* key */, std::string const & /* value */,
@@ -553,6 +555,7 @@ private:
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
   void OnBoxRecoveryCode(std::string const & code) override { m_listener.OnBoxRecoveryCode(code); }
   void OnThisPhoneRemoved() override { m_listener.OnThisPhoneRemoved(); }
+  void OnBoxRefused() override { m_listener.OnBoxRefused(); }
   void OnPeerPlace(PeerPlace const & place) override { m_listener.OnPeerPlace(place); }
   void OnJolt(double joltMs2, int speedKmh) override;
 

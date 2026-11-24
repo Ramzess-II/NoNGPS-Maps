@@ -42,6 +42,7 @@ public:
   }
 
   void OnThisPhoneRemoved() override { ++m_thisPhoneRemoved; }
+  void OnBoxRefused() override { ++m_boxRefused; }
   void OnBoxRecoveryCode(std::string const & code) override { m_recoveryCodes.push_back(code); }
 
   std::vector<int> m_speeds;
@@ -50,6 +51,7 @@ public:
   double m_maxDtSec = 0;
   int m_motions = 0;
   int m_thisPhoneRemoved = 0;
+  int m_boxRefused = 0;
   std::vector<std::string> m_recoveryCodes;
 };
 
@@ -1962,9 +1964,10 @@ UNIT_TEST(NoGps_Esp32Source_KnownBoxProvesItselfWithKey)
   box.SendData();
   TEST_EQUAL(box.listener.m_speeds.size(), 0, ());
   TEST(box.listener.m_heard.empty(), ());
-  // A refused box is not asked again, even with the right proof.
+  // A refused box is not asked again, even with the right proof, and the user is told once.
   box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",OK," + esp32::AuthProof(kAuthKey, nonce)));
   TEST(!box.source.IsBoxProven(), ());
+  TEST_EQUAL(box.listener.m_boxRefused, 1, ());
 
   // A new connection starts anew: the nonce is another one, the proof of it is taken.
   box.source.OnBleState(BleState::Searching);
@@ -1995,6 +1998,7 @@ UNIT_TEST(NoGps_Esp32Source_RefusesBoxThatAnswersWithError)
     LastAuthArgument(box.delegate, "AUTH", id);
     box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + "," + error));
     TEST(box.source.IsBoxRefused(), (error));
+    TEST_EQUAL(box.listener.m_boxRefused, 1, (error));
     box.SendData();
     TEST_EQUAL(box.listener.m_speeds.size(), 0, ());
   }
@@ -2045,6 +2049,50 @@ UNIT_TEST(NoGps_Esp32Source_BoxWithoutProofOfFirmware)
     TEST_EQUAL(box.listener.m_speeds.size(), 5, ());
     TEST_EQUAL(box.listener.m_keys["C47D"], std::make_pair(kAuthKey, false), ());
   }
+}
+
+UNIT_TEST(NoGps_Esp32Source_RefusalIsToldAgainAfterAWhile)
+{
+  ProvedBox box;
+  box.listener.m_keys["C47D"] = {kAuthKey, true};
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  int id = 0;
+  LastAuthArgument(box.delegate, "AUTH", id);
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",ERR,NOKEY"));
+  TEST(box.source.IsBoxRefused(), ());
+  TEST_EQUAL(box.listener.m_boxRefused, 1, ());
+  // A link that drops and comes back is refused again without a new notice.
+  box.source.OnBleState(BleState::Searching);
+  box.source.OnBleState(BleState::Connected);
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  LastAuthArgument(box.delegate, "AUTH", id);
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",ERR,NOKEY"));
+  TEST(box.source.IsBoxRefused(), ());
+  TEST_EQUAL(box.listener.m_boxRefused, 1, ());
+  // Still refused after a while: told again, in case no screen showed the first notice.
+  box.clock.Advance(Esp32Source::kRefusalRepeatMs);
+  box.source.OnBleState(BleState::Searching);
+  box.source.OnBleState(BleState::Connected);
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  LastAuthArgument(box.delegate, "AUTH", id);
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",ERR,NOKEY"));
+  TEST_EQUAL(box.listener.m_boxRefused, 2, ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_RefusalIsToldAgainOnALinkThatStaysUp)
+{
+  ProvedBox box;
+  box.listener.m_keys["C47D"] = {kAuthKey, true};
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  int id = 0;
+  LastAuthArgument(box.delegate, "AUTH", id);
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",ERR,NOKEY"));
+  TEST_EQUAL(box.listener.m_boxRefused, 1, ());
+  box.clock.Advance(Esp32Source::kRefusalRepeatMs - Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(box.listener.m_boxRefused, 1, ());
+  box.clock.Advance(2 * Esp32Source::kHelloIntervalMs);
+  TEST(box.source.IsBoxRefused(), ());
+  TEST_EQUAL(box.listener.m_boxRefused, 2, ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_AuthIsSentAgainThenRefused)
