@@ -6,10 +6,12 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -42,22 +44,31 @@ class ZipLogsTask implements Runnable
   public void run()
   {
     // Drain the queue so pending lines are on disk, capture the system logcat (a separate file),
-    // then zip while the file writer is locked so no append or rotation races with reading.
+    // then list the files while the file writer is locked, so no rotation races with the listing. The zip is made
+    // after the lock is released: it takes seconds, and an ERROR line waits for the lock.
     Logger.flushFileLogs();
     if (mDays == null)
       saveSystemLogcat(mLogsPath);
-    final boolean[] success = new boolean[1];
-    Logger.runExclusively(() -> success[0] = zipFileAtPath(mLogsPath, mZipPath));
+    final File sourceFile = new File(mLogsPath);
+    final List<File> files = new ArrayList<>();
+    if (sourceFile.isDirectory())
+      Logger.runExclusively(() -> files.addAll(listFiles(sourceFile)));
+    final boolean success = sourceFile.isDirectory() && zipFiles(sourceFile, files, mZipPath);
     if (mOnCompletedListener != null)
-      mOnCompletedListener.onCompleted(success[0], mZipPath);
+      mOnCompletedListener.onCompleted(success, mZipPath);
   }
 
-  private boolean zipFileAtPath(@NonNull String sourcePath, @NonNull String toLocation)
+  @NonNull
+  private List<File> listFiles(@NonNull File sourceFile)
   {
-    File sourceFile = new File(sourcePath);
-    if (!sourceFile.isDirectory())
-      return false;
-    final List<File> files = mDays == null ? LogFiles.all(sourceFile) : LogFiles.ofDays(sourceFile, mDays);
+    return mDays == null ? LogFiles.all(sourceFile) : LogFiles.ofDays(sourceFile, mDays);
+  }
+
+  // The writer goes on while the files are read: a line appended after the entry is read is not in the zip, and a
+  // file the rotation deleted meanwhile is left out.
+  boolean zipFiles(@NonNull File sourceFile, @NonNull List<File> files, @NonNull String toLocation)
+  {
+    final String sourcePath = sourceFile.getPath();
     try (FileOutputStream dest = new FileOutputStream(toLocation, false);
          ZipOutputStream out = new ZipOutputStream(new BufferedOutputStream(dest)))
     {
@@ -67,8 +78,17 @@ class ZipLogsTask implements Runnable
       {
         // As the zip of iOS: unpacked into one folder, the zips of any phones and days make one tree.
         final String relativePath = file.getPath().substring(sourceFile.getPath().length() + 1);
-        try (FileInputStream fi = new FileInputStream(file);
-             BufferedInputStream origin = new BufferedInputStream(fi, bufSize))
+        // Opened before the entry is put: a file the rotation deleted meanwhile leaves no empty entry.
+        final FileInputStream fi;
+        try
+        {
+          fi = new FileInputStream(file);
+        }
+        catch (FileNotFoundException e)
+        {
+          continue;
+        }
+        try (fi; BufferedInputStream origin = new BufferedInputStream(fi, bufSize))
         {
           out.putNextEntry(new ZipEntry("logs/" + relativePath.replace(File.separatorChar, '/')));
           int count;
