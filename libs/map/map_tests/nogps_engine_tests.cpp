@@ -5738,6 +5738,35 @@ UNIT_TEST(NoGps_Engine_SpeedTableIsNotLearnedWhileCarDrivesBack)
   }
 }
 
+UNIT_TEST(NoGps_Engine_SpeedScaleIsNotMeasuredOnMetersDrivenBack)
+{
+  PieceRoads roads({{-3000, 0, 3000, 0}}, {});
+  Env env(true /* inertial */, &roads);
+  MarkCar(env, -450);
+  BoxCar car(env, -450, true /* accelerometer */);
+  car.SpeedUpAndBrake();
+  // The first correction starts the distance the scale is measured on from zero.
+  TEST_GREATER(env.m_engine.ShiftPosition(2), 0, ());
+  double const scale = env.m_engine.GetStatus().m_speedScale;
+
+  // 280 m forward, under kMinDistanceM, and 4 times 12 m back, which pass it only when they are counted.
+  car.Drive(10, 1, 0);
+  car.Drive(18, 0, 0);
+  car.Drive(10, -1, 0);
+  car.Drive(2, 0, 0);
+  for (int i = 0; i < 4; ++i)
+  {
+    car.Drive(2, -1, 0);
+    car.Drive(2, 0, 0);
+    TEST(env.m_engine.GetTripLine().find(" back=1") != std::string::npos, (i, env.m_engine.GetTripLine()));
+    car.Drive(2, 0, 0);
+    car.Drive(2, 1, 0);
+    car.Drive(3, 0, 0);
+  }
+  TEST_GREATER(env.m_engine.ShiftPosition(30), 0, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedScale, scale, ());
+}
+
 UNIT_TEST(NoGps_Engine_AccelerometerIsNotLearnedFromManeuvers)
 {
   PieceRoads roads({{-2000, 0, 3000, 0}}, {});
