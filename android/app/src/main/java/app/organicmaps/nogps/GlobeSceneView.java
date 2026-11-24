@@ -1,6 +1,7 @@
 package app.organicmaps.nogps;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.DashPathEffect;
 import android.graphics.Paint;
@@ -26,11 +27,6 @@ import app.organicmaps.R;
  */
 public class GlobeSceneView extends View implements Choreographer.FrameCallback
 {
-  public interface Listener
-  {
-    void onSatellitesChanged(int on, int total);
-  }
-
   private static final int GRATICULE_STEP_DEG = 30;
   private static final int SAMPLE_STEP_DEG = 6;
   private static final int JAM_RING_POINTS = 48;
@@ -41,6 +37,8 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
   private static final float BREAK_DP = 5;
   private static final float DIM_ALPHA = 0.35f;
   private static final float BACK_GRATICULE_ALPHA = 0.35f;
+  // The coverage is computed for a pixel of the bitmap per dp of the disc, and drawn scaled with filtering.
+  private static final float COVERAGE_PIXELS_PER_DP = 1;
 
   // The unit vectors of the Earth frame, which do not change: the graticule, the coast and the rim of the jam.
   private static final double[][] GRATICULE = buildGraticule();
@@ -50,8 +48,10 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
   private final GlobeScene mScene = new GlobeScene();
   private final Paint mFill = new Paint(Paint.ANTI_ALIAS_FLAG);
   private final Paint mStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+  private final Paint mBitmapPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
   private final DashPathEffect mDash = new DashPathEffect(new float[] {5, 4}, 0);
   private final Path mPath = new Path();
+  private final Path mDisc = new Path();
   private final RectF mRect = new RectF();
   private final double[] mPoint = new double[3];
   private final double[] mNext = new double[3];
@@ -76,9 +76,23 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
   private final int mJam;
   @ColorInt
   private final int mCar;
+  @ColorInt
+  private final int mCarOutline;
+  /** The green of the coast: the coast stays drawn over it. */
+  @ColorInt
+  private final int mLandFill;
+  /** Translucent, as the outage: the graticule, the coast and the jam stay readable over them. */
+  @ColorInt
+  private final int mCoverage;
+  @ColorInt
+  private final int mOutage;
 
+  /** The coverage of the disc, made again only when its size changes. */
   @Nullable
-  private Listener mListener;
+  private Bitmap mCoverageBitmap;
+  @Nullable
+  private int[] mCoveragePixels;
+
   private boolean mFrames;
   private long mLastFrameNs;
 
@@ -105,21 +119,14 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
     mBeam = ContextCompat.getColor(context, R.color.nogps_globe_beam);
     mJam = ContextCompat.getColor(context, R.color.nogps_globe_jam);
     mCar = ContextCompat.getColor(context, R.color.nogps_globe_car);
+    mCarOutline = ContextCompat.getColor(context, R.color.nogps_globe_car_outline);
+    mLandFill = ContextCompat.getColor(context, R.color.nogps_globe_land_fill);
+    mCoverage = ContextCompat.getColor(context, R.color.nogps_globe_coverage);
+    mOutage = ContextCompat.getColor(context, R.color.nogps_globe_outage);
     mStroke.setStyle(Paint.Style.STROKE);
     mStroke.setStrokeCap(Paint.Cap.ROUND);
     mStroke.setStrokeJoin(Paint.Join.ROUND);
     mScene.setAnimated(!areAnimationsRemoved());
-  }
-
-  public void setListener(@Nullable Listener listener)
-  {
-    mListener = listener;
-    notifyChanged();
-  }
-
-  int satellitesOn()
-  {
-    return mScene.onCount();
   }
 
   /** "Remove animations" of the system: the globe stands until the finger moves it. */
@@ -127,12 +134,6 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
   {
     return Settings.Global.getFloat(getContext().getContentResolver(), Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
  == 0f;
-  }
-
-  private void notifyChanged()
-  {
-    if (mListener != null)
-      mListener.onSatellitesChanged(mScene.onCount(), GlobeScene.SATELLITES);
   }
 
   // Frames.
@@ -299,7 +300,6 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
     if (i < 0)
       return;
     mScene.toggle(i);
-    notifyChanged();
   }
 
   @Override
@@ -328,6 +328,7 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
     mFill.setStyle(Paint.Style.FILL);
     mFill.setColor(mSea);
     canvas.drawCircle(cx, cy, radius, mFill);
+    drawGround(canvas, cx, cy, radius);
     mStroke.setPathEffect(null);
     mStroke.setStrokeWidth(1);
     mStroke.setColor(mGraticule);
@@ -344,6 +345,58 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
       if (mScene.satellite(i)[2] > 0)
         drawSatellite(canvas, i, false);
     }
+    canvas.restore();
+  }
+
+  /**
+   * The land and, over it and the sea, the coverage: the ground of the front half that sees enough satellites for a
+   * fix carries the coverage tint, the rest the outage tint. Each pixel of the bitmap is the front point of the unit
+   * disc under it: satellite(i) is in the frame of the screen too, and only the land needs the frame of the Earth.
+   */
+  private void drawGround(@NonNull Canvas canvas, float cx, float cy, float radius)
+  {
+    final int side = (int) Math.ceil(2 * radius * COVERAGE_PIXELS_PER_DP);
+    if (side <= 0)
+      return;
+    if (mCoverageBitmap == null || mCoverageBitmap.getWidth() != side)
+    {
+      mCoverageBitmap = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888);
+      mCoveragePixels = new int[side * side];
+    }
+    final int[] pixels = mCoveragePixels;
+    final double[][] satellites = mScene.onSatellites();
+    // The rotation is orthonormal: its transpose takes the screen frame to the Earth frame.
+    final double[] m = mScene.rotation();
+    // A tint over the land fill, or over the sea drawn under the bitmap.
+    final int coveredLand = over(mCoverage, mLandFill);
+    final int outageLand = over(mOutage, mLandFill);
+    for (int row = 0; row < side; row++)
+    {
+      // Row 0 is the top of the disc, y up.
+      final double y = 1 - 2 * (row + 0.5) / side;
+      for (int col = 0; col < side; col++)
+      {
+        final double x = 2 * (col + 0.5) / side - 1;
+        final double r2 = x * x + y * y;
+        if (r2 >= 1)
+        {
+          pixels[row * side + col] = 0;
+          continue;
+        }
+        final double z = Math.sqrt(1 - r2);
+        final boolean covered = GlobeScene.isCovered(x, y, z, satellites);
+        final boolean land = GlobeScene.isLand(m[0] * x + m[3] * y + m[6] * z, m[1] * x + m[4] * y + m[7] * z,
+                                               m[2] * x + m[5] * y + m[8] * z);
+        pixels[row * side + col] = covered ? (land ? coveredLand : mCoverage) : (land ? outageLand : mOutage);
+      }
+    }
+    mCoverageBitmap.setPixels(pixels, 0, side, 0, 0, side, side);
+    mDisc.rewind();
+    mDisc.addCircle(cx, cy, radius, Path.Direction.CW);
+    mRect.set(cx - radius, cy - radius, cx + radius, cy + radius);
+    canvas.save();
+    canvas.clipPath(mDisc);
+    canvas.drawBitmap(mCoverageBitmap, null, mRect, mBitmapPaint);
     canvas.restore();
   }
 
@@ -471,12 +524,18 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
       return;
     final float x = mXy[0];
     final float y = mXy[1];
+    mPath.rewind();
+    mRect.set(x - 7, y - 3.5f, x + 7, y + 3.5f);
+    mPath.addRoundRect(mRect, 2.5f, 2.5f, Path.Direction.CW);
+    mRect.set(x - 3.5f, y - 6, x + 3.5f, y - 2);
+    mPath.addRoundRect(mRect, 2, 2, Path.Direction.CW);
+    // The outline first and twice as wide, so the fill covers its inner half and the seam of the two shapes.
+    mStroke.setStrokeWidth(2);
+    mStroke.setColor(mCarOutline);
+    canvas.drawPath(mPath, mStroke);
     mFill.setStyle(Paint.Style.FILL);
     mFill.setColor(mCar);
-    mRect.set(x - 7, y - 3.5f, x + 7, y + 3.5f);
-    canvas.drawRoundRect(mRect, 2.5f, 2.5f, mFill);
-    mRect.set(x - 3.5f, y - 6, x + 3.5f, y - 2);
-    canvas.drawRoundRect(mRect, 2, 2, mFill);
+    canvas.drawPath(mPath, mFill);
     mFill.setColor(mSea);
     canvas.drawCircle(x - 4, y + 3.5f, 1.8f, mFill);
     canvas.drawCircle(x + 4, y + 3.5f, 1.8f, mFill);
@@ -510,6 +569,24 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
       mStroke.setColor(drawn);
       canvas.drawCircle(x, y, SATELLITE_RADIUS_DP, mStroke);
     }
+  }
+
+  /** The colour of top drawn over bottom, both not premultiplied, as setPixels takes them. */
+  @ColorInt
+  private static int over(@ColorInt int top, @ColorInt int bottom)
+  {
+    final float ta = (top >>> 24) / 255f;
+    final float ba = (bottom >>> 24) / 255f * (1 - ta);
+    final float a = ta + ba;
+    if (a == 0)
+      return 0;
+    int color = Math.round(a * 255) << 24;
+    for (int shift = 0; shift < 24; shift += 8)
+    {
+      final float c = (((top >> shift) & 0xFF) * ta + ((bottom >> shift) & 0xFF) * ba) / a;
+      color |= Math.round(c) << shift;
+    }
+    return color;
   }
 
   @ColorInt

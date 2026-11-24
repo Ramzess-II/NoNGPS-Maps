@@ -98,6 +98,21 @@ a { color: var(--accent); }
 body.dragging #drop { display: flex; }
 .leaflet-tooltip.err { background: rgba(0,0,0,.65); color: #fff; border: none; box-shadow: none; font-size: 11px; padding: 1px 4px; }
 .leaflet-tooltip.err::before { display: none; }
+#library:empty { display: none; }
+#library { border-bottom: 1px solid var(--line); }
+#library > details > summary { padding: 6px 10px; font-weight: 600; cursor: pointer; }
+.day { border-top: 1px solid var(--line); padding: 4px 10px 6px; }
+.day .dayhead { cursor: pointer; font-weight: 600; }
+.day .dayhead:hover, .tflag:hover { background: var(--hover); }
+.day.loaded .dayhead { box-shadow: inset 3px 0 var(--accent); padding-left: 5px; }
+.day details summary { color: var(--muted); cursor: pointer; font-size: 12px; }
+.day .file { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.tflag { display: flex; gap: 6px; align-items: flex-start; padding: 3px 0; cursor: pointer; }
+.tflag img { width: 44px; height: 44px; object-fit: cover; border-radius: 4px; border: 1px solid var(--line); flex: none; }
+.tflag .what { flex: 1; min-width: 0; }
+.tflag audio { width: 100%; height: 28px; margin-top: 2px; }
+.flagpopup img { max-width: 220px; max-height: 220px; display: block; margin: 4px 0; }
+.flagpopup audio { width: 220px; }
 @media (max-width: 1100px) { main { grid-template-columns: 220px minmax(0, 1fr) 340px; } }
 </style>
 </head>
@@ -110,7 +125,7 @@ body.dragging #drop { display: flex; }
   <span id="status">Drop .log files, a logs folder or logs.zip anywhere</span>
 </header>
 <main>
-  <aside id="trips"><div class="empty">No logs yet.</div></aside>
+  <aside id="trips"><div id="library"></div><div id="tripList"><div class="empty">No logs yet.</div></div></aside>
   <section id="center">
     <div id="map"></div>
     <div id="timebar">
@@ -161,6 +176,8 @@ const SOURCE_COLORS = {GPS: '#2f9e44', INERTIAL: '#1c7ed6', MANUAL: '#f08c00', N
 const CATEGORY_COLORS = {app: '#868e96', state: '#1098ad', user: '#f08c00', road: '#e03131', turn: '#d6336c',
                          box: '#7048e8', route: '#2f9e44', gps: '#0ca678', other: '#5c636a'};
 const SEVERITY_COLORS = {high: '#e03131', medium: '#f76707', low: '#f59f00'};
+// The flags a tester put with the flag and voice buttons, not the flags of the box.
+const TESTER_FLAG_COLOR = '#e64980';
 // The flags of the box, bit by bit (libs/map/nogps/esp32_protocol.hpp): good ones, neutral ones, bad ones.
 const BOX_FLAGS = ['IMU_OK', 'BIAS_OK', 'UP_OK', 'FWD_OK', 'OBD_OK', 'STILL', 'CALIBRATING', 'MOUNT_MOVED', 'REVERSE',
                    'OBD_ABSENT', 'ERROR'];
@@ -169,7 +186,7 @@ const FLAG_KIND = {IMU_OK: 'good', BIAS_OK: 'good', UP_OK: 'good', FWD_OK: 'good
 const NEEDED_FLAGS = ['IMU_OK', 'BIAS_OK', 'UP_OK'];
 const GROUPS = [
   ['Position', ['src', 'lat', 'lon', 'acc', 'bear', 'age', 'markAge', 'fill']],
-  ['Error from GPS', ['ref', 'err_m', 'along_m', 'across_m']],
+  ['Error from GPS', ['ref', 'err_m', 'along_m', 'across_m', 'err_why']],
   ['GPS', ['gpsst', 'gps_lat', 'gps_lon', 'gps_acc', 'gps_kmh', 'gps_bear', 'gps_age', 'gpsAge', 'spoofed', 'cmp']],
   ['Fused and network', ['fused_lat', 'fused_lon', 'fused_acc', 'fused_kmh', 'fused_bear', 'fused_age', 'net_lat',
                          'net_lon', 'net_acc', 'net_age']],
@@ -186,6 +203,7 @@ const HINTS = {
   bear: 'Bearing of the shown position', age: 'Age of the shown position, s', markAge: 'Seconds since the user put the mark',
   fill: 'Positions shown between GPS positions since the previous line', ref: 'What the error is measured against',
   err_m: 'Distance of the shown position from GPS, the age difference taken into account',
+  err_why: 'Why no error: coarse = no fix within 30 m accuracy, stale = the fix stood while the car drove',
   along_m: '+ the mark is ahead of the car', across_m: '+ the mark is to the right of the car',
   gpsst: 'What GPS is worth', gps_acc: 'Accuracy of GPS, m', gps_age: 'Age of the GPS fix, s',
   gpsAge: 'Seconds since the last trusted GPS position', spoofed: 'GPS is spoofed', cmp: 'Compass: heading/accuracy/age s',
@@ -226,7 +244,7 @@ const FLAG_LINES = [
   {label: 'chosen by app', test: r => (val(r, 'choice') || '').endsWith('/APP'), color: '#868e96'},
 ];
 
-let tripsData = {trips: [], notes: [], files: []}, trips = [], trip = null, F = {}, rows = [], times = [], T = 0, index = -1;
+let tripsData = {trips: [], notes: [], files: [], flags: []}, trips = [], trip = null, F = {}, rows = [], times = [], T = 0, index = -1;
 let playing = false, lastFrame = 0, charts = [], flagStrip = null, replay = null;
 const layers = {}, nowLayer = L.layerGroup();
 let layerControl = null;
@@ -366,11 +384,19 @@ function buildMap() {
       .on('click', () => setTime(e.t)).addTo(events);
   }
   layers['Events'] = events;
+  const testerFlags = L.layerGroup();
+  for (const f of trip.flag_list) {
+    const p = f.lat !== null && f.lat !== undefined ? [f.lat, f.lon] : positionAt(f.t);
+    if (!p) continue;
+    L.circleMarker(p, {radius: 8, color: '#fff', weight: 2, fillColor: TESTER_FLAG_COLOR, fillOpacity: 1})
+      .bindPopup(() => flagPopup(f)).on('click', () => setTime(f.t)).addTo(testerFlags);
+  }
+  layers['Tester flags'] = testerFlags;
   layers['Replay'] = L.layerGroup();
   const overlays = {};
   // Drawn in this order: the anomalies under the tracks, the events over them.
   for (const name of ['Anomalies', 'Fused location', 'GPS of the platform', 'Network locations', 'Shown position (by source)',
-                      'Car followed apart off the roads', 'Replay', 'Events']) {
+                      'Car followed apart off the roads', 'Replay', 'Events', 'Tester flags']) {
     overlays[name] = layers[name];
     if (name !== 'Fused location') layers[name].addTo(map);
   }
@@ -581,6 +607,13 @@ function drawTicks() {
     g.fillStyle = CATEGORY_COLORS[e.cat];
     g.fillRect(Math.max((e.t - trip.start) / span * w, 0), 1, 1.5, 7);
   }
+  // A tester flag: a pole over the whole height with a pennant at its top.
+  g.fillStyle = TESTER_FLAG_COLOR;
+  for (const f of trip.flag_list) {
+    const x = Math.min(Math.max((f.t - trip.start) / span * w, 0), w - 6);
+    g.fillRect(x, 0, 2, h);
+    g.beginPath(); g.moveTo(x + 2, 0); g.lineTo(x + 8, 3); g.lineTo(x + 2, 6); g.fill();
+  }
 }
 
 $('#ticks').addEventListener('click', e => {
@@ -589,6 +622,9 @@ $('#ticks').addEventListener('click', e => {
   const t = trip.start + e.offsetX / w * span, tolerance = 4 / w * span;
   const candidates = e.offsetY >= 8 ? trip.anomalies.map(a => [a.start, a.start - tolerance <= t && t <= a.end + tolerance ? 0 : Infinity])
                                      : trip.events.map(x => [x.t, Math.abs(x.t - t)]);
+  // A flag wins over what lies next to it: there are few of them, and they are what the tester saw.
+  const flag = trip.flag_list.map(f => [f.t, Math.abs(f.t - t)]).filter(c => c[1] <= tolerance).sort((a, b) => a[1] - b[1])[0];
+  if (flag) return setTime(flag[0]);
   const best = candidates.filter(c => c[1] <= tolerance).sort((a, b) => a[1] - b[1])[0];
   setTime(best ? best[0] : t);
 });
@@ -865,7 +901,7 @@ function renderTrips(data) {
   const notes = data.notes.length ? `<div class="notes">${data.notes.map(esc).join('<br>')}</div>` : '';
   $('#status').textContent = `${data.files.length} files, ${trips.filter(t => t.driven).length} trips, ${trips.filter(t => !t.driven).length} stationary`;
   $('#status').title = data.files.map(f => `${f.name}: ${f.platform}${f.phone ? ' ' + f.phone : ''}, ${f.lines} lines`).join('\n');
-  $('#trips').innerHTML = notes + (list.map(t => {
+  $('#tripList').innerHTML = notes + (list.map(t => {
     const total = Object.values(t.sources).reduce((a, b) => a + b, 0) || 1;
     const mix = Object.entries(t.sources).map(([k, v]) => `<span style="width:${v / total * 100}%;background:${SOURCE_COLORS[k] || '#868e96'}" title="${esc(k)} ${v} s"></span>`).join('');
     const badges = ['high', 'medium', 'low'].filter(s => t.anomalies[s]).map(s => `<span class="badge" style="background:${SEVERITY_COLORS[s]}" title="${s} anomalies">${t.anomalies[s]}</span>`).join('');
@@ -873,9 +909,9 @@ function renderTrips(data) {
       <div class="when">${fmtDate(t.start)} <span class="time">${t.platform === 'ios' ? 'UTC' : ''} ${esc(t.phone)}</span></div>
       <div class="facts">${fmtDuration(t.end - t.start)} · ${t.km} km${t.max_kmh !== null ? ' · ≤' + t.max_kmh + ' km/h' : ''}${t.driven ? '' : ' · stands'}</div>
       <div class="mix">${mix}</div>
-      <div class="facts">${badges}${t.events} events${t.inertial_error_median !== null ? ' · box error ' + Math.round(t.inertial_error_median) + ' m' : ''}</div></div>`;
+      <div class="facts">${badges}${t.events} events${t.flags ? ` · <span style="color:${TESTER_FLAG_COLOR}">⚑ ${t.flags}</span>` : ''}${t.inertial_error_median !== null ? ' · box error ' + Math.round(t.inertial_error_median) + ' m' : ''}</div></div>`;
   }).join('') || '<div class="empty">No trips. Open the logs of the app.</div>');
-  $('#trips').querySelectorAll('.trip').forEach(el => el.addEventListener('click', () => loadTrip(Number(el.dataset.id))));
+  $('#tripList').querySelectorAll('.trip').forEach(el => el.addEventListener('click', () => loadTrip(Number(el.dataset.id))));
   if (trip && !trips.some(t => t.id === trip.id && t.start === trip.start)) trip = null;
 }
 $('#showStationary').addEventListener('change', () => renderTrips(tripsData));
@@ -901,6 +937,70 @@ async function loadTrip(id, t) {
   drawTicks();
   setTime(t || trip.start);
   $('#status').textContent = `Trip ${id}: ${fmtDate(trip.start)}, ${fmtDuration(trip.end - trip.start)}, ${trip.platform}${trip.phone ? ' ' + trip.phone : ''}`;
+}
+
+// Tester flags and the library of nogps_logs.py fetch.
+const fmtSize = n => n < 1e6 ? Math.round(n / 1e3) + ' kB' : (n / 1e6).toFixed(1) + ' MB';
+function flagLabel(f) {
+  return `⚑ ${esc(f.n)} · ${fmtTime(f.local_ms)}${f.voice_s ? ' · voice ' + esc(f.voice_s) + ' s' : ''}${f.sent ? ' · sent' : ''}`;
+}
+function flagPopup(f) {
+  const box = document.createElement('div');
+  box.className = 'flagpopup';
+  box.innerHTML = `<b>${flagLabel(f)}</b> <span class="time">local time</span>` +
+    (f.png ? `<a href="${esc(f.png)}" target="_blank"><img src="${esc(f.png)}" alt="screenshot"></a>` : '') +
+    (f.m4a ? `<audio controls preload="none" src="${esc(f.m4a)}"></audio>` : '');
+  return box;
+}
+const loadedDays = new Set();
+async function loadDay(phone, day) {
+  $('#status').textContent = `Reading ${phone} ${day}…`;
+  const data = await api(`/api/library/day?phone=${encodeURIComponent(phone)}&day=${encodeURIComponent(day)}`, {method: 'POST'});
+  loadedDays.add(phone + '/' + day);
+  document.querySelectorAll('.day').forEach(el => el.classList.toggle('loaded', loadedDays.has(el.dataset.key)));
+  return data;
+}
+async function openFlag(phone, day, name) {
+  let data = tripsData;
+  if (!loadedDays.has(phone + '/' + day)) {
+    data = await loadDay(phone, day);
+    renderTrips(data);
+  }
+  const f = data.flags.find(x => x.phone === phone && x.day === day && x.name === name);
+  if (!f || f.trip === null) {
+    $('#status').textContent = f && f.t === null ? 'The flag has no UTC time: its day has no log that tells the offset' : 'The flag is on no trip';
+    return;
+  }
+  if (!trip || trip.id !== f.trip) await loadTrip(f.trip, f.t); else setTime(f.t);
+}
+async function renderLibrary() {
+  const {phones} = await api('/api/library');
+  const flagHtml = (phone, day, f) => `<div class="tflag" data-phone="${esc(phone)}" data-day="${esc(day)}" data-name="${esc(f.name)}">
+      ${f.png ? `<img loading="lazy" src="/api/flag/${encodeURIComponent(phone)}/${day}/${f.name}.png" alt="">` : ''}
+      <div class="what">${flagLabel(f)}${f.ms === null ? ' <span class="time">UTC unknown</span>' : ''}
+      ${f.m4a ? `<audio controls preload="none" src="/api/flag/${encodeURIComponent(phone)}/${day}/${f.name}.m4a"></audio>` : ''}</div></div>`;
+  $('#library').innerHTML = `<details open><summary>Library</summary>` + (phones.map(p => `<details open><summary>${esc(p.phone)}</summary>` +
+    // Only the flags of the newest day are open: the trips are listed under the library.
+    p.days.map((d, i) => `<div class="day" data-key="${esc(p.phone + '/' + d.day)}">
+      <div class="dayhead" data-phone="${esc(p.phone)}" data-day="${esc(d.day)}" title="Load the logs of the day">${esc(d.day)}
+        <span class="time">${d.files.length} files${d.flags.length ? ' · ' + d.flags.length + ' flags' : ''}</span></div>
+      <details><summary>files</summary>${d.files.map(f => `<div class="file">${esc(f.start.replace(/(\d\d)(\d\d)(\d\d)/, '$1:$2:$3'))} · ${fmtSize(f.size)} · ${esc(f.build || 'no LOGFMT')}</div>`).join('')}</details>
+      ${d.flags.length ? `<details${i ? '' : ' open'}><summary>flags</summary>${d.flags.map(f => flagHtml(p.phone, d.day, f)).join('')}</details>` : ''}</div>`).join('') + '</details>').join('') ||
+    '<div class="empty">The library is empty: run nogps_logs.py fetch.</div>') + '</details>';
+  $('#library').querySelectorAll('.dayhead').forEach(el => el.addEventListener('click', async () => {
+    try {
+      trip = null;
+      const data = await loadDay(el.dataset.phone, el.dataset.day);
+      renderTrips(data);
+      const first = data.trips.find(t => t.driven && t.phone === el.dataset.phone && fmtDate(t.start).startsWith(el.dataset.day)) ||
+        data.trips.find(t => t.driven);
+      if (first) loadTrip(first.id);
+    } catch (error) { alert(error.message); }
+  }));
+  $('#library').querySelectorAll('.tflag').forEach(el => el.addEventListener('click', e => {
+    if (e.target.closest('audio')) return;
+    openFlag(el.dataset.phone, el.dataset.day, el.dataset.name).catch(error => alert(error.message));
+  }));
 }
 
 // Tabs, files, layout.
@@ -951,7 +1051,12 @@ async function upload(files) {
   if (first) loadTrip(first.id);
 }
 $('#files').addEventListener('change', e => { upload(e.target.files).catch(error => alert(error.message)); e.target.value = ''; });
-$('#clear').addEventListener('click', async () => { trip = null; renderTrips(await api('/api/clear', {method: 'POST'})); });
+$('#clear').addEventListener('click', async () => {
+  trip = null;
+  loadedDays.clear();
+  document.querySelectorAll('.day').forEach(el => el.classList.remove('loaded'));
+  renderTrips(await api('/api/clear', {method: 'POST'}));
+});
 let dragDepth = 0;
 window.addEventListener('dragenter', e => { e.preventDefault(); if (++dragDepth) document.body.classList.add('dragging'); });
 window.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
@@ -974,8 +1079,16 @@ window.addEventListener('resize', () => {
   }, 150);
 });
 
+// A link #trip=N&t=<ms> that nogps_log.py prints opens there when it is pasted into the address of the page.
+window.addEventListener('hashchange', () => {
+  const hash = readHash(), id = Number(hash.trip), t = Number(hash.t) || 0;
+  if (!trips.some(x => x.id === id)) return;
+  if (!trip || trip.id !== id) loadTrip(id, t); else if (t) setTime(t);
+});
+
 api('/api/trips').then(data => {
   renderTrips(data);
+  if (data.library) renderLibrary().catch(error => { $('#library').textContent = error.message; });
   const hash = readHash();
   if (hash.tab && $('#tab-' + hash.tab)) showTab(hash.tab);
   const chosen = data.trips.find(t => String(t.id) === hash.trip) || data.trips.find(t => t.driven);

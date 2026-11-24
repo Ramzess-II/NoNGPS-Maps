@@ -52,10 +52,12 @@ replay.
       every day are written to the folder <output>/<phone>.
 
   nogps_replay.py days logs
-      the days of the logs with the seconds of TRIP lines and the set of each: "held out" (listed in
-      nogps_held_out_days.txt, never used to set a rule) or "made from". A change of how the mark moves is replayed
-      on the days of both sets, and the numbers of both go to the PR: better on the days it was made from and not
-      on the held-out ones means the rule fits its case only.
+      the days of the logs with the seconds of TRIP lines and the set of each: "held out" (never used to set a rule)
+      or "made from". A day is held out when it is a day of LOGFMT 2, HELD_OUT_FROM or later, whose day of the month
+      divides by HELD_OUT_DIVISOR, or when it is listed in nogps_held_out_days.txt. The year of a day comes from its
+      folder in the tree; a day of a file outside the tree is held out only when listed. A change of how the mark
+      moves is replayed on the days of both sets, and the numbers of both go to the PR: better on the days it was
+      made from and not on the held-out ones means the rule fits its case only.
 
 The files made here keep the places of the trip: they are not for git. Nothing printed has coordinates.
 """
@@ -99,16 +101,33 @@ STAND_TRIP_MS = 35_000
 # The car standing before the first data of the box is driven again for this long at most.
 MAX_STAND_BEFORE_MS = 15_000
 HELD_OUT_DAYS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'nogps_held_out_days.txt')
+# The held-out rule: from the first day of LOGFMT 2 on, every day of the month that divides by this.
+HELD_OUT_FROM = '2026-11-22'
+HELD_OUT_DIVISOR = 4
+DAY_FOLDER = re.compile(r'(\d{4})-(\d\d-\d\d)$')
 
 
 def held_out_days(path=HELD_OUT_DAYS_FILE):
-    """The days (MM-DD) of the held-out set: the lines of the file that are not comments."""
+    """The days (MM-DD) listed as held out: the lines of the file that are not comments."""
     with open(path, encoding='utf-8') as f:
         return {line.split('#')[0].strip() for line in f} - {''}
 
 
 def set_of(day, held_out):
-    return 'held out' if day in held_out else 'made from'
+    """The set of |day|, yyyy-MM-dd or MM-DD: "held out" by the rule (a yyyy-MM-dd day only) or when |held_out| lists
+    it, "made from" otherwise."""
+    by_rule = len(day) == 10 and day >= HELD_OUT_FROM and int(day[-2:]) % HELD_OUT_DIVISOR == 0
+    return 'held out' if by_rule or day[-5:] in held_out else 'made from'
+
+
+def dates_of(paths):
+    """{MM-DD: yyyy-MM-dd} of the day folders of the logs in the tree, logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log."""
+    result = {}
+    for path in paths:
+        m = DAY_FOLDER.search(os.path.dirname(os.path.abspath(path)))
+        if m and nogps_trip_log.tree_path(path):
+            result[m.group(2)] = '%s-%s' % m.groups()
+    return result
 
 
 def trip_days(paths):
@@ -128,10 +147,12 @@ def trip_days(paths):
 def days(args):
     """Every day of the logs of a phone with its seconds of TRIP lines and its set."""
     held_out = held_out_days()
+    dates = dates_of(args.logs)
     counts = trip_days(args.logs)
+    sets = {day: set_of(dates.get(day, day), held_out) for day in counts}
     for day in sorted(counts):
-        print('%s  %6d TRIP lines  %s' % (day, counts[day], set_of(day, held_out)))
-    print('held out %d of %d days' % (sum(day in held_out for day in counts), len(counts)))
+        print('%s  %6d TRIP lines  %s' % (day, counts[day], sets[day]))
+    print('held out %d of %d days' % (list(sets.values()).count('held out'), len(counts)))
 
 
 def sentence(text):
@@ -759,12 +780,13 @@ def compare(args):
         print('nothing is driven again in', args.replay)
         return
     print_compare(compare_stats(trips, others, replayed, replayed_others, start, end, args.change), args.day,
-                  args.change)
+                  args.change, dates_of(args.logs).get(args.day))
 
 
-def print_compare(stats, day, change):
+def print_compare(stats, day, change, date=None):
+    """|date|: the yyyy-MM-dd of |day|, when it is known, for its set."""
     print('the day %s (%s), driven again: %d s of TRIP lines, the trip had %d' % (
-        day, set_of(day, held_out_days()), stats['lines'], stats['trip_lines']))
+        day, set_of(date or day, held_out_days()), stats['lines'], stats['trip_lines']))
     for name, errors in stats['errors']:
         summary(name, errors)
     apart = stats['apart']
@@ -815,7 +837,7 @@ def run_day(args, day):
     end = parse_clock(args.end) if args.end else 86_400_000
     stats = compare_stats(trips, others, replayed, replayed_others, start, end, args.change)
     with open(base + '-compare.txt', 'w') as f, contextlib.redirect_stdout(f):
-        print_compare(stats, day, args.change)
+        print_compare(stats, day, args.change, dates_of(args.logs).get(day))
     return day, stats, seconds, source
 
 
@@ -823,6 +845,7 @@ def run(args):
     """Drives the days with nogps_replay_tool, a few at a time, and prints a line of compare a day."""
     os.makedirs(args.output, exist_ok=True)
     held_out = held_out_days()
+    dates = dates_of(args.logs)
     days_to_run = sorted(set(args.day) if args.day else trip_days(args.logs))
     started = time.monotonic()
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.jobs) as pool:
@@ -839,7 +862,7 @@ def run(args):
         seconds = []
         count = 0
         for day, stats, tool_seconds, _ in results:
-            if set_of(day, held_out) != name:
+            if set_of(dates.get(day, day), held_out) != name:
                 continue
             if not stats:
                 print('%-5s %-9s %s' % (day, name, tool_seconds))

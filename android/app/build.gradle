@@ -90,7 +90,7 @@ android {
     println('Version: ' + versionName)
     println('VersionCode: ' + versionCode)
     applicationId rootProject.ext.appId
-    buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
+    buildConfigField 'String', 'SUPPORT_MAIL', '"nongps.organic@gmail.com"'
     // Editing OpenStreetMap needs an OAuth application of NonGPS Maps, the one of Organic Maps is not used.
     buildConfigField 'boolean', 'MAP_EDITING', 'false'
     buildConfigField 'String', 'SENTRY_DSN', "\"${sentryDsn}\""
@@ -134,27 +134,27 @@ android {
       // The native code is built in the sdk module for the common minSdk and is not rebuilt for it.
       minSdk = 31
       versionName = android.defaultConfig.versionName + '-Google'
-      buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
+      buildConfigField 'String', 'SUPPORT_MAIL', '"nongps.organic@gmail.com"'
     }
 
     web {
       dimension 'default'
       applicationIdSuffix '.web'
       versionName = android.defaultConfig.versionName + '-Web'
-      buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
+      buildConfigField 'String', 'SUPPORT_MAIL', '"nongps.organic@gmail.com"'
     }
 
     fdroid {
       dimension 'default'
       versionName = android.defaultConfig.versionName + '-FDroid'
-      buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
+      buildConfigField 'String', 'SUPPORT_MAIL', '"nongps.organic@gmail.com"'
     }
 
     huawei {
       dimension 'default'
       versionName = android.defaultConfig.versionName + '-Huawei'
       versionCode = HUAWEI_VERSION_CODE_BASE + android.defaultConfig.versionCode
-      buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
+      buildConfigField 'String', 'SUPPORT_MAIL', '"nongps.organic@gmail.com"'
     }
   }
 

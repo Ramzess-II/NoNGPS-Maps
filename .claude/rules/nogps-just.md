@@ -17,6 +17,9 @@ the task needs, use it instead of typing its commands. When it does more than ne
   shake and the versions. On macOS the app must be a debug build, see `tools/python/nogps_box_sim.py`.
 - **Show trip logs to the user:** `just logs <files>` opens the log viewer in the browser. To analyse logs yourself,
   use `/nogps-log`.
+- **Get the logs and flags off the phones:** `just fetch` copies them from the phones plugged in into `trip-logs/`
+  and imports the new days (`/nogps-fetch`). `just logs --library trip-logs` shows that tree with its flags and
+  voice notes.
 - **Release:** `just appstore` uploads the iOS build to App Store Connect. Run it only when the user asks.
 
 A command you repeat that has no recipe: suggest one to the user instead of adding it on your own. Recipes also

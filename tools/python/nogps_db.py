@@ -30,6 +30,9 @@ Tables (times are unix ms, UTC, as the core writes them):
               keys of the line, text its sentence
   rule        the rules that move the mark, event what happened to the state of the core: the same
   note        BOXACC, TURN, RPM, POTHOLE, SPRINT and MAPS lines, the text after the tag
+  flag        the flags of the day (<day folder>/flags/<yyyyMMdd-HHmmss>.json|.png|.m4a, see nogps_logs.py fetch):
+              name, ms (UTC, NULL when the day's logs don't tell the phone's offset, see utc_offset_ms()), n, lat,
+              lon, voice_s, sent, and png and m4a, the paths of the files relative to the day folder (NULL without)
   check_result, baseline  filled by nogps_checks.py (empty here)
 """
 import json
@@ -43,7 +46,7 @@ from datetime import datetime, timezone
 
 import nogps_trip_log
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 # A pause between two TRIP lines that ends a trip: a standing car with the box connected writes one in 30 s, and
 # nogps_log.py ends a trip by the pause of STAND_SPLIT_S.
 TRIP_SPLIT_S = 300
@@ -65,6 +68,15 @@ EVENTS = frozenset((
     'network_back manual_by_itself last_trusted obd_state box_event speed_factor speed_rough_table speed_table '
     'speed_table_cleared'
 ).split())
+# The flags of a day: <yyyyMMdd-HHmmss>.json|.png|.m4a by the local time of the phone (NoGpsFlags on both platforms).
+FLAG_NAME = re.compile(r'^(\d{8}-\d{6})\.(json|png|m4a)$')
+FLAG_FOLDER = 'flags'
+# A log named <HHmmss>.log in the folder of its day is started at that local time, and its LOGFMT ms= is UTC: the
+# difference is the offset of the phone. A file a trip goes on in after midnight keeps the name of the day before,
+# which is farther than this from any offset.
+OFFSET_WINDOW_MS = 14 * 3600_000
+OFFSET_STEP_MS = 15 * 60_000
+LOG_START_NAME = re.compile(r'^(\d{6})(?:-\d+)?\.log$', re.I)
 NAMES = {'RULE': RULES, 'ACTION': ACTIONS, 'EVENT': EVENTS}
 CALIBRATION_KEYS = ('car', 'scale', 'table', 'rough', 'factor', 'unit', 'lag', 'accel')
 
@@ -165,6 +177,8 @@ CREATE TABLE event(
   text TEXT NOT NULL);
 CREATE TABLE note(trip_id INTEGER NOT NULL REFERENCES trip(id), ms INTEGER NOT NULL, tag TEXT NOT NULL,
   text TEXT NOT NULL);
+CREATE TABLE flag(
+  name TEXT PRIMARY KEY, ms INTEGER, n INTEGER, lat REAL, lon REAL, voice_s REAL, sent INTEGER, png TEXT, m4a TEXT);
 CREATE TABLE check_result(
   trip_id INTEGER NOT NULL REFERENCES trip(id), "check" TEXT NOT NULL, passed INTEGER NOT NULL, value REAL,
   run_at INTEGER NOT NULL, PRIMARY KEY(trip_id, "check"));
@@ -463,9 +477,77 @@ def insert_file(conn, path, data, phone, day, imported_at):
             conn.execute('INSERT INTO note VALUES (?,?,?,?)', (trip_id, line.ms, line.tag, line.rest))
 
 
-def import_day(files, db_path, phone, day):
-    """Writes the database |db_path| of the log |files| of |phone| on |day|: [(path, bytes)]. The old database is
-    replaced only when the import has succeeded as a whole."""
+def local_ms(day, hhmmss):
+    """The local time of the phone of <yyyy-MM-dd> and <HHmmss>, as ms of a clock that has no zone."""
+    return int(datetime.strptime(day + hhmmss, '%Y-%m-%d%H%M%S').replace(tzinfo=timezone.utc).timestamp() * 1000)
+
+
+def utc_offset_ms(day, starts):
+    """The offset of the local time of the phone from UTC on |day|, in ms, from the logs of that day folder:
+    |starts| [(file name, the ms= of its LOGFMT line)]. A file named <HHmmss>.log is started at that local time; the
+    median of the differences within OFFSET_WINDOW_MS, rounded to OFFSET_STEP_MS. None when no log tells it."""
+    differences = []
+    for name, ms in starts:
+        m = LOG_START_NAME.match(name)
+        if m and ms is not None:
+            difference = local_ms(day, m.group(1)) - int(ms)
+            if abs(difference) <= OFFSET_WINDOW_MS:
+                differences.append(difference)
+    if not differences:
+        return None
+    differences.sort()
+    middle = len(differences) // 2
+    median = differences[middle] if len(differences) % 2 else (differences[middle - 1] + differences[middle]) / 2
+    return round(median / OFFSET_STEP_MS) * OFFSET_STEP_MS
+
+
+def day_starts(folder):
+    """[(file name, LOGFMT ms)] of the logs of a day folder that have the LOGFMT line."""
+    result = []
+    for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+        path = os.path.join(folder, name)
+        if LOG_START_NAME.match(name) and os.path.isfile(path):
+            try:
+                header = nogps_trip_log.read_header(path)
+            except nogps_trip_log.LogFormatError:
+                continue
+            if header['logfmt'] is not None:
+                result.append((name, header['ms']))
+    return result
+
+
+def read_flags(day_folder, offset_ms):
+    """The flags in <day_folder>/flags/ as dictionaries: name, local_ms (the local time of its name on a clock without
+    a zone), ms (UTC, None when |offset_ms| is), n, lat, lon, voice_s, sent, and png, m4a: the path of the file
+    relative to |day_folder|, None when there is none. A flag is its json: a png or m4a without one is left out."""
+    folder = os.path.join(day_folder, FLAG_FOLDER)
+    names = set(os.listdir(folder)) if os.path.isdir(folder) else set()
+    result = []
+    for file_name in sorted(names):
+        m = FLAG_NAME.match(file_name)
+        if not m or m.group(2) != 'json':
+            continue
+        name = m.group(1)
+        with open(os.path.join(folder, file_name), encoding='utf-8') as f:
+            values = json.load(f)
+        local = local_ms('%s-%s-%s' % (name[:4], name[4:6], name[6:8]), name[9:])
+        flag_ = dict(name=name, local_ms=local, ms=None if offset_ms is None else local - offset_ms,
+                     n=values.get('n'), lat=values.get('lat'), lon=values.get('lon'), voice_s=values.get('voice_s'),
+                     sent=int(bool(values.get('sent'))))
+        for ext in ('png', 'm4a'):
+            flag_[ext] = '%s/%s.%s' % (FLAG_FOLDER, name, ext) if '%s.%s' % (name, ext) in names else None
+        result.append(flag_)
+    return result
+
+
+def day_flags(day_folder, day):
+    """read_flags() of a day folder of the tree, with the offset its logs tell."""
+    return read_flags(day_folder, utc_offset_ms(day, day_starts(day_folder)))
+
+
+def import_day(files, db_path, phone, day, flags=()):
+    """Writes the database |db_path| of the log |files| of |phone| on |day|: [(path, bytes)], and of its |flags|
+    (read_flags()). The old database is replaced only when the import has succeeded as a whole."""
     folder = os.path.dirname(os.path.abspath(db_path))
     os.makedirs(folder, exist_ok=True)
     handle, tmp = tempfile.mkstemp(suffix='.sqlite', dir=folder)
@@ -477,6 +559,9 @@ def import_day(files, db_path, phone, day):
         imported_at = int(time.time() * 1000)
         for path, data in sorted(files):
             insert_file(conn, path, data, phone, day, imported_at)
+        conn.executemany('INSERT INTO flag VALUES (?,?,?,?,?,?,?,?,?)',
+                         [(f['name'], f['ms'], f['n'], f['lat'], f['lon'], f['voice_s'], f['sent'], f['png'], f['m4a'])
+                          for f in flags])
         conn.commit()
         conn.close()
         os.replace(tmp, db_path)
@@ -522,7 +607,8 @@ def import_tree(paths, out_dir):
             with open(path, 'rb') as f:
                 data.append((path, f.read()))
         db_path = os.path.join(out_dir, db_name(phone, day))
-        import_day(data, db_path, phone, day)
+        # The flags lie next to the logs, in the day folder of the tree; the files of a day are in one folder.
+        import_day(data, db_path, phone, day, day_flags(os.path.dirname(os.path.abspath(files[0])), day))
         result.append((db_path, files))
     return result
 

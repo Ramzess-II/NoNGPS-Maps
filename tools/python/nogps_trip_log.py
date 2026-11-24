@@ -5,7 +5,8 @@ The navigation core writes a TRIP line every second while the car moves, once in
 position, the positions of the platform (gps= satellites only, Android; fused= CoreLocation on iOS, Google fused on
 Android) and the state of the inertial navigation. The error of the shown position is measured against the platform position, gps= if
 there is one, at the same moment (the two have different ages): along the course of the car (+ the mark is ahead)
-and across it (+ the mark is to the right). With "Disable GPS" on, the platform position is the car itself.
+and across it (+ the mark is to the right). With "Disable GPS" on, the platform position is the car itself. A fix
+over REF_MAX_ACCURACY_M, or one that stands while the car drives, gives no error: err_why= tells which.
 
 Logs: logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, written with "Enable logging" on in the settings: a file per launch
 of the app and per drive. A folder given is read with its subfolders: give the folder of one phone, or of one day of
@@ -22,6 +23,7 @@ Usage:
 """
 
 import argparse
+import bisect
 import csv
 import math
 import os
@@ -39,6 +41,15 @@ TRIP_LINE = re.compile(r' TRIP (?:ms=\d+ )?(?=src=)')
 # gps= and fused= are "lat,lon/accuracy/km/h/course/age".
 PLATFORM_FIELDS = ('acc', 'kmh', 'bear', 'age')
 EARTH_RADIUS_M = 6371000
+# The error is measured only against a fix this accurate: a Wi-Fi or cell position of hundreds of metres says
+# nothing about the mark.
+REF_MAX_ACCURACY_M = 30
+# New fixes that stay within REF_STALE_MOVE_M while the car drives REF_STALE_DRIVEN_M by its own speed are stale: iOS
+# repeats the last Wi-Fi position in a covered car park with a fresh age and a fair accuracy.
+REF_STALE_MOVE_M = 5
+REF_STALE_DRIVEN_M = 30
+# The speed of a line counts for the seconds until the next one, at most this many: a gap is no drive.
+REF_STALE_MAX_GAP_S = 5
 LOG_NAME = re.compile(r'\.log$', re.I)
 # Android "Report a bug" saves the system log next to the logs of the app; a replay writes its files.
 NOT_LOG_NAME = re.compile(r'^(logcat|nogps-replay)', re.I)
@@ -51,7 +62,8 @@ HEADER_KEYS = ('ms', 'phone', 'trip')
 # file off writes the OSLog text of "Report a bug" into such a file without the LOGFMT line (Logger.mm), so a file of
 # the tree is read with the phone of its path. "." and ".." are no phone, see tree_path().
 TREE_PATH = re.compile(r'(?:^|/)(?!\.\.?/)([^/]+)/\d{4}-\d\d-\d\d/(\d{6}(?:-\d+)?)\.log$', re.I)
-FIRST_COLUMNS = ['time', 'src', 'lat', 'lon', 'acc', 'bear', 'age', 'ref', 'err_m', 'along_m', 'across_m']
+FIRST_COLUMNS = ['time', 'src', 'lat', 'lon', 'acc', 'bear', 'age', 'ref', 'err_m', 'along_m', 'across_m',
+                 'err_why']
 
 
 def log_files(paths, log_name=LOG_NAME):
@@ -188,14 +200,68 @@ def number(row, key):
         return None
 
 
-def add_error(row):
-    ref = 'gps' if 'gps_lat' in row else 'fused' if 'fused_lat' in row else None
-    if not ref or 'lat' not in row:
+def offset_m(lat, lon, ref_lat, ref_lon):
+    """(east, north) of lat,lon from ref_lat,ref_lon, metres."""
+    return (math.radians(lon - ref_lon) * math.cos(math.radians(ref_lat)) * EARTH_RADIUS_M,
+            math.radians(lat - ref_lat) * EARTH_RADIUS_M)
+
+
+class ErrorMeter:
+    """Adds the error of the shown position from the platform fix to the TRIP rows of one phone, in time order.
+    ref= is the fix measured against: gps= if it is accurate, else fused=. err_why= tells why a row with a fix has
+    no error: 'coarse' (no fix within REF_MAX_ACCURACY_M) or 'stale' (new fixes stood while the car drove). One old
+    fix repeated with a growing age is not stale: add_error() moves it on by its age."""
+
+    def __init__(self):
+        # Of gps and fused apart, as ref= switches between them: where and since when the fixes stand, the time of
+        # the last fix (the time of its row less its age) and whether they are stale.
+        self.fixes = {}
+        self.odometer = [(-math.inf, 0.0)]  # (seconds, metres driven by the car's speed) at each row.
+        self.kmh = None
+
+    def add(self, row, seconds):
+        self.drive(seconds)
+        self.kmh = number(row, 'speed')
+        refs = [r for r in ('gps', 'fused') if r + '_lat' in row]
+        if not refs:
+            return
+        accurate = [r for r in refs if (number(row, r + '_acc') or 0) <= REF_MAX_ACCURACY_M]
+        ref = (accurate or refs)[0]
+        row['ref'] = ref
+        lat, lon = float(row[ref + '_lat']), float(row[ref + '_lon'])
+        fix_time = seconds - (number(row, ref + '_age') or 0)
+        fix = self.fixes.get(ref)
+        if fix is None or math.hypot(*offset_m(lat, lon, fix['lat'], fix['lon'])) > REF_STALE_MOVE_M:
+            fix = self.fixes[ref] = dict(lat=lat, lon=lon, since=fix_time, stale=False)
+        elif abs(fix_time - fix['time']) > 0.5:
+            fix['stale'] = self.driven_at(fix_time) - self.driven_at(fix['since']) > REF_STALE_DRIVEN_M
+        fix['time'] = fix_time
+        if not accurate:
+            row['err_why'] = 'coarse'
+        elif fix['stale']:
+            row['err_why'] = 'stale'
+        else:
+            add_error(row, ref)
+
+    def drive(self, seconds):
+        last_seconds, driven = self.odometer[-1]
+        if self.kmh is not None and self.kmh > 0:
+            driven += self.kmh / 3.6 * min(max(0.0, seconds - last_seconds), REF_STALE_MAX_GAP_S)
+        self.odometer.append((seconds, driven))
+
+    def driven_at(self, seconds):
+        i = bisect.bisect_right(self.odometer, (seconds, math.inf))
+        if i >= len(self.odometer):
+            return self.odometer[-1][1]
+        (t0, d0), (t1, d1) = self.odometer[i - 1], self.odometer[i]
+        return d0 if t0 == -math.inf else d0 + (d1 - d0) * (seconds - t0) / (t1 - t0)
+
+
+def add_error(row, ref):
+    if 'lat' not in row:
         return
     ref_lat = float(row[ref + '_lat'])
-    dx = math.radians(float(row['lon']) - float(row[ref + '_lon'])) * math.cos(math.radians(ref_lat)) * EARTH_RADIUS_M
-    dy = math.radians(float(row['lat']) - ref_lat) * EARTH_RADIUS_M
-    row['ref'] = ref
+    dx, dy = offset_m(float(row['lat']), float(row['lon']), ref_lat, float(row[ref + '_lon']))
     kmh, course = number(row, ref + '_kmh'), number(row, ref + '_bear')
     if kmh is None or course is None:
         row['err_m'] = round(math.hypot(dx, dy), 1)
@@ -219,9 +285,11 @@ def read_rows(paths, year):
                     continue
                 row = parse_trip(line[trip.end():])
                 row['time'] = time
-                add_error(row)
                 rows.append(row)
     rows.sort(key=lambda row: row['time'])
+    meter = ErrorMeter()
+    for row in rows:
+        meter.add(row, row['time'].timestamp())
     for row in rows:
         row['time'] = row['time'].isoformat(timespec='milliseconds')
     return rows
