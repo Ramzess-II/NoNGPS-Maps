@@ -23,10 +23,22 @@ archive. Its docstring tells the rules.
 4. **Show.** Give the user `just logs --library trip-logs`: the viewer lists the phones, days and flags; a flag plays
    its voice note and opens its trip at its second.
 
+5. **Commit and push.** `trip-logs/` is its own private repo, `koloboid/NoNGPS-Logs` (branch `main`, Ramzess-II has
+   write access), not part of the app repo. Run `git -C trip-logs status --short`: when nothing changed, say so and
+   stop. Otherwise `git -C trip-logs add -A`, commit with `git -C trip-logs commit -s -m "Add logs of <days>"` (the
+   days that came in, e.g. `2026-11-22..24`, English only) and `git -C trip-logs push`. Commit straight to `main`:
+   it is data, there are no PRs. Pull first (`git -C trip-logs pull --no-rebase`) if the push is rejected because
+   the other person pushed; never force-push. Logs of the earlier versions (not LOGFMT 2) don't belong here: move
+   them to `<ws>/trip-logs-trash/`, outside both repos, and don't commit them. Tell the user the commit and that it
+   was pushed. `db/` is committed on purpose: `fetch` imports only the days that changed, so a fresh clone would
+   have no databases for the older days. After an importer or schema change, re-import every day
+   (`nogps_logs.py import`) and commit `db/` in one commit.
+
 For a question about a trip or a flag, hand over to `/nogps-log` with the day folders.
 
 Held-out days (`nogps_replay.py days`): a day of 2026-11-22 or later whose day of the month divides by 4 is held out
 by rule. Don't tune a rule on its trips; reading one to answer the user is fine, but say it is held out.
 
 The logs and flags hold where the user drove and what they said. Keep coordinates, screenshots and voice notes out
-of issues, PRs and commits.
+of issues, PRs and commit messages. The files themselves go only to the private `NoNGPS-Logs` repo, never to a
+public one.
