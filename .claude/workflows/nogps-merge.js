@@ -66,6 +66,28 @@ const ADD_WT = (pr, name) =>
     ? `git -C ${FIRMWARE} worktree add --no-track -b feature/${name} ${WT(name)} origin/main && \
 ln -sfn ${FIRMWARE}/keys ${WT(name)}/keys && cp ${FIRMWARE}/sdkconfig ${WT(name)}/sdkconfig`
     : `${APP}/tools/unix/nogps_worktree.sh add ${name}`
+// The gate's worktree is made at launch and can be removed under a running train. Its branch outlives the directory:
+// prune the stale registration and reuse the branch, as `add -b` fails on one that exists.
+const REMAKE_GATE = (pr, wt) => {
+  const name = GATE + R(pr).suffix
+  const repo = R(pr).suffix ? FIRMWARE : APP
+  // A directory that is no registered worktree (only build-${name} left, or a remove that failed midway) is not a
+  // worktree either: clear it, or `add` refuses the path.
+  const clear = `git -C ${repo} worktree prune && git -C ${repo} fetch -q origin && (git -C ${repo} worktree list --porcelain | \
+grep -qx 'worktree ${wt}' || rm -rf ${wt})`
+  return R(pr).suffix
+    ? `${clear} && (git -C ${FIRMWARE} worktree add --no-track -b feature/${name} ${wt} origin/main || \
+git -C ${FIRMWARE} worktree add ${wt} feature/${name}) && ln -sfn ${FIRMWARE}/keys ${wt}/keys && \
+cp ${FIRMWARE}/sdkconfig ${wt}/sdkconfig`
+    : `${clear}, then, as the helper refuses a branch that exists: if git -C ${APP} rev-parse -q --verify \
+feature/${name} succeeds, delete the branch (git -C ${APP} branch -D feature/${name}) only when \
+git -C ${APP} rev-list feature/${name} --not --remotes prints nothing, and otherwise rename it \
+(git -C ${APP} branch -m feature/${name} feature/${name}-old-$(date +%s)) so nobody's commits are lost; then \
+${APP}/tools/unix/nogps_worktree.sh add ${name}`
+}
+// True when the worktree is missing or only a leftover directory: the check of every step that works in the gate.
+const GONE = (repo, wt) => `${wt} isn't listed by git -C ${repo} worktree list --porcelain, or is listed there as prunable \
+(its directory was deleted) (missing, or a leftover directory)`
 const RM_WT = (name) =>
   name.endsWith('-fw')
     ? `git -C ${FIRMWARE} worktree remove --force ${WT(name)}`
@@ -179,6 +201,7 @@ const UPDATE_SCHEMA = {
     prepMaster: { type: 'string', description: 'the sha of origin/master this update merged, for the merge gate' },
     updated: { type: 'boolean', description: 'the branch was behind master and now has it merged in' },
     diffStat: { type: 'string', description: 'git diff --shortstat origin/master...HEAD' },
+    remade: { type: 'boolean', description: 'the gate worktree was missing and step 1 made it again' },
   },
   required: ['status'],
 }
@@ -226,6 +249,7 @@ const MERGE_SCHEMA = {
     staleFiles: { type: 'array', items: { type: 'string' }, description: 'files master gained that this PR touches' },
     combinedTest: { type: 'string', description: 'the core tests with this PR merged into current master, one line' },
     mergeCommit: { type: 'string' },
+    remade: { type: 'boolean', description: 'the gate worktree was missing and step 0 made it again' },
   },
   required: ['status'],
 }
@@ -268,7 +292,7 @@ ${wt}.
 IMPORTANT: never rebase this branch and never force-push it, with or without a lease. The branch is only ever \
 moved forward: ${base} is merged into it, so the push is a fast-forward. A push that would need a force is a \
 "moved" report, not a force push.
-1. If ${wt} doesn't exist: ${ADD_WT(pr, name)}
+1. If ${GONE(R(pr).suffix ? FIRMWARE : APP, wt)}: ${name.startsWith(GATE) ? `${REMAKE_GATE(pr, wt)} Report remade true.` : ADD_WT(pr, name)}
    Another step of the train may hold the worktree lock of the main checkout: run it again after a few seconds.
 2. ${CHECKOUT(pr, wt)}
    If the PR's head on GitHub is no longer ${pr.head} (gh pr view ${pr.number} -R ${repo} --json headRefOid), \
@@ -401,6 +425,10 @@ Merge PR #${pr.number} "${pr.title}" of ${repo}. It has ${base} merged in, it is
 clean. You are the merge gate: the PRs go through you one at a time, and this is the only step that moves ${base}.
 Work in the gate worktree ${wt}. IMPORTANT: never push ${base}, never push the PR's branch, and never rebase or \
 force-push anything. The only write to the repo is the gh pr merge of step 7.
+0. If ${GONE(suffix ? FIRMWARE : APP, wt)}, somebody removed it during the run: remake it and report remade true. ${REMAKE_GATE(pr, wt)} \
+${suffix ? `The keys/ link and the sdkconfig copy are part of it: a bare firmware worktree builds for the esp32 target \
+with secure boot v1 and dies on "Incorrect ECDSA private key", which would read as a failure of the PR. ` : ''}Another \
+step may hold the worktree lock: run it again after a few seconds. A worktree that exists is used as it is.
 1. Did ${base} move under this PR? ${staleStep}
 2. Authors, from "Flow of a change" in .claude/rules/nogps-workflow.md: \
 gh api --paginate repos/${repo}/pulls/${pr.number}/commits --jq '.[].author.login // "unknown"' | sort -u \
@@ -507,7 +535,7 @@ function record(pr, outcome, reason, extra) {
     rounds: pr.round,
     staleRounds: pr.staleRounds || 0,
     outcome,
-    reason: reason || '',
+    reason: (pr.gateRemade ? '(gate worktree was gone and remade) ' : '') + (reason || ''),
     ...(extra || {}),
   })
   log(`${tag(pr)}: ${outcome}${reason ? ' (' + reason + ')' : ''}`)
@@ -524,6 +552,7 @@ async function prep(pr, slot) {
     record(pr, 'open', 'the update agent stopped')
     return false
   }
+  if (up.remade) pr.gateRemade = true
   if (up.status !== 'ok') {
     record(pr, up.status === 'conflict' ? 'conflict' : 'open', up.reason || up.status)
     return false
@@ -603,6 +632,8 @@ async function gate(pr) {
     record(pr, 'open', 'the merge agent stopped')
     return false
   }
+  if (m.remade) pr.gateRemade = true
+  if (m.remade) log(`${tag(pr)}: the gate worktree was gone and was remade`)
   if (m.status === 'stale') {
     const files = (m.staleFiles || []).join(', ') || m.reason || 'a file it touches'
     pr.staleRounds = (pr.staleRounds || 0) + 1

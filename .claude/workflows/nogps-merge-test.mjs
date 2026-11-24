@@ -363,6 +363,13 @@ const base = (label) => {
   check('an unbuilt firmware PR is refused, not merged', /don't merge it/.test(g) && /"blocked" with "not built/.test(g) && !/landed unbuilt/.test(g), g)
   check('the gate waits for no CI', /No CI to wait for/.test(g) && !/gh pr checks/.test(g), g.slice(0, 200))
   check('the gate merges into main', /checkout --force -B train\/gate refs\/remotes\/origin\/main/.test(g), g.slice(0, 200))
+  // A gate worktree removed under the run is remade, with the firmware's keys/ and sdkconfig.
+  check('the firmware gate remakes a missing worktree with keys and sdkconfig', /leftover directory\), somebody removed it/.test(g)
+    && /worktree add[^\n]*merge-train-fw[^\n]*\n?[^\n]*ln -sfn \/ws\/firmware\/keys \/ws\/worktrees\/merge-train-fw\/keys && cp \/ws\/firmware\/sdkconfig \/ws\/worktrees\/merge-train-fw\/sdkconfig/.test(g.replace(/\\\n/g, '')), g.slice(0, 1500))
+  check('the app gate remakes it with the helper', /nogps_worktree\.sh add merge-train/.test(prompts['merge:#1']), prompts['merge:#1'].slice(0, 800))
+  const m = prompts['merge:#1']
+  check('a leftover directory counts as gone', /worktree list --porcelain/.test(m) && /rm -rf \/ws\/worktrees\/merge-train/.test(m), m.slice(0, 900))
+  check('the app remake keeps unpushed commits of the old branch', /rev-list feature\/merge-train --not --remotes/.test(m) && /branch -m feature\/merge-train/.test(m), m.slice(0, 1200))
   // The app PR is untouched by all this.
   const a = prompts['update:#1']
   check('the app PR still uses master and the helper', /origin\/master/.test(a) && /nogps_worktree\.sh add merge-\d/.test(a), a.slice(0, 400))
@@ -542,6 +549,38 @@ const base = (label) => {
   }
   console.log('17. 25 runs of 8 PRs with random findings and stale masters')
   check('every PR is accounted for in every run', bad === 0, { bad })
+}
+
+{
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1 },
+    reply: (label) => (label.startsWith('merge') ? { status: 'merged', mergeCommit: 'c1', remade: true } : base(label)),
+  })
+  console.log('20. the gate reports that it remade its worktree')
+  check('the report says so', /remade/.test(r.out.results[0].reason), r.out.results[0])
+}
+
+{
+  const prompts = {}
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [], serial: [pr(1)], slots: 1 },
+    reply: (label, opts, prompt) => {
+      prompts[label] = prompt
+      return label.startsWith('update') ? { ...base(label), remade: true } : base(label)
+    },
+  })
+  console.log('20b. the serial update step reports that it remade the gate worktree')
+  check('the report says so', /remade/.test(r.out.results[0].reason), r.out.results[0])
+  check('the update prompt treats a prunable worktree as gone', /prunable/.test(prompts['update:#1']) && /Report remade true/.test(prompts['update:#1']), prompts['update:#1'])
+}
+
+{
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [], serial: [pr(1)], slots: 1 },
+    reply: (label) => (label.startsWith('update') ? { status: 'conflict', reason: 'plain conflict', remade: true } : base(label)),
+  })
+  console.log('20c. a serial update that remade the gate and then stopped still says so')
+  check('the report says so', /remade/.test(r.out.results[0].reason), r.out.results[0])
 }
 
 // --- 24. the clean step names its own branches and stays inside its own worktrees ---
