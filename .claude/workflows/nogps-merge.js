@@ -96,7 +96,8 @@ const STEPS = Math.max(SLOTS, 1) // steps of the train running at once: one per 
 pending.forEach((pr) => Object.assign(pr, { set: 'parallel', round: 0 }))
 serial.forEach((pr) => Object.assign(pr, { set: 'serial', round: 0 }))
 // R() throws on a repo the train doesn't know: the queue is checked before any agent runs, not per step.
-const SUFFIXES = [...new Set([...pending, ...serial].map((pr) => R(pr).suffix))]
+const QUEUE = [...pending, ...serial] // pending and serial are drained as the run goes: keep the whole queue
+const SUFFIXES = [...new Set(QUEUE.map((pr) => R(pr).suffix))]
 // One gate and one prep slot per repo in the queue: a worktree belongs to one repo, and the gate merges the PRs of
 // both. A slot's worktree is made only when a PR of that repo reaches it, so a run of one repo makes none of the
 // other's.
@@ -457,6 +458,12 @@ Don't comment on the PR beyond the failing tests of step 5: the review and fix c
 }
 
 function cleanPrompt(left) {
+  // The branches this run made: train/<number> for each PR of its queue and train/gate, in the PR's own repo.
+  const TRAIN_BRANCHES = SUFFIXES.map((s) => {
+    const repo = s ? FIRMWARE : APP
+    const prs = QUEUE.filter((pr) => R(pr).suffix === s).map((pr) => 'train/' + pr.number)
+    return `   - ${repo}: ${[...prs, 'train/gate'].join(', ')}`
+  }).join('\n')
   return `${ENV}
 
 The train is done. Take its worktrees away: ${NAMES.join(', ')} under ${WS}/worktrees/ -- the ones that exist, as \
@@ -473,13 +480,19 @@ git -C <path> clean -fdx (the build dir goes with the worktree anyway), then rem
    - a worktree whose name ends in -fw: git -C ${FIRMWARE} worktree remove --force <path>
    - the others: ${APP}/tools/unix/nogps_worktree.sh remove <path>
    The keys/ symlink of a firmware worktree points into ${FIRMWARE}: clean -fdx removes the link, never its target.
-3. Delete the train's local branches, after the worktrees are gone, in each repo that had one: \
-git -C <repo> branch -D $(git -C <repo> for-each-ref --format='%(refname:short)' 'refs/heads/train/*') if there \
-are any. ${APP}/tools/unix/nogps_worktree.sh remove deletes the feature/<name> branch of an app worktree itself; \
+3. Delete the train's local branches, after the worktrees are gone, by the exact names below and no others: \
+git -C <repo> branch -D <names> for those that exist. Never glob refs/heads/train/*: a train running in the same \
+repo at the same time has branches of that shape too.
+${TRAIN_BRANCHES}
+   ${APP}/tools/unix/nogps_worktree.sh remove deletes the feature/<name> branch of an app worktree itself; \
 git worktree remove doesn't, so delete those of the firmware worktrees by name\
 ${SUFFIXES.includes('-fw') ? ` (${NAMES.filter((n) => n.endsWith('-fw')).map((n) => 'feature/' + n).join(', ')})` : ''}, \
 and nothing else: another session's branch may also start with feature/merge-.
 4. A worktree that refuses to go: leave it, and report its path and what is in it. It may hold work.
+The closed list: this step touches only the paths of ${NAMES.join(', ')} that exist and the branches named in step \
+3. It must not list worktrees to tidy, and must not inspect, reset, clean, push from or remove any other worktree \
+or branch, in either repo, even one that looks like a train's leftover: it belongs to another run. A repo whose \
+suffix is not in this run's queue is not touched at all.
 Report in one or two lines what you did. No GitHub writes beyond a push named in step 1.`
 }
 
