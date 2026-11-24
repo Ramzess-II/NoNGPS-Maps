@@ -15,6 +15,7 @@ import io.sentry.SentryEvent;
 import io.sentry.android.core.SentryAndroid;
 import io.sentry.android.core.SentryAndroidOptions;
 import io.sentry.protocol.SentryException;
+import java.util.concurrent.TimeUnit;
 
 /// Crash reports to Sentry. The report holds the stack, the device model, the app version and a few tags: no
 /// coordinates, no logs, no IP address. An empty DSN, a debug build or the switch off keep Sentry stopped.
@@ -77,6 +78,21 @@ public final class CrashReporter
       scope.setExtra("assert.message", redacted);
       scope.setExtra("assert.source", source);
     });
+    flushScopeSync();
+  }
+
+  /// The scope goes to the NDK on the options' single-thread executor, and the caller aborts right after: wait
+  /// for a task queued behind those writes, for a short time only.
+  private static void flushScopeSync()
+  {
+    try
+    {
+      Sentry.getCurrentScopes().getOptions().getExecutorService().submit(() -> {}).get(300, TimeUnit.MILLISECONDS);
+    }
+    catch (Exception e)
+    {
+      // Nothing to do: the report is written without the extras.
+    }
   }
 
   /// A decimal with 4 or more digits after the point may be a coordinate: the message of a CHECK can print one.
