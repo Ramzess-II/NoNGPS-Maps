@@ -228,7 +228,12 @@ public class StatusBar
     final Look look = switch (status.getGpsState())
     {
       case GOOD -> new Look(R.drawable.ic_nogps_gps, R.color.source_good);
-      case CHECKING -> new Look(R.drawable.ic_nogps_gps, R.color.source_connecting, 0, 0, true);
+      // Good positions are checked in the manual mode: a steady antenna waits. The satellites searched after the start
+      // pulse.
+      case CHECKING ->
+        status.manualMode ? new Look(R.drawable.ic_nogps_gps, R.color.source_connecting,
+                                     R.drawable.ic_nogps_badge_clock, R.color.source_connecting, false)
+                          : new Look(R.drawable.ic_nogps_gps, R.color.source_connecting, 0, 0, true);
       case COARSE -> new Look(R.drawable.ic_nogps_gps, R.color.source_warning);
       case SPOOFED ->
         new Look(R.drawable.ic_nogps_gps, R.color.source_warning, R.drawable.ic_nogps_badge_alert,

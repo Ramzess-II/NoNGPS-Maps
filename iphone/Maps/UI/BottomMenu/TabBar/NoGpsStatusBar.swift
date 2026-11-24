@@ -149,7 +149,12 @@ final class NoGpsStatusBar: UIView {
     var look: Look
     switch status.gpsState {
     case .good: look = Look(symbol: antenna, color: goodColor)
-    case .checking: look = Look(symbol: antenna, color: .systemBlue, pulsing: true)
+    // Good positions are checked in the manual mode: a steady antenna waits. The satellites searched after the start
+    // pulse.
+    case .checking:
+      look = status.manualMode
+        ? Look(symbol: antenna, color: .systemBlue, badge: ("clock.fill", .systemBlue))
+        : Look(symbol: antenna, color: .systemBlue, pulsing: true)
     case .coarse: look = Look(symbol: antenna, color: .systemOrange)
     case .spoofed: look = Look(symbol: antenna, color: .systemOrange, badge: ("exclamationmark", .systemOrange))
     case .none: look = Look(symbol: slashed, color: .systemRed)

@@ -138,6 +138,19 @@ public class StatusBarTest
     final StatusBar.Look look = StatusBar.getBarLook(boxSetUp(gpsStatus(GpsState.CHECKING, PositionSource.GPS)));
     assertEquals(R.color.source_connecting, look.color);
     assertTrue(look.pulsing);
+    assertEquals(0, look.badge);
+  }
+
+  // Good positions are checked in the manual mode: a steady antenna with a clock.
+  @Test
+  public void barShowsGpsCheckingInManualModeWithoutPulse()
+  {
+    final NoGps.Status status = gpsStatus(GpsState.CHECKING, PositionSource.GPS);
+    setManualMode(status);
+    final StatusBar.Look look = StatusBar.getBarLook(boxSetUp(status));
+    assertEquals(R.color.source_connecting, look.color);
+    assertEquals(R.drawable.ic_nogps_badge_clock, look.badge);
+    assertFalse(look.pulsing);
   }
 
   @Test
@@ -294,6 +307,18 @@ public class StatusBarTest
   }
 
   // The states are set by JNI only.
+  private static void setManualMode(NoGps.Status status)
+  {
+    try
+    {
+      NoGps.Status.class.getDeclaredField("manualMode").setBoolean(status, true);
+    }
+    catch (ReflectiveOperationException e)
+    {
+      throw new AssertionError(e);
+    }
+  }
+
   private static void setState(NoGps.Status status, String name, int value)
   {
     try
