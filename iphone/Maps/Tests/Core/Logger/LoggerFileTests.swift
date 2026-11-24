@@ -10,28 +10,36 @@ final class LoggerFileTests: XCTestCase {
   private var now = Date()
   private let clockLock = NSLock()
   private var logsFolder: URL!
+  private var enabledByTest = false
 
   override func setUp() {
     super.setUp()
     logsFolder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0].appendingPathComponent("logs")
-    Logger.setFileLoggingEnabled(false)
     Logger.setClockForTesting { [unowned self] in
       clockLock.lock()
       defer { clockLock.unlock() }
       return now
     }
     setTime(2026, 11, 1, 12, 0, 0)
-    Logger.setFileLoggingEnabled(true)
-    // Enabling opens a file at once: drop it, the first line of a test opens the file under test.
-    Logger.startTrip()
+    // Turning logging off removes every log of the app, those of a phone with a recorded trip too: only turn it on,
+    // and off again at the end only if it was off.
+    enabledByTest = !Settings.isFileLoggingEnabled()
+    if enabledByTest {
+      Logger.setFileLoggingEnabled(true)
+    }
+    // A file of the app may be open: unlink the faked days first, then close it, so no line of the tests goes into an
+    // unlinked file. The first line of a test opens the file under test.
     removeFakeDays()
+    Logger.startTrip()
   }
 
   override func tearDown() {
     Logger.startTrip()
     removeFakeDays()
-    Logger.setFileLoggingEnabled(false)
     Logger.setClockForTesting(nil)
+    if enabledByTest {
+      Logger.setFileLoggingEnabled(false)
+    }
     super.tearDown()
   }
 
@@ -69,11 +77,11 @@ final class LoggerFileTests: XCTestCase {
     XCTAssertEqual(logFiles().map(\.lastPathComponent), ["120000-2.log", "120000.log"])
   }
 
-  func testStartTripNamesTheFileAfterTheFirstLineNotAfterTheTrip() {
+  func testStartTripNamesTheFileAfterItsFirstLine() {
     Logger.log(.info, message: "\(marker) drive 1")
-    setTime(2026, 11, 1, 12, 0, 9)
-    Logger.startTrip()
+    // The clock moves before startTrip: a line of the app between the two would open the file at the trip's time.
     setTime(2026, 11, 1, 12, 0, 20)
+    Logger.startTrip()
     Logger.log(.info, message: "\(marker) drive 2")
 
     XCTAssertEqual(logFiles().map(\.lastPathComponent), ["120000.log", "120020.log"])
