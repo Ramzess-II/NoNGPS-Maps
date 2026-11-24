@@ -428,7 +428,7 @@ public:
   void OnElm327Bytes(std::string_view data);
   void OnElm327Closed(std::string const & reason);
   void OnEsp32BleBytes(std::string_view bytes);
-  void OnEsp32BleState(BleState state, bool bondLost);
+  void OnEsp32BleState(BleState state, bool bondLost, std::string const & boxId);
 
   bool IsReady() const;
   bool HasPosition() const { return m_deadReckoning.HasPosition(); }

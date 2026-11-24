@@ -456,7 +456,9 @@ NS_SWIFT_NAME(NoGps)
 + (void)onEsp32BleBytes:(NSData *)data;
 /// `bondLost`: the pairing is thought lost, MWMNoGpsBleStateConnected then is a probe that carries nothing until the
 /// box is heard.
-+ (void)onEsp32BleState:(MWMNoGpsBleState)state bondLost:(BOOL)bondLost;
+/// `boxId`: the four characters of the name of the box the link is to, nil if the box tells none: another id in the
+/// box's own info refuses it.
++ (void)onEsp32BleState:(MWMNoGpsBleState)state bondLost:(BOOL)bondLost boxId:(nullable NSString *)boxId;
 
 @end
 

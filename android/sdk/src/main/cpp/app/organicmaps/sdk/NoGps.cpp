@@ -258,10 +258,11 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeOnEsp32BleBytes(JNI
   NoGpsEngine().OnEsp32BleBytes(NoGpsBytes(env, data));
 }
 
-JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeOnEsp32BleState(JNIEnv *, jclass, jint state,
-                                                                             jboolean bondLost)
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeOnEsp32BleState(JNIEnv * env, jclass, jint state,
+                                                                             jboolean bondLost, jstring boxId)
 {
-  NoGpsEngine().OnEsp32BleState(static_cast<nogps::BleState>(state), bondLost);
+  NoGpsEngine().OnEsp32BleState(static_cast<nogps::BleState>(state), bondLost,
+                                boxId ? jni::ToNativeString(env, boxId) : std::string());
 }
 
 JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeSetMarkByTap(JNIEnv *, jclass, jboolean armed)

@@ -387,9 +387,12 @@ void Esp32Source::Send(std::string_view command, int id)
     m_delegate.Esp32BleSend(esp32::Command(id, command));
 }
 
-void Esp32Source::OnBleState(BleState state, bool bondLost)
+void Esp32Source::OnBleState(BleState state, bool bondLost, std::string const & boxId)
 {
-  if (!m_running || (state == m_bleState && bondLost == m_bondLost))
+  if (!m_running)
+    return;
+  m_linkBoxId = boxId;
+  if (state == m_bleState && bondLost == m_bondLost)
     return;
   LOG(LINFO, (LogHead(m_clock, "ACTION", "ble_state"), "Bluetooth =", state, "bond lost =", bondLost));
   // A connection may be pending all the time the box sleeps: only a made one tells that the box is awake. The one
@@ -594,6 +597,10 @@ void Esp32Source::OnAuthInfo(esp32::Fields const & fields)
 {
   auto const info = esp32::ParseInfo(fields);
   CHECK(info, ());
+  // The link is to the box the transport has found by its name: a device under its address that says it is another
+  // box would pass as a first pairing, as nothing is known of its id.
+  if (!m_linkBoxId.empty() && info->m_id != m_linkBoxId)
+    return RefuseBox("it says it is " + info->m_id + ", the link is to " + m_linkBoxId);
   // The proof is of the id the box has given: a device that says it is another box meanwhile is not taken for it.
   if (!m_authCar.empty() && info->m_id != m_authCar)
     return RefuseBox("it says it is " + info->m_id + ", not " + m_authCar);

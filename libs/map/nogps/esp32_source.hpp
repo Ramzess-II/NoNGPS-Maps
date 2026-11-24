@@ -119,7 +119,9 @@ public:
   void OnBleBytes(std::string_view bytes);
   /// `bondLost`: the box is thought to have forgotten the phone, see BleState::BondLost. A link made then, Connected
   /// for the HELLO the box waits for, is a probe: it is not a working link until the box is heard.
-  void OnBleState(BleState state, bool bondLost = false);
+  /// `boxId`: the id of the box the transport has connected, the four characters of its name, empty if the box tells
+  /// none. Another id in its NGI refuses the box. Taken as it comes, also when the state is the same.
+  void OnBleState(BleState state, bool bondLost = false, std::string const & boxId = {});
   BleState GetBleState() const { return m_bleState; }
   bool IsBondLost() const { return m_bondLost; }
   DataRate GetDataRate() const;
@@ -249,6 +251,7 @@ private:
 
   BleState m_bleState = BleState::Off;
   bool m_bondLost = false;
+  std::string m_linkBoxId;
   // The line being received over Bluetooth, from its "$" on.
   std::string m_bleLine;
   // When the data lines of the last second came.

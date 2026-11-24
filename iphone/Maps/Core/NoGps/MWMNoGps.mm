@@ -548,9 +548,9 @@ static CLLocation * lastPlatformLocation;
   Engine().OnEsp32BleBytes({static_cast<char const *>(data.bytes), data.length});
 }
 
-+ (void)onEsp32BleState:(MWMNoGpsBleState)state bondLost:(BOOL)bondLost
++ (void)onEsp32BleState:(MWMNoGpsBleState)state bondLost:(BOOL)bondLost boxId:(nullable NSString *)boxId
 {
-  Engine().OnEsp32BleState(static_cast<nogps::BleState>(state), bondLost);
+  Engine().OnEsp32BleState(static_cast<nogps::BleState>(state), bondLost, boxId ? boxId.UTF8String : std::string());
 }
 
 @end

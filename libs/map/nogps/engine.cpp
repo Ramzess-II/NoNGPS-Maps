@@ -387,14 +387,14 @@ void Engine::OnEsp32BleBytes(std::string_view bytes)
   SaveHeardBox();
 }
 
-void Engine::OnEsp32BleState(BleState state, bool bondLost)
+void Engine::OnEsp32BleState(BleState state, bool bondLost, std::string const & boxId)
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());
   if (!m_inertial)
     return;
   // Before the box hears of it: the new file of a trip starts with its connection.
   OnBoxLink(state == BleState::Connected && !bondLost && m_inertial->GetEsp32());
-  m_inertial->OnEsp32BleState(state, bondLost);
+  m_inertial->OnEsp32BleState(state, bondLost, boxId);
 }
 
 void Engine::OnBoxLink(bool linked)

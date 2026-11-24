@@ -348,7 +348,8 @@ public:
   // The ESP32 sensor box over Bluetooth LE, see Delegate::Esp32BleOpen().
   void OnEsp32BleBytes(std::string_view bytes);
   /// `bondLost`: see Esp32Source::OnBleState().
-  void OnEsp32BleState(BleState state, bool bondLost = false);
+  /// `boxId`: see Esp32Source::OnBleState().
+  void OnEsp32BleState(BleState state, bool bondLost = false, std::string const & boxId = {});
 
   bool IsManualMode() const { return m_manualMode; }
   void SetManualMode(bool enabled);
