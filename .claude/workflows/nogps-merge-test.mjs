@@ -544,5 +544,31 @@ const base = (label) => {
   check('every PR is accounted for in every run', bad === 0, { bad })
 }
 
+// --- 24. the clean step names its own branches and stays inside its own worktrees ---
+{
+  let appOnly = ''
+  let both = ''
+  await runScript({
+    args: { ws: '/ws', parallel: [pr(1), pr(2)], slots: 2 },
+    reply: (label, opts, prompt) => {
+      if (label === 'clean') appOnly = prompt
+      return base(label)
+    },
+  })
+  await runScript({
+    args: { ws: '/ws', parallel: [pr(1), pr(19, { repo: 'Ramzess-II/ELMandIMU', files: ['main/power.c'] })], slots: 2 },
+    reply: (label, opts, prompt) => {
+      if (label === 'clean') both = prompt
+      return base(label)
+    },
+  })
+  console.log('24. clean touches only what the run made')
+  check('no train/* glob', !/refs\/heads\/train\/\*/.test(appOnly.replace(/Never glob refs\/heads\/train\/\*/, '')) && !/train\/\*'/.test(appOnly), appOnly)
+  check('app-only run names its branches', /\/app: train\/1, train\/2, train\/gate/.test(appOnly), appOnly)
+  check('app-only run leaves the firmware repo out', !/\/ws\/firmware: train/.test(appOnly), appOnly)
+  check('both-repo run names each repo\'s branches', /\/app: train\/1, train\/gate/.test(both) && /\/firmware: train\/19, train\/gate/.test(both), both)
+  check('the closed list is stated', /must not list worktrees to tidy/.test(appOnly) && /merge-train, merge-1, merge-2\b/.test(appOnly), appOnly)
+}
+
 console.log(failures ? `\n${failures} check(s) FAILED` : '\nall checks passed')
 process.exit(failures ? 1 : 0)
