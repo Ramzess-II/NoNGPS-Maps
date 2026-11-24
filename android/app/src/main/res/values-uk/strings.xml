@@ -1188,8 +1188,8 @@
     <string name="nogps_about_headline">Навігація, коли GPS глушать або підміняють</string>
     <!-- About NonGPS Maps, under the globe with the GPS satellites that the finger spins -->
     <string name="nogps_about_globe_hint">Потягніть Землю, торкніться супутника, щоб вимкнути його.</string>
-    <!-- About NonGPS Maps, under the globe and the satellite count: what the shaded ground of the Earth means -->
-    <string name="nogps_about_globe_coverage">Затінено: видно 4 або більше супутників, цього досить для визначення координат.</string>
+    <!-- About NonGPS Maps, under the globe and the satellite count: what the blue and the red ground of the Earth mean -->
+    <string name="nogps_about_globe_coverage">Синій: видно 4 або більше супутників, цього досить для визначення координат. Червоний: менше, координат немає.</string>
     <!-- About NonGPS Maps, under the globe: the car stands in the jammed area -->
     <string name="nogps_about_globe_jammed">У зоні глушіння жоден із них не досягає авто.</string>
     <!-- About NonGPS Maps, under the globe: %1$d is how many satellites are on, %2$d how many there are -->

@@ -1591,8 +1591,8 @@
 /* About NonGPS Maps, under the globe with the GPS satellites that the finger spins */
 "nogps_about_globe_hint" = "Drag the Earth, tap a satellite to switch it off.";
 
-/* About NonGPS Maps, under the globe and the satellite count: what the shaded ground of the Earth means */
-"nogps_about_globe_coverage" = "Shaded: 4 or more satellites in view, enough for a fix.";
+/* About NonGPS Maps, under the globe and the satellite count: what the blue and the red ground of the Earth mean */
+"nogps_about_globe_coverage" = "Blue: 4 or more satellites in view, enough for a fix. Red: fewer, no fix.";
 
 /* About NonGPS Maps, under the globe: the car stands in the jammed area */
 "nogps_about_globe_jammed" = "Inside the jammed area not one of them reaches the car.";
