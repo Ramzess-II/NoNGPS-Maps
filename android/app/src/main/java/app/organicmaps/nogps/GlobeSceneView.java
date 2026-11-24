@@ -27,11 +27,6 @@ import app.organicmaps.R;
  */
 public class GlobeSceneView extends View implements Choreographer.FrameCallback
 {
-  public interface Listener
-  {
-    void onSatellitesChanged(int on, int total);
-  }
-
   private static final int GRATICULE_STEP_DEG = 30;
   private static final int SAMPLE_STEP_DEG = 6;
   private static final int JAM_RING_POINTS = 48;
@@ -98,8 +93,6 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
   @Nullable
   private int[] mCoveragePixels;
 
-  @Nullable
-  private Listener mListener;
   private boolean mFrames;
   private long mLastFrameNs;
 
@@ -136,28 +129,11 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
     mScene.setAnimated(!areAnimationsRemoved());
   }
 
-  public void setListener(@Nullable Listener listener)
-  {
-    mListener = listener;
-    notifyChanged();
-  }
-
-  int satellitesOn()
-  {
-    return mScene.onCount();
-  }
-
   /** "Remove animations" of the system: the globe stands until the finger moves it. */
   private boolean areAnimationsRemoved()
   {
     return Settings.Global.getFloat(getContext().getContentResolver(), Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
  == 0f;
-  }
-
-  private void notifyChanged()
-  {
-    if (mListener != null)
-      mListener.onSatellitesChanged(mScene.onCount(), GlobeScene.SATELLITES);
   }
 
   // Frames.
@@ -324,7 +300,6 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
     if (i < 0)
       return;
     mScene.toggle(i);
-    notifyChanged();
   }
 
   @Override

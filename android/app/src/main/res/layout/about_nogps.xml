@@ -70,38 +70,16 @@
         android:layout_width="match_parent"
         android:layout_height="@dimen/nogps_globe_height"
         android:layout_marginHorizontal="@dimen/nogps_globe_bleed"
+        android:layout_marginBottom="@dimen/margin_base"
         android:contentDescription="@string/nogps_about_globe_hint" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_horizontal"
-        android:text="@string/nogps_about_globe_hint"
-        android:textAppearance="@style/MwmTextAppearance.Body3" />
-
-    <TextView
-        android:id="@+id/globe_sats"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/margin_quarter"
-        android:gravity="center_horizontal"
-        android:textAppearance="@style/MwmTextAppearance.Body2.Primary"
-        tools:text="24 of 24 satellites on" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_horizontal"
-        android:text="@string/nogps_about_globe_coverage"
-        android:textAppearance="@style/MwmTextAppearance.Body3" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="@dimen/margin_base"
-        android:gravity="center_horizontal"
-        android:text="@string/nogps_about_globe_jammed"
-        android:textAppearance="@style/MwmTextAppearance.Body3" />
+        android:layout_marginBottom="@dimen/margin_half"
+        android:text="@string/nogps_about_description"
+        android:textAppearance="@style/MwmTextAppearance.Body1"
+        android:textColor="?android:textColorPrimary" />
 
     <TextView
         android:id="@+id/map_data"

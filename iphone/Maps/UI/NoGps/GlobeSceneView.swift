@@ -63,11 +63,6 @@ final class GlobeSceneView: UIView {
   private static let coast = buildCoast()
   private static let jamRing = buildJamRing()
 
-  /// Called when a satellite is switched, with how many are on.
-  var onSatellitesChanged: ((_ on: Int, _ total: Int) -> Void)? {
-    didSet { notifyChanged() }
-  }
-
   private let scene = GlobeScene()
   private var displayLink: CADisplayLink?
   private var lastTimestamp: CFTimeInterval = 0
@@ -108,12 +103,6 @@ final class GlobeSceneView: UIView {
 
   deinit {
     NotificationCenter.default.removeObserver(self)
-  }
-
-  var satellitesOn: Int { scene.onCount }
-
-  private func notifyChanged() {
-    onSatellitesChanged?(scene.onCount, GlobeScene.satellites)
   }
 
   // MARK: - Frames
@@ -187,7 +176,6 @@ final class GlobeSceneView: UIView {
   @objc private func tapped(_ gesture: UITapGestureRecognizer) {
     guard let i = scene.satelliteAt(gesture.location(in: self)) else { return }
     scene.toggle(i)
-    notifyChanged()
     setNeedsDisplay()
   }
 
