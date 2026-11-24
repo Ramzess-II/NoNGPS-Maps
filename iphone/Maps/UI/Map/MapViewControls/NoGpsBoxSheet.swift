@@ -646,6 +646,12 @@ private final class SprintResultsViewController: MWMTableViewController {
     fatalError("init(coder:) has not been implemented")
   }
 
+  /// The sheet follows the rows of this page.
+  override func viewDidLayoutSubviews() {
+    super.viewDidLayoutSubviews()
+    (navigationController?.viewControllers.first as? NoGpsBoxSheet)?.refit()
+  }
+
   override func viewDidLoad() {
     super.viewDidLoad()
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
@@ -728,6 +734,12 @@ private final class AddCarViewController: MWMTableViewController {
 
   private var isCarAdded: Bool {
     NoGps.cars().count > carsBefore
+  }
+
+  /// The sheet follows the rows of this page.
+  override func viewDidLayoutSubviews() {
+    super.viewDidLayoutSubviews()
+    (navigationController?.viewControllers.first as? NoGpsBoxSheet)?.refit()
   }
 
   override func viewDidLoad() {
