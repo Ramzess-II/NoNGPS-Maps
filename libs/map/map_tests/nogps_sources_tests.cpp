@@ -1839,6 +1839,28 @@ UNIT_TEST(NoGps_PhoneMotion_CalibrationFailsWhileDriving)
   TEST(!phone.IsCalibrated(), ());
 }
 
+UNIT_TEST(NoGps_PhoneMotion_Elm327Speed255IsNotMoving)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  PhoneMotion phone(delegate, clock, clock, std::string("AA:BB"), listener);
+  phone.Start();
+  phone.OnAccel({0, 9.81, 0});
+  auto * elm327 = phone.GetElm327();
+  TEST(elm327, ());
+  InitElm327(clock, delegate, *elm327);
+  // The ECU that wakes answers 255 while the car stands.
+  elm327->OnBytes("41 0D FF\r\r>");
+  phone.Calibrate();
+  for (int i = 0; i <= GyroCalibrator::kRequiredSamples; ++i)
+  {
+    clock.Advance(20);
+    phone.OnGyro(clock.NowMs() * 1'000'000, {0, 0, 0});
+  }
+  TEST_EQUAL(phone.GetCalibrationState(), CalibrationState::Done, ());
+}
+
 // Keeps the keys of the boxes in a map, each with the mark of a confirmed one, as the engine keeps them with the cars.
 class AuthRecorder : public MotionRecorder
 {
