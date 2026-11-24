@@ -103,9 +103,39 @@ final class CrashReporter: NSObject {
     // The map screen exists only after the framework is created: the status would create it earlier.
     guard viewController is MapViewController else { return }
     let status = NoGps.status()
-    setTag("box", String(describing: status.sourceState))
+    setTag("box", sourceStateName(status.sourceState))
     setTag("box.firmware", status.boxFirmware)
-    setTag("nogps.source", String(describing: status.source.rawValue))
+    setTag("nogps.source", positionSourceName(status.source))
+  }
+
+  /// The names of the Android enums, so a tag search finds the events of both platforms.
+  static func sourceStateName(_ state: NoGpsSourceState) -> String {
+    switch state {
+    case .disconnected: return "DISCONNECTED"
+    case .connecting: return "CONNECTING"
+    case .noAdapter: return "NO_ADAPTER"
+    case .obdDisabled: return "OBD_DISABLED"
+    case .obdConnecting: return "OBD_CONNECTING"
+    case .obdError: return "OBD_ERROR"
+    case .noCarData: return "NO_CAR_DATA"
+    case .boxSleeping: return "BOX_SLEEPING"
+    case .boxBatteryLock: return "BOX_BATTERY_LOCK"
+    case .obdSleeping: return "OBD_SLEEPING"
+    case .connected: return "CONNECTED"
+    case .updating: return "UPDATING"
+    @unknown default: return String(state.rawValue)
+    }
+  }
+
+  static func positionSourceName(_ source: NoGpsPositionSource) -> String {
+    switch source {
+    case .none: return "NONE"
+    case .gps: return "GPS"
+    case .network: return "NETWORK"
+    case .manual: return "MANUAL"
+    case .inertial: return "INERTIAL"
+    @unknown default: return String(source.rawValue)
+    }
   }
 
   private static func startSDK(dsn: String, debug: Bool) {
