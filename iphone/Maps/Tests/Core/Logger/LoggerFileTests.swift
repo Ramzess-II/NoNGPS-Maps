@@ -106,6 +106,11 @@ final class LoggerFileTests: XCTestCase {
     XCTAssertEqual(days, ["2099-01-01", "2099-01-02"])
     XCTAssertEqual(try markerLines(lines(of: files[0])).count, 1)
     XCTAssertEqual(try markerLines(lines(of: files[1])).count, 2)
+    // The file goes on under the name of its start, so readers join it to the file before midnight.
+    func baseName(_ url: URL) -> String {
+      url.deletingPathExtension().lastPathComponent.replacingOccurrences(of: "-\\d+$", with: "", options: .regularExpression)
+    }
+    XCTAssertEqual(baseName(files[1]), baseName(files[0]))
     // The file of the next day is a file of its own: it begins with the header.
     XCTAssertTrue(try lines(of: files[1])[0].hasPrefix("LOGFMT 2 "))
   }
