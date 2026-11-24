@@ -1162,6 +1162,11 @@ void Engine::OnThisPhoneRemoved()
   m_phoneRemovedTimer.Start(0, [this] { m_delegate.OnEvent(Event::ThisPhoneRemoved); });
 }
 
+void Engine::OnBoxRefused()
+{
+  Notify(Event::BoxRefused);
+}
+
 std::vector<Sprint> Engine::GetSprints() const
 {
   auto sprints = ParseSprints(m_storage.Get<std::string>(Storage::kSprints, ""));

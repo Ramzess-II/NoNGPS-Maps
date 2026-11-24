@@ -248,6 +248,9 @@ public final class NoGps
     // The box has connected after 5 minutes or more without it: a drive starts. LocationHelper starts a new file of
     // the trip log.
     TRIP_STARTED,
+    // The sensor box has not proved itself and is not used until the link is made again: the user may have to forget
+    // the car and pair the box again.
+    BOX_REFUSED,
   }
 
   // The kinds of the runs from a standing start.

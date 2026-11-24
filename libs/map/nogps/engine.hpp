@@ -470,6 +470,7 @@ private:
   void OnBoxCarValues(std::map<std::string, std::string> const & values) override;
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
   void OnThisPhoneRemoved() override;
+  void OnBoxRefused() override;
   void OnBoxStopping() override;
   /// The link to the box is made or has ended: one made after kTripFileLinkGapMs without it starts a trip.
   void OnBoxLink(bool linked);

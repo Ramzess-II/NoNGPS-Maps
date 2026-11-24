@@ -42,6 +42,7 @@ public:
   }
 
   void OnThisPhoneRemoved() override { ++m_thisPhoneRemoved; }
+  void OnBoxRefused() override { ++m_boxRefused; }
 
   std::vector<int> m_speeds;
   double m_yawDeg = 0;
@@ -49,6 +50,7 @@ public:
   double m_maxDtSec = 0;
   int m_motions = 0;
   int m_thisPhoneRemoved = 0;
+  int m_boxRefused = 0;
 };
 
 // Answers the initialization of the adapter.
@@ -1853,9 +1855,10 @@ UNIT_TEST(NoGps_Esp32Source_KnownBoxProvesItselfWithKey)
   box.SendData();
   TEST_EQUAL(box.listener.m_speeds.size(), 0, ());
   TEST(box.listener.m_heard.empty(), ());
-  // A refused box is not asked again, even with the right proof.
+  // A refused box is not asked again, even with the right proof, and the user is told once.
   box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",OK," + esp32::AuthProof(kAuthKey, nonce)));
   TEST(!box.source.IsBoxProven(), ());
+  TEST_EQUAL(box.listener.m_boxRefused, 1, ());
 
   // A new connection starts anew: the nonce is another one, the proof of it is taken.
   box.source.OnBleState(BleState::Searching);
@@ -1886,6 +1889,7 @@ UNIT_TEST(NoGps_Esp32Source_RefusesBoxThatAnswersWithError)
     LastAuthArgument(box.delegate, "AUTH", id);
     box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + "," + error));
     TEST(box.source.IsBoxRefused(), (error));
+    TEST_EQUAL(box.listener.m_boxRefused, 1, (error));
     box.SendData();
     TEST_EQUAL(box.listener.m_speeds.size(), 0, ());
   }

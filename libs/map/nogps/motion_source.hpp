@@ -118,6 +118,9 @@ public:
     /// The box has removed this phone on its request: it doesn't connect to the box any more.
     virtual void OnThisPhoneRemoved() {}
 
+    /// The box has failed to prove itself and is refused until the link is made again, see Esp32Source::IsBoxRefused.
+    virtual void OnBoxRefused() {}
+
     /// The other phone on the box has sent its place, carried to now, see PeerSync.
     virtual void OnPeerPlace(PeerPlace const & /* place */) {}
   };

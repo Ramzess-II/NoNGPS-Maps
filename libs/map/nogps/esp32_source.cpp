@@ -696,11 +696,14 @@ void Esp32Source::OnAuthReply(esp32::Reply const & reply)
 void Esp32Source::RefuseBox(std::string const & reason)
 {
   LOG(LWARNING, ("The box", m_authCar, "is refused:", reason));
+  bool const wasRefused = m_authRefused;
   m_proven = false;
   m_authRefused = true;
   m_authId = 0;
   m_unprovenInfo.reset();
   m_authKey.clear();
+  if (!wasRefused)
+    m_listener.OnBoxRefused();
 }
 
 void Esp32Source::OnData(esp32::Data const & data)

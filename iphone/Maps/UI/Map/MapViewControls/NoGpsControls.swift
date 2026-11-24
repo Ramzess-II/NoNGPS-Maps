@@ -626,6 +626,7 @@ final class NoGpsControls: NSObject {
       text = nil
     // The bridge has started a new file of the trip log.
     case .tripStarted: text = nil
+    case .boxRefused: text = L("nogps_box_refused")
     case .firmwareUpdateAvailable:
       offerFirmwareUpdate()
       text = nil
