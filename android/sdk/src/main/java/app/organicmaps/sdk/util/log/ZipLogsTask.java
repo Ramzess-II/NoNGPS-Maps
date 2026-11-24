@@ -6,6 +6,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -77,10 +78,17 @@ class ZipLogsTask implements Runnable
       {
         // As the zip of iOS: unpacked into one folder, the zips of any phones and days make one tree.
         final String relativePath = file.getPath().substring(sourceFile.getPath().length() + 1);
-        if (!file.exists())
+        // Opened before the entry is put: a file the rotation deleted meanwhile leaves no empty entry.
+        final FileInputStream fi;
+        try
+        {
+          fi = new FileInputStream(file);
+        }
+        catch (FileNotFoundException e)
+        {
           continue;
-        try (FileInputStream fi = new FileInputStream(file);
-             BufferedInputStream origin = new BufferedInputStream(fi, bufSize))
+        }
+        try (fi; BufferedInputStream origin = new BufferedInputStream(fi, bufSize))
         {
           out.putNextEntry(new ZipEntry("logs/" + relativePath.replace(File.separatorChar, '/')));
           int count;
