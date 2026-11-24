@@ -209,10 +209,12 @@ def tool_map_version(data_path):
 
 
 def wrong_maps(args, others):
-    """Why the day is not driven on --data_path, or None: its log says the maps of other versions."""
+    """Why the day is not driven on --data_path, or None: its log says the maps of other versions. Only the MAPS
+    lines before the end of the --to window count: what the phone downloads later is not driven."""
     if args.any_maps:
         return None
-    lines = logged_map_versions(others)
+    end = parse_clock(args.end) if args.end else 86_400_000
+    lines = logged_map_versions([o for o in others if o[0] < end])
     if not lines:
         return None
     logged = list(dict.fromkeys(v for line in lines for v in line))
@@ -883,8 +885,10 @@ def warn_builds(paths):
             commit = nogps_trip_log.read_header(path).get('commit')
         except nogps_trip_log.LogFormatError:
             continue
-        if commit and re.fullmatch(r'[0-9a-f]{7,40}', commit):
-            commits.add(commit[:8])
+        # git describe --dirty: "abcdef12-dirty" is a build with changes; 00000000 is a build made without git.
+        m = re.fullmatch(r'([0-9a-f]{7,40})(-dirty)?', commit or '')
+        if m and set(m.group(1)) != {'0'}:
+            commits.add(m.group(1)[:8] + (m.group(2) or ''))
     others = sorted(commits - {here.stdout.strip()})
     if others:
         print('note: the logs are of the builds %s, this checkout is %s: the "trip" columns are of those rules' % (

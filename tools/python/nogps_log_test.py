@@ -77,10 +77,10 @@ def android_drive(day='10-08', start=18 * 3600, seconds=120, stand=10, error=lam
     return lines
 
 
-def logfmt_line(phone='Pixel_7-a3f9', version=2, trip='180000'):
+def logfmt_line(phone='Pixel_7-a3f9', version=2, trip='180000', commit='abcdef12'):
     """The first line of a log file, as LogsManager.getLogFormatLine writes it."""
-    return ('LOGFMT %d ms=%d phone=%s trip=%s app=2026.10.08-1-Google build=26100801 commit=abcdef12 om=2026.10.27-10'
-            % (version, LOGFMT_MS, phone, trip))
+    return ('LOGFMT %d ms=%d phone=%s trip=%s app=2026.10.08-1-Google build=26100801 commit=%s om=2026.10.27-10'
+            % (version, LOGFMT_MS, phone, trip, commit))
 
 
 def with_logfmt(lines, phone='Pixel_7-a3f9', **kwargs):
@@ -392,7 +392,7 @@ class ReplayLogsTest(unittest.TestCase):
             lines = self.drive(20)
             # A tuple is a MAPS line after each other, as when maps are downloaded in the middle of the day.
             for at, version_line in enumerate((logged,) if isinstance(logged, str) else logged or ()):
-                lines.insert(1 + at, core('10-08', 18 * 3600, 'Start',
+                lines.insert(1 + at, core('10-08', 18 * 3600 + 1800 * at, 'Start',
                                           'MAPS ms=%d version=%s' % (LOGFMT_MS, version_line)))
             write_tree(folder, {'Pixel_7-a3f9/2026-10-08/180000.log': with_logfmt(lines)})
             maps = os.path.join(folder, 'maps')
@@ -427,6 +427,25 @@ class ReplayLogsTest(unittest.TestCase):
         driven, out = self.run_with_maps(('260714', '261101'), '260714')
         self.assertFalse(driven)
         self.assertIn('--data_path has 260714', out)
+
+    def test_run_checks_the_maps_only_up_to_to(self):
+        driven, _ = self.run_with_maps(('260714', '261101'), '260714', '--to', '18:10')
+        self.assertTrue(driven)
+        driven, _ = self.run_with_maps(('260714', '261101'), '260714', '--to', '19:00')
+        self.assertFalse(driven)
+
+    def test_warn_builds_names_a_dirty_build_and_skips_a_build_without_git(self):
+        for commit, noted in (('abcdef12-dirty', 'abcdef12-dirty'), ('00000000', None), ('00000000-dirty', None)):
+            with tempfile.TemporaryDirectory() as folder:
+                write_tree(folder, {'Pixel_7-a3f9/2026-10-08/180000.log':
+                                    with_logfmt(self.drive(20), commit=commit)})
+                err = io.StringIO()
+                with mock.patch.object(sys, 'stderr', err):
+                    nogps_replay.warn_builds([folder])
+                if noted:
+                    self.assertIn('the builds ' + noted + ',', err.getvalue())
+                else:
+                    self.assertEqual(err.getvalue(), '')
 
     def test_run_drives_a_day_with_no_maps_line(self):
         driven, _ = self.run_with_maps(None, '250101')
