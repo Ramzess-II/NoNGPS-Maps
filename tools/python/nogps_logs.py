@@ -12,7 +12,8 @@ named, into the tree <to>/<phone>/<yyyy-MM-dd>/<HHmmss>.log, the flags into <to>
     iPhones plugged in by wire, or any one named. An app installed from the App Store has no container to read.
   Android: adb pull of Android/data/<package>/files/logs and flags, of the packages ANDROID_PACKAGES. A phone that
     refuses access to Android/data is reported.
-  --from <folder>: a folder of logs/ and flags/ already on disk, an unpacked copy.
+  --from <folder>: a folder of logs/ and flags/ already on disk, an unpacked copy; or a mail of "Send logs" saved into
+    a folder: its logs.zip, the .png and .m4a attachments and the text with a line per flag, see mail_container().
 A log is copied when it is missing in the tree or the phone's copy is bigger (the last file is still being written);
 its phone is that of its LOGFMT line. A flag goes to the day of its name with the phone of that day's logs in the same
 app; a changed json (sent) or a bigger png or m4a replaces the local copy. Nothing in the tree is ever deleted: the
@@ -32,6 +33,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import zipfile
 
 import nogps_db
 import nogps_trip_log
@@ -46,6 +48,11 @@ PHONE_ID = re.compile(r'^\w[\w.-]*$')
 # What merge() counts, in the order of the summary.
 COUNTS = ('new logs', 'grown logs', 'new flag files', 'changed flag files', 'logs of the earlier names skipped',
           'OSLog texts without LOGFMT skipped')
+
+# A line of the mail text, as NoGpsFlags.mailLine writes it: FLAG 3 18:01:30 10.50000,20.50000 voice 12 s
+MAIL_LINE = re.compile(r'^FLAG (\d+) (\d\d):(\d\d):(\d\d)(?: (-?\d+\.\d+),(-?\d+\.\d+)| no position)'
+                       r'(?: voice (\d+) s)?\s*$', re.M)
+MAIL_TEXT_EXTENSIONS = ('.txt', '.eml', '.text', '.md')
 
 TABLES = ('file', 'trip', 'sample', 'fix', 'sensor', 'calibration', 'action', 'rule', 'event', 'note', 'flag')
 
@@ -193,9 +200,69 @@ def differs(source, target):
         return a.read() != b.read()
 
 
-def merge(container, tree, notes):
+def is_mail(folder):
+    """Whether |folder| is a saved mail of "Send logs": no logs/ or flags/ folder, but a zip or flag files."""
+    if os.path.isdir(os.path.join(folder, 'logs')) or os.path.isdir(os.path.join(folder, nogps_db.FLAG_FOLDER)):
+        return False
+    return any(name.lower().endswith('.zip') or nogps_db.FLAG_NAME.match(name) for name in os.listdir(folder))
+
+
+def mail_container(folder, target, notes):
+    """Makes in the empty |target| the logs/ and flags/ of an app from a saved mail |folder|: the logs.zip is unpacked
+    into logs/, the flags/ get the .png and .m4a attachments named as the app names them <yyyyMMdd-HHmmss>, and a json
+    made of the FLAG line of the text whose time is that of the name (n, lat and lon, voice_s; sent, as it was mailed).
+    A line no attachment has the time of, and one that two days have it, is told in |notes| and left out."""
+    names = sorted(os.listdir(folder))
+    for name in names:
+        if not name.lower().endswith('.zip'):
+            continue
+        with zipfile.ZipFile(os.path.join(folder, name)) as archive:
+            for member in archive.infolist():
+                # Only the folders of the logs; a path out of the tree or of the form of a log is not extracted.
+                if member.is_dir() or not nogps_trip_log.TREE_PATH.search(member.filename) \
+                        or not member.filename.startswith('logs/') or '..' in member.filename.split('/'):
+                    notes.append('%s: %s is no log of the tree, skipped' % (name, member.filename))
+                    continue
+                path = os.path.join(target, *member.filename.split('/'))
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                with archive.open(member) as source, open(path, 'wb') as out:
+                    shutil.copyfileobj(source, out)
+    text = ''
+    for name in names:
+        if name.lower().endswith(MAIL_TEXT_EXTENSIONS):
+            with open(os.path.join(folder, name), encoding='utf-8', errors='replace') as f:
+                text += f.read() + '\n'
+    stems = collections.defaultdict(list)
+    for name in names:
+        m = nogps_db.FLAG_NAME.match(name)
+        if m and m.group(2) != 'json':
+            stems[m.group(1)].append(name)
+    flags = os.path.join(target, nogps_db.FLAG_FOLDER)
+    by_time = collections.defaultdict(list)
+    for stem in stems:
+        by_time[stem[9:]].append(stem)
+    for m in MAIL_LINE.finditer(text):
+        n, hh, mm, ss, lat, lon, voice = m.groups()
+        candidates = by_time.get(hh + mm + ss, [])
+        if len(candidates) != 1:
+            notes.append('FLAG %s %s:%s:%s: %s, skipped' % (n, hh, mm, ss, 'two days have an attachment of that time'
+                                                            if candidates else 'no attachment has its time'))
+            continue
+        stem = candidates[0]
+        values = {'n': int(n), 'voice_s': int(voice or 0), 'sent': True}
+        if lat is not None:
+            values.update(lat=float(lat), lon=float(lon))
+        os.makedirs(flags, exist_ok=True)
+        with open(os.path.join(flags, stem + '.json'), 'w', encoding='utf-8') as f:
+            json.dump(values, f)
+        for name in stems[stem]:
+            shutil.copyfile(os.path.join(folder, name), os.path.join(flags, name))
+
+
+def merge(container, tree, notes, keep_json=False):
     """Copies the logs/ and flags/ of an app |container| into |tree|. Returns the {(phone, day)} that gained or grew
-    a file, and the counts of the files copied."""
+    a file, and the counts of the files copied. With |keep_json| a flag json of the tree is not replaced: the one made
+    of a mail has less than the one of a phone."""
     changed = set()
     counts = collections.Counter()
     day_phones = collections.defaultdict(collections.Counter)
@@ -237,7 +304,7 @@ def merge(container, tree, notes):
             continue
         phone = phones.most_common(1)[0][0]
         done = copy_if(os.path.join(flags, name), os.path.join(tree, phone, day, nogps_db.FLAG_FOLDER, name),
-                       differs if m.group(2) == 'json' else bigger)
+                       (lambda *_: False) if keep_json else differs if m.group(2) == 'json' else bigger)
         if done:
             counts['changed flag files' if done == 'changed' else 'new flag files'] += 1
             changed.add((phone, day))
@@ -270,7 +337,11 @@ def fetch_command(args):
         if not containers:
             notes.append('no phone with the app found')
         for label, container in containers:
-            days, counts = merge(container, args.to, notes)
+            mailed = args.sources and is_mail(container)
+            if mailed:
+                unpacked = tempfile.mkdtemp(dir=folder)
+                mail_container(container, unpacked, notes)
+            days, counts = merge(unpacked if mailed else container, args.to, notes, keep_json=bool(mailed))
             changed |= days
             print('%s: %s' % (label, ', '.join('%d %s' % (counts[what], what) for what in COUNTS if counts[what])
                                or 'nothing new'))
@@ -315,8 +386,8 @@ def main():
     fetch.add_argument('--to', default='trip-logs', help='the tree, trip-logs by default')
     fetch.add_argument('--device', action='append', help='an iPhone (identifier, UDID or name) or an Android serial; '
                        'every phone plugged in without it')
-    fetch.add_argument('--from', dest='sources', action='append', help='a folder of logs/ and flags/ on disk instead '
-                       'of the phones')
+    fetch.add_argument('--from', dest='sources', action='append', help='a folder of logs/ and flags/ on disk, or a '
+                       'saved mail of Send logs, instead of the phones')
     fetch.set_defaults(run=fetch_command)
     summary = commands.add_parser('summary', help='the rows of the tables of databases')
     summary.add_argument('databases', nargs='+')

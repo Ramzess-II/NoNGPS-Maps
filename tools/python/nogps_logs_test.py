@@ -13,6 +13,7 @@ import re
 import sys
 import tempfile
 import unittest
+import zipfile
 from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -120,6 +121,65 @@ class FetchTest(unittest.TestCase):
         self.assertIn('flags/20261120-100000.json: no log of its day tells its phone, skipped', out)
         self.assertFalse(os.path.exists(self.tree))
 
+    def mail(self, lines, zipped=True, files=()):
+        """A saved mail of Send logs in the folder |mail|: logs.zip with a day, the attachments, the text."""
+        self.mailed = os.path.join(self.dir.name, 'mail')
+        os.makedirs(self.mailed)
+        if zipped:
+            with zipfile.ZipFile(os.path.join(self.mailed, 'logs.zip'), 'w') as archive:
+                archive.writestr('logs/%s/2026-11-24/180000.log' % PHONE,
+                                 '\n'.join([header(utc_ms('2026-11-24 16:00:00'))] + GOOD[1:]) + '\n')
+                archive.writestr('logs/%s/2026-11-24/../../../evil.log' % PHONE, 'x')
+        for name, data in files:
+            with open(os.path.join(self.mailed, name), 'wb') as f:
+                f.write(data)
+        with open(os.path.join(self.mailed, 'body.txt'), 'w') as f:
+            f.write('Flags\n' + '\n'.join(lines) + '\n')
+
+    def fetch_mail(self):
+        out = io.StringIO()
+        with mock.patch.object(sys, 'argv', ['nogps_logs.py', 'fetch', '--to', self.tree, '--from', self.mailed]), \
+                contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            nogps_logs.main()
+        return out.getvalue()
+
+    def test_a_mail_of_send_logs(self):
+        self.mail(['FLAG 1 18:01:30 10.50000,20.50000 voice 12 s', 'FLAG 2 18:05:00 no position',
+                   'FLAG 3 18:09:00 1.00000,2.00000', 'FLAG 4 17:00:00 no position'],
+                  files=[('20261124-180130.png', b'\x89PNG'), ('20261124-180130.m4a', b'v' * 10),
+                         ('20261124-180500.png', b'\x89PNG'), ('20261124-180900.png', b'\x89PNG')])
+        out = self.fetch_mail()
+        self.assertIn('1 new logs, 7 new flag files', out)
+        self.assertIn('FLAG 4 17:00:00: no attachment has its time, skipped', out)
+        self.assertNotRegex(out.split('note:')[0], COORDINATE)
+        self.assertFalse(os.path.exists(os.path.join(self.dir.name, 'evil.log')))
+        flags = self.tree_file('2026-11-24', 'flags')
+        with open(os.path.join(flags, '20261124-180130.json')) as f:
+            self.assertEqual(json.load(f), dict(n=1, lat=10.5, lon=20.5, voice_s=12, sent=True))
+        with open(os.path.join(flags, '20261124-180500.json')) as f:
+            self.assertEqual(json.load(f), dict(n=2, voice_s=0, sent=True))
+        self.assertTrue(os.path.isfile(os.path.join(flags, '20261124-180130.m4a')))
+        conn = nogps_db.open_db(os.path.join(self.tree, 'db', '%s-2026-11-24.sqlite' % PHONE))
+        self.assertEqual([tuple(r) for r in conn.execute('SELECT n, voice_s FROM flag ORDER BY n')],
+                         [(1, 12), (2, 0), (3, 0)])
+        conn.close()
+        # The same mail again changes nothing.
+        self.assertIn('nothing new', self.fetch_mail())
+
+    def test_a_mail_does_not_replace_the_json_of_a_phone(self):
+        self.app_log('2026-11-24', '180000.log', [header(utc_ms('2026-11-24 16:00:00'))] + GOOD[1:])
+        write_flag(os.path.join(self.app, 'flags'), '20261124-180130', dict(n=1, lat=10.5, lon=20.5, voice_s=3,
+                                                                           sent=False))
+        self.fetch()
+        self.mail(['FLAG 1 18:01:30 10.50000,20.50000 voice 12 s'], zipped=False,
+                  files=[('20261124-180130.png', b'\x89PNG')])
+        self.fetch_mail()
+        with open(self.tree_file('2026-11-24', 'flags', '20261124-180130.json')) as f:
+            self.assertEqual(json.load(f)['voice_s'], 3)
+
+    def test_a_flag_of_a_mail_without_logs_in_it_has_no_phone(self):
+        self.mail(['FLAG 1 18:01:30 no position'], zipped=False, files=[('20261124-180130.png', b'\x89PNG')])
+        self.assertIn('no log of its day tells its phone, skipped', self.fetch_mail())
 
     def test_a_phone_id_that_is_no_folder_name_is_skipped(self):
         self.app_log('2026-11-24', '180000.log', [header(utc_ms('2026-11-24 16:00:00'), phone='..')] + GOOD[1:])
