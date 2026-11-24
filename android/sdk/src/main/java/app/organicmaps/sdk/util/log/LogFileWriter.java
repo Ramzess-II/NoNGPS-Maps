@@ -99,7 +99,9 @@ final class LogFileWriter
   private long mDayEndMs;
   // The first moment of the day of the file: a line written before it, after the clock went back, opens a new file.
   private long mDayStartMs;
-  // The zone of mDayStartMs and mDayEndMs: another one moves the day, and a new file opens when that takes the day back.
+  // The zone of mDayStartMs and mDayEndMs: another one moves the day, and a new file opens when that takes the day
+  // back.
+  private static final long DAY_MS = 24L * 60 * 60 * 1000;
   private TimeZone mDayZone;
   // When a failed open may be tried again, 0 when the last one worked.
   private long mRetryOpenMs;
@@ -334,7 +336,6 @@ final class LogFileWriter
     final boolean zoneChanged = mDayZone != null && !zone.equals(mDayZone);
     if (now >= mDayEndMs || now < mDayStartMs || zoneChanged)
     {
-      final boolean rolled = now >= mDayEndMs;
       final Calendar calendar = Calendar.getInstance(zone);
       calendar.setTimeInMillis(now);
       calendar.set(Calendar.HOUR_OF_DAY, 0);
@@ -344,7 +345,12 @@ final class LogFileWriter
       final long dayStartMs = calendar.getTimeInMillis();
       // The clock, or the time zone, went back past the start of the file's day: the file is a new one, named by
       // the new time. A zone change that doesn't take the local day back only moves the day's bounds.
-      final boolean clockWentBack = dayStartMs < mDayStartMs;
+      // Compared as local days: the bounds in milliseconds move with the zone.
+      final long oldDay = mDayZone == null ? 0 : Math.floorDiv(mDayStartMs + mDayZone.getOffset(mDayStartMs), DAY_MS);
+      final long newDay = Math.floorDiv(dayStartMs + zone.getOffset(dayStartMs), DAY_MS);
+      final boolean zoneDayForward = mDayZone != null && newDay > oldDay;
+      final boolean rolled = now >= mDayEndMs || zoneDayForward;
+      final boolean clockWentBack = mDayZone != null && newDay < oldDay;
       if (clockWentBack)
         mStarted = new Date(now);
       mDayZone = zone;

@@ -157,6 +157,27 @@ public class LogFileWriterTest
   }
 
   @Test
+  public void timeZoneForward_acrossMidnightMovesTheFileToTheFolderOfTheNewDay() throws IOException
+  {
+    final TimeZone saved = TimeZone.getDefault();
+    try
+    {
+      // 23:30 on Nov 1 in UTC+1 is 01:30 on Nov 2 in UTC+3.
+      TimeZone.setDefault(TimeZone.getTimeZone("GMT+1"));
+      mNow.set(time(2026, Calendar.NOVEMBER, 1, 23, 30, 0));
+      mWriter.writeSync(mLogs, "before");
+      TimeZone.setDefault(TimeZone.getTimeZone("GMT+3"));
+      mWriter.writeSync(mLogs, "after the zone change");
+
+      assertEquals(List.of(path("2026-11-01", "233000.log"), path("2026-11-02", "013000.log")), files());
+    }
+    finally
+    {
+      TimeZone.setDefault(saved);
+    }
+  }
+
+  @Test
   public void timeZoneChange_keepsTheFileWhenTheDayDoesNotGoBack() throws IOException
   {
     final TimeZone saved = TimeZone.getDefault();

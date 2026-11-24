@@ -544,13 +544,23 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
   if (logger.dayEnd == nil || logger.dayStart == nil || zoneChanged ||
       [now compare:logger.dayStart] == NSOrderedAscending || [now compare:logger.dayEnd] != NSOrderedAscending)
   {
-    BOOL const rolled = logger.dayEnd == nil || [now compare:logger.dayEnd] != NSOrderedAscending;
     NSCalendar * calendar = [NSCalendar.currentCalendar copy];
     calendar.timeZone = zone;
     NSDate * dayStart = [calendar startOfDayForDate:now];
     // The clock, or the time zone, went back past the start of the file's day: the file is a new one, named by the
     // new time. A zone change that doesn't take the local day back only moves the day's bounds.
-    BOOL const clockWentBack = logger.dayStart != nil && [dayStart compare:logger.dayStart] == NSOrderedAscending;
+    // Compared as local days: the bounds in seconds move with the zone.
+    NSInteger const kDaySeconds = 24 * 60 * 60;
+    NSInteger const newDay =
+        (NSInteger)floor(([dayStart timeIntervalSince1970] + [zone secondsFromGMTForDate:now]) / kDaySeconds);
+    NSInteger const oldDay =
+        logger.dayStart == nil
+            ? 0
+            : (NSInteger)floor(([logger.dayStart timeIntervalSince1970] + logger.dayOffset) / kDaySeconds);
+    BOOL const hadDay = logger.dayStart != nil;
+    BOOL const rolled =
+        logger.dayEnd == nil || [now compare:logger.dayEnd] != NSOrderedAscending || (hadDay && newDay > oldDay);
+    BOOL const clockWentBack = hadDay && newDay < oldDay;
     if (rolled || clockWentBack)
       [self closeFile];
     if (clockWentBack)
