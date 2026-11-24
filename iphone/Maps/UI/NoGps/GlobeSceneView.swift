@@ -16,6 +16,8 @@ final class GlobeSceneView: UIView {
     static let breakSize: CGFloat = 5
     static let dimAlpha: CGFloat = 0.35
     static let backGraticuleAlpha: CGFloat = 0.35
+    /// The coverage is computed for a pixel of the bitmap per pt of the disc, and drawn scaled with filtering.
+    static let coveragePixelsPerPt: CGFloat = 1
   }
 
   private struct Palette {
@@ -27,12 +29,18 @@ final class GlobeSceneView: UIView {
     let beam: UIColor
     let jam: UIColor
     let car: UIColor
+    let carOutline: UIColor
+    /// The green of the coast: the coast stays drawn over it.
+    let landFill: UIColor
+    /// Translucent, as the outage: the graticule, the coast and the jam stay readable over them.
+    let coverage: UIColor
+    let outage: UIColor
 
-    static func color(_ light: UInt32, _ dark: UInt32) -> UIColor {
+    static func color(_ light: UInt32, _ dark: UInt32, alpha: CGFloat = 1) -> UIColor {
       UIColor { trait in
         let hex = trait.userInterfaceStyle == .dark ? dark : light
         return UIColor(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
-                       blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+                       blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
       }
     }
 
@@ -43,7 +51,11 @@ final class GlobeSceneView: UIView {
                                  satelliteOff: color(0x9AA0A6, 0x7B8086),
                                  beam: color(0x2F6FA8, 0x5BB4E6),
                                  jam: color(0xE67700, 0xFFA040),
-                                 car: color(0x1E2226, 0xF2F4F5))
+                                 car: color(0xFFD500, 0xFFD500),
+                                 carOutline: color(0x1E2226, 0x1E2226),
+                                 landFill: color(0x4F8A5E, 0x6FA77C, alpha: 0.8),
+                                 coverage: color(0x2F6FA8, 0x5BB4E6, alpha: 0.45),
+                                 outage: color(0xD0342C, 0xFF6B5E, alpha: 0.45))
   }
 
   // The unit vectors of the Earth frame, which do not change: the graticule, the coast and the rim of the jam.
@@ -51,15 +63,12 @@ final class GlobeSceneView: UIView {
   private static let coast = buildCoast()
   private static let jamRing = buildJamRing()
 
-  /// Called when a satellite is switched, with how many are on.
-  var onSatellitesChanged: ((_ on: Int, _ total: Int) -> Void)? {
-    didSet { notifyChanged() }
-  }
-
   private let scene = GlobeScene()
   private var displayLink: CADisplayLink?
   private var lastTimestamp: CFTimeInterval = 0
   private var lastTranslation = CGPoint.zero
+  /// The coverage of the disc, made again only when its size changes.
+  private var coverageBitmap: CGContext?
 
   override init(frame: CGRect) {
     super.init(frame: frame)
@@ -94,12 +103,6 @@ final class GlobeSceneView: UIView {
 
   deinit {
     NotificationCenter.default.removeObserver(self)
-  }
-
-  var satellitesOn: Int { scene.onCount }
-
-  private func notifyChanged() {
-    onSatellitesChanged?(scene.onCount, GlobeScene.satellites)
   }
 
   // MARK: - Frames
@@ -173,7 +176,6 @@ final class GlobeSceneView: UIView {
   @objc private func tapped(_ gesture: UITapGestureRecognizer) {
     guard let i = scene.satelliteAt(gesture.location(in: self)) else { return }
     scene.toggle(i)
-    notifyChanged()
     setNeedsDisplay()
   }
 
@@ -195,6 +197,7 @@ final class GlobeSceneView: UIView {
     let disc = CGRect(x: center.x - radius, y: center.y - radius, width: 2 * radius, height: 2 * radius)
     context.setFillColor(color(palette.sea).cgColor)
     context.fillEllipse(in: disc)
+    drawGround(context, disc: disc, palette: palette)
     context.setLineWidth(1)
     context.setStrokeColor(color(palette.graticule).cgColor)
     context.strokeEllipse(in: disc)
@@ -220,6 +223,69 @@ final class GlobeSceneView: UIView {
     for i in 0 ..< GlobeScene.satellites where scene.satellite(i).z > 0 {
       drawSatellite(context, i, behind: false, palette: palette)
     }
+  }
+
+  /// The land and, over it and the sea, the coverage: the ground of the front half that sees enough satellites for a
+  /// fix carries the coverage tint, the rest the outage tint. Each pixel of the bitmap is the front point of the unit
+  /// disc under it: `satellite(i)` is in the frame of the screen too, and only the land needs the frame of the Earth.
+  private func drawGround(_ context: CGContext, disc: CGRect, palette: Palette) {
+    let side = Int((disc.width * Constants.coveragePixelsPerPt).rounded(.up))
+    guard side > 0 else { return }
+    if coverageBitmap?.width != side {
+      coverageBitmap = CGContext(data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 4 * side,
+                                 space: CGColorSpaceCreateDeviceRGB(),
+                                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                                   | CGBitmapInfo.byteOrder32Big.rawValue)
+    }
+    guard let bitmap = coverageBitmap, let data = bitmap.data else { return }
+    // Indexed by [covered][land]: a tint over the land fill, or over the sea drawn under the bitmap.
+    let land = premultiplied(palette.landFill)
+    let tints = [premultiplied(palette.outage), premultiplied(palette.coverage)]
+    let colors = tints.map { tint in [tint, tint + land * (1 - tint.w)].map(Self.bytes) }
+    let none: [UInt8] = [0, 0, 0, 0]
+    let pixels = data.bindMemory(to: UInt8.self, capacity: 4 * side * side)
+    let satellites = scene.onSatellites()
+    let toEarth = scene.rotation.transpose
+    for row in 0 ..< side {
+      // Row 0 is the top of the disc, y up.
+      let y = 1 - 2 * (Double(row) + 0.5) / Double(side)
+      for col in 0 ..< side {
+        let x = 2 * (Double(col) + 0.5) / Double(side) - 1
+        let r2 = x * x + y * y
+        var color = none
+        if r2 < 1 {
+          let p = SIMD3(x, y, (1 - r2).squareRoot())
+          let covered = GlobeScene.isCovered(at: p, by: satellites) ? 1 : 0
+          color = colors[covered][GlobeScene.isLand(toEarth * p) ? 1 : 0]
+        }
+        let offset = 4 * (row * side + col)
+        for k in 0 ..< 4 {
+          pixels[offset + k] = color[k]
+        }
+      }
+    }
+    guard let image = bitmap.makeImage() else { return }
+    context.saveGState()
+    context.addEllipse(in: disc)
+    context.clip()
+    context.interpolationQuality = .medium
+    // The UIKit context is flipped: without this, the first row of the image would be drawn at the bottom.
+    context.translateBy(x: 0, y: disc.minY + disc.maxY)
+    context.scaleBy(x: 1, y: -1)
+    context.draw(image, in: disc)
+    context.restoreGState()
+  }
+
+  /// RGBA with the alpha multiplied in, so a colour over another is `top + bottom * (1 - top.w)`.
+  private func premultiplied(_ color: UIColor) -> SIMD4<Double> {
+    var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+    color.resolvedColor(with: traitCollection).getRed(&r, green: &g, blue: &b, alpha: &a)
+    return SIMD4(Double(r * a), Double(g * a), Double(b * a), Double(a))
+  }
+
+  /// The bytes of a pixel of the bitmap, in their order in memory.
+  private static func bytes(_ color: SIMD4<Double>) -> [UInt8] {
+    [color.x, color.y, color.z, color.w].map { UInt8(($0 * 255).rounded()) }
   }
 
   /// The segments of the lines on one side of the globe. A line is a row of unit vectors of the Earth frame, nil
@@ -307,11 +373,18 @@ final class GlobeSceneView: UIView {
   private func drawCar(_ context: CGContext, palette: Palette) {
     let (p, isFront) = scene.project(scene.car)
     guard isFront else { return }
+    let body = CGMutablePath()
+    body.addPath(CGPath(roundedRect: CGRect(x: p.x - 7, y: p.y - 3.5, width: 14, height: 7), cornerWidth: 2.5,
+                        cornerHeight: 2.5, transform: nil))
+    body.addPath(CGPath(roundedRect: CGRect(x: p.x - 3.5, y: p.y - 6, width: 7, height: 4), cornerWidth: 2,
+                        cornerHeight: 2, transform: nil))
+    // The outline first and twice as wide, so the fill covers its inner half and the seam of the two shapes.
+    context.setLineWidth(2)
+    context.setStrokeColor(palette.carOutline.resolvedColor(with: traitCollection).cgColor)
+    context.addPath(body)
+    context.strokePath()
     context.setFillColor(palette.car.resolvedColor(with: traitCollection).cgColor)
-    context.addPath(CGPath(roundedRect: CGRect(x: p.x - 7, y: p.y - 3.5, width: 14, height: 7), cornerWidth: 2.5,
-                           cornerHeight: 2.5, transform: nil))
-    context.addPath(CGPath(roundedRect: CGRect(x: p.x - 3.5, y: p.y - 6, width: 7, height: 4), cornerWidth: 2,
-                           cornerHeight: 2, transform: nil))
+    context.addPath(body)
     context.fillPath()
     context.setFillColor(palette.sea.resolvedColor(with: traitCollection).cgColor)
     for dx: CGFloat in [-4, 4] {
