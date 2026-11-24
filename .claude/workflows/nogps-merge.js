@@ -552,11 +552,11 @@ async function prep(pr, slot) {
     record(pr, 'open', 'the update agent stopped')
     return false
   }
+  if (up.remade) pr.gateRemade = true
   if (up.status !== 'ok') {
     record(pr, up.status === 'conflict' ? 'conflict' : 'open', up.reason || up.status)
     return false
   }
-  if (up.remade) pr.gateRemade = true
   pr.head = up.head || pr.head
   pr.prepMaster = up.prepMaster || pr.prepMaster
 

@@ -574,6 +574,15 @@ const base = (label) => {
   check('the update prompt treats a prunable worktree as gone', /prunable/.test(prompts['update:#1']) && /Report remade true/.test(prompts['update:#1']), prompts['update:#1'])
 }
 
+{
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [], serial: [pr(1)], slots: 1 },
+    reply: (label) => (label.startsWith('update') ? { status: 'conflict', reason: 'plain conflict', remade: true } : base(label)),
+  })
+  console.log('20c. a serial update that remade the gate and then stopped still says so')
+  check('the report says so', /remade/.test(r.out.results[0].reason), r.out.results[0])
+}
+
 // --- 24. the clean step names its own branches and stays inside its own worktrees ---
 {
   let appOnly = ''
