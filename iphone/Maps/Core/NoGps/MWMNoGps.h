@@ -372,6 +372,8 @@ NS_SWIFT_NAME(NoGpsStatus)
 /// The code to enter on the new phone while addPhone is Open.
 @property(nonatomic, readonly) NSString * addPhoneCode;
 @property(nonatomic, readonly) NSInteger addPhoneSecondsLeft;
+/// The code of the recovery window of the box of the current car, six digits, empty until the box has told it.
+@property(nonatomic, readonly) NSString * boxRecoveryCode;
 
 @end
 

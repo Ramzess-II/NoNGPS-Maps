@@ -170,6 +170,8 @@ public:
   void ListPhonesThrottled();
   /// The phones of the box from its last list in this connection.
   std::optional<esp32::Phones> const & GetPhones() const { return m_phones; }
+  /// \returns true if the box tells the code of its recovery window, see Esp32Source::OnPhonesReply().
+  bool HasRecovery() const { return HasPhones() && m_info->m_hasRecovery; }
   /// Removes a phone from the box, this one too: the listener is told then.
   void ForgetPhone(std::string const & address);
   /// \returns true if another phone has connected to the box first: the box takes from it the commands that change
@@ -234,6 +236,7 @@ private:
   bool OnCarReply(esp32::Reply const & reply);
   void ForgetCarRequests();
   bool OnPhonesReply(esp32::Reply const & reply);
+  void AskRecoveryCode();
   void ForgetPhoneRequests();
   void RequestLostEvents(int64_t fromNumber);
   void ForgetJournal();
@@ -351,6 +354,11 @@ private:
     int64_t m_sentMs = 0;
   };
   std::optional<ForgetRequest> m_forget;
+  // The code of the recovery window is asked once in a connection, by the phone that changes the box, and again when
+  // the box renews it.
+  bool m_recoveryAsked = false;
+  int m_recoveryId = 0;
+  int64_t m_recoverySentMs = 0;
   // The last list says another phone changes the box. Not set without the list or a link.
   bool m_readOnly = false;
   struct AddPhoneRequest
