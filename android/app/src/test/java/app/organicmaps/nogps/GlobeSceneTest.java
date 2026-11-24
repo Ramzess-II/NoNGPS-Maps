@@ -83,7 +83,8 @@ public class GlobeSceneTest
   @Test
   public void earthRadiusFollowsTheSceneSize()
   {
-    assertEquals((H / 2 - GlobeScene.SAT_MARGIN_DP) / 4.16, mScene.earthRadius(), 1e-4);
+    // The smaller side sets it.
+    assertEquals((Math.min(W, H) / 2 - GlobeScene.SAT_MARGIN_DP) / 4.16, mScene.earthRadius(), 1e-4);
     mScene.setSize(300, 500);
     assertEquals((150 - GlobeScene.SAT_MARGIN_DP) / 4.16, mScene.earthRadius(), 1e-4);
     assertEquals(150, mScene.centerX(), 0);
@@ -252,17 +253,82 @@ public class GlobeSceneTest
   public void reducedMotionHasNoIdleSpinAndNoFlick()
   {
     mScene.setAnimated(false);
-    final double[] satellite = mScene.satellite(5);
     mScene.beginDrag();
     mScene.drag(20, 0);
     mScene.endDrag(3000, 0);
     assertEquals(0, mScene.spinDegPerS(), 0);
     final double[] turned = mScene.rotation();
+    final double[] satellite = mScene.satellite(5);
     mScene.step(1000);
     for (int i = 0; i < 9; i++)
       assertEquals(turned[i], mScene.rotation()[i], 0);
     for (int k = 0; k < 3; k++)
       assertEquals(satellite[k], mScene.satellite(5)[k], 0);
+  }
+
+  /** Satellite i in the frame of the Earth: the rotation is orthonormal, so its inverse is its transpose. */
+  private double[] onEarth(int i)
+  {
+    final double[] m = mScene.rotation();
+    final double[] t = {m[0], m[3], m[6], m[1], m[4], m[7], m[2], m[5], m[8]};
+    return GlobeScene.apply(t, mScene.satellite(i));
+  }
+
+  private static double distance(double[] a, double[] b)
+  {
+    return length(new double[] {a[0] - b[0], a[1] - b[1], a[2] - b[2]});
+  }
+
+  @Test
+  public void aDragTurnsTheOrbitsWithTheEarth()
+  {
+    mScene.setAnimated(false);
+    final double[][] before = new double[GlobeScene.SATELLITES][];
+    for (int i = 0; i < GlobeScene.SATELLITES; i++)
+      before[i] = onEarth(i);
+    mScene.beginDrag();
+    mScene.drag(50, -35);
+    mScene.endDrag(0, 0);
+    for (int i = 0; i < GlobeScene.SATELLITES; i++)
+      assertEquals(0, distance(onEarth(i), before[i]), 1e-9);
+  }
+
+  /** The unit normal of the plane of satellites 0 and 1. */
+  private double[] firstPlaneNormal()
+  {
+    final double[] a = mScene.satellite(0);
+    final double[] b = mScene.satellite(1);
+    final double[] n = {a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]};
+    final double l = length(n);
+    return new double[] {n[0] / l, n[1] / l, n[2] / l};
+  }
+
+  @Test
+  public void theIdleSpinTurnsTheEarthUnderTheOrbits()
+  {
+    final double[] planeBefore = firstPlaneNormal();
+    final double[] earthBefore = onEarth(0);
+    mScene.step(500);
+    assertEquals(0, distance(firstPlaneNormal(), planeBefore), 1e-9);
+    assertTrue(distance(onEarth(0), earthBefore) > 0.1);
+  }
+
+  @Test
+  public void orbitsAreInclinedToTheEquatorWhateverTheView()
+  {
+    mScene.faceJam();
+    mScene.drag(70, 40);
+    for (int f = 0; f < 50; f++)
+    {
+      mScene.step(300);
+      final double[] pole = GlobeScene.apply(mScene.rotation(), new double[] {0, 1, 0});
+      for (int i = 0; i < GlobeScene.SATELLITES; i++)
+      {
+        final double[] s = mScene.satellite(i);
+        final double latitude = Math.toDegrees(Math.asin(dot(s, pole) / length(s)));
+        assertTrue(Math.abs(latitude) <= GlobeScene.INCLINATION_DEG + 1e-6);
+      }
+    }
   }
 
   @Test

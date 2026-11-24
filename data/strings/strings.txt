@@ -46622,10 +46622,10 @@ en = Drag the Earth, tap a satellite to switch it off.
 uk = Потягніть Землю, торкніться супутника, щоб вимкнути його.
 
 [nogps_about_globe_coverage]
-comment = About NonGPS Maps, under the globe and the satellite count: what the shaded ground of the Earth means
+comment = About NonGPS Maps, under the globe and the satellite count: what the blue and the red ground of the Earth mean
 tags = android-app,apple-maps
-en = Shaded: 4 or more satellites in view, enough for a fix.
-uk = Затінено: видно 4 або більше супутників, цього досить для визначення координат.
+en = Blue: 4 or more satellites in view, enough for a fix. Red: fewer, no fix.
+uk = Синій: видно 4 або більше супутників, цього досить для визначення координат. Червоний: менше, координат немає.
 
 [nogps_about_globe_jammed]
 comment = About NonGPS Maps, under the globe: the car stands in the jammed area

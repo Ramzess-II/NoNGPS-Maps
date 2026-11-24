@@ -6,12 +6,13 @@ package app.organicmaps.nogps;
  *
  * <p>Points of the scene are in the frame of the screen: x to the right, y up, z to the viewer, the unit is the Earth
  * radius. The Earth turns in it by {@link #rotation()}, which maps the frame of the Earth (y is the polar axis, lon 0
- * is +z) to the frame of the screen. The satellites orbit in the frame of the screen: the Earth turns under them.
+ * is +z) to the frame of the screen. The satellites orbit in the orbit frame, whose y is the polar axis too: a drag or
+ * a flick turns the view, so both frames turn together, and the idle spin turns the Earth alone under the orbits.
  * Distances on the screen are in dp.
  */
 final class GlobeScene
 {
-  static final float SCENE_HEIGHT_DP = 340;
+  static final float SCENE_HEIGHT_DP = 400;
   /** The real orbit, 26 560 km over an Earth of 6 371 km: the coverage on the ground depends on it. */
   static final double ORBIT_RADIUS_FACTOR = 4.16;
   /** The orbit stays this far inside the scene, so the dot of a satellite is never cut. */
@@ -53,6 +54,8 @@ final class GlobeScene
 
   /** Row-major 3x3, the Earth frame to the screen frame. */
   private double[] mRotation = identity();
+  /** Row-major 3x3, the orbit frame to the screen frame: mRotation is it times the turn of the Earth about its pole. */
+  private double[] mOrbitFrame = identity();
   private final double[] mAnomalyDeg = new double[SATELLITES];
   private final boolean[] mOn = new boolean[SATELLITES];
   private double mPhaseDeg;
@@ -123,12 +126,13 @@ final class GlobeScene
   void setRotation(double[] matrix)
   {
     mRotation = matrix.clone();
+    mOrbitFrame = matrix.clone();
   }
 
   /** The Earth turned so that the jammed area is in the middle of the scene. */
   void faceJam()
   {
-    mRotation = multiply(rotationX(Math.toRadians(JAM_LAT_DEG)), rotationY(-Math.toRadians(JAM_LON_DEG)));
+    setRotation(multiply(rotationX(Math.toRadians(JAM_LAT_DEG)), rotationY(-Math.toRadians(JAM_LON_DEG))));
   }
 
   /** A point of the Earth, in the frame of the screen. */
@@ -175,7 +179,7 @@ final class GlobeScene
     if (length == 0)
       return;
     final double[] axis = {dy / length, dx / length, 0};
-    mRotation = multiply(axisAngle(axis, length / mEarthRadius), mRotation);
+    turnView(axisAngle(axis, length / mEarthRadius));
   }
 
   /** The finger is up, moving at (vx, vy) px/s. */
@@ -196,6 +200,13 @@ final class GlobeScene
       mSpinRadPerMs = 0;
   }
 
+  /** The Earth and the orbits turn together. */
+  private void turnView(double[] turn)
+  {
+    mRotation = multiply(turn, mRotation);
+    mOrbitFrame = multiply(turn, mOrbitFrame);
+  }
+
   double spinDegPerS()
   {
     return Math.toDegrees(mSpinRadPerMs) * 1000;
@@ -211,13 +222,14 @@ final class GlobeScene
       return;
     if (mSpinRadPerMs > 0)
     {
-      mRotation = multiply(axisAngle(mSpinAxis, mSpinRadPerMs * dtMs), mRotation);
+      turnView(axisAngle(mSpinAxis, mSpinRadPerMs * dtMs));
       mSpinRadPerMs *= Math.pow(SPIN_DAMPING, dtMs);
       if (spinDegPerS() < STOP_SPEED_DEG_PER_S)
         mSpinRadPerMs = 0;
     }
     else
     {
+      // The Earth alone, about its pole: the orbits stay.
       mRotation = multiply(mRotation, rotationY(Math.toRadians(IDLE_SPIN_DEG_PER_S * dtMs / 1000)));
     }
   }
@@ -234,8 +246,13 @@ final class GlobeScene
     final double x = Math.cos(u);
     final double y = -Math.sin(u) * Math.sin(inc);
     final double z = Math.sin(u) * Math.cos(inc);
-    return new double[] {ORBIT_RADIUS_FACTOR * (x * Math.cos(raan) + z * Math.sin(raan)), ORBIT_RADIUS_FACTOR * y,
-                         ORBIT_RADIUS_FACTOR * (-x * Math.sin(raan) + z * Math.cos(raan))};
+    final double r = ORBIT_RADIUS_FACTOR;
+    final double[] o = mOrbitFrame;
+    final double ox = r * (x * Math.cos(raan) + z * Math.sin(raan));
+    final double oy = r * y;
+    final double oz = r * (-x * Math.sin(raan) + z * Math.cos(raan));
+    return new double[] {o[0] * ox + o[1] * oy + o[2] * oz, o[3] * ox + o[4] * oy + o[5] * oz,
+                         o[6] * ox + o[7] * oy + o[8] * oz};
   }
 
   boolean isOn(int i)

@@ -6,10 +6,11 @@ import simd
 ///
 /// Points of the scene are in the frame of the screen: x to the right, y up, z to the viewer, the unit is the Earth
 /// radius. The Earth turns in it by `rotation`, which maps the frame of the Earth (y is the polar axis, lon 0 is +z)
-/// to the frame of the screen. The satellites orbit in the frame of the screen: the Earth turns under them.
+/// to the frame of the screen. The satellites orbit in `orbitFrame`, whose y is the polar axis too: a drag or a flick
+/// turns the view, so both frames turn together, and the idle spin turns the Earth alone under the orbits.
 /// Distances on the screen are in pt.
 final class GlobeScene {
-  static let sceneHeightPt: CGFloat = 340
+  static let sceneHeightPt: CGFloat = 400
   /// The real orbit, 26 560 km over an Earth of 6 371 km: the coverage on the ground depends on it.
   static let orbitRadiusFactor = 4.16
   /// The orbit stays this far inside the scene, so the dot of a satellite is never cut.
@@ -52,6 +53,8 @@ final class GlobeScene {
 
   /// The Earth frame to the screen frame.
   private(set) var rotation = matrix_identity_double3x3
+  /// The frame of the orbits to the screen frame: `rotation` is it times the turn of the Earth about its pole.
+  private var orbitFrame = matrix_identity_double3x3
   private var anomalyDeg = [Double](repeating: 0, count: satellites)
   private var on = [Bool](repeating: true, count: satellites)
   private var phaseDeg = 0.0
@@ -89,12 +92,13 @@ final class GlobeScene {
 
   func setRotation(_ matrix: simd_double3x3) {
     rotation = matrix
+    orbitFrame = matrix
   }
 
   /// The Earth turned so that the jammed area is in the middle of the scene.
   func faceJam() {
-    rotation = Self.rotation(about: SIMD3(1, 0, 0), by: Self.jamLatDeg.radians)
-      * Self.rotation(about: SIMD3(0, 1, 0), by: -Self.jamLonDeg.radians)
+    setRotation(Self.rotation(about: SIMD3(1, 0, 0), by: Self.jamLatDeg.radians)
+      * Self.rotation(about: SIMD3(0, 1, 0), by: -Self.jamLonDeg.radians))
   }
 
   /// A point of the Earth, in the frame of the screen.
@@ -131,7 +135,7 @@ final class GlobeScene {
     let length = Double(hypot(dx, dy))
     guard length > 0 else { return }
     let axis = SIMD3(Double(dy) / length, Double(dx) / length, 0)
-    rotation = Self.rotation(about: axis, by: length / Double(earthRadius)) * rotation
+    turnView(Self.rotation(about: axis, by: length / Double(earthRadius)))
   }
 
   /// The finger is up, moving at (vx, vy) pt/s.
@@ -149,6 +153,12 @@ final class GlobeScene {
     }
   }
 
+  /// The Earth and the orbits turn together.
+  private func turnView(_ turn: simd_double3x3) {
+    rotation = turn * rotation
+    orbitFrame = turn * orbitFrame
+  }
+
   var spinDegPerS: Double {
     (spinRadPerMs * 1000).degrees
   }
@@ -159,12 +169,13 @@ final class GlobeScene {
     phaseDeg = (phaseDeg + 360 * dtMs / Self.orbitPeriodMs).truncatingRemainder(dividingBy: 360)
     guard !isDragging else { return }
     if spinRadPerMs > 0 {
-      rotation = Self.rotation(about: spinAxis, by: spinRadPerMs * dtMs) * rotation
+      turnView(Self.rotation(about: spinAxis, by: spinRadPerMs * dtMs))
       spinRadPerMs *= pow(Self.spinDamping, dtMs)
       if spinDegPerS < Self.stopSpeedDegPerS {
         spinRadPerMs = 0
       }
     } else {
+      // The Earth alone, about its pole: the orbits stay.
       rotation = rotation * Self.rotation(about: SIMD3(0, 1, 0), by: (Self.idleSpinDegPerS * dtMs / 1000).radians)
     }
   }
@@ -178,7 +189,7 @@ final class GlobeScene {
     let inc = Self.inclinationDeg.radians
     // In the orbit plane, then inclined about the line of nodes (x), then turned about the pole.
     let inPlane = SIMD3(cos(u), -sin(u) * sin(inc), sin(u) * cos(inc))
-    return Self.orbitRadiusFactor * (Self.rotation(about: SIMD3(0, 1, 0), by: raan) * inPlane)
+    return Self.orbitRadiusFactor * (orbitFrame * (Self.rotation(about: SIMD3(0, 1, 0), by: raan) * inPlane))
   }
 
   func isOn(_ i: Int) -> Bool {

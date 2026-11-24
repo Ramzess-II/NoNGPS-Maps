@@ -69,6 +69,7 @@
         android:id="@+id/globe"
         android:layout_width="match_parent"
         android:layout_height="@dimen/nogps_globe_height"
+        android:layout_marginHorizontal="@dimen/nogps_globe_bleed"
         android:contentDescription="@string/nogps_about_globe_hint" />
 
     <TextView

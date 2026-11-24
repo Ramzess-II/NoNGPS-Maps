@@ -209,7 +209,8 @@ private extension AboutNoGpsController {
       logoImageView.widthAnchor.constraint(equalTo: logoImageView.heightAnchor),
 
       headlineLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
-      globeView.widthAnchor.constraint(equalTo: stackView.widthAnchor),
+      // Past the insets of the text: the orbits set the size of the Earth, so every point of width makes it larger.
+      globeView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
       globeView.heightAnchor.constraint(equalToConstant: GlobeScene.sceneHeightPt),
       globeHintLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       globeCountLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),

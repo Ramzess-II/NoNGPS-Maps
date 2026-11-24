@@ -46,7 +46,8 @@ final class NoGpsGlobeTests: XCTestCase {
   }
 
   func testEarthRadiusFollowsTheSceneSize() {
-    XCTAssertEqual(scene.earthRadius, (Scene.sceneHeightPt / 2 - Scene.satMarginPt) / 4.16, accuracy: 1e-4)
+    // The smaller side sets it.
+    XCTAssertEqual(scene.earthRadius, (min(width, Scene.sceneHeightPt) / 2 - Scene.satMarginPt) / 4.16, accuracy: 1e-4)
     scene.setSize(CGSize(width: 300, height: 500))
     XCTAssertEqual(scene.earthRadius, (150 - Scene.satMarginPt) / 4.16, accuracy: 1e-4)
     XCTAssertEqual(scene.center, CGPoint(x: 150, y: 250))
@@ -165,15 +166,54 @@ final class NoGpsGlobeTests: XCTestCase {
 
   func testReducedMotionHasNoIdleSpinNoFlickAndStandingSatellites() {
     scene.setAnimated(false)
-    let satellite = scene.satellite(5)
     scene.beginDrag()
     scene.drag(dx: 20, dy: 0)
     scene.endDrag(vx: 3000, vy: 0)
     XCTAssertEqual(scene.spinDegPerS, 0)
     let turned = scene.rotation
+    let satellite = scene.satellite(5)
     scene.step(dtMs: 1000)
     XCTAssertEqual(scene.rotation, turned)
     XCTAssertEqual(scene.satellite(5), satellite)
+  }
+
+  /// Satellite i in the frame of the Earth.
+  private func onEarth(_ i: Int) -> SIMD3<Double> {
+    scene.rotation.transpose * scene.satellite(i)
+  }
+
+  func testADragTurnsTheOrbitsWithTheEarth() {
+    scene.setAnimated(false)
+    let before = (0 ..< Scene.satellites).map(onEarth)
+    scene.beginDrag()
+    scene.drag(dx: 50, dy: -35)
+    scene.endDrag(vx: 0, vy: 0)
+    for i in 0 ..< Scene.satellites {
+      XCTAssertEqual(simd_length(onEarth(i) - before[i]), 0, accuracy: 1e-9)
+    }
+  }
+
+  func testTheIdleSpinTurnsTheEarthUnderTheOrbits() {
+    // The normal of the plane of satellites 0 and 1 stays; the Earth turns under it.
+    let normal = { simd_normalize(simd_cross(self.scene.satellite(0), self.scene.satellite(1))) }
+    let planeBefore = normal()
+    let earthBefore = onEarth(0)
+    scene.step(dtMs: 500)
+    XCTAssertEqual(simd_length(normal() - planeBefore), 0, accuracy: 1e-9)
+    XCTAssertGreaterThan(simd_length(onEarth(0) - earthBefore), 0.1)
+  }
+
+  func testOrbitsAreInclinedToTheEquatorWhateverTheView() {
+    scene.faceJam()
+    scene.drag(dx: 70, dy: 40)
+    for _ in 0 ..< 50 {
+      scene.step(dtMs: 300)
+      let pole = scene.rotation * SIMD3<Double>(0, 1, 0)
+      for i in 0 ..< Scene.satellites {
+        let latitude = asin(simd_dot(simd_normalize(scene.satellite(i)), pole)) * 180 / .pi
+        XCTAssertLessThanOrEqual(abs(latitude), Scene.inclinationDeg + 1e-6)
+      }
+    }
   }
 
   func testSlowReleaseDoesNotFlick() {
