@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Archives and uploads the release into the AppStore.
-# Assumes that Xcode is signed in to the team, and that the distribution certificate and the
-# "NonGPS AppStore" and "NonGPS Widget AppStore" profiles are installed.
+# Assumes that Xcode is signed in to the team: it creates the distribution profiles of the app and
+# its extensions itself (-allowProvisioningUpdates), so none is kept in credentials/.
 
 set -euxo pipefail
 
@@ -29,6 +29,17 @@ xcodebuild archive \
     CURRENT_PROJECT_VERSION="$IOS_BUILD"
 
 
+# Upload the dSYMs to Sentry, so the crash reports have readable C++ frames. The token is in credentials/sentry.env, see
+# docs/nogps/crash-reports.md; without it the build is still uploaded.
+SENTRY_ENV="$SCRIPT_DIR/../credentials/sentry.env"
+[ -f "$SENTRY_ENV" ] && source "$SENTRY_ENV"
+if [ -n "${SENTRY_AUTH_TOKEN:-}" ] && command -v sentry-cli > /dev/null; then
+  sentry-cli --org nongps --project nongps-maps-ios debug-files upload "$ARCHIVE_PATH/dSYMs"
+else
+  echo "WARNING: SENTRY_AUTH_TOKEN or sentry-cli is missing: the dSYMs are not uploaded to Sentry" >&2
+fi
+
+
 # Create a plist with upload options.
 PLIST="$BUILD_DIR/export.plist"
 cat > "$PLIST" <<EOM
@@ -43,16 +54,7 @@ cat > "$PLIST" <<EOM
   <key>teamID</key>
   <string>VTWF79TU37</string>
   <key>signingStyle</key>
-  <string>manual</string>
-  <key>signingCertificate</key>
-  <string>iOS Distribution</string>
-  <key>provisioningProfiles</key>
-  <dict>
-    <key>com.non-gps</key>
-    <string>NonGPS AppStore</string>
-    <key>com.non-gps.widgetextension</key>
-    <string>NonGPS Widget AppStore</string>
-  </dict>
+  <string>automatic</string>
 </dict>
 </plist>
 EOM
@@ -60,7 +62,8 @@ EOM
 # Upload build to the AppStore.
 xcodebuild -exportArchive \
     -archivePath "$ARCHIVE_PATH" \
-    -exportOptionsPlist "$PLIST"
+    -exportOptionsPlist "$PLIST" \
+    -allowProvisioningUpdates
 
 
 echo "Build was successfully uploaded! Please don't forget to tag it with release notes using:"

@@ -203,7 +203,7 @@
                                                 <color key="textColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                                 <nil key="highlightedColor"/>
                                                 <userDefinedRuntimeAttributes>
-                                                    <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="medium17:whitePrimaryText"/>
+                                                    <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="medium17:nogpsPrimaryText"/>
                                                     <userDefinedRuntimeAttribute type="string" keyPath="localizedText" value="login_to_make_edits_visible"/>
                                                 </userDefinedRuntimeAttributes>
                                             </label>
@@ -246,7 +246,7 @@
                                                 <color key="textColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                                 <nil key="highlightedColor"/>
                                                 <userDefinedRuntimeAttributes>
-                                                    <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="medium17:whitePrimaryText"/>
+                                                    <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="medium17:nogpsPrimaryText"/>
                                                     <userDefinedRuntimeAttribute type="string" keyPath="localizedText" value="no_osm_account"/>
                                                 </userDefinedRuntimeAttributes>
                                             </label>
@@ -292,7 +292,7 @@
                                                 <color key="textColor" red="0.96078431369999995" green="0.96078431369999995" blue="0.96078431369999995" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                                 <nil key="highlightedColor"/>
                                                 <userDefinedRuntimeAttributes>
-                                                    <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="whitePrimaryText"/>
+                                                    <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="nogpsPrimaryText"/>
                                                 </userDefinedRuntimeAttributes>
                                                 <variation key="heightClass=compact">
                                                     <fontDescription key="fontDescription" type="boldSystem" pointSize="56"/>
@@ -304,7 +304,7 @@
                                                 <color key="textColor" red="0.96078431369999995" green="0.96078431369999995" blue="0.96078431369999995" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                                                 <nil key="highlightedColor"/>
                                                 <userDefinedRuntimeAttributes>
-                                                    <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="bold14:whitePrimaryText"/>
+                                                    <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="bold14:nogpsPrimaryText"/>
                                                     <userDefinedRuntimeAttribute type="string" keyPath="localizedText" value="editor_profile_changes"/>
                                                 </userDefinedRuntimeAttributes>
                                             </label>
@@ -314,7 +314,7 @@
                                                 <color key="textColor" red="1" green="1" blue="1" alpha="0.40000000000000002" colorSpace="custom" customColorSpace="sRGB"/>
                                                 <nil key="highlightedColor"/>
                                                 <userDefinedRuntimeAttributes>
-                                                    <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="regular12:whitePrimaryText"/>
+                                                    <userDefinedRuntimeAttribute type="string" keyPath="styleName" value="regular12:nogpsPrimaryText"/>
                                                     <userDefinedRuntimeAttribute type="string" keyPath="localizedText" value="last_upload"/>
                                                 </userDefinedRuntimeAttributes>
                                             </label>

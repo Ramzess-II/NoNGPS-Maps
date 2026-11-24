@@ -151,7 +151,7 @@
     <string name="description">Notes</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">Signets NonGPS Maps partagés</string>
-    <string name="share_bookmarks_email_body">Bonjour !\n\nVous trouverez ci-joint mes signets de l\'appli NonGPS Maps. Veuillez les ouvrir si vous avez installé NonGPS Maps. Si vous ne l\'avez pas, téléchargez l\'application pour votre appareil iOS ou Android en suivant ce lien : https://github.com/Ramzess-II/NoGPSMaps\n\nBon voyage avec NonGPS Maps !</string>
+    <string name="share_bookmarks_email_body">Bonjour !\n\nVous trouverez ci-joint mes signets de l\'appli NonGPS Maps. Veuillez les ouvrir si vous avez installé NonGPS Maps. Si vous ne l\'avez pas, téléchargez l\'application pour votre appareil iOS ou Android en suivant ce lien : https://github.com/Ramzess-II/NoNGPS-Maps\n\nBon voyage avec NonGPS Maps !</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Chargement des signets</string>
     <!-- Kmz file successful loading -->

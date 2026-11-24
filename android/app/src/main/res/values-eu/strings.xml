@@ -151,7 +151,7 @@
     <string name="description">Oharrak</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">NonGPS Maps-eko markagailuak zurekin partekatu dira</string>
-    <string name="share_bookmarks_email_body">Kaixo!\nNire markagailuak NonGPS Maps aplikazioan erantsi ditut. Mesedez, ireki itzazu NonGPS Maps instalatuta baduzu. Edo, ez baduzu, deskargatu aplikazioa zure iOS edo Android gailurako esteka hau jarraituz: https://github.com/Ramzess-II/NoGPSMaps\n\nGozatu bidaiatzen NonGPS Maps-ekin!</string>
+    <string name="share_bookmarks_email_body">Kaixo!\nNire markagailuak NonGPS Maps aplikazioan erantsi ditut. Mesedez, ireki itzazu NonGPS Maps instalatuta baduzu. Edo, ez baduzu, deskargatu aplikazioa zure iOS edo Android gailurako esteka hau jarraituz: https://github.com/Ramzess-II/NoNGPS-Maps\n\nGozatu bidaiatzen NonGPS Maps-ekin!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Markagailuak kargatzen</string>
     <!-- Kmz file successful loading -->

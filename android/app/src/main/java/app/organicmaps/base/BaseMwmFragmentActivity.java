@@ -64,15 +64,14 @@ public abstract class BaseMwmFragmentActivity extends AppCompatActivity
   protected void prepareIntentForCoreRestart(@NonNull Intent intent, @Nullable Bundle savedInstanceState) {}
 
   /**
-   * Status-bar style passed to {@link EdgeToEdge#enable}. The default uses light (white)
-   * icons, which contrast with the dark {@code ?colorPrimary} toolbar that most activities show
-   * behind the transparent status bar. Override in activities whose status bar overlays a
-   * different background (e.g. the map surface).
+   * Status-bar style passed to {@link EdgeToEdge#enable}. The default follows the theme: the
+   * {@code ?colorPrimary} toolbar behind the transparent status bar is cream in light theme and dark in night.
+   * Override in activities whose status bar overlays a different background (e.g. the map surface).
    */
   @NonNull
   protected SystemBarStyle getStatusBarStyle()
   {
-    return SystemBarStyle.dark(Color.TRANSPARENT);
+    return SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT);
   }
 
   /**

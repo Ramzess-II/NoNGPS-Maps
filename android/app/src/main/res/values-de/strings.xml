@@ -151,7 +151,7 @@
     <string name="description">Notizen</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">„NonGPS Maps“-Lesezeichen wurden mit dir geteilt</string>
-    <string name="share_bookmarks_email_body">Hallo!\n\nIm Anhang sind meine Lesezeichen der „NonGPS Maps“-App. Du kannst sie mit NonGPS Maps öffnen. Wenn du die App nicht installiert hast, kannst du sie von https://github.com/Ramzess-II/NoGPSMaps herunterladen.\n\nViel Spaß beim Reisen mit NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Hallo!\n\nIm Anhang sind meine Lesezeichen der „NonGPS Maps“-App. Du kannst sie mit NonGPS Maps öffnen. Wenn du die App nicht installiert hast, kannst du sie von https://github.com/Ramzess-II/NoNGPS-Maps herunterladen.\n\nViel Spaß beim Reisen mit NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Lesezeichen werden geladen</string>
     <!-- Kmz file successful loading -->

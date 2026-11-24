@@ -148,35 +148,36 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
       }
       navigation.setViewControllers([root, NoGpsBoxPage(), NoGpsBoxPage(part: .speed)], animated: animated)
     }
-    root.selectDetent(for: navigation.topViewController)
+    root.selectDetent()
   }
 
-  /// The sheet fits the tiles and the few rows under them, the calibration, and the car: at least half the window, it
-  /// is a list. The other pages take the whole height.
+  /// Every page is as high as its content, at least half the window and at most `maximum`.
+  static func sheetHeight(content: CGFloat, window: CGFloat, maximum: CGFloat) -> CGFloat {
+    min(max(content, window / 2), maximum)
+  }
+
   private var sheetHeight: CGFloat {
     let page = navigationController?.topViewController as? UITableViewController ?? self
     let content = Self.barBottom + page.tableView.contentSize.height
-    guard page is CarPageViewController else { return content }
-    return max(content, (view.window?.bounds.height ?? UIScreen.main.bounds.height) / 2)
+    let window = view.window?.bounds.height ?? UIScreen.main.bounds.height
+    return Self.sheetHeight(content: content, window: window, maximum: window)
   }
 
-  private static func fitsContent(_ controller: UIViewController?) -> Bool {
-    controller is NoGpsBoxSheet || controller is NoGpsCalibrationPage || controller is CarPageViewController
-  }
-
-  private func selectDetent(for controller: UIViewController?) {
+  private func selectDetent() {
     guard let sheet = navigationController?.sheetPresentationController else { return }
-    var detent = UISheetPresentationController.Detent.Identifier.large
-    if Self.fitsContent(controller) {
-      if #available(iOS 16.0, *) {
-        detent = .init(Constants.fitDetent)
-      } else {
-        detent = .medium
+    var detent = UISheetPresentationController.Detent.Identifier.medium
+    if #available(iOS 16.0, *) {
+      detent = .init(Constants.fitDetent)
+    } else {
+      // No fit detent before iOS 16: a page longer than half the window opens full height.
+      let window = view.window?.bounds.height ?? UIScreen.main.bounds.height
+      if sheetHeight > window / 2 {
+        detent = .large
       }
     }
     // Nothing selected is the first detent, the fitted one.
     let selected = sheet.selectedDetentIdentifier
-    guard selected != detent, selected != nil || detent == .large else { return }
+    guard selected != detent, selected != nil else { return }
     sheet.animateChanges { sheet.selectedDetentIdentifier = detent }
   }
 
@@ -253,8 +254,8 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
 
   // MARK: - UINavigationControllerDelegate
 
-  func navigationController(_: UINavigationController, willShow viewController: UIViewController, animated _: Bool) {
-    selectDetent(for: viewController)
+  func navigationController(_: UINavigationController, willShow _: UIViewController, animated _: Bool) {
+    selectDetent()
   }
 
   /// Closed by the button or swiped down, from either page, before the box was heard, even if connected already: the
@@ -415,10 +416,22 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
       field.clearButtonMode = .whileEditing
     }
     alert.addAction(UIAlertAction(title: L("cancel"), style: .cancel))
-    alert.addAction(UIAlertAction(title: L("save"), style: .default) { [weak alert] _ in
+    let save = UIAlertAction(title: L("save"), style: .default) { [weak alert] _ in
       NoGps.renameCar(car.carId, name: alert?.textFields?.first?.text ?? "")
       onRenamed()
-    })
+    }
+    // An empty name is refused: the core keeps the previous one.
+    func isBlank(_ text: String?) -> Bool {
+      (text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+    save.isEnabled = !isBlank(car.name)
+    alert.addAction(save)
+    if let field = alert.textFields?.first {
+      NotificationCenter.default.addObserver(forName: UITextField.textDidChangeNotification, object: field,
+                                             queue: .main) { _ in
+        save.isEnabled = !isBlank(field.text)
+      }
+    }
     controller?.present(alert, animated: true)
   }
 
@@ -633,6 +646,12 @@ private final class SprintResultsViewController: MWMTableViewController {
     fatalError("init(coder:) has not been implemented")
   }
 
+  /// The sheet follows the rows of this page.
+  override func viewDidLayoutSubviews() {
+    super.viewDidLayoutSubviews()
+    (navigationController?.viewControllers.first as? NoGpsBoxSheet)?.refit()
+  }
+
   override func viewDidLoad() {
     super.viewDidLoad()
     tableView.register(UITableViewCell.self, forCellReuseIdentifier: Constants.cellId)
@@ -715,6 +734,12 @@ private final class AddCarViewController: MWMTableViewController {
 
   private var isCarAdded: Bool {
     NoGps.cars().count > carsBefore
+  }
+
+  /// The sheet follows the rows of this page.
+  override func viewDidLayoutSubviews() {
+    super.viewDidLayoutSubviews()
+    (navigationController?.viewControllers.first as? NoGpsBoxSheet)?.refit()
   }
 
   override func viewDidLoad() {

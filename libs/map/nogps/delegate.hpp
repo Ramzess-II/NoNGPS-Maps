@@ -101,7 +101,9 @@ enum class BleState
   // The user has cancelled the code or entered a wrong one: the box is not tried again until the user asks.
   PairingFailed,
   // A paired box connects but sends nothing again and again: it has forgotten the phone. The user should remove the
-  // box in the Bluetooth settings and power it again. Not tried again until the user asks.
+  // box in the Bluetooth settings and power it again. Not tried again until the user asks. After a few silent
+  // connections the platform searches again to see whether the box is back: that connection is Connected, for the
+  // HELLO the box waits for, with the bond-lost flag of Engine::OnEsp32BleState() set until the box is heard.
   BondLost,
   // A box is found, but it doesn't know the phone and has phones: a new one is added on one of them, see
   // Engine::StartAddPhone().
@@ -145,6 +147,9 @@ public:
   /// order of the calls, the lines of Esp32BleSend() go between the pieces. Section 18 of the same document.
   virtual void Esp32BleSendFirmware(std::string const & /* piece */) {}
   virtual void Esp32BleClose() {}
+  /// The box has to prove itself before its lines are taken, see Esp32Source. Only a replay of old trips and the tests
+  /// turn it off: the boxes of those days could not.
+  virtual bool Esp32BoxMustProveItself() { return true; }
   /// The model of the phone, e.g. "Pixel 8": the sensor box shows it in the list of its phones.
   virtual std::string GetPhoneName() { return {}; }
 

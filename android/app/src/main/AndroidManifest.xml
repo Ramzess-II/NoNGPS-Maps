@@ -494,6 +494,13 @@
         android:exported="false" />
 
     <activity
+        android:name="app.organicmaps.nogps.ProfileActivity"
+        android:screenOrientation="portrait"
+        android:label="@string/nogps_menu_profile"
+        android:parentActivityName="app.organicmaps.MwmActivity"
+        android:exported="false" />
+
+    <activity
         android:name="app.organicmaps.help.HelpActivity"
         android:label="@string/nogps_about_om_menu"
         android:parentActivityName="app.organicmaps.MwmActivity"
@@ -638,6 +645,8 @@
 
     <!-- Disable Google's checks for visited sites and loaded URLs in bookmarks description. -->
     <meta-data android:name="android.webkit.WebView.EnableSafeBrowsing" android:value="false" />
+    <!-- CrashReporter starts Sentry itself: the provider would init it with no DSN and crash the app. -->
+    <meta-data android:name="io.sentry.auto-init" android:value="false" />
     <!-- Disable Google's anonymous stats collection -->
     <meta-data android:name="android.webkit.WebView.MetricsOptOut" android:value="true" />
 

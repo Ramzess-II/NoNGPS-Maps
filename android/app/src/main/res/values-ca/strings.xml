@@ -151,7 +151,7 @@
     <string name="description">Notes</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">S’han compartit amb vós marcadors del NonGPS Maps</string>
-    <string name="share_bookmarks_email_body">Hola!\n\nAdjunto els meus marcadors del NonGPS Maps. Obriu-los si teniu el NonGPS Maps instal·lat. O, si no teniu l’aplicació, baixeu-la per al vostre aparell iOS o Android seguint aquest enllaç: https://github.com/Ramzess-II/NoGPSMaps\n\nGaudiu viatjant amb el NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Hola!\n\nAdjunto els meus marcadors del NonGPS Maps. Obriu-los si teniu el NonGPS Maps instal·lat. O, si no teniu l’aplicació, baixeu-la per al vostre aparell iOS o Android seguint aquest enllaç: https://github.com/Ramzess-II/NoNGPS-Maps\n\nGaudiu viatjant amb el NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">S’estan carregant els marcadors</string>
     <!-- Kmz file successful loading -->

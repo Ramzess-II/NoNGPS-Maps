@@ -257,6 +257,7 @@ public class StatusBar
       case OBD_SLEEPING ->
         new Look(R.drawable.ic_nogps_box, R.color.source_sleeping, R.drawable.ic_nogps_badge_sleep,
                  R.color.source_sleeping, false);
+      case BOX_BATTERY_LOCK -> getBoxLockLook(status);
       case NO_CAR_DATA, OBD_DISABLED, OBD_CONNECTING, OBD_ERROR, NO_ADAPTER ->
         new Look(R.drawable.ic_nogps_box, R.color.source_warning, R.drawable.ic_nogps_badge_alert,
                  R.color.source_warning, false);
@@ -274,6 +275,20 @@ public class StatusBar
     if (!look.pulsing)
       return look;
     return new Look(look.icon, look.color, R.drawable.ic_nogps_badge_sleep, R.color.source_sleeping, true);
+  }
+
+  /**
+   * The box has switched itself off until it is unplugged. Bluetooth that can't reach it is told as for a sleeping
+   * box: the box may be plugged back in already.
+   */
+  @NonNull
+  private static Look getBoxLockLook(@NonNull NoGps.Status status)
+  {
+    final Look look = getBoxSearchLook(status);
+    if (!look.pulsing)
+      return look;
+    return new Look(R.drawable.ic_nogps_box, R.color.source_warning, R.drawable.ic_nogps_badge_alert,
+                    R.color.source_warning, false);
   }
 
   /**

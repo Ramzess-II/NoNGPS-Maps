@@ -24,6 +24,30 @@ if (googleFirebaseServicesEnabled) {
   println('Building without Google Firebase Services')
 }
 
+// Sentry crash reports, see docs/nogps/privacy-policy.md. Every flavor but fdroid links the SDK. The DSN is
+// SENTRY_DSN_ANDROID of ../private.h: empty or missing disables the reporting. The plugin uploads the native symbols
+// when SENTRY_AUTH_TOKEN is set, see docs/nogps/crash-reports.md.
+def sentryDsn = {
+  def match = rootProject.file('../private.h').text =~ /#define\s+SENTRY_DSN_ANDROID\s+"([^"]*)"/
+  return match.find() ? match.group(1) : ''
+}()
+def sentryUploadEnabled = !isFdroid && !(System.getenv('SENTRY_AUTH_TOKEN') ?: '').isEmpty()
+if (sentryUploadEnabled) {
+  apply plugin: 'io.sentry.android.gradle'
+  sentry {
+    org = 'nongps'
+    projectName = 'nongps-maps-android'
+    authToken = System.getenv('SENTRY_AUTH_TOKEN')
+    autoInstallation.enabled = false
+    ignoredBuildTypes = ['debug']
+    ignoredFlavors = ['fdroid']
+    tracingInstrumentation.enabled = false
+    uploadNativeSymbols = true
+    includeNativeSources = false
+    includeSourceContext = false
+  }
+}
+
 apply from: "${rootProject.rootDir}/groovy/common-config.gradle"
 apply from: "${rootProject.rootDir}/groovy/application-signing.gradle"
 apply from: "${rootProject.rootDir}/groovy/permission-checker.gradle"
@@ -66,9 +90,10 @@ android {
     println('Version: ' + versionName)
     println('VersionCode: ' + versionCode)
     applicationId rootProject.ext.appId
-    buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
+    buildConfigField 'String', 'SUPPORT_MAIL', '"nongps.organic@gmail.com"'
     // Editing OpenStreetMap needs an OAuth application of NonGPS Maps, the one of Organic Maps is not used.
     buildConfigField 'boolean', 'MAP_EDITING', 'false'
+    buildConfigField 'String', 'SENTRY_DSN', "\"${sentryDsn}\""
     resourceConfigurations += [project.ext.supportedLocalizations]
 
     base.archivesName = rootProject.name.replaceAll('\\s', '') + '-' + defaultConfig.versionCode
@@ -84,38 +109,52 @@ android {
 
   flavorDimensions += 'default'
 
+  // The real CrashReporter links Sentry, the fdroid one does nothing.
+  sourceSets {
+    google.java.srcDir 'src/sentry/java'
+    web.java.srcDir 'src/sentry/java'
+    huawei.java.srcDir 'src/sentry/java'
+    fdroid.java.srcDir 'src/nosentry/java'
+    testGoogle.java.srcDir 'src/testSentry/java'
+    testWeb.java.srcDir 'src/testSentry/java'
+    testHuawei.java.srcDir 'src/testSentry/java'
+  }
+
   productFlavors {
-    // 01 is a historical artefact, sorry.
-    final int HUAWEI_VERSION_CODE_BASE = 01_00_00_00_00
+    // The market field RR = 01 of the RR_yy_MM_dd_CC versionCode layout (see tools/unix/version.sh), written in
+    // decimal: a leading zero would make it an octal literal (16777216).
+    final int HUAWEI_VERSION_CODE_BASE = 100_000_000
 
     google {
       dimension 'default'
       isDefault = true
-      // The automatic protection of Google Play, which checks the installer of the app, needs Android 7.
+      // The market build takes Android 12+ only: there BLUETOOTH_SCAN with neverForLocation scans for the box
+      // without any location permission, while Android 10 and 11 count a scan as a location use and from the
+      // background want ACCESS_BACKGROUND_LOCATION, which the app doesn't ask for.
       // The native code is built in the sdk module for the common minSdk and is not rebuilt for it.
-      minSdk = 24
+      minSdk = 31
       versionName = android.defaultConfig.versionName + '-Google'
-      buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
+      buildConfigField 'String', 'SUPPORT_MAIL', '"nongps.organic@gmail.com"'
     }
 
     web {
       dimension 'default'
       applicationIdSuffix '.web'
       versionName = android.defaultConfig.versionName + '-Web'
-      buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
+      buildConfigField 'String', 'SUPPORT_MAIL', '"nongps.organic@gmail.com"'
     }
 
     fdroid {
       dimension 'default'
       versionName = android.defaultConfig.versionName + '-FDroid'
-      buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
+      buildConfigField 'String', 'SUPPORT_MAIL', '"nongps.organic@gmail.com"'
     }
 
     huawei {
       dimension 'default'
       versionName = android.defaultConfig.versionName + '-Huawei'
       versionCode = HUAWEI_VERSION_CODE_BASE + android.defaultConfig.versionCode
-      buildConfigField 'String', 'SUPPORT_MAIL', '"most05062014@gmail.com"'
+      buildConfigField 'String', 'SUPPORT_MAIL', '"nongps.organic@gmail.com"'
     }
   }
 
@@ -272,6 +311,14 @@ dependencies {
   implementation libs.androidx.lifecycle
   implementation libs.google.material
   implementation libs.devnullorthrow.mpandroidchart
+
+  // Sentry crash reports: every flavor but fdroid, which would get a Tracking anti-feature.
+  googleImplementation libs.sentry.android
+  googleImplementation libs.sentry.android.ndk
+  webImplementation libs.sentry.android
+  webImplementation libs.sentry.android.ndk
+  huaweiImplementation libs.sentry.android
+  huaweiImplementation libs.sentry.android.ndk
 
   // Test Dependencies
   testImplementation libs.androidx.junit

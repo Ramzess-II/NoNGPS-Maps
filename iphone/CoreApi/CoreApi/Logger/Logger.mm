@@ -37,6 +37,9 @@
 + (void)closeFile;
 + (void)deleteOldestFiles;
 + (NSArray<NSString *> *)logFiles;
++ (BOOL)logFile:(NSString *)name goesOnInto:(NSSet<NSString *> *)days among:(NSSet<NSString *> *)all;
++ (nullable NSString *)dayAfter:(NSString *)day;
++ (NSString *)startOfLogFile:(NSString *)fileName;
 + (NSString *)logFileNameStarted:(NSDate *)started now:(NSDate *)now;
 + (NSString *)freeLogFileNameStarted:(NSDate *)started now:(NSDate *)now;
 + (NSString *)phoneId;
@@ -79,6 +82,8 @@ static NSDictionary<NSFileAttributeKey, id> * FileAttributes(NSString * name)
 
 static BOOL _fileLoggingEnabled = NO;
 static NSDate * (^_clock)(void) = nil;
+// Read by the assert function of any thread: the pointer is replaced as a whole.
+static void (^kAssertHandler)(NSString *, NSString *) = nil;
 static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
 
 + (void)initialize
@@ -237,17 +242,76 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
   __block NSURL * zipURL;
   [self runSyncOnFileLoggingQueue:^{
     NSMutableArray<NSString *> * files = [NSMutableArray array];
-    for (NSString * name in [self logFiles])
+    NSArray<NSString *> * names = [self logFiles];
+    NSSet<NSString *> * all = [NSSet setWithArray:names];
+    for (NSString * name in names)
     {
       // "<phone>/<yyyy-MM-dd>/<HHmmss>.log": of every phone id.
       NSArray<NSString *> * parts = name.pathComponents;
-      if (parts.count == 3 && [days containsObject:parts[1]] && [name.pathExtension isEqualToString:@"log"])
+      if (parts.count == 3 && [name.pathExtension isEqualToString:@"log"] &&
+          ([days containsObject:parts[1]] || [self logFile:name goesOnInto:days among:all]))
         [files addObject:name];
     }
     if (files.count > 0)
       zipURL = [self zipLogFiles:files inFolder:kLogsFolderPath];
   }];
   return zipURL;
+}
+
+/// Whether the file goes on, over midnights, in the folder of one of the days: the next day has a file of the same
+/// start time, so a trip that crossed midnight travels with the file it began in. A drive that began in the same
+/// second as another is "<HHmmss>-2.log" but goes on as "<HHmmss>.log", so the files are matched without the suffix
+/// and both drives of that second are taken. A trip whose file reached kMaxLogFileSize before midnight goes on under
+/// a new name, so the file with its CALIBRATION line is not taken.
++ (BOOL)logFile:(NSString *)name goesOnInto:(NSSet<NSString *> *)days among:(NSSet<NSString *> *)all
+{
+  NSArray<NSString *> * parts = name.pathComponents;
+  NSString * start = [self startOfLogFile:parts[2]];
+  NSString * day = parts[1];
+  while ((day = [self dayAfter:day]) != nil)
+  {
+    BOOL found = NO;
+    for (NSString * other in all)
+    {
+      NSArray<NSString *> * otherParts = other.pathComponents;
+      if (otherParts.count == 3 && [otherParts[0] isEqualToString:parts[0]] && [otherParts[1] isEqualToString:day] &&
+          [[self startOfLogFile:otherParts[2]] isEqualToString:start])
+      {
+        found = YES;
+        break;
+      }
+    }
+    if (!found)
+      return NO;
+    if ([days containsObject:day])
+      return YES;
+  }
+  return NO;
+}
+
+/// The start time "HHmmss" of the file name: without the ".log" and the "-N" of a second drive of the same second.
++ (NSString *)startOfLogFile:(NSString *)fileName
+{
+  return [fileName stringByReplacingOccurrencesOfString:@"(-[0-9]+)?\\.log$"
+                                             withString:@""
+                                                options:NSRegularExpressionSearch
+                                                  range:NSMakeRange(0, fileName.length)];
+}
+
+/// The day after a folder name "yyyy-MM-dd", nil when it is not a day.
++ (nullable NSString *)dayAfter:(NSString *)day
+{
+  static NSDateFormatter * formatter;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    formatter = [[NSDateFormatter alloc] init];
+    formatter.dateFormat = @"yyyy-MM-dd";
+    formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+    // No daylight saving: a day is always 24 hours.
+    formatter.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
+  });
+  NSDate * date = [formatter dateFromString:day];
+  return date ? [formatter stringFromDate:[date dateByAddingTimeInterval:24 * 60 * 60]] : nil;
 }
 
 + (void)startTrip
@@ -264,6 +328,11 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
 + (void)setClockForTesting:(nullable NSDate * (^)(void))clock
 {
   [self runSyncOnFileLoggingQueue:^{ _clock = [clock copy]; }];
+}
+
++ (void)setAssertHandler:(void (^)(NSString *, NSString *))handler
+{
+  kAssertHandler = [handler copy];
 }
 
 + (uint64_t)getLogFileSize
@@ -287,6 +356,9 @@ void LogMessage(base::LogLevel level, base::SrcPoint const & src, std::string co
 bool AssertMessage(base::SrcPoint const & src, std::string const & message)
 {
   [Logger logMessageWithLevel:base::LCRITICAL src:src message:message];
+  auto handler = kAssertHandler;
+  if (handler)
+    handler(@(DebugPrint(src).c_str()), @(message.c_str()));
   return true;
 }
 

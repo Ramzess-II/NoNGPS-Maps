@@ -151,7 +151,7 @@
     <string name="description">Maelezo</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">NonGPS Maps alama za ukurasa zimeshirikiwa nawe</string>
-    <string name="share_bookmarks_email_body">Habari!\n\nNimeambatanisha alamisho zangu; tafadhali zifungue kwenye NonGPS Maps. Ikiwa haujaweka, unaweza kupakua hapa: https://github.com/Ramzess-II/NoGPSMaps\n\nFurahia kusafiri na NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Habari!\n\nNimeambatanisha alamisho zangu; tafadhali zifungue kwenye NonGPS Maps. Ikiwa haujaweka, unaweza kupakua hapa: https://github.com/Ramzess-II/NoNGPS-Maps\n\nFurahia kusafiri na NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Inapakia alamisho</string>
     <!-- Kmz file successful loading -->

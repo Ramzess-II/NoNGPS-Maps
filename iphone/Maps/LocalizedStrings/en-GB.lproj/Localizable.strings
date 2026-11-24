@@ -160,7 +160,7 @@
 
 /********** Other translations **********/
 
-"share_bookmarks_email_body" = "Hello!\n\nAttached are my bookmarks; please open them in NonGPS Maps. If you don't have it installed you can download it here: https://github.com/Ramzess-II/NoGPSMaps\n\nEnjoy travelling with NonGPS Maps!";
+"share_bookmarks_email_body" = "Hello!\n\nAttached are my bookmarks; please open them in NonGPS Maps. If you don't have it installed you can download it here: https://github.com/Ramzess-II/NoNGPS-Maps\n\nEnjoy travelling with NonGPS Maps!";
 
 /* message title of loading file */
 "load_kmz_title" = "Loading Bookmarks";
@@ -1240,6 +1240,12 @@
 /* Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. */
 "nogps_flag_mic_denied" = "The flag is saved without a voice note: allow the microphone in the system settings.";
 
+/* Settings switch: send a report to the developers when the app crashes */
+"nogps_crash_reports" = "Send crash reports";
+
+/* Hint under the Send crash reports switch */
+"nogps_crash_reports_hint" = "Only the crash, the device model and the app version are sent. No location data leaves the phone.";
+
 /* Settings row and screen title: the list of the flags saved in test drives, to send them with the trip logs to the developers by email */
 "nogps_flags_send_title" = "Send logs";
 
@@ -1475,7 +1481,7 @@
 "nogps_phone_remove_this_text" = "This phone will not connect to the box any more, and the car will be forgotten on it.";
 
 /* Message on iOS: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and iOS apps cannot remove it */
-"nogps_phone_removed_forget" = "This phone is removed from the box, the car is forgotten. Remove NoGPS-%1$@ in Settings > Bluetooth: tap its info button, then Forget This Device";
+"nogps_phone_removed_forget" = "This phone is removed from the box, the car is forgotten. Remove the box ending in %1$@ in Settings > Bluetooth: tap its info button, then Forget This Device";
 
 /* Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code */
 "nogps_phone_add" = "Add a phone";
@@ -1571,13 +1577,19 @@
 "nogps_clear_speed_title" = "Reset the speed calibration?";
 "nogps_clear_speed_message" = "The speed corrections learned from GPS at different speeds and from your corrections will be forgotten. Do it after new tyres or another car. They are learned anew while GPS works.";
 
-/* Main menu row opening the account of the user on the site */
+/* Main menu row opening the screen with the records of every car of the user */
 "nogps_menu_profile" = "Profile";
+
+/* Footer of the Profile screen: what the screen will hold later */
+"nogps_profile_soon" = "The account, the boxes, the warranty and the orders will be here";
 "nogps_about_title" = "About NonGPS Maps";
 
 /* Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on */
 "nogps_about_om_menu" = "About Organic Maps";
 "nogps_about_headline" = "Navigation when GPS is jammed or spoofed";
+
+/* About NonGPS Maps, the screen reader label of the globe with the GPS satellites that the finger spins */
+"nogps_about_globe_hint" = "Drag the Earth, tap a satellite to switch it off.";
 "nogps_about_description" = "Without GPS the car is driven by the inertial navigation: the turns come from the gyroscope, the distance from the car speed via OBD-II. The car is kept on the roads of the offline map.";
 
 /* NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) */
@@ -1588,6 +1600,7 @@
 "nogps_map_data" = "Map data © OpenStreetMap and Organic Maps";
 "nogps_source_code" = "Source code on GitHub";
 "nogps_box_sleeping" = "sleeps: the engine is stopped";
+"nogps_box_battery_lock" = "switched off: the battery was low. Unplug the box and plug it back in";
 "nogps_box_obd_sleeping" = "OBD sleeps: the engine is stopped";
 "nogps_engine_running" = "running";
 "nogps_engine_stopped" = "stopped";

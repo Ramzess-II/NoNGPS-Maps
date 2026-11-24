@@ -44,7 +44,8 @@ std::vector<std::string> SliceKeys(std::vector<std::pair<std::string, std::strin
 
 - (UIStatusBarStyle)preferredStatusBarStyle
 {
-  return UIStatusBarStyleLightContent;
+  return self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? UIStatusBarStyleLightContent
+                                                                             : UIStatusBarStyleDarkContent;
 }
 
 #pragma mark - MWMKeyboard

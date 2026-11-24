@@ -35,6 +35,8 @@ typedef NS_ENUM(NSInteger, MWMNoGpsSourceState) {
   MWMNoGpsSourceStateObdError,
   MWMNoGpsSourceStateNoCarData,
   MWMNoGpsSourceStateBoxSleeping,
+  // The sensor box has switched itself off because the car battery was low: it comes back after it is unplugged.
+  MWMNoGpsSourceStateBoxBatteryLock,
   MWMNoGpsSourceStateObdSleeping,
   MWMNoGpsSourceStateConnected,
   // The sensor box takes a new firmware: it sends no data until it restarts with it.
@@ -411,6 +413,8 @@ NS_SWIFT_NAME(NoGps)
 + (NSArray<MWMNoGpsCar *> *)cars;
 /// The timed runs of the current car, newest first.
 + (NSArray<MWMNoGpsSprint *> *)sprints;
+/// The timed runs kept for the car, newest first; none for a car that is not there.
++ (NSArray<MWMNoGpsSprint *> *)sprintsOfCar:(NSString *)carId;
 /// No car is added over this many: the user can't add one.
 + (NSInteger)maxCars;
 /// The user drives the car: its values are used, the box of the car is looked for.
@@ -450,7 +454,9 @@ NS_SWIFT_NAME(NoGps)
 
 /// The bytes of the ESP32 sensor box and the state of the connection to it.
 + (void)onEsp32BleBytes:(NSData *)data;
-+ (void)onEsp32BleState:(MWMNoGpsBleState)state;
+/// `bondLost`: the pairing is thought lost, MWMNoGpsBleStateConnected then is a probe that carries nothing until the
+/// box is heard.
++ (void)onEsp32BleState:(MWMNoGpsBleState)state bondLost:(BOOL)bondLost;
 
 @end
 

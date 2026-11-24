@@ -51,14 +51,15 @@ git -C ${FW} worktree remove <path> for firmware.`
 // Replay on macOS: the skill passes args.maps and args.settings only when this machine has them.
 const REPLAY_RULES = REPLAY
   ? `A change to how the mark moves is replayed, not postponed: this machine replays the recorded trips. \
-Maps: ${MAPS}, settings: ${SETTINGS}. Logs, <logs> below: the day files at the top of ${LOGS} (${LOGS}/*.log) when \
-there are some, else the folder ${LOGS}/<phone> of the Android phone with the most days: the script reads a folder \
-with its subfolders, logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, and the lines of two phones must not be mixed. Build \
+Maps: ${MAPS}, settings: ${SETTINGS}. Logs, <logs> below: the folder ${LOGS}. The script reads it with its \
+subfolders and takes the files of the tree logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, skipping the files of the \
+earlier versions with a note; it drives each phone apart, into <folder>/<phone>. Build \
 the tool as the docstring of tools/python/nogps_replay.py says, in <worktree>/build-<name>-o2: first from the worktree before your change (copy the binary to \
 nogps_replay_tool.before), then after it. Drive the days of both with nogps_replay.py run <logs> --tool <tool> \
 --data_path ${MAPS} --settings ${SETTINGS} -j 3 -o <folder in the scratchpad>. Put both tables, the held-out days \
 and the others apart, into "tested". Fix a rule that is worse on the held-out days, or postpone when the numbers \
-don't settle what to change. Say "Not replayed" only when the tool fails to build or run, and why.`
+don't settle what to change. Say "Not replayed" only when the tool fails to build or run, or ${LOGS} holds no \
+file of that tree, and why.`
   : `This run has no replay data (args.maps, args.settings): a change to how the mark moves is replayed by nobody, \
 so its PR says "Not replayed".`
 
@@ -193,7 +194,7 @@ ktlint).
 - When tests fail, make up to 3 attempts to fix them, then postpone.
 - Postpone when you can't finish: it needs a drive, a phone, a flashed box or a replay you can't run to know what to change; the \
 expected behavior turns out unclear; tests still fail after 3 attempts. Then: commit the WIP, push the branch \
-(app: git push -u origin feature/${t.name}; firmware: git push -u koloboid feature/${t.name}) if it has commits, \
+(git push -u origin feature/${t.name}) if it has commits, \
 ${POSTPONE} Then remove the worktrees and report "postponed".
 - Don't open a PR: a fresh reviewer checks the branch, then a publisher pushes it and opens the PR.
 Report the worktrees with their branches, and the PR text parts: title, why, what, tested (commands and results, \
@@ -225,9 +226,9 @@ Review findings: ${JSON.stringify(review ? review.findings : [])}
 and run the tests of the report again. Up to 3 attempts when they fail, then postpone.
 2. git fetch origin. If the branch no longer merges cleanly into the base, merge the base in and resolve; if the \
 resolution isn't clear, postpone.
-3. Push: git -C <worktree> push -u origin <branch> (firmware: push -u koloboid <branch>).
+3. Push: git -C <worktree> push -u origin <branch>.
 4. PR, without asking: gh pr create -R ${APP_REPO} --base master --head <branch> --label roller --title "<title>" \
---body-file -. Firmware: gh pr create -R ${FW_REPO} --base main --head koloboid:<branch> (no label there). The body \
+--body-file -. Firmware: gh pr create -R ${FW_REPO} --base main --head <branch> (no label there). The body \
 is bold-label paragraphs, no ## headings (CI's other-platform check reads only a "**Other platform**" line): \
 "Fixes ${it.repo === APP_REPO ? '#' + it.number : ref(it)}", **Why**:, **What**:, **Tested**:, **Other platform**:, \
 then "Opened by the issue roller (/nogps-roll). Written with Claude Code." and the model name. With PRs in both \

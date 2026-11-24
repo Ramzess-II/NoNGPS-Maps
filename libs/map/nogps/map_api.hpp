@@ -66,5 +66,9 @@ public:
   /// Shows the car direction instead of the compass: without GPS the car looks along its road, and the compass of
   /// a phone in a car or in hands looks anywhere.
   virtual void ShowCarHeading(double bearingDeg) = 0;
+
+  /// The car shown is followed apart, off the roads: the map does not match it to the route or to the road graph, it
+  /// is drawn where it is. Set before every position that is shown.
+  virtual void SetCarFollowedApart(bool apart) = 0;
 };
 }  // namespace nogps

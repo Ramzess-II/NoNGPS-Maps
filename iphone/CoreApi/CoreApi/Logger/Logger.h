@@ -24,6 +24,10 @@ typedef NS_ENUM(NSUInteger, LogLevel) {
 /// Replaces the clock the file logger names and rolls its files by, nil restores the system one. For tests.
 + (void)setClockForTesting:(nullable NSDate * (^)(void))clock NS_SWIFT_NAME(setClockForTesting(_:));
 
+/// Gets the place and the text of a failed CHECK/ASSERT of the core before the process aborts, e.g. to put them into a
+/// crash report. Nil for none. Runs on the thread that failed: no waiting, no network.
++ (void)setAssertHandler:(nullable void (^)(NSString * source, NSString * message))handler;
+
 @end
 
 NS_ASSUME_NONNULL_END

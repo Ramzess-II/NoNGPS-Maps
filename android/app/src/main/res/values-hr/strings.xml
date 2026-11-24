@@ -151,7 +151,7 @@
     <string name="description">Bilješke</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">NonGPS Maps zabilješke su s tobom dijeljene</string>
-    <string name="share_bookmarks_email_body">Zdravo! \n \nU privitku su moje zabilješke; otvori ih u aplikaciji NonGPS Maps. Ako nije instalirana, možeš je preuzeti na: https://github.com/Ramzess-II/NoGPSMaps \n \nUživaj u putovanju s NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Zdravo! \n \nU privitku su moje zabilješke; otvori ih u aplikaciji NonGPS Maps. Ako nije instalirana, možeš je preuzeti na: https://github.com/Ramzess-II/NoNGPS-Maps \n \nUživaj u putovanju s NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Učitavanje zabilješki</string>
     <!-- Kmz file successful loading -->

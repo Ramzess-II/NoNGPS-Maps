@@ -62,6 +62,9 @@ public:
   static int64_t constexpr kCarReplyTimeoutMs = 5000;
   // The list of the phones is asked again because of BUSY or an event not more often than this.
   static int64_t constexpr kListIntervalMs = 2000;
+  // The box answers AUTH at once: a command without a reply is sent again, this many times in all.
+  static int64_t constexpr kAuthReplyTimeoutMs = 2000;
+  static int constexpr kMaxAuthSends = 5;
 
   /// What the box does about a new phone, see StartAddPhone().
   enum class AddPhone
@@ -114,8 +117,11 @@ public:
 
   /// The bytes of the box as they come over Bluetooth: a line may be cut in pieces, a piece may have several lines.
   void OnBleBytes(std::string_view bytes);
-  void OnBleState(BleState state);
+  /// `bondLost`: the box is thought to have forgotten the phone, see BleState::BondLost. A link made then, Connected
+  /// for the HELLO the box waits for, is a probe: it is not a working link until the box is heard.
+  void OnBleState(BleState state, bool bondLost = false);
   BleState GetBleState() const { return m_bleState; }
+  bool IsBondLost() const { return m_bondLost; }
   DataRate GetDataRate() const;
 
   /// \returns when the box was powered on, if this is how it has started and its data come. Nothing after a
@@ -141,6 +147,12 @@ public:
   void StartUpdate(Firmware const & firmware);
   void CancelUpdate() { m_update.Cancel(); }
   Esp32Update const & GetUpdate() const { return m_update; }
+
+  /// \returns true if the box has proved itself in this connection, or has not to: its lines are taken. Before that
+  /// only its answer to AUTH and its info are, see OnUnprovenLine().
+  bool IsBoxProven() const { return m_proven; }
+  /// \returns true if the box has failed to prove itself: its lines are not taken until the link is made again.
+  bool IsBoxRefused() const { return m_authRefused; }
 
   /// \returns true if the box is connected and keeps the values of its car, see BoxCarValues.
   bool CanStoreCarValues() const;
@@ -186,11 +198,29 @@ public:
   int64_t GetAddPhoneMsLeft() const;
 
 private:
+  /// What the box has told about switching itself off until it is unplugged, see OnEvent() and GetState().
+  enum class BatteryLock
+  {
+    None,
+    // BATT_LOCK came over the link that is up now: the box goes on sending data for a second after the event.
+    Told,
+    // The link that told it is lost. The box heard again over a new one has been plugged back in: switched off, it
+    // could not answer.
+    LinkLost,
+  };
+
   // Esp32Update::Link overrides:
   int SendUpdateCommand(std::string const & command) override;
   void SendFirmwarePiece(std::string const & piece) override;
 
   void OnLine(std::string_view text);
+  void OnUnprovenLine(esp32::Fields const & fields);
+  void OnAuthInfo(esp32::Fields const & fields);
+  void SendAuth();
+  void OnAuthReply(esp32::Reply const & reply);
+  void RefuseBox(std::string const & reason);
+  std::string NewAuthHex(size_t bytes) const;
+  void ForgetAuth();
   void SendHello();
   void Send(std::string_view command, int id);
   void OnData(esp32::Data const & data);
@@ -218,6 +248,7 @@ private:
   int m_helloId = 0;
 
   BleState m_bleState = BleState::Off;
+  bool m_bondLost = false;
   // The line being received over Bluetooth, from its "$" on.
   std::string m_bleLine;
   // When the data lines of the last second came.
@@ -248,6 +279,9 @@ private:
   std::optional<CarInfo> m_carInfo;
   // The box has told that its voltage and the one of ELM327 differ. Kept until they come close again.
   bool m_voltageMismatch = false;
+  // The box has told it is off until it is unplugged (BATT_LOCK). Kept over the lost link until the box is heard
+  // again: it goes on sending data for a second after the event.
+  BatteryLock m_batteryLock = BatteryLock::None;
   // The numbers of the events of the box written to the log.
   std::set<int64_t> m_loggedEvents;
   std::optional<int64_t> m_eventsRequestMs;
@@ -263,6 +297,26 @@ private:
   // that tell the result.
   std::optional<int64_t> m_calibrationLinkLostMs;
   std::optional<int64_t> m_calibratedMs;
+
+  // The box proves itself when a connection starts (spec 9.2): it answers AUTH with the proof of the key of its car, or
+  // takes a new key with AUTH_SET if the phone has none. Its lines are dropped until then, only its info is kept.
+  bool m_mustProve = false;
+  bool m_proven = true;
+  bool m_authRefused = false;
+  // The info of the box heard before the proof: it is taken when the box has proved itself.
+  std::optional<esp32::Fields> m_unprovenInfo;
+  // The command waiting for its reply, 0 if none.
+  int m_authId = 0;
+  int m_authSends = 0;
+  int64_t m_authSentMs = 0;
+  // The car of the box, kept while the connection lasts: the box has given this id in its info, and the proof is of
+  // it. Its key is the one that proves the box, or the new one the box is given.
+  std::string m_authCar;
+  std::string m_authKey;
+  std::string m_authNonce;
+  bool m_authSetsKey = false;
+  // The box may not have the key, see CarStorage::kAuthKeyUnconfirmed: it is given it again when it says it has none.
+  bool m_authKeyUnconfirmed = false;
 
   PeerSync m_peer;
   std::optional<esp32::Info> m_info;

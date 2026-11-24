@@ -86,6 +86,47 @@ final class NavigationSourceButtonTests: XCTestCase {
 
 /// A status with the values a test sets.
 extension NavigationSourceButtonTests {
+  /// A box that locked itself out does not come back with the engine: a warning, not a search.
+  func test_GivenBatteryLock_WhenBoxLookIsTaken_ThenItIsAWarning() {
+    let status = FakeStatus(source: .gps, gpsState: .good, inertialEnabled: true, sourceState: .boxBatteryLock)
+    let look = NoGpsStatusBar.boxLook(status)
+    XCTAssertEqual(look.color, .systemOrange)
+    XCTAssertEqual(look.badge?.symbol, "exclamationmark")
+    XCTAssertFalse(look.pulsing)
+  }
+
+  /// Bluetooth off matters more than the lockout: the box would not be heard after it is plugged back in.
+  func test_GivenBatteryLock_WhenBluetoothIsOff_ThenItIsToldToo() {
+    let status = FakeStatus(source: .gps, gpsState: .good, inertialEnabled: true, sourceState: .boxBatteryLock)
+    status.fakeBleState = .disabled
+    let look = NoGpsStatusBar.boxLook(status)
+    XCTAssertEqual(look.symbol, NavigationLiveActivitySymbol.asset("ic_nogps_bluetooth_off"))
+    XCTAssertNil(look.badge)
+    XCTAssertFalse(look.pulsing)
+    XCTAssertEqual(NoGpsBoxPage.boxStateText(status), L("nogps_box_battery_lock") + " · " + L("nogps_box_bt_disabled"))
+  }
+
+  /// A phone that can't reach the box knows nothing of the car: no sleep sentence, only the link state.
+  func test_GivenBoxSleeping_WhenPhoneCannotReachBox_ThenNoSleepText() {
+    let off: [(NoGpsBleState, String)] = [
+      (.off, "nogps_box_bt_disabled"), (.disabled, "nogps_box_bt_disabled"),
+      (.noPermission, "nogps_box_bt_no_permission"), (.pairingFailed, "nogps_box_bt_pairing_failed"),
+      (.bondLost, "nogps_box_bt_bond_lost"),
+    ]
+    for (ble, key) in off {
+      let status = FakeStatus(source: .gps, gpsState: .good, inertialEnabled: true, sourceState: .boxSleeping)
+      status.fakeBleState = ble
+      XCTAssertEqual(NoGpsBoxPage.boxStateText(status), L(key), "Bluetooth \(ble.rawValue)")
+    }
+  }
+
+  /// While the phone searches, the sleep sentence explains the search.
+  func test_GivenBoxSleeping_WhenPhoneSearches_ThenSleepTextStays() {
+    let status = FakeStatus(source: .gps, gpsState: .good, inertialEnabled: true, sourceState: .boxSleeping)
+    status.fakeBleState = .searching
+    XCTAssertEqual(NoGpsBoxPage.boxStateText(status), L("nogps_box_sleeping") + " · " + L("nogps_box_bt_searching"))
+  }
+
   /// A failed pairing or a box that forgot the phone stops the search until the user acts: no waves.
   func test_GivenLinkFailed_WhenBoxLookIsTaken_ThenItAsksTheUser() {
     for ble in [NoGpsBleState.pairingFailed, .bondLost] {

@@ -72,6 +72,12 @@ final class NoGpsBoxPage: MWMTableViewController {
     fatalError("init(coder:) has not been implemented")
   }
 
+  /// The sheet follows the rows of this page.
+  override func viewDidLayoutSubviews() {
+    super.viewDidLayoutSubviews()
+    (navigationController?.viewControllers.first as? NoGpsBoxSheet)?.refit()
+  }
+
   override func viewDidLoad() {
     super.viewDidLoad()
     navigationItem.backButtonDisplayMode = .minimal
@@ -490,11 +496,24 @@ final class NoGpsBoxPage: MWMTableViewController {
     case .obdConnecting: return L("nogps_box_obd_connecting")
     case .obdError: return L("nogps_elm_error")
     case .noCarData: return L("nogps_elm_no_car")
-    case .boxSleeping: return L("nogps_box_sleeping") + " · " + boxSearchText(status)
+    // The sleep is told only while the phone looks for the box: a phone that can't reach it knows nothing of the car.
+    case .boxSleeping:
+      return isBoxSearched(status) ? L("nogps_box_sleeping") + " · " + boxSearchText(status) : boxSearchText(status)
+    // A locked-out box comes back only after it is unplugged, and a phone that can't reach it says so too.
+    case .boxBatteryLock:
+      return L("nogps_box_battery_lock") + (isBoxSearched(status) ? "" : " · " + boxSearchText(status))
     case .obdSleeping: return L("nogps_box_obd_sleeping")
     case .connected: return L("nogps_elm_connected")
     case .updating: return L("nogps_box_updating")
     @unknown default: return L("nogps_unknown")
+    }
+  }
+
+  /// The phone looks for the box, or waits for it: Bluetooth is on and the box doesn't have to be paired again.
+  private static func isBoxSearched(_ status: NoGpsStatus) -> Bool {
+    switch status.bleState {
+    case .off, .noPermission, .disabled, .pairingFailed, .bondLost: return false
+    default: return true
     }
   }
 
@@ -559,6 +578,11 @@ final class NoGpsBoxPage: MWMTableViewController {
     [.starting, .sending, .verifying, .restarting].contains(status.firmwareUpdate)
   }
 
+  /// A build may add a suffix to the version ("0.3.3-dirty"): the numbers tell the firmware.
+  private static func firmwareNumbers(_ version: String) -> Substring {
+    version.prefix { $0.isNumber || $0 == "." }
+  }
+
   /// The box works with the firmware the app is tested with: there is nothing to install. A debug build sends it again
   /// to try the update itself.
   static func canInstallFirmware(_ status: NoGpsStatus) -> Bool {
@@ -566,7 +590,7 @@ final class NoGpsBoxPage: MWMTableViewController {
 #if DEBUG
     return true
 #else
-    return status.bundledFirmware != status.boxFirmware
+    return firmwareNumbers(status.bundledFirmware) != firmwareNumbers(status.boxFirmware)
 #endif
   }
 

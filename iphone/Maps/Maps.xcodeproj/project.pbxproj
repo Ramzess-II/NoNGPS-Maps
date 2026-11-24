@@ -7,6 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5E0A00000000000000000001 /* CrashReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0A00000000000000000002 /* CrashReporter.swift */; };
+		5E0A00000000000000000004 /* CrashReporterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0A00000000000000000005 /* CrashReporterTests.swift */; };
+		5E0A00000000000000000009 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 5E0A00000000000000000008 /* Sentry */; };
+		N0GPS1B00000000000000B01 /* NoGpsButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS1A00000000000000B01 /* NoGpsButton.swift */; };
+		N0GPS3B00000000000000008 /* NoGpsGlobeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B00000000000000007 /* NoGpsGlobeTests.swift */; };
+		N0GPS3B00000000000000006 /* GlobeCoastline.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B00000000000000005 /* GlobeCoastline.swift */; };
+		N0GPS3B00000000000000004 /* GlobeSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B00000000000000003 /* GlobeSceneView.swift */; };
+		N0GPS3B00000000000000002 /* GlobeScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B00000000000000001 /* GlobeScene.swift */; };
 		00A2630ADA97EB2C42945272 /* NavigationDashboardViewControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE938673CC3D8E7866C20B8 /* NavigationDashboardViewControllerTests.swift */; };
 		0F13484A0000000000000002 /* UITableViewCell+SeparatorInset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F13484A0000000000000001 /* UITableViewCell+SeparatorInset.swift */; };
 		11E2F6F34E5F12298C3E2AC0 /* NoGpsBoxPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB3EB65C13D5083F5AFA02C8 /* NoGpsBoxPage.swift */; };
@@ -19,6 +27,8 @@
 		333A4718BABBBFC6A412D69B /* NoGpsBoxSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */; };
 		5C0A7E1B3D2F4A6890B1D004 /* AboutNoGpsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0A7E1B3D2F4A6890B1D003 /* AboutNoGpsController.swift */; };
 		N0GPS2A00000000000000002 /* HowNoGpsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS2A00000000000000001 /* HowNoGpsController.swift */; };
+		A0C47D0200000000000000B2 /* NoGpsProfileController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C47D0200000000000000B1 /* NoGpsProfileController.swift */; };
+		A0C47D0200000000000000B4 /* NoGpsProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C47D0200000000000000B3 /* NoGpsProfileTests.swift */; };
 		5C0A7E1B3D2F4A6890B1D007 /* BottomMenuPresenterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C0A7E1B3D2F4A6890B1D006 /* BottomMenuPresenterTests.swift */; };
 		34F73F9C1E082FF800AC1FD6 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 34F73F5F1E082FF700AC1FD6 /* InfoPlist.strings */; };
 		34F73F9F1E082FF800AC1FD6 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 34F73F611E082FF800AC1FD6 /* Localizable.strings */; };
@@ -139,6 +149,7 @@
 		D48A5E31FA0C45748F11AD48 /* MWMRoutePointSelectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9C7250731AB471A81905386 /* MWMRoutePointSelectionTests.swift */; };
 		D51CECE188BA883AE1DC41E8 /* MapPanelDraggerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 269EA85AB77A3B550B66E5E2 /* MapPanelDraggerTests.swift */; };
 		D560CC6FC73D20258FF65C5E /* NoGpsFlagsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E779A1A71BDFB9F9F1BA779 /* NoGpsFlagsTests.swift */; };
+		5B4A00000000000000000B01 /* NoGpsBarColorsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B4A00000000000000000F01 /* NoGpsBarColorsTests.swift */; };
 		E4B1C0DE7A52C3F100A1B2C3 /* Esp32BleTransportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B1C0DE7A52C3F100A1B2C4 /* Esp32BleTransportTests.swift */; };
 		A0C47D010000000000000002 /* NoGpsCarMenuTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0C47D010000000000000001 /* NoGpsCarMenuTests.swift */; };
 		DB05F1CC1BF340DE002C974C /* drules_default.bin in Resources */ = {isa = PBXBuildFile; fileRef = DB05F1BC1BF340DE002C974C /* drules_default.bin */; };
@@ -834,12 +845,19 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		5E0A00000000000000000002 /* CrashReporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporter.swift; sourceTree = "<group>"; };
+		5E0A00000000000000000005 /* CrashReporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporterTests.swift; sourceTree = "<group>"; };
+		N0GPS3B00000000000000007 /* NoGpsGlobeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsGlobeTests.swift; sourceTree = "<group>"; };
+		N0GPS3B00000000000000005 /* GlobeCoastline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobeCoastline.swift; sourceTree = "<group>"; };
+		N0GPS3B00000000000000003 /* GlobeSceneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobeSceneView.swift; sourceTree = "<group>"; };
+		N0GPS3B00000000000000001 /* GlobeScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobeScene.swift; sourceTree = "<group>"; };
 		072CAE8C5C960DE2A11D13EF /* cy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = cy; path = cy.lproj/LocalizableTypes.strings; sourceTree = "<group>"; };
 		0838498CE7B991E3B0BE1EBF /* cy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.stringsdict; name = cy; path = cy.lproj/Localizable.stringsdict; sourceTree = "<group>"; };
 		083C6652A72C69AF6CA168DE /* is */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = is; path = is.lproj/LocalizableTypes.strings; sourceTree = "<group>"; };
 		0D79C475750E015F66C8DCC2 /* hr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hr; path = hr.lproj/LocalizableTypes.strings; sourceTree = "<group>"; };
 		0E4F1ADEAB4383C259A9DCEB /* Esp32BleTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Esp32BleTransport.swift; sourceTree = "<group>"; };
 		0E779A1A71BDFB9F9F1BA779 /* NoGpsFlagsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsFlagsTests.swift; sourceTree = "<group>"; };
+		5B4A00000000000000000F01 /* NoGpsBarColorsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsBarColorsTests.swift; sourceTree = "<group>"; };
 		E4B1C0DE7A52C3F100A1B2C4 /* Esp32BleTransportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Esp32BleTransportTests.swift; sourceTree = "<group>"; };
 		A0C47D010000000000000001 /* NoGpsCarMenuTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsCarMenuTests.swift; sourceTree = "<group>"; };
 		0F13484A0000000000000001 /* UITableViewCell+SeparatorInset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UITableViewCell+SeparatorInset.swift"; sourceTree = "<group>"; };
@@ -1870,8 +1888,11 @@
 		EE026F0511D6AC0D00645242 /* classificator.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = classificator.txt; path = ../../data/classificator.txt; sourceTree = SOURCE_ROOT; };
 		EF08A25A7AB83AC0C2867A85 /* cy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = cy; path = cy.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		EF2E6A8E25A1897EE22DD4B0 /* NoGpsBoxSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsBoxSheet.swift; sourceTree = "<group>"; };
+		N0GPS1A00000000000000B01 /* NoGpsButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsButton.swift; sourceTree = "<group>"; };
 		5C0A7E1B3D2F4A6890B1D003 /* AboutNoGpsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutNoGpsController.swift; sourceTree = "<group>"; };
 		N0GPS2A00000000000000001 /* HowNoGpsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HowNoGpsController.swift; sourceTree = "<group>"; };
+		A0C47D0200000000000000B1 /* NoGpsProfileController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsProfileController.swift; sourceTree = "<group>"; };
+		A0C47D0200000000000000B3 /* NoGpsProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsProfileTests.swift; sourceTree = "<group>"; };
 		5C0A7E1B3D2F4A6890B1D006 /* BottomMenuPresenterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BottomMenuPresenterTests.swift; sourceTree = "<group>"; };
 		F0A0B0002FF2ABCD00FA103D /* BookmarksListCellConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarksListCellConfiguration.swift; sourceTree = "<group>"; };
 		F623DA6A1C9C2731006A3436 /* opening_hours_how_to_edit.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = opening_hours_how_to_edit.html; path = ../../data/opening_hours_how_to_edit.html; sourceTree = "<group>"; };
@@ -1984,6 +2005,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5E0A00000000000000000009 /* Sentry in Frameworks */,
 				16CDB3FB2F15B0C30040FC4F /* libtimezone.a in Frameworks */,
 				FAF9DDA32A86DC54000D7037 /* libharfbuzz.a in Frameworks */,
 				FA456C3C26BDC6AD00B83C20 /* Chart.framework in Frameworks */,
@@ -2143,6 +2165,7 @@
 			isa = PBXGroup;
 			children = (
 				C50A71010000000000000002 /* MWMSearchSpotlightTests.mm */,
+				5E0A00000000000000000006 /* CrashReports */,
 				ED91433C3001A0000081DF0B /* DeepLink */,
 				AA01B2C3D4E5F60718293B00 /* Logger */,
 				EDBAB6F12E980415007962B5 /* GeoNavigationToOMURLConverterTests */,
@@ -2430,9 +2453,12 @@
 				1A4D381982BD4FCD9308F4D1 /* RoutePointCollectionViewCellTests.swift */,
 				269EA85AB77A3B550B66E5E2 /* MapPanelDraggerTests.swift */,
 				0E779A1A71BDFB9F9F1BA779 /* NoGpsFlagsTests.swift */,
+				5B4A00000000000000000F01 /* NoGpsBarColorsTests.swift */,
+				N0GPS3B00000000000000007 /* NoGpsGlobeTests.swift */,
 				E4B1C0DE7A52C3F100A1B2C4 /* Esp32BleTransportTests.swift */,
 				N0GPS1A00000000000000006 /* NoGpsIntroTests.swift */,
 				A0C47D010000000000000001 /* NoGpsCarMenuTests.swift */,
+				A0C47D0200000000000000B3 /* NoGpsProfileTests.swift */,
 				6DCDADA4CA235047EE2F0639 /* NavigationSearchWheelTests.swift */,
 				E79F77A472014212B40FDE97 /* PlacePageTests */,
 				ED810EC32D566E7600ECDE2C /* SearchOnMapTests */,
@@ -3752,7 +3778,12 @@
 			isa = PBXGroup;
 			children = (
 				5C0A7E1B3D2F4A6890B1D003 /* AboutNoGpsController.swift */,
+				N0GPS1A00000000000000B01 /* NoGpsButton.swift */,
 				N0GPS2A00000000000000001 /* HowNoGpsController.swift */,
+				A0C47D0200000000000000B1 /* NoGpsProfileController.swift */,
+				N0GPS3B00000000000000001 /* GlobeScene.swift */,
+				N0GPS3B00000000000000003 /* GlobeSceneView.swift */,
+				N0GPS3B00000000000000005 /* GlobeCoastline.swift */,
 			);
 			path = NoGps;
 			sourceTree = "<group>";
@@ -4191,9 +4222,18 @@
 			path = WebImage;
 			sourceTree = "<group>";
 		};
+		5E0A00000000000000000003 /* CrashReports */ = {
+			isa = PBXGroup;
+			children = (
+				5E0A00000000000000000002 /* CrashReporter.swift */,
+			);
+			path = CrashReports;
+			sourceTree = "<group>";
+		};
 		ED82C73F2F90186300FA103D /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				5E0A00000000000000000003 /* CrashReports */,
 				7B3C39D4B9E6F6AB446F32C8 /* NoGps */,
 				ED82C6742F90186300FA103D /* AppDelegate */,
 				ED82C6792F90186300FA103D /* BackgroundFetchScheduler */,
@@ -4334,6 +4374,14 @@
 				ED82C81E2F90186900FA103D /* MWMMacros.h */,
 			);
 			path = Common;
+			sourceTree = "<group>";
+		};
+		5E0A00000000000000000006 /* CrashReports */ = {
+			isa = PBXGroup;
+			children = (
+				5E0A00000000000000000005 /* CrashReporterTests.swift */,
+			);
+			path = CrashReports;
 			sourceTree = "<group>";
 		};
 		ED91433C3001A0000081DF0B /* DeepLink */ = {
@@ -4510,6 +4558,9 @@
 				3BA9A3B57A3EBA3371A30A69 /* PBXTargetDependency */,
 			);
 			name = OMaps;
+			packageProductDependencies = (
+				5E0A00000000000000000008 /* Sentry */,
+			);
 			productName = Maps;
 			productReference = 6741AA5D1BF340DE002C974C /* Organic Maps (Debug).app */;
 			productType = "com.apple.product-type.application";
@@ -4644,6 +4695,9 @@
 				is,
 			);
 			mainGroup = 29B97314FDCFA39411CA2CEA /* Maps */;
+			packageReferences = (
+				5E0A00000000000000000007 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
+			);
 			productRefGroup = 19C28FACFE9D520D11CA2CBB /* Products */;
 			projectDirPath = "";
 			projectReferences = (
@@ -4899,6 +4953,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5E0A00000000000000000001 /* CrashReporter.swift in Sources */,
 				AF977941287B4A35E999CBBF /* StopNavigationIntent.swift in Sources */,
 				AF3B464834DF1EE73C3B9F74 /* NavigationLiveActivityAttributes.swift in Sources */,
 				AF687392037F6331B2C8E78F /* NavigationLiveActivityManager.swift in Sources */,
@@ -4921,7 +4976,12 @@
 				N0GPS1B00000000000000005 /* NoGpsIntroController.swift in Sources */,
 				333A4718BABBBFC6A412D69B /* NoGpsBoxSheet.swift in Sources */,
 				5C0A7E1B3D2F4A6890B1D004 /* AboutNoGpsController.swift in Sources */,
+				N0GPS1B00000000000000B01 /* NoGpsButton.swift in Sources */,
 				N0GPS2A00000000000000002 /* HowNoGpsController.swift in Sources */,
+				A0C47D0200000000000000B2 /* NoGpsProfileController.swift in Sources */,
+				N0GPS3B00000000000000002 /* GlobeScene.swift in Sources */,
+				N0GPS3B00000000000000004 /* GlobeSceneView.swift in Sources */,
+				N0GPS3B00000000000000006 /* GlobeCoastline.swift in Sources */,
 				3AB2A51C1DF5ED4103358BAF /* MWMNoGps.mm in Sources */,
 				9B5728946390BF79AAED06E1 /* Esp32BleTransport.swift in Sources */,
 				ED82BCB22F900F8200FA103D /* main.mm in Sources */,
@@ -5437,16 +5497,20 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5E0A00000000000000000004 /* CrashReporterTests.swift in Sources */,
 				A13811000000000000000002 /* TransportTransitWrappingTests.swift in Sources */,
 				A13812000000000000000002 /* TransportTransitRTLTests.swift in Sources */,
 				A13813000000000000000002 /* TransportRulerAppearanceTests.swift in Sources */,
 				5A07CF7460A24F6BBCA9F174 /* RoutePointCollectionViewCellTests.swift in Sources */,
 				D51CECE188BA883AE1DC41E8 /* MapPanelDraggerTests.swift in Sources */,
 				D560CC6FC73D20258FF65C5E /* NoGpsFlagsTests.swift in Sources */,
+				5B4A00000000000000000B01 /* NoGpsBarColorsTests.swift in Sources */,
+				N0GPS3B00000000000000008 /* NoGpsGlobeTests.swift in Sources */,
 				E4B1C0DE7A52C3F100A1B2C3 /* Esp32BleTransportTests.swift in Sources */,
 				5C0A7E1B3D2F4A6890B1D007 /* BottomMenuPresenterTests.swift in Sources */,
 				N0GPS1B00000000000000006 /* NoGpsIntroTests.swift in Sources */,
 				A0C47D010000000000000002 /* NoGpsCarMenuTests.swift in Sources */,
+				A0C47D0200000000000000B4 /* NoGpsProfileTests.swift in Sources */,
 				57A0D9ACD3DDA2D29AF02FC5 /* NavigationSearchWheelTests.swift in Sources */,
 				A13418010000000000000004 /* CarPlayManeuverMapperTests.swift in Sources */,
 				B26883EF0814407A8B1D73AF /* PlacePageUserDescriptionWebViewTests.swift in Sources */,
@@ -6135,6 +6199,25 @@
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5E0A00000000000000000007 /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa";
+			requirement = {
+				kind = exactVersion;
+				version = 9.34.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5E0A00000000000000000008 /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5E0A00000000000000000007 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 29B97313FDCFA39411CA2CEA /* Project object */;
 }

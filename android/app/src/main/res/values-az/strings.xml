@@ -151,7 +151,7 @@
     <string name="description">Qeydlər</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">NonGPS Maps əlfəcinləri sizinlə paylaşıldı</string>
-    <string name="share_bookmarks_email_body">Salam!\n\nNonGPS Maps əlfəcinlərim əlavə olunub. Zəhmət olmasa NonGPS Maps-da onları açın. Əgər onu quraşdırmamısınızsa, bu linkə daxil olub cihazınıza yükləyə bilərsiniz: https://github.com/Ramzess-II/NoGPSMaps\n\nNonGPS Maps ilə səyahətdən həzz alın!</string>
+    <string name="share_bookmarks_email_body">Salam!\n\nNonGPS Maps əlfəcinlərim əlavə olunub. Zəhmət olmasa NonGPS Maps-da onları açın. Əgər onu quraşdırmamısınızsa, bu linkə daxil olub cihazınıza yükləyə bilərsiniz: https://github.com/Ramzess-II/NoNGPS-Maps\n\nNonGPS Maps ilə səyahətdən həzz alın!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Əlfəcinlər yüklənir</string>
     <!-- Kmz file successful loading -->

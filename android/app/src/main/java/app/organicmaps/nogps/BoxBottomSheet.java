@@ -10,6 +10,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
@@ -17,7 +18,9 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.TextWatcher;
 import android.text.format.DateUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -46,6 +49,7 @@ import androidx.appcompat.widget.ListPopupWindow;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
+import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.FragmentManager;
 import androidx.transition.Slide;
 import androidx.transition.TransitionManager;
@@ -190,6 +194,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     }
   };
   private ViewGroup mRoot;
+  private NestedScrollView mScroll;
   private View mMain;
   private View mTitleRow;
   private TextView mTitle;
@@ -553,6 +558,34 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final BottomSheetBehavior<?> behavior = getBehavior();
     behavior.setSkipCollapsed(true);
     behavior.setState(BottomSheetBehavior.STATE_EXPANDED);
+    mScroll = (NestedScrollView) view;
+    mScroll.setMinimumHeight(minSheetHeight(windowHeight()));
+  }
+
+  @Override
+  public void onConfigurationChanged(@NonNull Configuration newConfig)
+  {
+    super.onConfigurationChanged(newConfig);
+    if (mScroll != null)
+      mScroll.setMinimumHeight(minSheetHeight(windowHeight()));
+  }
+
+  private int windowHeight()
+  {
+    // Not the decor view: its height is 0 before the first layout, e.g. when restored after a rotation.
+    return requireActivity().getResources().getDisplayMetrics().heightPixels;
+  }
+
+  @Override
+  public int getTheme()
+  {
+    return R.style.MwmTheme_BoxBottomSheetDialog;
+  }
+
+  // A short page is not a sliver at the bottom: the sheet is at least half the window.
+  static int minSheetHeight(int windowHeight)
+  {
+    return windowHeight / 2;
   }
 
   @Override
@@ -969,16 +1002,34 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final FrameLayout frame = new FrameLayout(context);
     frame.setPadding(dp(24), dp(8), dp(24), 0);
     frame.addView(name);
-    new MaterialAlertDialogBuilder(context)
-        .setTitle(R.string.nogps_car_name)
-        .setView(frame)
-        .setPositiveButton(R.string.save,
-                           (dialog, which) -> {
-                             NoGps.nativeRenameCar(car.id, name.getText().toString());
-                             update();
-                           })
-        .setNegativeButton(R.string.cancel, null)
-        .show();
+    final AlertDialog dialog = new MaterialAlertDialogBuilder(context)
+                                   .setTitle(R.string.nogps_car_name)
+                                   .setView(frame)
+                                   .setPositiveButton(R.string.save,
+                                                      (d, which) -> {
+                                                        NoGps.nativeRenameCar(car.id, name.getText().toString());
+                                                        update();
+                                                      })
+                                   .setNegativeButton(R.string.cancel, null)
+                                   .show();
+    // An empty name is refused: the core keeps the previous one.
+    final Button save = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+    save.setEnabled(!name.getText().toString().trim().isEmpty());
+    name.addTextChangedListener(new TextWatcher() {
+      @Override
+      public void beforeTextChanged(CharSequence s, int start, int count, int after)
+      {}
+
+      @Override
+      public void onTextChanged(CharSequence s, int start, int before, int count)
+      {}
+
+      @Override
+      public void afterTextChanged(Editable s)
+      {
+        save.setEnabled(!s.toString().trim().isEmpty());
+      }
+    });
   }
 
   private void confirmForgetCar(@NonNull NoGps.Car car)

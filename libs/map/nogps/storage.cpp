@@ -230,6 +230,9 @@ void CarStorage::RenameCar(std::string const & id, std::string const & name)
   std::string text = name;
   std::replace(text.begin(), text.end(), '\n', ' ');
   strings::Trim(text);
+  // An empty name erased on the box reads as a wiped flash to another phone, which writes its name back.
+  if (text.empty())
+    return;
   SetCarValue(id, kCarName, text);
 }
 
@@ -246,6 +249,10 @@ void CarStorage::ForgetCar(std::string const & id)
     m_storage.Remove(GetCarKey(id, key));
   for (auto const key : {kCarName, kCarFirmware, kCarLastSeen, kCarKnownBoxValues})
     m_storage.Remove(GetCarKey(id, key));
+  // The box of a forgotten car still knows this phone and may still keep its key: the key is kept unconfirmed, so the
+  // car added again is taken whether the box has it or not, see Esp32Source.
+  if (auto const key = GetCarValue(id, kCarAuthKey); key && !key->empty() && key->front() != kAuthKeyUnconfirmed)
+    SetCarValue(id, kCarAuthKey, kAuthKeyUnconfirmed + *key);
   if (m_storage.Get<std::string>(kCurrentCar, "") != id)
     return;
   auto const cars = GetCars();

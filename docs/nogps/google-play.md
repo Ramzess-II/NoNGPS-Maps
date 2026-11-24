@@ -8,7 +8,7 @@
 
 1. https://play.google.com/console — зарегистрироваться как **личный** аккаунт (или организация, если
    будет ФОП/ТОВ с номером D-U-N-S). Разовый взнос $25, проверка документа и телефона.
-2. Контактная почта для пользователей: `most05062014@gmail.com`, сайт: `https://github.com/Ramzess-II/NoGPSMaps`.
+2. Контактная почта для пользователей: `nongps.organic@gmail.com`, сайт: `https://github.com/Ramzess-II/NoNGPS-Maps`.
 
 ## 2. Закрытое тестирование — обязательно для нового личного аккаунта
 
@@ -96,7 +96,7 @@ cd android
 ## 6. Анкеты Play Console
 
 ### Содержание приложения → Политика конфиденциальности
-Ссылка: `https://github.com/Ramzess-II/NoGPSMaps/blob/main/docs/nogps/privacy-policy.md`
+Ссылка: `https://github.com/Ramzess-II/NoNGPS-Maps/blob/master/docs/nogps/privacy-policy.md`
 
 ### Реклама
 Нет рекламы.

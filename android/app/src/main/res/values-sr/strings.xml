@@ -151,7 +151,7 @@
     <string name="description">Напомене</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">NonGPS Maps маркери су подељени са вама</string>
-    <string name="share_bookmarks_email_body">Здраво!\n\nУ прилогу су моји маркери; молим те да их отвориш у NonGPS Maps-у. Ако га немаш већ инсталираног, можеш да га преузмеш одавде: https://github.com/Ramzess-II/NoGPSMaps\n\nУживај у путовању са NonGPS Maps-ом!</string>
+    <string name="share_bookmarks_email_body">Здраво!\n\nУ прилогу су моји маркери; молим те да их отвориш у NonGPS Maps-у. Ако га немаш већ инсталираног, можеш да га преузмеш одавде: https://github.com/Ramzess-II/NoNGPS-Maps\n\nУживај у путовању са NonGPS Maps-ом!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Учитавање маркера</string>
     <!-- Kmz file successful loading -->

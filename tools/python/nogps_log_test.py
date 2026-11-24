@@ -6,6 +6,7 @@
 
 import argparse
 import io
+import json
 import os
 import re
 import sys
@@ -77,8 +78,29 @@ def android_drive(day='10-08', start=18 * 3600, seconds=120, stand=10, error=lam
     return lines
 
 
+def logfmt_line(phone='Pixel_7-a3f9', version=2, trip='180000'):
+    """The first line of a log file, as LogsManager.getLogFormatLine writes it."""
+    return ('LOGFMT %d ms=%d phone=%s trip=%s app=2026.10.08-1-Google build=26100801 commit=abcdef12 om=2026.10.27-10'
+            % (version, LOGFMT_MS, phone, trip))
+
+
+def with_logfmt(lines, phone='Pixel_7-a3f9', **kwargs):
+    return [logfmt_line(phone, **kwargs)] + lines
+
+
 def analyse(*logs, year=None):
-    return nogps_log.Analysis([(name, ('\n'.join(lines) + '\n').encode()) for name, lines in logs], year)
+    """The analysis of logs (name, lines): a file without the LOGFMT line gets the one of Pixel_7-a3f9."""
+    return nogps_log.Analysis([(name, ('\n'.join(lines if lines[0].startswith('LOGFMT') else with_logfmt(lines)) + '\n')
+                                .encode()) for name, lines in logs], year)
+
+
+def write_tree(folder, files):
+    """The files {'<phone>/<yyyy-MM-dd>/<HHmmss>.log': lines} in |folder|."""
+    for name, lines in files.items():
+        path = os.path.join(folder, *name.split('/'))
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(lines) + '\n')
 
 
 def kinds(trip):
@@ -151,6 +173,15 @@ class TripLineTest(unittest.TestCase):
         self.assertEqual((row['acc'], row['net_acc'], row['net_age']), ('10', '900', '12.0'))
         self.assertEqual((row['gps_kmh'], row['err_m'], row['along_m']), ('36.0', 3.0, 3.0))
         self.assertEqual(nogps_log.box_flags(row), {'IMU_OK', 'BIAS_OK', 'FWD_OK', 'OBD_OK', 'MOUNT_MOVED'})
+
+    def test_header_of_a_joined_file_after_a_trip_line(self):
+        # A standing car ends the first day with a TRIP line: the header of the next file follows it.
+        first = android_drive('10-08', seconds=5, stand=5)
+        second = android_drive('10-09', seconds=5, stand=5)
+        second.insert(1, 'Location providers: gps net')
+        self.assertIn('TRIP ', first[-1])
+        groups = analyse(('joined.log', first + second)).groups
+        self.assertEqual(sum(len(g.rows) for g in groups), 10)
 
     def test_sensors(self):
         group = analyse(('app.log', android_drive(seconds=12))).groups[0]
@@ -258,6 +289,7 @@ class EventsTest(unittest.TestCase):
             core(day, t + 9, 'SetState', 'Routing session state: RouteNotStarted -> RouteBuilding',
                  file='routing/routing_session.cpp:273'),
             core(day, t + 10, 'Something', 'A new line of the core'),
+            core(day, t + 10, 'OnBoxEvent', 'EVENT box_event ms=1791417610000 Box event # 4 at 11 ms: MOUNT_MOVED'),
             '%s (main) D/LocationState: LocationHelper.java:525 start(): ' % android_time(day, t + 11),
             '%s (main) I/Other: Other.java:1 run(): not a NoGPS line' % android_time(day, t + 12),
         ]
@@ -265,7 +297,7 @@ class EventsTest(unittest.TestCase):
         self.assertEqual([(e['cat'], e['name']) for e in events if e['name'] not in ('app started',
                                                                                    'navigation started')], [
             ('user', 'tap'), ('state', 'GPS signal'), ('road', 'road lost'), ('box', 'box event'),
-            ('route', 'route asked for'), ('other', 'A new line of'), ('app', 'location started')])
+            ('route', 'route asked for'), ('other', 'A new line of'), ('box', 'box event'), ('app', 'location started')])
         self.assertEqual((events[2]['lat'], events[2]['lon']), (10.0001, 20.0002))
 
 
@@ -305,22 +337,72 @@ class CalibrationTest(unittest.TestCase):
 
 
 class ReplayLogsTest(unittest.TestCase):
-    def test_logs_of_two_phones_are_refused(self):
-        log = '\n'.join(android_drive(seconds=20, stand=0))
+    def run_main(self, *argv):
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.object(sys, 'argv', ['nogps_replay.py', *argv]), redirect_stdout(out), \
+                mock.patch.object(sys, 'stderr', err):
+            try:
+                nogps_replay.main()
+            except SystemExit:
+                pass
+        return out.getvalue(), err.getvalue()
+
+    @staticmethod
+    def drive(seconds):
+        """A drive with the rotation of the box, which the input is made from."""
+        return android_drive(seconds=seconds, stand=0) + [
+            core('10-08', 18 * 3600 + 2 + s, 'OnMotion', 'GYRO 0.0 0 0 0 0 0 36 36 36 36 36', ms=600,
+                 file='nogps/esp32_source.cpp:1') for s in range(seconds)]
+
+    def two_phones(self, folder):
+        write_tree(folder, {
+            'Pixel_7-a3f9/2026-10-08/180000.log': with_logfmt(self.drive(20)),
+            'SM_S918B-0b1c/2026-10-08/180000.log': with_logfmt(self.drive(30), 'SM_S918B-0b1c')})
+
+    def test_days_of_a_tree_of_two_phones(self):
         with tempfile.TemporaryDirectory() as folder:
+            self.two_phones(folder)
+            out, _ = self.run_main('days', folder)
+            self.assertIn('phone Pixel_7-a3f9\n10-08      20 TRIP lines', out)
+            self.assertIn('phone SM_S918B-0b1c\n10-08      30 TRIP lines', out)
+            out, _ = self.run_main('days', os.path.join(folder, 'Pixel_7-a3f9'))
+            self.assertNotIn('SM_S918B-0b1c', out)
+
+    def test_input_of_a_tree_of_two_phones_is_a_file_a_phone(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.two_phones(folder)
+            target = os.path.join(folder, 'in.txt')
+            self.run_main('input', folder, '--day', '10-08', '-o', target)
+            self.assertEqual(sorted(n for n in os.listdir(folder) if n.startswith('in-')),
+                             ['in-Pixel_7-a3f9.txt', 'in-SM_S918B-0b1c.txt'])
+
+    def test_compare_takes_one_phone(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.two_phones(folder)
+            _, err = self.run_main('compare', folder, '--day', '10-08', '--replay', 'out.txt')
+            self.assertIn('Pixel_7-a3f9, SM_S918B-0b1c: compare takes one phone', err)
+
+    def test_run_drives_each_phone_into_its_folder(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.two_phones(folder)
+            tool = os.path.join(folder, 'tool.py')
+            with open(tool, 'w') as f:
+                f.write('#!%s\nimport sys\nopen(sys.argv[-1], "w").write("")\nopen(sys.argv[-1] + ".done", "w")\n'
+                        % sys.executable)
+            os.chmod(tool, 0o755)
+            out_folder = os.path.join(folder, 'out')
+            out, _ = self.run_main('run', os.path.join(folder, 'Pixel_7-a3f9'), os.path.join(folder, 'SM_S918B-0b1c'),
+                                   '--tool', tool, '--data_path', 'maps', '-o', out_folder, '-j', '1')
+            self.assertIn('phone Pixel_7-a3f9', out)
+            self.assertIn('phone SM_S918B-0b1c', out)
             for phone in ('Pixel_7-a3f9', 'SM_S918B-0b1c'):
-                os.makedirs(os.path.join(folder, phone, '2026-10-08'))
-                with open(os.path.join(folder, phone, '2026-10-08', '180000.log'), 'w', encoding='utf-8') as f:
-                    f.write(log)
-            out, err = io.StringIO(), io.StringIO()
-            with mock.patch.object(sys, 'argv', ['nogps_replay.py', 'days', os.path.join(folder, 'Pixel_7-a3f9')]), \
-                    redirect_stdout(out):
-                nogps_replay.main()
-            self.assertIn('10-08      20 TRIP lines', out.getvalue())
-            with mock.patch.object(sys, 'argv', ['nogps_replay.py', 'days', folder]), \
-                    mock.patch.object(sys, 'stderr', err), self.assertRaises(SystemExit):
-                nogps_replay.main()
-            self.assertIn('Pixel_7-a3f9, SM_S918B-0b1c: give the logs of one phone', err.getvalue())
+                self.assertTrue(os.path.exists(os.path.join(out_folder, phone, '10-08-in.txt')), phone)
+
+    def test_an_old_file_is_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {'log-08-10-26-Pixel_7-a3f9.log': android_drive(seconds=3)})
+            _, err = self.run_main('days', folder)
+            self.assertIn('not a log of LOGFMT 2', err)
 
 
 class InputTest(unittest.TestCase):
@@ -329,65 +411,115 @@ class InputTest(unittest.TestCase):
         data = io.BytesIO()
         with zipfile.ZipFile(data, 'w') as z:
             # The files overlap: the same lines are read once.
-            z.writestr('logs/app.1.log', '\n'.join(log[:40]))
-            z.writestr('logs/app.log', '\n'.join(log[:3] + log[30:]))
-            z.writestr('logs/logcat.log', 'not read')
+            z.writestr('logs/Pixel_7-a3f9/2026-10-08/180000.log', '\n'.join(with_logfmt(log[:40])))
+            z.writestr('logs/Pixel_7-a3f9/2026-10-08/180100.log', '\n'.join(with_logfmt(log[:3] + log[30:])))
+            z.writestr('logs/Pixel_7-a3f9/logcat.log', 'not read')
         analysis = nogps_log.Analysis([('logs.zip', data.getvalue())])
-        self.assertEqual([f['name'] for f in analysis.files], ['logs.zip/logs/app.1.log', 'logs.zip/logs/app.log'])
+        self.assertEqual([f['name'] for f in analysis.files], ['logs.zip/logs/Pixel_7-a3f9/2026-10-08/180000.log',
+                                                               'logs.zip/logs/Pixel_7-a3f9/2026-10-08/180100.log'])
         self.assertEqual(len(analysis.trips[0].rows), 60)
 
-    def test_groups_by_phone(self):
+    def test_groups_by_the_phone_of_the_header(self):
+        """The phone is what the file says, not what its path or name does."""
         log = android_drive(seconds=30, stand=0)
-        analysis = analyse(('log-08-10-26-Pixel_7-a3f9.log', log[:20]), ('log-08-10-26-Pixel_7-a3f9.1.log', log[20:]),
-                           ('log-08-10-26-SM_S918B-0b1c.log', log), ('app.log', log))
+        analysis = analyse(('a.log', with_logfmt(log[:20])), ('a1.log', with_logfmt(log[20:])),
+                           ('b.log', with_logfmt(log, 'SM_S918B-0b1c')))
         self.assertEqual([(g.platform, g.phone) for g in analysis.groups],
-                         [('android', ''), ('android', 'Pixel_7-a3f9'), ('android', 'SM_S918B-0b1c')])
-        self.assertEqual([len(g.rows) for g in analysis.groups], [30, 30, 30])
-        self.assertEqual(sorted(t.summary()['phone'] for t in analysis.trips), ['', 'Pixel_7-a3f9', 'SM_S918B-0b1c'])
+                         [('android', 'Pixel_7-a3f9'), ('android', 'SM_S918B-0b1c')])
+        self.assertEqual([len(g.rows) for g in analysis.groups], [30, 30])
+        self.assertEqual(sorted(t.summary()['phone'] for t in analysis.trips), ['Pixel_7-a3f9', 'SM_S918B-0b1c'])
 
-    def test_phone_of_name(self):
-        self.assertEqual(nogps_trip_log.phone_of('logs.zip/logs/log-01-11-26-iPhone15_2-a3f9.12.log'), 'iPhone15_2-a3f9')
-        self.assertEqual(nogps_trip_log.phone_of('log-01-11-26-Pixel_7-a3f9.log'), 'Pixel_7-a3f9')
-        self.assertEqual(nogps_trip_log.phone_of('logs/app.1.log'), '')
-        self.assertEqual(nogps_trip_log.phone_of('log.txt'), '')
+    def test_header(self):
+        header = nogps_trip_log.header_of('a.log', (logfmt_line() + '\nDatetime: 2026-10-08 18:00:00.000\n').encode())
+        self.assertEqual((header['logfmt'], header['phone'], header['trip'], header['commit']),
+                         (2, 'Pixel_7-a3f9', '180000', 'abcdef12'))
+        self.assertEqual(nogps_trip_log.parse_header('a.log', '\ufeff' + logfmt_line() + '\r')['phone'], 'Pixel_7-a3f9')
 
-    def test_phone_of_folder(self):
-        self.assertEqual(nogps_trip_log.phone_of('logs.zip/logs/iPhone15_2-a3f9/2026-11-01/081500.log'), 'iPhone15_2-a3f9')
-        self.assertEqual(nogps_trip_log.phone_of('trip-logs/Pixel_7-a3f9/2026-11-01/235907.log'), 'Pixel_7-a3f9')
-        self.assertEqual(nogps_trip_log.phone_of('Pixel_7-a3f9/2026-11-01/235907.log'), 'Pixel_7-a3f9')
-        self.assertEqual(nogps_trip_log.phone_of('C:\\logs\\Pixel_7-a3f9\\2026-11-01\\235907.log'), 'Pixel_7-a3f9')
-        # A file taken out of its folders, the system log of "Report a bug", a folder that is not a day.
-        self.assertEqual(nogps_trip_log.phone_of('235907.log'), '')
-        self.assertEqual(nogps_trip_log.phone_of('logs/Pixel_7-a3f9/logcat.log'), '')
-        self.assertEqual(nogps_trip_log.phone_of('logs/Pixel_7-a3f9/notes/235907.log'), '')
+    def test_files_that_cannot_be_placed_are_refused(self):
+        refused = {
+            'a format that is not known': logfmt_line(version=3),
+            'a file of the earlier versions': 'Datetime: 2026-10-08 18:00:00.000',
+            'a file with no phone': 'LOGFMT 2 ms=1 trip=180000',
+            'an empty file': '',
+        }
+        for what, first_line in refused.items():
+            with self.subTest(what), self.assertRaises(nogps_trip_log.LogFormatError):
+                nogps_log.Analysis([('a.log', '\n'.join([first_line] + android_drive(seconds=3)).encode())])
 
     def test_tree_of_two_phones(self):
         """The zips of two phones unpacked into one folder, and a zip of the same tree."""
         first, second = android_drive(seconds=30, stand=0), android_drive(seconds=40, stand=0)
-        files = {'Pixel_7-a3f9/2026-10-08/180000.log': first[:20], 'Pixel_7-a3f9/2026-10-08/180019.log': first[20:],
-                 'SM_S918B-0b1c/2026-10-08/180000.log': second, 'Pixel_7-a3f9/logcat.log': ['not read'],
-                 'log-08-10-26-Pixel_7-a3f9.log': first}
+        files = {'Pixel_7-a3f9/2026-10-08/180000.log': with_logfmt(first[:20]),
+                 'Pixel_7-a3f9/2026-10-08/180019.log': with_logfmt(first[20:], trip='180019'),
+                 'SM_S918B-0b1c/2026-10-08/180000.log': with_logfmt(second, 'SM_S918B-0b1c'),
+                 'Pixel_7-a3f9/logcat.log': ['not read']}
         data = io.BytesIO()
         with tempfile.TemporaryDirectory() as folder, zipfile.ZipFile(data, 'w') as z:
+            write_tree(os.path.join(folder, 'logs'), files)
             for name, lines in files.items():
-                path = os.path.join(folder, 'logs', *name.split('/'))
-                os.makedirs(os.path.dirname(path), exist_ok=True)
-                with open(path, 'w', encoding='utf-8') as f:
-                    f.write('\n'.join(lines))
                 z.writestr('logs/' + name, '\n'.join(lines))
             sources = nogps_log.load_paths([os.path.join(folder, 'logs')])
-            # The same files in the order of their names.
-            self.assertEqual(nogps_trip_log.log_files([folder]), [name for name, _ in sources])
+            # The same files in the order of their names, the system log left out.
+            self.assertEqual([n for n in nogps_trip_log.log_files([folder]) if 'logcat' not in n],
+                             [name for name, _ in sources])
         for analysis in (nogps_log.Analysis(sources), nogps_log.Analysis([('logs.zip', data.getvalue())])):
             self.assertEqual(sorted(f['phone'] for f in analysis.files),
-                             ['Pixel_7-a3f9', 'Pixel_7-a3f9', 'Pixel_7-a3f9', 'SM_S918B-0b1c'])
-            # The file named as before the tree has the lines of the phone again: read once.
+                             ['Pixel_7-a3f9', 'Pixel_7-a3f9', 'SM_S918B-0b1c'])
             self.assertEqual([(g.platform, g.phone, len(g.rows)) for g in analysis.groups],
                              [('android', 'Pixel_7-a3f9', 30), ('android', 'SM_S918B-0b1c', 40)])
 
+    def test_a_tree_file_without_the_logfmt_line_takes_the_phone_of_its_path(self):
+        """iOS with the record in a file off writes the OSLog text of "Report a bug" into the tree, Logger.mm."""
+        header = nogps_trip_log.parse_header('logs.zip/logs/Pixel_7-a3f9/2026-10-08/180000.log', 'I(1) 0.5 hello')
+        self.assertEqual((header['logfmt'], header['phone'], header['trip']), (None, 'Pixel_7-a3f9', '180000'))
+        analysis = nogps_log.Analysis([('logs/Pixel_7-a3f9/2026-10-08/180000.log',
+                                        ('\n'.join(android_drive(seconds=3)) + '\n').encode())])
+        self.assertEqual([(f['phone'], f['platform']) for f in analysis.files], [('Pixel_7-a3f9', 'android')])
+
+    def test_a_tree_file_without_the_logfmt_line_read_from_inside_the_phone_folder(self):
+        """The folder of one phone given as ".", or a day of it: the <phone> folder is above the path given."""
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {'Pixel_7-a3f9/2026-10-08/180000.log': android_drive(seconds=3)})
+            here = os.getcwd()
+            os.chdir(os.path.join(folder, 'Pixel_7-a3f9'))
+            try:
+                for path in ('.', './2026-10-08/180000.log', '2026-10-08/180000.log'):
+                    with self.subTest(path):
+                        self.assertEqual(list(nogps_trip_log.files_by_phone([path])), ['Pixel_7-a3f9'])
+            finally:
+                os.chdir(here)
+        # A name that is no file on disk is not a path of the tree: "." tells no phone.
+        with self.assertRaises(nogps_trip_log.LogFormatError):
+            nogps_trip_log.parse_header('./2026-10-08/180000.log', 'I(1) 0.5 hello')
+
+    def test_analysis_skips_an_old_file_next_to_new_ones(self):
+        """A zip of a phone that still keeps a file of an earlier version: the rest of it is read, as in load_paths."""
+        data = io.BytesIO()
+        with zipfile.ZipFile(data, 'w') as z:
+            z.writestr('logs/log-07-10-26-Pixel_7-a3f9.log', '\n'.join(android_drive(seconds=3)))
+            z.writestr('logs/Pixel_7-a3f9/2026-10-08/180000.log', '\n'.join(with_logfmt(android_drive(seconds=3))))
+        analysis = nogps_log.Analysis([('logs.zip', data.getvalue())])
+        self.assertEqual([f['name'] for f in analysis.files], ['logs.zip/logs/Pixel_7-a3f9/2026-10-08/180000.log'])
+        self.assertEqual([n.split(':')[0] for n in analysis.notes], ['Skipped'])
+
+    def test_load_paths_refuses_an_old_file(self):
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {'log-08-10-26-Pixel_7-a3f9.log': android_drive(seconds=3)})
+            with self.assertRaises(nogps_trip_log.LogFormatError):
+                nogps_log.load_paths([folder])
+
+    def test_load_paths_skips_an_old_file_next_to_new_ones(self):
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {'log-08-10-26-Pixel_7-a3f9.log': android_drive(seconds=3),
+                                'Pixel_7-a3f9/2026-10-08/180000.log': with_logfmt(android_drive(seconds=3))})
+            self.assertEqual(len(nogps_log.load_paths([folder])), 1)
+            self.assertEqual(list(nogps_trip_log.files_by_phone([folder])), ['Pixel_7-a3f9'])
+
     def test_not_a_log(self):
-        analysis = nogps_log.Analysis([('notes.txt', b'hello')])
-        self.assertEqual((analysis.trips, analysis.notes), ([], ['notes.txt: not a log of the app']))
+        with self.assertRaises(nogps_trip_log.LogFormatError):
+            nogps_log.Analysis([('notes.txt', b'hello')])
+        analysis = analyse(('a.log', with_logfmt(['hello'])))
+        self.assertEqual((analysis.trips, analysis.notes), ([], ['a.log: has no lines of the app']))
 
 
 class ReplayInputTest(unittest.TestCase):
@@ -408,6 +540,37 @@ class ReplayInputTest(unittest.TestCase):
                                                            output=out, no_taps=False, no_route=False))
             with open(out, encoding='ascii') as f:
                 return [line.split() for line in f]
+
+    def calibration_records(self, lines):
+        return [r for r in self.records(lines) if r[0] == 'K']
+
+    def test_calibration_of_the_log_before_the_box_data(self):
+        """The last CALIBRATION line before the box data gives the car, without the unit and with the box first."""
+        lines = self.drive(60, tagged=True)
+        first = 'CALIBRATION ms=1760000001000 car=A1B2 scale=1.02'
+        last = ('CALIBRATION ms=1760000002000 car=C47D scale=1.04 table=3:1,2 rough=3:4 factor=1.01 unit=1.609 '
+                'lag=0.30 accel=C47D:0.9,1')
+        lines[0:0] = [core('10-08', 18 * 3600 - 5, 'LogCalibration', first),
+                      core('10-08', 18 * 3600 - 3, 'LogCalibration', last),
+                      core('10-08', 18 * 3600 + 30, 'LogCalibration', 'CALIBRATION ms=1 car=ZZZZ scale=2')]
+        got = self.calibration_records(lines)
+        self.assertEqual(len(got), 1)
+        self.assertEqual(got[0][2:], ['car=C47D', 'scale=1.04', 'table=3:1,2', 'rough=3:4', 'factor=1.01',
+                                      'lag=0.30', 'accel=C47D:0.9,1'])
+
+    def test_calibration_written_after_the_start_of_the_file(self):
+        """The file begins with the start of the app: the line it writes a moment later is the one taken."""
+        lines = self.drive(60, tagged=True)
+        lines[0:0] = [core('10-08', 18 * 3600 - 9, 'LogCalibration', 'CALIBRATION ms=1 car=OLD1 scale=2'),
+                      core('10-08', 18 * 3600 - 3, 'LogCalibration', 'CALIBRATION ms=2 car=C47D scale=1.04')]
+        records = self.records(lines)
+        started = min(int(r[1]) for r in records if r[0] == 'S')
+        got = [r for r in records if r[0] == 'K']
+        self.assertEqual([r[2:] for r in got], [['car=C47D', 'scale=1.04']])
+        self.assertLessEqual(started, int(got[0][1]))
+
+    def test_no_calibration_in_the_log(self):
+        self.assertEqual(self.calibration_records(self.drive(60, tagged=True)), [])
 
     def switches(self, switch_lines, tagged=False):
         # The switches come while the car drives, after the first second of the box data.
@@ -443,6 +606,24 @@ class ReplayInputTest(unittest.TestCase):
         got = [r[0] for r in self.records(lines)
                if r[0] in ('T', 'H', 'W', 'S') and int(r[1]) >= (18 * 3600 + 20) * 1000]
         self.assertEqual(got, ['T', 'H', 'W', 'S'])
+
+    def ble_states(self, texts):
+        """The L records of the Bluetooth states written while the car drives."""
+        lines = self.drive(60)
+        lines[30:30] = [core('10-08', 18 * 3600 + 20 + i, 'OnBleState', t) for i, t in enumerate(texts)]
+        return [r for r in self.records(lines) if r[0] == 'L' and int(r[1]) >= (18 * 3600 + 20) * 1000]
+
+    def test_bond_lost_flag(self):
+        """The connection that probes a pairing thought lost is driven again as a probe and not as a link."""
+        got = self.ble_states(['Bluetooth = BOND_LOST bond lost = 1', 'Bluetooth = CONNECTED bond lost = 1',
+                               'Bluetooth = CONNECTED bond lost = 0'])
+        self.assertEqual([(r[2], r[3]) for r in got],
+                         [('BOND_LOST', '1'), ('CONNECTED', '1'), ('CONNECTED', '0')])
+
+    def test_bond_lost_flag_of_older_logs(self):
+        """A log written before the flag has none: the connection is a link, as it was then."""
+        got = self.ble_states(['Bluetooth = CONNECTED'])
+        self.assertEqual([(r[2], r[3]) for r in got], [('CONNECTED', '0')])
 
     def test_initial_gps_off(self):
         lines = [core('10-08', 18 * 3600 - 5, 'SetGpsDisabled', 'GPS ignored by the user = 1')]
@@ -506,10 +687,31 @@ class RulesTest(unittest.TestCase):
         self.assertEqual(counts['turn moved to a crossing'], dict(fired=1, ok=1, lost=0, tap=0))
         # 10 m/s: 300 m take 30 s, the loss at 55 s is within them.
         self.assertEqual(counts['bend moved'], dict(fired=1, ok=0, lost=1, tap=0))
-        self.assertEqual(counts['bend moved, slow car'], dict(fired=1, ok=0, lost=1, tap=0))
+        self.assertEqual(counts['bend moved, repeated'], dict(fired=1, ok=0, lost=1, tap=0))
         self.assertEqual(counts['turn left by "followed the roads"'], dict(fired=1, ok=0, lost=0, tap=1))
         self.assertEqual(counts['fork branch chosen'], dict(fired=1, ok=1, lost=0, tap=0))
         self.assertNotIn('loop', counts)
+
+    def test_speed_not_fresh_does_not_stretch_the_window(self):
+        # 10 m/s from the rule at 10 s, "speed=-1" (not fresh) from 20 s to 80 s: the car does not drive back, so the
+        # 300 m are driven by 98 s and the loss at 99 s is outside the window.
+        trip = self.trip([(10, 'Loop: the way driven lies on the roads 20 m away, moved there')],
+                         lambda s: dict(speed='-1') if 20 <= s < 80 else dict(lost='1') if s >= 99 else {})
+        self.assertEqual(trip.rule_counts()['loop'], dict(fired=1, ok=1, lost=0, tap=0))
+
+    def test_the_gps_speed_does_not_drive_the_window(self):
+        # The car stands (speed=0) from 20 s to 80 s while GPS still reports 36 km/h: the window follows the car, so
+        # the 300 m are not driven before the loss at 90 s.
+        trip = self.trip([(10, 'Loop: the way driven lies on the roads 20 m away, moved there')],
+                         lambda s: dict(speed='0') if 20 <= s < 80 else dict(lost='1') if s >= 90 else {})
+        self.assertEqual(trip.rule_counts()['loop'], dict(fired=1, ok=0, lost=1, tap=0))
+
+    def test_a_tap_of_the_panel_is_not_a_map_tap(self):
+        tap = 'ACTION tap ms=1760000020000 by=%s tap = ms::LatLon(10.0, 20.0) location = ms::LatLon(10.0, 20.0)'
+        for by, key in (('gps', 'ok'), ('user', 'tap')):
+            trip = self.trip([(10, 'Loop: the way driven lies on the roads 20 m away, moved there'),
+                              (20, tap % by)])
+            self.assertEqual(trip.rule_counts()['loop'][key], 1, by)
 
     def test_a_road_already_lost_is_not_a_new_loss(self):
         trip = self.trip([(30, 'Loop: the way driven lies on the roads 20 m away, moved there')],
@@ -639,6 +841,8 @@ class TaggedLinesTest(unittest.TestCase):
         log = logfmt2(android_drive(seconds=120, stand=0))
         log += [core('10-08', 18 * 3600 + sec, 'F', text) for sec, text in (
             (10, 'RULE bend_moved ms=1760000010000 kind=bend Bend: moved along the road by 20 m'),
+            (15, 'RULE bend_moved_repeated ms=1760000015000 kind=bend Bend: moved along the road by 20 m, '
+                 'told repeatedly'),
             (20, 'RULE bend_confirmed ms=1760000020000 kind=bend Bend: the position fits the road, ahead by 1 m'),
             (30, 'RULE loop ms=1760000030000 Loop: the way driven lies on the roads 20 m away, moved there'),
             (40, 'RULE fork_branch ms=1760000040000 FORK the car goes along the branch 5 m aside'),
@@ -649,8 +853,36 @@ class TaggedLinesTest(unittest.TestCase):
                  'WAY misses the roads at 3 points where it was shown, at 1 there, marks 2'))]
         counts = analyse(('app.log', log)).trips[0].rule_counts()
         self.assertEqual({name for name, count in counts.items() if count['fired']},
-                         {'bend moved', 'bend confirmed', 'loop', 'fork branch chosen', 'followed apart', 'late turn',
-                          'road lost', 'mark switched by the way'})
+                         {'bend moved', 'bend moved, repeated', 'bend confirmed', 'loop', 'fork branch chosen',
+                          'followed apart', 'late turn', 'road lost', 'mark switched by the way'})
+
+    def test_repeated_bend_is_counted_apart_from_bend(self):
+        """Both kinds of bend_moved_repeated count, the ordinary bend and the gentle one."""
+        for name, texts in (
+                ('LOGFMT 1', ['Bend: moved along the road by 20 m', 'Bend: moved along the road by 30 m, told '
+                              'repeatedly to a slow car', 'Bend: moved along the road by 40 m, told repeatedly',
+                              'Gentle bend: moved along the road by 50 m, told repeatedly',
+                              'Gentle bend: moved along the road by 60 m',
+                              'Gentle bend: the position fits the road, ahead by 2 m']),
+                ('LOGFMT 2', ['RULE bend_moved ms=1 kind=bend Bend: moved along the road by 20 m',
+                              'RULE bend_moved_repeated ms=2 kind=bend Bend: moved along the road by 30 m, '
+                              'told repeatedly',
+                              'RULE bend_moved_repeated ms=3 kind=bend Bend: moved along the road by 40 m, '
+                              'told repeatedly',
+                              'RULE bend_moved_repeated ms=4 kind=gentle Gentle bend: moved along the road by '
+                              '50 m, told repeatedly',
+                              'RULE bend_moved ms=5 kind=gentle Gentle bend: moved along the road by 60 m',
+                              'RULE bend_confirmed ms=6 kind=gentle Gentle bend: the position fits the road, '
+                              'ahead by 2 m'])):
+            with self.subTest(name):
+                log = android_drive(seconds=120, stand=0)
+                log += [core('10-08', 18 * 3600 + 10 * (i + 1), 'F', t) for i, t in enumerate(texts)]
+                if name == 'LOGFMT 2':
+                    log = logfmt2(log)
+                counts = analyse(('app.log', log)).trips[0].rule_counts()
+                self.assertEqual(counts['bend moved']['fired'], 2)
+                self.assertEqual(counts['bend moved, repeated']['fired'], 3)
+                self.assertEqual(counts['bend confirmed']['fired'], 1)
 
     def test_events_of_a_tagged_log_keep_their_category(self):
         day, t = '10-08', 18 * 3600
@@ -718,6 +950,36 @@ class TaggedLinesTest(unittest.TestCase):
         self.assertEqual(counts['mark switched to another road'], (1, 1))
 
 
+class TripCsvTest(unittest.TestCase):
+    """nogps_trip_log.py: the rows of one phone."""
+
+    def run_main(self, *argv):
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.object(sys, 'argv', ['nogps_trip_log.py', *argv]), redirect_stdout(out), \
+                mock.patch.object(sys, 'stderr', err):
+            try:
+                nogps_trip_log.main()
+            except SystemExit:
+                pass
+        return out.getvalue(), err.getvalue()
+
+    def test_the_logs_of_two_phones_are_refused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {
+                'Pixel_7-a3f9/2026-10-08/180000.log': with_logfmt(android_drive(seconds=3, stand=0)),
+                'SM_S918B-0b1c/2026-10-08/180000.log': with_logfmt(android_drive(seconds=3, stand=0),
+                                                                   'SM_S918B-0b1c')})
+            out, err = self.run_main(folder)
+            self.assertIn('the logs of Pixel_7-a3f9, SM_S918B-0b1c: give the logs of one phone', err)
+            self.assertEqual(out, '')
+
+    def test_the_rows_of_one_phone(self):
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {'Pixel_7-a3f9/2026-10-08/180000.log': with_logfmt(android_drive(seconds=3, stand=0))})
+            out, _ = self.run_main(folder, '--year', '2026')
+            self.assertEqual(len(out.splitlines()), 4)
+
+
 class HeldOutTest(unittest.TestCase):
     def test_days_and_sets(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -740,6 +1002,107 @@ class HeldOutTest(unittest.TestCase):
 
     def test_file_of_the_repo_parses(self):
         self.assertIsInstance(nogps_replay.held_out_days(), set)
+
+
+class HeldOutRuleTest(unittest.TestCase):
+    def test_days_of_the_rule_and_of_the_list(self):
+        listed = {'10-09'}
+        self.assertEqual({day: nogps_replay.set_of(day, listed)
+                          for day in ('2026-11-24', '2026-11-28', '2026-11-23', '2026-10-08', '2026-10-09', '11-24')},
+                         {'2026-11-24': 'held out', '2026-11-28': 'held out', '2026-11-23': 'made from',
+                          '2026-10-08': 'made from', '2026-10-09': 'held out', '11-24': 'made from'})
+
+    def test_days_take_the_year_of_their_folder(self):
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {'Pixel_7-a3f9/2026-11-24/180000.log': with_logfmt(android_drive('11-24', seconds=3,
+                                                                                                stand=0)),
+                                'Pixel_7-a3f9/2026-11-23/180000.log': with_logfmt(android_drive('11-23', seconds=2,
+                                                                                                stand=0))})
+            out = io.StringIO()
+            with mock.patch.object(nogps_replay, 'held_out_days', lambda: set()), redirect_stdout(out):
+                nogps_replay.days(argparse.Namespace(logs=nogps_trip_log.log_files([folder])))
+            self.assertEqual(out.getvalue().splitlines(), ['11-23       2 TRIP lines  made from',
+                                                           '11-24       3 TRIP lines  held out',
+                                                           'held out 1 of 2 days'])
+
+
+def write_flag(folder, name, values, png=True, m4a=False):
+    os.makedirs(folder, exist_ok=True)
+    with open(os.path.join(folder, name + '.json'), 'w') as f:
+        f.write(json.dumps(values))
+    for ext, wanted in (('png', png), ('m4a', m4a)):
+        if wanted:
+            with open(os.path.join(folder, '%s.%s' % (name, ext)), 'wb') as f:
+                f.write(b'data')
+
+
+def ios_drive(utc_start, seconds):
+    """An iOS log of a drive that starts at |utc_start| (datetime, UTC): the app writes UTC times."""
+    lines = ['I(1) 0.00000 Local time: %s +0000 , Time Zone: EET' % utc_start.strftime('%Y-%m-%d %H:%M:%S')]
+    lines += ['I(2) %d.00000 nogps/engine.cpp:1526 LogTrip(): %s'
+              % (s + 1, trip_line(lat=START_LAT + s * 10 * DEG_PER_M)) for s in range(seconds)]
+    return lines
+
+
+class FlagsTest(unittest.TestCase):
+    """A flag goes on the trip of its phone: an Android trip by the local time of the flag's name, an iOS trip by
+    UTC, from the offset its day's logs tell (the phone is 2 h ahead of UTC here)."""
+    IOS_START = nogps_log.datetime(2026, 11, 24, 15, 0, 0)
+
+    def tree(self, folder):
+        ios_header = logfmt_line('iPhone-1111', trip='170000').replace(
+            'ms=%d' % LOGFMT_MS, 'ms=%d' % nogps_log.to_ms(self.IOS_START))
+        write_tree(folder, {
+            'Pixel_7-a3f9/2026-11-24/180000.log': with_logfmt(android_drive('11-24', seconds=120, stand=0)),
+            'iPhone-1111/2026-11-24/170000.log': [ios_header] + ios_drive(self.IOS_START, 120)})
+        android = os.path.join(folder, 'Pixel_7-a3f9', '2026-11-24', 'flags')
+        write_flag(android, '20261124-180100', dict(n=1, lat=10.0, lon=20.0, voice_s=7, sent=False), m4a=True)
+        write_flag(android, '20261124-200000', dict(n=2, voice_s=0, sent=True))
+        write_flag(os.path.join(folder, 'iPhone-1111', '2026-11-24', 'flags'), '20261124-170030',
+                   dict(n=4, lat=10.0, lon=20.0, voice_s=0, sent=False))
+
+    def run_main(self, *args):
+        out = io.StringIO()
+        with mock.patch.object(sys, 'argv', ['nogps_log.py', *args]), redirect_stdout(out):
+            nogps_log.main()
+        return out.getvalue()
+
+    def test_flags_on_their_trips(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.tree(folder)
+            analysis = nogps_log.Analysis(nogps_log.load_paths([folder]), flags=nogps_log.load_flags([folder]))
+            by_phone = {t.group.phone: t for t in analysis.trips}
+            android, ios = by_phone['Pixel_7-a3f9'], by_phone['iPhone-1111']
+            day = nogps_log.to_ms(nogps_log.datetime(2026, 11, 24))
+            self.assertEqual([(f['n'], f['t']) for f in android.flags], [(1, day + (18 * 60 + 1) * 60_000)])
+            self.assertEqual([(f['n'], f['t']) for f in ios.flags], [(4, nogps_log.to_ms(self.IOS_START) + 30_000)])
+            late = next(f for f in analysis.flags if f['n'] == 2)
+            self.assertEqual((late['trip'], late['t']), (None, day + 20 * 3600_000))
+            self.assertEqual(android.summary()['flags'], 1)
+
+    def test_reports(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.tree(folder)
+            out = self.run_main('flags', folder)
+            lines = out.splitlines()
+            self.assertEqual(lines[-1], '3 flags, 2 on a trip')
+            android = next(t.id for t in nogps_log.Analysis(nogps_log.load_paths([folder])).trips
+                           if t.group.phone == 'Pixel_7-a3f9')
+            day = nogps_log.to_ms(nogps_log.datetime(2026, 11, 24))
+            self.assertIn('Pixel_7-a3f9       2026-11-24 %4d  18:01:00 18:01:00   7 s    no  #trip=%d&t=%d'
+                          % (android, android, day + (18 * 60 + 1) * 60_000), out)
+            self.assertIn('Pixel_7-a3f9       2026-11-24    -  20:00:00 -            -   yes  no trip', out)
+            self.assertIn('iPhone-1111        2026-11-24', out)
+            self.assertNotRegex(out, r'\d+\.\d+,\s*\d+\.\d+')
+            self.assertRegex(self.run_main('trips', folder), r'\n +%d +2026-11-24 18:00 .* +1 \d+\n' % android)
+            trip_out = self.run_main('trip', folder, '--trip', str(android))
+            self.assertIn('flags: 1\n  18:01:00 flag 1 18:01:00 voice 7 s (#trip=%d&t=%d)'
+                          % (android, day + (18 * 60 + 1) * 60_000), trip_out)
+            state = self.run_main('state', folder, '--trip', str(android), '--at', '18:01:10')
+            self.assertIn('flags within 30 s: -10 s flag 1 18:01:00 voice 7 s', state)
+            # A file given takes the flags of its day folder.
+            log = os.path.join(folder, 'Pixel_7-a3f9', '2026-11-24', '180000.log')
+            self.assertIn('2 flags, 1 on a trip', self.run_main('flags', log))
 
 
 class RunTest(unittest.TestCase):

@@ -65,6 +65,10 @@
   <!-- Backgrounds -->
   <color name="bg_window">#FFEEEEEE</color>
   <color name="bg_primary">#006C35</color>
+  <!-- The bars: the colour the app launches on. bg_primary stays the upstream green for the rest. -->
+  <color name="nogps_primary">#FFE3E1D2</color>
+  <color name="toolbar_text">@color/text_dark</color>
+  <color name="toolbar_text_hint">@color/text_dark_hint</color>
   <!-- The splash: the map background and its text, as the launch screen on iOS. -->
   <color name="nogps_splash_bg">#FFE3E1D2</color>
   <color name="nogps_splash_text">@color/black_primary</color>
@@ -163,4 +167,20 @@
   <color name="speed_hint_gold">#FFFFD54A</color>
   <!-- The bar of the calibration of the sensor box next to the speed, white text on it: systemOrange of iOS. -->
   <color name="calibration_bar_accent">#FFFF9500</color>
+
+  <!-- The globe of About NonGPS Maps -->
+  <color name="nogps_globe_sea">#FFDCEBF5</color>
+  <color name="nogps_globe_graticule">#FF7FA3C0</color>
+  <color name="nogps_globe_land">#FF4F8A5E</color>
+  <color name="nogps_globe_satellite">#FF2B3A4A</color>
+  <color name="nogps_globe_satellite_off">#FF9AA0A6</color>
+  <color name="nogps_globe_beam">#FF2F6FA8</color>
+  <color name="nogps_globe_jam">#FFE67700</color>
+  <color name="nogps_globe_car">#FFFFD500</color>
+  <color name="nogps_globe_car_outline">#FF1E2226</color>
+  <!-- The green of the coast: the coast stays drawn over it. -->
+  <color name="nogps_globe_land_fill">#CC4F8A5E</color>
+  <!-- Translucent, as the outage: the graticule, the coast and the jam stay readable over them. -->
+  <color name="nogps_globe_coverage">#732F6FA8</color>
+  <color name="nogps_globe_outage">#73D0342C</color>
 </resources>

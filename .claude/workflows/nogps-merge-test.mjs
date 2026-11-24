@@ -55,7 +55,8 @@ async function runScript({ args, reply, quiet = true }) {
 }
 
 // The prep steps of one PR: whichever of them a worker is in, it holds that PR's slot.
-const prepPeak = (peak) => Math.max(peak.disk || 0, peak.update || 0, peak.review || 0, peak.fix || 0)
+const prepPeak = (peak) =>
+  Math.max(peak.disk || 0, peak.update || 0, peak.review || 0, peak.confirm || 0, peak.fix || 0)
 
 const pr = (n, extra = {}) => ({ number: n, title: `PR ${n}`, branch: `feature/p${n}`, head: `h${n}`, url: `u${n}`, ...extra })
 
@@ -73,6 +74,7 @@ const base = (label) => {
   if (label.startsWith('disk')) return { freeGb: 100 }
   if (label.startsWith('update')) return { status: 'ok', head: 'nh', prepMaster: 'm0' }
   if (label.startsWith('review')) return { findings: [] }
+  if (label.startsWith('confirm')) return { findings: [] }
   if (label.startsWith('fix')) return { status: 'pushed', fixed: 1, rejected: 0, head: 'fh' }
   if (label.startsWith('merge')) return { status: 'merged', mergeCommit: 'c' + label.slice(7) }
   if (label === 'clean') return 'cleaned'
@@ -289,7 +291,242 @@ const base = (label) => {
   check('merged', r.out.merged === 1)
 }
 
-// --- 15. a bigger mixed run, repeated: it always terminates and merges everything ---
+// --- 15. two PRs that touch iOS are never prepped at once ---
+{
+  const r = await runScript({
+    args: {
+      ws: '/ws',
+      parallel: [
+        pr(1, { files: ['iphone/Maps/Core/NoGps/MWMNoGps.mm'] }),
+        pr(2, { files: ['libs/map/nogps/engine.cpp'] }),
+        pr(3, { files: ['xcode/map/map.xcodeproj/project.pbxproj'] }),
+        pr(4, { files: ['iphone/Maps/UI/Help/AboutController/AboutController.swift'] }),
+      ],
+      slots: 4,
+    },
+    reply: base,
+  })
+  console.log('15. three of four PRs touch iphone/ or xcode/')
+  check('all four merged', r.out.merged === 4, r.out.results.map((x) => [x.pr, x.outcome, x.set]))
+  const sets = Object.fromEntries(r.out.results.map((x) => [x.pr, x.set]))
+  check('the first iOS PR stays parallel', sets[1] === 'parallel', sets)
+  check('the one PR with no iOS files stays parallel', sets[2] === 'parallel', sets)
+  check('the other iOS PRs moved to serial', sets[3] === 'serial' && sets[4] === 'serial', sets)
+  check('only two slots were asked for', r.out.slots === 2, r.out.slots)
+  check('the log says why', r.logs.some((m) => /#3, #4 moved to the serial set/.test(m)), r.logs)
+  // The moved ones run one at a time, after the parallel merges: that is the point of moving them.
+  const m3 = r.order.indexOf('+merge:#3')
+  const u4 = r.order.indexOf('+update:#4')
+  check('#4 starts only after #3 merged', u4 > m3 && m3 > 0, { m3, u4 })
+}
+
+// --- 16. one iOS PR alone still goes in parallel ---
+{
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1, { files: ['iphone/Maps/Core/NoGps/MWMNoGps.mm'] }), pr(2, { files: ['libs/a.cpp'] })], slots: 2 },
+    reply: base,
+  })
+  console.log('16. a single iOS PR in the parallel set')
+  check('both stay parallel', r.out.results.every((x) => x.set === 'parallel'), r.out.results.map((x) => [x.pr, x.set]))
+  check('two preps at once', prepPeak(r.peak) === 2, r.peak)
+  check('nothing was moved', !r.logs.some((m) => /moved to the serial set/.test(m)), r.logs)
+}
+
+// --- 18. a firmware PR: its own repo, branch, worktree and CI checks ---
+{
+  const prompts = {}
+  const r = await runScript({
+    args: {
+      ws: '/ws',
+      parallel: [pr(1), pr(19, { repo: 'Ramzess-II/ELMandIMU', files: ['main/power.c'] })],
+      slots: 2,
+    },
+    reply: (label, opts, prompt) => {
+      prompts[label] = prompt
+      return base(label)
+    },
+  })
+  console.log('18. one app PR and one firmware PR')
+  check('both merged', r.out.merged === 2, r.out.results.map((x) => [x.pr, x.repo, x.outcome]))
+  const fw = r.out.results.find((x) => x.pr === 19)
+  check('the repo is in the report', fw.repo === 'Ramzess-II/ELMandIMU', fw)
+  check('the firmware steps are labelled apart', Object.keys(prompts).some((l) => l === 'update:fw#19'), Object.keys(prompts))
+  const u = prompts['update:fw#19']
+  check('it works in the -fw worktree', /\/ws\/worktrees\/merge-\d-fw/.test(u), u.slice(0, 400))
+  check('main, not master', /origin\/main/.test(u) && !/origin\/master/.test(u), u.slice(0, 600))
+  check('the worktree is made with plain git and keys linked', /git -C \/ws\/firmware worktree add/.test(u) && /ln -sfn \/ws\/firmware\/keys/.test(u), u)
+  // Without the main checkout's sdkconfig the build takes the esp32 target and secure boot v1, and signing fails.
+  check('sdkconfig is copied in too', /cp \/ws\/firmware\/sdkconfig/.test(u), u)
+  check('gh is pointed at the firmware repo', /-R Ramzess-II\/ELMandIMU/.test(u) && !/-R Ramzess-II\/NoNGPS-Maps/.test(u), u)
+  const g = prompts['merge:fw#19']
+  check('the gate builds the firmware', /idf\.py build/.test(g), g.slice(0, 200))
+  check('an unbuilt firmware PR is refused, not merged', /don't merge it/.test(g) && /"blocked" with "not built/.test(g) && !/landed unbuilt/.test(g), g)
+  check('the gate waits for the firmware PR\'s checks', /gh pr checks 19 -R Ramzess-II\/ELMandIMU/.test(g) && !/No CI to wait for/.test(g), g)
+  check('the gate merges into main', /checkout --force -B train\/gate refs\/remotes\/origin\/main/.test(g), g.slice(0, 200))
+  // A gate worktree removed under the run is remade, with the firmware's keys/ and sdkconfig.
+  check('the firmware gate remakes a missing worktree with keys and sdkconfig', /leftover directory\), somebody removed it/.test(g)
+    && /worktree add[^\n]*merge-train-fw[^\n]*\n?[^\n]*ln -sfn \/ws\/firmware\/keys \/ws\/worktrees\/merge-train-fw\/keys && cp \/ws\/firmware\/sdkconfig \/ws\/worktrees\/merge-train-fw\/sdkconfig/.test(g.replace(/\\\n/g, '')), g.slice(0, 1500))
+  check('the app gate remakes it with the helper', /nogps_worktree\.sh add merge-train/.test(prompts['merge:#1']), prompts['merge:#1'].slice(0, 800))
+  const m = prompts['merge:#1']
+  check('a leftover directory counts as gone', /worktree list --porcelain/.test(m) && /rm -rf \/ws\/worktrees\/merge-train/.test(m), m.slice(0, 900))
+  check('the app remake keeps unpushed commits of the old branch', /rev-list feature\/merge-train --not --remotes/.test(m) && /branch -m feature\/merge-train/.test(m), m.slice(0, 1200))
+  // The app PR is untouched by all this.
+  const a = prompts['update:#1']
+  check('the app PR still uses master and the helper', /origin\/master/.test(a) && /nogps_worktree\.sh add merge-\d/.test(a), a.slice(0, 400))
+  check('the app gate still waits for CI', /gh pr checks/.test(prompts['merge:#1']), prompts['merge:#1'].slice(0, 200))
+}
+
+// --- 19. the two repos number their PRs apart ---
+{
+  const r = await runScript({
+    args: {
+      ws: '/ws',
+      parallel: [pr(19), pr(19, { repo: 'Ramzess-II/ELMandIMU' })],
+      serial: [pr(19, { repo: 'Ramzess-II/ELMandIMU' })], // the same firmware PR again: taken once
+      slots: 2,
+    },
+    reply: base,
+  })
+  console.log('19. #19 in both repos')
+  check('both are taken', r.out.results.length === 2, r.out.results.map((x) => [x.pr, x.repo]))
+  check('one of each repo', new Set(r.out.results.map((x) => x.repo)).size === 2, r.out.results.map((x) => x.repo))
+  check('both merged', r.out.merged === 2)
+}
+
+// --- 20. a repo the train doesn't know ---
+{
+  let err = null
+  try {
+    await runScript({ args: { ws: '/ws', parallel: [pr(1, { repo: 'someone/else' })] }, reply: base })
+  } catch (e) {
+    err = e
+  }
+  console.log('20. a PR of an unknown repo')
+  check('the queue is refused before any agent runs', err !== null && /unknown repo someone\/else/.test(String(err)), String(err))
+}
+
+// --- 21. a PR opened from one of our own forks: its head and its push go to that fork's remote ---
+{
+  const prompts = {}
+  const r = await runScript({
+    args: {
+      ws: '/ws',
+      parallel: [
+        pr(19, { repo: 'Ramzess-II/ELMandIMU', headOwner: 'koloboid', files: ['components/net/net.c'] }),
+        pr(1), // a PR of a branch of the repo itself, to show nothing changed for it
+      ],
+      slots: 2,
+    },
+    reply: (label, opts, prompt) => {
+      prompts[label] = prompt
+      // Round 1 of the fork PR's review finds something, so the fix step runs and its prompt can be checked.
+      if (label === 'review:fw#19/1') return { findings: [{ file: 'components/net/net.c', summary: 'a finding' }] }
+      return base(label)
+    },
+  })
+  console.log('21. a PR from our own fork')
+  check('both merged', r.out.merged === 2, r.out.results.map((x) => [x.pr, x.repo, x.outcome]))
+  const u = prompts['update:fw#19']
+  check('the fork is added as a remote of the main checkout',
+    /git -C \/ws\/firmware remote add koloboid git@github\.com:koloboid\/ELMandIMU\.git/.test(u), u.slice(0, 900))
+  check('the head comes from the fork', /refs\/remotes\/koloboid\/feature\/p19/.test(u), u.slice(0, 900))
+  check('the push goes back to the fork', /push koloboid HEAD:refs\/heads\/feature\/p19/.test(u), u)
+  check('the base still comes from origin', /fetch -q origin/.test(u) && /merge --no-edit origin\/main/.test(u), u)
+  const f = prompts['fix:fw#19/1']
+  check('the fix step ran', f !== undefined, Object.keys(prompts))
+  check('a fix is pushed to the fork too', f !== undefined && /push koloboid HEAD:refs\/heads\/feature\/p19/.test(f), f)
+  const g = prompts['merge:fw#19']
+  check('the gate merges the fork ref', /merge --no-edit refs\/remotes\/koloboid\/feature\/p19/.test(g), g.slice(0, 2000))
+  check('the gate takes the base from origin', /-B train\/gate refs\/remotes\/origin\/main/.test(g), g.slice(0, 2000))
+  // A PR of a branch of the repo keeps origin and adds no remote.
+  const a = prompts['update:#1']
+  check('a PR of the repo itself still uses origin',
+    /refs\/remotes\/origin\/feature\/p1/.test(a) && /push origin HEAD:refs\/heads\/feature\/p1/.test(a), a.slice(0, 900))
+  check('no remote is added for it', !/remote add/.test(a), a.slice(0, 900))
+}
+
+// --- 22. a fork of somebody else: refused before any agent runs ---
+{
+  let err = null
+  try {
+    await runScript({
+      args: { ws: '/ws', parallel: [pr(1, { headOwner: 'stranger' })] },
+      reply: base,
+    })
+  } catch (e) {
+    err = e
+  }
+  console.log('22. a PR from a stranger\'s fork')
+  check('the queue is refused', err !== null && /fork of stranger/.test(String(err)), String(err))
+}
+
+// --- 23. a PR clean on the first pass is confirmed by Fable; Opus reviews, Sonnet fixes ---
+{
+  const models = {}
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1, rounds: 3 },
+    reply: (label, opts) => {
+      models[label] = opts.model
+      return base(label)
+    },
+  })
+  console.log('23. a clean first pass is confirmed')
+  check('the review runs on Opus', models['review:#1/1'] === 'opus', models)
+  check('the confirmation runs on Fable', models['confirm:#1/1'] === 'fable', models)
+  check('the PR merges after it', r.out.merged === 1, r.out.results)
+  check('it spent no round of its own', r.out.results[0].rounds === 1, r.out.results)
+}
+
+// --- 24. the confirmation finds something: Sonnet fixes it, Opus reads it again ---
+{
+  const models = {}
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1, rounds: 3 },
+    reply: (label, opts) => {
+      models[label] = opts.model
+      if (label === 'confirm:#1/1') return { findings: [{ file: 'a.cpp', summary: 's', scenario: 'x' }] }
+      return base(label)
+    },
+  })
+  console.log('24. the confirmation finds something')
+  check('the fix runs on Sonnet', models['fix:#1/1'] === 'sonnet', models)
+  check('round 2 is a plain Opus review, not a second confirmation', models['review:#1/2'] === 'opus', models)
+  check('no second confirmation', models['confirm:#1/2'] === undefined, models)
+  check('the PR merges after the fix', r.out.merged === 1 && r.out.results[0].rounds === 2, r.out.results)
+}
+
+// --- 25. a round that found something is not confirmed: its fixes were re-read ---
+{
+  const seen = []
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1, rounds: 3 },
+    reply: (label) => {
+      seen.push(label)
+      if (label === 'review:#1/1') return { findings: [{ file: 'a.cpp', summary: 's', scenario: 'x' }] }
+      return base(label)
+    },
+  })
+  console.log('25. no confirmation after a find-and-fix round')
+  check('Fable never ran', !seen.some((l) => l.startsWith('confirm')), seen)
+  check('merged in two rounds', r.out.merged === 1 && r.out.results[0].rounds === 2, r.out.results)
+}
+
+// --- 26. rounds=1: the confirmation still runs, it is not a round ---
+{
+  const seen = []
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1, rounds: 1 },
+    reply: (label) => {
+      seen.push(label)
+      return base(label)
+    },
+  })
+  console.log('26. rounds=1')
+  check('the confirmation runs', seen.includes('confirm:#1/1'), seen)
+  check('the PR merges', r.out.merged === 1 && r.out.results[0].rounds === 1, r.out.results)
+}
+
+// --- 17. a bigger mixed run, repeated: it always terminates and merges everything ---
 {
   let bad = 0
   for (let i = 0; i < 25; i++) {
@@ -310,8 +547,66 @@ const base = (label) => {
     })
     if (r.out.results.length !== 8) bad++
   }
-  console.log('15. 25 runs of 8 PRs with random findings and stale masters')
+  console.log('17. 25 runs of 8 PRs with random findings and stale masters')
   check('every PR is accounted for in every run', bad === 0, { bad })
+}
+
+{
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1 },
+    reply: (label) => (label.startsWith('merge') ? { status: 'merged', mergeCommit: 'c1', remade: true } : base(label)),
+  })
+  console.log('20. the gate reports that it remade its worktree')
+  check('the report says so', /remade/.test(r.out.results[0].reason), r.out.results[0])
+}
+
+{
+  const prompts = {}
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [], serial: [pr(1)], slots: 1 },
+    reply: (label, opts, prompt) => {
+      prompts[label] = prompt
+      return label.startsWith('update') ? { ...base(label), remade: true } : base(label)
+    },
+  })
+  console.log('20b. the serial update step reports that it remade the gate worktree')
+  check('the report says so', /remade/.test(r.out.results[0].reason), r.out.results[0])
+  check('the update prompt treats a prunable worktree as gone', /prunable/.test(prompts['update:#1']) && /Report remade true/.test(prompts['update:#1']), prompts['update:#1'])
+}
+
+{
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [], serial: [pr(1)], slots: 1 },
+    reply: (label) => (label.startsWith('update') ? { status: 'conflict', reason: 'plain conflict', remade: true } : base(label)),
+  })
+  console.log('20c. a serial update that remade the gate and then stopped still says so')
+  check('the report says so', /remade/.test(r.out.results[0].reason), r.out.results[0])
+}
+
+// --- 24. the clean step names its own branches and stays inside its own worktrees ---
+{
+  let appOnly = ''
+  let both = ''
+  await runScript({
+    args: { ws: '/ws', parallel: [pr(1), pr(2)], slots: 2 },
+    reply: (label, opts, prompt) => {
+      if (label === 'clean') appOnly = prompt
+      return base(label)
+    },
+  })
+  await runScript({
+    args: { ws: '/ws', parallel: [pr(1), pr(19, { repo: 'Ramzess-II/ELMandIMU', files: ['main/power.c'] })], slots: 2 },
+    reply: (label, opts, prompt) => {
+      if (label === 'clean') both = prompt
+      return base(label)
+    },
+  })
+  console.log('24. clean touches only what the run made')
+  check('no train/* glob', !/refs\/heads\/train\/\*/.test(appOnly.replace(/Never glob refs\/heads\/train\/\*/, '')) && !/train\/\*'/.test(appOnly), appOnly)
+  check('app-only run names its branches', /\/app: train\/1, train\/2, train\/gate/.test(appOnly), appOnly)
+  check('app-only run leaves the firmware repo out', !/\/ws\/firmware: train/.test(appOnly), appOnly)
+  check('both-repo run names each repo\'s branches', /\/app: train\/1, train\/gate/.test(both) && /\/firmware: train\/19, train\/gate/.test(both), both)
+  check('the closed list is stated', /must not list worktrees to tidy/.test(appOnly) && /merge-train, merge-1, merge-2\b/.test(appOnly), appOnly)
 }
 
 console.log(failures ? `\n${failures} check(s) FAILED` : '\nall checks passed')

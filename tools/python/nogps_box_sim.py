@@ -4,11 +4,12 @@
 # dependencies = [
 #     "pyobjc-framework-CoreBluetooth>=10; sys_platform == 'darwin'",
 #     "dbus-next>=0.2.3; sys_platform == 'linux'",
+#     "winsdk>=1.0.0b10; sys_platform == 'win32' and python_version < '3.13'",
 # ]
 # ///
 """The sensor box of NonGPS Maps, simulated on this computer so a phone can find it without the hardware.
 
-  just box [--radio auto|macos|linux|fake] [--id S1] [--port 0] [--no-browser]
+  just box [--radio auto|macos|linux|windows|fake] [--id S] [--port 0] [--no-browser]
   uv run --script tools/python/nogps_box_sim.py [the same]
 
 The box stands in a parked car: it advertises the service of the box over Bluetooth LE and sends the NGI, NGS and
@@ -20,18 +21,39 @@ A debug build of the application is needed on Android: the simulator asks for no
 the lines of a paired box alone. iOS doesn't check the pairing, but on macOS CoreBluetooth can't advertise the
 manufacturer data of BLE-13, so the pairing window flag never reaches the phone, and only a debug build takes an
 advertisement without that data as a box that accepts a new phone. BlueZ on Linux does advertise it, the panel sets
-the flags there, and an iOS release build connects to the simulator as it does to a box.
+the flags there, and an iOS release build connects to the simulator as it does to a box. Windows keeps the name
+and the manufacturer data of an advertisement for itself, so the radio there advertises neither and a debug build
+is needed as on macOS; it is written without a machine to try it on, see its docstring.
 
 What it doesn't simulate, and why:
 - the pairing rules (BLE-11, BLE-12, BLE-15, BLE-16): on macOS pairing belongs to the system, with no bt_pin and no
-  "display only" capability;
+  "display only" capability; so no drop of a link that stays unencrypted and no BT_UNSECURE event, and the
+  write queue of BLE-5 is the radio's, not ours;
 - any motion: no speed, no turns, no jolts;
-- the firmware update, the car values, the phone list and the places of two phones: NGI tells the abilities "BLE"
-  alone, and the application asks for none of them.
+- the firmware update, the car values and the places of two phones: NGI tells the abilities "BLE PHONES RECOVERY
+  AUTH" and no more, and the application asks for none of the others;
+- the phones: a phone is bonded here at its first HELLO, by its name, as the firmware bonds it at pairing, with an
+  address made from the name, as the system gives the simulator none. BT_PAIR sets the pairing flag of the
+  advertisement and nothing closes it: no window of 120 s, no code asked from the phone. A phone that is bonded
+  and gone stays in the list until the panel or BT_FORGET removes it. The recovery window (BLE-16) never opens by
+  itself: the panel's BT_RESET plays its end, a new code and the phone it names alone in the list.
 
-The radio needs a package -- PyObjC on macOS, dbus-next on Linux -- and the script declares both above, each
-for its own platform, so uv puts them in an environment of its own and nothing is installed into the system
-Python. The panel and the tests need no package at all and run with plain python3, which is how CI runs them.
+The box proves itself as section 9.5 says: AUTH_SET takes a key of a phone, AUTH answers with the proof of it. A key
+outlives the program in the file of --keys, as the firmware keeps it in NVS over a restart: otherwise the application,
+which keeps its key, would refuse the simulator from its second run on. The keys of each box id are its own, so the
+id the panel sets brings its own keys. The panel's "Forget the keys" is a box that has lost them, which the
+application refuses until the car is forgotten in it.
+
+A key belongs to the phone whose name is in its HELLO (9.2), not to the id the radio gives the link: the simulator
+asks for no pairing, so the system can't resolve the private address of a phone and gives a new id about every 15
+minutes (CBCentral.identifier on macOS, the BlueZ device path on Linux), while the firmware keeps the key with the
+bond. So two phones that give one name share a key here, which the firmware would keep apart.
+
+The radio needs a package -- PyObjC on macOS, dbus-next on Linux, winsdk on Windows -- and the script declares
+them above, each for its own platform, so uv puts them in an environment of its own and nothing is installed into
+the system Python. winsdk has no wheel past Python 3.12 and is declared for those alone: the radio of Windows needs
+an interpreter of 3.10 to 3.12, `uv run --python 3.12 --script`. The panel and the tests need no package at
+all and run with plain python3, which is how CI runs them.
 
 A radio is a class Radio in nogps_box_sim_radio_<platform>.py with:
   name, supports_manufacturer_data
@@ -48,9 +70,12 @@ advertise, send, disconnect and on_event all happen on the thread that runs run(
 
 import argparse
 import collections
+import hashlib
+import hmac
 import importlib
 import json
 import os
+import secrets
 import sys
 import threading
 import time
@@ -65,14 +90,19 @@ VERSION = 1
 SERVICE_UUID = '02CB0001-C0C3-40D0-819C-5A85998DCD99'
 TX_UUID = '02CB0002-C0C3-40D0-819C-5A85998DCD99'
 RX_UUID = '02CB0003-C0C3-40D0-819C-5A85998DCD99'
-NAME_PREFIX = 'NoGPS-'
+# NET-9: NonGPS-XXXX; a box that is not updated says NoGPS-XXXX, see State.legacy_name.
+NAME_PREFIX = 'NonGPS-'
+LEGACY_NAME_PREFIX = 'NoGPS-'
 # BLE-13: the company id, a byte of the format version and a byte of the flags.
 COMPANY_ID = 0xFFFF
 ADV_FORMAT = 1
 ADV_FLAGS = [('pairing_open', 1), ('full', 2), ('has_phones', 4)]
 
-# Section 9.2: without a HELLO for this long the box stops sending the data.
-HELLO_TIMEOUT_S = 3.0
+# Section 9.2: without any command for this long the box stops sending the data.
+HELLO_TIMEOUT_S = 10.0
+# A radio that can't see a link drop takes a central as gone after this long without a write: well above the
+# session timeout, as a connected phone that doesn't write is kept by a real box and only gets no data.
+SILENT_GONE_S = 60.0
 # Section 9.3: NGD 50 times a second, 9.4: NGS once a second and at once on a change.
 DATA_PERIOD_S = 0.02
 STATUS_PERIOD_S = 1.0
@@ -98,9 +128,21 @@ OBD_ABSENT_STATES = {'DISABLED', 'NO_ADAPTER', 'SLEEP'}
 # Section 4.4, the last error of the OBD, from the state the panel sets.
 OBD_ERRORS = {'NO_ADAPTER': 'NO_ADAPTER', 'NO_CAR': 'NO_CAR', 'NO_DATA': 'NO_SPEED', 'ERROR': 'BUS_ERROR'}
 OBD_PROTOCOL = 'ISO 15765-4 (CAN 11/500)'
-# The abilities of NGI: only the lines of the box itself. The application gates CAR_GET, BT_LIST, PEER and the
-# firmware update on this field, so it asks for nothing the simulator hasn't got.
-ABILITIES = 'BLE'
+# The abilities of NGI: the lines of the box itself, its phones and recovery code, and the proof of the box (AUTH_SET,
+# AUTH). The application gates CAR_GET, PEER and the firmware update on this field, so it asks for nothing the
+# simulator hasn't got.
+ABILITIES = 'BLE PHONES RECOVERY AUTH'
+# BLE-12: the box keeps this many phones. Section 9.5: a code of BT_PAIR and of BT_RECOVERY is 6 digits.
+MAX_BONDS = 4
+CODE_DIGITS = 6
+# Section 9.5: a phone that forgets itself is dropped this long after its OK.
+FORGET_DROP_S = 0.5
+# Section 9.5: the key is 16 bytes, the nonce 8, and the box answers the first 8 bytes of HMAC-SHA256(key, nonce).
+AUTH_KEY_BYTES = 16
+AUTH_NONCE_BYTES = 8
+AUTH_PROOF_BYTES = 8
+# The keys of the phones, by the id of the box: the firmware keeps them in NVS, the simulator in this file.
+DEFAULT_KEYS_PATH = os.path.expanduser('~/.nogps-box-sim-keys.json')
 FLAG = dict(FLAG_BITS)
 # A command of section 7.2 or 7.3 sets the flags its calibration would set.
 CALIBRATION = {'CAL_BIAS': {'BIAS_OK': True},
@@ -118,9 +160,34 @@ def crc16(text):
     return crc
 
 
+def hex_bytes(text, size):
+    """The bytes of a hex text of exactly |size| bytes, None if it is not one."""
+    if len(text) != size * 2:
+        return None
+    try:
+        return bytes.fromhex(text)
+    except ValueError:
+        return None
+
+
+def auth_proof(key, nonce):
+    """The answer to AUTH, in lowercase hex; the key and the nonce are the bytes of their hex texts."""
+    return hmac.new(key, nonce, hashlib.sha256).hexdigest()[:AUTH_PROOF_BYTES * 2]
+
+
 def line(body):
     """\returns the line of a body without '$', the checksum and the end, as the box sends it."""
     return ('$%s*%04X\r\n' % (body, crc16(body))).encode('ascii')
+
+
+def new_code():
+    return ''.join(secrets.choice('0123456789') for _ in range(CODE_DIGITS))
+
+
+def bond_address(name):
+    """A made-up address of a phone: the system gives the simulator none. Locally administered, so no vendor's."""
+    digest = hashlib.sha256(name.encode('utf-8')).digest()
+    return ':'.join('%02X' % byte for byte in bytes([0x02]) + digest[:5])
 
 
 def parse(raw):
@@ -166,9 +233,11 @@ class State:
         self.flags = {name: name in ('IMU_OK', 'BIAS_OK', 'UP_OK', 'STILL') for name in PANEL_FLAGS}
         self.adv = {'pairing_open': True, 'full': False, 'has_phones': False}
         self.advertising = True
+        self.legacy_name = False
+        self.recovery_code = new_code()
 
     def name(self):
-        return NAME_PREFIX + self.box_id
+        return (LEGACY_NAME_PREFIX if self.legacy_name else NAME_PREFIX) + self.box_id
 
     def manufacturer(self):
         flags = 0
@@ -215,6 +284,28 @@ class State:
             VERSION, self.firmware, self.build, self.chip, self.board, self.box_id, ABILITIES, self.revision))
 
 
+class SilenceWatch:
+    """When each central last wrote, for a radio the stack of which never reports a central that went away."""
+
+    def __init__(self, clock=time.monotonic):
+        self.clock = clock
+        self.written = {}
+
+    def wrote(self, phone_id):
+        self.written[phone_id] = self.clock()
+
+    def forget(self, phone_id):
+        self.written.pop(phone_id, None)
+
+    def gone(self):
+        """Returns the ids silent for SILENT_GONE_S, and forgets them."""
+        now = self.clock()
+        found = [phone_id for phone_id, at in self.written.items() if now - at >= SILENT_GONE_S]
+        for phone_id in found:
+            del self.written[phone_id]
+        return found
+
+
 class Phone:
     """A phone connected to the box: what it told in its HELLO and what is waiting to go to it."""
 
@@ -226,21 +317,29 @@ class Phone:
         self.subscribed = False
         self.payload = MIN_PAYLOAD
         self.hello_at = 0.0
+        # Section 9.2: the last command that keeps the session, 0 until the first HELLO starts one.
+        self.cmd_at = 0.0
         self.info_sent = False
+        # The order of the first HELLO among the phones: the box listens to the lowest, 0 before any.
+        self.hello_order = 0
         self.queue = collections.deque(maxlen=QUEUE_LINES)
         # The tail of a line that has started going out: BLE-4 sends it whole.
         self.pending = b''
         self.sent = 0
         self.dropped = 0
 
+    def in_session(self, now):
+        """Section 9.2: a HELLO has started a session and a command has come within the timeout."""
+        return bool(self.cmd_at) and now - self.cmd_at < HELLO_TIMEOUT_S
+
     def heard(self, now):
-        return self.subscribed and self.hello_at and now - self.hello_at < HELLO_TIMEOUT_S
+        return self.subscribed and self.in_session(now)
 
 
 class Box:
     """The box: it keeps the state, answers the commands and sends the lines through a radio."""
 
-    def __init__(self, state, radio, clock=time.monotonic):
+    def __init__(self, state, radio, clock=time.monotonic, keys_path=None):
         self.lock = threading.RLock()
         self.state = state
         self.radio = radio
@@ -248,6 +347,12 @@ class Box:
         # Monotonic seconds; the tests drive their own.
         self.clock = clock
         self.phones = {}
+        # BLE-12: the bonded phones, by address; they outlive their connections, as in NVS.
+        self.bonds = {}
+        self.hellos = 0
+        # Section 9.5: the key of each phone, kept with its bond; the file keeps them over a restart, as NVS does.
+        self.keys_path = keys_path
+        self.auth_keys = self.load_keys()
         self.seq = 0
         self.started = clock()
         self.log = collections.deque(maxlen=LINES_KEPT)
@@ -260,6 +365,8 @@ class Box:
         self.rate = 0
         # The phones the panel asks to drop; the tick drops them, see keep_advertisement.
         self.dropping = set()
+        # The phones that forget themselves are dropped after their OK: id -> when.
+        self.dropping_at = {}
         # When the panel's Shut down takes the program down, see tick.
         self.quit_at = None
 
@@ -308,13 +415,22 @@ class Box:
     def on_command(self, phone, fields):
         """Section 9.5. The box has the abilities of ABILITIES only: anything else is unknown."""
         command_id, name, rest = fields[1], fields[2], fields[3:]
+        # Section 9.2: any command but PEER, which the box relays before it looks at the commands, keeps a
+        # session that is still on. An ended one the box restarts on HELLO alone: it has freed the phone's slot.
+        if phone.in_session(self.clock()) and name != 'PEER':
+            phone.cmd_at = self.clock()
         if name == 'HELLO':
             # HELLO,<name>,<Unix s> from a newer application; the box remembers both for its list of phones.
-            phone.hello_at = self.clock()
+            # A HELLO that starts a session ranks after the phones in one: a lapsed phone frees its slot.
+            if not phone.in_session(self.clock()):
+                self.hellos += 1
+                phone.hello_order = self.hellos
+            phone.hello_at = phone.cmd_at = self.clock()
             if rest:
                 phone.name = rest[0]
             if len(rest) > 1 and rest[1].isdigit():
                 phone.unix_s = int(rest[1])
+            self.bond(phone)
             if not phone.info_sent:
                 phone.info_sent = True
                 self.queue(phone, self.state.info())
@@ -336,7 +452,150 @@ class Box:
             self.status_dirty = True
             self.queue(phone, line('NGA,%s,OK' % command_id))
             return
+        if name in ('BT_LIST', 'BT_PAIR', 'BT_FORGET', 'BT_RECOVERY'):
+            self.queue(phone, line('NGA,%s,%s' % (command_id, self.bt_command(phone, name, rest))))
+            return
+        if name == 'AUTH_SET':
+            self.queue(phone, line('NGA,%s,%s' % (command_id, self.auth_set(phone, rest))))
+            return
+        if name == 'AUTH':
+            self.queue(phone, line('NGA,%s,%s' % (command_id, self.auth(phone, rest))))
+            return
         self.queue(phone, line('NGA,%s,ERR,UNKNOWN' % command_id))
+
+    def bond(self, phone):
+        """Section 9.5: the box remembers the phone, its name and time, for BT_LIST; a full box bonds no fifth."""
+        address = bond_address(self.auth_phone(phone))
+        if address not in self.bonds:
+            # A new phone is bonded only in the pairing window, and not while its forgotten link is being dropped.
+            if (len(self.bonds) >= MAX_BONDS or not self.state.adv['pairing_open']
+                    or phone.id in self.dropping_at or phone.id in self.dropping):
+                return
+        self.bonds[address] = {'name': phone.name, 'unix_s': phone.unix_s}
+        self.sync_adv()
+
+    def sync_adv(self):
+        """The advertisement flags follow the bond list (BLE-12): has_phones with any bond, full at MAX_BONDS."""
+        self.state.adv['has_phones'] = bool(self.bonds)
+        self.state.adv['full'] = len(self.bonds) >= MAX_BONDS
+
+    def address_of(self, phone):
+        return bond_address(self.auth_phone(phone))
+
+    def changer(self):
+        """The phone that changes the box and the one it listens to: the first that sent HELLO, while its session
+        lasts (9.5). None when there is no such phone."""
+        now = self.clock()
+        live = [p for p in self.phones.values() if p.hello_order and p.in_session(now) and self.address_of(p) in self.bonds]
+        return min(live, key=lambda p: p.hello_order) if live else None
+
+    def bt_command(self, phone, name, rest):
+        """BT_LIST, BT_PAIR, BT_FORGET and BT_RECOVERY, the answer after 'NGA,<n>,'. A phone that doesn't change
+        the box is refused with BUSY, but for BT_LIST and the forgetting of its own link."""
+        if name == 'BT_LIST':
+            changer = self.changer()
+            mine = self.address_of(phone)
+            rows = ['%s|%s|%s|%d|%d' % (address, bond['name'], bond['unix_s'] or '', address == mine,
+                                        bool(changer) and address == self.address_of(changer))
+                    for address, bond in self.bonds.items()]
+            return 'OK,%s,%d' % (';'.join(rows), changer is phone)
+        own = name == 'BT_FORGET' and rest and rest[0] == self.address_of(phone) and rest[0] in self.bonds
+        if self.changer() is not phone and not own:
+            return 'ERR,BUSY'
+        if name == 'BT_RECOVERY':
+            return 'OK,' + self.state.recovery_code
+        if name == 'BT_PAIR':
+            if rest and not (len(rest[0]) == CODE_DIGITS and rest[0].isascii() and rest[0].isdigit()):
+                return 'ERR,VALUE'
+            if len(self.bonds) >= MAX_BONDS:
+                return 'ERR,FULL'
+            self.state.adv['pairing_open'] = True
+            return 'OK'
+        if not rest:
+            self.forget_all()
+            return 'OK'
+        if rest[0] not in self.bonds:
+            return 'ERR,ADDR'
+        self.forget(rest[0], FORGET_DROP_S if own else 0)
+        return 'OK'
+
+    def forget(self, address, drop_after=0):
+        """The phone is gone from the list with its key (9.5) and its link is dropped, after its OK if it asks."""
+        del self.bonds[address]
+        for name in [n for n in self.auth_keys if bond_address(n) == address]:
+            del self.auth_keys[name]
+        for phone in list(self.phones.values()):
+            if self.address_of(phone) == address:
+                if drop_after:
+                    self.dropping_at[phone.id] = self.clock() + drop_after
+                else:
+                    self.dropping.add(phone.id)
+        self.sync_adv()
+        self.save_keys()
+
+    def forget_all(self):
+        """BT_FORGET without an address: no bond is left, the links stay."""
+        self.bonds.clear()
+        self.auth_keys.clear()
+        self.sync_adv()
+        self.save_keys()
+
+    @staticmethod
+    def auth_phone(phone):
+        """The phone a key belongs to: the name of its HELLO, the radio's id until it has given one. See the docstring
+        of the module: the id changes with the private address of the phone, the name does not."""
+        return phone.name or phone.id
+
+    def auth_set(self, phone, rest):
+        """AUTH_SET,<32 hex>: the key is taken once; the same key again is taken, another one is refused."""
+        key = hex_bytes(rest[0], AUTH_KEY_BYTES) if rest else None
+        if key is None:
+            return 'ERR,VALUE'
+        name = self.auth_phone(phone)
+        if self.auth_keys.get(name, key) != key:
+            return 'ERR,EXISTS'
+        self.auth_keys[name] = key
+        self.save_keys()
+        return 'OK'
+
+    def load_keys(self):
+        """The keys this box has kept in the file of --keys, none without one or when it can not be read."""
+        if not self.keys_path:
+            return {}
+        try:
+            with open(self.keys_path, encoding='utf-8') as f:
+                kept = json.load(f)[self.state.box_id]
+            return {phone: bytes.fromhex(key) for phone, key in kept.items()}
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            return {}
+
+    def save_keys(self):
+        """The keys of this box go into the file of --keys, beside those of the other box ids in it."""
+        if not self.keys_path:
+            return
+        try:
+            with open(self.keys_path, encoding='utf-8') as f:
+                kept = json.load(f)
+            if not isinstance(kept, dict):
+                kept = {}
+        except (OSError, ValueError):
+            kept = {}
+        kept[self.state.box_id] = {phone: key.hex() for phone, key in self.auth_keys.items()}
+        try:
+            with open(self.keys_path, 'w', encoding='utf-8') as f:
+                json.dump(kept, f)
+        except OSError as error:
+            print('the keys are not kept in %s: %s' % (self.keys_path, error))
+
+    def auth(self, phone, rest):
+        """AUTH,<16 hex nonce>: OK,<proof>, NOKEY if the phone has no key."""
+        nonce = hex_bytes(rest[0], AUTH_NONCE_BYTES) if rest else None
+        if nonce is None:
+            return 'ERR,VALUE'
+        key = self.auth_keys.get(self.auth_phone(phone))
+        if key is None:
+            return 'ERR,NOKEY'
+        return 'OK,' + auth_proof(key, nonce)
 
     def queue(self, phone, data):
         """An answer or a status waits its turn; the oldest is dropped when the queue is full (BLE-8)."""
@@ -357,6 +616,10 @@ class Box:
                 for phone in self.phones.values():
                     if phone.heard(now):
                         self.queue(phone, status)
+            for phone_id, at in list(self.dropping_at.items()):
+                if now >= at:
+                    del self.dropping_at[phone_id]
+                    self.radio.disconnect(phone_id)
             ready = [phone for phone in list(self.phones.values()) if self.flush(phone) and phone.heard(now)]
             if ready:
                 # One packet for every phone listening: its number counts the packets, not the phones, and both
@@ -445,10 +708,16 @@ class Box:
                 'obd_states': OBD_STATES,
                 'shake_pct': state.shake_pct,
                 'box_id': state.box_id,
+                'legacy_name': state.legacy_name,
                 'firmware': state.firmware,
                 'chip': state.chip,
                 'board': state.board,
                 'imu_name': state.imu_name,
+                'keys': len(self.auth_keys),
+                'recovery_code': state.recovery_code,
+                'bonds': [{'address': address, 'name': bond['name'], 'unix_s': bond['unix_s'],
+                           'connected': any(self.address_of(p) == address for p in self.phones.values())}
+                          for address, bond in self.bonds.items()],
                 'phones': [{'label': p.label, 'name': p.name, 'unix_s': p.unix_s, 'payload': p.payload,
                             'subscribed': p.subscribed, 'heard': p.heard(now), 'sent': p.sent, 'dropped': p.dropped,
                             'hello_age_ms': int((now - p.hello_at) * 1000) if p.hello_at else -1}
@@ -473,14 +742,35 @@ class Box:
                 state.obd = values['obd']
             if 'shake_pct' in values:
                 state.shake_pct = max(0, min(9999, int(values['shake_pct'])))
+            box_id = state.box_id
             for name in ('box_id', 'firmware', 'chip', 'board', 'imu_name'):
                 if values.get(name):
-                    # The id is the four characters of the name of a box; macOS drops a name over 8 characters.
+                    # The id is the four characters of the name of a box, as --id takes them. Only macOS
+                    # drops an advertised name over 8 characters: the panel's name tells when it does.
                     setattr(state, name, str(values[name])[:4 if name == 'box_id' else 32])
+            if state.box_id != box_id:
+                # Another id is another box: it has the keys of that id, and those of the old one stay in the file.
+                self.auth_keys = self.load_keys()
+            if 'legacy_name' in values:
+                state.legacy_name = bool(values['legacy_name'])
             if 'advertising' in values:
                 state.advertising = bool(values['advertising'])
             self.status_dirty = True
         return self.panel_state()
+
+    def bt_reset(self, label):
+        """BLE-16 ends with a new phone: it stays alone in the list, the other links are dropped and the code of
+        recovery is a new one. The phone is the connected one of this label, none leaves an empty list."""
+        keep = next((p for p in self.phones.values() if p.label == label), None)
+        keep_address = self.address_of(keep) if keep else None
+        for address in list(self.bonds):
+            if address != keep_address:
+                self.forget(address)
+        if keep and keep_address not in self.bonds:
+            # The recovery window takes the new phone whatever the normal pairing window says.
+            self.bonds[keep_address] = {'name': keep.name, 'unix_s': keep.unix_s}
+            self.sync_adv()
+        self.state.recovery_code = new_code()
 
     def panel_action(self, action, label):
         with self.lock:
@@ -499,6 +789,13 @@ class Box:
                 self.quit_at = self.clock() + QUIT_DELAY_S
             elif action == 'clear':
                 self.log.clear()
+            elif action == 'forget_bond' and label in self.bonds:
+                self.forget(label)
+            elif action == 'bt_reset':
+                self.bt_reset(label)
+            elif action == 'forget_keys':
+                self.auth_keys.clear()
+                self.save_keys()
         return self.panel_state()
 
 
@@ -538,9 +835,15 @@ class FakeRadio:
         self.stopped.set()
 
 
+def default_radio(platform):
+    if platform.startswith('linux'):
+        return 'linux'
+    return {'darwin': 'macos', 'win32': 'windows'}.get(platform, 'fake')
+
+
 def make_radio(kind):
     if kind == 'auto':
-        kind = {'darwin': 'macos'}.get(sys.platform, 'linux' if sys.platform.startswith('linux') else 'fake')
+        kind = default_radio(sys.platform)
     if kind == 'fake':
         return FakeRadio()
     module_name = 'nogps_box_sim_radio_' + kind
@@ -548,7 +851,11 @@ def make_radio(kind):
     try:
         return importlib.import_module(module_name).Radio()
     except ImportError as e:
-        packages = {'macos': 'pyobjc-framework-CoreBluetooth', 'linux': 'dbus-next'}
+        packages = {'macos': 'pyobjc-framework-CoreBluetooth', 'linux': 'dbus-next', 'windows': 'winsdk'}
+        if kind == 'windows' and sys.version_info >= (3, 13):
+            sys.exit('winsdk, which the radio of Windows needs, has no wheel for Python %d.%d: run this file with\n'
+                     '`uv run --python 3.12 --script`, or take the panel alone with --radio fake.\n(%s)'
+                     % (sys.version_info[0], sys.version_info[1], e))
         sys.exit('%s needs %s, which the script declares for uv: run it with `just box`, or with\n'
                  '`uv run --script` on this file. Without uv, put the package in a virtual environment of your own.\n'
                  '(%s)' % (module_name, packages.get(kind, '?'), e))
@@ -624,9 +931,15 @@ def handler(box):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('--radio', default='auto', choices=['auto', 'macos', 'linux', 'fake'])
-    parser.add_argument('--id', default='S1', help='the characters after NoGPS- in the name of the box; macOS drops '
-                                                   'a name over 8 characters from the advertisement')
+    parser.add_argument('--radio', default='auto', choices=['auto', 'macos', 'linux', 'windows', 'fake'])
+    parser.add_argument('--id', default='S', help='the four characters after NonGPS- in the name of a box; macOS '
+                                                   'drops a name over 8 characters from the advertisement, so one '
+                                                   'character fits after NonGPS- and two after NoGPS- there')
+    parser.add_argument('--legacy-name', action='store_true',
+                        help='advertise NoGPS-XXXX as a box that is not updated does')
+    parser.add_argument('--keys', default=DEFAULT_KEYS_PATH,
+                        help='the file with the keys the phones have given the box, as NVS keeps them over a restart; '
+                             'empty keeps them in memory alone')
     parser.add_argument('--port', type=int, default=0, help='0 takes a free one')
     parser.add_argument('--no-browser', action='store_true')
     args = parser.parse_args()
@@ -634,7 +947,9 @@ def main():
     # The lines below are a running log: they are of no use when a redirected stdout holds them back.
     sys.stdout.reconfigure(line_buffering=True)
     radio = make_radio(args.radio)
-    box = Box(State(args.id), radio)
+    state = State(args.id)
+    state.legacy_name = args.legacy_name
+    box = Box(state, radio, keys_path=args.keys or None)
     server = ThreadingHTTPServer(('127.0.0.1', args.port), handler(box))
     url = 'http://127.0.0.1:%d/' % server.server_address[1]
     threading.Thread(target=server.serve_forever, daemon=True).start()

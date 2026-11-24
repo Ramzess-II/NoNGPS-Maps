@@ -151,7 +151,7 @@
     <string name="description">Примітка</string>
     <!-- Email Subject when sharing bookmark list -->
     <string name="share_bookmarks_email_subject">З вами поділилися мітками NonGPS Maps</string>
-    <string name="share_bookmarks_email_body">Привіт!\n\nДодаю мої мітки; відкрийте їх у NonGPS Maps. Якщо застосунок не встановлено, ви можете завантажити його тут: https://github.com/Ramzess-II/NoGPSMaps\n\nНасолоджуйтесь подорожами з NonGPS Maps!</string>
+    <string name="share_bookmarks_email_body">Привіт!\n\nДодаю мої мітки; відкрийте їх у NonGPS Maps. Якщо застосунок не встановлено, ви можете завантажити його тут: https://github.com/Ramzess-II/NoNGPS-Maps\n\nНасолоджуйтесь подорожами з NonGPS Maps!</string>
     <!-- message title of loading file -->
     <string name="load_kmz_title">Завантаження міток</string>
     <!-- Kmz file successful loading -->
@@ -939,6 +939,10 @@
     <string name="nogps_flag_voice_saved">Голосову нотатку збережено: %d с</string>
     <!-- Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. -->
     <string name="nogps_flag_mic_denied">Прапорець збережено без голосової нотатки: дозвольте мікрофон у налаштуваннях системи.</string>
+    <!-- Settings switch: send a report to the developers when the app crashes -->
+    <string name="nogps_crash_reports">Надсилати звіти про збої</string>
+    <!-- Hint under the Send crash reports switch -->
+    <string name="nogps_crash_reports_hint">Надсилаються лише відомості про збій, модель телефона та версія застосунку. Дані про місцеперебування не залишають телефон.</string>
     <!-- Settings row and screen title: the list of the flags saved in test drives, to send them with the trip logs to the developers by email -->
     <string name="nogps_flags_send_title">Надіслати журнали</string>
     <!-- Button: send the ticked flags of test drives by email -->
@@ -1106,7 +1110,7 @@
     <!-- Message: this phone has been removed from the sensor box on its own request -->
     <string name="nogps_phone_removed">Цей телефон видалено з блока, авто забуто</string>
     <!-- Message on Android: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and the app could not remove it -->
-    <string name="nogps_phone_removed_unpair">Цей телефон видалено з блока, авто забуто. Видаліть NoGPS-%1$s у налаштуваннях Bluetooth</string>
+    <string name="nogps_phone_removed_unpair">Цей телефон видалено з блока, авто забуто. Видаліть блок, ім’я якого закінчується на %1$s, у налаштуваннях Bluetooth</string>
     <!-- Button on the page of the phones of the sensor box: let the box take a new phone with a one-time code -->
     <string name="nogps_phone_add">Додати телефон</string>
     <!-- Title of the dialog that adds a phone to the box of a car. %1$@ is the car name, e.g. "Add a phone to Kia" -->
@@ -1174,12 +1178,16 @@
     <string name="nogps_clear_speed">Скинути</string>
     <string name="nogps_clear_speed_title">Скинути калібрування швидкості?</string>
     <string name="nogps_clear_speed_message">Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або авто. Поки працює GPS, вони вимірюються наново.</string>
-    <!-- Main menu row opening the account of the user on the site -->
+    <!-- Main menu row opening the screen with the records of every car of the user -->
     <string name="nogps_menu_profile">Профіль</string>
+    <!-- Footer of the Profile screen: what the screen will hold later -->
+    <string name="nogps_profile_soon">Тут з\'являться обліковий запис, пристрої, гарантія та замовлення</string>
     <string name="nogps_about_title">Про NonGPS Maps</string>
     <!-- Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on -->
     <string name="nogps_about_om_menu">Про застосунок Organic Maps</string>
     <string name="nogps_about_headline">Навігація, коли GPS глушать або підміняють</string>
+    <!-- About NonGPS Maps, the screen reader label of the globe with the GPS satellites that the finger spins -->
+    <string name="nogps_about_globe_hint">Потягніть Землю, торкніться супутника, щоб вимкнути його.</string>
     <string name="nogps_about_description">Без GPS авто веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю авто з OBD-II. Авто тримається доріг офлайн-карти.</string>
     <!-- NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) -->
     <string name="nogps_version">Версія %s</string>
@@ -1189,6 +1197,7 @@
     <string name="nogps_source_code">Вихідний код на GitHub</string>
     <string name="nogps_delete_recent_query">Видалити з історії?</string>
     <string name="nogps_box_sleeping">спить: двигун заглушено</string>
+    <string name="nogps_box_battery_lock">вимкнувся: низький заряд акумулятора. Витягніть блок і вставте знову</string>
     <string name="nogps_box_obd_sleeping">OBD спить: двигун заглушено</string>
     <string name="nogps_engine_running">працює</string>
     <string name="nogps_engine_stopped">заглушено</string>

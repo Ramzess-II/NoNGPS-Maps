@@ -16,6 +16,7 @@ import androidx.preference.TwoStatePreference;
 import app.organicmaps.BuildConfig;
 import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
+import app.organicmaps.crash.CrashReporter;
 import app.organicmaps.downloader.OnmapDownloader;
 import app.organicmaps.editor.LanguagesFragment;
 import app.organicmaps.editor.ProfileActivity;
@@ -66,6 +67,7 @@ public class SettingsPrefsFragment extends BaseXmlSettingsFragment implements La
     initPerspectivePrefsCallbacks();
     initAutoZoomPrefsCallbacks();
     initLoggingEnabledPrefsCallbacks();
+    initCrashReportsPrefsCallbacks();
     initEmulationBadStorage();
     initUseMobileDataPrefsCallbacks();
     initPowerManagementPrefsCallbacks();
@@ -278,6 +280,17 @@ public class SettingsPrefsFragment extends BaseXmlSettingsFragment implements La
         return false;
       }
       flags.setVisible((Boolean) newValue);
+      return true;
+    });
+  }
+
+  private void initCrashReportsPrefsCallbacks()
+  {
+    final Preference pref = getPreference(getString(R.string.pref_send_crash_reports));
+    // The F-Droid flavor has no crash reporting.
+    pref.setVisible(CrashReporter.isAvailable());
+    pref.setOnPreferenceChangeListener((preference, newValue) -> {
+      CrashReporter.setEnabled(requireContext(), (Boolean) newValue);
       return true;
     });
   }

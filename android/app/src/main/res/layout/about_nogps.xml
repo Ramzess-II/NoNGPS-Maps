@@ -59,11 +59,19 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="@dimen/margin_base"
+        android:layout_marginBottom="@dimen/margin_half"
         android:text="@string/nogps_about_headline"
         android:textAlignment="center"
         android:textAppearance="@style/MwmTextAppearance.Headline"
         android:textColor="?android:textColorPrimary" />
+
+    <app.organicmaps.nogps.GlobeSceneView
+        android:id="@+id/globe"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/nogps_globe_height"
+        android:layout_marginHorizontal="@dimen/nogps_globe_bleed"
+        android:layout_marginBottom="@dimen/margin_base"
+        android:contentDescription="@string/nogps_about_globe_hint" />
 
     <TextView
         android:layout_width="match_parent"
@@ -82,21 +90,27 @@
         android:textAppearance="@style/MwmTextAppearance.Body1"
         android:textColor="?android:textColorPrimary" />
 
-    <TextView
-        android:id="@+id/github"
-        style="@style/MwmWidget.TextView.Item"
-        android:text="@string/nogps_source_code"
-        android:textAlignment="viewStart"
-        app:drawableStartCompat="@drawable/ic_github" />
-
     <Button
         android:id="@+id/box_buy"
-        style="?borderlessButtonStyle"
+        style="@style/MwmWidget.Button.Accent"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="@dimen/margin_half"
-        android:text="@string/nogps_box_buy"
-        android:textStyle="bold" />
+        android:layout_marginTop="@dimen/margin_base"
+        android:text="@string/nogps_box_buy" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/github"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:insetLeft="0dp"
+        android:insetRight="0dp"
+        android:text="@string/nogps_source_code"
+        android:textAllCaps="false"
+        android:textColor="?colorAccent"
+        app:icon="@drawable/ic_github"
+        app:iconGravity="textStart"
+        app:iconTint="?colorAccent" />
 
     <TextView
         android:id="@+id/report"

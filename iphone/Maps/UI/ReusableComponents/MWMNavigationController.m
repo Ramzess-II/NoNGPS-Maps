@@ -15,15 +15,16 @@ NSString * const kUserInterfaceStyleKey = @"UserInterfaceStyle";
 
 - (UIStatusBarStyle)preferredStatusBarStyle
 {
-  return UIStatusBarStyleLightContent;
+  return self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? UIStatusBarStyleLightContent
+                                                                             : UIStatusBarStyleDarkContent;
 }
 
 - (void)viewDidLoad
 {
   [super viewDidLoad];
   self.delegate = self;
-  self.navigationItem.leftBarButtonItem.tintColor = [UIColor whitePrimaryText];
-  self.navigationItem.rightBarButtonItem.tintColor = [UIColor whitePrimaryText];
+  self.navigationItem.leftBarButtonItem.tintColor = [UIColor nogpsPrimaryText];
+  self.navigationItem.rightBarButtonItem.tintColor = [UIColor nogpsPrimaryText];
 
   [MWMThemeManager invalidate];
 }

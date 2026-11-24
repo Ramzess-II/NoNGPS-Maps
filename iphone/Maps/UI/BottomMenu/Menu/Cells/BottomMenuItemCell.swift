@@ -2,14 +2,13 @@ final class BottomMenuItemCell: UITableViewCell {
   @IBOutlet private var label: UILabel!
   @IBOutlet private var badgeBackground: UIView!
   @IBOutlet private var badgeCountLabel: UILabel!
-  @IBOutlet private var separator: UIView!
   @IBOutlet private var icon: UIImageView!
   var anchorView: UIView {
     icon
   }
 
   private(set) var isEnabled: Bool = true
-  /// The full-width line above the first cell of a group; the cell's own inset line separates the rows inside a group.
+  /// The full-width line above the first cell of a group; the rows inside a group draw none.
   private var groupSeparator: UIView?
 
   func configure(image: UIImage,

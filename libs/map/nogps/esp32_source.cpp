@@ -8,6 +8,7 @@
 #include "base/logging.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <random>
 
@@ -47,6 +48,7 @@ void Esp32Source::Start()
     return;
   LOG(LINFO, ("ESP32 started"));
   m_running = true;
+  ForgetAuth();
   m_phoneName = esp32::PhoneName(m_delegate.GetPhoneName());
   m_delegate.Esp32BleOpen();
   SendHello();
@@ -65,6 +67,7 @@ void Esp32Source::Stop()
   m_dataTimesMs.clear();
   m_hasLast = false;
   m_lastDataMs.reset();
+  m_batteryLock = BatteryLock::None;
   m_speedKmh = -1;
   m_wakingLinkMs.reset();
   m_info.reset();
@@ -73,6 +76,7 @@ void Esp32Source::Stop()
   m_hellosWithoutInfo = 0;
   m_peer.Reset();
   m_update.Reset();
+  ForgetAuth();
   ForgetCarRequests();
   ForgetPhoneRequests();
   m_addPhone.reset();
@@ -84,21 +88,31 @@ void Esp32Source::SendHello()
   Send(esp32::Hello(m_phoneName, m_clock.UnixNowMs()), ++m_helloId);
   // The box tells about itself when a connection starts, the application may have missed it: the box was
   // talking to it before it was restarted.
-  if (!m_info && IsConnected() && m_hellosWithoutInfo < kInfoRequestHellos * kMaxInfoRequests &&
-      ++m_hellosWithoutInfo % kInfoRequestHellos == 0)
+  if (!m_info &&
+      (IsConnected() || (!m_proven && !m_unprovenInfo && !m_authRefused && m_bleState == BleState::Connected)) &&
+      m_hellosWithoutInfo < kInfoRequestHellos * kMaxInfoRequests && ++m_hellosWithoutInfo % kInfoRequestHellos == 0)
   {
     Send("INFO", m_nextCommandId++);
+  }
+  if (m_authId != 0 && m_clock.NowMs() - m_authSentMs > kAuthReplyTimeoutMs)
+  {
+    if (m_authSends >= kMaxAuthSends)
+      RefuseBox("no reply to the proof");
+    else
+      SendAuth();
   }
   if (m_carRead && m_clock.NowMs() - m_carRead->m_sentMs > kCarReplyTimeoutMs)
   {
     LOG(LWARNING, ("No reply to the reading of", m_carRead->m_keys.front()));
     m_carRead.reset();
   }
-  // A lost reply doesn't keep the phones from being asked again.
+  // Without the list the role of this phone is unknown, and a known list may be stale: the list is asked at
+  // once, and again at the next hello when this reply is lost too.
   if (m_listId != 0 && m_clock.NowMs() - m_listSentMs > kCarReplyTimeoutMs)
   {
     LOG(LWARNING, ("No reply to the list of the phones"));
     m_listId = 0;
+    ListPhones();
   }
   // The box may have dropped the command: the list is asked again, the code is not kept.
   if (m_addPhone && m_addPhone->m_state == AddPhone::Opening &&
@@ -332,8 +346,8 @@ void Esp32Source::ForgetPhoneRequests()
 void Esp32Source::OnInfo(esp32::Info const & info)
 {
   if (!m_info || m_info->m_firmware != info.m_firmware)
-    LOG(LINFO, ("Box", info.m_id, "firmware =", info.m_firmware, info.m_chip, info.m_board, info.m_revision,
-                "updates =", info.m_canUpdate));
+    LOG(LINFO, (LogHead(m_clock, "ACTION", "box_info"), "Box", info.m_id, "firmware =", info.m_firmware, info.m_chip,
+                info.m_board, info.m_revision, "updates =", info.m_canUpdate));
   bool const phonesNew = info.m_hasPhones && (!m_info || !m_info->m_hasPhones);
   m_info = info;
   m_update.OnBoxFirmware(info.m_firmware);
@@ -373,16 +387,22 @@ void Esp32Source::Send(std::string_view command, int id)
     m_delegate.Esp32BleSend(esp32::Command(id, command));
 }
 
-void Esp32Source::OnBleState(BleState state)
+void Esp32Source::OnBleState(BleState state, bool bondLost)
 {
-  if (!m_running || state == m_bleState)
+  if (!m_running || (state == m_bleState && bondLost == m_bondLost))
     return;
-  LOG(LINFO, ("Bluetooth =", state));
-  // A connection may be pending all the time the box sleeps: only a made one tells that the box is awake.
-  if (IsLinked(state) || (IsLinked(m_bleState) && m_wakingLinkMs))
+  LOG(LINFO, (LogHead(m_clock, "ACTION", "ble_state"), "Bluetooth =", state, "bond lost =", bondLost));
+  // A connection may be pending all the time the box sleeps: only a made one tells that the box is awake. The one
+  // that probes a pairing thought lost carries nothing, until the box is heard.
+  bool const wasLinked = IsLinked(m_bleState) && !m_bondLost;
+  if ((IsLinked(state) && !bondLost) || (wasLinked && m_wakingLinkMs))
     m_wakingLinkMs = m_clock.NowMs();
+  m_bondLost = bondLost;
+  if (state == m_bleState)
+    return;
   m_bleState = state;
   m_bleLine.clear();
+  ForgetAuth();
   if (state != BleState::Connected)
   {
     // Another box may be found, or this one with a new firmware.
@@ -396,6 +416,8 @@ void Esp32Source::OnBleState(BleState state)
     ForgetCarRequests();
     ForgetPhoneRequests();
     ForgetJournal();
+    if (m_batteryLock == BatteryLock::Told)
+      m_batteryLock = BatteryLock::LinkLost;
     if (m_calibrationId != 0)
     {
       LOG(LWARNING, ("The link is lost during the calibration"));
@@ -458,6 +480,11 @@ void Esp32Source::OnLine(std::string_view text)
   auto const fields = esp32::Parse(text);
   if (!fields)
     return;
+  if (!m_proven)
+  {
+    OnUnprovenLine(*fields);
+    return;
+  }
   if (auto const data = esp32::ParseData(*fields))
   {
     OnData(*data);
@@ -480,6 +507,9 @@ void Esp32Source::OnLine(std::string_view text)
   }
   if (auto const info = esp32::ParseInfo(*fields))
   {
+    // The box has proved the id it gave: a device that says it is another box is not taken for it.
+    if (m_mustProve && info->m_id != m_authCar)
+      return RefuseBox("it says it is " + info->m_id + ", not " + m_authCar);
     OnInfo(*info);
     StoreBoxValues(*fields);
     return;
@@ -507,7 +537,7 @@ void Esp32Source::OnLine(std::string_view text)
   auto const obdState = esp32::ParseObdState(*fields);
   if (obdState && obdState != m_obdState)
   {
-    LOG(LINFO, ("OBD state =", *obdState));
+    LOG(LINFO, (LogHead(m_clock, "EVENT", "obd_state"), "OBD state =", *obdState));
     m_obdState = obdState;
     if (*obdState == "NO_ADAPTER")
       m_obdAdapterMissing = true;
@@ -521,6 +551,158 @@ void Esp32Source::OnLine(std::string_view text)
     m_carSilent = false;
 }
 
+void Esp32Source::ForgetAuth()
+{
+  m_mustProve = m_delegate.Esp32BoxMustProveItself();
+  m_proven = !m_mustProve;
+  m_authRefused = false;
+  m_unprovenInfo.reset();
+  m_authId = 0;
+  m_authSends = 0;
+  m_authCar.clear();
+  m_authKey.clear();
+  m_authNonce.clear();
+  m_authSetsKey = false;
+  m_authKeyUnconfirmed = false;
+}
+
+std::string Esp32Source::NewAuthHex(size_t bytes) const
+{
+  std::random_device device;
+  std::uniform_int_distribution<int> digit(0, 15);
+  std::string hex;
+  for (size_t i = 0; i < bytes * 2; ++i)
+    hex += "0123456789abcdef"[digit(device)];
+  return hex;
+}
+
+void Esp32Source::OnUnprovenLine(esp32::Fields const & fields)
+{
+  if (m_authRefused)
+    return;
+  if (auto const reply = esp32::ParseReply(fields))
+  {
+    if (reply->m_id == m_authId)
+      OnAuthReply(*reply);
+    return;
+  }
+  if (esp32::ParseInfo(fields))
+    OnAuthInfo(fields);
+}
+
+void Esp32Source::OnAuthInfo(esp32::Fields const & fields)
+{
+  auto const info = esp32::ParseInfo(fields);
+  CHECK(info, ());
+  // The proof is of the id the box has given: a device that says it is another box meanwhile is not taken for it.
+  if (!m_authCar.empty() && info->m_id != m_authCar)
+    return RefuseBox("it says it is " + info->m_id + ", not " + m_authCar);
+  // The box says who it is: what it says is taken only when it has proved it, the info is kept till then.
+  m_unprovenInfo = fields;
+  if (m_authId != 0 || info->m_id.empty())
+    return;
+  bool confirmed = false;
+  auto const key = m_listener.GetBoxAuthKey(info->m_id, confirmed);
+  if (!info->m_canAuth)
+  {
+    // A box that could prove itself must not become one that can't: a box of a firmware before the proof is taken
+    // only for a car whose box has never proved one. An unconfirmed key is no proof -- the box may never have taken
+    // it, and the firmware that took it may be rolled back (FW-6) -- so such a box is taken and keeps its key for the
+    // day it can prove itself again.
+    if (confirmed)
+      return RefuseBox("the box of a car that proved it no longer can");
+    LOG(LWARNING, ("The firmware", info->m_firmware, "of the box", info->m_id, "can not prove itself"));
+    m_authCar = info->m_id;
+    m_proven = true;
+    OnInfo(*info);
+    StoreBoxValues(fields);
+    m_unprovenInfo.reset();
+    return;
+  }
+  m_authCar = info->m_id;
+  m_authSetsKey = key.empty();
+  m_authKey = key;
+  m_authKeyUnconfirmed = !key.empty() && !confirmed;
+  if (m_authSetsKey)
+  {
+    m_authKey = NewAuthHex(esp32::kAuthKeyBytes);
+    // The box may take the key and the reply be lost with the link: the key is kept at once, unconfirmed, so that the
+    // next session proves the box with it instead of making another one the box would refuse.
+    m_authKeyUnconfirmed = true;
+    m_listener.OnBoxAuthKey(m_authCar, m_authKey, false /* confirmed */);
+  }
+  SendAuth();
+}
+
+void Esp32Source::SendAuth()
+{
+  m_authId = m_nextCommandId++;
+  m_authSentMs = m_clock.NowMs();
+  ++m_authSends;
+  if (m_authSetsKey)
+  {
+    Send("AUTH_SET," + m_authKey, m_authId);
+    return;
+  }
+  // A new nonce for every try: a proof heard before is of no use.
+  m_authNonce = NewAuthHex(esp32::kAuthNonceBytes);
+  Send("AUTH," + m_authNonce, m_authId);
+}
+
+void Esp32Source::OnAuthReply(esp32::Reply const & reply)
+{
+  if (reply.m_progress)
+    return;
+  if (!reply.m_ok)
+  {
+    // The box has not got the key the phone keeps unconfirmed: the phone gives it the same one. Nothing is given away
+    // that a new pairing would not get, as a car whose box never took its key trusts the first box that answers.
+    if (reply.m_error == "NOKEY" && m_authKeyUnconfirmed && !m_authSetsKey)
+    {
+      LOG(LINFO, ("The box", m_authCar, "has not got the key it was given: it is given it again"));
+      m_authSetsKey = true;
+      m_authSends = 0;
+      m_authId = 0;
+      SendAuth();
+      return;
+    }
+    return RefuseBox("the box says " + reply.m_error);
+  }
+  if (!m_authSetsKey)
+  {
+    auto const proof = esp32::AuthProof(m_authKey, m_authNonce);
+    std::string answer = reply.m_values.empty() ? "" : reply.m_values.front();
+    std::transform(answer.begin(), answer.end(), answer.begin(), [](unsigned char c) { return std::tolower(c); });
+    if (proof.empty() || answer != proof)
+      return RefuseBox("the proof is wrong");
+  }
+  // The box has it: the first session of a pairing is trusted, the system has bonded the box and the key goes over
+  // that link.
+  if (m_authKeyUnconfirmed)
+    m_listener.OnBoxAuthKey(m_authCar, m_authKey, true /* confirmed */);
+  LOG(LINFO, ("The box", m_authCar, m_authSetsKey ? "has taken a key" : "has proved itself"));
+  m_proven = true;
+  m_authId = 0;
+  auto const fields = std::move(*m_unprovenInfo);
+  m_unprovenInfo.reset();
+  m_authKey.clear();
+  if (auto const info = esp32::ParseInfo(fields))
+  {
+    OnInfo(*info);
+    StoreBoxValues(fields);
+  }
+}
+
+void Esp32Source::RefuseBox(std::string const & reason)
+{
+  LOG(LWARNING, ("The box", m_authCar, "is refused:", reason));
+  m_proven = false;
+  m_authRefused = true;
+  m_authId = 0;
+  m_unprovenInfo.reset();
+  m_authKey.clear();
+}
+
 void Esp32Source::OnData(esp32::Data const & data)
 {
   int64_t const now = m_clock.NowMs();
@@ -529,6 +711,11 @@ void Esp32Source::OnData(esp32::Data const & data)
   int const lastFlags = m_flags;
   m_lastDataMs = now;
   m_wakingLinkMs.reset();
+  // The box answers over a link made after the one that told the lockout: switched off it could not, so it has been
+  // plugged back in. Its own time doesn't tell that by itself: the box may have locked seconds after a power-on and
+  // be heard later than that, and a time that has run past 2^31 ms looks wrapped around after the restart.
+  if (m_batteryLock == BatteryLock::LinkLost)
+    m_batteryLock = BatteryLock::None;
   m_dataTimesMs.push_back(now);
   while (now - m_dataTimesMs.front() >= kDataTimeoutMs)
     m_dataTimesMs.pop_front();
@@ -579,6 +766,8 @@ void Esp32Source::OnData(esp32::Data const & data)
     LOG(LINFO, ("The box has restarted"));
     ForgetJournal();
     m_hasLast = false;
+    // The data after BATT_LOCK, which the box sends for a second more, doesn't drop the lockout hint, a restart does.
+    m_batteryLock = BatteryLock::None;
   }
 
   // The box sends the totals: a lost line loses nothing, the next one has the rotation.
@@ -670,15 +859,23 @@ void Esp32Source::OnEvent(esp32::Event const & event)
     m_loggedEvents.erase(m_loggedEvents.begin());
   // The errors of the box are logged to find later why the speed or the gyroscope was lost.
   if (event.m_level == "I")
-    LOG(LINFO, ("Box event #", event.m_number, "at", event.m_timeMs, "ms:", event.m_code, event.m_text));
+    LOG(LINFO, (LogHead(m_clock, "EVENT", "box_event"), "Box event #", event.m_number, "at", event.m_timeMs,
+                "ms:", event.m_code, event.m_text));
   else
-    LOG(LWARNING, ("Box event #", event.m_number, "at", event.m_timeMs, "ms:", event.m_code, event.m_text));
+    LOG(LWARNING, (LogHead(m_clock, "EVENT", "box_event"), "Box event #", event.m_number, "at", event.m_timeMs,
+                   "ms:", event.m_code, event.m_text));
   // The box compares the raw voltage, the status has the corrected one.
   if (event.m_code == "VOLT_MISMATCH")
     m_voltageMismatch = true;
   else if (event.m_code == "VOLT_CAL")
     m_voltageMismatch = false;
-  // "fw 0.3.3 reset POWERON": the box was plugged in. It restarts by itself for other reasons.
+  // The box has switched itself off until it is unplugged. A journal replay of an event older than one seen (a later
+  // BOOT, say) must not bring the lock back.
+  else if (event.m_code == "BATT_LOCK" && event.m_number > lastNumber)
+    m_batteryLock = BatteryLock::Told;
+  // "fw 0.3.3 reset POWERON": the box was plugged in. It restarts by itself for other reasons. A BOOT doesn't drop
+  // the lockout hint: the box sends it only in the journal of the link, after the events of this link, so the BOOT
+  // of a new power-on can't be told from the replayed one of the locked power-on. The data of the new link do.
   else if (event.m_code == "BOOT")
     m_poweredOn = event.m_text.ends_with("reset POWERON");
   else if (event.m_code == "BT_PAIR_OPEN" && m_addPhone && m_addPhone->m_openEvent < 0 &&
@@ -772,7 +969,11 @@ SourceState Esp32Source::GetState() const
   if (m_update.IsActive())
     return SourceState::Updating;
   if (!IsConnected())
+  {
+    if (m_batteryLock != BatteryLock::None)
+      return SourceState::BoxBatteryLock;
     return IsSleeping() ? SourceState::BoxSleeping : SourceState::Connecting;
+  }
   if (m_flags & esp32::kFlagObdOk)
     return SourceState::Connected;
   if (m_obdState == "SLEEP")
@@ -802,7 +1003,8 @@ bool Esp32Source::IsSleeping() const
   // after a parking may stay silent, and the phone connects again and again.
   if (!m_lastDataMs)
     return false;
-  if (m_wakingLinkMs && (IsLinked(m_bleState) || m_clock.NowMs() - *m_wakingLinkMs <= kWakingLinkGapMs))
+  if (m_wakingLinkMs &&
+      ((IsLinked(m_bleState) && !m_bondLost) || m_clock.NowMs() - *m_wakingLinkMs <= kWakingLinkGapMs))
     return false;
   return m_obdState == "SLEEP" || (m_carInfo && m_carInfo->m_engineRunning == false);
 }

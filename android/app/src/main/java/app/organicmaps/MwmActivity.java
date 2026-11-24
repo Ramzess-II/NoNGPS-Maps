@@ -74,6 +74,7 @@ import app.organicmaps.nogps.BoxBottomSheet;
 import app.organicmaps.nogps.HowNoGpsActivity;
 import app.organicmaps.nogps.MainMenuItems;
 import app.organicmaps.nogps.NoGpsLinks;
+import app.organicmaps.nogps.ProfileActivity;
 import app.organicmaps.nogps.intro.IntroModalFragment;
 import app.organicmaps.nogps.intro.IntroOverlay;
 import app.organicmaps.nogps.intro.IntroSequence;
@@ -551,10 +552,9 @@ public class MwmActivity extends BaseMwmFragmentActivity
     mHowNoGpsRequest.launch(new Intent(this, HowNoGpsActivity.class));
   }
 
-  /// The site until the account has a screen of its own, see issue #458.
   private void openProfile()
   {
-    Utils.openUrl(this, NoGpsLinks.ACCOUNT_URL);
+    startActivity(new Intent(this, ProfileActivity.class));
   }
 
   private void buyBox()

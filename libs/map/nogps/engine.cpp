@@ -1,6 +1,7 @@
 #include "map/nogps/engine.hpp"
 
 #include "map/nogps/clock.hpp"
+#include "map/nogps/esp32_update.hpp"
 #include "map/nogps/geo.hpp"
 #include "map/nogps/log_line.hpp"
 #include "map/nogps/map_api.hpp"
@@ -149,6 +150,7 @@ void Engine::Stop()
   m_peerTimer.Stop();
   m_tripLogTimer.Stop();
   CancelCalibrateWhenStill();
+  m_map.SetCarFollowedApart(false);
   m_active = false;
 }
 
@@ -385,14 +387,14 @@ void Engine::OnEsp32BleBytes(std::string_view bytes)
   SaveHeardBox();
 }
 
-void Engine::OnEsp32BleState(BleState state)
+void Engine::OnEsp32BleState(BleState state, bool bondLost)
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());
   if (!m_inertial)
     return;
   // Before the box hears of it: the new file of a trip starts with its connection.
-  OnBoxLink(state == BleState::Connected && m_inertial->GetEsp32());
-  m_inertial->OnEsp32BleState(state);
+  OnBoxLink(state == BleState::Connected && !bondLost && m_inertial->GetEsp32());
+  m_inertial->OnEsp32BleState(state, bondLost);
 }
 
 void Engine::OnBoxLink(bool linked)
@@ -624,8 +626,8 @@ void Engine::CheckMotionSourceStopped()
     m_motionSourceWarnedMs.reset();
     return;
   }
-  // The box sleeps with the engine stopped: the car stands, nothing is lost.
-  if (state == SourceState::BoxSleeping || state == SourceState::ObdSleeping)
+  // The box sleeps with the engine stopped or has locked itself out: the car stands, nothing is lost.
+  if (state == SourceState::BoxSleeping || state == SourceState::BoxBatteryLock || state == SourceState::ObdSleeping)
     return;
   if (!m_motionSourceWorked || !m_manualMode || MsSince(m_motionSourceWarnedMs) < kMotionSourceWarningIntervalMs)
     return;
@@ -776,7 +778,7 @@ void Engine::CheckFirmwareUpdate()
   // checked together: the firmware of the application is offered to a box with a newer one too.
   auto const * firmware = FindBoxFirmware();
   if (m_drivenWithBox || now - *m_boxKnownSinceMs < kFirmwareOfferDelayMs || !firmware ||
-      firmware->m_version == box->GetInfo()->m_firmware)
+      FirmwareVersionNumbers(firmware->m_version) == FirmwareVersionNumbers(box->GetInfo()->m_firmware))
   {
     DropFirmwareOffer();
     return;
@@ -918,7 +920,7 @@ void Engine::RestoreTrustedPosition()
   }
   int64_t const timeMs = m_clock.NowMs() - (m_clock.UnixNowMs() - unixTimeMs);
   m_spoofingDetector.RestoreTrusted({lat, lon}, timeMs);
-  LOG(LINFO, ("Last trusted position =", saved));
+  LOG(LINFO, (LogHead(m_clock, "EVENT", "last_trusted"), "Last trusted position =", saved));
 }
 
 void Engine::SaveCarPosition(bool now)
@@ -1106,6 +1108,21 @@ void Engine::OnBoxHeard(std::string const & id, std::string const & firmware)
     m_boxCarValues.Forget();
 }
 
+std::string Engine::GetBoxAuthKey(std::string const & id, bool & confirmed)
+{
+  auto key = m_cars.GetCarValue(id, CarStorage::kCarAuthKey).value_or("");
+  confirmed = !key.empty() && key.front() != CarStorage::kAuthKeyUnconfirmed;
+  if (!key.empty() && !confirmed)
+    key.erase(0, 1);
+  return key;
+}
+
+void Engine::OnBoxAuthKey(std::string const & id, std::string const & key, bool confirmed)
+{
+  m_cars.SetCarValue(id, CarStorage::kCarAuthKey,
+                     key.empty() || confirmed ? key : CarStorage::kAuthKeyUnconfirmed + key);
+}
+
 void Engine::OnBoxCarValues(std::map<std::string, std::string> const & values)
 {
   auto * box = m_inertial->GetEsp32();
@@ -1138,13 +1155,23 @@ void Engine::OnBoxCarWritten(std::string const & key, std::string const & value,
 
 void Engine::OnThisPhoneRemoved()
 {
-  LOG(LINFO, ("This phone is removed from the box of the car", m_cars.GetCurrentCar()));
+  auto const car = m_cars.GetCurrentCar();
+  LOG(LINFO, ("This phone is removed from the box of the car", car));
+  // The box has dropped its key of this phone with the record: the next session gives it a new one.
+  m_cars.SetCarValue(car, CarStorage::kCarAuthKey, "");
   m_phoneRemovedTimer.Start(0, [this] { m_delegate.OnEvent(Event::ThisPhoneRemoved); });
 }
 
 std::vector<Sprint> Engine::GetSprints() const
 {
   auto sprints = ParseSprints(m_storage.Get<std::string>(Storage::kSprints, ""));
+  std::reverse(sprints.begin(), sprints.end());
+  return sprints;
+}
+
+std::vector<Sprint> Engine::GetSprints(std::string const & carId) const
+{
+  auto sprints = ParseSprints(m_cars.GetCarValue(carId, Storage::kSprints).value_or(""));
   std::reverse(sprints.begin(), sprints.end());
   return sprints;
 }
@@ -1535,9 +1562,16 @@ void Engine::ShowCarHeading()
     m_map.ShowCarHeading(*GetCarBearing());
 }
 
+bool Engine::IsCarFollowedApart() const
+{
+  return m_inertial && IsInertialNavigationEnabled() && m_inertial->GetOffRoadCar().has_value();
+}
+
 void Engine::NotifyLocationUpdated()
 {
   CHECK(m_savedLocation, ());
+  // Before the position: the platform gives it to the map at once.
+  m_map.SetCarFollowedApart(IsCarFollowedApart());
   m_delegate.OnPosition(*m_savedLocation);
   m_shownPosition = m_savedLocation->m_position;
   ShowCarHeading();
@@ -1563,6 +1597,7 @@ void Engine::ShowBetweenGpsPositions(Fix const & inertial)
                          DeadReckoning::kAccuracyPerMeter * Distance(m_savedLocation->m_position, location.m_position);
   location.m_unixTimeMs = UnixTimeAfterGps(location.m_timeMs);
   ++m_positionsBetweenGps;
+  m_map.SetCarFollowedApart(IsCarFollowedApart());
   m_delegate.OnPosition(location);
   m_shownPosition = location.m_position;
 }
@@ -2142,6 +2177,9 @@ Status Engine::GetStatus()
   {
     status.m_sourceState = m_inertial->GetSourceState();
     status.m_bleState = m_inertial->GetBleState();
+    // The probe of a lost pairing is not a connection for the UI either.
+    if (status.m_bleState == BleState::Connected && m_inertial->IsBleBondLost())
+      status.m_bleState = BleState::BondLost;
     status.m_deviceName = m_inertial->GetDeviceName();
     status.m_speedKmh = m_inertial->GetSpeedKmh();
     status.m_carInfo = m_inertial->GetCarInfo();

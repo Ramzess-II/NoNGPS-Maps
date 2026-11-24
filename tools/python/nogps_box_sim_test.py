@@ -4,8 +4,14 @@
   python3 tools/python/nogps_box_sim_test.py
 """
 
+import asyncio
+import contextlib
+import importlib
+import io
 import os
 import sys
+import tempfile
+import types
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -13,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nogps_box_sim as sim  # noqa: E402
 
 PHONE = 'phone-1'
+OTHER = 'phone-2'
 
 
 class Clock:
@@ -35,6 +42,11 @@ class Radio(sim.FakeRadio):
         super().__init__()
         # None takes everything; a number takes that many notifications and refuses the rest.
         self.take = take
+        self.disconnected = []
+
+    def disconnect(self, phone_id):
+        self.disconnected.append(phone_id)
+        super().disconnect(phone_id)
 
     def send(self, phone_id, data):
         if self.take is not None:
@@ -50,10 +62,10 @@ class Radio(sim.FakeRadio):
         return [raw for raw in found if kind is None or raw[1:4] == kind]
 
 
-def box(take=None, box_id='S1'):
+def box(take=None, box_id='S1', keys_path=None):
     clock = Clock()
     radio = Radio(take)
-    made = sim.Box(sim.State(box_id), radio, clock)
+    made = sim.Box(sim.State(box_id), radio, clock, keys_path=keys_path)
     return made, radio, clock
 
 
@@ -133,19 +145,19 @@ class Lines(unittest.TestCase):
         got = fields(made.state.status().decode('ascii').strip())
         self.assertEqual([got[5], got[6], got[12], got[13]], ['OK', sim.OBD_PROTOCOL, 'NONE', '38400'])
 
-    def test_info_tells_bluetooth_alone(self):
+    def test_info_tells_bluetooth_phones_recovery_and_the_proof(self):
         made, _, _ = box()
         got = fields(made.state.info().decode('ascii').strip())
         self.assertEqual(len(got), 14)
         self.assertEqual([got[0], got[1], got[2], got[4], got[5], got[6]],
                          ['NGI', '1', '0.4.4', 'esp32s3', 's3zero', 'S1'])
-        # The abilities the application looks for are not there: it asks for none of them.
-        self.assertEqual(got[11], 'BLE')
-        for ability in ('OTA', 'CAR', 'PHONES', 'MULTI', 'PEER'):
+        # The abilities the application looks for are not there but these: it asks for none of the others.
+        self.assertEqual(got[11], 'BLE PHONES RECOVERY AUTH')
+        for ability in ('OTA', 'CAR', 'MULTI', 'PEER'):
             self.assertNotIn(ability, got[11].split(' '))
 
     def test_the_name_fits_the_advertisement(self):
-        made, _, _ = box()
+        made, _, _ = box(box_id='S')
         # macOS drops a longer name when the service UUID of 16 bytes is in the packet.
         self.assertLessEqual(len(made.state.name()), 8)
         self.assertEqual(made.state.manufacturer(), bytes([0xFF, 0xFF, 1, 1]))
@@ -222,10 +234,342 @@ class Commands(unittest.TestCase):
     def test_a_command_the_box_hasnt_got(self):
         made, radio, _ = box()
         connect(made)
-        for number, text in ((7, 'BT_LIST'), (8, 'CAR_GET,spd_scale'), (9, 'OTA_BEGIN,1,2,3')):
+        for number, text in ((7, 'PEER,1,2'), (8, 'CAR_GET,spd_scale'), (9, 'OTA_BEGIN,1,2,3')):
             made.on_event('write', PHONE, command(number, text))
         made.tick()
         self.assertEqual([fields(raw)[2:] for raw in radio.lines('NGA')], [['ERR', 'UNKNOWN']] * 3)
+
+    def answers(self, made, radio):
+        made.tick()
+        return [fields(raw)[2:] for raw in radio.lines('NGA')]
+
+    def second_phone(self, made, name='Other', hello=True):
+        made.on_event('connect', OTHER, name)
+        made.on_event('subscribe', OTHER, 182)
+        if hello:
+            made.on_event('write', OTHER, command(1, 'HELLO,%s,1794680000' % name))
+
+    def test_the_phone_list_has_the_bonds_and_who_changes_the_box(self):
+        made, radio, _ = box()
+        connect(made)
+        self.second_phone(made)
+        made.on_event('write', PHONE, command(2, 'BT_LIST'))
+        made.on_event('write', OTHER, command(2, 'BT_LIST'))
+        first, second = self.answers(made, radio)
+        rows = first[1].split(';')
+        self.assertEqual(len(rows), 2)
+        (a1, n1, t1, mine1, listened1), (a2, n2, t2, mine2, listened2) = (r.split('|') for r in rows)
+        self.assertEqual((n1, t1, mine1, listened1, first[2]), ('Test phone', '1794685760', '1', '1', '1'))
+        self.assertEqual((n2, t2, mine2, listened2), ('Other', '1794680000', '0', '0'))
+        self.assertNotEqual(a1, a2)
+        # The second phone sees its own link and the first one listened to; it doesn't change the box.
+        self.assertEqual(second[1].split(';')[1].split('|')[3:], ['1', '0'])
+        self.assertEqual(second[2], '0')
+
+    def test_a_phone_without_a_hello_is_listed_by_nobody_but_the_list_is_there(self):
+        made, radio, _ = box()
+        connect(made, hello=False)
+        made.on_event('write', PHONE, command(2, 'BT_LIST'))
+        self.assertEqual(self.answers(made, radio), [['OK', '', '0']])
+
+    def test_recovery_code_goes_to_the_phone_the_box_listens_to(self):
+        made, radio, _ = box()
+        connect(made)
+        self.second_phone(made)
+        made.on_event('write', PHONE, command(2, 'BT_RECOVERY'))
+        made.on_event('write', OTHER, command(2, 'BT_RECOVERY'))
+        first, second = self.answers(made, radio)
+        self.assertEqual(first[0], 'OK')
+        self.assertRegex(first[1], r'^\d{6}$')
+        self.assertEqual(first[1], made.state.recovery_code)
+        self.assertEqual(second, ['ERR', 'BUSY'])
+        # The code is not in the log of lines the panel shows, as it isn't in an event of the firmware.
+        made.on_event('write', PHONE, command(3, 'BT_RECOVERY'))
+        made.tick()
+        self.assertEqual(radio.lines('NGE'), [])
+
+    def test_pairing_takes_a_code_of_six_digits(self):
+        made, radio, _ = box()
+        connect(made)
+        made.state.adv['pairing_open'] = False
+        for number, text in ((2, 'BT_PAIR,12345'), (3, 'BT_PAIR,12345a')):
+            made.on_event('write', PHONE, command(number, text))
+        self.assertEqual(self.answers(made, radio), [['ERR', 'VALUE']] * 2)
+        self.assertFalse(made.state.adv['pairing_open'])
+        made.on_event('write', PHONE, command(4, 'BT_PAIR,123456'))
+        made.on_event('write', PHONE, command(5, 'BT_PAIR'))
+        self.assertEqual(self.answers(made, radio)[2:], [['OK'], ['OK']])
+        self.assertTrue(made.state.adv['pairing_open'])
+
+    def test_pairing_is_for_the_phone_the_box_listens_to_and_a_full_box_refuses(self):
+        made, radio, _ = box()
+        connect(made)
+        self.second_phone(made)
+        made.on_event('write', OTHER, command(2, 'BT_PAIR,123456'))
+        made.on_event('write', PHONE, command(2, 'BT_PAIR,123456'))
+        self.assertEqual(self.answers(made, radio), [['OK'], ['ERR', 'BUSY']])
+        for name in ('Third', 'Fourth'):
+            made.bonds['02:00:00:00:00:' + name[:2]] = {'name': name, 'unix_s': 0}
+        made.on_event('write', PHONE, command(3, 'BT_PAIR,123456'))
+        self.assertEqual(self.answers(made, radio)[2:], [['ERR', 'FULL']])
+
+    def test_a_fifth_phone_is_not_bonded(self):
+        made, _, _ = box()
+        connect(made)
+        for number in range(5):
+            made.on_event('connect', 'p%d' % number, 'P')
+            made.on_event('write', 'p%d' % number, command(1, 'HELLO,Phone %d,1' % number))
+        self.assertEqual(len(made.bonds), 4)
+
+    def test_advertisement_flags_follow_the_bonds(self):
+        made, _, _ = box()
+        connect(made)
+        self.assertEqual((made.state.adv['has_phones'], made.state.adv['full']), (True, False))
+        for number in range(1, 5):
+            made.on_event('connect', 'p%d' % number, 'P')
+            made.on_event('write', 'p%d' % number, command(1, 'HELLO,Phone %d,1' % number))
+        self.assertTrue(made.state.adv['full'])
+        made.forget_all()
+        self.assertEqual((made.state.adv['has_phones'], made.state.adv['full']), (False, False))
+
+    def test_an_unbonded_fifth_phone_does_not_change_the_box(self):
+        made, radio, clock = box()
+        connect(made)
+        for number in range(1, 4):
+            made.on_event('connect', 'p%d' % number, 'P')
+            made.on_event('write', 'p%d' % number, command(1, 'HELLO,Phone %d,1' % number))
+        clock.pass_s(1000)
+        made.on_event('connect', 'p9', 'P')
+        made.on_event('write', 'p9', command(1, 'HELLO,Phone 9,1'))
+        self.assertIsNone(made.changer())
+        made.on_event('write', 'p9', command(2, 'BT_RECOVERY'))
+        self.assertEqual(self.answers(made, radio)[-1], ['ERR', 'BUSY'])
+
+    def test_a_phone_that_forgot_itself_is_not_bonded_again_before_its_drop(self):
+        made, radio, _ = box()
+        connect(made)
+        made.on_event('write', PHONE, command(2, 'BT_LIST'))
+        address = self.answers(made, radio)[0][1].split('|')[0]
+        made.on_event('write', PHONE, command(3, 'BT_FORGET,' + address))
+        made.on_event('write', PHONE, command(4, 'HELLO,Phone,1'))
+        self.assertEqual(len(made.bonds), 0)
+
+    def test_forgetting_one_phone(self):
+        made, radio, clock = box()
+        connect(made)
+        self.second_phone(made)
+        made.on_event('write', PHONE, command(2, 'BT_LIST'))
+        rows = [r.split('|')[0] for r in self.answers(made, radio)[0][1].split(';')]
+        other = rows[1]
+        made.on_event('write', PHONE, command(3, 'BT_FORGET,00:00:00:00:00:00'))
+        made.on_event('write', PHONE, command(4, 'BT_FORGET,' + other))
+        self.assertEqual(self.answers(made, radio)[1:], [['ERR', 'ADDR'], ['OK']])
+        self.assertEqual(len(made.bonds), 1)
+        made.tick()
+        self.assertEqual(radio.disconnected, [OTHER])
+        # The forgotten phone has no key any more.
+        self.assertNotIn('Other', made.auth_keys)
+
+    def test_a_phone_that_doesnt_change_the_box_forgets_only_itself(self):
+        made, radio, _ = box()
+        connect(made)
+        self.second_phone(made)
+        made.on_event('write', OTHER, command(2, 'BT_LIST'))
+        rows = [r.split('|') for r in self.answers(made, radio)[0][1].split(';')]
+        mine = [r[0] for r in rows if r[3] == '1'][0]
+        theirs = [r[0] for r in rows if r[3] == '0'][0]
+        made.on_event('write', OTHER, command(3, 'BT_FORGET,' + theirs))
+        made.on_event('write', OTHER, command(4, 'BT_FORGET,' + mine))
+        self.assertEqual(self.answers(made, radio)[1:], [['ERR', 'BUSY'], ['OK']])
+        self.assertEqual(list(made.bonds), [theirs])
+
+    def test_the_phone_that_forgets_itself_is_dropped_half_a_second_after_its_ok(self):
+        made, radio, clock = box()
+        connect(made)
+        made.on_event('write', PHONE, command(2, 'BT_LIST'))
+        made.tick()
+        address = fields(radio.lines('NGA')[-1])[3].split('|')[0]
+        made.on_event('write', PHONE, command(3, 'BT_FORGET,' + address))
+        made.tick()
+        self.assertEqual(fields(radio.lines('NGA')[-1])[2:], ['OK'])
+        self.assertEqual(radio.disconnected, [])
+        clock.pass_s(0.6)
+        made.tick()
+        self.assertEqual(radio.disconnected, [PHONE])
+        self.assertEqual(made.bonds, {})
+
+    def test_forgetting_all_keeps_the_links(self):
+        made, radio, _ = box()
+        connect(made)
+        made.on_event('write', PHONE, command(2, 'BT_FORGET'))
+        self.assertEqual(self.answers(made, radio), [['OK']])
+        self.assertEqual(made.bonds, {})
+        self.assertIn(PHONE, made.phones)
+
+    def test_the_panel_resets_to_one_phone_and_renews_the_code(self):
+        made, radio, _ = box()
+        connect(made)
+        self.second_phone(made)
+        code = made.state.recovery_code
+        keep = made.phones[OTHER].label
+        made.panel_action('bt_reset', keep)
+        self.assertEqual([b['name'] for b in made.bonds.values()], ['Other'])
+        self.assertNotEqual(made.state.recovery_code, code)
+        made.tick()
+        self.assertEqual(radio.disconnected, [PHONE])
+        state = made.panel_state()
+        self.assertEqual([b['name'] for b in state['bonds']], ['Other'])
+        self.assertEqual(state['recovery_code'], made.state.recovery_code)
+
+    def test_a_lapsed_phone_ranks_after_the_other_at_its_next_hello(self):
+        made, radio, clock = box()
+        connect(made)
+        self.second_phone(made)
+        clock.pass_s(sim.HELLO_TIMEOUT_S - 1)
+        made.on_event('write', OTHER, command(5, 'STATUS'))
+        clock.pass_s(2)
+        self.assertIs(made.changer(), made.phones[OTHER])
+        made.on_event('write', PHONE, command(6, 'HELLO,Test phone,1794685760'))
+        self.assertIs(made.changer(), made.phones[OTHER])
+
+    def test_forgetting_a_gone_phone_drops_its_key(self):
+        made, radio, _ = box()
+        connect(made)
+        self.second_phone(made)
+        made.on_event('write', OTHER, command(5, 'AUTH_SET,000102030405060708090a0b0c0d0e0f'))
+        self.assertIn('Other', made.auth_keys)
+        made.on_event('disconnect', OTHER)
+        made.forget(sim.bond_address('Other'))
+        self.assertNotIn('Other', made.auth_keys)
+
+    def test_the_reset_bonds_the_new_phone_with_the_pairing_window_closed(self):
+        made, _, _ = box()
+        connect(made)
+        made.state.adv['pairing_open'] = False
+        made.on_event('connect', OTHER, 'Other')
+        made.on_event('subscribe', OTHER, 182)
+        made.on_event('write', OTHER, command(1, 'HELLO,Other,1794685760'))
+        self.assertEqual(len(made.bonds), 1)
+        made.panel_action('bt_reset', made.phones[OTHER].label)
+        self.assertEqual([b['name'] for b in made.bonds.values()], ['Other'])
+        self.assertTrue(made.state.adv['has_phones'])
+
+    def test_the_panel_forgets_a_bond(self):
+        made, _, _ = box()
+        connect(made)
+        address = next(iter(made.bonds))
+        made.panel_action('forget_bond', address)
+        self.assertEqual(made.bonds, {})
+
+    def test_the_box_takes_a_key_and_proves_itself(self):
+        made, radio, _ = box()
+        connect(made)
+        key = '000102030405060708090a0b0c0d0e0f'
+        made.on_event('write', PHONE, command(10, 'AUTH,a1b2c3d4e5f60718'))
+        made.on_event('write', PHONE, command(11, 'AUTH_SET,' + key))
+        made.on_event('write', PHONE, command(12, 'AUTH,a1b2c3d4e5f60718'))
+        made.on_event('write', PHONE, command(13, 'AUTH,A1B2C3D4E5F60718'))
+        made.tick()
+        got = [fields(raw)[1:] for raw in radio.lines('NGA')]
+        # The vector is the one of the core's test of esp32::AuthProof.
+        self.assertEqual(got, [['10', 'ERR', 'NOKEY'], ['11', 'OK'], ['12', 'OK', '0620aee41375224a'],
+                               ['13', 'OK', '0620aee41375224a']])
+
+    def test_the_key_is_taken_once_and_kept_for_the_phone(self):
+        made, radio, _ = box()
+        connect(made)
+        key = '000102030405060708090a0b0c0d0e0f'
+        other = 'ff' * 16
+        made.on_event('write', PHONE, command(1, 'AUTH_SET,' + key))
+        # The same key again is taken (its answer may have been lost), another one is not.
+        made.on_event('write', PHONE, command(2, 'AUTH_SET,' + key))
+        made.on_event('write', PHONE, command(3, 'AUTH_SET,' + other))
+        made.on_event('write', PHONE, command(4, 'AUTH_SET,' + key[:-2]))
+        made.on_event('write', PHONE, command(5, 'AUTH_SET,' + 'zz' * 16))
+        made.on_event('write', PHONE, command(6, 'AUTH,a1b2c3d4e5f6071'))
+        made.on_event('write', PHONE, command(7, 'AUTH'))
+        made.tick()
+        got = [fields(raw)[1:] for raw in radio.lines('NGA')]
+        self.assertEqual(got, [['1', 'OK'], ['2', 'OK'], ['3', 'ERR', 'EXISTS'], ['4', 'ERR', 'VALUE'],
+                               ['5', 'ERR', 'VALUE'], ['6', 'ERR', 'VALUE'], ['7', 'ERR', 'VALUE']])
+        # The key stays after the phone has gone and comes back.
+        made.on_event('disconnect', PHONE)
+        connect(made)
+        made.on_event('write', PHONE, command(1, 'AUTH,a1b2c3d4e5f60718'))
+        made.tick()
+        self.assertEqual(fields(radio.lines('NGA')[-1])[2:], ['OK', '0620aee41375224a'])
+
+    def test_the_keys_of_the_phones_outlive_the_program(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, 'keys.json')
+            first, _, _ = box(keys_path=path)
+            connect(first)
+            first.on_event('write', PHONE, command(1, 'AUTH_SET,000102030405060708090a0b0c0d0e0f'))
+            first.tick()
+            # The program starts again, as the box restarts: the key of the phone is where NVS keeps it.
+            again, radio, _ = box(keys_path=path)
+            connect(again)
+            again.on_event('write', PHONE, command(2, 'AUTH,a1b2c3d4e5f60718'))
+            again.tick()
+            self.assertEqual(fields(radio.lines('NGA')[-1])[2:], ['OK', '0620aee41375224a'])
+            # A box of another id has its own keys in the same file.
+            other, other_radio, _ = box(box_id='S2', keys_path=path)
+            connect(other)
+            other.on_event('write', PHONE, command(3, 'AUTH,a1b2c3d4e5f60718'))
+            other.tick()
+            self.assertEqual(fields(other_radio.lines('NGA')[-1])[2:], ['ERR', 'NOKEY'])
+            # The keys the panel makes the box forget are gone from the file too.
+            again.panel_action('forget_keys', '')
+            last, _, _ = box(keys_path=path)
+            self.assertEqual(last.auth_keys, {})
+
+    def test_the_key_follows_the_phone_through_a_new_address(self):
+        made, radio, _ = box()
+        connect(made)
+        made.on_event('write', PHONE, command(1, 'AUTH_SET,000102030405060708090a0b0c0d0e0f'))
+        made.on_event('disconnect', PHONE)
+        # The private address of the phone has changed, so the radio gives the link another id; the name of its
+        # HELLO is the same, and the key is the phone's.
+        made.on_event('connect', 'phone-2', 'Test phone')
+        made.on_event('subscribe', 'phone-2', 182)
+        made.on_event('write', 'phone-2', command(2, 'HELLO,Test phone,1794685761'))
+        made.on_event('write', 'phone-2', command(3, 'AUTH,a1b2c3d4e5f60718'))
+        made.tick()
+        self.assertEqual(fields(radio.lines('NGA')[-1])[1:], ['3', 'OK', '0620aee41375224a'])
+        self.assertEqual(made.panel_state()['keys'], 1)
+
+    def test_the_keys_follow_the_id_the_panel_sets(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, 'keys.json')
+            made, radio, _ = box(keys_path=path)
+            connect(made)
+            first = '000102030405060708090a0b0c0d0e0f'
+            made.on_event('write', PHONE, command(1, 'AUTH_SET,' + first))
+            # Another id is another box: it has no key of this phone, and takes the one the application gives it.
+            made.panel_set({'box_id': 'S2'})
+            self.assertEqual(made.panel_state()['keys'], 0)
+            made.on_event('write', PHONE, command(2, 'AUTH_SET,' + 'ff' * 16))
+            made.tick()
+            self.assertEqual(fields(radio.lines('NGA')[-1])[1:], ['2', 'OK'])
+            # Back at the first id, the first key is the one the box proves itself with.
+            made.panel_set({'box_id': 'S1'})
+            made.on_event('write', PHONE, command(3, 'AUTH,a1b2c3d4e5f60718'))
+            made.tick()
+            self.assertEqual(fields(radio.lines('NGA')[-1])[1:], ['3', 'OK', '0620aee41375224a'])
+            # Both boxes have their keys in the file.
+            with open(path, encoding='utf-8') as kept:
+                self.assertEqual(sorted(sim.json.load(kept)), ['S1', 'S2'])
+
+    def test_the_panel_makes_the_box_forget_the_keys(self):
+        made, radio, _ = box()
+        connect(made)
+        made.on_event('write', PHONE, command(1, 'AUTH_SET,' + '00' * 16))
+        self.assertEqual(made.panel_state()['keys'], 1)
+        made.panel_action('forget_keys', '')
+        self.assertEqual(made.panel_state()['keys'], 0)
+        made.on_event('write', PHONE, command(2, 'AUTH,a1b2c3d4e5f60718'))
+        made.tick()
+        self.assertEqual(fields(radio.lines('NGA')[-1])[2:], ['ERR', 'NOKEY'])
 
     def test_a_line_with_a_wrong_checksum_is_dropped(self):
         made, radio, _ = box()
@@ -251,12 +595,12 @@ class Session(unittest.TestCase):
         self.assertEqual(radio.lines('NGD'), [])
         self.assertEqual(radio.lines('NGS'), [])
 
-    def test_the_data_stops_three_seconds_after_the_last_hello(self):
+    def test_the_data_stops_ten_seconds_after_the_last_command(self):
         made, radio, clock = box()
         connect(made)
         made.tick()
         self.assertEqual(len(radio.lines('NGD')), 1)
-        clock.pass_s(2.9)
+        clock.pass_s(9.9)
         made.tick()
         self.assertEqual(len(radio.lines('NGD')), 2)
         clock.pass_s(0.2)
@@ -267,6 +611,44 @@ class Session(unittest.TestCase):
         made.tick()
         self.assertEqual(len(radio.lines('NGD')), 3)
         self.assertEqual([fields(raw)[2] for raw in radio.lines('NGD')], ['1', '2', '3'])
+
+    def test_any_command_keeps_the_session(self):
+        made, radio, clock = box()
+        connect(made)
+        for number in range(2, 5):
+            clock.pass_s(6)
+            made.on_event('write', PHONE, command(number, 'STATUS'))
+            made.tick()
+        self.assertEqual(len(radio.lines('NGD')), 3)
+
+    def test_a_command_does_not_start_a_session(self):
+        made, radio, _ = box()
+        connect(made, hello=False)
+        made.on_event('write', PHONE, command(1, 'STATUS'))
+        made.tick()
+        self.assertEqual(radio.lines('NGD'), [])
+
+    def test_a_command_does_not_restart_an_ended_session(self):
+        """Section 9.2: the box has freed the phone's slot, so only a HELLO starts the session again."""
+        made, radio, clock = box()
+        connect(made)
+        clock.pass_s(sim.HELLO_TIMEOUT_S + 1)
+        made.on_event('write', PHONE, command(2, 'STATUS'))
+        made.tick()
+        self.assertEqual(radio.lines('NGD'), [])
+        made.on_event('write', PHONE, command(3, 'HELLO,Test phone,1794685770'))
+        made.tick()
+        self.assertEqual(len(radio.lines('NGD')), 1)
+
+    def test_peer_does_not_keep_the_session(self):
+        """The box relays PEER before it looks at the commands, so it does not refresh the session."""
+        made, radio, clock = box()
+        connect(made)
+        clock.pass_s(6)
+        made.on_event('write', PHONE, command(2, 'PEER,SELF,1000,0,0,0,10,BOX'))
+        clock.pass_s(5)
+        made.tick()
+        self.assertEqual(radio.lines('NGD'), [])
 
     def test_two_phones_hear_the_same_data_line(self):
         """Section 9.7: both phones hear the same NGD, so its totals are one moment for both."""
@@ -359,7 +741,14 @@ class Session(unittest.TestCase):
         self.assertIsNone(radio.advertisement)
         made.panel_action('start', '')
         made.tick()
-        self.assertEqual(radio.advertisement, ('NoGPS-S1', None))
+        self.assertEqual(radio.advertisement, ('NonGPS-S1', None))
+
+    def test_a_box_that_is_not_updated_advertises_the_old_name(self):
+        made, radio, _ = box()
+        made.panel_set({'legacy_name': True})
+        self.assertEqual(made.state.name(), 'NoGPS-S1')
+        made.panel_set({'legacy_name': False})
+        self.assertEqual(made.state.name(), 'NonGPS-S1')
 
     def test_the_panel_shuts_the_simulator_down(self):
         made, radio, clock = box()
@@ -387,11 +776,21 @@ class Session(unittest.TestCase):
         self.assertEqual(len(state['phones']), 1)
         self.assertEqual(state['phones'][0]['name'], 'Test phone')
         self.assertTrue(state['phones'][0]['heard'])
+        self.assertEqual(state['phones'][0]['hello_age_ms'], 0)
         # IMU_OK, BIAS_OK, UP_OK, STILL, and OBD_ABSENT of the adapter that isn't there.
         self.assertEqual(state['flags_value'], '227')
         without = made.panel_lines(0, False)
         self.assertTrue(all(item['kind'] != 'NGD' for item in without['lines']))
         self.assertTrue(any(item['kind'] == 'NGD' for item in made.panel_lines(0, True)['lines']))
+
+    def test_the_panel_shows_the_age_of_the_last_hello(self):
+        """The panel says 'HELLO ... s ago': a command of another kind keeps the session but is not a HELLO."""
+        made, _, clock = box()
+        connect(made)
+        clock.pass_s(4)
+        made.on_event('write', PHONE, command(2, 'STATUS'))
+        made.tick()
+        self.assertEqual(made.panel_state()['phones'][0]['hello_age_ms'], 4000)
 
     def test_the_panel_does_not_take_a_flag_it_doesnt_know(self):
         made, _, _ = box()
@@ -399,9 +798,145 @@ class Session(unittest.TestCase):
         self.assertNotIn('NOPE', made.state.flags)
         self.assertEqual(made.state.shake_pct, 9999)
         self.assertEqual(made.state.obd, 'NO_ADAPTER')
-        # The id is the four characters of the name of a box, and macOS drops a longer name.
+        # The id is the four characters of the name of a box.
         made.panel_set({'box_id': 'TOOLONG'})
+        self.assertEqual(made.state.name(), 'NonGPS-TOOL')
+        made.panel_set({'legacy_name': True})
+        self.assertEqual(made.panel_state()['legacy_name'], True)
         self.assertEqual(made.state.name(), 'NoGPS-TOOL')
+
+    def test_the_panel_takes_the_id_of_a_real_box(self):
+        made, _, _ = box()
+        # The panel takes a four-character id whole, as --id does: a box of a known car can be stood in for.
+        made.panel_set({'box_id': 'C47D'})
+        self.assertEqual(made.panel_state()['box_id'], 'C47D')
+        self.assertEqual(made.state.name(), 'NonGPS-C47D')
+        self.assertEqual(fields(made.state.info().decode('ascii').strip())[6], 'C47D')
+
+
+class SilenceWatchTest(unittest.TestCase):
+    def test_a_central_is_gone_only_after_a_long_silence(self):
+        clock = Clock()
+        watch = sim.SilenceWatch(clock)
+        watch.wrote('a')
+        watch.wrote('b')
+        clock.pass_s(sim.SILENT_GONE_S - 1)
+        watch.wrote('b')
+        self.assertGreater(sim.SILENT_GONE_S, 5 * sim.HELLO_TIMEOUT_S)
+        self.assertEqual(watch.gone(), [])
+        clock.pass_s(1)
+        self.assertEqual(watch.gone(), ['a'])
+        # Taken once; a phone that writes again is watched again.
+        self.assertEqual(watch.gone(), [])
+        watch.wrote('a')
+        watch.forget('b')
+        clock.pass_s(sim.SILENT_GONE_S)
+        self.assertEqual(watch.gone(), ['a'])
+
+
+class WindowsRadioTest(unittest.TestCase):
+    """The bookkeeping of the radio of Windows, over a stub of winsdk: nothing here touches Bluetooth."""
+
+    @classmethod
+    def setUpClass(cls):
+        from unittest import mock
+        names = ['winsdk', 'winsdk.windows', 'winsdk.windows.devices', 'winsdk.windows.devices.bluetooth',
+                 'winsdk.windows.devices.bluetooth.advertisement',
+                 'winsdk.windows.devices.bluetooth.genericattributeprofile', 'winsdk.windows.storage',
+                 'winsdk.windows.storage.streams']
+        cls.patch = mock.patch.dict(sys.modules, {name: mock.MagicMock() for name in names})
+        cls.patch.start()
+        sys.modules.pop('nogps_box_sim_radio_windows', None)
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        cls.module = importlib.import_module('nogps_box_sim_radio_windows')
+
+    @classmethod
+    def tearDownClass(cls):
+        sys.modules.pop('nogps_box_sim_radio_windows', None)
+        cls.patch.stop()
+
+    def radio(self):
+        radio = self.module.Radio()
+        radio.events = []
+        radio.on_event = lambda *args: radio.events.append(args)
+        return radio
+
+    @staticmethod
+    def provider():
+        calls = []
+        return types.SimpleNamespace(calls=calls, start_advertising=lambda parameters: calls.append('start'),
+                                     stop_advertising=lambda: calls.append('stop'))
+
+    @staticmethod
+    def client(phone_id, size):
+        return types.SimpleNamespace(session=types.SimpleNamespace(device_id=types.SimpleNamespace(id=phone_id)),
+                                     max_notification_size=size)
+
+    def test_write_after_silence_keeps_the_client(self):
+        radio = self.radio()
+        radio.tx = types.SimpleNamespace(subscribed_clients=[self.client('dev-a', 182)])
+        radio.sync_clients(radio.tx.subscribed_clients)
+        radio.forget('dev-a')
+        radio.on_write('dev-a', b'HELLO')
+        self.assertIn('dev-a', radio.clients)
+        self.assertEqual(radio.phones['dev-a'], 182)
+
+    def test_subscribed_client_is_a_phone(self):
+        radio = self.radio()
+        radio.sync_clients([self.client('dev-a', 182)])
+        self.assertEqual(radio.events, [('connect', 'dev-a', 'dev-a'), ('subscribe', 'dev-a', 182)])
+        radio.sync_clients([self.client('dev-a', 182)])
+        self.assertEqual(len(radio.events), 2)
+        radio.sync_clients([self.client('dev-a', 20)])
+        self.assertEqual(radio.events[-1], ('subscribe', 'dev-a', 20))
+        radio.sync_clients([])
+        self.assertEqual(radio.events[-1], ('disconnect', 'dev-a'))
+        self.assertEqual(radio.phones, {})
+
+    def test_notification_is_never_shorter_than_the_smallest(self):
+        radio = self.radio()
+        radio.sync_clients([self.client('dev-a', 5)])
+        self.assertEqual(radio.events[-1], ('subscribe', 'dev-a', sim.MIN_PAYLOAD))
+
+    def test_write_from_an_unknown_phone_makes_it_a_phone(self):
+        radio = self.radio()
+        radio.on_write('dev-a', b'HELLO')
+        self.assertEqual([e[0] for e in radio.events], ['connect', 'subscribe', 'write'])
+        self.assertEqual(radio.events[-1], ('write', 'dev-a', b'HELLO'))
+
+    def test_send_needs_a_subscribed_phone_and_room(self):
+        radio = self.radio()
+        self.assertFalse(radio.send('dev-a', b'x'))
+        radio.on_write('dev-a', b'HELLO')
+        self.assertFalse(radio.send('dev-a', b'x'))
+        radio.sync_clients([self.client('dev-a', 182)])
+        radio.pending = sim.QUEUE_LINES
+        self.assertFalse(radio.send('dev-a', b'x'))
+
+    def test_disconnect_forgets_the_phone_once(self):
+        radio = self.radio()
+        radio.sync_clients([self.client('dev-a', 182)])
+        radio.disconnect('dev-a')
+        radio.disconnect('dev-a')
+        self.assertEqual([e for e in radio.events if e[0] == 'disconnect'], [('disconnect', 'dev-a')])
+
+    def test_the_advertisement_is_the_service_alone(self):
+        """Windows reserves the name and the flags of BLE-13, so the panel changes nothing in the advertisement."""
+        self.assertFalse(self.module.Radio.supports_manufacturer_data)
+        radio = self.radio()
+        radio.provider = self.provider()
+        radio.wanted = (sim.NAME_PREFIX + 'S1', None)
+        with contextlib.redirect_stdout(io.StringIO()):
+            asyncio.run(radio.apply())
+            asyncio.run(radio.apply())
+            self.assertEqual(radio.provider.calls, ['start'])
+            radio.wanted = None
+            asyncio.run(radio.apply())
+        self.assertEqual(radio.provider.calls, ['start', 'stop'])
+
+    def test_default_radio_of_each_platform(self):
+        self.assertEqual([sim.default_radio(p) for p in ('darwin', 'linux', 'win32', 'freebsd')],
+                         ['macos', 'linux', 'windows', 'fake'])
 
 
 if __name__ == '__main__':
