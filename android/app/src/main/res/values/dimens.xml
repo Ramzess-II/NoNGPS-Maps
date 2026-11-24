@@ -159,8 +159,13 @@
   <dimen name="speed_hint_margin_start">46dp</dimen>
   <!-- Its text starts after the speed. -->
   <dimen name="speed_hint_padding_start">42dp</dimen>
-  <!-- The alert of a timed run: its bottom is above the speed. -->
-  <dimen name="sprint_margin_bottom">88dp</dimen>
+  <!-- The free band at the bottom of the map in navigation: the car mark's lowest point is this far above the bottom
+       sheet, so the speed button and its bars (margin_half + speed_view_size, 68dp) stay under it. -->
+  <dimen name="nogps_mark_clearance">76dp</dimen>
+  <!-- The mark's height: 2 x Arrow3d::GetMaxBottomSize(). -->
+  <dimen name="nogps_mark_height">64dp</dimen>
+  <!-- The alert of a timed run: its bottom is above the mark: clearance + height + 8. -->
+  <dimen name="sprint_margin_bottom">148dp</dimen>
   <dimen name="speed_limit_size">30dp</dimen>
   <dimen name="nav_search_wheel_radius">96dp</dimen>
   <dimen name="nav_search_wheel_diameter">192dp</dimen>

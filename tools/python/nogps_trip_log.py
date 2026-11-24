@@ -48,6 +48,9 @@ REF_MAX_ACCURACY_M = 30
 # repeats the last Wi-Fi position in a covered car park with a fresh age and a fair accuracy.
 REF_STALE_MOVE_M = 5
 REF_STALE_DRIVEN_M = 30
+# A fix without a speed or a course is not measured while the car drives at least this fast: add_error() can't move
+# it on by its age, and such fixes are Wi-Fi or cell positions that lag behind the car.
+REF_NO_COURSE_MAX_KMH = 3
 # The speed of a line counts for the seconds until the next one, at most this many: a gap is no drive.
 REF_STALE_MAX_GAP_S = 5
 LOG_NAME = re.compile(r'\.log$', re.I)
@@ -209,8 +212,9 @@ def offset_m(lat, lon, ref_lat, ref_lon):
 class ErrorMeter:
     """Adds the error of the shown position from the platform fix to the TRIP rows of one phone, in time order.
     ref= is the fix measured against: gps= if it is accurate, else fused=. err_why= tells why a row with a fix has
-    no error: 'coarse' (no fix within REF_MAX_ACCURACY_M) or 'stale' (new fixes stood while the car drove). One old
-    fix repeated with a growing age is not stale: add_error() moves it on by its age."""
+    no error: 'coarse' (no fix within REF_MAX_ACCURACY_M), 'stale' (new fixes stood while the car drove) or
+    'nocourse' (a fix without a speed or a course while the car drives). One old fix repeated with a growing age is
+    not stale: add_error() moves it on by its age and course."""
 
     def __init__(self):
         # Of gps and fused apart, as ref= switches between them: where and since when the fixes stand, the time of
@@ -240,6 +244,9 @@ class ErrorMeter:
             row['err_why'] = 'coarse'
         elif fix['stale']:
             row['err_why'] = 'stale'
+        elif ((self.kmh or 0) >= REF_NO_COURSE_MAX_KMH
+              and (number(row, ref + '_kmh') is None or number(row, ref + '_bear') is None)):
+            row['err_why'] = 'nocourse'
         else:
             add_error(row, ref)
 

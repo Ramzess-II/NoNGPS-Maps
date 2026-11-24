@@ -78,10 +78,10 @@ def android_drive(day='10-08', start=18 * 3600, seconds=120, stand=10, error=lam
     return lines
 
 
-def logfmt_line(phone='Pixel_7-a3f9', version=2, trip='180000'):
+def logfmt_line(phone='Pixel_7-a3f9', version=2, trip='180000', commit='abcdef12'):
     """The first line of a log file, as LogsManager.getLogFormatLine writes it."""
-    return ('LOGFMT %d ms=%d phone=%s trip=%s app=2026.10.08-1-Google build=26100801 commit=abcdef12 om=2026.10.27-10'
-            % (version, LOGFMT_MS, phone, trip))
+    return ('LOGFMT %d ms=%d phone=%s trip=%s app=2026.10.08-1-Google build=26100801 commit=%s om=2026.10.27-10'
+            % (version, LOGFMT_MS, phone, trip, commit))
 
 
 def with_logfmt(lines, phone='Pixel_7-a3f9', **kwargs):
@@ -241,6 +241,20 @@ class ErrorMeterTest(unittest.TestCase):
                                    gps='%.6f,%.6f/5.0/36.0/0/%.2f/3' % (START_LAT, START_LON, s))) for s in range(8)])
         self.assertEqual([r.get('err_why') for r in rows], [None] * 8)
         self.assertAlmostEqual(rows[-1]['err_m'], 3.0, delta=0.2)
+
+    def test_fix_without_course(self):
+        # A Wi-Fi fix without speed and course, older each second, can't be moved on: not measured while the car
+        # drives, measured while it stands.
+        wifi = '%.6f,%.6f/20.0/-/-/%.2f/3'
+        rows = self.rows([(s, dict(lat=START_LAT + s * 10 * DEG_PER_M, kmh=36.0, gps=wifi % (START_LAT, START_LON, s)))
+                          for s in range(3)] + [(3, dict(kmh=0.0, gps=wifi % (START_LAT, START_LON, 0)))])
+        self.assertEqual([r.get('err_why') for r in rows], ['nocourse'] * 3 + [None])
+        self.assertAlmostEqual(rows[-1]['err_m'], 3.0, delta=0.2)
+        # A speed without a course can't move it on either; the car at REF_NO_COURSE_MAX_KMH counts as driving.
+        kmh = nogps_trip_log.REF_NO_COURSE_MAX_KMH
+        for car_kmh, why in ((kmh, 'nocourse'), (kmh - 1, None)):
+            row = self.rows([(0, dict(kmh=car_kmh, gps='%.6f,%.6f/5.0/36.0/-/0.50/3' % (START_LAT, START_LON)))])[0]
+            self.assertEqual(row.get('err_why'), why, car_kmh)
 
     def test_fix_of_a_standing_car(self):
         rows = self.rows([(s, dict(kmh=0.0, gps=self.fix(kmh=0))) for s in range(0, 600, 30)])
@@ -417,6 +431,7 @@ class ReplayLogsTest(unittest.TestCase):
                 nogps_replay.main()
             except SystemExit:
                 pass
+        self.last_out = out.getvalue()
         return out.getvalue(), err.getvalue()
 
     @staticmethod
@@ -447,6 +462,88 @@ class ReplayLogsTest(unittest.TestCase):
             self.run_main('input', folder, '--day', '10-08', '-o', target)
             self.assertEqual(sorted(n for n in os.listdir(folder) if n.startswith('in-')),
                              ['in-Pixel_7-a3f9.txt', 'in-SM_S918B-0b1c.txt'])
+
+    def test_input_of_a_fresh_trip_says_so_in_its_first_record(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.two_phones(folder)
+            target = os.path.join(folder, 'in.txt')
+            for flags, first in (([], 'D 10-08'), (['--fresh'], 'D 10-08 fresh')):
+                self.run_main('input', os.path.join(folder, 'Pixel_7-a3f9'), '--day', '10-08', '-o', target, *flags)
+                with open(target) as f:
+                    self.assertEqual(f.readline().rstrip('\n'), first)
+
+    def run_with_maps(self, logged, version, *flags, step=1800):
+        """Whether `run` drove a day logged on the maps |logged| (None: no MAPS line) with --data_path <version>, and
+        its output."""
+        with tempfile.TemporaryDirectory() as folder:
+            lines = self.drive(20)
+            # A tuple is a MAPS line after each other, as when maps are downloaded in the middle of the day.
+            for at, version_line in enumerate((logged,) if isinstance(logged, str) else logged or ()):
+                lines.insert(1 + at, core('10-08', 18 * 3600 + step * at, 'Start',
+                                          'MAPS ms=%d version=%s' % (LOGFMT_MS, version_line)))
+            write_tree(folder, {'Pixel_7-a3f9/2026-10-08/180000.log': with_logfmt(lines)})
+            maps = os.path.join(folder, 'maps')
+            if version:
+                os.makedirs(os.path.join(maps, version))
+            else:
+                os.makedirs(maps)
+            tool = os.path.join(folder, 'tool.py')
+            with open(tool, 'w') as f:
+                f.write('#!%s\nimport sys\nopen(sys.argv[-1], "w").write("")\nopen(sys.argv[-1] + ".done", "w")\n'
+                        % sys.executable)
+            os.chmod(tool, 0o755)
+            out_folder = os.path.join(folder, 'out')
+            self.run_main('run', folder, '--tool', tool, '--data_path', maps, '-o', out_folder, '-j', '1', *flags)
+            return os.path.exists(os.path.join(out_folder, 'Pixel_7-a3f9', '10-08-in.txt')), self.last_out
+
+    def test_run_refuses_a_day_logged_on_other_maps(self):
+        driven, _ = self.run_with_maps('261101,260714', '260714')
+        self.assertTrue(driven)
+        driven, out = self.run_with_maps('261101,260714', '250101')
+        self.assertFalse(driven)
+        self.assertIn('the log was driven on maps 261101,260714 and --data_path has 250101', out)
+        driven, _ = self.run_with_maps('261101,260714', '250101', '--any-maps')
+        self.assertTrue(driven)
+        driven, out = self.run_with_maps('261101', None)
+        self.assertFalse(driven)
+        self.assertIn('the version of --data_path is not known', out)
+
+    def test_run_refuses_a_day_with_newer_maps_later(self):
+        driven, out = self.run_with_maps(('260714', '261101,260714'), '260714')
+        self.assertTrue(driven)
+        driven, out = self.run_with_maps(('260714', '261101'), '260714')
+        self.assertFalse(driven)
+        self.assertIn('--data_path has 260714', out)
+
+    def test_run_checks_the_maps_only_up_to_to(self):
+        driven, _ = self.run_with_maps(('260714', '261101'), '260714', '--to', '18:10')
+        self.assertTrue(driven)
+        driven, _ = self.run_with_maps(('260714', '261101'), '260714', '--to', '19:00')
+        self.assertFalse(driven)
+
+    def test_run_checks_the_maps_only_from_from(self):
+        # The maps of 18:00:00 were replaced at 18:00:05: a window after that is driven on the later ones.
+        driven, _ = self.run_with_maps(('260714', '261101'), '261101', '--from', '18:00:10', step=5)
+        self.assertTrue(driven)
+        driven, _ = self.run_with_maps(('260714', '261101'), '260714', '--from', '18:00:10', step=5)
+        self.assertFalse(driven)
+
+    def test_warn_builds_names_a_dirty_build_and_skips_a_build_without_git(self):
+        for commit, noted in (('abcdef12-dirty', 'abcdef12-dirty'), ('00000000', None), ('00000000-dirty', None)):
+            with tempfile.TemporaryDirectory() as folder:
+                write_tree(folder, {'Pixel_7-a3f9/2026-10-08/180000.log':
+                                    with_logfmt(self.drive(20), commit=commit)})
+                err = io.StringIO()
+                with mock.patch.object(sys, 'stderr', err):
+                    nogps_replay.warn_builds([folder])
+                if noted:
+                    self.assertIn('the builds ' + noted + ',', err.getvalue())
+                else:
+                    self.assertEqual(err.getvalue(), '')
+
+    def test_run_drives_a_day_with_no_maps_line(self):
+        driven, _ = self.run_with_maps(None, '250101')
+        self.assertTrue(driven)
 
     def test_compare_takes_one_phone(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -1209,7 +1306,7 @@ class RunTest(unittest.TestCase):
             out = os.path.join(folder, 'out')
             args = argparse.Namespace(logs=[log], tool=tool, data_path='maps', resources_path='data',
                                       settings='settings.ini', day=None, start=None, end=None, jobs=2, output=out,
-                                      no_taps=False, no_route=False, change=15)
+                                      no_taps=False, no_route=False, change=15, fresh=False, any_maps=False)
             lines = io.StringIO()
             with mock.patch.object(nogps_replay, 'held_out_days', lambda: {'10-09'}), redirect_stdout(lines):
                 nogps_replay.run(args)
