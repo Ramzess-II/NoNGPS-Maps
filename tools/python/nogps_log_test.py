@@ -6,6 +6,7 @@
 
 import argparse
 import io
+import json
 import os
 import re
 import sys
@@ -1001,6 +1002,107 @@ class HeldOutTest(unittest.TestCase):
 
     def test_file_of_the_repo_parses(self):
         self.assertIsInstance(nogps_replay.held_out_days(), set)
+
+
+class HeldOutRuleTest(unittest.TestCase):
+    def test_days_of_the_rule_and_of_the_list(self):
+        listed = {'10-09'}
+        self.assertEqual({day: nogps_replay.set_of(day, listed)
+                          for day in ('2026-11-24', '2026-11-28', '2026-11-23', '2026-10-08', '2026-10-09', '11-24')},
+                         {'2026-11-24': 'held out', '2026-11-28': 'held out', '2026-11-23': 'made from',
+                          '2026-10-08': 'made from', '2026-10-09': 'held out', '11-24': 'made from'})
+
+    def test_days_take_the_year_of_their_folder(self):
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {'Pixel_7-a3f9/2026-11-24/180000.log': with_logfmt(android_drive('11-24', seconds=3,
+                                                                                                stand=0)),
+                                'Pixel_7-a3f9/2026-11-23/180000.log': with_logfmt(android_drive('11-23', seconds=2,
+                                                                                                stand=0))})
+            out = io.StringIO()
+            with mock.patch.object(nogps_replay, 'held_out_days', lambda: set()), redirect_stdout(out):
+                nogps_replay.days(argparse.Namespace(logs=nogps_trip_log.log_files([folder])))
+            self.assertEqual(out.getvalue().splitlines(), ['11-23       2 TRIP lines  made from',
+                                                           '11-24       3 TRIP lines  held out',
+                                                           'held out 1 of 2 days'])
+
+
+def write_flag(folder, name, values, png=True, m4a=False):
+    os.makedirs(folder, exist_ok=True)
+    with open(os.path.join(folder, name + '.json'), 'w') as f:
+        f.write(json.dumps(values))
+    for ext, wanted in (('png', png), ('m4a', m4a)):
+        if wanted:
+            with open(os.path.join(folder, '%s.%s' % (name, ext)), 'wb') as f:
+                f.write(b'data')
+
+
+def ios_drive(utc_start, seconds):
+    """An iOS log of a drive that starts at |utc_start| (datetime, UTC): the app writes UTC times."""
+    lines = ['I(1) 0.00000 Local time: %s +0000 , Time Zone: EET' % utc_start.strftime('%Y-%m-%d %H:%M:%S')]
+    lines += ['I(2) %d.00000 nogps/engine.cpp:1526 LogTrip(): %s'
+              % (s + 1, trip_line(lat=START_LAT + s * 10 * DEG_PER_M)) for s in range(seconds)]
+    return lines
+
+
+class FlagsTest(unittest.TestCase):
+    """A flag goes on the trip of its phone: an Android trip by the local time of the flag's name, an iOS trip by
+    UTC, from the offset its day's logs tell (the phone is 2 h ahead of UTC here)."""
+    IOS_START = nogps_log.datetime(2026, 11, 24, 15, 0, 0)
+
+    def tree(self, folder):
+        ios_header = logfmt_line('iPhone-1111', trip='170000').replace(
+            'ms=%d' % LOGFMT_MS, 'ms=%d' % nogps_log.to_ms(self.IOS_START))
+        write_tree(folder, {
+            'Pixel_7-a3f9/2026-11-24/180000.log': with_logfmt(android_drive('11-24', seconds=120, stand=0)),
+            'iPhone-1111/2026-11-24/170000.log': [ios_header] + ios_drive(self.IOS_START, 120)})
+        android = os.path.join(folder, 'Pixel_7-a3f9', '2026-11-24', 'flags')
+        write_flag(android, '20261124-180100', dict(n=1, lat=10.0, lon=20.0, voice_s=7, sent=False), m4a=True)
+        write_flag(android, '20261124-200000', dict(n=2, voice_s=0, sent=True))
+        write_flag(os.path.join(folder, 'iPhone-1111', '2026-11-24', 'flags'), '20261124-170030',
+                   dict(n=4, lat=10.0, lon=20.0, voice_s=0, sent=False))
+
+    def run_main(self, *args):
+        out = io.StringIO()
+        with mock.patch.object(sys, 'argv', ['nogps_log.py', *args]), redirect_stdout(out):
+            nogps_log.main()
+        return out.getvalue()
+
+    def test_flags_on_their_trips(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.tree(folder)
+            analysis = nogps_log.Analysis(nogps_log.load_paths([folder]), flags=nogps_log.load_flags([folder]))
+            by_phone = {t.group.phone: t for t in analysis.trips}
+            android, ios = by_phone['Pixel_7-a3f9'], by_phone['iPhone-1111']
+            day = nogps_log.to_ms(nogps_log.datetime(2026, 11, 24))
+            self.assertEqual([(f['n'], f['t']) for f in android.flags], [(1, day + (18 * 60 + 1) * 60_000)])
+            self.assertEqual([(f['n'], f['t']) for f in ios.flags], [(4, nogps_log.to_ms(self.IOS_START) + 30_000)])
+            late = next(f for f in analysis.flags if f['n'] == 2)
+            self.assertEqual((late['trip'], late['t']), (None, day + 20 * 3600_000))
+            self.assertEqual(android.summary()['flags'], 1)
+
+    def test_reports(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.tree(folder)
+            out = self.run_main('flags', folder)
+            lines = out.splitlines()
+            self.assertEqual(lines[-1], '3 flags, 2 on a trip')
+            android = next(t.id for t in nogps_log.Analysis(nogps_log.load_paths([folder])).trips
+                           if t.group.phone == 'Pixel_7-a3f9')
+            day = nogps_log.to_ms(nogps_log.datetime(2026, 11, 24))
+            self.assertIn('Pixel_7-a3f9       2026-11-24 %4d  18:01:00 18:01:00   7 s    no  #trip=%d&t=%d'
+                          % (android, android, day + (18 * 60 + 1) * 60_000), out)
+            self.assertIn('Pixel_7-a3f9       2026-11-24    -  20:00:00 -            -   yes  no trip', out)
+            self.assertIn('iPhone-1111        2026-11-24', out)
+            self.assertNotRegex(out, r'\d+\.\d+,\s*\d+\.\d+')
+            self.assertRegex(self.run_main('trips', folder), r'\n +%d +2026-11-24 18:00 .* +1 \d+\n' % android)
+            trip_out = self.run_main('trip', folder, '--trip', str(android))
+            self.assertIn('flags: 1\n  18:01:00 flag 1 18:01:00 voice 7 s (#trip=%d&t=%d)'
+                          % (android, day + (18 * 60 + 1) * 60_000), trip_out)
+            state = self.run_main('state', folder, '--trip', str(android), '--at', '18:01:10')
+            self.assertIn('flags within 30 s: -10 s flag 1 18:01:00 voice 7 s', state)
+            # A file given takes the flags of its day folder.
+            log = os.path.join(folder, 'Pixel_7-a3f9', '2026-11-24', '180000.log')
+            self.assertIn('2 flags, 1 on a trip', self.run_main('flags', log))
 
 
 class RunTest(unittest.TestCase):
