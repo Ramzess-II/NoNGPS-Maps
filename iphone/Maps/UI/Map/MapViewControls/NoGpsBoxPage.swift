@@ -518,7 +518,16 @@ final class NoGpsBoxPage: MWMTableViewController {
   }
 
   /// The box is not heard yet: what the phone does to reach it.
+  /// With the recovery code when the system dialog of the pairing wants it.
   private static func boxSearchText(_ status: NoGpsStatus) -> String {
+    let text = boxSearchBase(status)
+    guard !status.boxRecoveryCode.isEmpty, [.pairingByPhone, .pairingFull, .pairing].contains(status.bleState) else {
+      return text
+    }
+    return text + ". " + String(format: L("nogps_box_bt_recovery_code"), status.boxRecoveryCode)
+  }
+
+  private static func boxSearchBase(_ status: NoGpsStatus) -> String {
     switch status.bleState {
     case .noPermission: return L("nogps_box_bt_no_permission")
     // Off: the phone has no Bluetooth LE.
