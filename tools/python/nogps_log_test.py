@@ -250,6 +250,11 @@ class ErrorMeterTest(unittest.TestCase):
                           for s in range(3)] + [(3, dict(kmh=0.0, gps=wifi % (START_LAT, START_LON, 0)))])
         self.assertEqual([r.get('err_why') for r in rows], ['nocourse'] * 3 + [None])
         self.assertAlmostEqual(rows[-1]['err_m'], 3.0, delta=0.2)
+        # A speed without a course can't move it on either; the car at REF_NO_COURSE_MAX_KMH counts as driving.
+        kmh = nogps_trip_log.REF_NO_COURSE_MAX_KMH
+        for car_kmh, why in ((kmh, 'nocourse'), (kmh - 1, None)):
+            row = self.rows([(0, dict(kmh=car_kmh, gps='%.6f,%.6f/5.0/36.0/-/0.50/3' % (START_LAT, START_LON)))])[0]
+            self.assertEqual(row.get('err_why'), why, car_kmh)
 
     def test_fix_of_a_standing_car(self):
         rows = self.rows([(s, dict(kmh=0.0, gps=self.fix(kmh=0))) for s in range(0, 600, 30)])
