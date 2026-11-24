@@ -310,24 +310,29 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
 }
 
 /// The index of the file a full file goes on in, -1 when it is not full or has none. It is the next file of the phone,
-/// except for the after-midnight part of a trip (the previous day has a file of the same start time): that part keeps
-/// the start time of the day before, and the file opened by the split is named by a time on its own day, so it is the
-/// first file of the day, and the next one is another trip.
+/// except for the after-midnight part of a trip (the previous day has a file of the same start time, or the file was
+/// last written before the time of its own name: the file of the day before may be deleted by the size cap): that part
+/// keeps the start time of the day before, and the file opened by the split is named by a time on its own day, so it is
+/// the first file of the day, and the next one is another trip.
 + (NSInteger)sizeSplitIntoOfLogFileAtIndex:(NSUInteger)index of:(NSArray<NSString *> *)names
 {
   NSArray<NSString *> * parts = names[index].pathComponents;
   // A file ends at the first line that would bring it to kMaxLogFileSize: not shorter than a line.
   unsigned long long const kSplitSlack = 100'000;
-  unsigned long long const size =
+  NSDictionary * attributes =
       [NSFileManager.defaultManager attributesOfItemAtPath:[kLogsFolderPath stringByAppendingPathComponent:names[index]]
-                                                     error:nil]
-          .fileSize;
-  if (size + kSplitSlack < kMaxLogFileSize)
+                                                     error:nil];
+  if (attributes.fileSize + kSplitSlack < kMaxLogFileSize)
     return -1;
 
   NSString * start = [self startOfLogFile:parts[2]];
   NSString * previous = [self dayAfter:parts[1] by:-1];
-  BOOL afterMidnight = NO;
+  // A file can't be written before it was started.
+  NSDateFormatter * formatter = [[NSDateFormatter alloc] init];
+  formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+  formatter.dateFormat = @"yyyy-MM-dd HHmmss";
+  NSDate * named = [formatter dateFromString:[NSString stringWithFormat:@"%@ %@", parts[1], start]];
+  BOOL afterMidnight = named != nil && [attributes.fileModificationDate compare:named] == NSOrderedAscending;
   for (NSString * name in names)
   {
     NSArray<NSString *> * otherParts = name.pathComponents;

@@ -136,8 +136,9 @@ final class LogFiles
 
   /// The index of the file a full file goes on in, -1 when it is not full or has none. It is the next file of the
   /// phone in the tree, except for the after-midnight part of a trip (the previous day has a file of the same start
-  /// time): that part keeps the start time of the day before, and the file opened by the split is named by a time on
-  /// its own day, so it is the first file of the day, and the next in the tree is another trip.
+  /// time, or the file was last written before the time of its own name: the file of the day before may be deleted
+  /// by the size cap): that part keeps the start time of the day before, and the file opened by the split is named by
+  /// a time on its own day, so it is the first file of the day, and the next in the tree is another trip.
   private static int sizeSplitInto(@NonNull List<File> all, int i)
   {
     final File file = all.get(i);
@@ -146,7 +147,7 @@ final class LogFiles
     final String day = file.getParentFile().getName();
     final String stem = startOf(file.getName());
     final String previous = dayAfter(day, -1);
-    boolean afterMidnight = false;
+    boolean afterMidnight = writtenBeforeItsName(file);
     for (File other : all)
     {
       afterMidnight |= other.getParentFile().getName().equals(previous) && startOf(other.getName()).equals(stem);
@@ -159,6 +160,22 @@ final class LogFiles
         return j;
     }
     return -1;
+  }
+
+  /// Whether the file was last written before the time its name says on its own day: it is a part that began the day
+  /// before. A file can't be written before it was started.
+  private static boolean writtenBeforeItsName(@NonNull File file)
+  {
+    try
+    {
+      final Date named = new SimpleDateFormat("yyyy-MM-dd HHmmss", Locale.US)
+                             .parse(file.getParentFile().getName() + " " + startOf(file.getName()));
+      return named != null && file.lastModified() < named.getTime();
+    }
+    catch (ParseException e)
+    {
+      return false;
+    }
   }
 
   /// The time a drive started at, "HHmmss", of the name of its file: without the ".log" and the "-N" of a second
