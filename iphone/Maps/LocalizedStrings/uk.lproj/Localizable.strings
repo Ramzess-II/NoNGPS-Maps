@@ -1508,7 +1508,7 @@
 "nogps_phone_add_failed" = "Блок не прийняв код. Спробуйте ще раз.";
 
 /* Shown in the Box sheet under the phones of the box: the code of its recovery window. %s is six digits */
-"nogps_phone_recovery_code" = "Код відновлення: %@. Запишіть його. Якщо блок забуде всі телефони, увімкніть його в живлення й вимкніть протягом хвилини 3 рази, а втретє залиште ввімкненим: 2 хвилини він прийматиме новий телефон із цим кодом";
+"nogps_phone_recovery_code" = "Код відновлення: %@. Запишіть його. Якщо ви загубили телефони блока, увімкніть його в живлення й вимкніть протягом хвилини 3 рази, а втретє залиште ввімкненим: 2 хвилини він прийматиме новий телефон із цим кодом, і цей телефон зітре всі інші телефони блока. Це лише поки в блока є телефони; без жодного блок питає 123456";
 
 /* Added to the hint under the sensor box steps while the box is not paired with this phone and its recovery code is known. %s is six digits */
 "nogps_box_bt_recovery_code" = "У вікні відновлення (3 вмикання в живлення) блок питає свій код відновлення замість 123456: %@";
