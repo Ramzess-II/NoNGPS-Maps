@@ -421,6 +421,39 @@ class Commands(unittest.TestCase):
         self.assertEqual([b['name'] for b in state['bonds']], ['Other'])
         self.assertEqual(state['recovery_code'], made.state.recovery_code)
 
+    def test_a_lapsed_phone_ranks_after_the_other_at_its_next_hello(self):
+        made, radio, clock = box()
+        connect(made)
+        self.second_phone(made)
+        clock.pass_s(sim.HELLO_TIMEOUT_S - 1)
+        made.on_event('write', OTHER, command(5, 'STATUS'))
+        clock.pass_s(2)
+        self.assertIs(made.changer(), made.phones[OTHER])
+        made.on_event('write', PHONE, command(6, 'HELLO,Test phone,1794685760'))
+        self.assertIs(made.changer(), made.phones[OTHER])
+
+    def test_forgetting_a_gone_phone_drops_its_key(self):
+        made, radio, _ = box()
+        connect(made)
+        self.second_phone(made)
+        made.on_event('write', OTHER, command(5, 'AUTH_SET,000102030405060708090a0b0c0d0e0f'))
+        self.assertIn('Other', made.auth_keys)
+        made.on_event('disconnect', OTHER)
+        made.forget(sim.bond_address('Other'))
+        self.assertNotIn('Other', made.auth_keys)
+
+    def test_the_reset_bonds_the_new_phone_with_the_pairing_window_closed(self):
+        made, _, _ = box()
+        connect(made)
+        made.state.adv['pairing_open'] = False
+        made.on_event('connect', OTHER, 'Other')
+        made.on_event('subscribe', OTHER, 182)
+        made.on_event('write', OTHER, command(1, 'HELLO,Other,1794685760'))
+        self.assertEqual(len(made.bonds), 1)
+        made.panel_action('bt_reset', made.phones[OTHER].label)
+        self.assertEqual([b['name'] for b in made.bonds.values()], ['Other'])
+        self.assertTrue(made.state.adv['has_phones'])
+
     def test_the_panel_forgets_a_bond(self):
         made, _, _ = box()
         connect(made)

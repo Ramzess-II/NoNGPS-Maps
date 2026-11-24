@@ -421,10 +421,11 @@ class Box:
             phone.cmd_at = self.clock()
         if name == 'HELLO':
             # HELLO,<name>,<Unix s> from a newer application; the box remembers both for its list of phones.
-            phone.hello_at = phone.cmd_at = self.clock()
-            if not phone.hello_order:
+            # A HELLO that starts a session ranks after the phones in one: a lapsed phone frees its slot.
+            if not phone.in_session(self.clock()):
                 self.hellos += 1
                 phone.hello_order = self.hellos
+            phone.hello_at = phone.cmd_at = self.clock()
             if rest:
                 phone.name = rest[0]
             if len(rest) > 1 and rest[1].isdigit():
@@ -521,9 +522,10 @@ class Box:
     def forget(self, address, drop_after=0):
         """The phone is gone from the list with its key (9.5) and its link is dropped, after its OK if it asks."""
         del self.bonds[address]
+        for name in [n for n in self.auth_keys if bond_address(n) == address]:
+            del self.auth_keys[name]
         for phone in list(self.phones.values()):
             if self.address_of(phone) == address:
-                self.auth_keys.pop(self.auth_phone(phone), None)
                 if drop_after:
                     self.dropping_at[phone.id] = self.clock() + drop_after
                 else:
@@ -765,7 +767,9 @@ class Box:
             if address != keep_address:
                 self.forget(address)
         if keep and keep_address not in self.bonds:
-            self.bond(keep)
+            # The recovery window takes the new phone whatever the normal pairing window says.
+            self.bonds[keep_address] = {'name': keep.name, 'unix_s': keep.unix_s}
+            self.sync_adv()
         self.state.recovery_code = new_code()
 
     def panel_action(self, action, label):
