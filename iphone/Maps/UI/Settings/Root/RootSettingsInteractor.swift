@@ -132,7 +132,8 @@ final class RootSettingsInteractor {
                       ttsEnabled: MWMTextToSpeech.isTTSEnabled(),
                       fileLoggingEnabled: settings.isFileLoggingEnabled(),
                       logFileSize: settings.logFileSize(),
-                      searchHistoryEnabled: settings.searchHistoryEnabled())
+                      searchHistoryEnabled: settings.searchHistoryEnabled(),
+                      crashReportsEnabled: settings.crashReportsEnabled())
   }
 
   private var isBuildings3DEditable: Bool {
@@ -155,6 +156,8 @@ final class RootSettingsInteractor {
       settings.setICLoudSynchronizationEnabled(enabled)
     case .logging:
       settings.setFileLoggingEnabled(enabled)
+    case .crashReports:
+      settings.setCrashReportsEnabled(enabled)
     case .perspectiveView:
       settings.setPerspectiveViewEnabled(enabled)
     case .autoZoom:

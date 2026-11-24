@@ -1,17 +1,18 @@
 # NonGPS Maps — Політика конфіденційності
 
-*Набирає чинності 1 жовтня 2026 року. English version below.*
+*Набирає чинності 24 листопада 2026 року. English version below.*
 
 NonGPS Maps — застосунок для офлайн-навігації автомобілем, зокрема коли GPS недоступний або показує
 неправильне місце. Розробник: Ramzess (NonGPS Maps), контакт: most05062014@gmail.com.
 
 ## Коротко
 
-- Ми **не збираємо** і **не отримуємо** ваших даних. У застосунку немає реклами, аналітики, облікових
-  записів і серверів розробника.
+- Ми **не збираємо** ваших даних. У застосунку немає реклами, аналітики, облікових записів і серверів
+  розробника. Єдиний виняток — звіт про збій застосунку, який можна вимкнути в налаштуваннях.
 - Ваше місцеположення обробляється **лише на телефоні** і нікуди не надсилається.
-- Дані залишають телефон лише тоді, коли ви самі це робите: завантажуєте карти, надсилаєте звіт про
-  помилку, редагуєте карту OpenStreetMap або ділитеся місцем.
+- Дані залишають телефон лише тоді, коли ви самі це робите (завантажуєте карти, надсилаєте звіт про
+  помилку, редагуєте карту OpenStreetMap, ділитеся місцем) і коли застосунок аварійно завершується та
+  надсилає звіт про збій.
 
 ## Які дані обробляє застосунок і навіщо
 
@@ -23,6 +24,7 @@ NonGPS Maps — застосунок для офлайн-навігації ав
 | Дані блоку датчиків ESP32 (Bluetooth) | Поворот і швидкість автомобіля | Лише на телефоні; блок не має доступу до інтернету |
 | Журнал поїздки (якщо ви ввімкнули логування в налаштуваннях) | Розбір помилок навігації | Лише на телефоні, доки ви самі його не надішлете |
 | Закладки, треки, маршрути, налаштування | Робота застосунку | Лише на телефоні |
+| Звіт про збій (якщо застосунок аварійно завершився і перемикач «Надсилати звіти про збої» ввімкнений): стан програми в момент збою, умова перевірки, що не пройшла, модель телефона, версія застосунку й системи, назва екрана, стан блоку датчиків. Без координат, журналів, IP-адреси та скриншотів | Знайти й виправити збій | Sentry (sentry.io), сервери в ЄС |
 
 Застосунок використовує служби визначення місцеположення Android. Позиції за вишками та Wi-Fi
 обчислює сама система Android (на більшості телефонів — служби Google); це регулюється політикою
@@ -37,6 +39,11 @@ NonGPS Maps — застосунок для офлайн-навігації ав
   поштовому застосунку з описом пристрою і журналом. Журнал поїздки містить координати. Лист буде
   надіслано лише після того, як ви самі його відправите, на адресу most05062014@gmail.com. Ми
   використовуємо його лише для виправлення помилки і видаляємо після цього.
+- **Звіт про збій.** Коли застосунок аварійно завершується, під час наступного запуску він надсилає
+  звіт до служби Sentry (sentry.io, оброблювач даних; дані зберігаються на серверах у ЄС, зазвичай 30
+  днів). Звіт не містить координат, журналів поїздки, IP-адреси та скриншотів. Це можна вимкнути
+  перемикачем «Надсилати звіти про збої» в налаштуваннях: після цього нічого не надсилається. У збірках
+  для розробників звіти не надсилаються.
 - **Редагування OpenStreetMap.** Якщо ви увійдете в обліковий запис OpenStreetMap і внесете правку,
   вона надсилається на openstreetmap.org та стає публічною за правилами OpenStreetMap.
 - **«Поділитися».** Посилання на місце, яке ви надсилаєте іншим, містить його координати.
@@ -67,18 +74,18 @@ NonGPS Maps — застосунок для офлайн-навігації ав
 
 # NonGPS Maps — Privacy Policy
 
-*Effective October 1, 2026.*
+*Effective November 24, 2026.*
 
 NonGPS Maps is an app for offline car navigation, also when GPS is unavailable or shows a wrong place.
 Developer: Ramzess (NonGPS Maps), contact: most05062014@gmail.com.
 
 ## In short
 
-- We **do not collect** and **do not receive** your data. The app has no ads, no analytics, no accounts
-  and no developer servers.
+- We **do not collect** your data. The app has no ads, no analytics, no accounts and no developer
+  servers. The one exception is a crash report, which you can turn off in the settings.
 - Your location is processed **on the phone only** and is never sent anywhere.
-- Data leaves the phone only when you do it yourself: download maps, send a bug report, edit the
-  OpenStreetMap map or share a place.
+- Data leaves the phone only when you do it yourself (download maps, send a bug report, edit the
+  OpenStreetMap map, share a place) and when the app crashes and sends a crash report.
 
 ## What the app processes and why
 
@@ -90,6 +97,7 @@ Developer: Ramzess (NonGPS Maps), contact: most05062014@gmail.com.
 | ESP32 sensor box data (Bluetooth) | Car rotation and speed | The phone only; the box has no internet access |
 | Trip log (if you turn logging on in the settings) | Investigating navigation errors | The phone only, until you send it yourself |
 | Bookmarks, tracks, routes, settings | App features | The phone only |
+| A crash report (if the app crashed and the "Send crash reports" switch is on): the state of the program at the crash, the failed check, phone model, app and system version, screen name, sensor box state. No coordinates, logs, IP address or screenshots | Finding and fixing the crash | Sentry (sentry.io), servers in the EU |
 
 The app uses Android location services. Cell tower and Wi-Fi positions are computed by Android itself
 (on most phones by Google services), which is governed by the privacy policy of your phone maker or
@@ -103,6 +111,10 @@ Google, not by this app.
 - **Bug reports.** If you tap "Report a bug", the app prepares an email in your email app with device
   information and the log. The trip log contains coordinates. It is sent to most05062014@gmail.com only
   when you send it yourself. We use it only to fix the bug and delete it afterwards.
+- **Crash reports.** When the app crashes, it sends a report to Sentry (sentry.io, a data processor;
+  the data is stored on servers in the EU, usually for 30 days) at the next launch. The report holds no
+  coordinates, trip logs, IP address or screenshots. You can turn it off with the "Send crash reports"
+  switch in the settings: nothing is sent then. Developer builds send no reports.
 - **OpenStreetMap edits.** If you sign in to OpenStreetMap and make an edit, it is sent to
   openstreetmap.org and becomes public under the OpenStreetMap rules.
 - **Sharing.** A link to a place you share contains its coordinates.

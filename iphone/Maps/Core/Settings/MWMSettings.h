@@ -74,6 +74,9 @@ NS_SWIFT_NAME(Settings)
 + (void)initializeLogging;
 + (BOOL)isFileLoggingEnabled;
 + (void)setFileLoggingEnabled:(BOOL)fileLoggingEnabled;
+/// Crash reports are sent to the developers, on by default.
++ (BOOL)crashReportsEnabled;
++ (void)setCrashReportsEnabled:(BOOL)crashReportsEnabled;
 + (uint64_t)logFileSize;
 
 + (BOOL)didShowICloudSynchronizationEnablingAlert;

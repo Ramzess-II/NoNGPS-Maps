@@ -149,6 +149,9 @@ using namespace osm_auth_ios;
 {
   NSLog(@"application:didFinishLaunchingWithOptions: %@", launchOptions);
 
+  // First, so a crash while the core starts is caught.
+  [MWMCrashReporter start];
+
   [self observeApplicationLifecycle];
   InitLocalizedStrings();
   [MWMThemeManager invalidate];
