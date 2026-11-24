@@ -526,6 +526,141 @@ const base = (label) => {
   check('the PR merges', r.out.merged === 1 && r.out.results[0].rounds === 1, r.out.results)
 }
 
+const finding = (extra = {}) => ({ file: 'a.cpp', line: 7, summary: 's', scenario: 'x', ...extra })
+
+// --- 27. a PR at the review cap from earlier runs: no update, no review ---
+{
+  const r = await runScript({ args: { ws: '/ws', parallel: [pr(1, { reviews: 5 }), pr(2)], slots: 2 }, reply: base })
+  console.log('27. a PR with 5 train reviews already')
+  const one = r.out.results.find((x) => x.pr === 1)
+  check('left open with the review limit', one.outcome === 'open' && /review limit: 5 train reviews/.test(one.reason), one)
+  check('no update or review of it ran', !r.order.some((o) => /^\+(update|review|confirm|fix|merge):#1\b/.test(o)), r.order)
+  check('its count is in the report', one.reviews === 5, one)
+  check('the other PR still merged', r.out.results.find((x) => x.pr === 2).outcome === 'merged', r.out.results)
+}
+
+// --- 28. reviews: 3 and findings every round: two more reviews, then the cap, before --rounds ---
+{
+  const seen = []
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1, { reviews: 3 })], slots: 1, rounds: 3 },
+    reply: (label) => {
+      seen.push(label)
+      return label.startsWith('review') ? { findings: [finding()] } : base(label)
+    },
+  })
+  console.log('28. the cap stops a PR before --rounds does')
+  const one = r.out.results[0]
+  check('two reviews ran', seen.filter((l) => l.startsWith('review')).length === 2, seen)
+  check('no round 3', !seen.includes('review:#1/3'), seen)
+  check('open with the review limit', one.outcome === 'open' && /review limit: 5 train reviews/.test(one.reason), one)
+  check('reviews counted to 5', one.reviews === 5 && one.rounds === 2, one)
+  check('the reason says the last fixes went unreviewed', /round 2 fixes pushed unreviewed/.test(one.reason), one)
+}
+
+// --- 29. reviews: 4 and a clean round 1: no review left for the confirmation ---
+{
+  const seen = []
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1, { reviews: 4 })], slots: 1 },
+    reply: (label) => {
+      seen.push(label)
+      return base(label)
+    },
+  })
+  console.log('29. a clean first pass with no review left to confirm it')
+  const one = r.out.results[0]
+  check('no confirmation ran', !seen.some((l) => l.startsWith('confirm')), seen)
+  check('it never reached the gate', !seen.some((l) => l.startsWith('merge')), seen)
+  check('open, saying why', one.outcome === 'open' && /review limit: 5 .*confirm/.test(one.reason), one)
+}
+
+// --- 30. a cycle stops the PR before its fix: undo, and again ---
+for (const kind of ['undo', 'again']) {
+  const seen = []
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1, rounds: 3 },
+    reply: (label) => {
+      seen.push(label)
+      if (label === 'review:#1/1') return { findings: [finding()] }
+      if (label === 'review:#1/2') return { findings: [finding({ cycle: { round: 1, kind } })] }
+      return base(label)
+    },
+  })
+  console.log(`30. a round 2 finding marked ${kind} of round 1`)
+  const one = r.out.results[0]
+  check('open as a review/fix cycle', one.outcome === 'open' && one.reason === `review/fix cycle: \`a.cpp:7\` ${kind} of round 1`, one)
+  check('no fix for round 2', seen.includes('fix:#1/1') && !seen.includes('fix:#1/2'), seen)
+  check('no round 3, no gate', !seen.includes('review:#1/3') && !seen.some((l) => l.startsWith('merge')), seen)
+}
+
+// --- 31. a cycle the confirmation finds stops the PR too ---
+{
+  const seen = []
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1 },
+    reply: (label) => {
+      seen.push(label)
+      if (label === 'confirm:#1/1') return { findings: [finding({ cycle: { round: 2, kind: 'again' } })] }
+      return base(label)
+    },
+  })
+  console.log('31. the confirmation marks a cycle against an earlier run')
+  check('open as a cycle, no fix', /review\/fix cycle/.test(r.out.results[0].reason) && !seen.some((l) => l.startsWith('fix')), [r.out.results[0], seen])
+}
+
+// --- 32. round 3 sees round 1's findings, not only round 2's; every review is told about cycles ---
+{
+  const prompts = {}
+  await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1, rounds: 3 },
+    reply: (label, opts, prompt) => {
+      prompts[label] = prompt
+      if (label === 'review:#1/1') return { findings: [finding({ summary: 'first-round-bug' })] }
+      if (label === 'review:#1/2') return { findings: [finding({ summary: 'second-round-bug' })] }
+      return base(label)
+    },
+  })
+  console.log('32. the history reaches every later round')
+  const p3 = prompts['review:#1/3'] || ''
+  check('round 3 has round 1 and round 2', /first-round-bug/.test(p3) && /second-round-bug/.test(p3), p3.slice(0, 300))
+  check('round 1 has no history', !/first-round-bug/.test(prompts['review:#1/1']))
+  check('every review reads the earlier runs and the cycle rule',
+    ['review:#1/1', 'review:#1/2', 'review:#1/3'].every((l) => /Merge-train fixes/.test(prompts[l]) && /undo:/.test(prompts[l]) && /again:/.test(prompts[l])))
+}
+
+// --- 33. the history survives a send-back by the gate ---
+{
+  const prompts = {}
+  let gated = 0
+  await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1, rounds: 3 },
+    reply: (label, opts, prompt) => {
+      prompts[label] = prompt
+      if (label === 'review:#1/1') return { findings: [finding({ summary: 'first-round-bug' })] }
+      if (label === 'merge:#1' && ++gated === 1) return { status: 'stale', staleFiles: ['a.cpp'] }
+      return base(label)
+    },
+  })
+  console.log('33. a stale send-back keeps the rounds of the first prep')
+  check('round 3 after the send-back still has round 1', /first-round-bug/.test(prompts['review:#1/3'] || ''), Object.keys(prompts))
+}
+
+// --- 34. --max-reviews raises the cap for the run ---
+{
+  const r = await runScript({ args: { ws: '/ws', parallel: [pr(1, { reviews: 5 })], slots: 1, maxReviews: 8 }, reply: base })
+  console.log('34. maxReviews: 8 lets a PR with 5 through')
+  check('merged', r.out.merged === 1, r.out.results)
+  check('the review and its confirmation were counted', r.out.results[0].reviews === 7, r.out.results[0])
+}
+
+// --- 35. the serial set is capped the same way ---
+{
+  const r = await runScript({ args: { ws: '/ws', serial: [pr(1, { reviews: 6 })] }, reply: base })
+  console.log('35. a serial PR over the cap')
+  check('open with the review limit, nothing ran', /review limit: 6/.test(r.out.results[0].reason) && !r.order.some((o) => o.startsWith('+update')), r.out.results)
+}
+
 // --- 17. a bigger mixed run, repeated: it always terminates and merges everything ---
 {
   let bad = 0
