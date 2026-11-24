@@ -1,7 +1,7 @@
 export const meta = {
   name: 'nogps-merge',
   description: 'NonGPS merge train: prep the independent PRs in parallel, then merge them one at a time',
-  whenToUse: 'Started by the /nogps-merge skill, which builds the two sets: args {ws, parallel, serial, rounds, slots}',
+  whenToUse: 'Started by /nogps-merge, which builds the two sets: args {ws, parallel, serial, rounds, slots, maxReviews}',
   phases: [
     { title: 'Setup', detail: 'the merge gate worktree, and one per prep slot when a PR needs it' },
     { title: 'Update', detail: 'merge current master into the PR branch, push fast-forward' },
@@ -31,6 +31,10 @@ const APP_REPO = 'Ramzess-II/NoNGPS-Maps'
 const FW_REPO = 'Ramzess-II/ELMandIMU'
 const GATE = 'merge-train'
 const ROUNDS = A.rounds ?? 3
+// --rounds bounds one run; this bounds a PR over all runs. Every review is Opus or Fable, and a PR that keeps
+// coming back to the train spent 5 to 7 of them in two or three runs (#470, #601). The count is the PR's
+// "Merge-train review" comments, which the skill passes in as pr.reviews; the confirmation counts as one.
+const MAX_REVIEWS = A.maxReviews ?? 5
 const MIN_FREE_GB = 15
 
 // The train lands the PRs of both repos. Each one has its own checkout, its own default branch -- the firmware repo
@@ -116,8 +120,8 @@ movedIos.forEach((pr) => pending.splice(pending.indexOf(pr), 1))
 serial.unshift(...movedIos)
 const SLOTS = pending.length ? Math.max(1, Math.min(A.slots ?? 4, pending.length)) : 0
 const STEPS = Math.max(SLOTS, 1) // steps of the train running at once: one per prep slot, or the single serial one
-pending.forEach((pr) => Object.assign(pr, { set: 'parallel', round: 0 }))
-serial.forEach((pr) => Object.assign(pr, { set: 'serial', round: 0 }))
+pending.forEach((pr) => Object.assign(pr, { set: 'parallel', round: 0, reviews: pr.reviews || 0 }))
+serial.forEach((pr) => Object.assign(pr, { set: 'serial', round: 0, reviews: pr.reviews || 0 }))
 // R() throws on a repo the train doesn't know: the queue is checked before any agent runs, not per step.
 const QUEUE = [...pending, ...serial] // pending and serial are drained as the run goes: keep the whole queue
 const SUFFIXES = [...new Set(QUEUE.map((pr) => R(pr).suffix))]
@@ -219,6 +223,15 @@ const REVIEW_SCHEMA = {
           line: { type: 'number' },
           summary: { type: 'string', description: 'one sentence: the defect' },
           scenario: { type: 'string', description: 'concrete input or state and the wrong result' },
+          cycle: {
+            type: 'object',
+            description: 'only when the finding undoes an earlier fix or repeats a rejected finding',
+            properties: {
+              round: { type: 'number', description: 'the round of the earlier review, as its comment heading says' },
+              kind: { type: 'string', enum: ['undo', 'again'] },
+            },
+            required: ['round', 'kind'],
+          },
         },
         required: ['file', 'summary', 'scenario'],
       },
@@ -314,14 +327,15 @@ git -C ${wt} diff origin/${base}...HEAD against the PR's own diff on GitHub (gh 
 Don't build and don't write on GitHub beyond this push.`
 }
 
-function reviewPrompt(pr, round, before, name, confirm) {
+function reviewPrompt(pr, round, history, name, confirm) {
   const wt = WT(name)
   const { base } = R(pr)
   const repo = repoName(pr)
-  const again = before
-    ? `\nThis is round ${round}. The findings of the round before -- yours, or the confirming reviewer's -- and \
-what the fixer did with them: ${JSON.stringify(before)}. Check each of them in the code again: a fix that doesn't \
-hold is a finding again, and so is a new bug the fix brought. Don't repeat a finding you now agree was wrong.`
+  const again = history.length
+    ? `\nThis is round ${round}. The findings of every earlier round of this run -- yours, or the confirming \
+reviewer's -- and what the fixer did with each: ${JSON.stringify(history)}. Check each of them in the code again: a \
+fix that doesn't hold is a finding again, and so is a new bug the fix brought. Don't repeat a finding you now agree \
+was wrong.`
     : confirm
       ? `\nAnother reviewer has just read this PR and found nothing, and you are the last read before the gate \
 merges it: nobody else looks at it. Read the diff yourself and judge it on what you see -- that the review before \
@@ -333,6 +347,15 @@ Review PR #${pr.number} "${pr.title}" of ${repo} in ${wt}, with current ${base} 
  origin/${base}...HEAD. \
 You didn't write it. Read the PR and its issue (gh pr view ${pr.number} -R ${repo} --comments), and the code around \
 the diff, not only the diff.${again}
+Earlier runs of the train may have reviewed it too: their "**Merge-train review" and "**Merge-train fixes" \
+comments are in that output. A review and a fixer that keep undoing each other spend the rounds and settle nothing, \
+so mark a finding with cycle {round, kind} when it is one of these, against any earlier round of this run or of an \
+earlier one:
+- undo: it asks to undo, in whole or in part, a fix made in an earlier round;
+- again: it raises again, with no new argument, a finding the fixer rejected.
+round is the round of the earlier review, as its comment heading says. A finding whose fix didn't hold is not a \
+cycle: it is a plain finding. Don't leave a finding out to avoid a cycle: mark it, the train then runs no fix and a \
+person decides between the two rounds.
 Correctness bugs only: wrong behavior, a missed corner case, a behavior both apps show changed on one platform \
 only, the shared interface changed in one bridge only (see "Shared interface" in .claude/rules/nogps-workflow.md), \
 a test that doesn't test the change, living docs (docs/nogps/navigation-rules.md, esp32-firmware-spec.md) that no \
@@ -352,7 +375,8 @@ Give every finding a file, a line and a concrete failing scenario. Say nothing a
 Then post exactly one comment on the PR: gh pr comment ${pr.number} -R ${repo} --body-file - with a first line \
 "**Merge-train review, round ${round} (${confirm ? 'Fable, confirming a clean first pass' : 'Opus'}).**" and then \
 the findings as a list, \`file:line\` — summary, and the scenario under it; or "No findings." when there are none. \
-Report the comment's URL.
+Under a marked finding, name the earlier round it undoes or repeats, with the link of that round's comment and what \
+the fix there did or why the fixer rejected it. Report the comment's URL.
 Change nothing else: no edits, no commits, no other GitHub writes.`
 }
 
@@ -529,6 +553,7 @@ function record(pr, outcome, reason, extra) {
     url: pr.url,
     set: pr.set,
     rounds: pr.round,
+    reviews: pr.reviews,
     staleRounds: pr.staleRounds || 0,
     outcome,
     reason: (pr.gateRemade ? '(gate worktree was gone and remade) ' : '') + (reason || ''),
@@ -537,11 +562,18 @@ function record(pr, outcome, reason, extra) {
   log(`${tag(pr)}: ${outcome}${reason ? ' (' + reason + ')' : ''}`)
 }
 
+const limit = (pr) => `review limit: ${pr.reviews} train reviews`
+
 // Update, then the review/fix rounds, in the worktree of `slot` that belongs to the PR's repo. True when the PR is
 // clean and can go to the gate; false when it was recorded and is done with.
 async function prep(pr, slot) {
   const tg = tag(pr)
   const name = wtName(slot, pr)
+  // Checked before the update too: a PR at the cap gets no push.
+  if (pr.reviews >= MAX_REVIEWS) {
+    record(pr, 'open', limit(pr))
+    return false
+  }
   log(`${tg}: prep in ${name}, from round ${pr.round + 1} of ${ROUNDS}`)
   const up = await agent(updatePrompt(pr, name), { label: `update:${tg}`, phase: 'Update', schema: UPDATE_SCHEMA })
   if (!up) {
@@ -556,11 +588,17 @@ async function prep(pr, slot) {
   pr.head = up.head || pr.head
   pr.prepMaster = up.prepMaster || pr.prepMaster
 
-  let before = null
+  // Every round of this run, kept across a send-back by the gate: a cycle can go back further than the round before.
+  pr.history = pr.history || []
   let rejected = 0
   while (pr.round < ROUNDS) {
+    if (pr.reviews >= MAX_REVIEWS) {
+      record(pr, 'open', pr.history.length ? `${limit(pr)}, the round ${pr.round} fixes pushed unreviewed` : limit(pr))
+      return false
+    }
     const round = ++pr.round
-    const rev = await agent(reviewPrompt(pr, round, before, name, false), {
+    pr.reviews++
+    const rev = await agent(reviewPrompt(pr, round, pr.history, name, false), {
       label: `review:${tg}/${round}`,
       phase: 'Review',
       model: 'opus',
@@ -575,10 +613,16 @@ async function prep(pr, slot) {
     // that came back clean on the first pass: nothing found in one pass is weak evidence the diff was read at all,
     // and the gate merges a clean review with nobody else looking. It is not a round of its own -- a round is a
     // review and a fix -- so it costs the PR none of its rounds, and it happens once: a later clean round already
-    // re-read the fixes of the round before it, and a prep the gate sent back starts past round 1.
+    // re-read the fixes of the round before it, and a prep the gate sent back starts past round 1. It is a review
+    // all the same and counts towards MAX_REVIEWS; with none left, the one clean pass doesn't reach the gate.
     if (!found.length && round === 1) {
+      if (pr.reviews >= MAX_REVIEWS) {
+        record(pr, 'open', `${limit(pr)}, none left to confirm a clean first pass`)
+        return false
+      }
       log(`${tg}: round 1 found nothing, Fable reads it before the gate takes it`)
-      const conf = await agent(reviewPrompt(pr, round, null, name, true), {
+      pr.reviews++
+      const conf = await agent(reviewPrompt(pr, round, pr.history, name, true), {
         label: `confirm:${tg}/${round}`,
         phase: 'Confirm',
         model: 'fable',
@@ -592,6 +636,13 @@ async function prep(pr, slot) {
     }
     if (!found.length) return true
     const findings = found.length
+    // A fix would only flip the code back or reject the finding again: the two rounds need a person.
+    const cycles = found.filter((f) => f.cycle)
+    if (cycles.length) {
+      const what = cycles.map((f) => `\`${f.file}:${f.line ?? '?'}\` ${f.cycle.kind} of round ${f.cycle.round}`)
+      record(pr, 'open', `review/fix cycle: ${what.join(', ')}`)
+      return false
+    }
     const fix = await agent(fixPrompt(pr, round, found, name), {
       label: `fix:${tg}/${round}`,
       phase: 'Fix',
@@ -613,7 +664,7 @@ async function prep(pr, slot) {
     }
     pr.head = fix.head || pr.head
     rejected = fix.rejected
-    before = { findings: found, fixer: { fixed: fix.fixed, rejected: fix.rejected, reply: fix.reply } }
+    pr.history.push({ round, findings: found, fixer: { fixed: fix.fixed, rejected: fix.rejected, reply: fix.reply } })
   }
   record(pr, 'open', `still ${rejected} open findings after ${ROUNDS} rounds`)
   return false
@@ -739,7 +790,7 @@ async function worker(name) {
 }
 
 log(`${pending.length} PRs prepped in parallel in up to ${SLOTS} slots, ${serial.length} one at a time, \
-up to ${ROUNDS} rounds each`)
+up to ${ROUNDS} rounds each and ${MAX_REVIEWS} train reviews in all`)
 if (movedIos.length)
   log(`${movedIos.map((pr) => '#' + pr.number).join(', ')} moved to the serial set: nothing builds iOS, so two \
 PRs that touch iphone/ or xcode/ are never prepped at once`)
