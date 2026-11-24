@@ -216,7 +216,6 @@ code for cases that can't happen. Change nothing: no edits, commits or GitHub wr
 }
 
 function publishPrompt(it, impl, review) {
-  const reviewer = `the other of koloboid and Ramzess-II (gh api user -q .login is you)`
   return `${ENV}
 
 Finish ${ref(it)} "${it.title}" and open its PR. Implementation report: ${JSON.stringify(impl)}
@@ -232,8 +231,7 @@ resolution isn't clear, postpone.
 is bold-label paragraphs, no ## headings (CI's other-platform check reads only a "**Other platform**" line): \
 "Fixes ${it.repo === APP_REPO ? '#' + it.number : ref(it)}", **Why**:, **What**:, **Tested**:, **Other platform**:, \
 then "Opened by the issue roller (/nogps-roll). Written with Claude Code." and the model name. With PRs in both \
-repos, link each from the other, and the PR in the other repo says "Related ${ref(it)}" instead of Fixes. If the change touches the shared interface, request ${reviewer}: gh pr edit <n> \
---add-reviewer <login>.
+repos, link each from the other, and the PR in the other repo says "Related ${ref(it)}" instead of Fixes.
 5. Remove the worktrees (${WORKTREES}).
 If you postpone: push the branch, ${POSTPONE} Remove the worktrees, report "postponed".`
 }

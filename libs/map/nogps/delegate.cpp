@@ -39,6 +39,7 @@ std::string DebugPrint(Event event)
   case Event::SpeedRangeCalibrated: return "SpeedRangeCalibrated";
   case Event::SprintMeasured: return "SprintMeasured";
   case Event::TripStarted: return "TripStarted";
+  case Event::BoxRefused: return "BoxRefused";
   }
   UNREACHABLE();
 }

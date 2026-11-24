@@ -1194,10 +1194,10 @@ void InertialNavigator::OnEsp32BleBytes(std::string_view bytes)
     m_esp32->OnBleBytes(bytes);
 }
 
-void InertialNavigator::OnEsp32BleState(BleState state, bool bondLost)
+void InertialNavigator::OnEsp32BleState(BleState state, bool bondLost, std::string const & boxId)
 {
   if (m_esp32)
-    m_esp32->OnBleState(state, bondLost);
+    m_esp32->OnBleState(state, bondLost, boxId);
 }
 
 bool InertialNavigator::IsBleBondLost() const
@@ -1222,8 +1222,16 @@ int InertialNavigator::ConvertSpeed(int rawSpeedKmh) const
   return static_cast<int>(std::lround(rawSpeedKmh * m_speedUnit.Get()));
 }
 
+bool InertialNavigator::IsObdNoSpeed(int rawSpeedKmh) const
+{
+  return rawSpeedKmh == kObdNoSpeedKmh && !(IsSpeedFresh() && m_rawSpeedKmh >= kObdNoSpeedPrevKmh);
+}
+
 void InertialNavigator::OnSpeed(int rawSpeedKmh, int64_t timeMs)
 {
+  // The speed stays as it was and goes stale: the mark waits instead of driving 70 m a second.
+  if (IsObdNoSpeed(rawSpeedKmh))
+    return;
   m_rawSpeedKmh = rawSpeedKmh;
   int const speedKmh = ConvertSpeed(rawSpeedKmh);
   m_speedKmh = speedKmh;
@@ -1284,6 +1292,9 @@ void InertialNavigator::OnSpeed(int rawSpeedKmh, int64_t timeMs)
 
 void InertialNavigator::OnJolt(double joltMs2, int rawSpeedKmh)
 {
+  // A bump at the bogus 255 would be a pothole at 255 km/h.
+  if (IsObdNoSpeed(rawSpeedKmh))
+    return;
   // The box of the car may tell mph: the potholes take the speed as everything else does.
   m_listener.OnJolt(joltMs2, ConvertSpeed(rawSpeedKmh));
 }

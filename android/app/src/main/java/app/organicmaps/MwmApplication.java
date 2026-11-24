@@ -261,6 +261,7 @@ public class MwmApplication extends Application implements Application.ActivityL
     Logger.d(TAG);
 
     NoGpsBoxService.stop(this);
+    ThemeSwitcher.INSTANCE.setForeground(true);
     getLocationHelper().resumeLocationInForeground();
   }
 
@@ -268,6 +269,7 @@ public class MwmApplication extends Application implements Application.ActivityL
   {
     Logger.d(TAG);
 
+    ThemeSwitcher.INSTANCE.setForeground(false);
     OsmUploadWork.startActionUploadOsmChanges(this);
     stopLocationInBackgroundIfUnused();
   }
