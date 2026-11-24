@@ -1843,8 +1843,6 @@ bool Engine::PlaceMarkByGps()
                                             : (m_rawGps ? m_rawGps : m_rawFused);
   if (!fix)
     return fail("no fix");
-  if (m_gpsDisabled)
-    return fail("GPS is turned off");
   if (m_spoofingDetector.IsSpoofed())
     return fail("GPS is spoofed");
   if (AgeMs(*fix) > kGpsMaxAgeMs)
@@ -1864,6 +1862,9 @@ bool Engine::PlaceMarkByGps()
   auto const road = FindMarkRoad(fix->m_position, GetCarBearing(), radiusM);
   if (!road)
     return fail("no road near the fix");
+  // The tap asks for GPS this once: the fix is taken even when the user turned GPS off, which stays off.
+  if (m_gpsDisabled)
+    LOG(LINFO, ("The fix is taken while GPS is turned off"));
   SetManualMode(true, "gps_mark");
   PutMark(fix->m_position, *road, "gps_mark", std::max(kManualAccuracyM, fix->m_accuracyM));
   m_markByTap = false;
