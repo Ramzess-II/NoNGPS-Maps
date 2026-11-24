@@ -17,6 +17,9 @@
   <!-- Backgrounds -->
   <color name="bg_window">#FF32363A</color>
   <color name="bg_primary">#1E2226</color>
+  <color name="nogps_primary">#FF1E2226</color>
+  <color name="toolbar_text">@color/text_light</color>
+  <color name="toolbar_text_hint">@color/text_light_hint</color>
   <color name="bg_cards">#FF3C4044</color>
   <color name="bg_panel">@color/bg_window</color>
   <color name="notes_fade_start">#003C4044</color>
@@ -80,5 +83,11 @@
   <color name="nogps_globe_satellite_off">#FF7B8086</color>
   <color name="nogps_globe_beam">#FF5BB4E6</color>
   <color name="nogps_globe_jam">#FFFFA040</color>
-  <color name="nogps_globe_car">#FFF2F4F5</color>
+  <color name="nogps_globe_car">#FFFFD500</color>
+  <color name="nogps_globe_car_outline">#FF1E2226</color>
+  <!-- The green of the coast: the coast stays drawn over it. -->
+  <color name="nogps_globe_land_fill">#CC6FA77C</color>
+  <!-- Translucent, as the outage: the graticule, the coast and the jam stay readable over them. -->
+  <color name="nogps_globe_coverage">#735BB4E6</color>
+  <color name="nogps_globe_outage">#73FF6B5E</color>
 </resources>

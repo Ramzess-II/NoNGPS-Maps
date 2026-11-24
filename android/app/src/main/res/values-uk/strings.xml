@@ -939,6 +939,10 @@
     <string name="nogps_flag_voice_saved">Голосову нотатку збережено: %d с</string>
     <!-- Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. -->
     <string name="nogps_flag_mic_denied">Прапорець збережено без голосової нотатки: дозвольте мікрофон у налаштуваннях системи.</string>
+    <!-- Settings switch: send a report to the developers when the app crashes -->
+    <string name="nogps_crash_reports">Надсилати звіти про збої</string>
+    <!-- Hint under the Send crash reports switch -->
+    <string name="nogps_crash_reports_hint">Надсилаються лише відомості про збій, модель телефона та версія застосунку. Дані про місцеперебування не залишають телефон.</string>
     <!-- Settings row and screen title: the list of the flags saved in test drives, to send them with the trip logs to the developers by email -->
     <string name="nogps_flags_send_title">Надіслати журнали</string>
     <!-- Button: send the ticked flags of test drives by email -->
@@ -1186,12 +1190,8 @@
     <!-- Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on -->
     <string name="nogps_about_om_menu">Про застосунок Organic Maps</string>
     <string name="nogps_about_headline">Навігація, коли GPS глушать або підміняють</string>
-    <!-- About NonGPS Maps, under the globe with the GPS satellites that the finger spins -->
+    <!-- About NonGPS Maps, the screen reader label of the globe with the GPS satellites that the finger spins -->
     <string name="nogps_about_globe_hint">Потягніть Землю, торкніться супутника, щоб вимкнути його.</string>
-    <!-- About NonGPS Maps, under the globe: the car stands in the jammed area -->
-    <string name="nogps_about_globe_jammed">У зоні глушіння жоден із них не досягає авто.</string>
-    <!-- About NonGPS Maps, under the globe: %1$d is how many satellites are on, %2$d how many there are -->
-    <string name="nogps_about_globe_sats">Увімкнено супутників: %1$d з %2$d</string>
     <string name="nogps_about_description">Без GPS авто веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю авто з OBD-II. Авто тримається доріг офлайн-карти.</string>
     <!-- NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) -->
     <string name="nogps_version">Версія %s</string>
@@ -1201,6 +1201,7 @@
     <string name="nogps_source_code">Вихідний код на GitHub</string>
     <string name="nogps_delete_recent_query">Видалити з історії?</string>
     <string name="nogps_box_sleeping">спить: двигун заглушено</string>
+    <string name="nogps_box_battery_lock">вимкнувся: низький заряд акумулятора. Витягніть блок і вставте знову</string>
     <string name="nogps_box_obd_sleeping">OBD спить: двигун заглушено</string>
     <string name="nogps_engine_running">працює</string>
     <string name="nogps_engine_stopped">заглушено</string>

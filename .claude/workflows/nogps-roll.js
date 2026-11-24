@@ -194,7 +194,7 @@ ktlint).
 - When tests fail, make up to 3 attempts to fix them, then postpone.
 - Postpone when you can't finish: it needs a drive, a phone, a flashed box or a replay you can't run to know what to change; the \
 expected behavior turns out unclear; tests still fail after 3 attempts. Then: commit the WIP, push the branch \
-(app: git push -u origin feature/${t.name}; firmware: git push -u koloboid feature/${t.name}) if it has commits, \
+(git push -u origin feature/${t.name}) if it has commits, \
 ${POSTPONE} Then remove the worktrees and report "postponed".
 - Don't open a PR: a fresh reviewer checks the branch, then a publisher pushes it and opens the PR.
 Report the worktrees with their branches, and the PR text parts: title, why, what, tested (commands and results, \
@@ -226,9 +226,9 @@ Review findings: ${JSON.stringify(review ? review.findings : [])}
 and run the tests of the report again. Up to 3 attempts when they fail, then postpone.
 2. git fetch origin. If the branch no longer merges cleanly into the base, merge the base in and resolve; if the \
 resolution isn't clear, postpone.
-3. Push: git -C <worktree> push -u origin <branch> (firmware: push -u koloboid <branch>).
+3. Push: git -C <worktree> push -u origin <branch>.
 4. PR, without asking: gh pr create -R ${APP_REPO} --base master --head <branch> --label roller --title "<title>" \
---body-file -. Firmware: gh pr create -R ${FW_REPO} --base main --head koloboid:<branch> (no label there). The body \
+--body-file -. Firmware: gh pr create -R ${FW_REPO} --base main --head <branch> (no label there). The body \
 is bold-label paragraphs, no ## headings (CI's other-platform check reads only a "**Other platform**" line): \
 "Fixes ${it.repo === APP_REPO ? '#' + it.number : ref(it)}", **Why**:, **What**:, **Tested**:, **Other platform**:, \
 then "Opened by the issue roller (/nogps-roll). Written with Claude Code." and the model name. With PRs in both \

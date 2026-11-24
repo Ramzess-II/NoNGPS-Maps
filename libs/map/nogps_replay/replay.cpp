@@ -98,13 +98,13 @@ private:
 class ReplayStorage : public Storage
 {
 public:
-  explicit ReplayStorage(bool firstTrip)
+  explicit ReplayStorage(bool firstTrip) : m_firstTrip(firstTrip)
   {
     SettingsStorage app;
     CarStorage const settings(app);
     for (auto const key : {kSpeedScale, kSpeedTable, kRoughSpeedTable, kSpeedLag, kBoxAccel})
     {
-      if (firstTrip && (key == kSpeedScale || key == kSpeedTable || key == kRoughSpeedTable))
+      if (IsSpeedError(key))
         continue;
       if (auto const value = settings.GetString(key))
         m_values[std::string(key)] = *value;
@@ -124,7 +124,14 @@ public:
   void SetString(std::string_view key, std::string const & value) override { m_values[std::string(key)] = value; }
   void Remove(std::string_view key) override { m_values.erase(std::string(key)); }
 
+  // What a trip driven as the first one does not know.
+  bool IsSpeedError(std::string_view key) const
+  {
+    return m_firstTrip && (key == kSpeedScale || key == kSpeedTable || key == kRoughSpeedTable);
+  }
+
 private:
+  bool m_firstTrip;
   std::map<std::string, std::string> m_values;
 };
 
@@ -144,6 +151,8 @@ public:
   void Esp32BleSend(std::string const &) override {}
   void Esp32BleSendFirmware(std::string const &) override {}
   void Esp32BleClose() override {}
+  // The boxes of the recorded days did not prove themselves.
+  bool Esp32BoxMustProveItself() override { return false; }
   void OnPosition(Fix const & fix) override { m_onPosition(fix); }
   void OnEvent(Event event) override { LOG(LINFO, ("EVENT", DebugPrint(event))); }
 
@@ -473,6 +482,7 @@ private:
       }
       break;
     }
+    case 'K': OnCalibration(in); break;
     case 'I':
     {
       // The box the trip was driven with: what the navigation has learned about another box is not taken.
@@ -586,6 +596,35 @@ private:
   {
     m_engine.reset();
     m_engine = std::make_unique<Engine>(m_delegate, m_map, m_storage, m_clock, m_clock);
+  }
+
+  // The car the trip started with, as its CALIBRATION line of the log: "K <ms> car=C47D scale=1.04 table=…". The box
+  // is heard first, so the values are of its car. The line leaves out what the car has not learned: that is not taken
+  // from the settings either, which are the state of the day they were pulled. The speed unit is not taken, see
+  // ReplayStorage. Comes before the start of the application: the engine reads it then.
+  void OnCalibration(std::istringstream & in)
+  {
+    static std::pair<std::string_view, std::string_view> constexpr kKeys[] = {
+        {"scale", Storage::kSpeedScale},   {"table", Storage::kSpeedTable}, {"rough", Storage::kRoughSpeedTable},
+        {"factor", Storage::kSpeedFactor}, {"lag", Storage::kSpeedLag},     {"accel", Storage::kBoxAccel}};
+    CarStorage cars(m_storage);
+    std::string token;
+    std::map<std::string, std::string> values;
+    while (in >> token)
+    {
+      auto const eq = token.find('=');
+      if (eq != std::string::npos)
+        values[token.substr(0, eq)] = token.substr(eq + 1);
+    }
+    if (auto const car = values.find("car"); car != values.end() && car->second != "-")
+      cars.OnBoxHeard(car->second, "", m_clock.UnixNowMs());
+    for (auto const & [name, key] : kKeys)
+      if (m_storage.IsSpeedError(key))
+        continue;  // The trip is driven as the first one: it learned no speed errors yet.
+      else if (auto const it = values.find(std::string(name)); it != values.end())
+        cars.SetString(key, it->second);
+      else
+        cars.Remove(key);
   }
 
   void OnBoxInfo(std::string const & id)

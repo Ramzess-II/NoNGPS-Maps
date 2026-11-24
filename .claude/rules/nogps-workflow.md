@@ -83,11 +83,18 @@ them such a PR says "Not replayed".
 
 ## Merge train
 
-`/nogps-merge [<PR numbers>] [--no-roll] [--rounds N] [--slots N] [--dry]` lands the open PRs of both repos. It
-runs the issue roller first, unless `--no-roll` or PR numbers are given, then splits what is left into two sets and
-takes each PR through: merge the PR's own default branch into it and push, review with Fable which posts its
-findings on the PR, fix with Opus which replies on the same PR, review again, and merge with a merge commit once a
-review comes back clean and CI is green. Up to `--rounds` rounds (default 3).
+`/nogps-merge [<PR numbers>] [--no-roll] [--rounds N] [--max-reviews N] [--slots N] [--dry]` lands the open PRs of
+both repos. It runs the issue roller first, unless `--no-roll` or PR numbers are given, then splits what is left
+into two sets and takes each PR through: merge the PR's own default branch into it and push, review with Opus which
+posts its findings on the PR, fix with Sonnet which replies on the same PR, review again, and merge with a merge
+commit once a review comes back clean and CI is green. Up to `--rounds` rounds (default 3). A review that finds
+nothing on the first pass is confirmed by Fable, the most capable model, before the PR reaches the gate: one pass
+that found nothing is weak evidence the diff was read, and nobody else looks at the PR. The confirmation is not a
+round of its own, and a PR that had findings doesn't get one -- the clean round that followed them re-read the
+fixes. A PR gets at most `--max-reviews` train reviews in all (default 5), counted over every run from its
+`**Merge-train review` comments, the confirmation included; at the cap it stays open untouched. A review that asks
+to undo an earlier round's fix, or raises again a finding the fixer rejected, marks the finding as a cycle: the
+train runs no fix and leaves the PR open for a person to decide between the two rounds.
 
 Only the merge is serial. The PRs whose files no other queued PR touches and that are in no dependency chain with
 one are prepped in parallel, up to `--slots` of them at once (default 4), each in its own worktree
@@ -101,7 +108,7 @@ prepped PR at a time:
   that check: each PR's own checks ran before the other one landed.
 
 The rest -- the PRs that touch another queued PR's files, and the dependency chains -- follow after, one at a time in
-the gate worktree, as the whole train worked before. The script is `.claude/workflows/nogps-merge.js` and its
+the gate worktree, as the whole train worked before. A gate worktree that was removed during the run is remade by the gate itself, with `keys/` and `sdkconfig` for firmware, and the report says so. The script is `.claude/workflows/nogps-merge.js` and its
 scheduler is tested by `node .claude/workflows/nogps-merge-test.mjs` (stubbed agents, no network); the worktrees go
 away at the end of the run.
 
@@ -111,15 +118,18 @@ session and for an agent, and a push that would need a force is a reason to stop
 
 A PR it can't land stays open and the train goes on to the next one: a merge conflict that isn't plain, a failing
 check, findings still open after the last round. It never takes a PR with a commit of anyone but koloboid or
-Ramzess-II, one waiting for the other person's review, one from a fork, or one whose branch is checked out in the
-main checkout or a worktree -- the train would push commits under the session working there.
+Ramzess-II, one waiting for the other person's review, one from a fork of anyone but the two of us, or one whose
+branch is checked out in the main checkout or a worktree -- the train would push commits under the session working
+there.
 
 The train lands the PRs of both repos: each PR of its queue carries its repo, and a firmware PR is prepped in a
-worktree of `firmware/` whose name ends in `-fw`, off `origin/main` (that repo has no `master`). `ELMandIMU` runs
-no CI, so the gate's `idf.py build` of the PR merged into `main` is the only check it gets; the worktree needs
-`keys/` linked and `sdkconfig` copied from the main checkout, both gitignored there, or the build is unsigned or
-built for the wrong chip. Two PRs that touch `iphone/` or `xcode/` are never prepped at once: nothing in the train
-builds iOS, so only one of them goes into the parallel set.
+worktree of `firmware/` whose name ends in `-fw`, off `origin/main` (that repo has no `master`). A firmware PR gets a CI
+build for S3 and C3 (`.github/workflows/build.yml`, a throwaway signing key) and the gate waits for its checks like
+for an app PR, besides its own `idf.py build` of the PR merged into `main`, which is the only one with the main
+checkout's `sdkconfig`; the worktree needs `keys/` linked
+and `sdkconfig` copied from the main checkout, both gitignored there, or the build is unsigned or built for the wrong
+chip. Two PRs that touch `iphone/` or `xcode/` are never prepped at once: nothing in the train builds iOS, so only
+one of them goes into the parallel set.
 
 ## Versions
 
@@ -210,10 +220,12 @@ Ukrainian. The app's Russian translations in `data/strings/` stay as they are.
     docstring tells how to build the tool and where to take the maps and the settings.
   - Windows: the Android debug build (`-PnativeOptimized` for speed) drives one day at a time on a phone.
   - Before and after are built the same way and driven on the same maps and settings.
-- Replay the days of both sets: the held-out days listed in `tools/python/nogps_held_out_days.txt` (never used to set
-  a rule) and the others (`nogps_replay.py days <logs>` tells each day's set). Give the numbers of each set apart: a
-  rule better on the days it was made from and not on the held-out ones fits its case only. Never move a day into the
-  held-out list after a rule was made from it.
+- Replay the days of both sets: the held-out days (never used to set a rule) and the others (`nogps_replay.py days
+  <logs>` tells each day's set). A day is held out by rule when it is a LOGFMT 2 day, 2026-11-22 or later, whose day
+  of the month divides by 4, or when `tools/python/nogps_held_out_days.txt` lists it. Don't tune a rule on a day held
+  out by the rule; reading its trips to answer a question is fine. Give the numbers of each set apart: a rule better
+  on the days it was made from and not on the held-out ones fits its case only. Never move a day into the held-out
+  list after a rule was made from it.
 - `nogps_log.py rules <logs>` counts how often each rule fired over the trips and what came next within 300 m. Run it
   before and after a change of a rule; a rule that fired in one or two trips, or is followed by a loss or a tap
   more often than not, is a candidate to drop or merge.

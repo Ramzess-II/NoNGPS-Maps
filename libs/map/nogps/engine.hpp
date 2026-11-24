@@ -468,6 +468,8 @@ private:
   void OnTurnsReversed() override;
   void OnMarkSwitched() override;
   void OnBoxHeard(std::string const & id, std::string const & firmware) override;
+  std::string GetBoxAuthKey(std::string const & id, bool & confirmed) override;
+  void OnBoxAuthKey(std::string const & id, std::string const & key, bool confirmed) override;
   void OnBoxCarValues(std::map<std::string, std::string> const & values) override;
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
   void OnBoxRecoveryCode(std::string const & code) override;

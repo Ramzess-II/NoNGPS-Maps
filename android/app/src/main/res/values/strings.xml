@@ -928,6 +928,10 @@
     <string name="nogps_flag_voice_saved">Voice note saved: %d s</string>
     <!-- Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. -->
     <string name="nogps_flag_mic_denied">The flag is saved without a voice note: allow the microphone in the system settings.</string>
+    <!-- Settings switch: send a report to the developers when the app crashes -->
+    <string name="nogps_crash_reports">Send crash reports</string>
+    <!-- Hint under the Send crash reports switch -->
+    <string name="nogps_crash_reports_hint">Only the crash, the device model and the app version are sent. No location data leaves the phone.</string>
     <!-- Settings row and screen title: the list of the flags saved in test drives, to send them with the trip logs to the developers by email -->
     <string name="nogps_flags_send_title">Send logs</string>
     <!-- Button: send the ticked flags of test drives by email -->
@@ -1176,12 +1180,8 @@
     <!-- Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on -->
     <string name="nogps_about_om_menu">About Organic Maps</string>
     <string name="nogps_about_headline">Navigation when GPS is jammed or spoofed</string>
-    <!-- About NonGPS Maps, under the globe with the GPS satellites that the finger spins -->
+    <!-- About NonGPS Maps, the screen reader label of the globe with the GPS satellites that the finger spins -->
     <string name="nogps_about_globe_hint">Drag the Earth, tap a satellite to switch it off.</string>
-    <!-- About NonGPS Maps, under the globe: the car stands in the jammed area -->
-    <string name="nogps_about_globe_jammed">Inside the jammed area not one of them reaches the car.</string>
-    <!-- About NonGPS Maps, under the globe: %1$d is how many satellites are on, %2$d how many there are -->
-    <string name="nogps_about_globe_sats">%1$d of %2$d satellites on</string>
     <string name="nogps_about_description">Without GPS the car is driven by the inertial navigation: the turns come from the gyroscope, the distance from the car speed via OBD-II. The car is kept on the roads of the offline map.</string>
     <!-- NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) -->
     <string name="nogps_version">Version %s</string>
@@ -1191,6 +1191,7 @@
     <string name="nogps_source_code">Source code on GitHub</string>
     <string name="nogps_delete_recent_query">Delete from the history?</string>
     <string name="nogps_box_sleeping">sleeps: the engine is stopped</string>
+    <string name="nogps_box_battery_lock">switched off: the battery was low. Unplug the box and plug it back in</string>
     <string name="nogps_box_obd_sleeping">OBD sleeps: the engine is stopped</string>
     <string name="nogps_engine_running">running</string>
     <string name="nogps_engine_stopped">stopped</string>

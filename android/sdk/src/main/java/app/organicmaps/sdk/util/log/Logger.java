@@ -26,6 +26,35 @@ public final class Logger
   private static final String CORE_TAG = "OMcore";
   private static final LogFileWriter FILE_WRITER = new LogFileWriter();
 
+  /// Gets the failed CHECK/ASSERT of the core before the process aborts.
+  public interface AssertListener
+  {
+    void onAssert(@NonNull String source, @NonNull String message);
+  }
+
+  @Nullable
+  private static volatile AssertListener sAssertListener;
+
+  public static void setAssertListener(@Nullable AssertListener listener)
+  {
+    sAssertListener = listener;
+  }
+
+  // Called from JNI by the assert function of the core. Must not throw: the process is about to abort.
+  @Keep
+  private static void reportAssert(@NonNull String source, @NonNull String message)
+  {
+    final AssertListener listener = sAssertListener;
+    if (listener == null)
+      return;
+    try
+    {
+      listener.onAssert(source, message);
+    }
+    catch (Throwable ignored)
+    {}
+  }
+
   public static void v(String tag)
   {
     logJava(Log.VERBOSE, tag, "", null);
@@ -191,7 +220,7 @@ public final class Logger
 
   /// Runs the action while holding the file writer lock and with the buffer flushed to disk,
   /// so no log line is appended and no log file is switched or deleted concurrently.
-  /// Used to safely read/zip the log files.
+  /// Used to list the log files: keep the action short, an ERROR line waits for the lock.
   static void runExclusively(@NonNull Runnable action)
   {
     FILE_WRITER.runExclusively(action);
@@ -358,8 +387,8 @@ public final class Logger
 
     void startFile()
     {
-      // Neither the write lock nor the queue: a drive starts on the UI thread, the lock is held for seconds while
-      // the logs are zipped, and a full queue would drop the switch. Raising the number is enough: every line
+      // Neither the write lock nor the queue: a drive starts on the UI thread, the lock may be held by a slow
+      // write, and a full queue would drop the switch. Raising the number is enough: every line
       // logged after this carries it and opens the new file, whichever thread writes the line.
       mStartFileSeq.incrementAndGet();
     }

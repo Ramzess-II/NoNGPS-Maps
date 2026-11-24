@@ -99,6 +99,8 @@ struct Info
   bool m_hasPhones = false;
   // Two phones get the data at once, the one connected first changes the box.
   bool m_twoPhones = false;
+  // The box proves itself with a key it has been given, see AuthProof().
+  bool m_canAuth = false;
   // The box passes the places of the phones between them, see Peer.
   bool m_canPeer = false;
   // The box tells the code of its recovery window to the phone it listens to: BT_RECOVERY.
@@ -229,7 +231,16 @@ struct UpdateProgress
   std::string m_state;
 };
 
+// The key given to a box when a phone is paired, a nonce of a session and the proof the box answers it with, in bytes.
+size_t constexpr kAuthKeyBytes = 16;
+size_t constexpr kAuthNonceBytes = 8;
+size_t constexpr kAuthProofBytes = 8;
+
 uint16_t Crc16(std::string_view text);
+
+/// \returns the first kAuthProofBytes of HMAC-SHA256(key, nonce) in lowercase hex. The key and the nonce are the bytes
+/// of their hex texts, as the commands AUTH_SET and AUTH carry them. Empty if one of them is not hex of its length.
+std::string AuthProof(std::string_view keyHex, std::string_view nonceHex);
 
 /// \returns the command line to send to the box.
 std::string Command(int id, std::string_view command);

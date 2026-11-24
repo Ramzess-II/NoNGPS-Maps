@@ -546,4 +546,32 @@ UNIT_TEST(NoGps_BoxCarValues_Encoding)
   }
   TEST_EQUAL(roundTrip(Storage::kSpeedScale, "1.042"), "1.042", ());
 }
+
+UNIT_TEST(NoGps_Esp32_AuthProof)
+{
+  // HMAC-SHA256 over the bytes of the hex texts, the first 8 bytes: made with Python's hmac module.
+  std::string const key = "000102030405060708090a0b0c0d0e0f";
+  TEST_EQUAL(AuthProof(key, "a1b2c3d4e5f60718"), "0620aee41375224a", ());
+  TEST_EQUAL(AuthProof("000102030405060708090A0B0C0D0E0F", "A1B2C3D4E5F60718"), "0620aee41375224a", ());
+  // Not hex, or not of the length.
+  TEST(AuthProof(key, "a1b2c3d4e5f6071").empty(), ());
+  TEST(AuthProof(key, "a1b2c3d4e5f6071g").empty(), ());
+  TEST(AuthProof("0001", "a1b2c3d4e5f60718").empty(), ());
+  TEST(AuthProof(key, "a1b2c3d4e5f60719") != AuthProof(key, "a1b2c3d4e5f60718"), ());
+}
+
+UNIT_TEST(NoGps_Esp32_InfoTellsAuthAbility)
+{
+  auto const info =
+      ParseInfo(*Parse(WithCrc("NGI,1,0.5.0,2026-11-23T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,"
+                               "BLE OTA CAR PHONES AUTH,5,R1")));
+  TEST(info, ());
+  TEST(info->m_canAuth, ());
+  TEST(info->m_canStoreCarValues, ());
+  auto const old =
+      ParseInfo(*Parse(WithCrc("NGI,1,0.4.5,2026-11-23T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,"
+                               "BLE OTA CAR PHONES")));
+  TEST(old, ());
+  TEST(!old->m_canAuth, ());
+}
 }  // namespace nogps_esp32_protocol_tests

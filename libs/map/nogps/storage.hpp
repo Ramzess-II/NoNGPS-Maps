@@ -124,6 +124,12 @@ public:
   static std::string_view constexpr kCarName = "NoGpsName";
   // The code of the recovery window of the box, six digits, as the box told it to this phone the last time.
   static std::string_view constexpr kCarRecoveryCode = "NoGpsRecoveryCode";
+  // The key the box of the car proves itself with, kept by the keys of the car only: neither the box nor the other
+  // values of the car carry it, see Esp32Source.
+  static std::string_view constexpr kCarAuthKey = "NoGpsAuthKey";
+  // A key the box may not have is kept with this character before it: the reply to AUTH_SET was lost, or the user has
+  // forgotten the car and its box was paired again. Such a box is given the same key again, see Esp32Source.
+  static char constexpr kAuthKeyUnconfirmed = '?';
   // A box heard when the user has this many cars is not added. Cars already over it are kept.
   static size_t constexpr kMaxCars = 4;
   // The values the box of the car keeps too, see BoxCarValues.

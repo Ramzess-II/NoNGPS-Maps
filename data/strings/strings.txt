@@ -45637,6 +45637,20 @@ en = The flag is saved without a voice note: allow the microphone in the system 
 ru = Флаг сохранён без голосовой заметки: разрешите микрофон в настройках системы.
 uk = Прапорець збережено без голосової нотатки: дозвольте мікрофон у налаштуваннях системи.
 
+[nogps_crash_reports]
+comment = Settings switch: send a report to the developers when the app crashes
+tags = android-app,apple-maps
+en = Send crash reports
+ru = Отправлять отчёты о сбоях
+uk = Надсилати звіти про збої
+
+[nogps_crash_reports_hint]
+comment = Hint under the Send crash reports switch
+tags = android-app,apple-maps
+en = Only the crash, the device model and the app version are sent. No location data leaves the phone.
+ru = Отправляются только сведения о сбое, модель телефона и версия приложения. Данные о местоположении не покидают телефон.
+uk = Надсилаються лише відомості про збій, модель телефона та версія застосунку. Дані про місцеперебування не залишають телефон.
+
 [nogps_flags_send_title]
 comment = Settings row and screen title: the list of the flags saved in test drives, to send them with the trip logs to the developers by email
 tags = android-app,apple-maps
@@ -46614,22 +46628,10 @@ ru = Навигация, когда GPS глушат или подменяют
 uk = Навігація, коли GPS глушать або підміняють
 
 [nogps_about_globe_hint]
-comment = About NonGPS Maps, under the globe with the GPS satellites that the finger spins
+comment = About NonGPS Maps, the screen reader label of the globe with the GPS satellites that the finger spins
 tags = android-app,apple-maps
 en = Drag the Earth, tap a satellite to switch it off.
 uk = Потягніть Землю, торкніться супутника, щоб вимкнути його.
-
-[nogps_about_globe_jammed]
-comment = About NonGPS Maps, under the globe: the car stands in the jammed area
-tags = android-app,apple-maps
-en = Inside the jammed area not one of them reaches the car.
-uk = У зоні глушіння жоден із них не досягає авто.
-
-[nogps_about_globe_sats]
-comment = About NonGPS Maps, under the globe: %1$d is how many satellites are on, %2$d how many there are
-tags = android-app,apple-maps
-en = %1$d of %2$d satellites on
-uk = Увімкнено супутників: %1$d з %2$d
 
 [nogps_about_description]
 tags = android-app,apple-maps
@@ -46674,6 +46676,12 @@ tags = android-app,apple-maps
 en = sleeps: the engine is stopped
 ru = спит: двигатель заглушен
 uk = спить: двигун заглушено
+
+[nogps_box_battery_lock]
+tags = android-app,apple-maps
+en = switched off: the battery was low. Unplug the box and plug it back in
+ru = выключился: низкий заряд аккумулятора. Выньте блок и вставьте снова
+uk = вимкнувся: низький заряд акумулятора. Витягніть блок і вставте знову
 
 [nogps_box_obd_sleeping]
 tags = android-app,apple-maps

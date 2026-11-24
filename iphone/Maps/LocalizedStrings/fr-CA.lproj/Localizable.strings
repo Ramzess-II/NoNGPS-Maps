@@ -1240,6 +1240,12 @@
 /* Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. */
 "nogps_flag_mic_denied" = "The flag is saved without a voice note: allow the microphone in the system settings.";
 
+/* Settings switch: send a report to the developers when the app crashes */
+"nogps_crash_reports" = "Send crash reports";
+
+/* Hint under the Send crash reports switch */
+"nogps_crash_reports_hint" = "Only the crash, the device model and the app version are sent. No location data leaves the phone.";
+
 /* Settings row and screen title: the list of the flags saved in test drives, to send them with the trip logs to the developers by email */
 "nogps_flags_send_title" = "Send logs";
 
@@ -1588,14 +1594,8 @@
 "nogps_about_om_menu" = "About Organic Maps";
 "nogps_about_headline" = "Navigation when GPS is jammed or spoofed";
 
-/* About NonGPS Maps, under the globe with the GPS satellites that the finger spins */
+/* About NonGPS Maps, the screen reader label of the globe with the GPS satellites that the finger spins */
 "nogps_about_globe_hint" = "Drag the Earth, tap a satellite to switch it off.";
-
-/* About NonGPS Maps, under the globe: the car stands in the jammed area */
-"nogps_about_globe_jammed" = "Inside the jammed area not one of them reaches the car.";
-
-/* About NonGPS Maps, under the globe: %1$d is how many satellites are on, %2$d how many there are */
-"nogps_about_globe_sats" = "%1$d of %2$d satellites on";
 "nogps_about_description" = "Without GPS the car is driven by the inertial navigation: the turns come from the gyroscope, the distance from the car speed via OBD-II. The car is kept on the roads of the offline map.";
 
 /* NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) */
@@ -1606,6 +1606,7 @@
 "nogps_map_data" = "Map data © OpenStreetMap and Organic Maps";
 "nogps_source_code" = "Source code on GitHub";
 "nogps_box_sleeping" = "sleeps: the engine is stopped";
+"nogps_box_battery_lock" = "switched off: the battery was low. Unplug the box and plug it back in";
 "nogps_box_obd_sleeping" = "OBD sleeps: the engine is stopped";
 "nogps_engine_running" = "running";
 "nogps_engine_stopped" = "stopped";

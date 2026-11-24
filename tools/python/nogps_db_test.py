@@ -300,5 +300,97 @@ class ImportTest(unittest.TestCase):
             sys.argv = old
 
 
+def utc_ms(text):
+    """The unix ms of 'yyyy-MM-dd HH:mm:ss' UTC."""
+    return int(nogps_db.datetime.strptime(text, '%Y-%m-%d %H:%M:%S').replace(
+        tzinfo=nogps_db.timezone.utc).timestamp() * 1000)
+
+
+def header(ms, trip='180000', phone='Pixel_7-a3f9'):
+    return HEADER.replace('ms=%d' % T0, 'ms=%d' % ms).replace('trip=180000', 'trip=' + trip).replace(
+        'Pixel_7-a3f9', phone)
+
+
+def write_flag(folder, name, values, png=True, m4a=b''):
+    import json
+    os.makedirs(folder, exist_ok=True)
+    with open(os.path.join(folder, name + '.json'), 'w') as f:
+        json.dump(values, f)
+    if png:
+        with open(os.path.join(folder, name + '.png'), 'wb') as f:
+            f.write(b'\x89PNG')
+    if m4a:
+        with open(os.path.join(folder, name + '.m4a'), 'wb') as f:
+            f.write(m4a)
+
+
+class OffsetTest(unittest.TestCase):
+    # The phone is 2 h ahead of UTC: a file named 180000 was started at 16:00:00 UTC.
+    DAY = '2026-11-24'
+
+    def test_median_rounded_to_a_quarter(self):
+        starts = [('180000.log', utc_ms('2026-11-24 16:00:01')), ('190500.log', utc_ms('2026-11-24 17:04:58')),
+                  ('190500-2.log', utc_ms('2026-11-24 17:05:03'))]
+        self.assertEqual(nogps_db.utc_offset_ms(self.DAY, starts), 2 * 3600_000)
+
+    def test_continuation_after_midnight_does_not_move_it(self):
+        # The trip started at 23:30 the day before goes on in this day's folder under its name, from 00:00 local.
+        starts = [('233000.log', utc_ms('2026-11-23 22:00:00')), ('180000.log', utc_ms('2026-11-24 16:00:00'))]
+        self.assertEqual(nogps_db.utc_offset_ms(self.DAY, starts), 2 * 3600_000)
+        self.assertIsNone(nogps_db.utc_offset_ms(self.DAY, starts[:1]))
+
+    def test_a_day_without_logs(self):
+        self.assertIsNone(nogps_db.utc_offset_ms(self.DAY, []))
+        self.assertIsNone(nogps_db.utc_offset_ms(self.DAY, [('log.log', T0)]))
+
+
+class FlagTest(unittest.TestCase):
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        self.day = os.path.join(self.dir.name, 'logs', 'Pixel_7-a3f9', '2026-11-24')
+        self.out = os.path.join(self.dir.name, 'db')
+
+    def flags(self):
+        conn = nogps_db.open_db(os.path.join(self.out, 'Pixel_7-a3f9-2026-11-24.sqlite'))
+        rows = [dict(r) for r in conn.execute('SELECT * FROM flag ORDER BY name')]
+        conn.close()
+        return rows
+
+    def test_flags_of_the_day(self):
+        write(self.day, '180000.log', [header(utc_ms('2026-11-24 16:00:00'))] + GOOD[1:])
+        flags = os.path.join(self.day, 'flags')
+        write_flag(flags, '20261124-180130', dict(n=2, lat=10.5, lon=20.5, voice_s=7, sent=True), m4a=b'voice')
+        # No voice, and no position: the phone had none.
+        write_flag(flags, '20261124-181000', dict(n=3, voice_s=0, sent=False), png=False)
+        # A screenshot without its json is no flag.
+        with open(os.path.join(flags, '20261124-182000.png'), 'wb') as f:
+            f.write(b'\x89PNG')
+        nogps_db.import_tree([os.path.join(self.dir.name, 'logs')], self.out)
+        self.assertEqual(self.flags(), [
+            dict(name='20261124-180130', ms=utc_ms('2026-11-24 16:01:30'), n=2, lat=10.5, lon=20.5, voice_s=7, sent=1,
+                 png='flags/20261124-180130.png', m4a='flags/20261124-180130.m4a'),
+            dict(name='20261124-181000', ms=utc_ms('2026-11-24 16:10:00'), n=3, lat=None, lon=None, voice_s=0, sent=0,
+                 png=None, m4a=None)])
+
+    def test_a_day_whose_logs_tell_no_offset(self):
+        # The only log goes on from the day before: its name is no start of this day.
+        write(self.day, '233000.log', [header(utc_ms('2026-11-23 22:00:00'), '233000')] + GOOD[1:])
+        write_flag(os.path.join(self.day, 'flags'), '20261124-080000', dict(n=1, voice_s=0, sent=False))
+        nogps_db.import_tree([os.path.join(self.dir.name, 'logs')], self.out)
+        self.assertEqual([(f['name'], f['ms']) for f in self.flags()], [('20261124-080000', None)])
+
+    def test_a_database_of_schema_1_is_refused(self):
+        write(self.day, '180000.log', GOOD)
+        nogps_db.import_tree([os.path.join(self.dir.name, 'logs')], self.out)
+        path = os.path.join(self.out, 'Pixel_7-a3f9-2026-11-24.sqlite')
+        conn = sqlite3.connect(path)
+        conn.execute("UPDATE meta SET value = '1'")
+        conn.commit()
+        conn.close()
+        with self.assertRaisesRegex(nogps_db.ImportError_, 'schema 1, the tools read 2'):
+            nogps_db.open_db(path)
+
+
 if __name__ == '__main__':
     unittest.main()

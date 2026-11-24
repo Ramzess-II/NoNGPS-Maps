@@ -1240,6 +1240,12 @@
 /* Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. */
 "nogps_flag_mic_denied" = "Прапорець збережено без голосової нотатки: дозвольте мікрофон у налаштуваннях системи.";
 
+/* Settings switch: send a report to the developers when the app crashes */
+"nogps_crash_reports" = "Надсилати звіти про збої";
+
+/* Hint under the Send crash reports switch */
+"nogps_crash_reports_hint" = "Надсилаються лише відомості про збій, модель телефона та версія застосунку. Дані про місцеперебування не залишають телефон.";
+
 /* Settings row and screen title: the list of the flags saved in test drives, to send them with the trip logs to the developers by email */
 "nogps_flags_send_title" = "Надіслати журнали";
 
@@ -1588,14 +1594,8 @@
 "nogps_about_om_menu" = "Про застосунок Organic Maps";
 "nogps_about_headline" = "Навігація, коли GPS глушать або підміняють";
 
-/* About NonGPS Maps, under the globe with the GPS satellites that the finger spins */
+/* About NonGPS Maps, the screen reader label of the globe with the GPS satellites that the finger spins */
 "nogps_about_globe_hint" = "Потягніть Землю, торкніться супутника, щоб вимкнути його.";
-
-/* About NonGPS Maps, under the globe: the car stands in the jammed area */
-"nogps_about_globe_jammed" = "У зоні глушіння жоден із них не досягає авто.";
-
-/* About NonGPS Maps, under the globe: %1$d is how many satellites are on, %2$d how many there are */
-"nogps_about_globe_sats" = "Увімкнено супутників: %1$d з %2$d";
 "nogps_about_description" = "Без GPS авто веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю авто з OBD-II. Авто тримається доріг офлайн-карти.";
 
 /* NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) */
@@ -1606,6 +1606,7 @@
 "nogps_map_data" = "Дані карт © OpenStreetMap і Organic Maps";
 "nogps_source_code" = "Вихідний код на GitHub";
 "nogps_box_sleeping" = "спить: двигун заглушено";
+"nogps_box_battery_lock" = "вимкнувся: низький заряд акумулятора. Витягніть блок і вставте знову";
 "nogps_box_obd_sleeping" = "OBD спить: двигун заглушено";
 "nogps_engine_running" = "працює";
 "nogps_engine_stopped" = "заглушено";

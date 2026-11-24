@@ -1,12 +1,13 @@
 export const meta = {
   name: 'nogps-merge',
   description: 'NonGPS merge train: prep the independent PRs in parallel, then merge them one at a time',
-  whenToUse: 'Started by the /nogps-merge skill, which builds the two sets: args {ws, parallel, serial, rounds, slots}',
+  whenToUse: 'Started by /nogps-merge, which builds the two sets: args {ws, parallel, serial, rounds, slots, maxReviews}',
   phases: [
     { title: 'Setup', detail: 'the merge gate worktree, and one per prep slot when a PR needs it' },
     { title: 'Update', detail: 'merge current master into the PR branch, push fast-forward' },
-    { title: 'Review', detail: 'correctness only, the findings posted on the PR', model: 'fable' },
-    { title: 'Fix', detail: 'check each finding, fix the ones that hold, push', model: 'opus' },
+    { title: 'Review', detail: 'correctness only, the findings posted on the PR', model: 'opus' },
+    { title: 'Fix', detail: 'check each finding, fix the ones that hold, push', model: 'sonnet' },
+    { title: 'Confirm', detail: 'a PR clean on the first pass, read once more before the gate', model: 'fable' },
     { title: 'Merge', detail: 'the serial gate: did master move, the pair tested together, CI, merge commit' },
     { title: 'Clean', detail: 'remove the train worktrees' },
   ],
@@ -30,11 +31,16 @@ const APP_REPO = 'Ramzess-II/NoNGPS-Maps'
 const FW_REPO = 'Ramzess-II/ELMandIMU'
 const GATE = 'merge-train'
 const ROUNDS = A.rounds ?? 3
+// --rounds bounds one run; this bounds a PR over all runs. Every review is Opus or Fable, and a PR that keeps
+// coming back to the train spent 5 to 7 of them in two or three runs (#470, #601). The count is the PR's
+// "Merge-train review" comments, which the skill passes in as pr.reviews; the confirmation counts as one.
+const MAX_REVIEWS = A.maxReviews ?? 5
 const MIN_FREE_GB = 15
 
 // The train lands the PRs of both repos. Each one has its own checkout, its own default branch -- the firmware repo
-// has no master, its default branch is main -- and its own way of being built and checked: the firmware repo has no
-// CI at all today, so the gate's local build is the only check a firmware PR gets, and it is not optional.
+// has no master, its default branch is main -- and its own way of being built and checked: a firmware PR gets the S3
+// and C3 builds of `.github/workflows/build.yml`, and the gate's local build stays as well, it is not optional: it
+// is the only one that uses the chip-specific sdkconfig of the main checkout.
 // `keys/` and `sdkconfig` are gitignored in the firmware repo, so a fresh worktree has neither and both come from
 // the main checkout: the signing key, because sdkconfig.defaults signs the image with
 // keys/nogps_signing_key.pem, and sdkconfig, because sdkconfig.defaults alone does not reproduce it -- it leaves
@@ -42,8 +48,8 @@ const MIN_FREE_GB = 15
 // scheme, and the build then dies on "Incorrect ECDSA private key". sdkconfig is copied, not linked: idf.py
 // rewrites it, and it has to be in place before the first build, which caches the target in CMakeCache.txt.
 const REPOS = {
-  [APP_REPO]: { dir: APP, base: 'master', ci: true, suffix: '', what: 'the app' },
-  [FW_REPO]: { dir: FIRMWARE, base: 'main', ci: false, suffix: '-fw', what: 'the box firmware' },
+  [APP_REPO]: { dir: APP, base: 'master', suffix: '', what: 'the app' },
+  [FW_REPO]: { dir: FIRMWARE, base: 'main', suffix: '-fw', what: 'the box firmware' },
 }
 const repoName = (pr) => pr.repo || APP_REPO
 const R = (pr) => {
@@ -65,12 +71,34 @@ const ADD_WT = (pr, name) =>
     ? `git -C ${FIRMWARE} worktree add --no-track -b feature/${name} ${WT(name)} origin/main && \
 ln -sfn ${FIRMWARE}/keys ${WT(name)}/keys && cp ${FIRMWARE}/sdkconfig ${WT(name)}/sdkconfig`
     : `${APP}/tools/unix/nogps_worktree.sh add ${name}`
+// The gate's worktree is made at launch and can be removed under a running train. Its branch outlives the directory:
+// prune the stale registration and reuse the branch, as `add -b` fails on one that exists.
+const REMAKE_GATE = (pr, wt) => {
+  const name = GATE + R(pr).suffix
+  const repo = R(pr).suffix ? FIRMWARE : APP
+  // A directory that is no registered worktree (only build-${name} left, or a remove that failed midway) is not a
+  // worktree either: clear it, or `add` refuses the path.
+  const clear = `git -C ${repo} worktree prune && git -C ${repo} fetch -q origin && (git -C ${repo} worktree list --porcelain | \
+grep -qx 'worktree ${wt}' || rm -rf ${wt})`
+  return R(pr).suffix
+    ? `${clear} && (git -C ${FIRMWARE} worktree add --no-track -b feature/${name} ${wt} origin/main || \
+git -C ${FIRMWARE} worktree add ${wt} feature/${name}) && ln -sfn ${FIRMWARE}/keys ${wt}/keys && \
+cp ${FIRMWARE}/sdkconfig ${wt}/sdkconfig`
+    : `${clear}, then, as the helper refuses a branch that exists: if git -C ${APP} rev-parse -q --verify \
+feature/${name} succeeds, delete the branch (git -C ${APP} branch -D feature/${name}) only when \
+git -C ${APP} rev-list feature/${name} --not --remotes prints nothing, and otherwise rename it \
+(git -C ${APP} branch -m feature/${name} feature/${name}-old-$(date +%s)) so nobody's commits are lost; then \
+${APP}/tools/unix/nogps_worktree.sh add ${name}`
+}
+// True when the worktree is missing or only a leftover directory: the check of every step that works in the gate.
+const GONE = (repo, wt) => `${wt} isn't listed by git -C ${repo} worktree list --porcelain, or is listed there as prunable \
+(its directory was deleted) (missing, or a leftover directory)`
 const RM_WT = (name) =>
   name.endsWith('-fw')
     ? `git -C ${FIRMWARE} worktree remove --force ${WT(name)}`
     : `${APP}/tools/unix/nogps_worktree.sh remove ${WT(name)}`
-// The firmware build, the only check of a firmware PR. A missing toolchain or signing key is not a test failure:
-// nothing was built, so the gate refuses to merge the PR ("blocked") and says why.
+// The firmware build of the PR merged into main: the only build that uses the main checkout's sdkconfig. A missing toolchain or
+// signing key is not a test failure: nothing was built, so the gate refuses to merge the PR ("blocked") and says why.
 const FW_BUILD = (name) => `cd ${WT(name)} && . ~/esp/esp-idf/export.sh >/dev/null && idf.py build`
 
 // The skill splits the queue in step 3. args.queue, the single queue of the serial train, is taken as the serial
@@ -92,10 +120,11 @@ movedIos.forEach((pr) => pending.splice(pending.indexOf(pr), 1))
 serial.unshift(...movedIos)
 const SLOTS = pending.length ? Math.max(1, Math.min(A.slots ?? 4, pending.length)) : 0
 const STEPS = Math.max(SLOTS, 1) // steps of the train running at once: one per prep slot, or the single serial one
-pending.forEach((pr) => Object.assign(pr, { set: 'parallel', round: 0 }))
-serial.forEach((pr) => Object.assign(pr, { set: 'serial', round: 0 }))
+pending.forEach((pr) => Object.assign(pr, { set: 'parallel', round: 0, reviews: pr.reviews || 0 }))
+serial.forEach((pr) => Object.assign(pr, { set: 'serial', round: 0, reviews: pr.reviews || 0 }))
 // R() throws on a repo the train doesn't know: the queue is checked before any agent runs, not per step.
-const SUFFIXES = [...new Set([...pending, ...serial].map((pr) => R(pr).suffix))]
+const QUEUE = [...pending, ...serial] // pending and serial are drained as the run goes: keep the whole queue
+const SUFFIXES = [...new Set(QUEUE.map((pr) => R(pr).suffix))]
 // One gate and one prep slot per repo in the queue: a worktree belongs to one repo, and the gate merges the PRs of
 // both. A slot's worktree is made only when a PR of that repo reaches it, so a run of one repo makes none of the
 // other's.
@@ -119,10 +148,36 @@ worktree lock of the main checkout the worktree belongs to) is run again after a
 // --ignore-other-worktrees: a PR the gate sends back as stale is prepped by whichever worker takes it next, while
 // the slot that prepped it before still has train/<n> checked out, and git refuses that branch without the flag
 // (--force doesn't cover it). Only one worker holds a PR at a time, so the two never write the branch at once.
-const CHECKOUT = (pr, wt) => `git -C ${wt} fetch -q origin && git -C ${wt} checkout --force \
---ignore-other-worktrees -B train/${pr.number} refs/remotes/origin/${pr.branch} && git -C ${wt} submodule update \
+// Both of us open a PR from a branch of the repo and from our own fork. A fork's branch is in no remote of the
+// checkout, so the head comes from a remote named after the fork's owner, and the update's and the fix's push go
+// back to that fork's branch -- the one the PR is open from. The remote is added to the main checkout, the only
+// place git keeps them: its worktrees all see it, and adding one touches no working tree. A fork of anyone but the
+// two of us never reaches the train: the skill leaves it out of the queue, and REMOTE throws on it.
+const OWNERS = ['koloboid', 'Ramzess-II']
+const repoOwner = (pr) => repoName(pr).split('/')[0]
+const headOwner = (pr) => pr.headOwner || repoOwner(pr)
+const REMOTE = (pr) => {
+  const owner = headOwner(pr)
+  if (owner === repoOwner(pr)) return 'origin'
+  if (!OWNERS.includes(owner))
+    throw new Error(`PR #${pr.number}: head is in a fork of ${owner}, not of ${OWNERS.join(' or ')}`)
+  return owner
+}
+const ADD_REMOTE = (pr) =>
+  `(git -C ${R(pr).dir} remote get-url ${REMOTE(pr)} >/dev/null 2>&1 || git -C ${R(pr).dir} remote add \
+${REMOTE(pr)} git@github.com:${headOwner(pr)}/${repoName(pr).split('/')[1]}.git)`
+// The base always comes from origin, the head from its own remote: both are fetched when they differ.
+const FETCH = (pr, wt) =>
+  REMOTE(pr) === 'origin'
+    ? `git -C ${wt} fetch -q origin`
+    : `${ADD_REMOTE(pr)} && git -C ${wt} fetch -q origin && git -C ${wt} fetch -q ${REMOTE(pr)}`
+const HEAD_REF = (pr) => `refs/remotes/${REMOTE(pr)}/${pr.branch}`
+const CHECKOUT = (pr, wt) => `${FETCH(pr, wt)} && git -C ${wt} checkout --force \
+--ignore-other-worktrees -B train/${pr.number} ${HEAD_REF(pr)} && git -C ${wt} submodule update \
 --init --recursive`
-const PUSH = (pr, wt) => `git -C ${wt} push origin HEAD:refs/heads/${pr.branch}`
+const PUSH = (pr, wt) => `git -C ${wt} push ${REMOTE(pr)} HEAD:refs/heads/${pr.branch}`
+// Like R() above: the whole queue is checked before any agent runs, not when a step first builds its prompt.
+;[...pending, ...serial].forEach((pr) => REMOTE(pr))
 // The label of a step, and of the PR in the log: the firmware's numbers are its own, so they are told apart.
 const tag = (pr) => `${R(pr).suffix ? 'fw' : ''}#${pr.number}`
 
@@ -151,6 +206,7 @@ const UPDATE_SCHEMA = {
     prepMaster: { type: 'string', description: 'the sha of origin/master this update merged, for the merge gate' },
     updated: { type: 'boolean', description: 'the branch was behind master and now has it merged in' },
     diffStat: { type: 'string', description: 'git diff --shortstat origin/master...HEAD' },
+    remade: { type: 'boolean', description: 'the gate worktree was missing and step 1 made it again' },
   },
   required: ['status'],
 }
@@ -167,6 +223,15 @@ const REVIEW_SCHEMA = {
           line: { type: 'number' },
           summary: { type: 'string', description: 'one sentence: the defect' },
           scenario: { type: 'string', description: 'concrete input or state and the wrong result' },
+          cycle: {
+            type: 'object',
+            description: 'only when the finding undoes an earlier fix or repeats a rejected finding',
+            properties: {
+              round: { type: 'number', description: 'the round of the earlier review, as its comment heading says' },
+              kind: { type: 'string', enum: ['undo', 'again'] },
+            },
+            required: ['round', 'kind'],
+          },
         },
         required: ['file', 'summary', 'scenario'],
       },
@@ -198,6 +263,7 @@ const MERGE_SCHEMA = {
     staleFiles: { type: 'array', items: { type: 'string' }, description: 'files master gained that this PR touches' },
     combinedTest: { type: 'string', description: 'the core tests with this PR merged into current master, one line' },
     mergeCommit: { type: 'string' },
+    remade: { type: 'boolean', description: 'the gate worktree was missing and step 0 made it again' },
   },
   required: ['status'],
 }
@@ -240,7 +306,7 @@ ${wt}.
 IMPORTANT: never rebase this branch and never force-push it, with or without a lease. The branch is only ever \
 moved forward: ${base} is merged into it, so the push is a fast-forward. A push that would need a force is a \
 "moved" report, not a force push.
-1. If ${wt} doesn't exist: ${ADD_WT(pr, name)}
+1. If ${GONE(R(pr).suffix ? FIRMWARE : APP, wt)}: ${name.startsWith(GATE) ? `${REMAKE_GATE(pr, wt)} Report remade true.` : ADD_WT(pr, name)}
    Another step of the train may hold the worktree lock of the main checkout: run it again after a few seconds.
 2. ${CHECKOUT(pr, wt)}
    If the PR's head on GitHub is no longer ${pr.head} (gh pr view ${pr.number} -R ${repo} --json headRefOid), \
@@ -261,21 +327,35 @@ git -C ${wt} diff origin/${base}...HEAD against the PR's own diff on GitHub (gh 
 Don't build and don't write on GitHub beyond this push.`
 }
 
-function reviewPrompt(pr, round, before, name) {
+function reviewPrompt(pr, round, history, name, confirm) {
   const wt = WT(name)
   const { base } = R(pr)
   const repo = repoName(pr)
-  const again = before
-    ? `\nThis is round ${round}. Your findings of the round before and what the fixer did with them: \
-${JSON.stringify(before)}. Check each of them in the code again: a fix that doesn't hold is a finding again, and so \
-is a new bug the fix brought. Don't repeat a finding you now agree was wrong.`
-    : ''
+  const again = history.length
+    ? `\nThis is round ${round}. The findings of every earlier round of this run -- yours, or the confirming \
+reviewer's -- and what the fixer did with each: ${JSON.stringify(history)}. Check each of them in the code again: a \
+fix that doesn't hold is a finding again, and so is a new bug the fix brought. Don't repeat a finding you now agree \
+was wrong.`
+    : confirm
+      ? `\nAnother reviewer has just read this PR and found nothing, and you are the last read before the gate \
+merges it: nobody else looks at it. Read the diff yourself and judge it on what you see -- that the review before \
+you came back empty is no reason to come back empty, and no reason to find something either.`
+      : ''
   return `${ENV}
 
 Review PR #${pr.number} "${pr.title}" of ${repo} in ${wt}, with current ${base} just merged in: git -C ${wt} diff \
  origin/${base}...HEAD. \
 You didn't write it. Read the PR and its issue (gh pr view ${pr.number} -R ${repo} --comments), and the code around \
 the diff, not only the diff.${again}
+Earlier runs of the train may have reviewed it too: their "**Merge-train review" and "**Merge-train fixes" \
+comments are in that output. A review and a fixer that keep undoing each other spend the rounds and settle nothing, \
+so mark a finding with cycle {round, kind} when it is one of these, against any earlier round of this run or of an \
+earlier one:
+- undo: it asks to undo, in whole or in part, a fix made in an earlier round;
+- again: it raises again, with no new argument, a finding the fixer rejected.
+round is the round of the earlier review, as its comment heading says. A finding whose fix didn't hold is not a \
+cycle: it is a plain finding. Don't leave a finding out to avoid a cycle: mark it, the train then runs no fix and a \
+person decides between the two rounds.
 Correctness bugs only: wrong behavior, a missed corner case, a behavior both apps show changed on one platform \
 only, the shared interface changed in one bridge only (see "Shared interface" in .claude/rules/nogps-workflow.md), \
 a test that doesn't test the change, living docs (docs/nogps/navigation-rules.md, esp32-firmware-spec.md) that no \
@@ -289,12 +369,14 @@ change it) and report a firmware change that the spec doesn't describe, or that 
   }
 Leave out style preferences, defensive code for cases that can't happen, and whatever CI already gates: \
 formatting, lint, translation keys, the other-platform check.${
-    R(pr).suffix ? ' That repo has no CI at all, so nothing of this PR is gated elsewhere.' : ''
+    R(pr).suffix ? ' The CI of that repo only builds the firmware for S3 and C3, so nothing else of this PR is gated elsewhere.' : ''
   }
 Give every finding a file, a line and a concrete failing scenario. Say nothing about the PR that isn't a finding.
 Then post exactly one comment on the PR: gh pr comment ${pr.number} -R ${repo} --body-file - with a first line \
-"**Merge-train review, round ${round} (Fable).**" and then the findings as a list, \`file:line\` — summary, and the \
-scenario under it; or "No findings." when there are none. Report the comment's URL.
+"**Merge-train review, round ${round} (${confirm ? 'Fable, confirming a clean first pass' : 'Opus'}).**" and then \
+the findings as a list, \`file:line\` — summary, and the scenario under it; or "No findings." when there are none. \
+Under a marked finding, name the earlier round it undoes or repeats, with the link of that round's comment and what \
+the fix there did or why the fixer rejected it. Report the comment's URL.
 Change nothing else: no edits, no commits, no other GitHub writes.`
 }
 
@@ -329,7 +411,7 @@ simulator. A fix to a behavior both apps show is made on both platforms.`
   }
 5. Tests: ${
     R(pr).suffix
-      ? `build the firmware, the only check this repo has -- it runs no CI: ${FW_BUILD(name)}
+      ? `build the firmware, as the CI of this repo does for S3 and C3: ${FW_BUILD(name)}
    A build that can't run at all (no ~/esp/esp-idf/export.sh, no keys/) is not a failure: say so in the reply and \
 go on. A build that runs and fails is: up to 3 attempts, then report "failed" with the output and push nothing.`
       : `when the fix touches the core, cd ${wt} && cmake --preset debug -B ${BUILD(name)} -DSKIP_QT_GUI=ON \
@@ -342,7 +424,7 @@ report "failed" with the output and push nothing.`
   }
 6. Push: ${PUSH(pr, wt)} (no rewriting here, the fixes are new commits). Report the new head.
 7. Then reply once on the PR: gh pr comment ${pr.number} -R ${repo} --body-file - with a first line \
-"**Merge-train fixes, round ${round} (Opus).**", what was fixed with the short shas of the commits, what was \
+"**Merge-train fixes, round ${round} (Sonnet).**", what was fixed with the short shas of the commits, what was \
 rejected and why, any issue you opened, and the result of the tests you ran.
 If every finding is wrong, report "nothing" with your reasons in the reply, push nothing, and post the reply all \
 the same: the train then merges the PR.`
@@ -354,13 +436,13 @@ function gatePrompt(pr) {
   const wt = WT(GATE + suffix)
   const staleStep = pr.prepMaster
     ? `Its prep merged ${base} ${pr.prepMaster} into it and reviewed the result.
-   git -C ${wt} fetch -q origin
+   ${FETCH(pr, wt)}
    git -C ${wt} diff --name-only ${pr.prepMaster} origin/${base}   -- what ${base} gained since
    gh pr view ${pr.number} -R ${repo} --json files --jq '.files[].path'   -- the PR's own files
    A file in both lists: the review didn't see it. Report "stale" with those files in staleFiles and stop -- the \
 train sends the PR back for one more update and review round. Nothing in both lists: go on, whatever else ${base} \
 gained.`
-    : `Its prep didn't report the ${base} it merged, so this can't be checked: git -C ${wt} fetch -q origin and go \
+    : `Its prep didn't report the ${base} it merged, so this can't be checked: ${FETCH(pr, wt)} and go \
 on. The local merge of step 4 and the tests of step 5 are then the only check of the two together.`
   return `${ENV}
 
@@ -368,6 +450,10 @@ Merge PR #${pr.number} "${pr.title}" of ${repo}. It has ${base} merged in, it is
 clean. You are the merge gate: the PRs go through you one at a time, and this is the only step that moves ${base}.
 Work in the gate worktree ${wt}. IMPORTANT: never push ${base}, never push the PR's branch, and never rebase or \
 force-push anything. The only write to the repo is the gh pr merge of step 7.
+0. If ${GONE(suffix ? FIRMWARE : APP, wt)}, somebody removed it during the run: remake it and report remade true. ${REMAKE_GATE(pr, wt)} \
+${suffix ? `The keys/ link and the sdkconfig copy are part of it: a bare firmware worktree builds for the esp32 target \
+with secure boot v1 and dies on "Incorrect ECDSA private key", which would read as a failure of the PR. ` : ''}Another \
+step may hold the worktree lock: run it again after a few seconds. A worktree that exists is used as it is.
 1. Did ${base} move under this PR? ${staleStep}
 2. Authors, from "Flow of a change" in .claude/rules/nogps-workflow.md: \
 gh api --paginate repos/${repo}/pulls/${pr.number}/commits --jq '.[].author.login // "unknown"' | sort -u \
@@ -378,7 +464,7 @@ requested from the other person, CHANGES_REQUESTED or REVIEW_REQUIRED: report "b
 mergeStateStatus DIRTY: report "conflict". Already MERGED or CLOSED: report "blocked" with that.
 4. Merge the PR into current ${base} locally, to have the two together: \
 git -C ${wt} checkout --force -B train/gate refs/remotes/origin/${base} && git -C ${wt} submodule update --init \
---recursive && git -C ${wt} merge --no-edit refs/remotes/origin/${pr.branch}
+--recursive && git -C ${wt} merge --no-edit ${HEAD_REF(pr)}
    A conflict: git -C ${wt} merge --abort, report "conflict" with the files, and stop; the PR stays open. \
 train/gate is local and thrown away after the run: don't push it.
 5. Build and test the two together -- this is the only run that sees them together, as the PR's own checks ran \
@@ -387,12 +473,12 @@ git -C ${wt} diff --name-only origin/${base}...HEAD
 ${
   suffix
     ? `   - The firmware, whatever the diff touches: ${FW_BUILD(GATE + suffix)}
-     This repo runs no CI, so this build is the only check the PR gets: it is not optional. The worktree needs \
+     The CI of this repo builds S3 and C3 from its own config, not from the main checkout's sdkconfig, so this build is not optional. The worktree needs \
 ${FIRMWARE}/keys linked and ${FIRMWARE}/sdkconfig copied in, which its setup did; a build that complains about an \
 "Incorrect ECDSA private key" or a target mismatch is missing one of them, so put it there, run idf.py fullclean \
 and build again before calling anything a failure. A build that cannot run at all -- no ~/esp/esp-idf/export.sh, \
-no keys/ to link -- is not a failure of the PR but it is not a build either: nothing else checks this PR, so \
-don't merge it. Report "blocked" with "not built: <why>" in reason and combinedTest, and stop; the PR stays open \
+no keys/ to link -- is not a failure of the PR but it is not a build either: the CI builds do not stand in \
+for it, so don't merge it. Report "blocked" with "not built: <why>" in reason and combinedTest, and stop; the PR stays open \
 and a machine that can build it (or a person) lands it.`
     : `   - libs/: cd ${wt} && cmake --preset debug -B ${BUILD(GATE)} -DSKIP_QT_GUI=ON && \
 just test "NoGps_.*" ${BUILD_REL(GATE)}
@@ -405,18 +491,13 @@ anywhere else configures that checkout -- ${APP}, the other session's work in pr
 gh pr comment ${pr.number} -R ${repo} --body-file - starting with "**Merge-train gate.** The build with current \
 ${base} merged in fails:" -- then stop; the PR stays open. All green, or nothing to build: say which in \
 combinedTest and go on.
-6. ${
-    R(pr).ci
-      ? `CI: gh pr checks ${pr.number} -R ${repo} --watch --interval 60 --fail-fast, with a timeout of 9 minutes \
-on the command; repeat it while checks are queued or running, up to 4 times (the iOS check takes about 8 minutes). \
+6. CI: gh pr checks ${pr.number} -R ${repo} --watch --interval 60 --fail-fast, with a timeout of 9 minutes \
+on the command; repeat it while checks are queued or running, up to 4 times (the iOS check of an app PR takes about 8 minutes). \
 The checks of this PR have been running since its prep pushed, so they are often green already. A failing check: \
 report "ci" with the names of the failing checks and the run's URL; the PR stays open. Skipped, neutral and the \
 Claude review check are not failures. If three minutes after the push no check ran at all for the \
 new head, the hooks missed it: gh pr close ${pr.number} -R ${repo} && gh pr reopen ${pr.number} -R ${repo}, then \
-watch again.`
-      : `No CI to wait for: ${repo} has no checks (no .github/workflows), so step 5's build is the whole \
-verification. Go straight on to the merge.`
-  }
+watch again.
 7. Merge: gh pr merge ${pr.number} -R ${repo} --merge --delete-branch. Both repos merge with a merge commit, as \
 their history shows; don't squash and don't rebase-merge. A warning that the local branch can't be deleted is \
 fine, the train's local branches are its own.
@@ -425,6 +506,12 @@ Don't comment on the PR beyond the failing tests of step 5: the review and fix c
 }
 
 function cleanPrompt(left) {
+  // The branches this run made: train/<number> for each PR of its queue and train/gate, in the PR's own repo.
+  const TRAIN_BRANCHES = SUFFIXES.map((s) => {
+    const repo = s ? FIRMWARE : APP
+    const prs = QUEUE.filter((pr) => R(pr).suffix === s).map((pr) => 'train/' + pr.number)
+    return `   - ${repo}: ${[...prs, 'train/gate'].join(', ')}`
+  }).join('\n')
   return `${ENV}
 
 The train is done. Take its worktrees away: ${NAMES.join(', ')} under ${WS}/worktrees/ -- the ones that exist, as \
@@ -432,7 +519,8 @@ a prep slot is made only when a PR needed it. A name ending in -fw is a worktree
 ${APP}; the default branch is main there and master here.
 1. In each: git -C <path> status --short and git -C <path> log --oneline origin/<its default branch>..HEAD. A \
 commit nobody pushed belongs to a PR the train left open (${left || 'none'}): push it to its PR's branch first \
-(git -C <path> push origin HEAD:refs/heads/<branch>) and say so in the report. The exception is the branch \
+(git -C <path> push <that PR's remote> HEAD:refs/heads/<branch>: origin for a PR opened from a branch of the repo, \
+the remote named after the fork's owner for one opened from a fork) and say so in the report. The exception is the branch \
 train/gate: its commits are the gate's local merges of a PR into its default branch, nobody's work, and they go \
 away with the branch.
 2. In each: git -C <path> checkout --force feature/<the worktree's name> && git -C <path> reset --hard && \
@@ -440,13 +528,19 @@ git -C <path> clean -fdx (the build dir goes with the worktree anyway), then rem
    - a worktree whose name ends in -fw: git -C ${FIRMWARE} worktree remove --force <path>
    - the others: ${APP}/tools/unix/nogps_worktree.sh remove <path>
    The keys/ symlink of a firmware worktree points into ${FIRMWARE}: clean -fdx removes the link, never its target.
-3. Delete the train's local branches, after the worktrees are gone, in each repo that had one: \
-git -C <repo> branch -D $(git -C <repo> for-each-ref --format='%(refname:short)' 'refs/heads/train/*') if there \
-are any. ${APP}/tools/unix/nogps_worktree.sh remove deletes the feature/<name> branch of an app worktree itself; \
+3. Delete the train's local branches, after the worktrees are gone, by the exact names below and no others: \
+git -C <repo> branch -D <names> for those that exist. Never glob refs/heads/train/*: a train running in the same \
+repo at the same time has branches of that shape too.
+${TRAIN_BRANCHES}
+   ${APP}/tools/unix/nogps_worktree.sh remove deletes the feature/<name> branch of an app worktree itself; \
 git worktree remove doesn't, so delete those of the firmware worktrees by name\
 ${SUFFIXES.includes('-fw') ? ` (${NAMES.filter((n) => n.endsWith('-fw')).map((n) => 'feature/' + n).join(', ')})` : ''}, \
 and nothing else: another session's branch may also start with feature/merge-.
 4. A worktree that refuses to go: leave it, and report its path and what is in it. It may hold work.
+The closed list: this step touches only the paths of ${NAMES.join(', ')} that exist and the branches named in step \
+3. It must not list worktrees to tidy, and must not inspect, reset, clean, push from or remove any other worktree \
+or branch, in either repo, even one that looks like a train's leftover: it belongs to another run. A repo whose \
+suffix is not in this run's queue is not touched at all.
 Report in one or two lines what you did. No GitHub writes beyond a push named in step 1.`
 }
 
@@ -459,25 +553,34 @@ function record(pr, outcome, reason, extra) {
     url: pr.url,
     set: pr.set,
     rounds: pr.round,
+    reviews: pr.reviews,
     staleRounds: pr.staleRounds || 0,
     outcome,
-    reason: reason || '',
+    reason: (pr.gateRemade ? '(gate worktree was gone and remade) ' : '') + (reason || ''),
     ...(extra || {}),
   })
   log(`${tag(pr)}: ${outcome}${reason ? ' (' + reason + ')' : ''}`)
 }
+
+const limit = (pr) => `review limit: ${pr.reviews} train reviews`
 
 // Update, then the review/fix rounds, in the worktree of `slot` that belongs to the PR's repo. True when the PR is
 // clean and can go to the gate; false when it was recorded and is done with.
 async function prep(pr, slot) {
   const tg = tag(pr)
   const name = wtName(slot, pr)
+  // Checked before the update too: a PR at the cap gets no push.
+  if (pr.reviews >= MAX_REVIEWS) {
+    record(pr, 'open', limit(pr))
+    return false
+  }
   log(`${tg}: prep in ${name}, from round ${pr.round + 1} of ${ROUNDS}`)
   const up = await agent(updatePrompt(pr, name), { label: `update:${tg}`, phase: 'Update', schema: UPDATE_SCHEMA })
   if (!up) {
     record(pr, 'open', 'the update agent stopped')
     return false
   }
+  if (up.remade) pr.gateRemade = true
   if (up.status !== 'ok') {
     record(pr, up.status === 'conflict' ? 'conflict' : 'open', up.reason || up.status)
     return false
@@ -485,26 +588,65 @@ async function prep(pr, slot) {
   pr.head = up.head || pr.head
   pr.prepMaster = up.prepMaster || pr.prepMaster
 
-  let before = null
+  // Every round of this run, kept across a send-back by the gate: a cycle can go back further than the round before.
+  pr.history = pr.history || []
   let rejected = 0
   while (pr.round < ROUNDS) {
+    if (pr.reviews >= MAX_REVIEWS) {
+      record(pr, 'open', pr.history.length ? `${limit(pr)}, the round ${pr.round} fixes pushed unreviewed` : limit(pr))
+      return false
+    }
     const round = ++pr.round
-    const rev = await agent(reviewPrompt(pr, round, before, name), {
+    pr.reviews++
+    const rev = await agent(reviewPrompt(pr, round, pr.history, name, false), {
       label: `review:${tg}/${round}`,
       phase: 'Review',
-      model: 'fable',
+      model: 'opus',
       schema: REVIEW_SCHEMA,
     })
     if (!rev) {
       record(pr, 'open', 'the review agent stopped')
       return false
     }
-    const findings = rev.findings.length
-    if (!findings) return true
-    const fix = await agent(fixPrompt(pr, round, rev.findings, name), {
+    let found = rev.findings
+    // Opus reviews and Sonnet fixes. Fable, the most capable model and four times the price of Sonnet, reads a PR
+    // that came back clean on the first pass: nothing found in one pass is weak evidence the diff was read at all,
+    // and the gate merges a clean review with nobody else looking. It is not a round of its own -- a round is a
+    // review and a fix -- so it costs the PR none of its rounds, and it happens once: a later clean round already
+    // re-read the fixes of the round before it, and a prep the gate sent back starts past round 1. It is a review
+    // all the same and counts towards MAX_REVIEWS; with none left, the one clean pass doesn't reach the gate.
+    if (!found.length && round === 1) {
+      if (pr.reviews >= MAX_REVIEWS) {
+        record(pr, 'open', `${limit(pr)}, none left to confirm a clean first pass`)
+        return false
+      }
+      log(`${tg}: round 1 found nothing, Fable reads it before the gate takes it`)
+      pr.reviews++
+      const conf = await agent(reviewPrompt(pr, round, pr.history, name, true), {
+        label: `confirm:${tg}/${round}`,
+        phase: 'Confirm',
+        model: 'fable',
+        schema: REVIEW_SCHEMA,
+      })
+      if (!conf) {
+        record(pr, 'open', 'the confirming review agent stopped')
+        return false
+      }
+      found = conf.findings
+    }
+    if (!found.length) return true
+    const findings = found.length
+    // A fix would only flip the code back or reject the finding again: the two rounds need a person.
+    const cycles = found.filter((f) => f.cycle)
+    if (cycles.length) {
+      const what = cycles.map((f) => `\`${f.file}:${f.line ?? '?'}\` ${f.cycle.kind} of round ${f.cycle.round}`)
+      record(pr, 'open', `review/fix cycle: ${what.join(', ')}`)
+      return false
+    }
+    const fix = await agent(fixPrompt(pr, round, found, name), {
       label: `fix:${tg}/${round}`,
       phase: 'Fix',
-      model: 'opus',
+      model: 'sonnet',
       schema: FIX_SCHEMA,
     })
     if (!fix) {
@@ -522,7 +664,7 @@ async function prep(pr, slot) {
     }
     pr.head = fix.head || pr.head
     rejected = fix.rejected
-    before = { findings: rev.findings, fixer: { fixed: fix.fixed, rejected: fix.rejected, reply: fix.reply } }
+    pr.history.push({ round, findings: found, fixer: { fixed: fix.fixed, rejected: fix.rejected, reply: fix.reply } })
   }
   record(pr, 'open', `still ${rejected} open findings after ${ROUNDS} rounds`)
   return false
@@ -537,6 +679,8 @@ async function gate(pr) {
     record(pr, 'open', 'the merge agent stopped')
     return false
   }
+  if (m.remade) pr.gateRemade = true
+  if (m.remade) log(`${tag(pr)}: the gate worktree was gone and was remade`)
   if (m.status === 'stale') {
     const files = (m.staleFiles || []).join(', ') || m.reason || 'a file it touches'
     pr.staleRounds = (pr.staleRounds || 0) + 1
@@ -646,7 +790,7 @@ async function worker(name) {
 }
 
 log(`${pending.length} PRs prepped in parallel in up to ${SLOTS} slots, ${serial.length} one at a time, \
-up to ${ROUNDS} rounds each`)
+up to ${ROUNDS} rounds each and ${MAX_REVIEWS} train reviews in all`)
 if (movedIos.length)
   log(`${movedIos.map((pr) => '#' + pr.number).join(', ')} moved to the serial set: nothing builds iOS, so two \
 PRs that touch iphone/ or xcode/ are never prepped at once`)
