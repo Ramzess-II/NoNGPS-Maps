@@ -27,6 +27,12 @@ final class NoGpsGpsSheet: MWMTableViewController {
   private var timer: Timer?
   private var shownRows: [[Row]] = []
 
+  /// The sheet follows the rows of this page.
+  override func viewDidLayoutSubviews() {
+    super.viewDidLayoutSubviews()
+    (navigationController?.viewControllers.first as? NoGpsBoxSheet)?.refit()
+  }
+
   override func viewDidLoad() {
     super.viewDidLoad()
     title = L("nogps_status_gps")
