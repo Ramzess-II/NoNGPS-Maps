@@ -41,6 +41,8 @@ final class NoGpsControls: NSObject {
   private static var lastFlag = ""
   private static var availableArea = CGRect.zero
   private static var visibleViewportMaxY = CGFloat(0)
+  /// What the core got last: every send restarts the follow animation, so an unchanged offset is not sent again.
+  private static var sentMarkOffset: Int32?
   /// The bottom of the turns of the navigation in the window, 0 without them. They are at the edge of the panel.
   private static var turnsBottom = CGFloat(0)
   /// The intro of the first start points at the panels: they are held open while it runs.
@@ -105,11 +107,14 @@ final class NoGpsControls: NSObject {
 
   /// The core takes pixels from the bottom of the visible viewport: the mark rises by the band above the bottom of the
   /// free area. CarPlay gives the offset back to the default when it leaves the phone, see CarPlayService.
-  static func updateMarkOffset() {
+  /// `force` sends it again after CarPlay changed the offset of the core.
+  static func updateMarkOffset(force: Bool = false) {
     guard shared != nil, !CarPlayService.shared.isCarplayActivated else { return }
     let scale = MapViewController.shared()?.mapView.contentScaleFactor ?? 1
-    FrameworkHelper.updatePositionArrowOffset(false, offset: Int32(markOffset(areaMaxY: availableArea.maxY,
-                                                                              viewportMaxY: visibleViewportMaxY) * scale))
+    let offset = Int32(markOffset(areaMaxY: availableArea.maxY, viewportMaxY: visibleViewportMaxY) * scale)
+    guard force || offset != sentMarkOffset else { return }
+    sentMarkOffset = offset
+    FrameworkHelper.updatePositionArrowOffset(false, offset: offset)
   }
 
   /// In points: the viewport can end below the free area (a sheet under it) or above it.

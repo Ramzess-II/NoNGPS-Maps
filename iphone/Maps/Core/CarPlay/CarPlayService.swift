@@ -270,6 +270,8 @@ final class CarPlayService: NSObject {
     case .device:
       if !mapWasOnPhone {
         mapVC.disableCarPlayRepresentation()
+        // It has set the viewport of the core to the whole view, and VisibleArea doesn't notify again.
+        NoGpsControls.updateVisibleViewport(mapVC.view.bounds)
       }
     case .mainCarPlay:
       guard let window, let carplayVC else {
@@ -304,7 +306,7 @@ final class CarPlayService: NSObject {
     FrameworkHelper.updatePositionArrowOffset(toDevice, offset: toDevice ? 0 : 5)
     if toDevice {
       CarPlayWindowScaleAdjuster.restorePhoneScale()
-      NoGpsControls.updateMarkOffset()
+      NoGpsControls.updateMarkOffset(force: true)
     } else if let destinationWindow = window(for: destination) {
       CarPlayWindowScaleAdjuster.applyCarPlayScale(destinationWindow)
     }
