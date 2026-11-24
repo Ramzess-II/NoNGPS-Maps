@@ -94,6 +94,8 @@ public:
     virtual void OnBoxRecoveryCode(std::string const & /* code */) {}
     /// See MotionSource::Listener::OnThisPhoneRemoved().
     virtual void OnThisPhoneRemoved() {}
+    /// See MotionSource::Listener::OnBoxRefused().
+    virtual void OnBoxRefused() {}
     /// See MotionSource::Listener::OnPeerPlace().
     virtual void OnPeerPlace(PeerPlace const & /* place */) {}
     virtual void OnBoxCarWritten(std::string const & /* key */, std::string const & /* value */,
@@ -111,6 +113,10 @@ public:
   // Without fresh speed the position can't be calculated.
   static int64_t constexpr kSpeedStaleMs = 2000;
   static_assert(kSpeedStaleMs == SprintTimer::kSpeedStaleMs);
+  // A waking ECU answers 0xFF, the top of the OBD speed byte, before it has a speed. A car doesn't get to 255 km/h
+  // from a speed below kObdNoSpeedPrevKmh: such an answer is not a speed.
+  static int constexpr kObdNoSpeedKmh = 255;
+  static int constexpr kObdNoSpeedPrevKmh = 200;
   static int64_t constexpr kOutputIntervalMs = 200;
   static double constexpr kMovingSpeedMps = 0.5;
   // GPS bearing is noisy at low speeds, unless GPS tells it is accurate: it is so from a walking speed on.
@@ -430,7 +436,7 @@ public:
   void OnElm327Bytes(std::string_view data);
   void OnElm327Closed(std::string const & reason);
   void OnEsp32BleBytes(std::string_view bytes);
-  void OnEsp32BleState(BleState state, bool bondLost);
+  void OnEsp32BleState(BleState state, bool bondLost, std::string const & boxId);
 
   bool IsReady() const;
   bool HasPosition() const { return m_deadReckoning.HasPosition(); }
@@ -553,12 +559,14 @@ private:
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
   void OnBoxRecoveryCode(std::string const & code) override { m_listener.OnBoxRecoveryCode(code); }
   void OnThisPhoneRemoved() override { m_listener.OnThisPhoneRemoved(); }
+  void OnBoxRefused() override { m_listener.OnBoxRefused(); }
   void OnPeerPlace(PeerPlace const & place) override { m_listener.OnPeerPlace(place); }
   void OnJolt(double joltMs2, int speedKmh) override;
 
   void CheckTurnSign(Fix const & gps);
   /// \returns the speed the box tells in the unit of the car, see SpeedUnit.
   int ConvertSpeed(int rawSpeedKmh) const;
+  bool IsObdNoSpeed(int rawSpeedKmh) const;
   double GetSpeedScale(int speedKmh) const;
   void SaveSpeedTable();
   void LogSpeedCalibration() const;

@@ -23,8 +23,8 @@ merges stay clean. Fork rules go in `.claude/rules/nogps-*.md`, fork skills in `
    see "Parallel work". An iOS change stays in the main checkout, so ask the user first.
 3. **Finish with `/nogps-pr`**: tests, living docs, issue for the other platform, review in a fresh context, PR.
 4. **Merge only through a PR.** When the repo variable `CLAUDE_REVIEW` is `on`, CI posts a Claude review when a PR
-   opens. Comment `@claude <request>` on a PR to ask for a re-review or a fix. If the PR changes the shared
-   interface, the other person approves it. Otherwise the author merges after CI passes.
+   opens. Comment `@claude <request>` on a PR to ask for a re-review or a fix. The author merges after CI passes;
+   no approval from the other person is needed, whatever the PR changes.
 
    IMPORTANT: an agent never merges a PR, in either repo, that has a commit authored by anyone but koloboid or
    Ramzess-II, even when asked to. The commit's author counts; Co-Authored-By trailers don't. Before every merge,
@@ -118,7 +118,7 @@ session and for an agent, and a push that would need a force is a reason to stop
 
 A PR it can't land stays open and the train goes on to the next one: a merge conflict that isn't plain, a failing
 check, findings still open after the last round. It never takes a PR with a commit of anyone but koloboid or
-Ramzess-II, one waiting for the other person's review, one from a fork of anyone but the two of us, or one whose
+Ramzess-II, one from a fork of anyone but the two of us, or one whose
 branch is checked out in the main checkout or a worktree -- the train would push commits under the session working
 there.
 

@@ -124,6 +124,8 @@ final class Esp32BleTransport: NSObject {
   private var currentCar = ""
   /// The box connected, nil if its name is not known.
   private var boxId: String?
+  /// The id the core was told with the last state.
+  private var reportedBoxId: String?
   /// When each box was seen in the search, also while one is connected: the Box sheet offers a car whose box is awake.
   private var seenTimes: [String: TimeInterval] = [:]
 
@@ -252,13 +254,14 @@ final class Esp32BleTransport: NSObject {
   }
 
   private func setState(_ newState: NoGpsBleState) {
-    guard newState != state || isBondLost != reportedBondLost else { return }
+    guard newState != state || isBondLost != reportedBondLost || boxId != reportedBoxId else { return }
     LOG(.info, "state = \(newState.rawValue)\(isBondLost ? " bond lost" : "")")
     state = newState
     reportedBondLost = isBondLost
+    reportedBoxId = boxId
     // .connected while the pairing is thought lost is a probe: the core sends HELLO, which the box waits for, but it
     // is not a working link until the box is heard.
-    NoGps.onEsp32BleState(newState, bondLost: isBondLost)
+    NoGps.onEsp32BleState(newState, bondLost: isBondLost, boxId: boxId)
   }
 
   private func schedule(after delay: TimeInterval, _ action: @escaping () -> Void) {
