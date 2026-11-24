@@ -1,6 +1,7 @@
 package app.organicmaps.nogps;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.DashPathEffect;
 import android.graphics.Paint;
@@ -41,6 +42,8 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
   private static final float BREAK_DP = 5;
   private static final float DIM_ALPHA = 0.35f;
   private static final float BACK_GRATICULE_ALPHA = 0.35f;
+  // The coverage is computed for a pixel of the bitmap per dp of the disc, and drawn scaled with filtering.
+  private static final float COVERAGE_PIXELS_PER_DP = 1;
 
   // The unit vectors of the Earth frame, which do not change: the graticule, the coast and the rim of the jam.
   private static final double[][] GRATICULE = buildGraticule();
@@ -50,8 +53,10 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
   private final GlobeScene mScene = new GlobeScene();
   private final Paint mFill = new Paint(Paint.ANTI_ALIAS_FLAG);
   private final Paint mStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+  private final Paint mBitmapPaint = new Paint(Paint.FILTER_BITMAP_FLAG);
   private final DashPathEffect mDash = new DashPathEffect(new float[] {5, 4}, 0);
   private final Path mPath = new Path();
+  private final Path mDisc = new Path();
   private final RectF mRect = new RectF();
   private final double[] mPoint = new double[3];
   private final double[] mNext = new double[3];
@@ -76,6 +81,15 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
   private final int mJam;
   @ColorInt
   private final int mCar;
+  /** Translucent: the graticule, the coast and the jam stay readable over it. */
+  @ColorInt
+  private final int mCoverage;
+
+  /** The coverage of the disc, made again only when its size changes. */
+  @Nullable
+  private Bitmap mCoverageBitmap;
+  @Nullable
+  private int[] mCoveragePixels;
 
   @Nullable
   private Listener mListener;
@@ -105,6 +119,7 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
     mBeam = ContextCompat.getColor(context, R.color.nogps_globe_beam);
     mJam = ContextCompat.getColor(context, R.color.nogps_globe_jam);
     mCar = ContextCompat.getColor(context, R.color.nogps_globe_car);
+    mCoverage = ContextCompat.getColor(context, R.color.nogps_globe_coverage);
     mStroke.setStyle(Paint.Style.STROKE);
     mStroke.setStrokeCap(Paint.Cap.ROUND);
     mStroke.setStrokeJoin(Paint.Join.ROUND);
@@ -328,6 +343,7 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
     mFill.setStyle(Paint.Style.FILL);
     mFill.setColor(mSea);
     canvas.drawCircle(cx, cy, radius, mFill);
+    drawCoverage(canvas, cx, cy, radius);
     mStroke.setPathEffect(null);
     mStroke.setStrokeWidth(1);
     mStroke.setColor(mGraticule);
@@ -344,6 +360,45 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
       if (mScene.satellite(i)[2] > 0)
         drawSatellite(canvas, i, false);
     }
+    canvas.restore();
+  }
+
+  /**
+   * The ground of the front half that sees enough satellites for a fix carries the tint; the rest shows the plain
+   * disc. Each pixel of the bitmap is the front point of the unit disc under it: the satellites orbit in the frame of
+   * the screen, so no rotation is needed.
+   */
+  private void drawCoverage(@NonNull Canvas canvas, float cx, float cy, float radius)
+  {
+    final int side = (int) Math.ceil(2 * radius * COVERAGE_PIXELS_PER_DP);
+    if (side <= 0)
+      return;
+    if (mCoverageBitmap == null || mCoverageBitmap.getWidth() != side)
+    {
+      mCoverageBitmap = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888);
+      mCoveragePixels = new int[side * side];
+    }
+    final int[] pixels = mCoveragePixels;
+    final double[][] satellites = mScene.onSatellites();
+    for (int row = 0; row < side; row++)
+    {
+      // Row 0 is the top of the disc, y up.
+      final double y = 1 - 2 * (row + 0.5) / side;
+      for (int col = 0; col < side; col++)
+      {
+        final double x = 2 * (col + 0.5) / side - 1;
+        final double r2 = x * x + y * y;
+        final boolean covered = r2 < 1 && GlobeScene.isCovered(x, y, Math.sqrt(1 - r2), satellites);
+        pixels[row * side + col] = covered ? mCoverage : 0;
+      }
+    }
+    mCoverageBitmap.setPixels(pixels, 0, side, 0, 0, side, side);
+    mDisc.rewind();
+    mDisc.addCircle(cx, cy, radius, Path.Direction.CW);
+    mRect.set(cx - radius, cy - radius, cx + radius, cy + radius);
+    canvas.save();
+    canvas.clipPath(mDisc);
+    canvas.drawBitmap(mCoverageBitmap, null, mRect, mBitmapPaint);
     canvas.restore();
   }
 

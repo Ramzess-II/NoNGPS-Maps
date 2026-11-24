@@ -21,6 +21,7 @@ final class AboutNoGpsController: MWMViewController {
   private let globeView = GlobeSceneView()
   private let globeHintLabel = UILabel()
   private let globeCountLabel = UILabel()
+  private let globeCoverageLabel = UILabel()
   private let globeJammedLabel = UILabel()
   private let descriptionLabel = UILabel()
   /// A text view, not a label: both names of the credit are links of their own.
@@ -115,9 +116,11 @@ private extension AboutNoGpsController {
     globeHintLabel.setFontStyle(.regular13, color: .blackSecondary)
     globeHintLabel.text = L("nogps_about_globe_hint")
     globeCountLabel.setFontStyle(.semibold14, color: .blackPrimary)
+    globeCoverageLabel.setFontStyle(.regular13, color: .blackSecondary)
+    globeCoverageLabel.text = L("nogps_about_globe_coverage")
     globeJammedLabel.setFontStyle(.regular13, color: .blackSecondary)
     globeJammedLabel.text = L("nogps_about_globe_jammed")
-    for label in [globeHintLabel, globeCountLabel, globeJammedLabel] {
+    for label in [globeHintLabel, globeCountLabel, globeCoverageLabel, globeJammedLabel] {
       label.textAlignment = .center
       label.numberOfLines = 0
     }
@@ -162,9 +165,11 @@ private extension AboutNoGpsController {
     stackView.addArrangedSubview(globeView)
     stackView.addArrangedSubview(globeHintLabel)
     stackView.addArrangedSubview(globeCountLabel)
+    stackView.addArrangedSubview(globeCoverageLabel)
     stackView.addArrangedSubview(globeJammedLabel)
     stackView.setCustomSpacing(Constants.hintSpacing, after: globeView)
     stackView.setCustomSpacing(Constants.hintSpacing, after: globeHintLabel)
+    stackView.setCustomSpacing(Constants.hintSpacing, after: globeCountLabel)
     stackView.addArrangedSubview(descriptionLabel)
     stackView.addArrangedSubview(mapDataTextView)
     stackView.addArrangedSubview(actionsView)
@@ -179,6 +184,7 @@ private extension AboutNoGpsController {
     globeView.translatesAutoresizingMaskIntoConstraints = false
     globeHintLabel.translatesAutoresizingMaskIntoConstraints = false
     globeCountLabel.translatesAutoresizingMaskIntoConstraints = false
+    globeCoverageLabel.translatesAutoresizingMaskIntoConstraints = false
     globeJammedLabel.translatesAutoresizingMaskIntoConstraints = false
     descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
     mapDataTextView.translatesAutoresizingMaskIntoConstraints = false
@@ -207,6 +213,7 @@ private extension AboutNoGpsController {
       globeView.heightAnchor.constraint(equalToConstant: GlobeScene.sceneHeightPt),
       globeHintLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       globeCountLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
+      globeCoverageLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       globeJammedLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       descriptionLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       mapDataTextView.widthAnchor.constraint(equalTo: stackView.widthAnchor),

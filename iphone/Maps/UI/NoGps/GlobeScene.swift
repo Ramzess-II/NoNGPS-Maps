@@ -9,10 +9,11 @@ import simd
 /// to the frame of the screen. The satellites orbit in the frame of the screen: the Earth turns under them.
 /// Distances on the screen are in pt.
 final class GlobeScene {
-  static let sceneHeightPt: CGFloat = 260
-  static let earthRadiusFraction: CGFloat = 0.26
-  /// The real orbit is 4.16 Earth radii: the satellites would be off the screen.
-  static let orbitRadiusFactor = 2.1
+  static let sceneHeightPt: CGFloat = 340
+  /// The real orbit, 26 560 km over an Earth of 6 371 km: the coverage on the ground depends on it.
+  static let orbitRadiusFactor = 4.16
+  /// The orbit stays this far inside the scene, so the dot of a satellite is never cut.
+  static let satMarginPt: CGFloat = 6
   static let planes = 6
   static let satsPerPlane = 4
   static let inclinationDeg = 55.0
@@ -31,6 +32,11 @@ final class GlobeScene {
   static let jamRadiusDeg = 18.0
   /// A beam inside the jammed area stops this far from the car.
   static let beamGapPt: CGFloat = 26
+  /// A receiver needs this many satellites for a fix.
+  static let fixSatellites = 4
+  /// A satellite lower over the horizon than this does not count, as in a receiver.
+  static let elevationMaskDeg = 10.0
+  private static let sinElevationMask = sin(elevationMaskDeg.radians)
 
   static let satellites = planes * satsPerPlane
 
@@ -71,7 +77,7 @@ final class GlobeScene {
 
   func setSize(_ size: CGSize) {
     center = CGPoint(x: size.width / 2, y: size.height / 2)
-    earthRadius = Self.earthRadiusFraction * min(size.width, size.height)
+    earthRadius = (min(size.width, size.height) / 2 - Self.satMarginPt) / CGFloat(Self.orbitRadiusFactor)
   }
 
   /// Orthographic: the place on the screen of p, and whether p is on the side of the viewer.
@@ -175,11 +181,6 @@ final class GlobeScene {
     return Self.orbitRadiusFactor * (Self.rotation(about: SIMD3(0, 1, 0), by: raan) * inPlane)
   }
 
-  /// Behind the Earth: the disc hides it.
-  func isHidden(_ p: SIMD3<Double>) -> Bool {
-    p.z < 0 && p.x * p.x + p.y * p.y < 1
-  }
-
   func isOn(_ i: Int) -> Bool {
     on[i]
   }
@@ -208,6 +209,46 @@ final class GlobeScene {
     return best
   }
 
+  // MARK: - Coverage
+
+  /// Whether the satellite at s stands at least `elevationMaskDeg` above the horizon of the unit point p of the
+  /// Earth: the line to it rises from the plane tangent at p by at least the mask.
+  static func isAboveMask(_ s: SIMD3<Double>, from p: SIMD3<Double>) -> Bool {
+    let d = s - p
+    return simd_dot(d, p) >= simd_length(d) * sinElevationMask
+  }
+
+  /// Where the satellites that are on are now.
+  func onSatellites() -> [SIMD3<Double>] {
+    (0 ..< Self.satellites).filter { on[$0] }.map { satellite($0) }
+  }
+
+  /// How many of the satellites stand above the mask of the unit point p, counted up to `limit`.
+  static func visibleCount(at p: SIMD3<Double>, of satellites: [SIMD3<Double>], upTo limit: Int = .max) -> Int {
+    var count = 0
+    for s in satellites where isAboveMask(s, from: p) {
+      count += 1
+      if count >= limit {
+        break
+      }
+    }
+    return count
+  }
+
+  /// A receiver at p has a fix: the view takes the satellites once per frame and asks for every point of the disc.
+  static func isCovered(at p: SIMD3<Double>, by satellites: [SIMD3<Double>]) -> Bool {
+    visibleCount(at: p, of: satellites, upTo: fixSatellites) >= fixSatellites
+  }
+
+  /// The satellites that are on and above the mask of the unit point p, in the frame of the screen.
+  func visibleCount(at p: SIMD3<Double>) -> Int {
+    Self.visibleCount(at: p, of: onSatellites())
+  }
+
+  func isCovered(at p: SIMD3<Double>) -> Bool {
+    Self.isCovered(at: p, by: onSatellites())
+  }
+
   // MARK: - The car and the beams
 
   /// The car, in the frame of the screen: it stands in the middle of the jammed area.
@@ -220,12 +261,10 @@ final class GlobeScene {
     Self.angleDeg(Self.jamLatDeg, Self.jamLonDeg, Self.jamLatDeg, Self.jamLonDeg) <= Self.jamRadiusDeg
   }
 
-  /// The line from satellite i to the car: none below the horizon of the car or when it is off, broken when jammed.
-  /// The horizon of the car is the plane tangent to the Earth at it, and the unit is the Earth radius: a satellite
-  /// above the horizon lies further than one radius along the car. The hemisphere of the car is not enough -- a
-  /// satellite behind the Earth disc is in it and the beam would cross the disc.
+  /// The line from satellite i to the car: only for a satellite the car would count, on and above the elevation mask
+  /// of the car, and broken when jammed. Above the mask is above the horizon, so a beam never crosses the disc.
   func beam(_ i: Int) -> Beam {
-    guard on[i], simd_dot(satellite(i), car) > 1 else { return .none }
+    guard on[i], Self.isAboveMask(satellite(i), from: car) else { return .none }
     return isCarJammed ? .broken : .reaches
   }
 

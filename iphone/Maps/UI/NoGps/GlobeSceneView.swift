@@ -16,6 +16,8 @@ final class GlobeSceneView: UIView {
     static let breakSize: CGFloat = 5
     static let dimAlpha: CGFloat = 0.35
     static let backGraticuleAlpha: CGFloat = 0.35
+    /// The coverage is computed for a pixel of the bitmap per pt of the disc, and drawn scaled with filtering.
+    static let coveragePixelsPerPt: CGFloat = 1
   }
 
   private struct Palette {
@@ -27,12 +29,14 @@ final class GlobeSceneView: UIView {
     let beam: UIColor
     let jam: UIColor
     let car: UIColor
+    /// Translucent: the graticule, the coast and the jam stay readable over it.
+    let coverage: UIColor
 
-    static func color(_ light: UInt32, _ dark: UInt32) -> UIColor {
+    static func color(_ light: UInt32, _ dark: UInt32, alpha: CGFloat = 1) -> UIColor {
       UIColor { trait in
         let hex = trait.userInterfaceStyle == .dark ? dark : light
         return UIColor(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
-                       blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+                       blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
       }
     }
 
@@ -43,7 +47,8 @@ final class GlobeSceneView: UIView {
                                  satelliteOff: color(0x9AA0A6, 0x7B8086),
                                  beam: color(0x2F6FA8, 0x5BB4E6),
                                  jam: color(0xE67700, 0xFFA040),
-                                 car: color(0x1E2226, 0xF2F4F5))
+                                 car: color(0x1E2226, 0xF2F4F5),
+                                 coverage: color(0x2F6FA8, 0x5BB4E6, alpha: 0.3))
   }
 
   // The unit vectors of the Earth frame, which do not change: the graticule, the coast and the rim of the jam.
@@ -60,6 +65,8 @@ final class GlobeSceneView: UIView {
   private var displayLink: CADisplayLink?
   private var lastTimestamp: CFTimeInterval = 0
   private var lastTranslation = CGPoint.zero
+  /// The coverage of the disc, made again only when its size changes.
+  private var coverageBitmap: CGContext?
 
   override init(frame: CGRect) {
     super.init(frame: frame)
@@ -195,6 +202,7 @@ final class GlobeSceneView: UIView {
     let disc = CGRect(x: center.x - radius, y: center.y - radius, width: 2 * radius, height: 2 * radius)
     context.setFillColor(color(palette.sea).cgColor)
     context.fillEllipse(in: disc)
+    drawCoverage(context, disc: disc, palette: palette)
     context.setLineWidth(1)
     context.setStrokeColor(color(palette.graticule).cgColor)
     context.strokeEllipse(in: disc)
@@ -220,6 +228,50 @@ final class GlobeSceneView: UIView {
     for i in 0 ..< GlobeScene.satellites where scene.satellite(i).z > 0 {
       drawSatellite(context, i, behind: false, palette: palette)
     }
+  }
+
+  /// The ground of the front half that sees enough satellites for a fix carries the tint; the rest shows the plain
+  /// disc. Each pixel of the bitmap is the front point of the unit disc under it: the satellites orbit in the frame
+  /// of the screen, so no rotation is needed.
+  private func drawCoverage(_ context: CGContext, disc: CGRect, palette: Palette) {
+    let side = Int((disc.width * Constants.coveragePixelsPerPt).rounded(.up))
+    guard side > 0 else { return }
+    if coverageBitmap?.width != side {
+      coverageBitmap = CGContext(data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 4 * side,
+                                 space: CGColorSpaceCreateDeviceRGB(),
+                                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+                                   | CGBitmapInfo.byteOrder32Big.rawValue)
+    }
+    guard let bitmap = coverageBitmap, let data = bitmap.data else { return }
+    var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+    palette.coverage.resolvedColor(with: traitCollection).getRed(&r, green: &g, blue: &b, alpha: &a)
+    // Premultiplied RGBA, bytes in this order in memory.
+    let tint = [r * a, g * a, b * a, a].map { UInt8(($0 * 255).rounded()) }
+    let pixels = data.bindMemory(to: UInt8.self, capacity: 4 * side * side)
+    let satellites = scene.onSatellites()
+    for row in 0 ..< side {
+      // Row 0 is the top of the disc, y up.
+      let y = 1 - 2 * (Double(row) + 0.5) / Double(side)
+      for col in 0 ..< side {
+        let x = 2 * (Double(col) + 0.5) / Double(side) - 1
+        let r2 = x * x + y * y
+        let covered = r2 < 1 && GlobeScene.isCovered(at: SIMD3(x, y, (1 - r2).squareRoot()), by: satellites)
+        let offset = 4 * (row * side + col)
+        for k in 0 ..< 4 {
+          pixels[offset + k] = covered ? tint[k] : 0
+        }
+      }
+    }
+    guard let image = bitmap.makeImage() else { return }
+    context.saveGState()
+    context.addEllipse(in: disc)
+    context.clip()
+    context.interpolationQuality = .medium
+    // The UIKit context is flipped: without this, the first row of the image would be drawn at the bottom.
+    context.translateBy(x: 0, y: disc.minY + disc.maxY)
+    context.scaleBy(x: 1, y: -1)
+    context.draw(image, in: disc)
+    context.restoreGState()
   }
 
   /// The segments of the lines on one side of the globe. A line is a row of unit vectors of the Earth frame, nil

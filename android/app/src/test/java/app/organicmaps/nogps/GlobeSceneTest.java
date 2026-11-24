@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -57,11 +58,125 @@ public class GlobeSceneTest
   }
 
   @Test
+  public void orbitsAreToScaleAndInsideTheScene()
+  {
+    assertEquals(4.16, GlobeScene.ORBIT_RADIUS_FACTOR, 0);
+    final float m = GlobeScene.SAT_MARGIN_DP;
+    final float[][] turns = {{0, 0}, {40, -25}, {-130, 70}};
+    for (final float[] turn : turns)
+    {
+      mScene.setRotation(GlobeScene.identity());
+      mScene.drag(turn[0], turn[1]);
+      for (int f = 0; f < 60; f++)
+      {
+        mScene.step(GlobeScene.ORBIT_PERIOD_MS / 60);
+        for (int i = 0; i < GlobeScene.SATELLITES; i++)
+        {
+          final float[] xy = projected(i);
+          assertTrue(xy[0] >= m - 1e-3 && xy[0] <= W - m + 1e-3);
+          assertTrue(xy[1] >= m - 1e-3 && xy[1] <= H - m + 1e-3);
+        }
+      }
+    }
+  }
+
+  @Test
+  public void earthRadiusFollowsTheSceneSize()
+  {
+    assertEquals((H / 2 - GlobeScene.SAT_MARGIN_DP) / 4.16, mScene.earthRadius(), 1e-4);
+    mScene.setSize(300, 500);
+    assertEquals((150 - GlobeScene.SAT_MARGIN_DP) / 4.16, mScene.earthRadius(), 1e-4);
+    assertEquals(150, mScene.centerX(), 0);
+    assertEquals(250, mScene.centerY(), 0);
+  }
+
+  /** A satellite at the orbit seen from (0, 0, 1) at an elevation of e degrees, towards the east. */
+  private static double[] atElevation(double e)
+  {
+    final double el = Math.toRadians(e);
+    final double orbit = GlobeScene.ORBIT_RADIUS_FACTOR;
+    // |p + t dir| = orbit: t^2 + 2 t sin(el) + 1 - orbit^2 = 0.
+    final double t = -Math.sin(el) + Math.sqrt(Math.sin(el) * Math.sin(el) + orbit * orbit - 1);
+    return new double[] {t * Math.cos(el), 0, 1 + t * Math.sin(el)};
+  }
+
+  @Test
+  public void elevationMask()
+  {
+    final double[] p = {0, 0, 1};
+    final double orbit = GlobeScene.ORBIT_RADIUS_FACTOR;
+    assertTrue(GlobeScene.isAboveMask(new double[] {0, 0, orbit}, p));
+    assertFalse(GlobeScene.isAboveMask(atElevation(9), p));
+    assertTrue(GlobeScene.isAboveMask(atElevation(11), p));
+    assertFalse(GlobeScene.isAboveMask(atElevation(-5), p));
+    assertFalse(GlobeScene.isAboveMask(new double[] {0, 0, -orbit}, p));
+  }
+
+  /** Unit points over the whole sphere, about 10 degrees apart. */
+  private static double[][] sphereGrid()
+  {
+    final double[][] grid = new double[19 * 36][];
+    int k = 0;
+    for (int lat = -90; lat <= 90; lat += 10)
+    {
+      for (int lon = 0; lon < 360; lon += 10)
+      {
+        final double a = Math.toRadians(lat);
+        final double b = Math.toRadians(lon);
+        grid[k++] = new double[] {Math.cos(a) * Math.sin(b), Math.sin(a), Math.cos(a) * Math.cos(b)};
+      }
+    }
+    return grid;
+  }
+
+  @Test
+  public void allSatellitesOnCoverTheWholeEarth()
+  {
+    final double[][] grid = sphereGrid();
+    for (int f = 0; f < 24; f++)
+    {
+      mScene.step(GlobeScene.ORBIT_PERIOD_MS / 24 + 7);
+      for (final double[] p : grid)
+      {
+        assertTrue(mScene.isCovered(p));
+        assertTrue(mScene.visibleCount(p) >= GlobeScene.FIX_SATELLITES);
+      }
+    }
+  }
+
+  @Test
+  public void switchedOffSatellitesCutAGap()
+  {
+    final double[] p = sphereGrid()[11 * 36 + 5];
+    final java.util.List<Integer> seen = new java.util.ArrayList<>();
+    for (int i = 0; i < GlobeScene.SATELLITES; i++)
+    {
+      if (GlobeScene.isAboveMask(mScene.satellite(i), p))
+        seen.add(i);
+    }
+    assertTrue(seen.size() >= GlobeScene.FIX_SATELLITES);
+    while (seen.size() > GlobeScene.FIX_SATELLITES)
+      mScene.toggle(seen.remove(seen.size() - 1));
+    assertEquals(GlobeScene.FIX_SATELLITES, mScene.visibleCount(p));
+    assertTrue(mScene.isCovered(p));
+    mScene.toggle(seen.remove(seen.size() - 1));
+    assertEquals(GlobeScene.FIX_SATELLITES - 1, mScene.visibleCount(p));
+    assertFalse(mScene.isCovered(p));
+
+    for (int i = 0; i < GlobeScene.SATELLITES; i++)
+    {
+      if (mScene.isOn(i))
+        mScene.toggle(i);
+    }
+    for (final double[] q : sphereGrid())
+      assertFalse(mScene.isCovered(q));
+  }
+
+  @Test
   public void polesProjectToTopAndBottomOfTheDisc()
   {
     final float[] xy = new float[2];
     final float r = mScene.earthRadius();
-    assertEquals(GlobeScene.EARTH_RADIUS_FRACTION * H, r, 1e-4);
     mScene.project(new double[] {0, 1, 0}, xy);
     assertEquals(W / 2, xy[0], 1e-4);
     assertEquals(H / 2 - r, xy[1], 1e-4);
@@ -82,13 +197,14 @@ public class GlobeSceneTest
     final double[] after = mScene.fromEarth(0, 0);
     assertEquals(-before[2], after[2], 1e-6);
     assertEquals(180, Math.toDegrees(Math.acos(dot(before, after))), 1e-4);
-    // A short drag in a direction: the point follows the finger on the screen.
+    // A short drag: the point follows the finger, R sin(d / R) along it.
     mScene.setRotation(GlobeScene.identity());
     mScene.drag(10, -10);
     final float[] xy = new float[2];
     mScene.project(mScene.fromEarth(0, 0), xy);
-    assertEquals(W / 2 + 10 * 0.99f, xy[0], 0.3);
-    assertEquals(H / 2 - 10 * 0.99f, xy[1], 0.3);
+    final double along = r * Math.sin(Math.sqrt(200) / r) / Math.sqrt(2);
+    assertEquals(W / 2 + along, xy[0], 1e-3);
+    assertEquals(H / 2 - along, xy[1], 1e-3);
   }
 
   @Test
@@ -227,56 +343,72 @@ public class GlobeSceneTest
     assertTrue(mScene.isCarJammed());
     int beams = 0;
     int none = 0;
-    for (int i = 0; i < GlobeScene.SATELLITES; i++)
+    int lowOverHorizon = 0;
+    // Over an orbit period: some satellite passes between the horizon and the mask.
+    for (int f = 0; f < 240; f++)
     {
-      final boolean above = dot(mScene.satellite(i), car) > 1;
-      final int beam = mScene.beam(i);
-      if (above)
+      mScene.step(100);
+      final double[] c = mScene.car();
+      for (int i = 0; i < GlobeScene.SATELLITES; i++)
       {
-        assertEquals(GlobeScene.BEAM_BROKEN, beam);
-        beams++;
+        final double[] s = mScene.satellite(i);
+        final double[] d = {s[0] - c[0], s[1] - c[1], s[2] - c[2]};
+        final double elevationDeg = Math.toDegrees(Math.asin(dot(d, c) / length(d)));
+        final int beam = mScene.beam(i);
+        if (elevationDeg >= GlobeScene.ELEVATION_MASK_DEG)
+        {
+          assertEquals(GlobeScene.BEAM_BROKEN, beam);
+          beams++;
+        }
+        else
+        {
+          assertEquals(GlobeScene.BEAM_NONE, beam);
+          none++;
+          if (elevationDeg > 0)
+            lowOverHorizon++;
+        }
+        assertNotEquals(GlobeScene.BEAM_REACHES, beam);
       }
-      else
-      {
-        assertEquals(GlobeScene.BEAM_NONE, beam);
-        none++;
-      }
-      assertNotEquals(GlobeScene.BEAM_REACHES, beam);
     }
     assertTrue(beams > 0);
     assertTrue(none > 0);
-    // A switched-off satellite above the horizon has no beam.
+    assertTrue(lowOverHorizon > 0);
+    // A switched-off satellite above the mask has no beam.
     for (int i = 0; i < GlobeScene.SATELLITES; i++)
     {
-      if (dot(mScene.satellite(i), car) > 1)
+      if (mScene.beam(i) != GlobeScene.BEAM_NONE)
       {
         mScene.toggle(i);
         assertEquals(GlobeScene.BEAM_NONE, mScene.beam(i));
         return;
       }
     }
+    fail("no beam");
   }
 
   @Test
-  public void aSatelliteBehindTheEarthHasNoBeam()
+  public void aBeamNeverCrossesTheEarth()
   {
-    // The idle spin carries the car towards the limb: a satellite hidden by the disc must never get a beam over it.
+    // The idle spin carries the car towards the limb: the line to a satellite must never pass through the Earth.
     mScene.faceJam();
-    int hidden = 0;
+    int beams = 0;
     for (int frame = 0; frame < 7500; frame++)
     {
       mScene.step(16);
-      if (mScene.car()[2] <= 0)
-        continue;
+      final double[] c = mScene.car();
       for (int i = 0; i < GlobeScene.SATELLITES; i++)
       {
-        if (!mScene.isHidden(mScene.satellite(i)))
+        if (mScene.beam(i) == GlobeScene.BEAM_NONE)
           continue;
-        hidden++;
-        assertEquals(GlobeScene.BEAM_NONE, mScene.beam(i));
+        beams++;
+        final double[] s = mScene.satellite(i);
+        final double[] d = {s[0] - c[0], s[1] - c[1], s[2] - c[2]};
+        // The point of the segment nearest to the centre of the Earth.
+        final double t = Math.min(1, Math.max(0, -dot(c, d) / dot(d, d)));
+        assertTrue(length(new double[] {c[0] + t * d[0], c[1] + t * d[1], c[2] + t * d[2]}) >= 1 - 1e-9);
       }
     }
-    assertTrue(hidden > 0);
+    assertTrue(beams > 0);
   }
 
   @Test

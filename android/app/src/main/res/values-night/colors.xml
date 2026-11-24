@@ -84,4 +84,6 @@
   <color name="nogps_globe_beam">#FF5BB4E6</color>
   <color name="nogps_globe_jam">#FFFFA040</color>
   <color name="nogps_globe_car">#FFF2F4F5</color>
+  <!-- Translucent: the graticule, the coast and the jam stay readable over it. -->
+  <color name="nogps_globe_coverage">#4D5BB4E6</color>
 </resources>

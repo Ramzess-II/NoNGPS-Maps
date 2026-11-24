@@ -11,10 +11,11 @@ package app.organicmaps.nogps;
  */
 final class GlobeScene
 {
-  static final float SCENE_HEIGHT_DP = 260;
-  static final float EARTH_RADIUS_FRACTION = 0.26f;
-  /** The real orbit is 4.16 Earth radii: the satellites would be off the screen. */
-  static final double ORBIT_RADIUS_FACTOR = 2.1;
+  static final float SCENE_HEIGHT_DP = 340;
+  /** The real orbit, 26 560 km over an Earth of 6 371 km: the coverage on the ground depends on it. */
+  static final double ORBIT_RADIUS_FACTOR = 4.16;
+  /** The orbit stays this far inside the scene, so the dot of a satellite is never cut. */
+  static final float SAT_MARGIN_DP = 6;
   static final int PLANES = 6;
   static final int SATS_PER_PLANE = 4;
   static final double INCLINATION_DEG = 55;
@@ -33,6 +34,11 @@ final class GlobeScene
   static final double JAM_RADIUS_DEG = 18;
   /** A beam inside the jammed area stops this far from the car. */
   static final float BEAM_GAP_DP = 26;
+  /** A receiver needs this many satellites for a fix. */
+  static final int FIX_SATELLITES = 4;
+  /** A satellite lower over the horizon than this does not count, as in a receiver. */
+  static final double ELEVATION_MASK_DEG = 10;
+  private static final double SIN_ELEVATION_MASK = Math.sin(Math.toRadians(ELEVATION_MASK_DEG));
 
   static final int SATELLITES = PLANES * SATS_PER_PLANE;
 
@@ -77,7 +83,7 @@ final class GlobeScene
   {
     mCenterX = widthDp / 2;
     mCenterY = heightDp / 2;
-    mEarthRadius = EARTH_RADIUS_FRACTION * Math.min(widthDp, heightDp);
+    mEarthRadius = (float) ((Math.min(widthDp, heightDp) / 2 - SAT_MARGIN_DP) / ORBIT_RADIUS_FACTOR);
   }
 
   float earthRadius()
@@ -232,12 +238,6 @@ final class GlobeScene
                          ORBIT_RADIUS_FACTOR * (-x * Math.sin(raan) + z * Math.cos(raan))};
   }
 
-  /** Behind the Earth: the disc hides it. */
-  boolean isHidden(double[] p)
-  {
-    return p[2] < 0 && p[0] * p[0] + p[1] * p[1] < 1;
-  }
-
   boolean isOn(int i)
   {
     return mOn[i];
@@ -279,6 +279,67 @@ final class GlobeScene
     return best;
   }
 
+  // Coverage.
+
+  /**
+   * Whether the satellite at s stands at least ELEVATION_MASK_DEG above the horizon of the unit point p of the Earth:
+   * the line to it rises from the plane tangent at p by at least the mask.
+   */
+  static boolean isAboveMask(double[] s, double px, double py, double pz)
+  {
+    final double dx = s[0] - px;
+    final double dy = s[1] - py;
+    final double dz = s[2] - pz;
+    return dx * px + dy * py + dz * pz >= Math.sqrt(dx * dx + dy * dy + dz * dz) * SIN_ELEVATION_MASK;
+  }
+
+  static boolean isAboveMask(double[] s, double[] p)
+  {
+    return isAboveMask(s, p[0], p[1], p[2]);
+  }
+
+  /** Where the satellites that are on are now. */
+  double[][] onSatellites()
+  {
+    final double[][] out = new double[onCount()][];
+    int k = 0;
+    for (int i = 0; i < SATELLITES; i++)
+    {
+      if (mOn[i])
+        out[k++] = satellite(i);
+    }
+    return out;
+  }
+
+  /** How many of the satellites stand above the mask of the unit point p, counted up to limit. */
+  static int visibleCount(double px, double py, double pz, double[][] satellites, int limit)
+  {
+    int count = 0;
+    for (final double[] s : satellites)
+    {
+      if (isAboveMask(s, px, py, pz) && ++count >= limit)
+        break;
+    }
+    return count;
+  }
+
+  /** A receiver at p has a fix: the view takes the satellites once per frame and asks for every point of the disc. */
+  static boolean isCovered(double px, double py, double pz, double[][] satellites)
+  {
+    return visibleCount(px, py, pz, satellites, FIX_SATELLITES) >= FIX_SATELLITES;
+  }
+
+  /** The satellites that are on and above the mask of the unit point p, in the frame of the screen. */
+  int visibleCount(double[] p)
+  {
+    return visibleCount(p[0], p[1], p[2], onSatellites(), Integer.MAX_VALUE);
+  }
+
+  boolean isCovered(double[] p)
+  {
+    return isCovered(p[0], p[1], p[2], onSatellites());
+  }
+
   // The car and the beams.
 
   /** The car, in the frame of the screen: it stands in the middle of the jammed area. */
@@ -293,17 +354,13 @@ final class GlobeScene
     return angleDeg(JAM_LAT_DEG, JAM_LON_DEG, JAM_LAT_DEG, JAM_LON_DEG) <= JAM_RADIUS_DEG;
   }
 
-  /** The line from satellite i to the car: none below the horizon of the car or when it is off, broken when jammed. */
+  /**
+   * The line from satellite i to the car: only for a satellite the car would count, on and above the elevation mask
+   * of the car, and broken when jammed. Above the mask is above the horizon, so a beam never crosses the disc.
+   */
   int beam(int i)
   {
-    if (!mOn[i])
-      return BEAM_NONE;
-    final double[] s = satellite(i);
-    final double[] c = car();
-    // The horizon of the car is the plane tangent to the Earth at it, and the unit is the Earth radius: a satellite
-    // above the horizon lies further than one radius along the car. The hemisphere of the car is not enough -- a
-    // satellite behind the Earth disc is in it and the beam would cross the disc.
-    if (s[0] * c[0] + s[1] * c[1] + s[2] * c[2] <= 1)
+    if (!mOn[i] || !isAboveMask(satellite(i), car()))
       return BEAM_NONE;
     return isCarJammed() ? BEAM_BROKEN : BEAM_REACHES;
   }
