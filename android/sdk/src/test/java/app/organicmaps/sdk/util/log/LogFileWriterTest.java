@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -132,6 +133,27 @@ public class LogFileWriterTest
     final List<String> second = lines(path("2026-11-01", "235950.log"));
     assertEquals(HEADER.trim(), second.get(0));
     assertEquals(3, second.size());
+  }
+
+  @Test
+  public void timeZoneBack_acrossMidnightOpensANewFileInTheFolderOfTheNewDay() throws IOException
+  {
+    final TimeZone saved = TimeZone.getDefault();
+    try
+    {
+      // 00:30 on Nov 2 in UTC+3 is 22:30 on Nov 1 in UTC+1.
+      TimeZone.setDefault(TimeZone.getTimeZone("GMT+3"));
+      mNow.set(time(2026, Calendar.NOVEMBER, 2, 0, 30, 0));
+      mWriter.writeSync(mLogs, "before");
+      TimeZone.setDefault(TimeZone.getTimeZone("GMT+1"));
+      mWriter.writeSync(mLogs, "after the zone change");
+
+      assertEquals(List.of(path("2026-11-01", "223000.log"), path("2026-11-02", "003000.log")), files());
+    }
+    finally
+    {
+      TimeZone.setDefault(saved);
+    }
   }
 
   @Test

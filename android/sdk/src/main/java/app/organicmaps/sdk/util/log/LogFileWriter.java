@@ -11,6 +11,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
+import java.util.TimeZone;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -98,6 +99,8 @@ final class LogFileWriter
   private long mDayEndMs;
   // The first moment of the day of the file: a line written before it, after the clock went back, opens a new file.
   private long mDayStartMs;
+  // The zone of mDayStartMs and mDayEndMs: another one moves the day, so the file is a new one.
+  private TimeZone mDayZone;
   // When a failed open may be tried again, 0 when the last one worked.
   private long mRetryOpenMs;
   // The size of the open file in chars, which are bytes for the ASCII log.
@@ -327,12 +330,15 @@ final class LogFileWriter
       mStarted = new Date(now);
       mDayEndMs = 0;
     }
-    if (now >= mDayEndMs || now < mDayStartMs)
+    final TimeZone zone = TimeZone.getDefault();
+    final boolean clockWentBack = now < mDayStartMs || (mDayZone != null && !zone.equals(mDayZone));
+    if (now >= mDayEndMs || clockWentBack)
     {
-      // The clock went back past the start of the day: the file is a new one, named by the new time.
-      if (now < mDayStartMs)
+      // The clock or the time zone went back past the start of the day: the file is a new one, named by the new time.
+      if (clockWentBack)
         mStarted = new Date(now);
-      final Calendar calendar = Calendar.getInstance();
+      mDayZone = zone;
+      final Calendar calendar = Calendar.getInstance(zone);
       calendar.setTimeInMillis(now);
       calendar.set(Calendar.HOUR_OF_DAY, 0);
       calendar.set(Calendar.MINUTE, 0);
