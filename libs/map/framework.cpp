@@ -3915,6 +3915,9 @@ std::optional<m2::PointD> Framework::GetCurrentPosition() const
 
 bool Framework::ParseSearchQueryCommand(search::SearchParams const & params)
 {
+  // Fails a CHECK on purpose: how the path of a crash report to the developers is checked, see DEBUG_COMMANDS.md.
+  if (params.m_query == "?nogps-crash")
+    CHECK(false, ("Crash report test, ?nogps-crash"));
   if (ParseDrapeDebugCommand(params.m_query))
     return true;
   if (ParseSetGpsTrackMinAccuracyCommand(params.m_query))

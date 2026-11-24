@@ -80,6 +80,8 @@ static NSDictionary<NSFileAttributeKey, id> * FileAttributes(NSString * name)
 @implementation Logger
 
 static BOOL _fileLoggingEnabled = NO;
+// Read by the assert function of any thread: the pointer is replaced as a whole.
+static void (^kAssertHandler)(NSString *, NSString *) = nil;
 static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
 
 + (void)initialize
@@ -321,6 +323,11 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
   }];
 }
 
++ (void)setAssertHandler:(void (^)(NSString *, NSString *))handler
+{
+  kAssertHandler = [handler copy];
+}
+
 + (uint64_t)getLogFileSize
 {
   __block uint64_t size = 0;
@@ -342,6 +349,9 @@ void LogMessage(base::LogLevel level, base::SrcPoint const & src, std::string co
 bool AssertMessage(base::SrcPoint const & src, std::string const & message)
 {
   [Logger logMessageWithLevel:base::LCRITICAL src:src message:message];
+  auto handler = kAssertHandler;
+  if (handler)
+    handler(@(DebugPrint(src).c_str()), @(message.c_str()));
   return true;
 }
 
