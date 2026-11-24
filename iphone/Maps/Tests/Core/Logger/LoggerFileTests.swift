@@ -100,8 +100,10 @@ final class LoggerFileTests: XCTestCase {
     Logger.log(.info, message: "\(marker) after too")
 
     let files = logFiles()
-    let names = files.map { $0.deletingLastPathComponent().lastPathComponent + "/" + $0.lastPathComponent }
-    XCTAssertEqual(names, ["2099-01-01/235950.log", "2099-01-02/235950.log"])
+    // Only the folders: a line of the app between setTime and startTrip may open the first file, and the marker then
+    // goes into "235950-2.log".
+    let days = files.map { $0.deletingLastPathComponent().lastPathComponent }
+    XCTAssertEqual(days, ["2099-01-01", "2099-01-02"])
     XCTAssertEqual(try markerLines(lines(of: files[0])).count, 1)
     XCTAssertEqual(try markerLines(lines(of: files[1])).count, 2)
     // The file of the next day is a file of its own: it begins with the header.
