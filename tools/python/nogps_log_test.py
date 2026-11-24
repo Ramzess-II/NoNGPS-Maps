@@ -189,6 +189,78 @@ class TripLineTest(unittest.TestCase):
         self.assertEqual(group.series['accb'][0][1:], [0.1, 0.0, 0.0, 0.5])
 
 
+class ErrorMeterTest(unittest.TestCase):
+    """The error of the mark is measured only against an accurate fix that moves with the car."""
+
+    @staticmethod
+    def rows(lines):
+        """Rows of the TRIP lines given as (seconds, fields of trip_line)."""
+        meter = nogps_trip_log.ErrorMeter()
+        rows = []
+        for seconds, fields in lines:
+            row = nogps_trip_log.parse_trip(trip_line(**fields)[len('TRIP '):])
+            meter.add(row, seconds)
+            rows.append(row)
+        return rows
+
+    @staticmethod
+    def fix(lat=START_LAT, acc=5.0, kmh=36.0):
+        return '%.6f,%.6f/%.1f/%.1f/0/0.00/3' % (lat, START_LON, acc, kmh)
+
+    def test_coarse_fix(self):
+        row = self.rows([(0, dict(gps=self.fix(acc=500)))])[0]
+        self.assertEqual((row['ref'], row.get('err_m'), row['err_why']), ('gps', None, 'coarse'))
+        row = self.rows([(0, dict(gps=self.fix(acc=nogps_trip_log.REF_MAX_ACCURACY_M)))])[0]
+        self.assertEqual((row['err_m'], row.get('err_why')), (3.0, None))
+
+    def test_accurate_fused_after_coarse_gps(self):
+        row = self.rows([(0, dict(gps=self.fix(acc=500), fused=self.fix(acc=10)))])[0]
+        self.assertEqual((row['ref'], row['err_m']), ('fused', 3.0))
+
+    def test_fix_standing_while_the_car_drives(self):
+        # The car drives 10 m/s, the fix stays at the start: 30 m on, the error is not measured. Then it moves.
+        lines = [(s, dict(lat=START_LAT + s * 10 * DEG_PER_M, kmh=36.0, gps=self.fix())) for s in range(6)]
+        lines.append((6, dict(lat=START_LAT + 60 * DEG_PER_M, kmh=36.0, gps=self.fix(START_LAT + 60 * DEG_PER_M))))
+        rows = self.rows(lines)
+        self.assertEqual([r.get('err_why') for r in rows], [None, None, None, None, 'stale', 'stale', None])
+        self.assertAlmostEqual(rows[3]['err_m'], 33.0, delta=0.2)
+        self.assertAlmostEqual(rows[6]['err_m'], 3.0, delta=0.2)
+
+    def test_stale_fused_between_accurate_gps(self):
+        # The fused fix stands while gps= comes and goes: the fused one stays stale when it is measured against again.
+        lines = [(s, dict(lat=START_LAT + s * 10 * DEG_PER_M, kmh=36.0, fused=self.fix(acc=10),
+                          gps=self.fix(acc=500) if s != 5 else self.fix(START_LAT + s * 10 * DEG_PER_M)))
+                 for s in range(8)]
+        rows = self.rows(lines)
+        self.assertEqual([r['ref'] for r in rows], ['fused'] * 5 + ['gps'] + ['fused'] * 2)
+        self.assertEqual([r.get('err_why') for r in rows], [None] * 4 + ['stale', None, 'stale', 'stale'])
+
+    def test_old_fix_repeated(self):
+        # One fix of the start, older each second: add_error() moves it on by its age, so it is still measured.
+        rows = self.rows([(s, dict(lat=START_LAT + s * 10 * DEG_PER_M, kmh=36.0,
+                                   gps='%.6f,%.6f/5.0/36.0/0/%.2f/3' % (START_LAT, START_LON, s))) for s in range(8)])
+        self.assertEqual([r.get('err_why') for r in rows], [None] * 8)
+        self.assertAlmostEqual(rows[-1]['err_m'], 3.0, delta=0.2)
+
+    def test_fix_of_a_standing_car(self):
+        rows = self.rows([(s, dict(kmh=0.0, gps=self.fix(kmh=0))) for s in range(0, 600, 30)])
+        self.assertTrue(all('err_m' in r for r in rows))
+
+    def test_gap_is_no_drive(self):
+        # An hour without lines counts REF_STALE_MAX_GAP_S of driving: 25 m at 5 m/s, under REF_STALE_DRIVEN_M.
+        rows = self.rows([(0, dict(kmh=18.0, gps=self.fix())), (3600, dict(kmh=18.0, gps=self.fix()))])
+        self.assertEqual(rows[1].get('err_why'), None)
+
+    def test_trips_of_the_analysis(self):
+        # The fix stops 10 s after the car started: the error of the rest is not measured, not 10 m more each second.
+        drive = android_drive(seconds=40, stand=10, fields=lambda s: dict(gps=self.fix(
+            START_LAT + min(max(0, s - 10), 10) * 10 * DEG_PER_M)), error=lambda s: 0.0)
+        rows = analyse(('app.log', drive)).groups[0].rows
+        errors = [r['err_m'] for r in rows if 'err_m' in r]
+        self.assertLessEqual(max(errors), nogps_trip_log.REF_STALE_DRIVEN_M + 10)
+        self.assertEqual(rows[-1]['err_why'], 'stale')
+
+
 class SplitTest(unittest.TestCase):
     def test_one_drive_trimmed(self):
         trips = analyse(('app.log', android_drive(seconds=200, stand=100))).trips
