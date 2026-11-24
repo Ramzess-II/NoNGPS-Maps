@@ -104,7 +104,7 @@ extension GlobalStyleSheet: IStyleSheet {
           s.backgroundColor = .whitePrimary
           s.barTintColor = .nogpsPrimary
           s.fontColor = .blackPrimaryText
-          s.fontColorDetailed = UIColor.white
+          s.fontColorDetailed = .nogpsPrimaryText
           s.tintColor = .blackSecondaryText
         }
       }

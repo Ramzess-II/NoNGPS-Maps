@@ -23,6 +23,7 @@
       android:background="?selectableItemBackgroundBorderless"
       android:scaleType="center"
       app:srcCompat="@drawable/ic_logout"
+      app:tint="@color/toolbar_text"
       android:contentDescription="@string/logout" />
     </androidx.appcompat.widget.Toolbar>
   <FrameLayout
