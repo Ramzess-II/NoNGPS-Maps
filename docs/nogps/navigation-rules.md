@@ -1278,6 +1278,11 @@
   `nogps_log_viewer.py` і `nogps_replay.py` беруть теку з кількома телефонами; `nogps_replay.py` `days`, `run`
   (результати в `<output>/<телефон>/`) і `input` ведуть кожен телефон окремо, `compare` бере один телефон, і
   `nogps_trip_log.py` теж: рядки двох телефонів змішалися б в одному CSV і треку.
+- Повтор і версія карт: `nogps_replay.py run` не їде день, чий рядок `MAPS` (перший у дні) не містить версії, на якій
+  їде `nogps_replay_tool` (найновіша тека-версія в `--data_path`, інакше назва самої теки, лише цифри); дороги іншої
+  версії дали б інший результат. День без рядка `MAPS` їде. `--any-maps` їде все одно. Коли `commit=` заголовків
+  `LOGFMT` — не коміт цього репозиторію, `run` пише в stderr, що колонки «trip» — від інших правил. Ознаку «перша
+  поїздка» (`--fresh`) вхід несе сам: `D <день> fresh`; файла `nogps-replay-fresh.txt` більше немає.
 - Рядок `CALIBRATION` (`InertialNavigator::LogCalibration`) каже, що навігація знає про машину:
   `CALIBRATION ms=… car=<id> scale=<v> table=<v> rough=<v> factor=<v> unit=<v> lag=<v> accel=<v>`. Значення — ті, що в
   роботі для поточної машини (`NoGpsSpeedScale`, `NoGpsSpeedTable`, `NoGpsRoughSpeedTable`,
