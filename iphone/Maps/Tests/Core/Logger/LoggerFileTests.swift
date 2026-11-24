@@ -3,7 +3,8 @@ import CoreApi
 import XCTest
 
 /// The file writer of Logger: the file of a launch, startTrip, midnight and concurrent lines. It drives the files of
-/// the faked days 2026-11-01 and 2026-11-02 in the logs folder of the app, which it removes: run it on a simulator.
+/// the faked days 2099-01-01 and 2099-01-02 (never a day of a real trip) in the logs folder of the app, which it
+/// removes.
 /// The app keeps logging through the same Logger, so the tests look only at the files that hold their marker lines.
 final class LoggerFileTests: XCTestCase {
   private let marker = "LoggerFileTests"
@@ -20,7 +21,7 @@ final class LoggerFileTests: XCTestCase {
       defer { clockLock.unlock() }
       return now
     }
-    setTime(2026, 11, 1, 12, 0, 0)
+    setTime(2099, 1, 1, 12, 0, 0)
     // Turning logging off removes every log of the app, those of a phone with a recorded trip too: only turn it on,
     // and off again at the end only if it was off.
     enabledByTest = !Settings.isFileLoggingEnabled()
@@ -50,7 +51,7 @@ final class LoggerFileTests: XCTestCase {
     let files = logFiles()
     XCTAssertEqual(files.count, 1)
     XCTAssertEqual(files[0].lastPathComponent, "120000.log")
-    XCTAssertEqual(files[0].deletingLastPathComponent().lastPathComponent, "2026-11-01")
+    XCTAssertEqual(files[0].deletingLastPathComponent().lastPathComponent, "2099-01-01")
     let lines = try lines(of: files[0])
     XCTAssertTrue(lines[0].hasPrefix("LOGFMT 2 "), lines[0])
     XCTAssertEqual(markerLines(lines).count, 2)
@@ -58,7 +59,7 @@ final class LoggerFileTests: XCTestCase {
 
   func testStartTripPutsTheLinesAfterItInANewFile() throws {
     Logger.log(.info, message: "\(marker) drive 1")
-    setTime(2026, 11, 1, 12, 0, 5)
+    setTime(2099, 1, 1, 12, 0, 5)
     Logger.startTrip()
     Logger.log(.info, message: "\(marker) drive 2")
 
@@ -80,7 +81,7 @@ final class LoggerFileTests: XCTestCase {
   func testStartTripNamesTheFileAfterItsFirstLine() {
     Logger.log(.info, message: "\(marker) drive 1")
     // The clock moves before startTrip: a line of the app between the two would open the file at the trip's time.
-    setTime(2026, 11, 1, 12, 0, 20)
+    setTime(2099, 1, 1, 12, 0, 20)
     Logger.startTrip()
     Logger.log(.info, message: "\(marker) drive 2")
 
@@ -88,15 +89,17 @@ final class LoggerFileTests: XCTestCase {
   }
 
   func testMidnightContinuesTheFileInTheFolderOfTheNextDay() throws {
-    setTime(2026, 11, 1, 23, 59, 50)
+    setTime(2099, 1, 1, 23, 59, 50)
+    // A line of the app after setUp may have opened a file at 12:00:00: close it, so the next line opens at 23:59:50.
+    Logger.startTrip()
     Logger.log(.info, message: "\(marker) before")
-    setTime(2026, 11, 2, 0, 0, 5)
+    setTime(2099, 1, 2, 0, 0, 5)
     Logger.log(.info, message: "\(marker) after")
     Logger.log(.info, message: "\(marker) after too")
 
     let files = logFiles()
     let names = files.map { $0.deletingLastPathComponent().lastPathComponent + "/" + $0.lastPathComponent }
-    XCTAssertEqual(names, ["2026-11-01/235950.log", "2026-11-02/235950.log"])
+    XCTAssertEqual(names, ["2099-01-01/235950.log", "2099-01-02/235950.log"])
     XCTAssertEqual(try markerLines(lines(of: files[0])).count, 1)
     XCTAssertEqual(try markerLines(lines(of: files[1])).count, 2)
     // The file of the next day is a file of its own: it begins with the header.
@@ -154,7 +157,7 @@ final class LoggerFileTests: XCTestCase {
       .map { logsFolder.appendingPathComponent($0) }
   }
 
-  private let fakeDays = ["2026-11-01", "2026-11-02"]
+  private let fakeDays = ["2099-01-01", "2099-01-02"]
 
   private func removeFakeDays() {
     guard let paths = FileManager.default.subpaths(atPath: logsFolder.path) else { return }
