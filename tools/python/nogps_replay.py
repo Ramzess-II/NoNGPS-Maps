@@ -33,23 +33,27 @@ would be mixed: `days`, `run` and `input` take a tree of several phones, `compar
 replay.
 
   nogps_replay.py input logs --day 10-11 -o nogps-replay-in.txt [--no-taps] [--no-route] [--from HH:MM]
-      [--to HH:MM]
+      [--to HH:MM] [--fresh]
       makes the file to drive from the trip logs of a day: the rotation, the speed and the acceleration of the
       sensor box, the marks and the buttons of the user, the routes the user asked for. --no-taps leaves only the
       mark each trip starts with, --no-route drives without the routes. Where the application started anew has
       shown the car it kept, or the file begins with the car off the roads, the file gives that kept car instead of
-      a tap: a tap would put it on a road. Logs of several phones make a file each, <name>-<phone>.<ext>.
+      a tap: a tap would put it on a road. --fresh drives the trip as the first one: the file begins with "D <day>
+      fresh", and the speed scale and tables of settings.ini are not taken. Logs of several phones make a file
+      each, <name>-<phone>.<ext>.
 
   nogps_replay.py compare logs/<phone> --day 10-11 --replay nogps-replay-out.txt
       how far the mark was from GPS on the trip and how far it is driven again, where GPS was seen. The first line
       says which set the day is in.
 
   nogps_replay.py run logs --tool build-<name>-o2/nogps_replay_tool --data_path <maps> [--settings <ini>]
-      [--day MM-DD ...] [-j N] -o <folder> [--no-taps] [--no-route]
+      [--day MM-DD ...] [-j N] -o <folder> [--no-taps] [--no-route] [--fresh] [--any-maps]
       makes the input of every day of the logs, or of the days given, drives them with nogps_replay_tool, N at a time,
       and prints a line of compare a day, the held-out days and the days rules were made from apart, with the
       seconds of all the days of each set. The inputs, the outputs, the log of the tool and the full compare of
-      every day are written to the folder <output>/<phone>.
+      every day are written to the folder <output>/<phone>. A day is not driven when the version of the maps it was
+      driven on (the MAPS line of its log) is not the one of --data_path: the roads would differ. --any-maps drives
+      it anyway. A line tells when the logs come from other builds than the checkout the tool is built from.
 
   nogps_replay.py days logs
       the days of the logs with the seconds of TRIP lines and the set of each: "held out" (listed in
@@ -69,10 +73,12 @@ import math
 import os
 import re
 import subprocess
+import sys
 import time
 
 import nogps_trip_log
 
+MAPS_LINE = re.compile(r'^MAPS (?:ms=\d+ )?version=(\S+)')
 LINE = re.compile(r'^(\d\d-\d\d) (\d\d):(\d\d):(\d\d)\.(\d\d\d) \(([^)]*)\) \w/(\w+): (.*)$')
 FIELD = re.compile(r' (\w+)=(\S+)')
 SOURCE = re.compile(r'^\S+:\d+ (\w+)\(\): (.*)$')
@@ -177,6 +183,45 @@ def read(paths, day):
     trips.sort(key=lambda f: f['ms'])
     others.sort(key=lambda x: x[0])
     return trips, others, sorted(set(started))
+
+
+def logged_map_versions(others):
+    """The map versions of the first MAPS line of the day's lines (newest first), or [] when it has none or no maps."""
+    for _, text, _ in others:
+        m = MAPS_LINE.match(text)
+        if m:
+            return [] if m.group(1) == '-' else m.group(1).split(',')
+    return []
+
+
+def tool_map_version(data_path):
+    """The map version nogps_replay_tool drives on, as it picks it (libs/map/nogps_replay_tool/main.cpp): the newest
+    all-digit subfolder of |data_path|, else |data_path| itself when its name is all digits, else None."""
+    try:
+        names = [n for n in os.listdir(data_path) if n.isdigit() and os.path.isdir(os.path.join(data_path, n))]
+    except OSError:
+        names = []
+    if names:
+        return str(max(int(n) for n in names))
+    name = os.path.basename(os.path.abspath(data_path))
+    return name if name.isdigit() else None
+
+
+def wrong_maps(args, others):
+    """Why the day is not driven on --data_path, or None: its log says the maps of other versions."""
+    if args.any_maps:
+        return None
+    logged = logged_map_versions(others)
+    if not logged:
+        return None
+    version = tool_map_version(args.data_path)
+    if version is None:
+        return ('the version of --data_path is not known (name its folder by the version, as 260714) and the log '
+                'has %s: --any-maps drives it anyway' % ','.join(logged))
+    if version not in logged:
+        return 'the log was driven on maps %s and --data_path has %s: --any-maps drives it anyway' % (
+            ','.join(logged), version)
+    return None
 
 
 def number(fields, name, default=None):
@@ -589,7 +634,7 @@ def make_input(args):
 
     records.sort(key=lambda r: (r[0], r[1]))
     with open(args.output, 'w', encoding='ascii', newline='\n') as f:
-        f.write('D %s\n' % args.day)
+        f.write('D %s%s\n' % (args.day, ' fresh' if getattr(args, 'fresh', False) else ''))
         for _, _, text in records:
             f.write(text + '\n')
     kinds = collections.Counter(r[2][0] for r in records)
@@ -791,8 +836,12 @@ def run_day(args, day):
     """Makes the input of the day, drives it with the tool and compares it with the trip: the compare of the day and
     the seconds the tool took, or None and what went wrong."""
     base = os.path.join(args.output, day)
+    trips, others, _ = read(args.logs, day)
+    wrong = wrong_maps(args, others)
+    if wrong:
+        return day, None, wrong, None
     day_args = argparse.Namespace(logs=args.logs, day=day, start=args.start, end=args.end, output=base + '-in.txt',
-                                  no_taps=args.no_taps, no_route=args.no_route)
+                                  no_taps=args.no_taps, no_route=args.no_route, fresh=args.fresh)
     with contextlib.redirect_stdout(io.StringIO()):
         make_input(day_args)
     source = getattr(day_args, 'calibration_source', None)
@@ -809,7 +858,6 @@ def run_day(args, day):
     # A day the tool has not driven to the end is not compared: the other days are.
     if code != 0 or not os.path.exists(out + '.done'):
         return day, None, 'the tool has not driven it to the end, exit code %d: see %s-tool.log' % (code, base), source
-    trips, others, _ = read(args.logs, day)
     replayed, replayed_others, _ = read([out], day)
     start = parse_clock(args.start) if args.start else 0
     end = parse_clock(args.end) if args.end else 86_400_000
@@ -819,11 +867,33 @@ def run_day(args, day):
     return day, stats, seconds, source
 
 
+def warn_builds(paths):
+    """Tells on stderr when the logs were written by builds of other commits than the checkout of this script: the
+    mark of the trip then came from other rules than the replay has."""
+    here = subprocess.run(['git', '-C', os.path.dirname(os.path.abspath(__file__)), 'rev-parse', '--short=8', 'HEAD'],
+                          capture_output=True, text=True)
+    if here.returncode != 0:
+        return
+    commits = set()
+    for path in nogps_trip_log.log_files(paths):
+        try:
+            commit = nogps_trip_log.read_header(path).get('commit')
+        except nogps_trip_log.LogFormatError:
+            continue
+        if commit:
+            commits.add(commit[:8])
+    others = sorted(commits - {here.stdout.strip()})
+    if others:
+        print('note: the logs are of the builds %s, this checkout is %s: the "trip" columns are of those rules' % (
+            ', '.join(others), here.stdout.strip()), file=sys.stderr)
+
+
 def run(args):
     """Drives the days with nogps_replay_tool, a few at a time, and prints a line of compare a day."""
     os.makedirs(args.output, exist_ok=True)
     held_out = held_out_days()
     days_to_run = sorted(set(args.day) if args.day else trip_days(args.logs))
+    warn_builds(args.logs)
     started = time.monotonic()
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.jobs) as pool:
         results = list(pool.map(run_day, [args] * len(days_to_run), days_to_run))
@@ -882,6 +952,9 @@ def main():
     sub.add_argument('-o', '--output', required=True, help='the folder of the files of the run, not for git')
     sub.add_argument('--no-taps', action='store_true', help='only the mark every trip starts with')
     sub.add_argument('--no-route', action='store_true', help='without the routes the user asked for')
+    sub.add_argument('--fresh', action='store_true', help='drive the trips as the first ones: no speed scale or '
+                                                          'tables from the settings')
+    sub.add_argument('--any-maps', action='store_true', help='drive a day logged on maps of another version')
     sub.add_argument('--change', type=float, default=15, help='meters that count as a change')
     for name in ('input', 'compare'):
         sub = commands.add_parser(name)
@@ -893,6 +966,7 @@ def main():
             sub.add_argument('-o', '--output', default='nogps-replay-in.txt')
             sub.add_argument('--no-taps', action='store_true', help='only the mark every trip starts with')
             sub.add_argument('--no-route', action='store_true', help='without the routes the user asked for')
+            sub.add_argument('--fresh', action='store_true', help='drive the trip as the first one')
         else:
             sub.add_argument('--replay', required=True, help='nogps-replay-out.txt of the application')
             sub.add_argument('--change', type=float, default=15, help='meters that count as a change')

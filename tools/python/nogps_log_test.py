@@ -344,6 +344,7 @@ class ReplayLogsTest(unittest.TestCase):
                 nogps_replay.main()
             except SystemExit:
                 pass
+        self.last_out = out.getvalue()
         return out.getvalue(), err.getvalue()
 
     @staticmethod
@@ -374,6 +375,53 @@ class ReplayLogsTest(unittest.TestCase):
             self.run_main('input', folder, '--day', '10-08', '-o', target)
             self.assertEqual(sorted(n for n in os.listdir(folder) if n.startswith('in-')),
                              ['in-Pixel_7-a3f9.txt', 'in-SM_S918B-0b1c.txt'])
+
+    def test_input_of_a_fresh_trip_says_so_in_its_first_record(self):
+        with tempfile.TemporaryDirectory() as folder:
+            self.two_phones(folder)
+            target = os.path.join(folder, 'in.txt')
+            for flags, first in (([], 'D 10-08'), (['--fresh'], 'D 10-08 fresh')):
+                self.run_main('input', os.path.join(folder, 'Pixel_7-a3f9'), '--day', '10-08', '-o', target, *flags)
+                with open(target) as f:
+                    self.assertEqual(f.readline().rstrip('\n'), first)
+
+    def run_with_maps(self, logged, version, *flags):
+        """Whether `run` drove a day logged on the maps |logged| (None: no MAPS line) with --data_path <version>, and
+        its output."""
+        with tempfile.TemporaryDirectory() as folder:
+            lines = self.drive(20)
+            if logged:
+                lines.insert(1, core('10-08', 18 * 3600, 'Start', 'MAPS ms=%d version=%s' % (LOGFMT_MS, logged)))
+            write_tree(folder, {'Pixel_7-a3f9/2026-10-08/180000.log': with_logfmt(lines)})
+            maps = os.path.join(folder, 'maps')
+            if version:
+                os.makedirs(os.path.join(maps, version))
+            else:
+                os.makedirs(maps)
+            tool = os.path.join(folder, 'tool.py')
+            with open(tool, 'w') as f:
+                f.write('#!%s\nimport sys\nopen(sys.argv[-1], "w").write("")\nopen(sys.argv[-1] + ".done", "w")\n'
+                        % sys.executable)
+            os.chmod(tool, 0o755)
+            out_folder = os.path.join(folder, 'out')
+            self.run_main('run', folder, '--tool', tool, '--data_path', maps, '-o', out_folder, '-j', '1', *flags)
+            return os.path.exists(os.path.join(out_folder, 'Pixel_7-a3f9', '10-08-in.txt')), self.last_out
+
+    def test_run_refuses_a_day_logged_on_other_maps(self):
+        driven, _ = self.run_with_maps('261101,260714', '260714')
+        self.assertTrue(driven)
+        driven, out = self.run_with_maps('261101,260714', '250101')
+        self.assertFalse(driven)
+        self.assertIn('the log was driven on maps 261101,260714 and --data_path has 250101', out)
+        driven, _ = self.run_with_maps('261101,260714', '250101', '--any-maps')
+        self.assertTrue(driven)
+        driven, out = self.run_with_maps('261101', None)
+        self.assertFalse(driven)
+        self.assertIn('the version of --data_path is not known', out)
+
+    def test_run_drives_a_day_with_no_maps_line(self):
+        driven, _ = self.run_with_maps(None, '250101')
+        self.assertTrue(driven)
 
     def test_compare_takes_one_phone(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -1035,7 +1083,7 @@ class RunTest(unittest.TestCase):
             out = os.path.join(folder, 'out')
             args = argparse.Namespace(logs=[log], tool=tool, data_path='maps', resources_path='data',
                                       settings='settings.ini', day=None, start=None, end=None, jobs=2, output=out,
-                                      no_taps=False, no_route=False, change=15)
+                                      no_taps=False, no_route=False, change=15, fresh=False, any_maps=False)
             lines = io.StringIO()
             with mock.patch.object(nogps_replay, 'held_out_days', lambda: {'10-09'}), redirect_stdout(lines):
                 nogps_replay.run(args)
