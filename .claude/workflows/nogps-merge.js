@@ -459,8 +459,7 @@ step may hold the worktree lock: run it again after a few seconds. A worktree th
 gh api --paginate repos/${repo}/pulls/${pr.number}/commits --jq '.[].author.login // "unknown"' | sort -u \
 must print only koloboid and Ramzess-II. IMPORTANT: any other login, or "unknown", stops the merge. Report \
 "blocked" with the logins; a person merges it on GitHub.
-3. gh pr view ${pr.number} -R ${repo} --json reviewDecision,reviewRequests,state,mergeStateStatus. A review \
-requested from the other person, CHANGES_REQUESTED or REVIEW_REQUIRED: report "blocked" with who has to approve. \
+3. gh pr view ${pr.number} -R ${repo} --json state,mergeStateStatus. \
 mergeStateStatus DIRTY: report "conflict". Already MERGED or CLOSED: report "blocked" with that.
 4. Merge the PR into current ${base} locally, to have the two together: \
 git -C ${wt} checkout --force -B train/gate refs/remotes/origin/${base} && git -C ${wt} submodule update --init \

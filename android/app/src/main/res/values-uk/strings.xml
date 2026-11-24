@@ -314,6 +314,8 @@
     <string name="pref_appearance_dark">Темний</string>
     <!-- Settings "Appearance" category: "Scheduled" title, should be consistent with the pref_appearance_title translation. -->
     <string name="pref_appearance_scheduled">Світла від світанку до заходу сонця</string>
+    <!-- Settings "Appearance" category: "By ambient light" title, switches dark/light by the phone's light sensor, should be consistent with the pref_appearance_title translation. -->
+    <string name="pref_appearance_light_sensor">За освітленням</string>
     <!-- Tex label above the Donate button -->
     <string name="donate_description">Подаруйте мільйонам користувачів безкоштовні мапи без реклами!</string>
 
@@ -1107,6 +1109,8 @@
     <string name="nogps_phone_remove_text">Той телефон більше не підключатиметься до блока. Щоб знову ним користуватися, додайте його знову.</string>
     <!-- Asked before this phone is removed from the sensor box -->
     <string name="nogps_phone_remove_this_text">Цей телефон більше не підключатиметься до блока, а авто на ньому буде забуто.</string>
+    <!-- Message: the sensor box has not proved that it is the box of the car, and it is not used. If it is the user's box, its car has to be forgotten and the box paired again -->
+    <string name="nogps_box_refused">Блок не довів, що він ваш, і не використовується. Якщо він ваш, забудьте авто й підключіть блок знову.</string>
     <!-- Message: this phone has been removed from the sensor box on its own request -->
     <string name="nogps_phone_removed">Цей телефон видалено з блока, авто забуто</string>
     <!-- Message on Android: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and the app could not remove it -->
@@ -1129,7 +1133,7 @@
     <string name="nogps_phone_add_failed">Блок не прийняв код. Спробуйте ще раз.</string>
     <!-- Shown in the Box sheet under the phones of the box: the code of its recovery window. %s is six digits -->
     <string name="nogps_phone_recovery_code">Код відновлення: %s. Запишіть його. Якщо ви загубили телефони блока, увімкніть його в живлення й вимкніть протягом хвилини 3 рази, а втретє залиште ввімкненим: 2 хвилини він прийматиме новий телефон із цим кодом, і цей телефон зітре всі інші телефони блока. Це лише поки в блока є телефони; без жодного блок питає 123456</string>
-    <!-- Added to the hint under the sensor box steps while the box is not paired with this phone and its recovery code is known. %s is six digits -->
+    <!-- Added to the hint of the sensor box (under its steps and in the Box tile) while the box is not paired with this phone and its recovery code is known. %s is six digits -->
     <string name="nogps_box_bt_recovery_code">У вікні відновлення (3 вмикання в живлення) блок питає свій код відновлення замість 123456: %s</string>
     <!-- Shown in the Box sheet when another phone has connected to the sensor box first: this phone gets the data only -->
     <string name="nogps_box_read_only">Інший телефон підключився до блока першим: калібрування, прошивку, ім\'я авто й телефони блока змінюють на ньому</string>

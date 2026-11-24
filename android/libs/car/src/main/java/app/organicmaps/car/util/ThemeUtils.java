@@ -95,7 +95,7 @@ public final class ThemeUtils
     {
       case DARK -> ThemeMode.NIGHT;
       case LIGHT -> ThemeMode.LIGHT;
-      case SYSTEM, SCHEDULED -> ThemeMode.AUTO;
+      case SYSTEM, SCHEDULED, LIGHT_SENSOR -> ThemeMode.AUTO;
     };
   }
 
