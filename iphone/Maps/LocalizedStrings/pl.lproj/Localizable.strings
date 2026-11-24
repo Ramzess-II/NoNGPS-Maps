@@ -1474,6 +1474,9 @@
 /* Asked before this phone is removed from the sensor box */
 "nogps_phone_remove_this_text" = "This phone will not connect to the box any more, and the car will be forgotten on it.";
 
+/* Message: the sensor box has not proved that it is the box of the car, and it is not used. If it is the user's box, its car has to be forgotten and the box paired again */
+"nogps_box_refused" = "The box did not prove it is yours and is not used. If it is yours, forget the car and pair the box again.";
+
 /* Message on iOS: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and iOS apps cannot remove it */
 "nogps_phone_removed_forget" = "This phone is removed from the box, the car is forgotten. Remove the box ending in %1$@ in Settings > Bluetooth: tap its info button, then Forget This Device";
 

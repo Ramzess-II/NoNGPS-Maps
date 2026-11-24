@@ -1474,6 +1474,9 @@
 /* Asked before this phone is removed from the sensor box */
 "nogps_phone_remove_this_text" = "Этот телефон больше не будет подключаться к блоку, а машина на нём будет забыта.";
 
+/* Message: the sensor box has not proved that it is the box of the car, and it is not used. If it is the user's box, its car has to be forgotten and the box paired again */
+"nogps_box_refused" = "Блок не доказал, что он ваш, и не используется. Если он ваш, забудьте машину и подключите блок заново.";
+
 /* Message on iOS: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and iOS apps cannot remove it */
 "nogps_phone_removed_forget" = "Этот телефон удалён из блока, машина забыта. Удалите блок, имя которого заканчивается на %1$@, в Настройки > Bluetooth: нажмите кнопку информации и «Забыть это устройство»";
 
