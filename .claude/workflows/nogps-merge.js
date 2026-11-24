@@ -66,6 +66,17 @@ const ADD_WT = (pr, name) =>
     ? `git -C ${FIRMWARE} worktree add --no-track -b feature/${name} ${WT(name)} origin/main && \
 ln -sfn ${FIRMWARE}/keys ${WT(name)}/keys && cp ${FIRMWARE}/sdkconfig ${WT(name)}/sdkconfig`
     : `${APP}/tools/unix/nogps_worktree.sh add ${name}`
+// The gate's worktree is made at launch and can be removed under a running train. Its branch outlives the directory:
+// prune the stale registration and reuse the branch, as `add -b` fails on one that exists.
+const REMAKE_GATE = (pr, wt) => {
+  const name = GATE + R(pr).suffix
+  return R(pr).suffix
+    ? `git -C ${FIRMWARE} worktree prune && git -C ${FIRMWARE} fetch -q origin && (git -C ${FIRMWARE} worktree add \
+--no-track -b feature/${name} ${wt} origin/main || git -C ${FIRMWARE} worktree add ${wt} feature/${name}) && \
+ln -sfn ${FIRMWARE}/keys ${wt}/keys && cp ${FIRMWARE}/sdkconfig ${wt}/sdkconfig`
+    : `git -C ${APP} worktree prune && git -C ${APP} fetch -q origin && ${APP}/tools/unix/nogps_worktree.sh add ${name} \
+(if the branch feature/${name} exists, remove it first: nothing is on it that the train needs)`
+}
 const RM_WT = (name) =>
   name.endsWith('-fw')
     ? `git -C ${FIRMWARE} worktree remove --force ${WT(name)}`
@@ -225,6 +236,7 @@ const MERGE_SCHEMA = {
     staleFiles: { type: 'array', items: { type: 'string' }, description: 'files master gained that this PR touches' },
     combinedTest: { type: 'string', description: 'the core tests with this PR merged into current master, one line' },
     mergeCommit: { type: 'string' },
+    remade: { type: 'boolean', description: 'the gate worktree was missing and step 0 made it again' },
   },
   required: ['status'],
 }
@@ -400,6 +412,10 @@ Merge PR #${pr.number} "${pr.title}" of ${repo}. It has ${base} merged in, it is
 clean. You are the merge gate: the PRs go through you one at a time, and this is the only step that moves ${base}.
 Work in the gate worktree ${wt}. IMPORTANT: never push ${base}, never push the PR's branch, and never rebase or \
 force-push anything. The only write to the repo is the gh pr merge of step 7.
+0. If ${wt} doesn't exist, somebody removed it during the run: remake it and report remade true. ${REMAKE_GATE(pr, wt)} \
+${suffix ? `The keys/ link and the sdkconfig copy are part of it: a bare firmware worktree builds for the esp32 target \
+with secure boot v1 and dies on "Incorrect ECDSA private key", which would read as a failure of the PR. ` : ''}Another \
+step may hold the worktree lock: run it again after a few seconds. A worktree that exists is used as it is.
 1. Did ${base} move under this PR? ${staleStep}
 2. Authors, from "Flow of a change" in .claude/rules/nogps-workflow.md: \
 gh api --paginate repos/${repo}/pulls/${pr.number}/commits --jq '.[].author.login // "unknown"' | sort -u \
@@ -494,7 +510,7 @@ function record(pr, outcome, reason, extra) {
     rounds: pr.round,
     staleRounds: pr.staleRounds || 0,
     outcome,
-    reason: reason || '',
+    reason: (pr.gateRemade ? '(gate worktree was gone and remade) ' : '') + (reason || ''),
     ...(extra || {}),
   })
   log(`${tag(pr)}: ${outcome}${reason ? ' (' + reason + ')' : ''}`)
@@ -590,6 +606,8 @@ async function gate(pr) {
     record(pr, 'open', 'the merge agent stopped')
     return false
   }
+  if (m.remade) pr.gateRemade = true
+  if (m.remade) log(`${tag(pr)}: the gate worktree was gone and was remade`)
   if (m.status === 'stale') {
     const files = (m.staleFiles || []).join(', ') || m.reason || 'a file it touches'
     pr.staleRounds = (pr.staleRounds || 0) + 1
