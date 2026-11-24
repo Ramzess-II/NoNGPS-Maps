@@ -412,6 +412,7 @@ class Group:
         self.rows = []
         self.events = []
         self.series = dict(accb=[], acc=[], gyro=[])
+        self.error_meter = nogps_trip_log.ErrorMeter()
         for t, level, _, tag, body in unique:
             self.classify(t, level, tag, body)
         self.row_times = [row['t'] for row in self.rows]
@@ -425,7 +426,7 @@ class Group:
         if text.startswith('TRIP '):
             # Only the first line: parse_android appends the header of a joined file's next day to this entry.
             row = nogps_trip_log.parse_trip(text[len('TRIP '):].split('\n', 1)[0])
-            nogps_trip_log.add_error(row)
+            self.error_meter.add(row, t / 1000)
             row['t'] = t
             self.rows.append(row)
             return
@@ -1007,7 +1008,7 @@ class Analysis:
 
 STATE_GROUPS = [
     ('Position', ['src', 'lat', 'lon', 'acc', 'bear', 'age', 'markAge', 'fill']),
-    ('Error from GPS', ['ref', 'err_m', 'along_m', 'across_m']),
+    ('Error from GPS', ['ref', 'err_m', 'along_m', 'across_m', 'err_why']),
     ('GPS', ['gpsst', 'gps_lat', 'gps_lon', 'gps_acc', 'gps_kmh', 'gps_bear', 'gps_age', 'gpsAge', 'spoofed', 'cmp']),
     ('Fused and network', ['fused_lat', 'fused_lon', 'fused_acc', 'fused_kmh', 'fused_bear', 'fused_age', 'net_lat',
                            'net_lon', 'net_acc', 'net_age']),
