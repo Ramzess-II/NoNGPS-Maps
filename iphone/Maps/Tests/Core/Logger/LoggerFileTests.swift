@@ -82,9 +82,10 @@ final class LoggerFileTests: XCTestCase {
 
   func testStartTripNamesTheFileAfterItsFirstLine() {
     Logger.log(.info, message: "\(marker) drive 1")
-    // The clock moves before startTrip: a line of the app between the two would open the file at the trip's time.
-    setTime(2099, 1, 1, 12, 0, 20)
+    setTime(2099, 1, 1, 12, 0, 9)
     Logger.startTrip()
+    // The clock moves after startTrip: the file is named at its first line, not at the trip's time.
+    setTime(2099, 1, 1, 12, 0, 20)
     Logger.log(.info, message: "\(marker) drive 2")
 
     XCTAssertEqual(logFiles().map(\.lastPathComponent), ["120000.log", "120020.log"])
@@ -118,11 +119,28 @@ final class LoggerFileTests: XCTestCase {
   func testConcurrentLinesStayWhole() throws {
     let threads = 8
     let perThread = 200
-    DispatchQueue.concurrentPerform(iterations: threads) { id in
-      for i in 0 ..< perThread {
-        Logger.log(.info, message: "\(marker) line \(id) \(i) end")
+    // LogHelper numbers a thread at its first line without a lock: every thread logs its first line alone, then they
+    // go on together.
+    let go = DispatchGroup()
+    go.enter()
+    let done = DispatchGroup()
+    for id in 0 ..< threads {
+      let registered = DispatchSemaphore(value: 0)
+      done.enter()
+      let thread = Thread {
+        Logger.log(.info, message: "\(self.marker) line \(id) 0 end")
+        registered.signal()
+        go.wait()
+        for i in 1 ..< perThread {
+          Logger.log(.info, message: "\(self.marker) line \(id) \(i) end")
+        }
+        done.leave()
       }
+      thread.start()
+      registered.wait()
     }
+    go.leave()
+    done.wait()
     _ = Logger.getLogFileSize() // On the queue of the writer: the lines before it are written.
 
     let files = logFiles()
