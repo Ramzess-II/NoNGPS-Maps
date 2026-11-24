@@ -1184,7 +1184,6 @@
     <!-- Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on -->
     <string name="nogps_about_om_menu">О приложении Organic Maps</string>
     <string name="nogps_about_headline">Навигация, когда GPS глушат или подменяют</string>
-    <string name="nogps_about_description">Без GPS машину ведёт инерциальная навигация: повороты — по гироскопу, расстояние — по скорости автомобиля из OBD-II. Машина держится дорог офлайн-карты.</string>
     <!-- NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) -->
     <string name="nogps_version">Версия %s</string>
     <!-- Under the NonGPS Maps version in About, %@ is the Organic Maps version like 2026.10.27-10 -->

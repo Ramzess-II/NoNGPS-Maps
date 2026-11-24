@@ -1194,7 +1194,6 @@
     <string name="nogps_about_globe_jammed">У зоні глушіння жоден із них не досягає авто.</string>
     <!-- About NonGPS Maps, under the globe: %1$d is how many satellites are on, %2$d how many there are -->
     <string name="nogps_about_globe_sats">Увімкнено супутників: %1$d з %2$d</string>
-    <string name="nogps_about_description">Без GPS авто веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю авто з OBD-II. Авто тримається доріг офлайн-карти.</string>
     <!-- NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) -->
     <string name="nogps_version">Версія %s</string>
     <!-- Under the NonGPS Maps version in About, %@ is the Organic Maps version like 2026.10.27-10 -->
