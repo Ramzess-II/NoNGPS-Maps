@@ -46394,8 +46394,8 @@ uk = Блок не прийняв код. Спробуйте ще раз.
 [nogps_phone_recovery_code]
 comment = Shown in the Box sheet under the phones of the box: the code of its recovery window. %s is six digits
 tags = android-app,apple-maps
-en = Recovery code: %s. Write it down. If the box forgets all its phones, plug it in and unplug it within a minute, 3 times, and leave it plugged in the third time: it accepts a new phone for 2 minutes with this code
-uk = Код відновлення: %s. Запишіть його. Якщо блок забуде всі телефони, увімкніть його в живлення й вимкніть протягом хвилини 3 рази, а втретє залиште ввімкненим: 2 хвилини він прийматиме новий телефон із цим кодом
+en = Recovery code: %s. Write it down. If you lose the phones of the box, plug it in and unplug it within a minute, 3 times, and leave it plugged in the third time: for 2 minutes it accepts a new phone with this code, and that phone erases all the other phones of the box. It works only while the box still has phones; with none left, the box asks for 123456
+uk = Код відновлення: %s. Запишіть його. Якщо ви загубили телефони блока, увімкніть його в живлення й вимкніть протягом хвилини 3 рази, а втретє залиште ввімкненим: 2 хвилини він прийматиме новий телефон із цим кодом, і цей телефон зітре всі інші телефони блока. Це лише поки в блока є телефони; без жодного блок питає 123456
 
 [nogps_box_bt_recovery_code]
 comment = Added to the hint under the sensor box steps while the box is not paired with this phone and its recovery code is known. %s is six digits
