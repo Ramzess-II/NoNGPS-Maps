@@ -11412,6 +11412,12 @@ vi = Sáng từ bình minh đến hoàng hôn
 zh-Hans = 从黎明到黄昏使用浅色
 zh-Hant = 從黎明到黃昏都是淺色
 
+[pref_appearance_light_sensor]
+comment = Settings "Appearance" category: "By ambient light" title, switches dark/light by the phone's light sensor, should be consistent with the pref_appearance_title translation.
+tags = android-app
+en = By ambient light
+uk = За освітленням
+
 [donate_description]
 comment = Tex label above the Donate button
 tags = android-app,apple-maps
