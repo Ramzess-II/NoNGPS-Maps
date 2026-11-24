@@ -242,6 +242,15 @@ class ErrorMeterTest(unittest.TestCase):
         self.assertEqual([r.get('err_why') for r in rows], [None] * 8)
         self.assertAlmostEqual(rows[-1]['err_m'], 3.0, delta=0.2)
 
+    def test_fix_without_course(self):
+        # A Wi-Fi fix without speed and course, older each second, can't be moved on: not measured while the car
+        # drives, measured while it stands.
+        wifi = '%.6f,%.6f/20.0/-/-/%.2f/3'
+        rows = self.rows([(s, dict(lat=START_LAT + s * 10 * DEG_PER_M, kmh=36.0, gps=wifi % (START_LAT, START_LON, s)))
+                          for s in range(3)] + [(3, dict(kmh=0.0, gps=wifi % (START_LAT, START_LON, 0)))])
+        self.assertEqual([r.get('err_why') for r in rows], ['nocourse'] * 3 + [None])
+        self.assertAlmostEqual(rows[-1]['err_m'], 3.0, delta=0.2)
+
     def test_fix_of_a_standing_car(self):
         rows = self.rows([(s, dict(kmh=0.0, gps=self.fix(kmh=0))) for s in range(0, 600, 30)])
         self.assertTrue(all('err_m' in r for r in rows))
