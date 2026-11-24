@@ -150,6 +150,30 @@ public class LogFileNameTest
   }
 
   @Test
+  public void ofDays_takesTheFilesATripSplitBySizeGoesOnFrom() throws IOException
+  {
+    final int full = (int) LogFiles.MAX_FILE_SIZE;
+    // Started at 19:00, split by size at 23:30, went on after midnight under the name of the second file.
+    makeFile(path("Pixel_7-a3f9", "2026-11-01", "190000.log"), full, 1);
+    makeFile(path("Pixel_7-a3f9", "2026-11-01", "233000.log"), full, 1);
+    makeFile(path("Pixel_7-a3f9", "2026-11-02", "233000.log"), 10, 1);
+    // A short file before it is another trip, and so is the one after the chain.
+    makeFile(path("Pixel_7-a3f9", "2026-11-01", "080000.log"), 10, 1);
+    makeFile(path("Pixel_7-a3f9", "2026-11-02", "090000.log"), 10, 1);
+    assertEquals(Arrays.asList(path("Pixel_7-a3f9", "2026-11-01", "190000.log"),
+                               path("Pixel_7-a3f9", "2026-11-01", "233000.log"),
+                               path("Pixel_7-a3f9", "2026-11-02", "090000.log"),
+                               path("Pixel_7-a3f9", "2026-11-02", "233000.log")),
+                 relative(LogFiles.ofDays(mFolder.getRoot(), Collections.singleton("2026-11-02"))));
+    // A full file of another phone does not go on into this one.
+    makeFile(path("SM_S918B-0b12", "2026-11-01", "200000.log"), full, 1);
+    assertFalse(relative(LogFiles.ofDays(mFolder.getRoot(), Collections.singleton("2026-11-02")))
+                    .contains(path("SM_S918B-0b12", "2026-11-01", "200000.log")));
+    // The last file of a phone has nothing to go on into.
+    assertEquals(Collections.emptyList(), LogFiles.ofDays(mFolder.getRoot(), Collections.singleton("2026-11-03")));
+  }
+
+  @Test
   public void all_takesTheTreeAndTheFilesNamedAsBefore() throws IOException
   {
     makeTree();

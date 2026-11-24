@@ -9,6 +9,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
@@ -26,6 +27,8 @@ final class LogFiles
   static final long MAX_TOTAL_SIZE = 150_000_000;
   // About 4.5 hours at 6.5 MB an hour.
   static final long MAX_FILE_SIZE = 30_000_000;
+  // A file ends at the first line that brings it to MAX_FILE_SIZE (iOS: that would pass it): not shorter than this.
+  private static final long SPLIT_SLACK = 100_000;
 
   private LogFiles() {}
 
@@ -72,39 +75,48 @@ final class LogFiles
     return name;
   }
 
-  /// The log files of the days, "yyyy-MM-dd", of every phone of the folder, and the files they go on from: a file
+  /// The log files of the days, "yyyy-MM-dd", of every phone of the folder, and the files they go on from. A file
   /// that was started the day before has the same name in the folder of the previous day, so a trip that crossed
-  /// midnight travels with the file it began in. A trip whose file reached MAX_FILE_SIZE before midnight goes on
-  /// under a new name, so the file with its CALIBRATION line is not taken. The files come in the order of the tree.
+  /// midnight travels with the file it began in. A file that reached MAX_FILE_SIZE ended there and the trip went on
+  /// in the next file of the phone, so it travels with it as well. The files come in the order of the tree.
   @NonNull
   static List<File> ofDays(@NonNull File folder, @NonNull Collection<String> days)
   {
     final List<File> files = new ArrayList<>();
     for (File phone : sorted(folder.listFiles(File::isDirectory)))
     {
+      final List<File> all = new ArrayList<>();
       for (File day : sorted(phone.listFiles(File::isDirectory)))
+        Collections.addAll(all, sorted(day.listFiles(file -> file.isFile() && file.getName().endsWith(".log"))));
+      // A file goes on only into later ones: from the last to the first, the chain is known when it is asked.
+      final boolean[] taken = new boolean[all.size()];
+      for (int i = all.size() - 1; i >= 0; --i)
+        taken[i] = days.contains(all.get(i).getParentFile().getName()) || goesOnInto(all, i, taken);
+      for (int i = 0; i < taken.length; ++i)
       {
-        final String name = day.getName();
-        for (File file : sorted(day.listFiles(file -> file.isFile() && file.getName().endsWith(".log"))))
-        {
-          if (days.contains(name) || goesOnInto(phone, name, file.getName(), days))
-            files.add(file);
-        }
+        if (taken[i])
+          files.add(all.get(i));
       }
     }
     return files;
   }
 
-  /// Whether the file goes on, over midnights, in the folder of one of the days. A drive that began in the same
-  /// second as another is "<HHmmss>-2.log", but goes on as "<HHmmss>.log" after midnight, so the files of the next
-  /// day are matched by their time without the suffix. Both drives of that second are taken then.
-  private static boolean goesOnInto(@NonNull File phone, @NonNull String day, @NonNull String fileName,
-                                    @NonNull Collection<String> days)
+  /// Whether the file goes on into a taken one. A drive that began in the same second as another is
+  /// "<HHmmss>-2.log", but goes on as "<HHmmss>.log" after midnight, so the files of the next day are matched by
+  /// their time without the suffix. Both drives of that second go on then.
+  private static boolean goesOnInto(@NonNull List<File> all, int i, @NonNull boolean[] taken)
   {
-    final String stem = startOf(fileName);
-    for (String next = nextDay(day); next != null && hasStart(new File(phone, next), stem); next = nextDay(next))
+    final File file = all.get(i);
+    if (i + 1 < all.size() && taken[i + 1] && file.length() >= MAX_FILE_SIZE - SPLIT_SLACK)
+      return true;
+    final String stem = startOf(file.getName());
+    final String next = nextDay(file.getParentFile().getName());
+    if (next == null)
+      return false;
+    for (int j = i + 1; j < all.size(); ++j)
     {
-      if (days.contains(next))
+      final File other = all.get(j);
+      if (other.getParentFile().getName().equals(next) && startOf(other.getName()).equals(stem) && taken[j])
         return true;
     }
     return false;
@@ -116,12 +128,6 @@ final class LogFiles
   private static String startOf(@NonNull String fileName)
   {
     return fileName.replaceFirst("(-\\d+)?\\.log$", "");
-  }
-
-  private static boolean hasStart(@NonNull File dayFolder, @NonNull String stem)
-  {
-    final File[] files = dayFolder.listFiles(file -> file.isFile() && startOf(file.getName()).equals(stem));
-    return files != null && files.length > 0;
   }
 
   /// The day after the folder name of a day, null when it is not a day.

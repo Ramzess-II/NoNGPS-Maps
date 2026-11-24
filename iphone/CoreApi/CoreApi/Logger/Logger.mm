@@ -36,7 +36,8 @@
 + (void)closeFile;
 + (void)deleteOldestFiles;
 + (NSArray<NSString *> *)logFiles;
-+ (BOOL)logFile:(NSString *)name goesOnInto:(NSSet<NSString *> *)days among:(NSSet<NSString *> *)all;
++ (NSArray<NSString *> *)logFilesOfDays:(NSSet<NSString *> *)days;
++ (BOOL)logFileAtIndex:(NSUInteger)index of:(NSArray<NSString *> *)names goesOnInto:(NSSet<NSString *> *)taken;
 + (nullable NSString *)dayAfter:(NSString *)day;
 + (NSString *)startOfLogFile:(NSString *)fileName;
 + (NSString *)logFileNameStarted:(NSDate *)started now:(NSDate *)now;
@@ -239,49 +240,61 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
   // On the queue: no file is switched or deleted while it is zipped.
   __block NSURL * zipURL;
   [self runSyncOnFileLoggingQueue:^{
-    NSMutableArray<NSString *> * files = [NSMutableArray array];
-    NSArray<NSString *> * names = [self logFiles];
-    NSSet<NSString *> * all = [NSSet setWithArray:names];
-    for (NSString * name in names)
-    {
-      // "<phone>/<yyyy-MM-dd>/<HHmmss>.log": of every phone id.
-      NSArray<NSString *> * parts = name.pathComponents;
-      if (parts.count == 3 && [name.pathExtension isEqualToString:@"log"] &&
-          ([days containsObject:parts[1]] || [self logFile:name goesOnInto:days among:all]))
-        [files addObject:name];
-    }
+    NSArray<NSString *> * files = [self logFilesOfDays:days];
     if (files.count > 0)
       zipURL = [self zipLogFiles:files inFolder:kLogsFolderPath];
   }];
   return zipURL;
 }
 
-/// Whether the file goes on, over midnights, in the folder of one of the days: the next day has a file of the same
-/// start time, so a trip that crossed midnight travels with the file it began in. A drive that began in the same
-/// second as another is "<HHmmss>-2.log" but goes on as "<HHmmss>.log", so the files are matched without the suffix
-/// and both drives of that second are taken. A trip whose file reached kMaxLogFileSize before midnight goes on under
-/// a new name, so the file with its CALIBRATION line is not taken.
-+ (BOOL)logFile:(NSString *)name goesOnInto:(NSSet<NSString *> *)days among:(NSSet<NSString *> *)all
+/// The log files of the days "yyyy-MM-dd", of every phone, and the files they go on from. A trip that crossed midnight
+/// travels with the file it began in: the next day has a file of the same start time. A drive that began in the same
+/// second as another is "<HHmmss>-2.log" but goes on as "<HHmmss>.log", so the files are matched without the suffix and
+/// both drives of that second are taken. A file that reached kMaxLogFileSize ended there and the trip went on in the
+/// next file of the phone, so it travels with it as well.
++ (NSArray<NSString *> *)logFilesOfDays:(NSSet<NSString *> *)days
 {
-  NSArray<NSString *> * parts = name.pathComponents;
-  NSString * start = [self startOfLogFile:parts[2]];
-  NSString * day = parts[1];
-  while ((day = [self dayAfter:day]) != nil)
+  NSArray<NSString *> * names = [self logFiles];
+  NSMutableSet<NSString *> * taken = [NSMutableSet set];
+  // A file goes on only into later ones: from the last to the first, the chain is known when it is asked.
+  for (NSInteger i = names.count - 1; i >= 0; --i)
   {
-    BOOL found = NO;
-    for (NSString * other in all)
-    {
-      NSArray<NSString *> * otherParts = other.pathComponents;
-      if (otherParts.count == 3 && [otherParts[0] isEqualToString:parts[0]] && [otherParts[1] isEqualToString:day] &&
-          [[self startOfLogFile:otherParts[2]] isEqualToString:start])
-      {
-        found = YES;
-        break;
-      }
-    }
-    if (!found)
-      return NO;
-    if ([days containsObject:day])
+    // "<phone>/<yyyy-MM-dd>/<HHmmss>.log": of every phone id.
+    NSArray<NSString *> * parts = names[i].pathComponents;
+    if (parts.count == 3 && [names[i].pathExtension isEqualToString:@"log"] &&
+        ([days containsObject:parts[1]] || [self logFileAtIndex:i of:names goesOnInto:taken]))
+      [taken addObject:names[i]];
+  }
+  NSMutableArray<NSString *> * files = [NSMutableArray array];
+  for (NSString * name in names)
+    if ([taken containsObject:name])
+      [files addObject:name];
+  return files;
+}
+
++ (BOOL)logFileAtIndex:(NSUInteger)index of:(NSArray<NSString *> *)names goesOnInto:(NSSet<NSString *> *)taken
+{
+  NSString * name = names[index];
+  NSArray<NSString *> * parts = name.pathComponents;
+  // A file ends at the first line that would bring it to kMaxLogFileSize: not shorter than a line.
+  unsigned long long const kSplitSlack = 100'000;
+  unsigned long long const size =
+      [NSFileManager.defaultManager attributesOfItemAtPath:[kLogsFolderPath stringByAppendingPathComponent:name]
+                                                     error:nil]
+          .fileSize;
+  if (size + kSplitSlack >= kMaxLogFileSize && index + 1 < names.count && [taken containsObject:names[index + 1]] &&
+      [names[index + 1].pathComponents.firstObject isEqualToString:parts[0]])
+    return YES;
+
+  NSString * start = [self startOfLogFile:parts[2]];
+  NSString * next = [self dayAfter:parts[1]];
+  if (next == nil)
+    return NO;
+  for (NSUInteger j = index + 1; j < names.count; ++j)
+  {
+    NSArray<NSString *> * otherParts = names[j].pathComponents;
+    if (otherParts.count == 3 && [otherParts[0] isEqualToString:parts[0]] && [otherParts[1] isEqualToString:next] &&
+        [[self startOfLogFile:otherParts[2]] isEqualToString:start] && [taken containsObject:names[j]])
       return YES;
   }
   return NO;
