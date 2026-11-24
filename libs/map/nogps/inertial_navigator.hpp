@@ -563,6 +563,7 @@ private:
   void CheckTurnSign(Fix const & gps);
   /// \returns the speed the box tells in the unit of the car, see SpeedUnit.
   int ConvertSpeed(int rawSpeedKmh) const;
+  bool IsObdNoSpeed(int rawSpeedKmh) const;
   double GetSpeedScale(int speedKmh) const;
   void SaveSpeedTable();
   void LogSpeedCalibration() const;

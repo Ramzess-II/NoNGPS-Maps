@@ -6249,6 +6249,17 @@ UNIT_TEST(NoGps_Engine_ObdSpeed255AfterWakeDoesNotMoveMark)
   TestAlmostEqualAbs(East(env.Last().m_position), east, 2);
 }
 
+UNIT_TEST(NoGps_Engine_ObdSpeed255AfterWakeIsNoPothole)
+{
+  Env env(true /* inertial */);
+  MarkCar(env, 50);
+  env.Drive(2000, 0, 0);
+  // A door slam while the ECU says 255.
+  env.Jolt(255, 12);
+  env.Drive(1500, 0, 0);
+  TEST(env.m_engine.GetPotholes().empty(), ());
+}
+
 UNIT_TEST(NoGps_Engine_BoxAccelerometerTellsSpeedBeforeCar)
 {
   // The car reports the new speed late. The distance it has driven meanwhile is added when it does, so the
