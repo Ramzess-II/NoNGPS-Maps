@@ -198,6 +198,17 @@ public:
   int64_t GetAddPhoneMsLeft() const;
 
 private:
+  /// What the box has told about switching itself off until it is unplugged, see OnEvent() and GetState().
+  enum class BatteryLock
+  {
+    None,
+    // BATT_LOCK came over the link that is up now: the box goes on sending data for a second after the event.
+    Told,
+    // The link that told it is lost. The box heard again over a new one has been plugged back in: switched off, it
+    // could not answer.
+    LinkLost,
+  };
+
   // Esp32Update::Link overrides:
   int SendUpdateCommand(std::string const & command) override;
   void SendFirmwarePiece(std::string const & piece) override;
@@ -268,6 +279,9 @@ private:
   std::optional<CarInfo> m_carInfo;
   // The box has told that its voltage and the one of ELM327 differ. Kept until they come close again.
   bool m_voltageMismatch = false;
+  // The box has told it is off until it is unplugged (BATT_LOCK). Kept over the lost link until the box is heard
+  // again: it goes on sending data for a second after the event.
+  BatteryLock m_batteryLock = BatteryLock::None;
   // The numbers of the events of the box written to the log.
   std::set<int64_t> m_loggedEvents;
   std::optional<int64_t> m_eventsRequestMs;

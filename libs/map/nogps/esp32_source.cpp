@@ -67,6 +67,7 @@ void Esp32Source::Stop()
   m_dataTimesMs.clear();
   m_hasLast = false;
   m_lastDataMs.reset();
+  m_batteryLock = BatteryLock::None;
   m_speedKmh = -1;
   m_wakingLinkMs.reset();
   m_info.reset();
@@ -415,6 +416,8 @@ void Esp32Source::OnBleState(BleState state, bool bondLost)
     ForgetCarRequests();
     ForgetPhoneRequests();
     ForgetJournal();
+    if (m_batteryLock == BatteryLock::Told)
+      m_batteryLock = BatteryLock::LinkLost;
     if (m_calibrationId != 0)
     {
       LOG(LWARNING, ("The link is lost during the calibration"));
@@ -708,6 +711,11 @@ void Esp32Source::OnData(esp32::Data const & data)
   int const lastFlags = m_flags;
   m_lastDataMs = now;
   m_wakingLinkMs.reset();
+  // The box answers over a link made after the one that told the lockout: switched off it could not, so it has been
+  // plugged back in. Its own time doesn't tell that by itself: the box may have locked seconds after a power-on and
+  // be heard later than that, and a time that has run past 2^31 ms looks wrapped around after the restart.
+  if (m_batteryLock == BatteryLock::LinkLost)
+    m_batteryLock = BatteryLock::None;
   m_dataTimesMs.push_back(now);
   while (now - m_dataTimesMs.front() >= kDataTimeoutMs)
     m_dataTimesMs.pop_front();
@@ -758,6 +766,8 @@ void Esp32Source::OnData(esp32::Data const & data)
     LOG(LINFO, ("The box has restarted"));
     ForgetJournal();
     m_hasLast = false;
+    // The data after BATT_LOCK, which the box sends for a second more, doesn't drop the lockout hint, a restart does.
+    m_batteryLock = BatteryLock::None;
   }
 
   // The box sends the totals: a lost line loses nothing, the next one has the rotation.
@@ -859,7 +869,13 @@ void Esp32Source::OnEvent(esp32::Event const & event)
     m_voltageMismatch = true;
   else if (event.m_code == "VOLT_CAL")
     m_voltageMismatch = false;
-  // "fw 0.3.3 reset POWERON": the box was plugged in. It restarts by itself for other reasons.
+  // The box has switched itself off until it is unplugged. A journal replay of an event older than one seen (a later
+  // BOOT, say) must not bring the lock back.
+  else if (event.m_code == "BATT_LOCK" && event.m_number > lastNumber)
+    m_batteryLock = BatteryLock::Told;
+  // "fw 0.3.3 reset POWERON": the box was plugged in. It restarts by itself for other reasons. A BOOT doesn't drop
+  // the lockout hint: the box sends it only in the journal of the link, after the events of this link, so the BOOT
+  // of a new power-on can't be told from the replayed one of the locked power-on. The data of the new link do.
   else if (event.m_code == "BOOT")
     m_poweredOn = event.m_text.ends_with("reset POWERON");
   else if (event.m_code == "BT_PAIR_OPEN" && m_addPhone && m_addPhone->m_openEvent < 0 &&
@@ -953,7 +969,11 @@ SourceState Esp32Source::GetState() const
   if (m_update.IsActive())
     return SourceState::Updating;
   if (!IsConnected())
+  {
+    if (m_batteryLock != BatteryLock::None)
+      return SourceState::BoxBatteryLock;
     return IsSleeping() ? SourceState::BoxSleeping : SourceState::Connecting;
+  }
   if (m_flags & esp32::kFlagObdOk)
     return SourceState::Connected;
   if (m_obdState == "SLEEP")
