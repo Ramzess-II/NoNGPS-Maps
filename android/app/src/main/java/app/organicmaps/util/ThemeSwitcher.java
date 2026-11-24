@@ -35,7 +35,9 @@ public enum ThemeSwitcher
     mContext = context;
     mSynchronizedThemeController =
         new SynchronizedThemeController(MwmApplication.from(context).getLocationHelper(), this::setTheme);
-    mLightSensorThemeController = new LightSensorThemeController(context, this::setTheme);
+    // initOrganicMaps() runs again with the core up: a second controller would be an orphan that keeps the sensor.
+    if (mLightSensorThemeController == null)
+      mLightSensorThemeController = new LightSensorThemeController(context, this::setTheme);
   }
 
   public boolean isLightSensorAvailable()
