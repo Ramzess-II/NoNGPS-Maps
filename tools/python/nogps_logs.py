@@ -243,6 +243,7 @@ def mail_container(folder, target, notes):
     by_time = collections.defaultdict(list)
     for stem in stems:
         by_time[stem[9:]].append(stem)
+    matched = set()
     for m in MAIL_LINE.finditer(text):
         n, hh, mm, ss, lat, lon, voice = m.groups()
         candidates = by_time.get(hh + mm + ss, [])
@@ -251,6 +252,7 @@ def mail_container(folder, target, notes):
                                                             if candidates else 'no attachment has its time'))
             continue
         stem = candidates[0]
+        matched.add(stem)
         values = {'n': int(n), 'voice_s': int(voice or 0), 'sent': True}
         if lat is not None:
             values.update(lat=float(lat), lon=float(lon))
@@ -259,6 +261,8 @@ def mail_container(folder, target, notes):
             json.dump(values, f)
         for name in stems[stem]:
             shutil.copyfile(os.path.join(folder, name), os.path.join(flags, name))
+    for stem in sorted(set(stems) - matched):
+        notes.append('%s: no FLAG line of the mail text has its time, attachments skipped' % stem)
 
 
 def merge(container, tree, notes, keep_json=False):
@@ -306,7 +310,8 @@ def merge(container, tree, notes, keep_json=False):
             continue
         phone = phones.most_common(1)[0][0]
         done = copy_if(os.path.join(flags, name), os.path.join(tree, phone, day, nogps_db.FLAG_FOLDER, name),
-                       (lambda *_: False) if keep_json else differs if m.group(2) == 'json' else bigger)
+                       (lambda *_: False) if keep_json and m.group(2) == 'json'
+                       else differs if m.group(2) == 'json' else bigger)
         if done:
             counts['changed flag files' if done == 'changed' else 'new flag files'] += 1
             changed.add((phone, day))

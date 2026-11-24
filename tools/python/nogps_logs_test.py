@@ -177,6 +177,23 @@ class FetchTest(unittest.TestCase):
         with open(self.tree_file('2026-11-24', 'flags', '20261124-180130.json')) as f:
             self.assertEqual(json.load(f)['voice_s'], 3)
 
+    def test_a_mail_replaces_a_shorter_attachment_of_the_tree(self):
+        self.app_log('2026-11-24', '180000.log', [header(utc_ms('2026-11-24 16:00:00'))] + GOOD[1:])
+        write_flag(os.path.join(self.app, 'flags'), '20261124-180130', dict(n=1, voice_s=3, sent=False))
+        with open(os.path.join(self.app, 'flags', '20261124-180130.m4a'), 'wb') as f:
+            f.write(b'v' * 3)
+        self.fetch()
+        self.mail(['FLAG 1 18:01:30 no position voice 12 s'],
+                  files=[('20261124-180130.m4a', b'v' * 10)])
+        self.fetch_mail()
+        path = self.tree_file('2026-11-24', 'flags', '20261124-180130.m4a')
+        self.assertEqual(os.path.getsize(path), 10)
+
+    def test_an_attachment_without_a_flag_line_is_told(self):
+        self.mail([], files=[('20261124-180130.png', b'\x89PNG')])
+        self.assertIn('20261124-180130: no FLAG line of the mail text has its time, attachments skipped',
+                      self.fetch_mail())
+
     def test_a_flag_of_a_mail_without_logs_in_it_has_no_phone(self):
         self.mail(['FLAG 1 18:01:30 no position'], zipped=False, files=[('20261124-180130.png', b'\x89PNG')])
         self.assertIn('no log of its day tells its phone, skipped', self.fetch_mail())
