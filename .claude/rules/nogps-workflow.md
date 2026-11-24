@@ -119,10 +119,10 @@ branch is checked out in the main checkout or a worktree -- the train would push
 there.
 
 The train lands the PRs of both repos: each PR of its queue carries its repo, and a firmware PR is prepped in a
-worktree of `firmware/` whose name ends in `-fw`, off `origin/main` (that repo has no `master`). `ELMandIMU` gets a
-CI build of a PR for S3 and C3 (`.github/workflows/build.yml`, a throwaway signing key) in ELMandIMU#28, but GitHub
-Actions has started no run in that repo yet (ELMandIMU#29), so the gate's `idf.py build` of the PR merged into `main`
-is still the only check a firmware PR gets and the train waits for no check there; the worktree needs `keys/` linked
+worktree of `firmware/` whose name ends in `-fw`, off `origin/main` (that repo has no `master`). A firmware PR gets a CI
+build for S3 and C3 (`.github/workflows/build.yml`, a throwaway signing key) and the gate waits for its checks like
+for an app PR, besides its own `idf.py build` of the PR merged into `main`, which is the only one with the main
+checkout's `sdkconfig`; the worktree needs `keys/` linked
 and `sdkconfig` copied from the main checkout, both gitignored there, or the build is unsigned or built for the wrong
 chip. Two PRs that touch `iphone/` or `xcode/` are never prepped at once: nothing in the train builds iOS, so only
 one of them goes into the parallel set.
