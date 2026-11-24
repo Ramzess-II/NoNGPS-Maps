@@ -321,6 +321,39 @@ class Commands(unittest.TestCase):
             made.on_event('write', 'p%d' % number, command(1, 'HELLO,Phone %d,1' % number))
         self.assertEqual(len(made.bonds), 4)
 
+    def test_advertisement_flags_follow_the_bonds(self):
+        made, _, _ = box()
+        connect(made)
+        self.assertEqual((made.state.adv['has_phones'], made.state.adv['full']), (True, False))
+        for number in range(1, 5):
+            made.on_event('connect', 'p%d' % number, 'P')
+            made.on_event('write', 'p%d' % number, command(1, 'HELLO,Phone %d,1' % number))
+        self.assertTrue(made.state.adv['full'])
+        made.forget_all()
+        self.assertEqual((made.state.adv['has_phones'], made.state.adv['full']), (False, False))
+
+    def test_an_unbonded_fifth_phone_does_not_change_the_box(self):
+        made, radio, clock = box()
+        connect(made)
+        for number in range(1, 4):
+            made.on_event('connect', 'p%d' % number, 'P')
+            made.on_event('write', 'p%d' % number, command(1, 'HELLO,Phone %d,1' % number))
+        clock.pass_s(1000)
+        made.on_event('connect', 'p9', 'P')
+        made.on_event('write', 'p9', command(1, 'HELLO,Phone 9,1'))
+        self.assertIsNone(made.changer())
+        made.on_event('write', 'p9', command(2, 'BT_RECOVERY'))
+        self.assertEqual(self.answers(made, radio)[-1], ['ERR', 'BUSY'])
+
+    def test_a_phone_that_forgot_itself_is_not_bonded_again_before_its_drop(self):
+        made, radio, _ = box()
+        connect(made)
+        made.on_event('write', PHONE, command(2, 'BT_LIST'))
+        address = self.answers(made, radio)[0][1].split('|')[0]
+        made.on_event('write', PHONE, command(3, 'BT_FORGET,' + address))
+        made.on_event('write', PHONE, command(4, 'HELLO,Phone,1'))
+        self.assertEqual(len(made.bonds), 0)
+
     def test_forgetting_one_phone(self):
         made, radio, clock = box()
         connect(made)

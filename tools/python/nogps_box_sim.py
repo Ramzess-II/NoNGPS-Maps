@@ -465,9 +465,18 @@ class Box:
     def bond(self, phone):
         """Section 9.5: the box remembers the phone, its name and time, for BT_LIST; a full box bonds no fifth."""
         address = bond_address(self.auth_phone(phone))
-        if address not in self.bonds and len(self.bonds) >= MAX_BONDS:
-            return
+        if address not in self.bonds:
+            # A new phone is bonded only in the pairing window, and not while its forgotten link is being dropped.
+            if (len(self.bonds) >= MAX_BONDS or not self.state.adv['pairing_open']
+                    or phone.id in self.dropping_at or phone.id in self.dropping):
+                return
         self.bonds[address] = {'name': phone.name, 'unix_s': phone.unix_s}
+        self.sync_adv()
+
+    def sync_adv(self):
+        """The advertisement flags follow the bond list (BLE-12): has_phones with any bond, full at MAX_BONDS."""
+        self.state.adv['has_phones'] = bool(self.bonds)
+        self.state.adv['full'] = len(self.bonds) >= MAX_BONDS
 
     def address_of(self, phone):
         return bond_address(self.auth_phone(phone))
@@ -476,7 +485,7 @@ class Box:
         """The phone that changes the box and the one it listens to: the first that sent HELLO, while its session
         lasts (9.5). None when there is no such phone."""
         now = self.clock()
-        live = [p for p in self.phones.values() if p.hello_order and p.in_session(now)]
+        live = [p for p in self.phones.values() if p.hello_order and p.in_session(now) and self.address_of(p) in self.bonds]
         return min(live, key=lambda p: p.hello_order) if live else None
 
     def bt_command(self, phone, name, rest):
@@ -519,12 +528,14 @@ class Box:
                     self.dropping_at[phone.id] = self.clock() + drop_after
                 else:
                     self.dropping.add(phone.id)
+        self.sync_adv()
         self.save_keys()
 
     def forget_all(self):
         """BT_FORGET without an address: no bond is left, the links stay."""
         self.bonds.clear()
         self.auth_keys.clear()
+        self.sync_adv()
         self.save_keys()
 
     @staticmethod
