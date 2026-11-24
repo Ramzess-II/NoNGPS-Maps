@@ -27,6 +27,7 @@ import argparse
 import collections
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -40,6 +41,8 @@ IOS_APPS = ('com.non-gps', 'com.non-gps.debug')
 ANDROID_PACKAGES = 'ua.nogps'
 DB_FOLDER = 'db'
 COPY_TIMEOUT_S = 600
+# A phone id as the apps make it, Pixel_7-a3f9: anything else in a LOGFMT line would put a file outside the tree.
+PHONE_ID = re.compile(r'^\w[\w.-]*$')
 # What merge() counts, in the order of the summary.
 COUNTS = ('new logs', 'grown logs', 'new flag files', 'changed flag files', 'logs of the earlier names skipped',
           'OSLog texts without LOGFMT skipped')
@@ -63,6 +66,21 @@ def run(command, timeout=COPY_TIMEOUT_S):
     return done.returncode, done.stdout, done.stderr
 
 
+def read_result(path, key, label, notes):
+    """The list |key| of the "result" of a JSON file of devicectl, None with a note when it has none."""
+    try:
+        with open(path) as f:
+            return json.load(f)['result'][key]
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        notes.append('%s: devicectl gave no %s: %r' % (label, key, e))
+        return None
+
+
+def folder_name(text):
+    """|text| as a folder name: a wireless adb serial has ":"."""
+    return re.sub(r'[^\w.-]', '_', text)
+
+
 def ios_containers(devices, folder, notes):
     """[(label, folder of logs/ and flags/)] of the apps IOS_APPS on the iPhones plugged in by wire, or the ones of
     |devices| (an identifier, the UDID or the name), copied into |folder| by devicectl."""
@@ -74,10 +92,9 @@ def ios_containers(devices, folder, notes):
     if code:
         notes.append('devicectl list devices failed: %s' % err.strip()[-300:])
         return []
-    with open(listing) as f:
-        found = json.load(f)['result']['devices']
+    found = read_result(listing, 'devices', 'list devices', notes)
     result = []
-    for device in found:
+    for device in found or []:
         hardware, connection = device.get('hardwareProperties', {}), device.get('connectionProperties', {})
         name = device.get('deviceProperties', {}).get('name', '')
         ids = {device.get('identifier'), hardware.get('udid'), name}
@@ -94,8 +111,7 @@ def ios_containers(devices, folder, notes):
         if code:
             notes.append('%s: devicectl could not list the apps: %s' % (name, err.strip()[-300:]))
             continue
-        with open(apps_path) as f:
-            apps = {a.get('bundleIdentifier'): a for a in json.load(f)['result']['apps']}
+        apps = {a.get('bundleIdentifier'): a for a in read_result(apps_path, 'apps', name, notes) or []}
         for bundle in IOS_APPS:
             if bundle not in apps:
                 continue
@@ -103,7 +119,7 @@ def ios_containers(devices, folder, notes):
             if not apps[bundle].get('containerAccessible', True):
                 notes.append('%s: the app has no container to read (installed from the App Store)' % label)
                 continue
-            target = os.path.join(folder, '%s-%s' % (udid, bundle))
+            target = os.path.join(folder, folder_name('%s-%s' % (udid, bundle)))
             os.makedirs(target)
             for part in ('logs', nogps_db.FLAG_FOLDER):
                 code, _, err = run(['xcrun', 'devicectl', 'device', 'copy', 'from', '--device', udid,
@@ -143,7 +159,7 @@ def android_containers(devices, folder, notes):
             if 'Permission denied' in out + err:
                 notes.append('%s: the phone refuses access to Android/data, nothing fetched' % label)
                 continue
-            target = os.path.join(folder, '%s-%s' % (serial, package))
+            target = os.path.join(folder, folder_name('%s-%s' % (serial, package)))
             os.makedirs(target)
             for part in ('logs', nogps_db.FLAG_FOLDER):
                 if part not in out.split():
@@ -197,6 +213,9 @@ def merge(container, tree, notes):
         if header['logfmt'] is None:
             counts['OSLog texts without LOGFMT skipped'] += 1
             continue
+        if not PHONE_ID.match(header['phone']):
+            notes.append('%s: the phone id %r is no folder name, skipped' % (relative, header['phone']))
+            continue
         day = os.path.basename(os.path.dirname(path))
         day_phones[day][header['phone']] += 1
         done = copy_if(path, os.path.join(tree, header['phone'], day, os.path.basename(path)), bigger)
@@ -226,16 +245,18 @@ def merge(container, tree, notes):
 
 
 def import_days(tree, days, notes):
-    """Imports the |days| {(phone, day)} of |tree| into <tree>/db. Returns the days whose import failed."""
-    failed = []
+    """Imports the |days| {(phone, day)} of |tree| into <tree>/db. Returns {(phone, day): what came of it}."""
+    result = {}
     for phone, day in sorted(days):
         folder = os.path.join(tree, phone, day)
         try:
-            nogps_db.import_tree([folder], os.path.join(tree, DB_FOLDER))
+            imported = nogps_db.import_tree([folder], os.path.join(tree, DB_FOLDER))
+            # A day of flags only has no database: the database is of the logs.
+            result[(phone, day)] = 'imported' if imported else 'no logs, not imported'
         except (nogps_db.ImportError_, nogps_trip_log.LogFormatError) as e:
             notes.append('import of %s %s failed: %s' % (phone, day, e))
-            failed.append((phone, day))
-    return failed
+            result[(phone, day)] = 'import failed'
+    return result
 
 
 def fetch_command(args):
@@ -253,9 +274,9 @@ def fetch_command(args):
             changed |= days
             print('%s: %s' % (label, ', '.join('%d %s' % (counts[what], what) for what in COUNTS if counts[what])
                                or 'nothing new'))
-    failed = import_days(args.to, changed, notes)
-    for phone, day in sorted(changed):
-        print('%s %s: %s' % (phone, day, 'import failed' if (phone, day) in failed else 'imported'))
+    imported = import_days(args.to, changed, notes)
+    for (phone, day), what in sorted(imported.items()):
+        print('%s %s: %s' % (phone, day, what))
     for note in notes:
         print('note:', note)
     if changed:
@@ -271,7 +292,7 @@ def fetch_command(args):
             nogps_log.print_trips(analysis, False)
             print()
             nogps_log.print_flags(analysis)
-    if failed:
+    if 'import failed' in imported.values():
         sys.exit(1)
 
 

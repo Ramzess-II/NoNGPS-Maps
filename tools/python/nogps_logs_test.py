@@ -112,13 +112,20 @@ class FetchTest(unittest.TestCase):
         write_flag(os.path.join(self.app, 'flags'), '20261120-100000', dict(n=1, voice_s=0, sent=False))
         out = self.fetch()
         self.assertTrue(os.path.isfile(self.tree_file('2026-11-20', 'flags', '20261120-100000.json')))
-        self.assertIn('%s 2026-11-20: imported' % PHONE, out)
+        self.assertIn('%s 2026-11-20: no logs, not imported' % PHONE, out)
 
     def test_a_flag_whose_phone_is_unknown_is_skipped(self):
         write_flag(os.path.join(self.app, 'flags'), '20261120-100000', dict(n=1, voice_s=0, sent=False))
         out = self.fetch()
         self.assertIn('flags/20261120-100000.json: no log of its day tells its phone, skipped', out)
         self.assertFalse(os.path.exists(self.tree))
+
+
+    def test_a_phone_id_that_is_no_folder_name_is_skipped(self):
+        self.app_log('2026-11-24', '180000.log', [header(utc_ms('2026-11-24 16:00:00'), phone='..')] + GOOD[1:])
+        out = self.fetch()
+        self.assertIn("the phone id '..' is no folder name, skipped", out)
+        self.assertEqual(os.listdir(self.dir.name), ['app'])
 
 
 class DevicesTest(unittest.TestCase):
@@ -128,6 +135,21 @@ class DevicesTest(unittest.TestCase):
             self.assertEqual(nogps_logs.ios_containers(None, '.', notes), [])
             self.assertEqual(nogps_logs.android_containers(None, '.', notes), [])
         self.assertEqual(notes, ['no xcrun: iOS skipped, it is fetched on macOS', 'no adb: Android skipped'])
+
+    def test_devicectl_without_its_result_is_a_note(self):
+        def run(command, timeout=0):
+            with open(command[-1], 'w') as f:
+                f.write('{"info": {}}')
+            return 0, '', ''
+        notes = []
+        with tempfile.TemporaryDirectory() as folder, \
+                mock.patch.object(nogps_logs.shutil, 'which', lambda name: '/bin/' + name), \
+                mock.patch.object(nogps_logs, 'run', run):
+            self.assertEqual(nogps_logs.ios_containers(None, folder, notes), [])
+        self.assertEqual(notes, ["list devices: devicectl gave no devices: KeyError('result')"])
+
+    def test_a_wireless_serial_makes_a_folder(self):
+        self.assertEqual(nogps_logs.folder_name('192.168.1.5:5555-ua.nogps.maps'), '192.168.1.5_5555-ua.nogps.maps')
 
     def test_android_refusing_its_data_folder_is_told(self):
         answers = {('adb', 'devices'): 'List of devices attached\nR58\tdevice\nX1\tunauthorized\n',
