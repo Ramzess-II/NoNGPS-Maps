@@ -71,8 +71,8 @@ const RM_WT = (name) =>
   name.endsWith('-fw')
     ? `git -C ${FIRMWARE} worktree remove --force ${WT(name)}`
     : `${APP}/tools/unix/nogps_worktree.sh remove ${WT(name)}`
-// The firmware build, the only check of a firmware PR. A missing toolchain or signing key is not a test failure:
-// nothing was built, so the gate refuses to merge the PR ("blocked") and says why.
+// The firmware build of the PR merged into main: the only build that uses the main checkout's sdkconfig. A missing toolchain or
+// signing key is not a test failure: nothing was built, so the gate refuses to merge the PR ("blocked") and says why.
 const FW_BUILD = (name) => `cd ${WT(name)} && . ~/esp/esp-idf/export.sh >/dev/null && idf.py build`
 
 // The skill splits the queue in step 3. args.queue, the single queue of the serial train, is taken as the serial
