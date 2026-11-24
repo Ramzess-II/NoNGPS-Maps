@@ -50,9 +50,6 @@ final class Esp32BleTransport: NSObject {
     // A known box that connects but sends nothing again and again has forgotten the phone (BLE-15). After a parking up
     // to 3 connections in a row stay silent, the next one works (#154).
     static let maxSilentConnections = 6
-    // A connection whose HELLO write the box refused for its whole length is a certain answer (BLE-15), not a guess:
-    // two in a row show the hint. One may be a connection iOS still encrypts (#154).
-    static let maxRefusedConnections = 2
     // Silent connections further apart are not counted together: the box has slept in between.
     static let silentConnectionsGap: TimeInterval = 180
     // A shorter connection was lost by the radio, it is not counted: the box asks for the encryption 1.5 s after the
@@ -95,11 +92,7 @@ final class Esp32BleTransport: NSObject {
   private var linkedTime: TimeInterval?
   /// Silent connections to a known box in a row, the last one ended at lastSilentTime.
   private var silentConnections = 0
-  /// Of them, the connections whose HELLO write was refused to the end, BLE-15.
-  private var refusedConnections = 0
   private var lastSilentTime: TimeInterval = 0
-  /// The last write before the box was heard was refused as Insufficient Authentication or Encryption.
-  private var isRefused = false
   /// Too many silent connections: the lost-pairing hint is shown, and the search goes on once a minute.
   private var isBondLost = false
   /// What the core was told with the last state.
@@ -149,7 +142,6 @@ final class Esp32BleTransport: NSObject {
     isOpen = true
     retryDelay = Constants.retryDelay
     silentConnections = 0
-    refusedConnections = 0
     isBondLost = false
     triedClosed.removeAll()
     // A scan started in the background reports a box once: start it again to see the boxes near now.
@@ -200,7 +192,6 @@ final class Esp32BleTransport: NSObject {
     }
     retryDelay = Constants.retryDelay
     silentConnections = 0
-    refusedConnections = 0
     isBondLost = false
     triedClosed.removeAll()
     start()
@@ -217,7 +208,6 @@ final class Esp32BleTransport: NSObject {
     closeConnection()
     retryDelay = Constants.retryDelay
     silentConnections = 0
-    refusedConnections = 0
     isBondLost = false
     triedClosed.removeAll()
     start()
@@ -474,7 +464,6 @@ final class Esp32BleTransport: NSObject {
     ota = nil
     isReady = false
     isHeard = false
-    isRefused = false
     acceptsNewPhone = false
     closedTry = nil
     isKnown = false
@@ -489,8 +478,7 @@ final class Esp32BleTransport: NSObject {
     let end = Self.afterConnection(
       heard: isHeard, known: isKnown, closedTry: closedTry != nil, worked: isReady,
       linkedFor: linkedTime.map { now - $0 }, silentConnections: silentConnections,
-      refusedConnections: refusedConnections, refused: isRefused, sinceLastSilent: now - lastSilentTime,
-      bondLost: isBondLost, retryDelay: retryDelay
+      sinceLastSilent: now - lastSilentTime, bondLost: isBondLost, retryDelay: retryDelay
     )
     let tried = closedTry
     closeConnection()
@@ -507,14 +495,9 @@ final class Esp32BleTransport: NSObject {
       lastSilentTime = now
     }
     if end.bondLost, !isBondLost {
-      LOG(
-        .warning,
-        "The box has forgotten the phone: \(end.silentConnections) silent connections, "
-          + "\(end.refusedConnections) with a refused HELLO"
-      )
+      LOG(.warning, "The box has forgotten the phone: \(end.silentConnections) silent connections")
     }
     silentConnections = end.silentConnections
-    refusedConnections = end.refusedConnections
     isBondLost = end.bondLost
     retryDelay = end.retryDelay
     setState(searchState)
@@ -551,9 +534,7 @@ final class Esp32BleTransport: NSObject {
     /// The connection to a known box lasted but gave no data.
     var isSilent = false
     var silentConnections = 0
-    /// Silent connections of them that ended with a refused HELLO write.
-    var refusedConnections = 0
-    /// Six silent or two refused connections in a row: the hint is shown, the search goes on.
+    /// Six silent connections in a row: the hint is shown, the search goes on.
     var bondLost = false
     var retryDelay: TimeInterval
   }
@@ -561,10 +542,9 @@ final class Esp32BleTransport: NSObject {
   /// What follows a connection that ended. A silent connection is not a proof of a lost bond (#154), so the search
   /// goes on once a minute after the hint.
   static func afterConnection(heard: Bool, known: Bool, closedTry: Bool, worked: Bool, linkedFor: TimeInterval?,
-                              silentConnections: Int, refusedConnections: Int, refused: Bool,
-                              sinceLastSilent: TimeInterval, bondLost: Bool, retryDelay: TimeInterval) -> ConnectionEnd {
-    var end = ConnectionEnd(silentConnections: silentConnections, refusedConnections: refusedConnections,
-                            bondLost: bondLost,
+                              silentConnections: Int, sinceLastSilent: TimeInterval, bondLost: Bool,
+                              retryDelay: TimeInterval) -> ConnectionEnd {
+    var end = ConnectionEnd(silentConnections: silentConnections, bondLost: bondLost,
                             retryDelay: worked ? Constants.retryDelay
                               : min(Constants.maxRetryDelay, retryDelay * 2))
     // A box with a closed window that was tried is not paired, or the user can't tell: it is no silent connection.
@@ -577,20 +557,11 @@ final class Esp32BleTransport: NSObject {
     end.isSilent = true
     end.silentConnections = inRow ? silentConnections + 1 : 1
     // A gap of more than 3 min starts the count again, but only the data of the box take the hint away.
-    // A refused connection in a row of refused ones; a silent one that was not refused breaks that row.
-    end.refusedConnections = refused ? (inRow ? refusedConnections + 1 : 1) : 0
     end.bondLost = bondLost || end.silentConnections >= Constants.maxSilentConnections
-      || end.refusedConnections >= Constants.maxRefusedConnections
     if end.bondLost {
       end.retryDelay = Constants.maxRetryDelay
     }
     return end
-  }
-
-  /// The box refuses a write of a link that is not encrypted (BLE-15).
-  static func isRefusal(_ error: Error?) -> Bool {
-    guard let code = (error as? CBATTError)?.code else { return false }
-    return code == .insufficientAuthentication || code == .insufficientEncryption
   }
 
   /// Whether the user's Try again searches the box now. A connection open while the lost-pairing hint is shown is a
@@ -793,7 +764,6 @@ extension Esp32BleTransport: CBPeripheralDelegate {
     if !isHeard {
       isHeard = true
       silentConnections = 0
-      refusedConnections = 0
       isBondLost = false
       // The probe is a link now.
       setState(state)
@@ -812,13 +782,10 @@ extension Esp32BleTransport: CBPeripheralDelegate {
   func peripheral(_ peripheral: CBPeripheral, didWriteValueFor _: CBCharacteristic, error: Error?) {
     guard peripheral === self.peripheral else { return }
     isWriting = false
-    // "Insufficient Authentication" while iOS encrypts the connection. The box has forgotten the phone if it keeps
-    // coming to the end of the connection (docs/nogps/esp32-firmware-spec.md, BLE-15).
+    // E.g. "Insufficient Authentication" while iOS encrypts the connection. The box has forgotten the phone if it
+    // keeps coming (docs/nogps/esp32-firmware-spec.md, BLE-15).
     if let error {
       LOG(.warning, "Not written: \(error)")
-    }
-    if !isHeard {
-      isRefused = Self.isRefusal(error)
     }
     writeNext()
   }
