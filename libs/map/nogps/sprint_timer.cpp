@@ -4,6 +4,7 @@
 #include "base/string_utils.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace nogps
@@ -55,12 +56,40 @@ std::vector<Sprint> ParseSprints(std::string_view sprints)
 std::vector<SprintTimer::Result> SprintTimer::OnSample(double kmh, int64_t timeMs)
 {
   std::vector<Result> results;
-  auto const last = m_last;
-  if (last && (timeMs <= last->m_timeMs || (kmh == last->m_kmh && timeMs - last->m_timeMs < kMinSampleGapMs)))
+  auto const raw = m_raw;
+  if (raw && (timeMs <= raw->m_timeMs || (kmh == raw->m_kmh && timeMs - raw->m_timeMs < kMinSampleGapMs)))
     return results;
-  m_last = Sample{kmh, timeMs};
-  if (!last || timeMs - last->m_timeMs > kSpeedStaleMs)
+  m_raw = Sample{kmh, timeMs};
+  if (!raw || timeMs - raw->m_timeMs > kSpeedStaleMs)
+  {
+    m_window.clear();
+    m_last.reset();
     m_run.reset();
+  }
+  m_window.push_back(*m_raw);
+  if (m_window.size() < kWindow)
+    return results;
+  if (m_window.size() > kWindow)
+    m_window.erase(m_window.begin());
+
+  // A single 0 before the speed rises is the start, though the median of it is not 0. It restarts a run that is
+  // still a creep (the last median is under kSprintDropKmh), as a 0 did before; in a faster run it is a bad sample.
+  if ((!m_run || m_last->m_kmh < kSprintDropKmh) && m_window[0].m_kmh <= 0 && m_window[1].m_kmh > 0 &&
+      m_window[2].m_kmh >= m_window[1].m_kmh)
+    OnFilteredSample(0, m_window[0].m_timeMs);
+
+  // The median drops the bad samples of the car speed, it is told at the time of the middle one.
+  std::array<double, kWindow> speeds;
+  std::transform(m_window.begin(), m_window.end(), speeds.begin(), [](Sample const & s) { return s.m_kmh; });
+  std::nth_element(speeds.begin(), speeds.begin() + kWindow / 2, speeds.end());
+  return OnFilteredSample(speeds[kWindow / 2], m_window[kWindow / 2].m_timeMs);
+}
+
+std::vector<SprintTimer::Result> SprintTimer::OnFilteredSample(double kmh, int64_t timeMs)
+{
+  std::vector<Result> results;
+  auto const last = m_last;
+  m_last = Sample{kmh, timeMs};
   if (kmh <= 0)
   {
     m_run = Run{.m_startMs = timeMs};

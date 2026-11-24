@@ -294,9 +294,9 @@ function reviewPrompt(pr, round, before, name, confirm) {
   const { base } = R(pr)
   const repo = repoName(pr)
   const again = before
-    ? `\nThis is round ${round}. Your findings of the round before and what the fixer did with them: \
-${JSON.stringify(before)}. Check each of them in the code again: a fix that doesn't hold is a finding again, and so \
-is a new bug the fix brought. Don't repeat a finding you now agree was wrong.`
+    ? `\nThis is round ${round}. The findings of the round before -- yours, or the confirming reviewer's -- and \
+what the fixer did with them: ${JSON.stringify(before)}. Check each of them in the code again: a fix that doesn't \
+hold is a finding again, and so is a new bug the fix brought. Don't repeat a finding you now agree was wrong.`
     : confirm
       ? `\nAnother reviewer has just read this PR and found nothing, and you are the last read before the gate \
 merges it: nobody else looks at it. Read the diff yourself and judge it on what you see -- that the review before \
