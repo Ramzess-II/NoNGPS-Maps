@@ -1591,6 +1591,9 @@
 /* About NonGPS Maps, under the globe with the GPS satellites that the finger spins */
 "nogps_about_globe_hint" = "Потягніть Землю, торкніться супутника, щоб вимкнути його.";
 
+/* About NonGPS Maps, under the globe and the satellite count: what the shaded ground of the Earth means */
+"nogps_about_globe_coverage" = "Затінено: видно 4 або більше супутників, цього досить для визначення координат.";
+
 /* About NonGPS Maps, under the globe: the car stands in the jammed area */
 "nogps_about_globe_jammed" = "У зоні глушіння жоден із них не досягає авто.";
 
