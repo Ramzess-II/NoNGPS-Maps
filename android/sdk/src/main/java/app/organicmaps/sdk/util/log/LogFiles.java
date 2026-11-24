@@ -135,10 +135,11 @@ final class LogFiles
   }
 
   /// The index of the file a full file goes on in, -1 when it is not full or has none. It is the next file of the
-  /// phone in the tree that is not an after-midnight part of the day before, except for the after-midnight part of a trip (the previous day has a file of the same start
-  /// time, or the file was last written before the time of its own name: the file of the day before may be deleted
-  /// by the size cap): that part keeps the start time of the day before, and the file opened by the split is named by
-  /// a time on its own day, so it is the first file of the day, and the next in the tree is another trip.
+  /// phone in the tree that is not an after-midnight part of the day before, except for the after-midnight part of a
+  /// trip (the previous day has a file of the same start time, or the file was last written before the time of its own
+  /// name: the file of the day before may be deleted by the size cap): that part keeps the start time of the day
+  /// before, and the file opened by the split is named by a time on its own day, so it is the first file of the day,
+  /// and the next in the tree is another trip.
   private static int sizeSplitInto(@NonNull List<File> all, int i)
   {
     final File file = all.get(i);
