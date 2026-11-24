@@ -134,6 +134,26 @@ final class LoggerZipSelectionTests: XCTestCase {
     ])
   }
 
+  func testAFullFileSkipsTheAfterMidnightPartsOfTheDayBeforeWhenItLooksForTheFileItGoesOn() throws {
+    // The full file of 18:00 goes on into 22:30, not into 22:00: that one is the part of the trip of the day before.
+    makeFile(phone, "2099-11-01", "220000.log")
+    makeFile(phone, "2099-11-02", "180000.log", size: fullSize, modified: later)
+    makeFile(phone, "2099-11-02", "220000.log")
+    makeFile(phone, "2099-11-02", "223000.log", modified: later)
+    makeFile(phone, "2099-11-03", "223000.log")
+    XCTAssertEqual(try zipped(["2099-11-03"]), [
+      "\(phone)/2099-11-02/180000.log", "\(phone)/2099-11-02/223000.log", "\(phone)/2099-11-03/223000.log",
+    ])
+  }
+
+  func testDoesNotTakeAnotherTripAfterAFullAfterMidnightPartWhoseStartIsDeleted() throws {
+    // The file of the day before is gone (size cap): the part is told by its modification date, written before the
+    // time of its name.
+    makeFile(phone, "2099-11-02", "210000.log", size: fullSize, modified: early)
+    makeFile(phone, "2099-11-03", "080000.log")
+    XCTAssertEqual(try zipped(["2099-11-03"]), ["\(phone)/2099-11-03/080000.log"])
+  }
+
   // MARK: - Helpers
 
   /// The paths of the files of the two test phones in the zip of the days, without "logs/", sorted.
