@@ -86,6 +86,10 @@ test filter="NoGps_.*" dir="build/debug":
 logs *args:
     {{ if os_family() == "windows" { "python" } else { "python3" } }} {{ quote(justfile_directory() / "tools/python/nogps_log_viewer.py") }} {{args}}
 
+# Copy the logs and flags of the plugged-in phones into trip-logs/ and import the new days; --device, --from, --to
+fetch *args:
+    {{ if os_family() == "windows" { "python" } else { "python3" } }} tools/python/nogps_logs.py fetch {{args}}
+
 # Open the box simulator and its panel in the browser: a standing sensor box over this computer's Bluetooth
 [unix]
 [no-cd]

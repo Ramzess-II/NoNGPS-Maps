@@ -233,6 +233,112 @@ console.log(JSON.stringify(out));
 """
 
 
+class LibraryTest(unittest.TestCase):
+    """--library: the phones, days, files and flags of the tree, and the files of a flag from inside it only."""
+    LOG = ('LOGFMT 2 ms=1795536000000 phone=Pixel_7-a3f9 trip=180000 app=2026.11.24-3-Google build=26112403 '
+           'commit=abcdef12 om=2026.10.27-10\n')
+
+    def setUp(self):
+        self.dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.dir.cleanup)
+        self.library = os.path.join(self.dir.name, 'trip-logs')
+        self.day = os.path.join(self.library, 'Pixel_7-a3f9', '2026-11-24')
+        flags = os.path.join(self.day, 'flags')
+        os.makedirs(flags)
+        os.makedirs(os.path.join(self.library, 'Pixel_7-a3f9', '2026-11-22'))
+        os.makedirs(os.path.join(self.library, 'db'))
+        for name, data in (('180000.log', self.LOG), ('200000.log', 'no header\n')):
+            with open(os.path.join(self.day, name), 'w') as f:
+                f.write(data)
+        with open(os.path.join(self.library, 'Pixel_7-a3f9', '2026-11-22', '090000.log'), 'w') as f:
+            f.write(self.LOG.replace('trip=180000', 'trip=090000'))
+        with open(os.path.join(flags, '20261124-180130.json'), 'w') as f:
+            json.dump(dict(n=2, lat=10.5, lon=20.5, voice_s=7, sent=False), f)
+        self.png, self.m4a = b'\x89PNG' + b'p' * 20, b'audio' * 20
+        for ext, data in (('png', self.png), ('m4a', self.m4a)):
+            with open(os.path.join(flags, '20261124-180130.' + ext), 'wb') as f:
+                f.write(data)
+        with open(os.path.join(self.dir.name, 'secret.png'), 'wb') as f:
+            f.write(b'secret')
+        server = ThreadingHTTPServer(('127.0.0.1', 0), v.handler(v.Viewer([], None, None, library=self.library)))
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        self.server = server
+
+    def request(self, path, headers=None, method='GET'):
+        request = urllib.request.Request('http://127.0.0.1:%d%s' % (self.server.server_address[1], path),
+                                         headers=headers or {}, method=method)
+        try:
+            with urllib.request.urlopen(request) as r:
+                return r.status, r.headers, r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, e.headers, b''
+
+    def test_phones_days_files_and_flags(self):
+        status, _, body = self.request('/api/library')
+        self.assertEqual(status, 200)
+        phones = json.loads(body)['phones']
+        self.assertEqual([p['phone'] for p in phones], ['Pixel_7-a3f9'])
+        days = phones[0]['days']
+        self.assertEqual([d['day'] for d in days], ['2026-11-24', '2026-11-22'])
+        self.assertEqual(days[0]['files'], [
+            dict(name='180000.log', start='180000', size=len(self.LOG), build='2026.11.24-3-Google 26112403'),
+            dict(name='200000.log', start='200000', size=10, build=None)])
+        # The offset of 180000.log: started at 18:00 local, 16:00 UTC.
+        self.assertEqual(days[0]['flags'], [dict(
+            name='20261124-180130', local_ms=1795543290000, ms=1795543290000 - 2 * 3600_000, n=2, voice_s=7,
+            sent=0, png='flags/20261124-180130.png', m4a='flags/20261124-180130.m4a')])
+        self.assertNotIn('lat', days[0]['flags'][0])
+
+    def test_files_of_a_flag(self):
+        base = '/api/flag/Pixel_7-a3f9/2026-11-24/20261124-180130'
+        status, headers, body = self.request(base + '.png')
+        self.assertEqual((status, headers['Content-Type'], body), (200, 'image/png', self.png))
+        status, headers, body = self.request(base + '.m4a')
+        self.assertEqual((status, headers['Content-Type'], body), (200, 'audio/mp4', self.m4a))
+        # Safari asks for a part of the audio first.
+        status, headers, body = self.request(base + '.m4a', {'Range': 'bytes=0-1'})
+        self.assertEqual((status, headers['Content-Range'], body), (206, 'bytes 0-1/100', b'au'))
+        status, headers, body = self.request(base + '.m4a', {'Range': 'bytes=95-'})
+        self.assertEqual((status, body), (206, b'audio'))
+        self.assertEqual(self.request(base + '.m4a', {'Range': 'bytes=200-'})[0], 416)
+        status, headers, body = self.request(base + '.json')
+        self.assertEqual((status, json.loads(body)['n']), (200, 2))
+
+    def test_nothing_from_outside_the_library(self):
+        os.symlink(os.path.join(self.dir.name, 'secret.png'),
+                   os.path.join(self.day, 'flags', '20261124-190000.png'))
+        os.symlink(self.dir.name, os.path.join(self.library, 'Linked'))
+        for path in ('/api/flag/../2026-11-24/20261124-180130.png',
+                     '/api/flag/Pixel_7-a3f9/../20261124-180130.png',
+                     '/api/flag/%2E%2E/trip-logs/secret.png',
+                     '/api/flag/%2F' + self.dir.name.strip('/').replace('/', '%2F') + '/x/secret.png',
+                     '/api/flag/Pixel_7-a3f9/2026-11-24/20261124-190000.png',
+                     '/api/flag/Linked/trip-logs/secret.png',
+                     '/api/flag/Pixel_7-a3f9/2026-11-24/20261124-180130.log'):
+            self.assertEqual(self.request(path)[0], 404, path)
+        self.assertNotIn('Linked', json.dumps(json.loads(self.request('/api/library')[2])))
+
+    def test_a_day_is_loaded_with_its_flags(self):
+        status, _, body = self.request('/api/library/day?phone=Pixel_7-a3f9&day=2026-11-24',
+                                       {'X-NoGPS-Viewer': '1'}, 'POST')
+        self.assertEqual(status, 200)
+        data = json.loads(body)
+        self.assertEqual([f['name'] for f in data['flags']], ['20261124-180130'])
+        self.assertEqual(data['flags'][0]['m4a'], '/api/flag/Pixel_7-a3f9/2026-11-24/20261124-180130.m4a')
+        self.assertTrue(data['library'])
+        self.assertEqual(self.request('/api/library/day?phone=..&day=2026-11-24', {'X-NoGPS-Viewer': '1'},
+                                      'POST')[0], 400)
+
+    def test_no_library_without_the_option(self):
+        server = serve(None)
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        self.assertEqual(get(server, '/api/library')[0], 404)
+        self.assertEqual(get(server, '/api/flag/Pixel_7-a3f9/2026-11-24/20261124-180130.png')[0], 404)
+
+
 @unittest.skipUnless(NODE, 'node is needed to run the script of the page')
 class PageUploadTest(unittest.TestCase):
     """What the page sends to /api/add for a dropped folder, a dropped file and a folder picked in the input."""

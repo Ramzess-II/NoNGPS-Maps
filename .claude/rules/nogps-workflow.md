@@ -216,10 +216,12 @@ Ukrainian. The app's Russian translations in `data/strings/` stay as they are.
     docstring tells how to build the tool and where to take the maps and the settings.
   - Windows: the Android debug build (`-PnativeOptimized` for speed) drives one day at a time on a phone.
   - Before and after are built the same way and driven on the same maps and settings.
-- Replay the days of both sets: the held-out days listed in `tools/python/nogps_held_out_days.txt` (never used to set
-  a rule) and the others (`nogps_replay.py days <logs>` tells each day's set). Give the numbers of each set apart: a
-  rule better on the days it was made from and not on the held-out ones fits its case only. Never move a day into the
-  held-out list after a rule was made from it.
+- Replay the days of both sets: the held-out days (never used to set a rule) and the others (`nogps_replay.py days
+  <logs>` tells each day's set). A day is held out by rule when it is a LOGFMT 2 day, 2026-11-22 or later, whose day
+  of the month divides by 4, or when `tools/python/nogps_held_out_days.txt` lists it. Don't tune a rule on a day held
+  out by the rule; reading its trips to answer a question is fine. Give the numbers of each set apart: a rule better
+  on the days it was made from and not on the held-out ones fits its case only. Never move a day into the held-out
+  list after a rule was made from it.
 - `nogps_log.py rules <logs>` counts how often each rule fired over the trips and what came next within 300 m. Run it
   before and after a change of a rule; a rule that fired in one or two trips, or is followed by a loss or a tap
   more often than not, is a candidate to drop or merge.
