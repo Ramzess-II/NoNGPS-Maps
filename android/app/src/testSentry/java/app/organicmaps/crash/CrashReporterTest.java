@@ -113,7 +113,8 @@ public class CrashReporterTest
   @Test
   public void coordinatesAreRedactedFromAssertMessage()
   {
-    assertEquals("CHECK(d < 5) <num> <num> 12 3.5", CrashReporter.redactNumbers("CHECK(d < 5) 50.450123 -30.5234 12 3.5"));
+    assertEquals("CHECK(d < 5) <num> <num> 12 3.5",
+                 CrashReporter.redactNumbers("CHECK(d < 5) 50.450123 -30.5234 12 3.5"));
   }
 
   @Test
