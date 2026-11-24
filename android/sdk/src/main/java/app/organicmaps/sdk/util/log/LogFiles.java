@@ -88,10 +88,21 @@ final class LogFiles
       final List<File> all = new ArrayList<>();
       for (File day : sorted(phone.listFiles(File::isDirectory)))
         Collections.addAll(all, sorted(day.listFiles(file -> file.isFile() && file.getName().endsWith(".log"))));
-      // A file goes on only into later ones: from the last to the first, the chain is known when it is asked.
+      // A file goes on into a later one, but a full after-midnight part into an earlier one: repeat until no file
+      // is added.
       final boolean[] taken = new boolean[all.size()];
-      for (int i = all.size() - 1; i >= 0; --i)
-        taken[i] = days.contains(all.get(i).getParentFile().getName()) || goesOnInto(all, i, taken);
+      for (int i = 0; i < taken.length; ++i)
+        taken[i] = days.contains(all.get(i).getParentFile().getName());
+      boolean added = true;
+      while (added)
+      {
+        added = false;
+        for (int i = all.size() - 1; i >= 0; --i)
+        {
+          if (!taken[i] && goesOnInto(all, i, taken))
+            added = taken[i] = true;
+        }
+      }
       for (int i = 0; i < taken.length; ++i)
       {
         if (taken[i])
@@ -107,10 +118,11 @@ final class LogFiles
   private static boolean goesOnInto(@NonNull List<File> all, int i, @NonNull boolean[] taken)
   {
     final File file = all.get(i);
-    if (i + 1 < all.size() && taken[i + 1] && file.length() >= MAX_FILE_SIZE - SPLIT_SLACK)
+    final int split = sizeSplitInto(all, i);
+    if (split >= 0 && taken[split])
       return true;
     final String stem = startOf(file.getName());
-    final String next = nextDay(file.getParentFile().getName());
+    final String next = dayAfter(file.getParentFile().getName(), 1);
     if (next == null)
       return false;
     for (int j = i + 1; j < all.size(); ++j)
@@ -122,6 +134,33 @@ final class LogFiles
     return false;
   }
 
+  /// The index of the file a full file goes on in, -1 when it is not full or has none. It is the next file of the
+  /// phone in the tree, except for the after-midnight part of a trip (the previous day has a file of the same start
+  /// time): that part keeps the start time of the day before, and the file opened by the split is named by a time on
+  /// its own day, so it is the first file of the day, and the next in the tree is another trip.
+  private static int sizeSplitInto(@NonNull List<File> all, int i)
+  {
+    final File file = all.get(i);
+    if (file.length() < MAX_FILE_SIZE - SPLIT_SLACK)
+      return -1;
+    final String day = file.getParentFile().getName();
+    final String stem = startOf(file.getName());
+    final String previous = dayAfter(day, -1);
+    boolean afterMidnight = false;
+    for (File other : all)
+    {
+      afterMidnight |= other.getParentFile().getName().equals(previous) && startOf(other.getName()).equals(stem);
+    }
+    if (!afterMidnight)
+      return i + 1 < all.size() ? i + 1 : -1;
+    for (int j = 0; j < i; ++j)
+    {
+      if (all.get(j).getParentFile().getName().equals(day))
+        return j;
+    }
+    return -1;
+  }
+
   /// The time a drive started at, "HHmmss", of the name of its file: without the ".log" and the "-N" of a second
   /// drive of the same second.
   @NonNull
@@ -130,9 +169,9 @@ final class LogFiles
     return fileName.replaceFirst("(-\\d+)?\\.log$", "");
   }
 
-  /// The day after the folder name of a day, null when it is not a day.
+  /// The day shifted by days from the folder name of a day, null when it is not a day.
   @Nullable
-  private static String nextDay(@NonNull String day)
+  private static String dayAfter(@NonNull String day, int days)
   {
     final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
     // No daylight saving: a day is always 24 hours.
@@ -140,7 +179,7 @@ final class LogFiles
     try
     {
       final Date date = format.parse(day);
-      return date == null ? null : format.format(new Date(date.getTime() + 24 * 60 * 60 * 1000L));
+      return date == null ? null : format.format(new Date(date.getTime() + days * 24 * 60 * 60 * 1000L));
     }
     catch (ParseException e)
     {

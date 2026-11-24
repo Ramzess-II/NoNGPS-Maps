@@ -38,7 +38,8 @@
 + (NSArray<NSString *> *)logFiles;
 + (NSArray<NSString *> *)logFilesOfDays:(NSSet<NSString *> *)days;
 + (BOOL)logFileAtIndex:(NSUInteger)index of:(NSArray<NSString *> *)names goesOnInto:(NSSet<NSString *> *)taken;
-+ (nullable NSString *)dayAfter:(NSString *)day;
++ (nullable NSString *)dayAfter:(NSString *)day by:(int)days;
++ (NSInteger)sizeSplitIntoOfLogFileAtIndex:(NSUInteger)index of:(NSArray<NSString *> *)names;
 + (NSString *)startOfLogFile:(NSString *)fileName;
 + (NSString *)logFileNameStarted:(NSDate *)started now:(NSDate *)now;
 + (NSString *)freeLogFileNameStarted:(NSDate *)started now:(NSDate *)now;
@@ -256,14 +257,28 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
 {
   NSArray<NSString *> * names = [self logFiles];
   NSMutableSet<NSString *> * taken = [NSMutableSet set];
-  // A file goes on only into later ones: from the last to the first, the chain is known when it is asked.
-  for (NSInteger i = names.count - 1; i >= 0; --i)
+  for (NSString * name in names)
   {
     // "<phone>/<yyyy-MM-dd>/<HHmmss>.log": of every phone id.
-    NSArray<NSString *> * parts = names[i].pathComponents;
-    if (parts.count == 3 && [names[i].pathExtension isEqualToString:@"log"] &&
-        ([days containsObject:parts[1]] || [self logFileAtIndex:i of:names goesOnInto:taken]))
-      [taken addObject:names[i]];
+    NSArray<NSString *> * parts = name.pathComponents;
+    if (parts.count == 3 && [name.pathExtension isEqualToString:@"log"] && [days containsObject:parts[1]])
+      [taken addObject:name];
+  }
+  // A file goes on into a later one, but a full after-midnight part into an earlier one: repeat until no file is added.
+  BOOL added = YES;
+  while (added)
+  {
+    added = NO;
+    for (NSInteger i = names.count - 1; i >= 0; --i)
+    {
+      NSArray<NSString *> * parts = names[i].pathComponents;
+      if (![taken containsObject:names[i]] && parts.count == 3 && [names[i].pathExtension isEqualToString:@"log"] &&
+          [self logFileAtIndex:i of:names goesOnInto:taken])
+      {
+        [taken addObject:names[i]];
+        added = YES;
+      }
+    }
   }
   NSMutableArray<NSString *> * files = [NSMutableArray array];
   for (NSString * name in names)
@@ -276,18 +291,12 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
 {
   NSString * name = names[index];
   NSArray<NSString *> * parts = name.pathComponents;
-  // A file ends at the first line that would bring it to kMaxLogFileSize: not shorter than a line.
-  unsigned long long const kSplitSlack = 100'000;
-  unsigned long long const size =
-      [NSFileManager.defaultManager attributesOfItemAtPath:[kLogsFolderPath stringByAppendingPathComponent:name]
-                                                     error:nil]
-          .fileSize;
-  if (size + kSplitSlack >= kMaxLogFileSize && index + 1 < names.count && [taken containsObject:names[index + 1]] &&
-      [names[index + 1].pathComponents.firstObject isEqualToString:parts[0]])
+  NSInteger const split = [self sizeSplitIntoOfLogFileAtIndex:index of:names];
+  if (split >= 0 && [taken containsObject:names[split]])
     return YES;
 
   NSString * start = [self startOfLogFile:parts[2]];
-  NSString * next = [self dayAfter:parts[1]];
+  NSString * next = [self dayAfter:parts[1] by:1];
   if (next == nil)
     return NO;
   for (NSUInteger j = index + 1; j < names.count; ++j)
@@ -300,6 +309,47 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
   return NO;
 }
 
+/// The index of the file a full file goes on in, -1 when it is not full or has none. It is the next file of the phone,
+/// except for the after-midnight part of a trip (the previous day has a file of the same start time): that part keeps
+/// the start time of the day before, and the file opened by the split is named by a time on its own day, so it is the
+/// first file of the day, and the next one is another trip.
++ (NSInteger)sizeSplitIntoOfLogFileAtIndex:(NSUInteger)index of:(NSArray<NSString *> *)names
+{
+  NSArray<NSString *> * parts = names[index].pathComponents;
+  // A file ends at the first line that would bring it to kMaxLogFileSize: not shorter than a line.
+  unsigned long long const kSplitSlack = 100'000;
+  unsigned long long const size =
+      [NSFileManager.defaultManager attributesOfItemAtPath:[kLogsFolderPath stringByAppendingPathComponent:names[index]]
+                                                     error:nil]
+          .fileSize;
+  if (size + kSplitSlack < kMaxLogFileSize)
+    return -1;
+
+  NSString * start = [self startOfLogFile:parts[2]];
+  NSString * previous = [self dayAfter:parts[1] by:-1];
+  BOOL afterMidnight = NO;
+  for (NSString * name in names)
+  {
+    NSArray<NSString *> * otherParts = name.pathComponents;
+    if (otherParts.count == 3 && [otherParts[0] isEqualToString:parts[0]] && [otherParts[1] isEqualToString:previous] &&
+        [[self startOfLogFile:otherParts[2]] isEqualToString:start])
+      afterMidnight = YES;
+  }
+  if (!afterMidnight)
+  {
+    BOOL const samePhone =
+        index + 1 < names.count && [names[index + 1].pathComponents.firstObject isEqualToString:parts[0]];
+    return samePhone ? index + 1 : -1;
+  }
+  for (NSUInteger j = 0; j < index; ++j)
+  {
+    NSArray<NSString *> * otherParts = names[j].pathComponents;
+    if (otherParts.count == 3 && [otherParts[0] isEqualToString:parts[0]] && [otherParts[1] isEqualToString:parts[1]])
+      return j;
+  }
+  return -1;
+}
+
 /// The start time "HHmmss" of the file name: without the ".log" and the "-N" of a second drive of the same second.
 + (NSString *)startOfLogFile:(NSString *)fileName
 {
@@ -309,8 +359,8 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
                                                   range:NSMakeRange(0, fileName.length)];
 }
 
-/// The day after a folder name "yyyy-MM-dd", nil when it is not a day.
-+ (nullable NSString *)dayAfter:(NSString *)day
+/// The day shifted by days from a folder name "yyyy-MM-dd", nil when it is not a day.
++ (nullable NSString *)dayAfter:(NSString *)day by:(int)days
 {
   static NSDateFormatter * formatter;
   static dispatch_once_t onceToken;
@@ -322,7 +372,7 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
     formatter.timeZone = [NSTimeZone timeZoneForSecondsFromGMT:0];
   });
   NSDate * date = [formatter dateFromString:day];
-  return date ? [formatter stringFromDate:[date dateByAddingTimeInterval:24 * 60 * 60]] : nil;
+  return date ? [formatter stringFromDate:[date dateByAddingTimeInterval:days * 24 * 60 * 60]] : nil;
 }
 
 + (void)startTrip

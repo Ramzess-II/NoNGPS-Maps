@@ -174,6 +174,24 @@ public class LogFileNameTest
   }
 
   @Test
+  public void ofDays_doesNotTakeAnotherTripAfterAFullAfterMidnightPart() throws IOException
+  {
+    final int full = (int) LogFiles.MAX_FILE_SIZE;
+    // Started at 21:00 on the first, full at 04:30 on the second: the split file is named by a time of the second.
+    makeFile(path("Pixel_7-a3f9", "2026-11-01", "210000.log"), 10, 1);
+    makeFile(path("Pixel_7-a3f9", "2026-11-02", "043000.log"), 10, 1);
+    makeFile(path("Pixel_7-a3f9", "2026-11-02", "210000.log"), full, 1);
+    makeFile(path("Pixel_7-a3f9", "2026-11-03", "080000.log"), 10, 1);
+    assertEquals(Collections.singletonList(path("Pixel_7-a3f9", "2026-11-03", "080000.log")),
+                 relative(LogFiles.ofDays(mFolder.getRoot(), Collections.singleton("2026-11-03"))));
+    // The day of the part takes the file it began in, and the first file of its day, where it goes on.
+    assertEquals(Arrays.asList(path("Pixel_7-a3f9", "2026-11-01", "210000.log"),
+                               path("Pixel_7-a3f9", "2026-11-02", "043000.log"),
+                               path("Pixel_7-a3f9", "2026-11-02", "210000.log")),
+                 relative(LogFiles.ofDays(mFolder.getRoot(), Collections.singleton("2026-11-02"))));
+  }
+
+  @Test
   public void all_takesTheTreeAndTheFilesNamedAsBefore() throws IOException
   {
     makeTree();
