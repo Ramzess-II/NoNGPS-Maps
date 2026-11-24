@@ -939,6 +939,10 @@
     <string name="nogps_flag_voice_saved">Голосовая заметка сохранена: %d с</string>
     <!-- Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. -->
     <string name="nogps_flag_mic_denied">Флаг сохранён без голосовой заметки: разрешите микрофон в настройках системы.</string>
+    <!-- Settings switch: send a report to the developers when the app crashes -->
+    <string name="nogps_crash_reports">Отправлять отчёты о сбоях</string>
+    <!-- Hint under the Send crash reports switch -->
+    <string name="nogps_crash_reports_hint">Отправляются только сведения о сбое, модель телефона и версия приложения. Данные о местоположении не покидают телефон.</string>
     <!-- Settings row and screen title: the list of the flags saved in test drives, to send them with the trip logs to the developers by email -->
     <string name="nogps_flags_send_title">Отправить логи</string>
     <!-- Button: send the ticked flags of test drives by email -->

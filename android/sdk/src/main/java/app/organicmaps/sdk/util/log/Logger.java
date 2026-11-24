@@ -26,6 +26,35 @@ public final class Logger
   private static final String CORE_TAG = "OMcore";
   private static final LogFileWriter FILE_WRITER = new LogFileWriter();
 
+  /// Gets the failed CHECK/ASSERT of the core before the process aborts.
+  public interface AssertListener
+  {
+    void onAssert(@NonNull String source, @NonNull String message);
+  }
+
+  @Nullable
+  private static volatile AssertListener sAssertListener;
+
+  public static void setAssertListener(@Nullable AssertListener listener)
+  {
+    sAssertListener = listener;
+  }
+
+  // Called from JNI by the assert function of the core. Must not throw: the process is about to abort.
+  @Keep
+  private static void reportAssert(@NonNull String source, @NonNull String message)
+  {
+    final AssertListener listener = sAssertListener;
+    if (listener == null)
+      return;
+    try
+    {
+      listener.onAssert(source, message);
+    }
+    catch (Throwable ignored)
+    {}
+  }
+
   public static void v(String tag)
   {
     logJava(Log.VERBOSE, tag, "", null);
