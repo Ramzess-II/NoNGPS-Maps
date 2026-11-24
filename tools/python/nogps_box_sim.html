@@ -90,6 +90,7 @@ th { color: var(--muted); font-weight: 600; }
 </aside>
 <section>
   <div id="phones"></div>
+  <div id="bonds"></div>
   <div id="logbar">
     <label class="row"><input type="checkbox" id="withData"> show NGD</label>
     <button id="clear">Clear</button>
@@ -180,6 +181,7 @@ function show(state) {
     : '';
   for (const id of ['box_id', 'firmware', 'chip', 'board', 'imu_name']) field(id, state[id]);
   showPhones(state.phones);
+  showBonds(state);
 }
 
 function showPhones(phones) {
@@ -199,6 +201,24 @@ function showPhones(phones) {
   for (const button of $('phones').querySelectorAll('button')) {
     button.onclick = () => action('disconnect', button.dataset.phone);
   }
+}
+
+function showBonds(state) {
+  const chosen = $('resetPhone') && $('resetPhone').value;
+  const rows = state.bonds.map((bond) => '<tr><td>' + escape(bond.name || '(no name)') + '</td><td>' +
+    escape(bond.address) + '</td><td>' + (bond.connected ? 'connected' : 'gone') +
+    '</td><td><button data-forget="' + escape(bond.address) + '">Forget</button></td></tr>');
+  const names = state.phones.map((phone) => '<option value="' + escape(phone.label) + '">' +
+    escape(phone.name || phone.label) + '</option>').join('');
+  $('bonds').innerHTML = '<p class="hint">Bonded phones (BT_LIST). Recovery code (BT_RECOVERY): <b>' +
+    escape(state.recovery_code) + '</b></p>' +
+    (rows.length ? '<table><tr><th>phone</th><th>address</th><th></th><th></th></tr>' + rows.join('') + '</table>' : '') +
+    '<p><select id="resetPhone">' + names + '</select> <button id="btReset" title="A new phone paired in the recovery window: it stays alone, the others are forgotten, the code is renewed">BT_RESET</button></p>';
+  for (const button of $('bonds').querySelectorAll('button[data-forget]')) {
+    button.onclick = () => action('forget_bond', button.dataset.forget);
+  }
+  if (chosen) $('resetPhone').value = chosen;
+  $('btReset').onclick = () => action('bt_reset', $('resetPhone').value);
 }
 
 function escape(text) {
