@@ -270,7 +270,8 @@ final class CarPlayService: NSObject {
     case .device:
       if !mapWasOnPhone {
         mapVC.disableCarPlayRepresentation()
-        // It has set the viewport of the core to the whole view, and VisibleArea doesn't notify again.
+        // The viewport of the core is the whole view now, VisibleArea doesn't notify again. Stored only: the
+        // offset goes out from updatePresentation.
         NoGpsControls.updateVisibleViewport(mapVC.view.bounds)
       }
     case .mainCarPlay:
