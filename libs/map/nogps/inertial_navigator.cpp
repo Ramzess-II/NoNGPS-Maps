@@ -1221,8 +1221,16 @@ int InertialNavigator::ConvertSpeed(int rawSpeedKmh) const
   return static_cast<int>(std::lround(rawSpeedKmh * m_speedUnit.Get()));
 }
 
+bool InertialNavigator::IsObdNoSpeed(int rawSpeedKmh) const
+{
+  return rawSpeedKmh == kObdNoSpeedKmh && !(IsSpeedFresh() && m_rawSpeedKmh >= kObdNoSpeedPrevKmh);
+}
+
 void InertialNavigator::OnSpeed(int rawSpeedKmh, int64_t timeMs)
 {
+  // The speed stays as it was and goes stale: the mark waits instead of driving 70 m a second.
+  if (IsObdNoSpeed(rawSpeedKmh))
+    return;
   m_rawSpeedKmh = rawSpeedKmh;
   int const speedKmh = ConvertSpeed(rawSpeedKmh);
   m_speedKmh = speedKmh;
@@ -1283,6 +1291,9 @@ void InertialNavigator::OnSpeed(int rawSpeedKmh, int64_t timeMs)
 
 void InertialNavigator::OnJolt(double joltMs2, int rawSpeedKmh)
 {
+  // A bump at the bogus 255 would be a pothole at 255 km/h.
+  if (IsObdNoSpeed(rawSpeedKmh))
+    return;
   // The box of the car may tell mph: the potholes take the speed as everything else does.
   m_listener.OnJolt(joltMs2, ConvertSpeed(rawSpeedKmh));
 }

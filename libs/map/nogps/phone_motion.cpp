@@ -1,6 +1,7 @@
 #include "map/nogps/phone_motion.hpp"
 
 #include "map/nogps/clock.hpp"
+#include "map/nogps/inertial_navigator.hpp"
 
 #include "base/logging.hpp"
 
@@ -50,6 +51,11 @@ void PhoneMotion::Calibrate()
 
 void PhoneMotion::OnSpeed(int speedKmh, int64_t timeMs)
 {
+  // The ECU that wakes answers 255: not a speed, see InertialNavigator::OnSpeed. It is no moving car for the
+  // calibration either.
+  bool const prevFast = m_speedKmh >= InertialNavigator::kObdNoSpeedPrevKmh && timeMs - m_speedTimeMs < kSpeedStaleMs;
+  if (speedKmh == InertialNavigator::kObdNoSpeedKmh && !prevFast)
+    return;
   m_speedKmh = speedKmh;
   m_speedTimeMs = timeMs;
   if (speedKmh > 0)
