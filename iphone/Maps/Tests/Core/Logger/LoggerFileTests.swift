@@ -123,6 +123,32 @@ final class LoggerFileTests: XCTestCase {
     XCTAssertTrue(try lines(of: files[1])[0].hasPrefix("LOGFMT 2 "))
   }
 
+  func testClockBackBeforeTheDayOfTheFileOpensANewFile() throws {
+    setTime(2099, 1, 2, 0, 0, 10)
+    Logger.startTrip()
+    Logger.log(.info, message: "\(marker) before")
+    setTime(2099, 1, 1, 23, 59, 50)
+    Logger.log(.info, message: "\(marker) after the jump")
+    Logger.log(.info, message: "\(marker) after the jump too")
+
+    let files = logFiles()
+    let days = files.map { $0.deletingLastPathComponent().lastPathComponent }
+    XCTAssertEqual(days, ["2099-01-01", "2099-01-02"])
+    XCTAssertEqual(try markerLines(lines(of: files[0])).count, 2)
+    XCTAssertEqual(try markerLines(lines(of: files[1])).count, 1)
+    XCTAssertTrue(try lines(of: files[0])[0].hasPrefix("LOGFMT 2 "))
+  }
+
+  func testClockBackWithinTheDayKeepsTheFile() throws {
+    Logger.log(.info, message: "\(marker) one")
+    setTime(2099, 1, 1, 11, 59, 0)
+    Logger.log(.info, message: "\(marker) two")
+
+    let files = logFiles()
+    XCTAssertEqual(files.count, 1)
+    XCTAssertEqual(try markerLines(lines(of: files[0])).count, 2)
+  }
+
   func testConcurrentLinesStayWhole() throws {
     let threads = 8
     let perThread = 200

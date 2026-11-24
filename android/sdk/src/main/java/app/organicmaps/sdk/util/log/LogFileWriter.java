@@ -96,6 +96,8 @@ final class LogFileWriter
   private String mFileName = "";
   // The first moment of the next day: a line written at it or later goes on in the folder of that day.
   private long mDayEndMs;
+  // The first moment of the day of the file: a line written before it, after the clock went back, opens a new file.
+  private long mDayStartMs;
   // When a failed open may be tried again, 0 when the last one worked.
   private long mRetryOpenMs;
   // The size of the open file in chars, which are bytes for the ASCII log.
@@ -325,14 +327,18 @@ final class LogFileWriter
       mStarted = new Date(now);
       mDayEndMs = 0;
     }
-    if (now >= mDayEndMs)
+    if (now >= mDayEndMs || now < mDayStartMs)
     {
+      // The clock went back past the start of the day: the file is a new one, named by the new time.
+      if (now < mDayStartMs)
+        mStarted = new Date(now);
       final Calendar calendar = Calendar.getInstance();
       calendar.setTimeInMillis(now);
       calendar.set(Calendar.HOUR_OF_DAY, 0);
       calendar.set(Calendar.MINUTE, 0);
       calendar.set(Calendar.SECOND, 0);
       calendar.set(Calendar.MILLISECOND, 0);
+      mDayStartMs = calendar.getTimeInMillis();
       calendar.add(Calendar.DAY_OF_MONTH, 1);
       mDayEndMs = calendar.getTimeInMillis();
       mFileName = LogFiles.freeFileName(new File(logsFolder), mInfo.phoneId(), mStarted, new Date(now));

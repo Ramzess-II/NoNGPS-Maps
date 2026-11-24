@@ -119,6 +119,32 @@ public class LogFileWriterTest
   }
 
   @Test
+  public void clockBack_beforeTheDayOfTheFileOpensANewFile() throws IOException
+  {
+    mNow.set(time(2026, Calendar.NOVEMBER, 2, 0, 0, 10));
+    mWriter.writeSync(mLogs, "before");
+    mNow.set(time(2026, Calendar.NOVEMBER, 1, 23, 59, 50));
+    mWriter.writeSync(mLogs, "after the jump");
+    mWriter.writeSync(mLogs, "after the jump too");
+
+    assertEquals(List.of(path("2026-11-01", "235950.log"), path("2026-11-02", "000010.log")), files());
+    assertEquals(2, lines(path("2026-11-02", "000010.log")).size());
+    final List<String> second = lines(path("2026-11-01", "235950.log"));
+    assertEquals(HEADER.trim(), second.get(0));
+    assertEquals(3, second.size());
+  }
+
+  @Test
+  public void clockBack_withinTheDayKeepsTheFile() throws IOException
+  {
+    mWriter.writeSync(mLogs, "one");
+    mNow.addAndGet(-60000);
+    mWriter.writeSync(mLogs, "two");
+    assertEquals(List.of(path("2026-11-01", "120000.log")), files());
+    assertEquals(3, lines(path("2026-11-01", "120000.log")).size());
+  }
+
+  @Test
   public void startFile_putsTheLinesAfterItInANewFile() throws IOException
   {
     mWriter.writeSync(mLogs, "drive 1");

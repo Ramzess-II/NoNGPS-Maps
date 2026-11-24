@@ -15,6 +15,8 @@
 @property(nullable, nonatomic) NSDate * started;
 /// The first moment of the next day: a line written at it or later goes on in the folder of that day.
 @property(nullable, nonatomic) NSDate * dayEnd;
+/// The first moment of the day of the file: a line written before it, after the clock went back, opens a new file.
+@property(nullable, nonatomic) NSDate * dayStart;
 /// The file under the logs folder, see freeLogFileNameStarted:now:. It is chosen once per file, as the name of a
 /// file that is written already would be taken for a shared one.
 @property(nullable, nonatomic) NSString * fileName;
@@ -534,14 +536,16 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
     logger.started = now;
     logger.dayEnd = nil;
   }
-  if (logger.dayEnd == nil || [now compare:logger.dayEnd] != NSOrderedAscending)
+  BOOL const clockWentBack = logger.dayStart != nil && [now compare:logger.dayStart] == NSOrderedAscending;
+  if (logger.dayEnd == nil || clockWentBack || [now compare:logger.dayEnd] != NSOrderedAscending)
   {
     [self closeFile];
+    // The file is a new one, named by the new time.
+    if (clockWentBack)
+      logger.started = now;
     NSCalendar * calendar = NSCalendar.currentCalendar;
-    logger.dayEnd = [calendar dateByAddingUnit:NSCalendarUnitDay
-                                         value:1
-                                        toDate:[calendar startOfDayForDate:now]
-                                       options:0];
+    logger.dayStart = [calendar startOfDayForDate:now];
+    logger.dayEnd = [calendar dateByAddingUnit:NSCalendarUnitDay value:1 toDate:logger.dayStart options:0];
     logger.fileName = [self freeLogFileNameStarted:logger.started now:now];
   }
 
