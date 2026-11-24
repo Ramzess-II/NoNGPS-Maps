@@ -88,9 +88,9 @@ train doesn't push commits under the session working there.
 
    A firmware PR runs the same way in a worktree of `<ws>/firmware` whose name ends in `-fw`, made by plain
    `git worktree add` from `origin/main` with `keys/` linked and `sdkconfig` copied from the main checkout -- both
-   are gitignored there, and without them the build is unsigned or built for the wrong chip. A CI build of a firmware
-   PR comes with ELMandIMU#28, but GitHub Actions has started no run in that repo yet (ELMandIMU#29), so the gate's
-   `idf.py build` is the only check a firmware PR gets and it does not wait for checks. Where it cannot run (no
+   are gitignored there, and without them the build is unsigned or built for the wrong chip. The CI of a firmware PR
+   builds S3 and C3 (`.github/workflows/build.yml`) and the gate waits for it like for an app PR; its own
+   `idf.py build` stays, as the only build with the main checkout's `sdkconfig`. Where it cannot run (no
    ESP-IDF, no signing key) the PR is reported `blocked` with `not built: <why>` and is not merged.
 5. **Report.** Print the table it returns: PR → merged (with the merge commit) / open (with the reason) / blocked,
    with its set, the rounds it took and the number of findings; name the PRs that went back for another round
