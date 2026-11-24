@@ -39,7 +39,7 @@ margins; the content clears the side insets) and at least half the window high (
   title, `.secondaryLabel` for its colour.
 - The bar of the sheet is the system one, filled with `pressBackground`, the colour the list is drawn on, so the
   bar and the top of the page are one surface. `NoGpsBoxSheet.plainBar` sets it: a bar with no style of its own
-  gets the green bar of Organic Maps.
+  gets the NonGPS bar colour (`nogpsPrimary`).
 - The sheet is the system one and keeps its look: inset and floating on iOS 26 and newer, edge-attached before it.
   UIKit draws any detent below full height as a floating card and offers no partial detent attached to the screen
   edges, so don't file "flush at a short height"; it would mean presenting on `ModalPresentationStepsController`.

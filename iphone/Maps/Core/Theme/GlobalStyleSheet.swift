@@ -102,28 +102,28 @@ extension GlobalStyleSheet: IStyleSheet {
         if #available(iOS 26.0, *) {
         } else {
           s.backgroundColor = .whitePrimary
-          s.barTintColor = .greenPrimary
+          s.barTintColor = .nogpsPrimary
           s.fontColor = .blackPrimaryText
-          s.fontColorDetailed = UIColor.white
+          s.fontColorDetailed = .nogpsPrimaryText
           s.tintColor = .blackSecondaryText
         }
       }
     case .navigationBar:
       return .add { s in
-        s.barTintColor = .greenPrimary
-        s.tintColor = .whitePrimaryText
+        s.barTintColor = .nogpsPrimary
+        s.tintColor = .nogpsPrimaryText
         s.backgroundImage = UIImage()
         s.shadowImage = UIImage()
         s.fontStyle = .fixed(.header)
-        s.fontColor = .whitePrimaryText
+        s.fontColor = .nogpsPrimaryText
       }
     case .navigationBarItem:
       return .add { s in
         s.fontStyle = .dynamic(.regular18, maxSize: 24)
-        s.fontColor = .whitePrimaryText
+        s.fontColor = .nogpsPrimaryText
         s.fontColorDisabled = UIColor.lightGray
-        s.fontColorHighlighted = .whitePrimaryTextHighlighted
-        s.tintColor = .whitePrimaryText
+        s.fontColorHighlighted = .nogpsPrimaryText.withAlphaComponent(0.5)
+        s.tintColor = .nogpsPrimaryText
       }
     case .checkmark:
       return .add { s in
@@ -170,7 +170,7 @@ extension GlobalStyleSheet: IStyleSheet {
       }
     case .primaryBackground:
       return .add { s in
-        s.backgroundColor = .greenPrimary
+        s.backgroundColor = .nogpsPrimary
       }
     case .secondaryBackground:
       return .add { s in
@@ -284,7 +284,7 @@ extension GlobalStyleSheet: IStyleSheet {
       }
     case .searchStatusBarView:
       return .add { s in
-        s.backgroundColor = .greenPrimary
+        s.backgroundColor = .nogpsPrimary
         s.shadowRadius = 2
         s.shadowColor = .blackDividers
         s.shadowOpacity = 1
