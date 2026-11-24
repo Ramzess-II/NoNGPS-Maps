@@ -85,9 +85,12 @@ them such a PR says "Not replayed".
 
 `/nogps-merge [<PR numbers>] [--no-roll] [--rounds N] [--slots N] [--dry]` lands the open PRs of both repos. It
 runs the issue roller first, unless `--no-roll` or PR numbers are given, then splits what is left into two sets and
-takes each PR through: merge the PR's own default branch into it and push, review with Fable which posts its
-findings on the PR, fix with Opus which replies on the same PR, review again, and merge with a merge commit once a
-review comes back clean and CI is green. Up to `--rounds` rounds (default 3).
+takes each PR through: merge the PR's own default branch into it and push, review with Opus which posts its
+findings on the PR, fix with Sonnet which replies on the same PR, review again, and merge with a merge commit once a
+review comes back clean and CI is green. Up to `--rounds` rounds (default 3). A review that finds nothing on the
+first pass is confirmed by Fable, the most capable model, before the PR reaches the gate: one pass that found
+nothing is weak evidence the diff was read, and nobody else looks at the PR. The confirmation is not a round of its
+own, and a PR that had findings doesn't get one -- the clean round that followed them re-read the fixes.
 
 Only the merge is serial. The PRs whose files no other queued PR touches and that are in no dependency chain with
 one are prepped in parallel, up to `--slots` of them at once (default 4), each in its own worktree
