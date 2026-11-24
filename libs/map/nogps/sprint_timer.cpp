@@ -55,12 +55,33 @@ std::vector<Sprint> ParseSprints(std::string_view sprints)
 std::vector<SprintTimer::Result> SprintTimer::OnSample(double kmh, int64_t timeMs)
 {
   std::vector<Result> results;
-  auto const last = m_last;
-  if (last && (timeMs <= last->m_timeMs || (kmh == last->m_kmh && timeMs - last->m_timeMs < kMinSampleGapMs)))
+  auto const raw = m_raw;
+  if (raw && (timeMs <= raw->m_timeMs || (kmh == raw->m_kmh && timeMs - raw->m_timeMs < kMinSampleGapMs)))
     return results;
-  m_last = Sample{kmh, timeMs};
-  if (!last || timeMs - last->m_timeMs > kSpeedStaleMs)
+  m_raw = Sample{kmh, timeMs};
+  if (!raw || timeMs - raw->m_timeMs > kSpeedStaleMs)
+  {
+    m_window.clear();
+    m_last.reset();
     m_run.reset();
+  }
+  m_window.push_back(*m_raw);
+  if (m_window.size() < 3)
+    return results;
+  if (m_window.size() > 3)
+    m_window.erase(m_window.begin());
+
+  // The median of three drops a bad sample of the car speed, it is told at the time of the middle one.
+  double const median = std::max(std::min(m_window[0].m_kmh, m_window[1].m_kmh),
+                                 std::min(std::max(m_window[0].m_kmh, m_window[1].m_kmh), m_window[2].m_kmh));
+  return OnFilteredSample(median, m_window[1].m_timeMs);
+}
+
+std::vector<SprintTimer::Result> SprintTimer::OnFilteredSample(double kmh, int64_t timeMs)
+{
+  std::vector<Result> results;
+  auto const last = m_last;
+  m_last = Sample{kmh, timeMs};
   if (kmh <= 0)
   {
     m_run = Run{.m_startMs = timeMs};

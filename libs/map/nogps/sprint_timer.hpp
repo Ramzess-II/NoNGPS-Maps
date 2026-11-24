@@ -63,10 +63,13 @@ public:
   };
 
   /// \param kmh the real speed: the car speed corrected by the speed table.
-  /// \returns the results the sample has finished.
+  /// \returns the results the sample has finished. A sample is timed once the next one comes: the car speed has
+  /// single-sample outliers, so the timer takes the median of three.
   std::vector<Result> OnSample(double kmh, int64_t timeMs);
 
 private:
+  std::vector<Result> OnFilteredSample(double kmh, int64_t timeMs);
+
   struct Sample
   {
     double m_kmh = 0;
@@ -81,6 +84,10 @@ private:
     bool m_quarterDone = false;
   };
 
+  // The samples as they came, and the last three of them kept after the previous one: the median of them is timed.
+  std::optional<Sample> m_raw;
+  std::vector<Sample> m_window;
+  // The last median.
   std::optional<Sample> m_last;
   std::optional<Run> m_run;
 };

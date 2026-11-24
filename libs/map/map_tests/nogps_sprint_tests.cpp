@@ -106,15 +106,15 @@ UNIT_TEST(NoGps_Sprint_OneRunGivesBoth)
   auto const [sec, trapKmh] = QuarterMileOf(profile);
   SprintTimer timer;
   Feed(timer, profile, -2, 0);
-  // Told at the samples they are finished at.
+  // Told at the sample after the one they are finished at: the speed is a median of three.
   std::vector<std::pair<int, SprintKind>> told;
   for (int i = 1; i <= 300; ++i)
     for (auto const & result : timer.OnSample(profile(i / 10.0), kStartMs + i * 100))
       told.emplace_back(i, result.m_kind);
-  int const quarterSample = static_cast<int>(std::ceil(sec * 10));
+  int const quarterSample = static_cast<int>(std::ceil(sec * 10)) + 1;
   TEST_EQUAL(
       told,
-      (std::vector<std::pair<int, SprintKind>>{{84, SprintKind::To100}, {quarterSample, SprintKind::QuarterMile}}), ());
+      (std::vector<std::pair<int, SprintKind>>{{85, SprintKind::To100}, {quarterSample, SprintKind::QuarterMile}}), ());
 
   auto const results = Run(profile);
   TEST_EQUAL(results.size(), 2, ());
@@ -167,7 +167,7 @@ UNIT_TEST(NoGps_Sprint_DropEndsRun)
       return 80 - dropKmh + 16 * (t - 6);
     };
   };
-  TEST(Run(dip(6)).empty(), ());
+  TEST(Run(dip(7)).empty(), ());
   auto const results = Run(dip(3));
   TEST_EQUAL(results.size(), 2, ());
   auto const to100 = Find(results, SprintKind::To100);
@@ -176,11 +176,45 @@ UNIT_TEST(NoGps_Sprint_DropEndsRun)
 
   // A new run starts from the next standstill.
   SprintTimer timer;
-  TEST(Feed(timer, dip(6), -2, 10).empty(), ());
+  TEST(Feed(timer, dip(7), -2, 10).empty(), ());
   auto const again = Feed(timer, [](double t) { return std::max(0.0, 100 * (t - 12) / 9); }, 10.1, 40);
   auto const to100Again = Find(again, SprintKind::To100);
   TEST(to100Again, ());
   TEST_ALMOST_EQUAL_ABS(to100Again->m_sec, 9.0, 1e-6, ());
+}
+
+UNIT_TEST(NoGps_Sprint_SingleBadSampleIsIgnored)
+{
+  // The car speed at 5 Hz with one-sample dips and a spike, from the logs of 2026-11-23: 8 km/h per second.
+  auto const feed = [](std::vector<int> const & dips, std::vector<int> const & spikes, double dipKmh = 7)
+  {
+    SprintTimer timer;
+    Results results;
+    for (int i = -4; i <= 120; ++i)
+    {
+      double kmh = std::max(0.0, 8.0 * i / 5.0);
+      if (std::find(dips.begin(), dips.end(), i) != dips.end())
+        kmh -= dipKmh;
+      if (std::find(spikes.begin(), spikes.end(), i) != spikes.end())
+        kmh += 20;
+      auto const sampleResults = timer.OnSample(std::max(0.0, kmh), kStartMs + i * 200);
+      results.insert(results.end(), sampleResults.begin(), sampleResults.end());
+    }
+    return results;
+  };
+  // 100 km/h comes at 12.5 s.
+  auto const clean = Find(feed({}, {}), SprintKind::To100);
+  TEST(clean, ());
+  TEST_ALMOST_EQUAL_ABS(clean->m_sec, 12.5, 1e-6, ());
+  auto const dipped = Find(feed({10, 22, 40}, {}), SprintKind::To100);
+  TEST(dipped, ());
+  TEST_ALMOST_EQUAL_ABS(dipped->m_sec, 12.5, 1e-6, ());
+  // A spike over 100 km/h a second early is not the crossing.
+  auto const spiked = Find(feed({}, {50}), SprintKind::To100);
+  TEST(spiked, ());
+  TEST_ALMOST_EQUAL_ABS(spiked->m_sec, 12.5, 1e-6, ());
+  // Three dips in a row are a lift.
+  TEST(!Find(feed({30, 31, 32}, {}, 15), SprintKind::To100), ());
 }
 
 UNIT_TEST(NoGps_Sprint_GapEndsRun)
