@@ -55,8 +55,8 @@ train doesn't push commits under the session working there.
      Its line in the report says "review limit: N train reviews":
 
      ```bash
-     gh pr view <n> -R <its repo> --json comments --jq '[.comments[] | select((.author.login == "koloboid" or
-       .author.login == "Ramzess-II") and (.body | startswith("**Merge-train review")))] | length'
+     gh api --paginate repos/<its repo>/issues/<n>/comments --jq '.[] | select((.user.login == "koloboid" or
+       .user.login == "Ramzess-II") and (.body | startswith("**Merge-train review"))) | .id' | wc -l
      ```
 
    Then the same for `Ramzess-II/ELMandIMU`, the box firmware: the train lands its PRs too. Run the same two

@@ -548,6 +548,7 @@ const finding = (extra = {}) => ({ file: 'a.cpp', line: 7, summary: 's', scenari
   check('no round 3', !seen.includes('review:#1/3'), seen)
   check('open with the review limit', one.outcome === 'open' && /review limit: 5 train reviews/.test(one.reason), one)
   check('reviews counted to 5', one.reviews === 5 && one.rounds === 2, one)
+  check('the reason says the last fixes went unreviewed', /round 2 fixes pushed unreviewed/.test(one.reason), one)
 }
 
 // --- 29. reviews: 4 and a clean round 1: no review left for the confirmation ---

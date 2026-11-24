@@ -555,7 +555,7 @@ async function prep(pr, slot) {
   let rejected = 0
   while (pr.round < ROUNDS) {
     if (pr.reviews >= MAX_REVIEWS) {
-      record(pr, 'open', limit(pr))
+      record(pr, 'open', pr.history.length ? `${limit(pr)}, the round ${pr.round} fixes pushed unreviewed` : limit(pr))
       return false
     }
     const round = ++pr.round
