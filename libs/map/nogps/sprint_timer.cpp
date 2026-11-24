@@ -71,6 +71,10 @@ std::vector<SprintTimer::Result> SprintTimer::OnSample(double kmh, int64_t timeM
   if (m_window.size() > 3)
     m_window.erase(m_window.begin());
 
+  // A single 0 before the speed rises is the start, though the median of it is not 0.
+  if (!m_run && m_window[0].m_kmh <= 0 && m_window[1].m_kmh > 0 && m_window[2].m_kmh >= m_window[1].m_kmh)
+    OnFilteredSample(0, m_window[0].m_timeMs);
+
   // The median of three drops a bad sample of the car speed, it is told at the time of the middle one.
   double const median = std::max(std::min(m_window[0].m_kmh, m_window[1].m_kmh),
                                  std::min(std::max(m_window[0].m_kmh, m_window[1].m_kmh), m_window[2].m_kmh));

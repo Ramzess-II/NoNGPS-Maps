@@ -217,6 +217,22 @@ UNIT_TEST(NoGps_Sprint_SingleBadSampleIsIgnored)
   TEST(!Find(feed({30, 31, 32}, {}, 15), SprintKind::To100), ());
 }
 
+UNIT_TEST(NoGps_Sprint_SingleZeroStartsRun)
+{
+  // One 0 after a roll, then a launch at 5 Hz: 100 km/h comes at 12.5 s after the 0.
+  SprintTimer timer;
+  Results results;
+  for (int i = -10; i <= 120; ++i)
+  {
+    double const kmh = i < 0 ? 5.0 : std::max(i == 0 ? 0.0 : 4.0, 8.0 * i / 5.0);
+    auto const r = timer.OnSample(kmh, kStartMs + i * 200);
+    results.insert(results.end(), r.begin(), r.end());
+  }
+  auto const to100 = Find(results, SprintKind::To100);
+  TEST(to100, ());
+  TEST_ALMOST_EQUAL_ABS(to100->m_sec, 12.5, 0.2, ());
+}
+
 UNIT_TEST(NoGps_Sprint_GapEndsRun)
 {
   auto const profile = Accelerate(8, 4);
