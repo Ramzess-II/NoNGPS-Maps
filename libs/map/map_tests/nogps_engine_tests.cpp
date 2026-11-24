@@ -3503,6 +3503,7 @@ UNIT_TEST(NoGps_Cars_ForgetRemovesOnlyThatCar)
   cars.RenameCar("C47D", " \n ");
   TEST_EQUAL(cars.GetCars()[0].m_name, "My car", ());
   cars.RenameCar("C47D", "Kia");
+  cars.SetCarValue("C47D", CarStorage::kCarRecoveryCode, "123456");
 
   // The current car is forgotten: the one heard the last time is the current one.
   cars.ForgetCar("1234");
@@ -3517,6 +3518,7 @@ UNIT_TEST(NoGps_Cars_ForgetRemovesOnlyThatCar)
   TEST_EQUAL(CarIds(cars.GetCars()), std::vector<std::string>({"42FD"}), ());
   TEST_EQUAL(cars.GetCurrentCar(), "42FD", ());
   TEST(!storage.GetString(CarStorage::GetCarKey("C47D", "NoGpsName")), ());
+  TEST(!storage.GetString(CarStorage::GetCarKey("C47D", CarStorage::kCarRecoveryCode)), ());
 
   // The last car: the values have no car, and a box heard again is a new car.
   cars.ForgetCar("42FD");
@@ -3995,8 +3997,16 @@ UNIT_TEST(NoGps_Engine_BoxProvesItselfWithTheKeyOfItsCar)
   // A proof of another key is not one: the box is refused and its lines are dropped until a new link.
   env.m_engine.OnEsp32BleBytes(
       BoxLine("NGA," + authId + ",OK," + esp32::AuthProof("ffeeddccbbaa99887766554433221100", nonce)));
+  // The user is told, once: nothing else shows why the box does not work.
+  auto const refused = [&env]
+  {
+    auto const & events = env.m_delegate.m_events;
+    return std::count(events.begin(), events.end(), Event::BoxRefused);
+  };
+  TEST_EQUAL(refused(), 1, ());
   env.Drive(2500, 36, 0);
   TEST_EQUAL(env.m_engine.GetStatus().m_speedKmh, -1, ());
+  TEST_EQUAL(refused(), 1, ());
   env.m_engine.OnEsp32BleState(BleState::Searching);
   env.ConnectBox();
   env.m_engine.OnEsp32BleBytes(BoxLine(authInfo));
@@ -4074,6 +4084,76 @@ UNIT_TEST(NoGps_Engine_ThisPhoneRemovedFromBox)
   TEST(!env.m_delegate.HasEvent(Event::ThisPhoneRemoved), ());
   env.m_clock.Advance(1);
   TEST(env.m_delegate.HasEvent(Event::ThisPhoneRemoved), ());
+}
+
+UNIT_TEST(NoGps_Engine_KeepsRecoveryCodeOfBox)
+{
+  Env env(true /* inertial */);
+  auto const last = [&env] { return *esp32::Parse(env.m_delegate.m_esp32BleSent.back()); };
+  TEST(env.m_engine.GetStatus().m_boxRecoveryCode.empty(), ());
+  env.m_engine.OnEsp32BleBytes(
+      BoxLine("NGI,1,0.4.5,2026-11-20T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE "
+              "OTA CAR PHONES MULTI RECOVERY,3"));
+  env.Drive(1000, 0, 0);
+  auto const sent = env.m_delegate.m_esp32BleSent;
+  auto const list = std::find_if(sent.begin(), sent.end(),
+                                 [](auto const & line) { return line.find(",BT_LIST*") != std::string::npos; });
+  TEST(list != sent.end(), ());
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + (*esp32::Parse(*list))[1] + ",OK,BC:D0:74:A9:71:92|Pixel 8|1|1,1"));
+  env.Drive(1000, 0, 0);
+  auto const ask = last();
+  TEST_EQUAL(ask[2], "BT_RECOVERY", ());
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + ask[1] + ",OK,123456"));
+  TEST_EQUAL(env.m_engine.GetStatus().m_boxRecoveryCode, "123456", ());
+}
+
+UNIT_TEST(NoGps_Engine_RecoveryCodeStaysWithTheBoxThatToldIt)
+{
+  Env env(true /* inertial */);
+  auto const last = [&env] { return *esp32::Parse(env.m_delegate.m_esp32BleSent.back()); };
+  // The other car of the user, heard before this box.
+  HearBox(env, "42FD");
+  env.m_engine.OnEsp32BleBytes(
+      BoxLine("NGI,1,0.4.5,2026-11-20T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE "
+              "OTA CAR PHONES MULTI RECOVERY,3"));
+  env.Drive(1000, 0, 0);
+  auto const sent = env.m_delegate.m_esp32BleSent;
+  auto const list = std::find_if(sent.begin(), sent.end(),
+                                 [](auto const & line) { return line.find(",BT_LIST*") != std::string::npos; });
+  TEST(list != sent.end(), ());
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + (*esp32::Parse(*list))[1] + ",OK,BC:D0:74:A9:71:92|Pixel 8|1|1,1"));
+  env.Drive(1000, 0, 0);
+  auto const ask = last();
+  TEST_EQUAL(ask[2], "BT_RECOVERY", ());
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + ask[1] + ",OK,123456"));
+  // The code is of this box only: the other car shows none.
+  TEST_EQUAL(env.m_engine.GetStatus().m_boxRecoveryCode, "123456", ());
+  env.m_engine.SelectCar("42FD");
+  TEST_EQUAL(env.m_engine.GetStatus().m_carId, "42FD", ());
+  TEST(env.m_engine.GetStatus().m_boxRecoveryCode.empty(), ());
+  env.m_engine.SelectCar("C47D");
+  TEST_EQUAL(env.m_engine.GetStatus().m_boxRecoveryCode, "123456", ());
+
+  // A box over kMaxCars is no car of ours: its code is kept for nobody, least of all for the car shown.
+  HearBox(env, "1234");
+  HearBox(env, "5678");
+  env.m_engine.SelectCar("C47D");
+  TEST_EQUAL(env.m_engine.GetCars().size(), CarStorage::kMaxCars, ());
+  env.m_engine.OnEsp32BleBytes(
+      BoxLine("NGI,1,0.4.5,2026-11-20T21:35,esp32s3,s3zero,E000,4096,2031616,ota_0,VALID,BLE "
+              "OTA CAR PHONES MULTI RECOVERY,3"));
+  env.Drive(1000, 0, 0);
+  auto const second = env.m_delegate.m_esp32BleSent;
+  auto const list2 = std::find_if(second.rbegin(), second.rend(),
+                                  [](auto const & line) { return line.find(",BT_LIST*") != std::string::npos; });
+  TEST(list2 != second.rend(), ());
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + (*esp32::Parse(*list2))[1] + ",OK,BC:D0:74:A9:71:92|Pixel 8|1|1,1"));
+  env.Drive(1000, 0, 0);
+  auto const ask2 = last();
+  TEST_EQUAL(ask2[2], "BT_RECOVERY", ());
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + ask2[1] + ",OK,654321"));
+  TEST_EQUAL(env.m_engine.GetStatus().m_carId, "C47D", ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_boxRecoveryCode, "123456", ());
 }
 
 UNIT_TEST(NoGps_BoxCarValues_PlaceIsWrittenSeldom)

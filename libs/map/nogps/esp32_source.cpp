@@ -101,6 +101,9 @@ void Esp32Source::SendHello()
     else
       SendAuth();
   }
+  // A refused box keeps its link: the notice is repeated here, not only when a new link refuses it again.
+  if (m_authRefused && m_bleState == BleState::Connected)
+    TellRefusal();
   if (m_carRead && m_clock.NowMs() - m_carRead->m_sentMs > kCarReplyTimeoutMs)
   {
     LOG(LWARNING, ("No reply to the reading of", m_carRead->m_keys.front()));
@@ -114,6 +117,13 @@ void Esp32Source::SendHello()
     m_listId = 0;
     ListPhones();
   }
+  if (m_recoveryId != 0 && m_clock.NowMs() - m_recoverySentMs > kCarReplyTimeoutMs)
+  {
+    LOG(LWARNING, ("No reply to the recovery code"));
+    m_recoveryId = 0;
+    m_recoveryAsked = false;
+  }
+  AskRecoveryCode();
   // The box may have dropped the command: the list is asked again, the code is not kept.
   if (m_addPhone && m_addPhone->m_state == AddPhone::Opening &&
       m_clock.NowMs() - m_addPhone->m_sentMs > kCarReplyTimeoutMs)
@@ -291,8 +301,28 @@ int64_t Esp32Source::GetAddPhoneMsLeft() const
   return std::max<int64_t>(0, m_addPhone->m_openMs + esp32::kPairingWindowMs - m_clock.NowMs());
 }
 
+void Esp32Source::AskRecoveryCode()
+{
+  // Only the phone the box listens to gets the code, and the list tells which one it is.
+  if (m_recoveryAsked || !HasRecovery() || !m_phones || m_readOnly)
+    return;
+  m_recoveryAsked = true;
+  m_recoveryId = m_nextCommandId++;
+  m_recoverySentMs = m_clock.NowMs();
+  Send("BT_RECOVERY", m_recoveryId);
+}
+
 bool Esp32Source::OnPhonesReply(esp32::Reply const & reply)
 {
+  if (m_recoveryId != 0 && reply.m_id == m_recoveryId)
+  {
+    m_recoveryId = 0;
+    if (auto const code = esp32::ParseRecoveryCode(reply))
+      m_listener.OnBoxRecoveryCode(*code);
+    else
+      LOG(LWARNING, ("The box has not told the recovery code, error =", reply.m_error));
+    return true;
+  }
   if (reply.m_id == m_listId)
   {
     m_listId = 0;
@@ -338,6 +368,8 @@ void Esp32Source::ForgetPhoneRequests()
   m_listId = 0;
   m_phones.reset();
   m_readOnly = false;
+  m_recoveryAsked = false;
+  m_recoveryId = 0;
   // The box keeps the window open without the link, but this phone can't hear the new one pair.
   if (m_addPhone && m_addPhone->m_state == AddPhone::Opening)
     m_addPhone->m_state = AddPhone::Failed;
@@ -689,6 +721,7 @@ void Esp32Source::OnAuthReply(esp32::Reply const & reply)
     m_listener.OnBoxAuthKey(m_authCar, m_authKey, true /* confirmed */);
   LOG(LINFO, ("The box", m_authCar, m_authSetsKey ? "has taken a key" : "has proved itself"));
   m_proven = true;
+  m_refusalToldMs.reset();
   m_authId = 0;
   auto const fields = std::move(*m_unprovenInfo);
   m_unprovenInfo.reset();
@@ -708,6 +741,18 @@ void Esp32Source::RefuseBox(std::string const & reason)
   m_authId = 0;
   m_unprovenInfo.reset();
   m_authKey.clear();
+  TellRefusal();
+}
+
+void Esp32Source::TellRefusal()
+{
+  // Not told on every link that drops and comes back, but again after a while: no screen may have shown the first one.
+  int64_t const now = m_clock.NowMs();
+  if (!m_refusalToldMs || now - *m_refusalToldMs >= kRefusalRepeatMs)
+  {
+    m_refusalToldMs = now;
+    m_listener.OnBoxRefused();
+  }
 }
 
 void Esp32Source::OnData(esp32::Data const & data)
@@ -894,6 +939,17 @@ void Esp32Source::OnEvent(esp32::Event const & event)
            m_addPhone->m_openEvent >= 0 && event.m_number > m_addPhone->m_openEvent)
   {
     m_addPhone->m_state = AddPhone::Added;
+    ListPhones();
+  }
+  // The phones are erased but this one and the code is renewed: the list is asked, the code follows it. Only a live
+  // event: the same one replayed from the journal after a reconnect would blink the phone rows and spend a BT_LIST.
+  else if (event.m_code == "BT_RESET" && event.m_number > lastNumber)
+  {
+    m_recoveryAsked = false;
+    m_recoveryId = 0;
+    m_phones.reset();
+    m_readOnly = false;
+    m_listId = 0;
     ListPhones();
   }
   // The phones changed: the role may have passed from one to the other, with this link up.

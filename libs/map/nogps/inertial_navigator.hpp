@@ -90,8 +90,12 @@ public:
     virtual void OnBoxAuthKey(std::string const & /* id */, std::string const & /* key */, bool /* confirmed */) {}
     /// See MotionSource::Listener::OnBoxCarValues() and OnBoxCarWritten().
     virtual void OnBoxCarValues(std::map<std::string, std::string> const & /* values */) {}
+    /// See MotionSource::Listener::OnBoxRecoveryCode().
+    virtual void OnBoxRecoveryCode(std::string const & /* code */) {}
     /// See MotionSource::Listener::OnThisPhoneRemoved().
     virtual void OnThisPhoneRemoved() {}
+    /// See MotionSource::Listener::OnBoxRefused().
+    virtual void OnBoxRefused() {}
     /// See MotionSource::Listener::OnPeerPlace().
     virtual void OnPeerPlace(PeerPlace const & /* place */) {}
     virtual void OnBoxCarWritten(std::string const & /* key */, std::string const & /* value */,
@@ -549,7 +553,9 @@ private:
   }
   void OnBoxCarValues(std::map<std::string, std::string> const & values) override;
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
+  void OnBoxRecoveryCode(std::string const & code) override { m_listener.OnBoxRecoveryCode(code); }
   void OnThisPhoneRemoved() override { m_listener.OnThisPhoneRemoved(); }
+  void OnBoxRefused() override { m_listener.OnBoxRefused(); }
   void OnPeerPlace(PeerPlace const & place) override { m_listener.OnPeerPlace(place); }
   void OnJolt(double joltMs2, int speedKmh) override;
 

@@ -65,6 +65,9 @@ public:
   // The box answers AUTH at once: a command without a reply is sent again, this many times in all.
   static int64_t constexpr kAuthReplyTimeoutMs = 2000;
   static int constexpr kMaxAuthSends = 5;
+  // A box that is still refused is told again after this long: the first notice may have fallen on an app in the
+  // background.
+  static int64_t constexpr kRefusalRepeatMs = 10 * 60 * 1000;
 
   /// What the box does about a new phone, see StartAddPhone().
   enum class AddPhone
@@ -172,6 +175,8 @@ public:
   void ListPhonesThrottled();
   /// The phones of the box from its last list in this connection.
   std::optional<esp32::Phones> const & GetPhones() const { return m_phones; }
+  /// \returns true if the box tells the code of its recovery window, see Esp32Source::OnPhonesReply().
+  bool HasRecovery() const { return HasPhones() && m_info->m_hasRecovery; }
   /// Removes a phone from the box, this one too: the listener is told then.
   void ForgetPhone(std::string const & address);
   /// \returns true if another phone has connected to the box first: the box takes from it the commands that change
@@ -221,6 +226,7 @@ private:
   void SendAuth();
   void OnAuthReply(esp32::Reply const & reply);
   void RefuseBox(std::string const & reason);
+  void TellRefusal();
   std::string NewAuthHex(size_t bytes) const;
   void ForgetAuth();
   void SendHello();
@@ -236,6 +242,7 @@ private:
   bool OnCarReply(esp32::Reply const & reply);
   void ForgetCarRequests();
   bool OnPhonesReply(esp32::Reply const & reply);
+  void AskRecoveryCode();
   void ForgetPhoneRequests();
   void RequestLostEvents(int64_t fromNumber);
   void ForgetJournal();
@@ -306,6 +313,8 @@ private:
   bool m_mustProve = false;
   bool m_proven = true;
   bool m_authRefused = false;
+  // When OnBoxRefused() was called last, if no box has proved itself since; kept over links.
+  std::optional<int64_t> m_refusalToldMs;
   // The info of the box heard before the proof: it is taken when the box has proved itself.
   std::optional<esp32::Fields> m_unprovenInfo;
   // The command waiting for its reply, 0 if none.
@@ -354,6 +363,11 @@ private:
     int64_t m_sentMs = 0;
   };
   std::optional<ForgetRequest> m_forget;
+  // The code of the recovery window is asked once in a connection, by the phone that changes the box, and again when
+  // the box renews it.
+  bool m_recoveryAsked = false;
+  int m_recoveryId = 0;
+  int64_t m_recoverySentMs = 0;
   // The last list says another phone changes the box. Not set without the list or a link.
   bool m_readOnly = false;
   struct AddPhoneRequest

@@ -281,7 +281,11 @@ public final class Config
     /**
      * Automatically switches between dark and light based on sunrise/sunset at the current location.
      */
-    SCHEDULED("scheduled");
+    SCHEDULED("scheduled"),
+    /**
+     * Switches between dark and light by the ambient light sensor of the phone.
+     */
+    LIGHT_SENSOR("light_sensor");
 
     UiTheme(@NonNull String value)
     {
@@ -313,7 +317,7 @@ public final class Config
     }
 
     @NonNull
-    public static UiTheme getUiThemePreference()
+    public static UiTheme getUiThemePreference(boolean isLightSensorAvailable)
     {
       final String value = getString(KEY_UI_THEME_PREFERENCE);
       final boolean isLegacyNavAuto = LEGACY_NAV_AUTO_THEME.equalsIgnoreCase(value);
@@ -322,16 +326,26 @@ public final class Config
         setAutoDarkNavigationEnabled(true);
       }
 
-      final var isSystemThemeAvailable = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q;
-      final var defaultTheme = isSystemThemeAvailable ? UiTheme.SYSTEM : UiTheme.SCHEDULED;
-      final var savedTheme = value.isEmpty() ? defaultTheme : UiTheme.ofValue(value);
-      final var shouldReplaceSystemTheme = savedTheme == UiTheme.SYSTEM && !isSystemThemeAvailable;
-      return shouldReplaceSystemTheme ? UiTheme.SCHEDULED : savedTheme;
+      return resolveSavedTheme(value, Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q, isLightSensorAvailable);
     }
 
-    public static boolean setUiThemePreference(@NonNull UiTheme theme)
+    @NonNull
+    static UiTheme resolveSavedTheme(@NonNull String value, boolean isSystemThemeAvailable,
+                                     boolean isLightSensorAvailable)
     {
-      if (getUiThemePreference().equals(theme))
+      final var fallbackTheme = isSystemThemeAvailable ? UiTheme.SYSTEM : UiTheme.SCHEDULED;
+      if (value.isEmpty())
+        return fallbackTheme;
+
+      final var savedTheme = UiTheme.ofValue(value);
+      final var isUnavailable = (savedTheme == UiTheme.SYSTEM && !isSystemThemeAvailable)
+                             || (savedTheme == UiTheme.LIGHT_SENSOR && !isLightSensorAvailable);
+      return isUnavailable ? fallbackTheme : savedTheme;
+    }
+
+    public static boolean setUiThemePreference(@NonNull UiTheme theme, boolean isLightSensorAvailable)
+    {
+      if (getUiThemePreference(isLightSensorAvailable).equals(theme))
         return false;
 
       setString(KEY_UI_THEME_PREFERENCE, theme.value);

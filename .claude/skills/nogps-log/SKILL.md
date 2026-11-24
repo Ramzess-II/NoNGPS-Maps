@@ -29,6 +29,11 @@ Each call reads the logs again: a day of Android logs takes a few seconds.
    - `events <logs> --trip N [--cat road|turn|box|gps|route|user|state|app|other] [--grep regex] [--full]`.
    - `replay <logs> --trip N --replay <day>-out.txt`: the trip against its replay, the output of
      `nogps_replay.py run` or the Android app's `nogps-replay-out.txt`. Only Android trips are replayed.
+   - `flags <logs>`: the flags the tester put (the flag and voice buttons) in the `flags/` folders of the
+     `trip-logs/` tree, each with its trip, the local time of its name, the time on the trip, the voice length and
+     the `#trip=N&t=<ms>` of the viewer. A flag marks where the tester saw the mark wrong: start there. `trips`
+     counts the flags of each trip, `trip` lists them and `state` shows a flag within 30 s. The tree comes from
+     `/nogps-fetch`; a logs.zip has no flags.
 4. **Explain.** Read what a field means in `Engine::GetTripLine()` (`libs/map/nogps/engine.cpp`), and the rule
    behind it in the matching section of `docs/nogps/navigation-rules.md`. Find the code that writes an event
    line by its text. For a question the commands don't answer, import the parser in Python:
@@ -36,6 +41,7 @@ Each call reads the logs again: a day of Android logs takes a few seconds.
    then use `a.trips[N].rows` (dicts of TRIP fields with `t` in ms), `.events` and `.anomalies`.
 5. **Answer** with the times, the field values and the log lines that show it. To let the user see a moment, give the
    viewer command `python3 tools/python/nogps_log_viewer.py <logs>` and the `#trip=N&t=<ms>` that `state` prints.
+   For the `trip-logs/` tree add `--library trip-logs`: the page then plays the voice notes of the flags.
 
 The viewer is offline: it loads its libraries from `tools/python/nogps_log_viewer_assets/` and draws the tracks on a
 plain background. `--tiles <folder>` draws a map from local `{z}/{x}/{y}.png` tiles and reveals nothing. `--tiles

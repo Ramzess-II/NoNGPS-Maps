@@ -78,6 +78,9 @@ enum class Event
   // The box has connected Engine::kTripFileLinkGapMs or more after the link to it has ended: a drive starts. The
   // platform starts a new file of the trip log before it returns, the calibration of the car is logged next.
   TripStarted,
+  // The sensor box has not proved itself and is not used until the link is made again: the user may have to forget
+  // the car and pair the box again. Told once for a refusal.
+  BoxRefused,
 };
 
 /// What the platform does about the ESP32 sensor box over Bluetooth LE, told to Engine::OnEsp32BleState().

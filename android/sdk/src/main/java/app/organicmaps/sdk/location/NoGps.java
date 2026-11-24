@@ -248,6 +248,9 @@ public final class NoGps
     // The box has connected after 5 minutes or more without it: a drive starts. LocationHelper starts a new file of
     // the trip log.
     TRIP_STARTED,
+    // The sensor box has not proved itself and is not used until the link is made again: the user may have to forget
+    // the car and pair the box again.
+    BOX_REFUSED,
   }
 
   // The kinds of the runs from a standing start.
@@ -481,6 +484,10 @@ public final class NoGps
     @Keep
     @NonNull
     public String addPhoneCode = "";
+    // The code of the recovery window of the box of the current car, six digits, empty until the box has told it.
+    @Keep
+    @NonNull
+    public String boxRecoveryCode = "";
     @Keep
     public int addPhoneSecondsLeft;
     // All the sensor box has told in this connection, in the order of BoxValue: the values with their units, empty if

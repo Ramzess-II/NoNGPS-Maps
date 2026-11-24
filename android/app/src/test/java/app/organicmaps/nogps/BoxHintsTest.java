@@ -3,7 +3,10 @@ package app.organicmaps.nogps;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.when;
 
+import android.content.Context;
 import app.organicmaps.R;
 import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.sdk.location.NoGps.BleState;
@@ -11,6 +14,7 @@ import app.organicmaps.sdk.location.NoGps.CalibrationState;
 import app.organicmaps.sdk.location.NoGps.SourceState;
 import java.lang.reflect.Field;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 public class BoxHintsTest
 {
@@ -41,6 +45,25 @@ public class BoxHintsTest
                  BoxBottomSheet.linkHintText(status(SourceState.CONNECTING, BleState.BOND_LOST)));
   }
 
+  // The system dialog wants the recovery code of the box in the pairing window, when the box has told it.
+  @Test
+  public void pairingHintsHaveRecoveryCode()
+  {
+    for (BleState ble : new BleState[] {BleState.PAIRING_BY_PHONE, BleState.PAIRING_FULL, BleState.PAIRING})
+    {
+      final NoGps.Status status = status(SourceState.CONNECTING, ble);
+      assertFalse(BoxBottomSheet.hintHasRecoveryCode(status));
+      status.boxRecoveryCode = "123456";
+      assertTrue(BoxBottomSheet.hintHasRecoveryCode(status));
+    }
+    for (BleState ble : new BleState[] {BleState.PAIRING_CLOSED, BleState.BOND_LOST, BleState.SEARCHING})
+    {
+      final NoGps.Status status = status(SourceState.CONNECTING, ble);
+      status.boxRecoveryCode = "123456";
+      assertFalse(BoxBottomSheet.hintHasRecoveryCode(status));
+    }
+  }
+
   // The steps tell the search and the connection themselves.
   @Test
   public void noLinkHintWhileItGoes()
@@ -48,6 +71,32 @@ public class BoxHintsTest
     assertEquals(0, BoxBottomSheet.linkHintText(status(SourceState.CONNECTING, BleState.SEARCHING)));
     assertEquals(0, BoxBottomSheet.linkHintText(status(SourceState.CONNECTING, BleState.CONNECTING)));
     assertEquals(0, BoxBottomSheet.linkHintText(status(SourceState.CONNECTED, BleState.CONNECTED)));
+  }
+
+  // The sleep sentence needs a phone that looks for the box; the rest is told by the link alone.
+  @Test
+  public void sleepIsToldOnlyWhileTheBoxIsSearched()
+  {
+    for (BleState ble : new BleState[] {BleState.OFF, BleState.NO_PERMISSION, BleState.DISABLED,
+                                        BleState.PAIRING_FAILED, BleState.BOND_LOST})
+      assertFalse(ble.name(), BoxTexts.isBoxSearched(status(SourceState.BOX_SLEEPING, ble)));
+    for (BleState ble :
+         new BleState[] {BleState.SEARCHING, BleState.PAIRING_CLOSED, BleState.PAIRING_BY_PHONE, BleState.PAIRING_FULL,
+                         BleState.CAR_LIMIT, BleState.CONNECTING, BleState.PAIRING, BleState.CONNECTED})
+      assertTrue(ble.name(), BoxTexts.isBoxSearched(status(SourceState.BOX_SLEEPING, ble)));
+  }
+
+  // The text itself: the sleep is dropped when the phone can't search, and kept when it does.
+  @Test
+  public void sleepTextNeedsASearchingPhone()
+  {
+    final Context context = Mockito.mock(Context.class);
+    when(context.getString(anyInt())).thenAnswer(call -> "#" + call.getArgument(0));
+    final String sleeping = "#" + R.string.nogps_box_sleeping;
+    assertEquals("#" + R.string.nogps_box_bt_bond_lost,
+                 BoxTexts.boxStateText(context, status(SourceState.BOX_SLEEPING, BleState.BOND_LOST)));
+    assertEquals(sleeping + " · #" + R.string.nogps_box_bt_searching,
+                 BoxTexts.boxStateText(context, status(SourceState.BOX_SLEEPING, BleState.SEARCHING)));
   }
 
   // The box is heard but the car gives no speed: the hint names what to check.

@@ -522,6 +522,7 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsString(env, out, "peerName", status.m_peerName);
   SetNoGpsField(env, out, "addPhone", static_cast<int>(status.m_addPhone));
   SetNoGpsString(env, out, "addPhoneCode", status.m_addPhoneCode);
+  SetNoGpsString(env, out, "boxRecoveryCode", status.m_boxRecoveryCode);
   SetNoGpsField(env, out, "addPhoneSecondsLeft", status.m_addPhoneSecondsLeft);
   std::vector<jint> boxValueIds;
   std::vector<std::string> boxValues;

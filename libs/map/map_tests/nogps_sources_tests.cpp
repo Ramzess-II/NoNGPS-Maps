@@ -42,6 +42,8 @@ public:
   }
 
   void OnThisPhoneRemoved() override { ++m_thisPhoneRemoved; }
+  void OnBoxRefused() override { ++m_boxRefused; }
+  void OnBoxRecoveryCode(std::string const & code) override { m_recoveryCodes.push_back(code); }
 
   std::vector<int> m_speeds;
   double m_yawDeg = 0;
@@ -49,6 +51,8 @@ public:
   double m_maxDtSec = 0;
   int m_motions = 0;
   int m_thisPhoneRemoved = 0;
+  int m_boxRefused = 0;
+  std::vector<std::string> m_recoveryCodes;
 };
 
 // Answers the initialization of the adapter.
@@ -1090,6 +1094,113 @@ UNIT_TEST(NoGps_Esp32Source_ListsAndForgetsPhones)
   TEST_GREATER(box.SentCount(), asked, ());
 }
 
+namespace
+{
+size_t CountSent(PhonesBox const & box, std::string_view command)
+{
+  size_t count = 0;
+  for (auto const & line : box.m_delegate.m_esp32BleSent)
+    count += line.find("," + std::string(command) + "*") != std::string::npos ? 1 : 0;
+  return count;
+}
+}  // namespace
+
+UNIT_TEST(NoGps_Esp32Source_AsksRecoveryCodeOfOwnerPhone)
+{
+  // A box without the ability is not asked.
+  PhonesBox old;
+  old.List();
+  old.m_clock.Advance(Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(CountSent(old, "BT_RECOVERY"), 0, ());
+
+  PhonesBox box;
+  box.m_source.OnBleState(BleState::Searching);
+  box.m_source.OnBleState(BleState::Connected);
+  box.Line(
+      "NGI,1,0.4.5,2026-11-20T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES MULTI PEER "
+      "RECOVERY,3");
+  TEST(box.m_source.HasRecovery(), ());
+  // Without the list nobody knows if the box listens to this phone.
+  box.m_clock.Advance(Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(CountSent(box, "BT_RECOVERY"), 0, ());
+
+  // Another phone is first: the box would answer BUSY.
+  box.List(false);
+  box.m_clock.Advance(Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(CountSent(box, "BT_RECOVERY"), 0, ());
+
+  // The other phone leaves, this one is the owner now.
+  box.Line("NGE,1,0,1000,I,PHONE_LOST,D0:56:FB:11:00:88");
+  box.List(true);
+  box.m_clock.Advance(Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(CountSent(box, "BT_RECOVERY"), 1, ());
+  TEST_EQUAL(box.LastCommand().second, "BT_RECOVERY", ());
+  box.Accept(",123456");
+  TEST_EQUAL(box.m_listener.m_recoveryCodes, (std::vector<std::string>{"123456"}), ());
+  // The code is asked once in a connection.
+  box.m_clock.Advance(Esp32Source::kHelloIntervalMs);
+  box.m_clock.Advance(Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(CountSent(box, "BT_RECOVERY"), 1, ());
+
+  // The box has recovered for a new phone and renewed the code: the list and the code are asked again.
+  box.Line("NGE,1,1,5000,W,BT_RESET,3 erased");
+  TEST_EQUAL(box.LastCommand().second, "BT_LIST", ());
+  box.m_clock.Advance(Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(CountSent(box, "BT_RECOVERY"), 1, ());
+  box.List(true);
+  box.m_clock.Advance(Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(CountSent(box, "BT_RECOVERY"), 2, ());
+  box.Accept(",654321");
+  TEST_EQUAL(box.m_listener.m_recoveryCodes.back(), "654321", ());
+
+  // A reply that is not six digits is not kept.
+  box.m_source.OnBleState(BleState::Searching);
+  box.m_source.OnBleState(BleState::Connected);
+  box.Line(
+      "NGI,1,0.4.5,2026-11-20T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES MULTI PEER "
+      "RECOVERY,3");
+  box.List(true);
+  box.m_clock.Advance(Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(box.LastCommand().second, "BT_RECOVERY", ());
+  box.Accept(",12a456");
+  TEST_EQUAL(box.m_listener.m_recoveryCodes.size(), 2, ());
+  // A box that is busy gives no code.
+  box.m_source.OnBleState(BleState::Searching);
+  box.m_source.OnBleState(BleState::Connected);
+  box.Line(
+      "NGI,1,0.4.5,2026-11-20T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES MULTI PEER "
+      "RECOVERY,3");
+  box.List(true);
+  box.m_clock.Advance(Esp32Source::kHelloIntervalMs);
+  box.Refuse("BUSY");
+  TEST_EQUAL(box.m_listener.m_recoveryCodes.size(), 2, ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_ReplayedBoxResetChangesNothing)
+{
+  PhonesBox box;
+  box.m_source.OnBleState(BleState::Searching);
+  box.m_source.OnBleState(BleState::Connected);
+  box.Line(
+      "NGI,1,0.4.5,2026-11-20T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES MULTI PEER "
+      "RECOVERY,3");
+  box.List(true);
+  box.m_clock.Advance(Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(box.LastCommand().second, "BT_RECOVERY", ());
+  box.Accept(",123456");
+  box.Line("NGE,1,8,5000,I,PHONE_CONNECTED,BC:D0:74:A9:71:92");
+  size_t const sent = box.SentCount();
+  // The journal of the box brings a reset of this power cycle that was answered before: nothing is asked again and
+  // the phones stay as the list told them.
+  box.Line("NGE,1,3,2000,W,BT_RESET,3 erased");
+  TEST_EQUAL(box.ListsSince(sent), 0, ());
+  TEST_EQUAL(CountSent(box, "BT_RECOVERY"), 1, ());
+  TEST(box.m_source.GetPhones().has_value(), ());
+  // A reset that happens now is answered.
+  box.Line("NGE,1,9,6000,W,BT_RESET,3 erased");
+  TEST_EQUAL(box.ListsSince(sent), 1, ());
+}
+
 UNIT_TEST(NoGps_Esp32Source_LostListReplyIsAskedAgain)
 {
   // The reply to the first list of the connection is lost: without it the role of this phone is unknown.
@@ -1853,9 +1964,10 @@ UNIT_TEST(NoGps_Esp32Source_KnownBoxProvesItselfWithKey)
   box.SendData();
   TEST_EQUAL(box.listener.m_speeds.size(), 0, ());
   TEST(box.listener.m_heard.empty(), ());
-  // A refused box is not asked again, even with the right proof.
+  // A refused box is not asked again, even with the right proof, and the user is told once.
   box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",OK," + esp32::AuthProof(kAuthKey, nonce)));
   TEST(!box.source.IsBoxProven(), ());
+  TEST_EQUAL(box.listener.m_boxRefused, 1, ());
 
   // A new connection starts anew: the nonce is another one, the proof of it is taken.
   box.source.OnBleState(BleState::Searching);
@@ -1886,6 +1998,7 @@ UNIT_TEST(NoGps_Esp32Source_RefusesBoxThatAnswersWithError)
     LastAuthArgument(box.delegate, "AUTH", id);
     box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + "," + error));
     TEST(box.source.IsBoxRefused(), (error));
+    TEST_EQUAL(box.listener.m_boxRefused, 1, (error));
     box.SendData();
     TEST_EQUAL(box.listener.m_speeds.size(), 0, ());
   }
@@ -1936,6 +2049,50 @@ UNIT_TEST(NoGps_Esp32Source_BoxWithoutProofOfFirmware)
     TEST_EQUAL(box.listener.m_speeds.size(), 5, ());
     TEST_EQUAL(box.listener.m_keys["C47D"], std::make_pair(kAuthKey, false), ());
   }
+}
+
+UNIT_TEST(NoGps_Esp32Source_RefusalIsToldAgainAfterAWhile)
+{
+  ProvedBox box;
+  box.listener.m_keys["C47D"] = {kAuthKey, true};
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  int id = 0;
+  LastAuthArgument(box.delegate, "AUTH", id);
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",ERR,NOKEY"));
+  TEST(box.source.IsBoxRefused(), ());
+  TEST_EQUAL(box.listener.m_boxRefused, 1, ());
+  // A link that drops and comes back is refused again without a new notice.
+  box.source.OnBleState(BleState::Searching);
+  box.source.OnBleState(BleState::Connected);
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  LastAuthArgument(box.delegate, "AUTH", id);
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",ERR,NOKEY"));
+  TEST(box.source.IsBoxRefused(), ());
+  TEST_EQUAL(box.listener.m_boxRefused, 1, ());
+  // Still refused after a while: told again, in case no screen showed the first notice.
+  box.clock.Advance(Esp32Source::kRefusalRepeatMs);
+  box.source.OnBleState(BleState::Searching);
+  box.source.OnBleState(BleState::Connected);
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  LastAuthArgument(box.delegate, "AUTH", id);
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",ERR,NOKEY"));
+  TEST_EQUAL(box.listener.m_boxRefused, 2, ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_RefusalIsToldAgainOnALinkThatStaysUp)
+{
+  ProvedBox box;
+  box.listener.m_keys["C47D"] = {kAuthKey, true};
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  int id = 0;
+  LastAuthArgument(box.delegate, "AUTH", id);
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",ERR,NOKEY"));
+  TEST_EQUAL(box.listener.m_boxRefused, 1, ());
+  box.clock.Advance(Esp32Source::kRefusalRepeatMs - Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(box.listener.m_boxRefused, 1, ());
+  box.clock.Advance(2 * Esp32Source::kHelloIntervalMs);
+  TEST(box.source.IsBoxRefused(), ());
+  TEST_EQUAL(box.listener.m_boxRefused, 2, ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_AuthIsSentAgainThenRefused)

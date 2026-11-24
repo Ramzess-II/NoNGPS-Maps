@@ -1480,6 +1480,9 @@
 /* Asked before this phone is removed from the sensor box */
 "nogps_phone_remove_this_text" = "This phone will not connect to the box any more, and the car will be forgotten on it.";
 
+/* Message: the sensor box has not proved that it is the box of the car, and it is not used. If it is the user's box, its car has to be forgotten and the box paired again */
+"nogps_box_refused" = "The box did not prove it is yours and is not used. If it is yours, forget the car and pair the box again.";
+
 /* Message on iOS: this phone has been removed from the sensor box. The old pairing of the phone only blocks the next connection, and iOS apps cannot remove it */
 "nogps_phone_removed_forget" = "This phone is removed from the box, the car is forgotten. Remove the box ending in %1$@ in Settings > Bluetooth: tap its info button, then Forget This Device";
 
@@ -1506,6 +1509,12 @@
 
 /* Shown when the sensor box has not taken the one-time pairing code */
 "nogps_phone_add_failed" = "The box has not taken the code. Try again.";
+
+/* Shown in the Box sheet under the phones of the box: the code of its recovery window. %s is six digits */
+"nogps_phone_recovery_code" = "Recovery code: %@. Write it down. If you lose the phones of the box, plug it in and unplug it within a minute, 3 times, and leave it plugged in the third time: for 2 minutes it accepts a new phone with this code, and that phone erases all the other phones of the box. It works only while the box still has phones; with none left, the box asks for 123456";
+
+/* Added to the hint of the sensor box (under its steps and in the Box tile) while the box is not paired with this phone and its recovery code is known. %s is six digits */
+"nogps_box_bt_recovery_code" = "In the recovery window (3 plug-ins) the box asks for its recovery code instead of 123456: %@";
 
 /* Shown in the Box sheet when another phone has connected to the sensor box first: this phone gets the data only */
 "nogps_box_read_only" = "Another phone connected to the box first: the calibration, the firmware, the car name and the phones of the box are changed on it";
@@ -1588,14 +1597,8 @@
 "nogps_about_om_menu" = "About Organic Maps";
 "nogps_about_headline" = "Navigation when GPS is jammed or spoofed";
 
-/* About NonGPS Maps, under the globe with the GPS satellites that the finger spins */
+/* About NonGPS Maps, the screen reader label of the globe with the GPS satellites that the finger spins */
 "nogps_about_globe_hint" = "Drag the Earth, tap a satellite to switch it off.";
-
-/* About NonGPS Maps, under the globe: the car stands in the jammed area */
-"nogps_about_globe_jammed" = "Inside the jammed area not one of them reaches the car.";
-
-/* About NonGPS Maps, under the globe: %1$d is how many satellites are on, %2$d how many there are */
-"nogps_about_globe_sats" = "%1$d of %2$d satellites on";
 "nogps_about_description" = "Without GPS the car is driven by the inertial navigation: the turns come from the gyroscope, the distance from the car speed via OBD-II. The car is kept on the roads of the offline map.";
 
 /* NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) */

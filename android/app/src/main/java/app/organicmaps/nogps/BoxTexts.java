@@ -37,20 +37,25 @@ public final class BoxTexts
   @NonNull
   public static String boxStateText(@NonNull Context context, @NonNull NoGps.Status status)
   {
-    // The phone keeps looking for a sleeping box.
-    if (status.getSourceState() == NoGps.SourceState.BOX_SLEEPING)
-      return context.getString(R.string.nogps_box_sleeping) + " · " + context.getString(boxSearchText(context, status));
+    // The sleep is told only while the phone looks for the box: a phone that can't reach it knows nothing of the car.
+    if (status.getSourceState() == NoGps.SourceState.BOX_SLEEPING && isBoxSearched(status))
+      return context.getString(R.string.nogps_box_sleeping) + " · " + boxSearchText(context, status);
     // A locked-out box comes back only after it is unplugged, and a phone that can't reach it says so too: the box
     // may be plugged back in already.
-    if (status.getSourceState() == NoGps.SourceState.BOX_BATTERY_LOCK && !isBoxSearched(context, status))
+    if (status.getSourceState() == NoGps.SourceState.BOX_BATTERY_LOCK && !isBoxSearched(status))
     {
-      final String search = context.getString(boxSearchText(context, status));
+      final String search = boxSearchText(context, status);
       return context.getString(R.string.nogps_box_battery_lock) + " · " + search;
     }
+    // A sleeping box that is not searched is told by the link alone.
+    if (status.getSourceState() == NoGps.SourceState.BOX_SLEEPING)
+      return boxSearchText(context, status);
+    if (status.getSourceState() == NoGps.SourceState.CONNECTING)
+      return boxSearchText(context, status);
     return context.getString(switch (status.getSourceState())
     {
       case DISCONNECTED -> R.string.nogps_elm_disconnected;
-      case CONNECTING -> boxSearchText(context, status);
+      case CONNECTING -> R.string.nogps_elm_disconnected;
       case NO_ADAPTER -> R.string.nogps_elm_no_adapter;
       case OBD_DISABLED -> R.string.nogps_box_obd_disabled;
       case OBD_CONNECTING -> R.string.nogps_box_obd_connecting;
@@ -67,10 +72,9 @@ public final class BoxTexts
   /**
    * The phone looks for the box, or waits for it: Bluetooth is on and the box doesn't have to be paired again.
    */
-  private static boolean isBoxSearched(@NonNull Context context, @NonNull NoGps.Status status)
+  // Location off for the scan is DISABLED too.
+  static boolean isBoxSearched(@NonNull NoGps.Status status)
   {
-    if (NoGps.isLocationOffForBox(context, status))
-      return false;
     return switch (status.getBleState())
     {
       case OFF, NO_PERMISSION, DISABLED, PAIRING_FAILED, BOND_LOST -> false;
@@ -79,10 +83,19 @@ public final class BoxTexts
   }
 
   /**
-   * The box is not heard yet: what the phone does to reach it.
+   * The box is not heard yet: what the phone does to reach it, with the recovery code when the system dialog wants it.
    */
+  @NonNull
+  private static String boxSearchText(@NonNull Context context, @NonNull NoGps.Status status)
+  {
+    final String text = context.getString(boxSearchRes(context, status));
+    if (!BoxBottomSheet.hintHasRecoveryCode(status))
+      return text;
+    return text + ". " + context.getString(R.string.nogps_box_bt_recovery_code, status.boxRecoveryCode);
+  }
+
   @StringRes
-  private static int boxSearchText(@NonNull Context context, @NonNull NoGps.Status status)
+  private static int boxSearchRes(@NonNull Context context, @NonNull NoGps.Status status)
   {
     if (NoGps.isLocationOffForBox(context, status))
       return R.string.nogps_box_step_location_off;

@@ -6,15 +6,17 @@ package app.organicmaps.nogps;
  *
  * <p>Points of the scene are in the frame of the screen: x to the right, y up, z to the viewer, the unit is the Earth
  * radius. The Earth turns in it by {@link #rotation()}, which maps the frame of the Earth (y is the polar axis, lon 0
- * is +z) to the frame of the screen. The satellites orbit in the frame of the screen: the Earth turns under them.
+ * is +z) to the frame of the screen. The satellites orbit in the orbit frame, whose y is the polar axis too: a drag or
+ * a flick turns the view, so both frames turn together, and the idle spin turns the Earth alone under the orbits.
  * Distances on the screen are in dp.
  */
 final class GlobeScene
 {
-  static final float SCENE_HEIGHT_DP = 260;
-  static final float EARTH_RADIUS_FRACTION = 0.26f;
-  /** The real orbit is 4.16 Earth radii: the satellites would be off the screen. */
-  static final double ORBIT_RADIUS_FACTOR = 2.1;
+  static final float SCENE_HEIGHT_DP = 400;
+  /** The real orbit, 26 560 km over an Earth of 6 371 km: the coverage on the ground depends on it. */
+  static final double ORBIT_RADIUS_FACTOR = 4.16;
+  /** The orbit stays this far inside the scene, so the dot of a satellite is never cut. */
+  static final float SAT_MARGIN_DP = 6;
   static final int PLANES = 6;
   static final int SATS_PER_PLANE = 4;
   static final double INCLINATION_DEG = 55;
@@ -33,6 +35,11 @@ final class GlobeScene
   static final double JAM_RADIUS_DEG = 18;
   /** A beam inside the jammed area stops this far from the car. */
   static final float BEAM_GAP_DP = 26;
+  /** A receiver needs this many satellites for a fix. */
+  static final int FIX_SATELLITES = 4;
+  /** A satellite lower over the horizon than this does not count, as in a receiver. */
+  static final double ELEVATION_MASK_DEG = 10;
+  private static final double SIN_ELEVATION_MASK = Math.sin(Math.toRadians(ELEVATION_MASK_DEG));
 
   static final int SATELLITES = PLANES * SATS_PER_PLANE;
 
@@ -47,6 +54,8 @@ final class GlobeScene
 
   /** Row-major 3x3, the Earth frame to the screen frame. */
   private double[] mRotation = identity();
+  /** Row-major 3x3, the orbit frame to the screen frame: mRotation is it times the turn of the Earth about its pole. */
+  private double[] mOrbitFrame = identity();
   private final double[] mAnomalyDeg = new double[SATELLITES];
   private final boolean[] mOn = new boolean[SATELLITES];
   private double mPhaseDeg;
@@ -77,7 +86,7 @@ final class GlobeScene
   {
     mCenterX = widthDp / 2;
     mCenterY = heightDp / 2;
-    mEarthRadius = EARTH_RADIUS_FRACTION * Math.min(widthDp, heightDp);
+    mEarthRadius = (float) ((Math.min(widthDp, heightDp) / 2 - SAT_MARGIN_DP) / ORBIT_RADIUS_FACTOR);
   }
 
   float earthRadius()
@@ -117,12 +126,13 @@ final class GlobeScene
   void setRotation(double[] matrix)
   {
     mRotation = matrix.clone();
+    mOrbitFrame = matrix.clone();
   }
 
   /** The Earth turned so that the jammed area is in the middle of the scene. */
   void faceJam()
   {
-    mRotation = multiply(rotationX(Math.toRadians(JAM_LAT_DEG)), rotationY(-Math.toRadians(JAM_LON_DEG)));
+    setRotation(multiply(rotationX(Math.toRadians(JAM_LAT_DEG)), rotationY(-Math.toRadians(JAM_LON_DEG))));
   }
 
   /** A point of the Earth, in the frame of the screen. */
@@ -169,7 +179,7 @@ final class GlobeScene
     if (length == 0)
       return;
     final double[] axis = {dy / length, dx / length, 0};
-    mRotation = multiply(axisAngle(axis, length / mEarthRadius), mRotation);
+    turnView(axisAngle(axis, length / mEarthRadius));
   }
 
   /** The finger is up, moving at (vx, vy) px/s. */
@@ -190,6 +200,13 @@ final class GlobeScene
       mSpinRadPerMs = 0;
   }
 
+  /** The Earth and the orbits turn together. */
+  private void turnView(double[] turn)
+  {
+    mRotation = multiply(turn, mRotation);
+    mOrbitFrame = multiply(turn, mOrbitFrame);
+  }
+
   double spinDegPerS()
   {
     return Math.toDegrees(mSpinRadPerMs) * 1000;
@@ -205,13 +222,14 @@ final class GlobeScene
       return;
     if (mSpinRadPerMs > 0)
     {
-      mRotation = multiply(axisAngle(mSpinAxis, mSpinRadPerMs * dtMs), mRotation);
+      turnView(axisAngle(mSpinAxis, mSpinRadPerMs * dtMs));
       mSpinRadPerMs *= Math.pow(SPIN_DAMPING, dtMs);
       if (spinDegPerS() < STOP_SPEED_DEG_PER_S)
         mSpinRadPerMs = 0;
     }
     else
     {
+      // The Earth alone, about its pole: the orbits stay.
       mRotation = multiply(mRotation, rotationY(Math.toRadians(IDLE_SPIN_DEG_PER_S * dtMs / 1000)));
     }
   }
@@ -228,14 +246,13 @@ final class GlobeScene
     final double x = Math.cos(u);
     final double y = -Math.sin(u) * Math.sin(inc);
     final double z = Math.sin(u) * Math.cos(inc);
-    return new double[] {ORBIT_RADIUS_FACTOR * (x * Math.cos(raan) + z * Math.sin(raan)), ORBIT_RADIUS_FACTOR * y,
-                         ORBIT_RADIUS_FACTOR * (-x * Math.sin(raan) + z * Math.cos(raan))};
-  }
-
-  /** Behind the Earth: the disc hides it. */
-  boolean isHidden(double[] p)
-  {
-    return p[2] < 0 && p[0] * p[0] + p[1] * p[1] < 1;
+    final double r = ORBIT_RADIUS_FACTOR;
+    final double[] o = mOrbitFrame;
+    final double ox = r * (x * Math.cos(raan) + z * Math.sin(raan));
+    final double oy = r * y;
+    final double oz = r * (-x * Math.sin(raan) + z * Math.cos(raan));
+    return new double[] {o[0] * ox + o[1] * oy + o[2] * oz, o[3] * ox + o[4] * oy + o[5] * oz,
+                         o[6] * ox + o[7] * oy + o[8] * oz};
   }
 
   boolean isOn(int i)
@@ -279,6 +296,104 @@ final class GlobeScene
     return best;
   }
 
+  // Land.
+
+  /** The cells of GlobeCoastline.LAND_RUNS, row by row from the north, each row from lon -180. */
+  private static final boolean[] LAND_CELLS = decodeLand();
+
+  private static boolean[] decodeLand()
+  {
+    final int step = GlobeCoastline.LAND_STEP_DEG;
+    final boolean[] cells = new boolean[(180 / step) * (360 / step)];
+    final short[] runs = GlobeCoastline.LAND_RUNS;
+    int cell = 0;
+    for (int i = 0; i < runs.length; i += runs[i] + 1)
+    {
+      boolean land = false;
+      for (int k = 1; k <= runs[i]; k++)
+      {
+        for (int n = 0; n < runs[i + k]; n++)
+          cells[cell++] = land;
+        land = !land;
+      }
+    }
+    return cells;
+  }
+
+  /** Whether the unit point (x, y, z) of the frame of the Earth is on land. */
+  static boolean isLand(double x, double y, double z)
+  {
+    final double step = GlobeCoastline.LAND_STEP_DEG;
+    final int rows = (int) (180 / step);
+    final int cols = (int) (360 / step);
+    final double lat = Math.toDegrees(Math.asin(Math.max(-1, Math.min(1, y))));
+    final double lon = Math.toDegrees(Math.atan2(x, z));
+    final int row = Math.min((int) ((90 - lat) / step), rows - 1);
+    final int col = Math.min((int) ((lon + 180) / step), cols - 1);
+    return LAND_CELLS[row * cols + col];
+  }
+
+  // Coverage.
+
+  /**
+   * Whether the satellite at s stands at least ELEVATION_MASK_DEG above the horizon of the unit point p of the Earth:
+   * the line to it rises from the plane tangent at p by at least the mask.
+   */
+  static boolean isAboveMask(double[] s, double px, double py, double pz)
+  {
+    final double dx = s[0] - px;
+    final double dy = s[1] - py;
+    final double dz = s[2] - pz;
+    return dx * px + dy * py + dz * pz >= Math.sqrt(dx * dx + dy * dy + dz * dz) * SIN_ELEVATION_MASK;
+  }
+
+  static boolean isAboveMask(double[] s, double[] p)
+  {
+    return isAboveMask(s, p[0], p[1], p[2]);
+  }
+
+  /** Where the satellites that are on are now. */
+  double[][] onSatellites()
+  {
+    final double[][] out = new double[onCount()][];
+    int k = 0;
+    for (int i = 0; i < SATELLITES; i++)
+    {
+      if (mOn[i])
+        out[k++] = satellite(i);
+    }
+    return out;
+  }
+
+  /** How many of the satellites stand above the mask of the unit point p, counted up to limit. */
+  static int visibleCount(double px, double py, double pz, double[][] satellites, int limit)
+  {
+    int count = 0;
+    for (final double[] s : satellites)
+    {
+      if (isAboveMask(s, px, py, pz) && ++count >= limit)
+        break;
+    }
+    return count;
+  }
+
+  /** A receiver at p has a fix: the view takes the satellites once per frame and asks for every point of the disc. */
+  static boolean isCovered(double px, double py, double pz, double[][] satellites)
+  {
+    return visibleCount(px, py, pz, satellites, FIX_SATELLITES) >= FIX_SATELLITES;
+  }
+
+  /** The satellites that are on and above the mask of the unit point p, in the frame of the screen. */
+  int visibleCount(double[] p)
+  {
+    return visibleCount(p[0], p[1], p[2], onSatellites(), Integer.MAX_VALUE);
+  }
+
+  boolean isCovered(double[] p)
+  {
+    return isCovered(p[0], p[1], p[2], onSatellites());
+  }
+
   // The car and the beams.
 
   /** The car, in the frame of the screen: it stands in the middle of the jammed area. */
@@ -293,17 +408,13 @@ final class GlobeScene
     return angleDeg(JAM_LAT_DEG, JAM_LON_DEG, JAM_LAT_DEG, JAM_LON_DEG) <= JAM_RADIUS_DEG;
   }
 
-  /** The line from satellite i to the car: none below the horizon of the car or when it is off, broken when jammed. */
+  /**
+   * The line from satellite i to the car: only for a satellite the car would count, on and above the elevation mask
+   * of the car, and broken when jammed. Above the mask is above the horizon, so a beam never crosses the disc.
+   */
   int beam(int i)
   {
-    if (!mOn[i])
-      return BEAM_NONE;
-    final double[] s = satellite(i);
-    final double[] c = car();
-    // The horizon of the car is the plane tangent to the Earth at it, and the unit is the Earth radius: a satellite
-    // above the horizon lies further than one radius along the car. The hemisphere of the car is not enough -- a
-    // satellite behind the Earth disc is in it and the beam would cross the disc.
-    if (s[0] * c[0] + s[1] * c[1] + s[2] * c[2] <= 1)
+    if (!mOn[i] || !isAboveMask(satellite(i), car()))
       return BEAM_NONE;
     return isCarJammed() ? BEAM_BROKEN : BEAM_REACHES;
   }

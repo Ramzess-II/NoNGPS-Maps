@@ -30,8 +30,13 @@ What it doesn't simulate, and why:
   "display only" capability; so no drop of a link that stays unencrypted and no BT_UNSECURE event, and the
   write queue of BLE-5 is the radio's, not ours;
 - any motion: no speed, no turns, no jolts;
-- the firmware update, the car values, the phone list and the places of two phones: NGI tells the abilities "BLE
-  AUTH" and no more, and the application asks for none of the others.
+- the firmware update, the car values and the places of two phones: NGI tells the abilities "BLE PHONES RECOVERY
+  AUTH" and no more, and the application asks for none of the others;
+- the phones: a phone is bonded here at its first HELLO, by its name, as the firmware bonds it at pairing, with an
+  address made from the name, as the system gives the simulator none. BT_PAIR sets the pairing flag of the
+  advertisement and nothing closes it: no window of 120 s, no code asked from the phone. A phone that is bonded
+  and gone stays in the list until the panel or BT_FORGET removes it. The recovery window (BLE-16) never opens by
+  itself: the panel's BT_RESET plays its end, a new code and the phone it names alone in the list.
 
 The box proves itself as section 9.5 says: AUTH_SET takes a key of a phone, AUTH answers with the proof of it. A key
 outlives the program in the file of --keys, as the firmware keeps it in NVS over a restart: otherwise the application,
@@ -70,6 +75,7 @@ import hmac
 import importlib
 import json
 import os
+import secrets
 import sys
 import threading
 import time
@@ -122,9 +128,15 @@ OBD_ABSENT_STATES = {'DISABLED', 'NO_ADAPTER', 'SLEEP'}
 # Section 4.4, the last error of the OBD, from the state the panel sets.
 OBD_ERRORS = {'NO_ADAPTER': 'NO_ADAPTER', 'NO_CAR': 'NO_CAR', 'NO_DATA': 'NO_SPEED', 'ERROR': 'BUS_ERROR'}
 OBD_PROTOCOL = 'ISO 15765-4 (CAN 11/500)'
-# The abilities of NGI: only the lines of the box itself and the proof of the box (AUTH_SET, AUTH). The application
-# gates CAR_GET, BT_LIST, PEER and the firmware update on this field, so it asks for nothing the simulator hasn't got.
-ABILITIES = 'BLE AUTH'
+# The abilities of NGI: the lines of the box itself, its phones and recovery code, and the proof of the box (AUTH_SET,
+# AUTH). The application gates CAR_GET, PEER and the firmware update on this field, so it asks for nothing the
+# simulator hasn't got.
+ABILITIES = 'BLE PHONES RECOVERY AUTH'
+# BLE-12: the box keeps this many phones. Section 9.5: a code of BT_PAIR and of BT_RECOVERY is 6 digits.
+MAX_BONDS = 4
+CODE_DIGITS = 6
+# Section 9.5: a phone that forgets itself is dropped this long after its OK.
+FORGET_DROP_S = 0.5
 # Section 9.5: the key is 16 bytes, the nonce 8, and the box answers the first 8 bytes of HMAC-SHA256(key, nonce).
 AUTH_KEY_BYTES = 16
 AUTH_NONCE_BYTES = 8
@@ -166,6 +178,16 @@ def auth_proof(key, nonce):
 def line(body):
     """\returns the line of a body without '$', the checksum and the end, as the box sends it."""
     return ('$%s*%04X\r\n' % (body, crc16(body))).encode('ascii')
+
+
+def new_code():
+    return ''.join(secrets.choice('0123456789') for _ in range(CODE_DIGITS))
+
+
+def bond_address(name):
+    """A made-up address of a phone: the system gives the simulator none. Locally administered, so no vendor's."""
+    digest = hashlib.sha256(name.encode('utf-8')).digest()
+    return ':'.join('%02X' % byte for byte in bytes([0x02]) + digest[:5])
 
 
 def parse(raw):
@@ -212,6 +234,7 @@ class State:
         self.adv = {'pairing_open': True, 'full': False, 'has_phones': False}
         self.advertising = True
         self.legacy_name = False
+        self.recovery_code = new_code()
 
     def name(self):
         return (LEGACY_NAME_PREFIX if self.legacy_name else NAME_PREFIX) + self.box_id
@@ -297,6 +320,8 @@ class Phone:
         # Section 9.2: the last command that keeps the session, 0 until the first HELLO starts one.
         self.cmd_at = 0.0
         self.info_sent = False
+        # The order of the first HELLO among the phones: the box listens to the lowest, 0 before any.
+        self.hello_order = 0
         self.queue = collections.deque(maxlen=QUEUE_LINES)
         # The tail of a line that has started going out: BLE-4 sends it whole.
         self.pending = b''
@@ -322,6 +347,9 @@ class Box:
         # Monotonic seconds; the tests drive their own.
         self.clock = clock
         self.phones = {}
+        # BLE-12: the bonded phones, by address; they outlive their connections, as in NVS.
+        self.bonds = {}
+        self.hellos = 0
         # Section 9.5: the key of each phone, kept with its bond; the file keeps them over a restart, as NVS does.
         self.keys_path = keys_path
         self.auth_keys = self.load_keys()
@@ -337,6 +365,8 @@ class Box:
         self.rate = 0
         # The phones the panel asks to drop; the tick drops them, see keep_advertisement.
         self.dropping = set()
+        # The phones that forget themselves are dropped after their OK: id -> when.
+        self.dropping_at = {}
         # When the panel's Shut down takes the program down, see tick.
         self.quit_at = None
 
@@ -391,11 +421,16 @@ class Box:
             phone.cmd_at = self.clock()
         if name == 'HELLO':
             # HELLO,<name>,<Unix s> from a newer application; the box remembers both for its list of phones.
+            # A HELLO that starts a session ranks after the phones in one: a lapsed phone frees its slot.
+            if not phone.in_session(self.clock()):
+                self.hellos += 1
+                phone.hello_order = self.hellos
             phone.hello_at = phone.cmd_at = self.clock()
             if rest:
                 phone.name = rest[0]
             if len(rest) > 1 and rest[1].isdigit():
                 phone.unix_s = int(rest[1])
+            self.bond(phone)
             if not phone.info_sent:
                 phone.info_sent = True
                 self.queue(phone, self.state.info())
@@ -417,6 +452,9 @@ class Box:
             self.status_dirty = True
             self.queue(phone, line('NGA,%s,OK' % command_id))
             return
+        if name in ('BT_LIST', 'BT_PAIR', 'BT_FORGET', 'BT_RECOVERY'):
+            self.queue(phone, line('NGA,%s,%s' % (command_id, self.bt_command(phone, name, rest))))
+            return
         if name == 'AUTH_SET':
             self.queue(phone, line('NGA,%s,%s' % (command_id, self.auth_set(phone, rest))))
             return
@@ -424,6 +462,83 @@ class Box:
             self.queue(phone, line('NGA,%s,%s' % (command_id, self.auth(phone, rest))))
             return
         self.queue(phone, line('NGA,%s,ERR,UNKNOWN' % command_id))
+
+    def bond(self, phone):
+        """Section 9.5: the box remembers the phone, its name and time, for BT_LIST; a full box bonds no fifth."""
+        address = bond_address(self.auth_phone(phone))
+        if address not in self.bonds:
+            # A new phone is bonded only in the pairing window, and not while its forgotten link is being dropped.
+            if (len(self.bonds) >= MAX_BONDS or not self.state.adv['pairing_open']
+                    or phone.id in self.dropping_at or phone.id in self.dropping):
+                return
+        self.bonds[address] = {'name': phone.name, 'unix_s': phone.unix_s}
+        self.sync_adv()
+
+    def sync_adv(self):
+        """The advertisement flags follow the bond list (BLE-12): has_phones with any bond, full at MAX_BONDS."""
+        self.state.adv['has_phones'] = bool(self.bonds)
+        self.state.adv['full'] = len(self.bonds) >= MAX_BONDS
+
+    def address_of(self, phone):
+        return bond_address(self.auth_phone(phone))
+
+    def changer(self):
+        """The phone that changes the box and the one it listens to: the first that sent HELLO, while its session
+        lasts (9.5). None when there is no such phone."""
+        now = self.clock()
+        live = [p for p in self.phones.values() if p.hello_order and p.in_session(now) and self.address_of(p) in self.bonds]
+        return min(live, key=lambda p: p.hello_order) if live else None
+
+    def bt_command(self, phone, name, rest):
+        """BT_LIST, BT_PAIR, BT_FORGET and BT_RECOVERY, the answer after 'NGA,<n>,'. A phone that doesn't change
+        the box is refused with BUSY, but for BT_LIST and the forgetting of its own link."""
+        if name == 'BT_LIST':
+            changer = self.changer()
+            mine = self.address_of(phone)
+            rows = ['%s|%s|%s|%d|%d' % (address, bond['name'], bond['unix_s'] or '', address == mine,
+                                        bool(changer) and address == self.address_of(changer))
+                    for address, bond in self.bonds.items()]
+            return 'OK,%s,%d' % (';'.join(rows), changer is phone)
+        own = name == 'BT_FORGET' and rest and rest[0] == self.address_of(phone) and rest[0] in self.bonds
+        if self.changer() is not phone and not own:
+            return 'ERR,BUSY'
+        if name == 'BT_RECOVERY':
+            return 'OK,' + self.state.recovery_code
+        if name == 'BT_PAIR':
+            if rest and not (len(rest[0]) == CODE_DIGITS and rest[0].isascii() and rest[0].isdigit()):
+                return 'ERR,VALUE'
+            if len(self.bonds) >= MAX_BONDS:
+                return 'ERR,FULL'
+            self.state.adv['pairing_open'] = True
+            return 'OK'
+        if not rest:
+            self.forget_all()
+            return 'OK'
+        if rest[0] not in self.bonds:
+            return 'ERR,ADDR'
+        self.forget(rest[0], FORGET_DROP_S if own else 0)
+        return 'OK'
+
+    def forget(self, address, drop_after=0):
+        """The phone is gone from the list with its key (9.5) and its link is dropped, after its OK if it asks."""
+        del self.bonds[address]
+        for name in [n for n in self.auth_keys if bond_address(n) == address]:
+            del self.auth_keys[name]
+        for phone in list(self.phones.values()):
+            if self.address_of(phone) == address:
+                if drop_after:
+                    self.dropping_at[phone.id] = self.clock() + drop_after
+                else:
+                    self.dropping.add(phone.id)
+        self.sync_adv()
+        self.save_keys()
+
+    def forget_all(self):
+        """BT_FORGET without an address: no bond is left, the links stay."""
+        self.bonds.clear()
+        self.auth_keys.clear()
+        self.sync_adv()
+        self.save_keys()
 
     @staticmethod
     def auth_phone(phone):
@@ -501,6 +616,10 @@ class Box:
                 for phone in self.phones.values():
                     if phone.heard(now):
                         self.queue(phone, status)
+            for phone_id, at in list(self.dropping_at.items()):
+                if now >= at:
+                    del self.dropping_at[phone_id]
+                    self.radio.disconnect(phone_id)
             ready = [phone for phone in list(self.phones.values()) if self.flush(phone) and phone.heard(now)]
             if ready:
                 # One packet for every phone listening: its number counts the packets, not the phones, and both
@@ -595,6 +714,10 @@ class Box:
                 'board': state.board,
                 'imu_name': state.imu_name,
                 'keys': len(self.auth_keys),
+                'recovery_code': state.recovery_code,
+                'bonds': [{'address': address, 'name': bond['name'], 'unix_s': bond['unix_s'],
+                           'connected': any(self.address_of(p) == address for p in self.phones.values())}
+                          for address, bond in self.bonds.items()],
                 'phones': [{'label': p.label, 'name': p.name, 'unix_s': p.unix_s, 'payload': p.payload,
                             'subscribed': p.subscribed, 'heard': p.heard(now), 'sent': p.sent, 'dropped': p.dropped,
                             'hello_age_ms': int((now - p.hello_at) * 1000) if p.hello_at else -1}
@@ -635,6 +758,20 @@ class Box:
             self.status_dirty = True
         return self.panel_state()
 
+    def bt_reset(self, label):
+        """BLE-16 ends with a new phone: it stays alone in the list, the other links are dropped and the code of
+        recovery is a new one. The phone is the connected one of this label, none leaves an empty list."""
+        keep = next((p for p in self.phones.values() if p.label == label), None)
+        keep_address = self.address_of(keep) if keep else None
+        for address in list(self.bonds):
+            if address != keep_address:
+                self.forget(address)
+        if keep and keep_address not in self.bonds:
+            # The recovery window takes the new phone whatever the normal pairing window says.
+            self.bonds[keep_address] = {'name': keep.name, 'unix_s': keep.unix_s}
+            self.sync_adv()
+        self.state.recovery_code = new_code()
+
     def panel_action(self, action, label):
         with self.lock:
             if action == 'start':
@@ -652,6 +789,10 @@ class Box:
                 self.quit_at = self.clock() + QUIT_DELAY_S
             elif action == 'clear':
                 self.log.clear()
+            elif action == 'forget_bond' and label in self.bonds:
+                self.forget(label)
+            elif action == 'bt_reset':
+                self.bt_reset(label)
             elif action == 'forget_keys':
                 self.auth_keys.clear()
                 self.save_keys()

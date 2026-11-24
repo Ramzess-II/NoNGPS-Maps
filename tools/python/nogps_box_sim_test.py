@@ -19,6 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nogps_box_sim as sim  # noqa: E402
 
 PHONE = 'phone-1'
+OTHER = 'phone-2'
 
 
 class Clock:
@@ -41,6 +42,11 @@ class Radio(sim.FakeRadio):
         super().__init__()
         # None takes everything; a number takes that many notifications and refuses the rest.
         self.take = take
+        self.disconnected = []
+
+    def disconnect(self, phone_id):
+        self.disconnected.append(phone_id)
+        super().disconnect(phone_id)
 
     def send(self, phone_id, data):
         if self.take is not None:
@@ -139,15 +145,15 @@ class Lines(unittest.TestCase):
         got = fields(made.state.status().decode('ascii').strip())
         self.assertEqual([got[5], got[6], got[12], got[13]], ['OK', sim.OBD_PROTOCOL, 'NONE', '38400'])
 
-    def test_info_tells_bluetooth_and_the_proof_alone(self):
+    def test_info_tells_bluetooth_phones_recovery_and_the_proof(self):
         made, _, _ = box()
         got = fields(made.state.info().decode('ascii').strip())
         self.assertEqual(len(got), 14)
         self.assertEqual([got[0], got[1], got[2], got[4], got[5], got[6]],
                          ['NGI', '1', '0.4.4', 'esp32s3', 's3zero', 'S1'])
-        # The abilities the application looks for are not there but the proof: it asks for none of them.
-        self.assertEqual(got[11], 'BLE AUTH')
-        for ability in ('OTA', 'CAR', 'PHONES', 'MULTI', 'PEER'):
+        # The abilities the application looks for are not there but these: it asks for none of the others.
+        self.assertEqual(got[11], 'BLE PHONES RECOVERY AUTH')
+        for ability in ('OTA', 'CAR', 'MULTI', 'PEER'):
             self.assertNotIn(ability, got[11].split(' '))
 
     def test_the_name_fits_the_advertisement(self):
@@ -228,10 +234,232 @@ class Commands(unittest.TestCase):
     def test_a_command_the_box_hasnt_got(self):
         made, radio, _ = box()
         connect(made)
-        for number, text in ((7, 'BT_LIST'), (8, 'CAR_GET,spd_scale'), (9, 'OTA_BEGIN,1,2,3')):
+        for number, text in ((7, 'PEER,1,2'), (8, 'CAR_GET,spd_scale'), (9, 'OTA_BEGIN,1,2,3')):
             made.on_event('write', PHONE, command(number, text))
         made.tick()
         self.assertEqual([fields(raw)[2:] for raw in radio.lines('NGA')], [['ERR', 'UNKNOWN']] * 3)
+
+    def answers(self, made, radio):
+        made.tick()
+        return [fields(raw)[2:] for raw in radio.lines('NGA')]
+
+    def second_phone(self, made, name='Other', hello=True):
+        made.on_event('connect', OTHER, name)
+        made.on_event('subscribe', OTHER, 182)
+        if hello:
+            made.on_event('write', OTHER, command(1, 'HELLO,%s,1794680000' % name))
+
+    def test_the_phone_list_has_the_bonds_and_who_changes_the_box(self):
+        made, radio, _ = box()
+        connect(made)
+        self.second_phone(made)
+        made.on_event('write', PHONE, command(2, 'BT_LIST'))
+        made.on_event('write', OTHER, command(2, 'BT_LIST'))
+        first, second = self.answers(made, radio)
+        rows = first[1].split(';')
+        self.assertEqual(len(rows), 2)
+        (a1, n1, t1, mine1, listened1), (a2, n2, t2, mine2, listened2) = (r.split('|') for r in rows)
+        self.assertEqual((n1, t1, mine1, listened1, first[2]), ('Test phone', '1794685760', '1', '1', '1'))
+        self.assertEqual((n2, t2, mine2, listened2), ('Other', '1794680000', '0', '0'))
+        self.assertNotEqual(a1, a2)
+        # The second phone sees its own link and the first one listened to; it doesn't change the box.
+        self.assertEqual(second[1].split(';')[1].split('|')[3:], ['1', '0'])
+        self.assertEqual(second[2], '0')
+
+    def test_a_phone_without_a_hello_is_listed_by_nobody_but_the_list_is_there(self):
+        made, radio, _ = box()
+        connect(made, hello=False)
+        made.on_event('write', PHONE, command(2, 'BT_LIST'))
+        self.assertEqual(self.answers(made, radio), [['OK', '', '0']])
+
+    def test_recovery_code_goes_to_the_phone_the_box_listens_to(self):
+        made, radio, _ = box()
+        connect(made)
+        self.second_phone(made)
+        made.on_event('write', PHONE, command(2, 'BT_RECOVERY'))
+        made.on_event('write', OTHER, command(2, 'BT_RECOVERY'))
+        first, second = self.answers(made, radio)
+        self.assertEqual(first[0], 'OK')
+        self.assertRegex(first[1], r'^\d{6}$')
+        self.assertEqual(first[1], made.state.recovery_code)
+        self.assertEqual(second, ['ERR', 'BUSY'])
+        # The code is not in the log of lines the panel shows, as it isn't in an event of the firmware.
+        made.on_event('write', PHONE, command(3, 'BT_RECOVERY'))
+        made.tick()
+        self.assertEqual(radio.lines('NGE'), [])
+
+    def test_pairing_takes_a_code_of_six_digits(self):
+        made, radio, _ = box()
+        connect(made)
+        made.state.adv['pairing_open'] = False
+        for number, text in ((2, 'BT_PAIR,12345'), (3, 'BT_PAIR,12345a')):
+            made.on_event('write', PHONE, command(number, text))
+        self.assertEqual(self.answers(made, radio), [['ERR', 'VALUE']] * 2)
+        self.assertFalse(made.state.adv['pairing_open'])
+        made.on_event('write', PHONE, command(4, 'BT_PAIR,123456'))
+        made.on_event('write', PHONE, command(5, 'BT_PAIR'))
+        self.assertEqual(self.answers(made, radio)[2:], [['OK'], ['OK']])
+        self.assertTrue(made.state.adv['pairing_open'])
+
+    def test_pairing_is_for_the_phone_the_box_listens_to_and_a_full_box_refuses(self):
+        made, radio, _ = box()
+        connect(made)
+        self.second_phone(made)
+        made.on_event('write', OTHER, command(2, 'BT_PAIR,123456'))
+        made.on_event('write', PHONE, command(2, 'BT_PAIR,123456'))
+        self.assertEqual(self.answers(made, radio), [['OK'], ['ERR', 'BUSY']])
+        for name in ('Third', 'Fourth'):
+            made.bonds['02:00:00:00:00:' + name[:2]] = {'name': name, 'unix_s': 0}
+        made.on_event('write', PHONE, command(3, 'BT_PAIR,123456'))
+        self.assertEqual(self.answers(made, radio)[2:], [['ERR', 'FULL']])
+
+    def test_a_fifth_phone_is_not_bonded(self):
+        made, _, _ = box()
+        connect(made)
+        for number in range(5):
+            made.on_event('connect', 'p%d' % number, 'P')
+            made.on_event('write', 'p%d' % number, command(1, 'HELLO,Phone %d,1' % number))
+        self.assertEqual(len(made.bonds), 4)
+
+    def test_advertisement_flags_follow_the_bonds(self):
+        made, _, _ = box()
+        connect(made)
+        self.assertEqual((made.state.adv['has_phones'], made.state.adv['full']), (True, False))
+        for number in range(1, 5):
+            made.on_event('connect', 'p%d' % number, 'P')
+            made.on_event('write', 'p%d' % number, command(1, 'HELLO,Phone %d,1' % number))
+        self.assertTrue(made.state.adv['full'])
+        made.forget_all()
+        self.assertEqual((made.state.adv['has_phones'], made.state.adv['full']), (False, False))
+
+    def test_an_unbonded_fifth_phone_does_not_change_the_box(self):
+        made, radio, clock = box()
+        connect(made)
+        for number in range(1, 4):
+            made.on_event('connect', 'p%d' % number, 'P')
+            made.on_event('write', 'p%d' % number, command(1, 'HELLO,Phone %d,1' % number))
+        clock.pass_s(1000)
+        made.on_event('connect', 'p9', 'P')
+        made.on_event('write', 'p9', command(1, 'HELLO,Phone 9,1'))
+        self.assertIsNone(made.changer())
+        made.on_event('write', 'p9', command(2, 'BT_RECOVERY'))
+        self.assertEqual(self.answers(made, radio)[-1], ['ERR', 'BUSY'])
+
+    def test_a_phone_that_forgot_itself_is_not_bonded_again_before_its_drop(self):
+        made, radio, _ = box()
+        connect(made)
+        made.on_event('write', PHONE, command(2, 'BT_LIST'))
+        address = self.answers(made, radio)[0][1].split('|')[0]
+        made.on_event('write', PHONE, command(3, 'BT_FORGET,' + address))
+        made.on_event('write', PHONE, command(4, 'HELLO,Phone,1'))
+        self.assertEqual(len(made.bonds), 0)
+
+    def test_forgetting_one_phone(self):
+        made, radio, clock = box()
+        connect(made)
+        self.second_phone(made)
+        made.on_event('write', PHONE, command(2, 'BT_LIST'))
+        rows = [r.split('|')[0] for r in self.answers(made, radio)[0][1].split(';')]
+        other = rows[1]
+        made.on_event('write', PHONE, command(3, 'BT_FORGET,00:00:00:00:00:00'))
+        made.on_event('write', PHONE, command(4, 'BT_FORGET,' + other))
+        self.assertEqual(self.answers(made, radio)[1:], [['ERR', 'ADDR'], ['OK']])
+        self.assertEqual(len(made.bonds), 1)
+        made.tick()
+        self.assertEqual(radio.disconnected, [OTHER])
+        # The forgotten phone has no key any more.
+        self.assertNotIn('Other', made.auth_keys)
+
+    def test_a_phone_that_doesnt_change_the_box_forgets_only_itself(self):
+        made, radio, _ = box()
+        connect(made)
+        self.second_phone(made)
+        made.on_event('write', OTHER, command(2, 'BT_LIST'))
+        rows = [r.split('|') for r in self.answers(made, radio)[0][1].split(';')]
+        mine = [r[0] for r in rows if r[3] == '1'][0]
+        theirs = [r[0] for r in rows if r[3] == '0'][0]
+        made.on_event('write', OTHER, command(3, 'BT_FORGET,' + theirs))
+        made.on_event('write', OTHER, command(4, 'BT_FORGET,' + mine))
+        self.assertEqual(self.answers(made, radio)[1:], [['ERR', 'BUSY'], ['OK']])
+        self.assertEqual(list(made.bonds), [theirs])
+
+    def test_the_phone_that_forgets_itself_is_dropped_half_a_second_after_its_ok(self):
+        made, radio, clock = box()
+        connect(made)
+        made.on_event('write', PHONE, command(2, 'BT_LIST'))
+        made.tick()
+        address = fields(radio.lines('NGA')[-1])[3].split('|')[0]
+        made.on_event('write', PHONE, command(3, 'BT_FORGET,' + address))
+        made.tick()
+        self.assertEqual(fields(radio.lines('NGA')[-1])[2:], ['OK'])
+        self.assertEqual(radio.disconnected, [])
+        clock.pass_s(0.6)
+        made.tick()
+        self.assertEqual(radio.disconnected, [PHONE])
+        self.assertEqual(made.bonds, {})
+
+    def test_forgetting_all_keeps_the_links(self):
+        made, radio, _ = box()
+        connect(made)
+        made.on_event('write', PHONE, command(2, 'BT_FORGET'))
+        self.assertEqual(self.answers(made, radio), [['OK']])
+        self.assertEqual(made.bonds, {})
+        self.assertIn(PHONE, made.phones)
+
+    def test_the_panel_resets_to_one_phone_and_renews_the_code(self):
+        made, radio, _ = box()
+        connect(made)
+        self.second_phone(made)
+        code = made.state.recovery_code
+        keep = made.phones[OTHER].label
+        made.panel_action('bt_reset', keep)
+        self.assertEqual([b['name'] for b in made.bonds.values()], ['Other'])
+        self.assertNotEqual(made.state.recovery_code, code)
+        made.tick()
+        self.assertEqual(radio.disconnected, [PHONE])
+        state = made.panel_state()
+        self.assertEqual([b['name'] for b in state['bonds']], ['Other'])
+        self.assertEqual(state['recovery_code'], made.state.recovery_code)
+
+    def test_a_lapsed_phone_ranks_after_the_other_at_its_next_hello(self):
+        made, radio, clock = box()
+        connect(made)
+        self.second_phone(made)
+        clock.pass_s(sim.HELLO_TIMEOUT_S - 1)
+        made.on_event('write', OTHER, command(5, 'STATUS'))
+        clock.pass_s(2)
+        self.assertIs(made.changer(), made.phones[OTHER])
+        made.on_event('write', PHONE, command(6, 'HELLO,Test phone,1794685760'))
+        self.assertIs(made.changer(), made.phones[OTHER])
+
+    def test_forgetting_a_gone_phone_drops_its_key(self):
+        made, radio, _ = box()
+        connect(made)
+        self.second_phone(made)
+        made.on_event('write', OTHER, command(5, 'AUTH_SET,000102030405060708090a0b0c0d0e0f'))
+        self.assertIn('Other', made.auth_keys)
+        made.on_event('disconnect', OTHER)
+        made.forget(sim.bond_address('Other'))
+        self.assertNotIn('Other', made.auth_keys)
+
+    def test_the_reset_bonds_the_new_phone_with_the_pairing_window_closed(self):
+        made, _, _ = box()
+        connect(made)
+        made.state.adv['pairing_open'] = False
+        made.on_event('connect', OTHER, 'Other')
+        made.on_event('subscribe', OTHER, 182)
+        made.on_event('write', OTHER, command(1, 'HELLO,Other,1794685760'))
+        self.assertEqual(len(made.bonds), 1)
+        made.panel_action('bt_reset', made.phones[OTHER].label)
+        self.assertEqual([b['name'] for b in made.bonds.values()], ['Other'])
+        self.assertTrue(made.state.adv['has_phones'])
+
+    def test_the_panel_forgets_a_bond(self):
+        made, _, _ = box()
+        connect(made)
+        address = next(iter(made.bonds))
+        made.panel_action('forget_bond', address)
+        self.assertEqual(made.bonds, {})
 
     def test_the_box_takes_a_key_and_proves_itself(self):
         made, radio, _ = box()

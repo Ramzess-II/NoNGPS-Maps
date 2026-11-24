@@ -74,6 +74,7 @@ import app.organicmaps.nogps.BoxBottomSheet;
 import app.organicmaps.nogps.HowNoGpsActivity;
 import app.organicmaps.nogps.MainMenuItems;
 import app.organicmaps.nogps.NoGpsLinks;
+import app.organicmaps.nogps.NoGpsMarkBand;
 import app.organicmaps.nogps.ProfileActivity;
 import app.organicmaps.nogps.intro.IntroModalFragment;
 import app.organicmaps.nogps.intro.IntroOverlay;
@@ -1095,6 +1096,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
       case SPRINT_MEASURED -> 0;
       // LocationHelper has started a new file of the trip log.
       case TRIP_STARTED -> 0;
+      case BOX_REFUSED -> R.string.nogps_box_refused;
       // The buttons show the mode, they are updated every second.
       case MANUAL_MODE_CHANGED -> 0;
       case GPS_BACK -> R.string.nogps_gps_back_auto;
@@ -1649,7 +1651,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
     if (mDisplayManager.isDeviceDisplayUsed())
     {
       mMapController.updateBottomWidgetsOffset(offsetX, offsetY);
-      mMapController.updateMyPositionRoutingOffset(offsetY);
+      mMapController.updateMyPositionRoutingOffset(
+          NoGpsMarkBand.routingOffsetPx(offsetY, getResources().getDimensionPixelSize(R.dimen.nogps_mark_clearance)));
     }
   }
 

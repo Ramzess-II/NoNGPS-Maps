@@ -115,8 +115,15 @@ public:
                                  std::string const & /* error */)
     {}
 
+    /// The box has told the code of its recovery window, six digits, see esp32::kRecoveryCodeSize.
+    virtual void OnBoxRecoveryCode(std::string const & /* code */) {}
+
     /// The box has removed this phone on its request: it doesn't connect to the box any more.
     virtual void OnThisPhoneRemoved() {}
+
+    /// The box has failed to prove itself and is refused until the link is made again, see Esp32Source::IsBoxRefused.
+    /// Called once, and not again until a box has proved itself.
+    virtual void OnBoxRefused() {}
 
     /// The other phone on the box has sent its place, carried to now, see PeerSync.
     virtual void OnPeerPlace(PeerPlace const & /* place */) {}
