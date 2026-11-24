@@ -364,9 +364,12 @@ const base = (label) => {
   check('the gate waits for no CI', /No CI to wait for/.test(g) && !/gh pr checks/.test(g), g.slice(0, 200))
   check('the gate merges into main', /checkout --force -B train\/gate refs\/remotes\/origin\/main/.test(g), g.slice(0, 200))
   // A gate worktree removed under the run is remade, with the firmware's keys/ and sdkconfig.
-  check('the firmware gate remakes a missing worktree with keys and sdkconfig', /doesn't exist, somebody removed it/.test(g)
+  check('the firmware gate remakes a missing worktree with keys and sdkconfig', /leftover directory\), somebody removed it/.test(g)
     && /worktree add[^\n]*merge-train-fw[^\n]*\n?[^\n]*ln -sfn \/ws\/firmware\/keys \/ws\/worktrees\/merge-train-fw\/keys && cp \/ws\/firmware\/sdkconfig \/ws\/worktrees\/merge-train-fw\/sdkconfig/.test(g.replace(/\\\n/g, '')), g.slice(0, 1500))
   check('the app gate remakes it with the helper', /nogps_worktree\.sh add merge-train/.test(prompts['merge:#1']), prompts['merge:#1'].slice(0, 800))
+  const m = prompts['merge:#1']
+  check('a leftover directory counts as gone', /worktree list --porcelain/.test(m) && /rm -rf \/ws\/worktrees\/merge-train/.test(m), m.slice(0, 900))
+  check('the app remake keeps unpushed commits of the old branch', /rev-list feature\/merge-train --not --remotes/.test(m) && /branch -m feature\/merge-train/.test(m), m.slice(0, 1200))
   // The app PR is untouched by all this.
   const a = prompts['update:#1']
   check('the app PR still uses master and the helper', /origin\/master/.test(a) && /nogps_worktree\.sh add merge-\d/.test(a), a.slice(0, 400))
