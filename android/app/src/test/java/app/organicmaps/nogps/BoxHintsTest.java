@@ -50,6 +50,19 @@ public class BoxHintsTest
     assertEquals(0, BoxBottomSheet.linkHintText(status(SourceState.CONNECTED, BleState.CONNECTED)));
   }
 
+  // The sleep sentence needs a phone that looks for the box; the rest is told by the link alone.
+  @Test
+  public void sleepIsToldOnlyWhileTheBoxIsSearched()
+  {
+    for (BleState ble : new BleState[] {BleState.OFF, BleState.NO_PERMISSION, BleState.DISABLED,
+                                        BleState.PAIRING_FAILED, BleState.BOND_LOST})
+      assertFalse(ble.name(), BoxTexts.isBoxSearched(status(SourceState.BOX_SLEEPING, ble)));
+    for (BleState ble :
+         new BleState[] {BleState.SEARCHING, BleState.PAIRING_CLOSED, BleState.PAIRING_BY_PHONE, BleState.PAIRING_FULL,
+                         BleState.CAR_LIMIT, BleState.CONNECTING, BleState.PAIRING, BleState.CONNECTED})
+      assertTrue(ble.name(), BoxTexts.isBoxSearched(status(SourceState.BOX_SLEEPING, ble)));
+  }
+
   // The box is heard but the car gives no speed: the hint names what to check.
   @Test
   public void obdHintTellsWhatToCheck()
