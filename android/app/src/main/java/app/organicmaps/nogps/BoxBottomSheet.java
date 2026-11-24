@@ -572,7 +572,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
 
   private int windowHeight()
   {
-    return requireActivity().getWindow().getDecorView().getHeight();
+    // Not the decor view: its height is 0 before the first layout, e.g. when restored after a rotation.
+    return requireActivity().getResources().getDisplayMetrics().heightPixels;
   }
 
   @Override
