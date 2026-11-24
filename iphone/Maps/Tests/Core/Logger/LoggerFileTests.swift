@@ -35,9 +35,11 @@ final class LoggerFileTests: XCTestCase {
   }
 
   override func tearDown() {
+    // The real clock first: a line the app logs after startTrip must not open a file under the faked clock, whose
+    // 2099 day the writer would then never leave.
+    Logger.setClockForTesting(nil)
     Logger.startTrip()
     removeFakeDays()
-    Logger.setClockForTesting(nil)
     if enabledByTest {
       Logger.setFileLoggingEnabled(false)
     }
