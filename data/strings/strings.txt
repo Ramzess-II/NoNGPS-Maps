@@ -46616,22 +46616,10 @@ ru = Навигация, когда GPS глушат или подменяют
 uk = Навігація, коли GPS глушать або підміняють
 
 [nogps_about_globe_hint]
-comment = About NonGPS Maps, under the globe with the GPS satellites that the finger spins
+comment = About NonGPS Maps, the screen reader label of the globe with the GPS satellites that the finger spins
 tags = android-app,apple-maps
 en = Drag the Earth, tap a satellite to switch it off.
 uk = Потягніть Землю, торкніться супутника, щоб вимкнути його.
-
-[nogps_about_globe_jammed]
-comment = About NonGPS Maps, under the globe: the car stands in the jammed area
-tags = android-app,apple-maps
-en = Inside the jammed area not one of them reaches the car.
-uk = У зоні глушіння жоден із них не досягає авто.
-
-[nogps_about_globe_sats]
-comment = About NonGPS Maps, under the globe: %1$d is how many satellites are on, %2$d how many there are
-tags = android-app,apple-maps
-en = %1$d of %2$d satellites on
-uk = Увімкнено супутників: %1$d з %2$d
 
 [nogps_about_description]
 tags = android-app,apple-maps
