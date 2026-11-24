@@ -63,12 +63,13 @@ public:
     return screen;
   }
 
-  void Locate(double accuracyM, double speedMps)
+  void Locate(double accuracyM, double speedMps, double bearingDeg = -1.0)
   {
     location::GpsInfo info;
     info.m_timestamp = ++m_timestamp;
     info.m_horizontalAccuracy = accuracyM;
     info.m_speed = speedMps;
+    info.m_bearing = bearingDeg;
     m_controller.OnLocationUpdate(info, m_controller.IsInRouting(), Screen(16));
   }
 
@@ -146,6 +147,105 @@ UNIT_CLASS_TEST(Map, MyPositionController_ButtonBringsMapCloseInRoutingWithoutAu
   auto const view = MoveAwayAndPress(13);
   TEST_EQUAL(view.m_zoomLevel, 16, ());
   TEST(!view.m_autoScale, ());
+}
+
+UNIT_CLASS_TEST(Map, MyPositionController_ButtonKeepsChosenFollow)
+{
+  std::optional<bool> saved;
+  df::MyPositionController controller({location::Follow,
+                                       0.0 /* timeInBackground */,
+                                       {},
+                                       false /* isRoutingActive */,
+                                       true /* isAutozoomEnabled */,
+                                       [](location::EMyPositionMode, bool) {},
+                                       false /* preferRotate */,
+                                       [&saved](bool prefer) { saved = prefer; }},
+                                      nullptr);
+  controller.SetListener(make_ref(&m_listener));
+  location::GpsInfo info;
+  info.m_timestamp = 1.0;
+  info.m_horizontalAccuracy = 15.0;
+  info.m_bearing = 90.0;
+  controller.OnLocationUpdate(info, false /* isNavigable */, Screen(16));
+  TEST_EQUAL(controller.GetCurrentMode(), location::Follow, ());
+
+  // Car up is chosen: panning stops the following, the button brings car up back.
+  controller.NextMode(Screen(16));
+  TEST_EQUAL(controller.GetCurrentMode(), location::FollowAndRotate, ());
+  TEST(saved && *saved, ());
+  controller.Scrolled({100.0, 0.0});
+  TEST_EQUAL(controller.GetCurrentMode(), location::NotFollow, ());
+  controller.NextMode(Screen(16));
+  TEST_EQUAL(controller.GetCurrentMode(), location::FollowAndRotate, ());
+
+  // A route that ends or is closed goes back to car up, not to north.
+  controller.ActivateRouting(17 /* zoomLevel */, true /* enableAutoZoom */, true /* isArrowGlued */);
+  controller.DeactivateRouting();
+  TEST_EQUAL(controller.GetCurrentMode(), location::FollowAndRotate, ());
+
+  // North up is chosen.
+  controller.NextMode(Screen(16));
+  TEST_EQUAL(controller.GetCurrentMode(), location::Follow, ());
+  TEST(saved && !*saved, ());
+  controller.Scrolled({100.0, 0.0});
+  controller.NextMode(Screen(16));
+  TEST_EQUAL(controller.GetCurrentMode(), location::Follow, ());
+  controller.ActivateRouting(17 /* zoomLevel */, true /* enableAutoZoom */, true /* isArrowGlued */);
+  controller.DeactivateRouting();
+  TEST_EQUAL(controller.GetCurrentMode(), location::Follow, ());
+}
+
+UNIT_CLASS_TEST(Map, MyPositionController_ChosenFollowAtStart)
+{
+  location::GpsInfo info;
+  info.m_timestamp = 1.0;
+  info.m_horizontalAccuracy = 15.0;
+
+  auto const start = [&](location::EMyPositionMode mode, bool preferRotate, double bearing)
+  {
+    df::MyPositionController controller({mode,
+                                         0.0 /* timeInBackground */,
+                                         {},
+                                         false /* isRoutingActive */,
+                                         true /* isAutozoomEnabled */,
+                                         [](location::EMyPositionMode, bool) {},
+                                         preferRotate},
+                                        nullptr);
+    info.m_bearing = bearing;
+    controller.OnLocationUpdate(info, false /* isNavigable */, Screen(16));
+    return controller.GetCurrentMode();
+  };
+  TEST_EQUAL(start(location::Follow, true, 90.0), location::FollowAndRotate, ());
+  TEST_EQUAL(start(location::Follow, false, 90.0), location::Follow, ());
+  // A start that doesn't follow the position stays so.
+  TEST_EQUAL(start(location::NotFollow, true, 90.0), location::NotFollow, ());
+}
+
+UNIT_CLASS_TEST(Map, MyPositionController_CarUpWaitsForDirection)
+{
+  df::MyPositionController controller({location::NotFollow,
+                                       0.0 /* timeInBackground */,
+                                       {},
+                                       false /* isRoutingActive */,
+                                       true /* isAutozoomEnabled */,
+                                       [](location::EMyPositionMode, bool) {},
+                                       true /* preferRotate */},
+                                      nullptr);
+  controller.SetListener(make_ref(&m_listener));
+  location::GpsInfo info;
+  info.m_timestamp = 1.0;
+  info.m_horizontalAccuracy = 15.0;
+  controller.OnLocationUpdate(info, false /* isNavigable */, Screen(16));
+  TEST_EQUAL(controller.GetCurrentMode(), location::NotFollow, ());
+
+  // No direction yet: the map follows north up.
+  controller.NextMode(Screen(16));
+  TEST_EQUAL(controller.GetCurrentMode(), location::Follow, ());
+  // The direction comes: the map turns.
+  info.m_timestamp = 2.0;
+  info.m_bearing = 90.0;
+  controller.OnLocationUpdate(info, false /* isNavigable */, Screen(16));
+  TEST_EQUAL(controller.GetCurrentMode(), location::FollowAndRotate, ());
 }
 
 UNIT_CLASS_TEST(VisualParamsFixture, StopFollowModesAndFirstFix)
