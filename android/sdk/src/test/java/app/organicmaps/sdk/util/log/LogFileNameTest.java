@@ -174,6 +174,23 @@ public class LogFileNameTest
   }
 
   @Test
+  public void ofDays_skipsAfterMidnightPartsOfTheDayBeforeWhenLookingForTheFileASplitGoesOn() throws IOException
+  {
+    final int full = (int) LogFiles.MAX_FILE_SIZE;
+    // A trip 22:00 to 01:00 on the first and second: its after-midnight part 2026-11-02/220000 lies in the tree
+    // between 180000 and 223000 of the drive that is split by size at 22:30 and goes on past midnight.
+    makeFile(path("Pixel_7-a3f9", "2026-11-01", "220000.log"), 10, 1);
+    makeFile(path("Pixel_7-a3f9", "2026-11-02", "180000.log"), full, LATER);
+    makeFile(path("Pixel_7-a3f9", "2026-11-02", "220000.log"), 10, 1);
+    makeFile(path("Pixel_7-a3f9", "2026-11-02", "223000.log"), 10, LATER);
+    makeFile(path("Pixel_7-a3f9", "2026-11-03", "223000.log"), 10, 1);
+    assertEquals(Arrays.asList(path("Pixel_7-a3f9", "2026-11-02", "180000.log"),
+                               path("Pixel_7-a3f9", "2026-11-02", "223000.log"),
+                               path("Pixel_7-a3f9", "2026-11-03", "223000.log")),
+                 relative(LogFiles.ofDays(mFolder.getRoot(), Collections.singleton("2026-11-03"))));
+  }
+
+  @Test
   public void ofDays_doesNotTakeAnotherTripAfterAFullAfterMidnightPart() throws IOException
   {
     final int full = (int) LogFiles.MAX_FILE_SIZE;

@@ -309,11 +309,11 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
   return NO;
 }
 
-/// The index of the file a full file goes on in, -1 when it is not full or has none. It is the next file of the phone,
-/// except for the after-midnight part of a trip (the previous day has a file of the same start time, or the file was
-/// last written before the time of its own name: the file of the day before may be deleted by the size cap): that part
-/// keeps the start time of the day before, and the file opened by the split is named by a time on its own day, so it is
-/// the first file of the day, and the next one is another trip.
+/// The index of the file a full file goes on in, -1 when it is not full or has none. It is the next file of the phone
+/// that is not an after-midnight part of the day before, except for the after-midnight part of a trip (the previous day
+/// has a file of the same start time, or the file was last written before the time of its own name: the file of the day
+/// before may be deleted by the size cap): that part keeps the start time of the day before, and the file opened by the
+/// split is named by a time on its own day, so it is the first file of the day, and the next one is another trip.
 + (NSInteger)sizeSplitIntoOfLogFileAtIndex:(NSUInteger)index of:(NSArray<NSString *> *)names
 {
   NSArray<NSString *> * parts = names[index].pathComponents;
@@ -325,26 +325,19 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
   if (attributes.fileSize + kSplitSlack < kMaxLogFileSize)
     return -1;
 
-  NSString * start = [self startOfLogFile:parts[2]];
-  NSString * previous = [self dayAfter:parts[1] by:-1];
-  // A file can't be written before it was started.
-  NSDateFormatter * formatter = [[NSDateFormatter alloc] init];
-  formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
-  formatter.dateFormat = @"yyyy-MM-dd HHmmss";
-  NSDate * named = [formatter dateFromString:[NSString stringWithFormat:@"%@ %@", parts[1], start]];
-  BOOL afterMidnight = named != nil && [attributes.fileModificationDate compare:named] == NSOrderedAscending;
-  for (NSString * name in names)
+  if (![self isAfterMidnightPartAtIndex:index of:names])
   {
-    NSArray<NSString *> * otherParts = name.pathComponents;
-    if (otherParts.count == 3 && [otherParts[0] isEqualToString:parts[0]] && [otherParts[1] isEqualToString:previous] &&
-        [[self startOfLogFile:otherParts[2]] isEqualToString:start])
-      afterMidnight = YES;
-  }
-  if (!afterMidnight)
-  {
-    BOOL const samePhone =
-        index + 1 < names.count && [names[index + 1].pathComponents.firstObject isEqualToString:parts[0]];
-    return samePhone ? index + 1 : -1;
+    // The after-midnight parts of the day before, named by a time of this day, are other trips: skip them.
+    for (NSUInteger j = index + 1; j < names.count; ++j)
+    {
+      NSArray<NSString *> * otherParts = names[j].pathComponents;
+      if (![otherParts.firstObject isEqualToString:parts[0]])
+        return -1;
+      if (otherParts.count != 3 || ![otherParts[1] isEqualToString:parts[1]] ||
+          ![self isAfterMidnightPartAtIndex:j of:names])
+        return j;
+    }
+    return -1;
   }
   for (NSUInteger j = 0; j < index; ++j)
   {
@@ -353,6 +346,32 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
       return j;
   }
   return -1;
+}
+
+/// Whether the file is a part that began the day before: the previous day has a file of the same start time, or the
+/// file was last written before the time of its own name (a file can't be written before it was started).
++ (BOOL)isAfterMidnightPartAtIndex:(NSUInteger)index of:(NSArray<NSString *> *)names
+{
+  NSArray<NSString *> * parts = names[index].pathComponents;
+  NSString * start = [self startOfLogFile:parts[2]];
+  NSDictionary * attributes =
+      [NSFileManager.defaultManager attributesOfItemAtPath:[kLogsFolderPath stringByAppendingPathComponent:names[index]]
+                                                     error:nil];
+  NSDateFormatter * formatter = [[NSDateFormatter alloc] init];
+  formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+  formatter.dateFormat = @"yyyy-MM-dd HHmmss";
+  NSDate * named = [formatter dateFromString:[NSString stringWithFormat:@"%@ %@", parts[1], start]];
+  if (named != nil && [attributes.fileModificationDate compare:named] == NSOrderedAscending)
+    return YES;
+  NSString * previous = [self dayAfter:parts[1] by:-1];
+  for (NSString * name in names)
+  {
+    NSArray<NSString *> * otherParts = name.pathComponents;
+    if (otherParts.count == 3 && [otherParts[0] isEqualToString:parts[0]] && [otherParts[1] isEqualToString:previous] &&
+        [[self startOfLogFile:otherParts[2]] isEqualToString:start])
+      return YES;
+  }
+  return NO;
 }
 
 /// The start time "HHmmss" of the file name: without the ".log" and the "-N" of a second drive of the same second.

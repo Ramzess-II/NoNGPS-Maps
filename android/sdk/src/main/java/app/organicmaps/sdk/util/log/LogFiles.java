@@ -135,7 +135,7 @@ final class LogFiles
   }
 
   /// The index of the file a full file goes on in, -1 when it is not full or has none. It is the next file of the
-  /// phone in the tree, except for the after-midnight part of a trip (the previous day has a file of the same start
+  /// phone in the tree that is not an after-midnight part of the day before, except for the after-midnight part of a trip (the previous day has a file of the same start
   /// time, or the file was last written before the time of its own name: the file of the day before may be deleted
   /// by the size cap): that part keeps the start time of the day before, and the file opened by the split is named by
   /// a time on its own day, so it is the first file of the day, and the next in the tree is another trip.
@@ -145,21 +145,39 @@ final class LogFiles
     if (file.length() < MAX_FILE_SIZE - SPLIT_SLACK)
       return -1;
     final String day = file.getParentFile().getName();
-    final String stem = startOf(file.getName());
-    final String previous = dayAfter(day, -1);
-    boolean afterMidnight = writtenBeforeItsName(file);
-    for (File other : all)
+    if (!isAfterMidnightPart(all, file))
     {
-      afterMidnight |= other.getParentFile().getName().equals(previous) && startOf(other.getName()).equals(stem);
+      // The after-midnight parts of the day before, named by a time of this day, are other trips: skip them.
+      for (int j = i + 1; j < all.size(); ++j)
+      {
+        final File other = all.get(j);
+        if (!other.getParentFile().getName().equals(day) || !isAfterMidnightPart(all, other))
+          return j;
+      }
+      return -1;
     }
-    if (!afterMidnight)
-      return i + 1 < all.size() ? i + 1 : -1;
     for (int j = 0; j < i; ++j)
     {
       if (all.get(j).getParentFile().getName().equals(day))
         return j;
     }
     return -1;
+  }
+
+  /// Whether the file is a part that began the day before: the previous day has a file of the same start time, or the
+  /// file was last written before the time of its own name.
+  private static boolean isAfterMidnightPart(@NonNull List<File> all, @NonNull File file)
+  {
+    if (writtenBeforeItsName(file))
+      return true;
+    final String previous = dayAfter(file.getParentFile().getName(), -1);
+    final String stem = startOf(file.getName());
+    for (File other : all)
+    {
+      if (other.getParentFile().getName().equals(previous) && startOf(other.getName()).equals(stem))
+        return true;
+    }
+    return false;
   }
 
   /// Whether the file was last written before the time its name says on its own day: it is a part that began the day
