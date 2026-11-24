@@ -303,6 +303,8 @@ private:
   bool m_mustProve = false;
   bool m_proven = true;
   bool m_authRefused = false;
+  // OnBoxRefused() has been called and no box has proved itself since; kept over links.
+  bool m_refusalTold = false;
   // The info of the box heard before the proof: it is taken when the box has proved itself.
   std::optional<esp32::Fields> m_unprovenInfo;
   // The command waiting for its reply, 0 if none.
