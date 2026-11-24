@@ -970,6 +970,12 @@ class Esp32BleTransport
         if (gatt != mGatt)
           return;
         mWriting = false;
+        // Before the box is heard HELLO goes with a response, so the status is the box's answer and goes to the log
+        // (#154). Nothing is decided by it: BluetoothGatt keeps the first two Insufficient Authentication answers to
+        // itself and writes again asking for the encryption, so a box that has forgotten the phone shows up here as
+        // GATT_AUTH_FAIL or as a lost link, and a plain link to a box that remembers it gives the same (BLE-15).
+        if (!mHeard && status != BluetoothGatt.GATT_SUCCESS)
+          Logger.w(TAG, "HELLO not written, status " + status);
         writeNext();
       });
     }
@@ -1163,19 +1169,20 @@ class Esp32BleTransport
     if (mWriting || gatt == null || characteristic == null || queue.isEmpty())
       return;
     final byte[] data = queue.peek();
+    // Until the box is heard a write with a response brings the box's answer to the log (#154). Afterwards without
+    // one: the box answers a command with a line, and it tells how much of a firmware it has got in lines too.
+    final int type =
+        mHeard ? BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE : BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT;
     try
     {
       final boolean started;
-      // Without a response: the box answers a command with a line, and its data are the answer to HELLO. It
-      // tells how much of a firmware it has got in lines too.
       if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
       {
-        started = gatt.writeCharacteristic(characteristic, data, BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE)
-               == BluetoothStatusCodes.SUCCESS;
+        started = gatt.writeCharacteristic(characteristic, data, type) == BluetoothStatusCodes.SUCCESS;
       }
       else
       {
-        characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+        characteristic.setWriteType(type);
         characteristic.setValue(data);
         started = gatt.writeCharacteristic(characteristic);
       }
