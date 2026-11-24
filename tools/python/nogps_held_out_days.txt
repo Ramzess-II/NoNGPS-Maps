@@ -1,4 +1,7 @@
 # Days that were never used to set a rule of the core, MM-DD as nogps_replay.py takes them, one a line.
+# By rule, every day of LOGFMT 2 (2026-11-22 or later) whose day of the month divides by 4 is held out too
+# (nogps_replay.HELD_OUT_FROM, HELD_OUT_DIVISOR): it needs no line here, and nothing writes into this file, so two people
+# fetching logs never conflict. No rule is made from or tuned on such a day.
 # A day is added here before any rule is made, and only the days nobody has looked at in the logs. A day that a rule
 # was made from or tuned on never goes in: move it out of here, not the other way, and say so in the PR.
 # Ask for the list with: nogps_replay.py days logs

@@ -106,6 +106,27 @@ extension NavigationSourceButtonTests {
     XCTAssertEqual(NoGpsBoxPage.boxStateText(status), L("nogps_box_battery_lock") + " · " + L("nogps_box_bt_disabled"))
   }
 
+  /// A phone that can't reach the box knows nothing of the car: no sleep sentence, only the link state.
+  func test_GivenBoxSleeping_WhenPhoneCannotReachBox_ThenNoSleepText() {
+    let off: [(NoGpsBleState, String)] = [
+      (.off, "nogps_box_bt_disabled"), (.disabled, "nogps_box_bt_disabled"),
+      (.noPermission, "nogps_box_bt_no_permission"), (.pairingFailed, "nogps_box_bt_pairing_failed"),
+      (.bondLost, "nogps_box_bt_bond_lost"),
+    ]
+    for (ble, key) in off {
+      let status = FakeStatus(source: .gps, gpsState: .good, inertialEnabled: true, sourceState: .boxSleeping)
+      status.fakeBleState = ble
+      XCTAssertEqual(NoGpsBoxPage.boxStateText(status), L(key), "Bluetooth \(ble.rawValue)")
+    }
+  }
+
+  /// While the phone searches, the sleep sentence explains the search.
+  func test_GivenBoxSleeping_WhenPhoneSearches_ThenSleepTextStays() {
+    let status = FakeStatus(source: .gps, gpsState: .good, inertialEnabled: true, sourceState: .boxSleeping)
+    status.fakeBleState = .searching
+    XCTAssertEqual(NoGpsBoxPage.boxStateText(status), L("nogps_box_sleeping") + " · " + L("nogps_box_bt_searching"))
+  }
+
   /// A failed pairing or a box that forgot the phone stops the search until the user acts: no waves.
   func test_GivenLinkFailed_WhenBoxLookIsTaken_ThenItAsksTheUser() {
     for ble in [NoGpsBleState.pairingFailed, .bondLost] {
@@ -136,6 +157,17 @@ extension NavigationSourceButtonTests {
     for c in cases {
       XCTAssertEqual(NoGpsBoxSheet.linkHintText(c.ble)?.lowercased(), c.hint?.lowercased(), "Bluetooth \(c.ble.rawValue)")
       XCTAssertEqual(NoGpsBoxSheet.linkActionText(c.ble), c.action, "Bluetooth \(c.ble.rawValue)")
+    }
+  }
+
+  /// The system dialog wants the recovery code of the box in the pairing window, when the box has told it.
+  func test_GivenRecoveryCode_WhenBoxIsNotPaired_ThenTheHintHasTheCode() {
+    for ble: NoGpsBleState in [.pairingByPhone, .pairingFull, .pairing] {
+      XCTAssertTrue(NoGpsBoxSheet.linkHintText(ble, recoveryCode: "654321")?.hasSuffix("654321") ?? false,
+                    "Bluetooth \(ble.rawValue)")
+    }
+    for ble: NoGpsBleState in [.pairingClosed, .bondLost, .pairingFailed] {
+      XCTAssertEqual(NoGpsBoxSheet.linkHintText(ble, recoveryCode: "654321"), NoGpsBoxSheet.linkHintText(ble))
     }
   }
 

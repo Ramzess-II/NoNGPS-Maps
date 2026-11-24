@@ -1127,6 +1127,10 @@
     <string name="nogps_phone_add_full">Блок має 4 телефони. Спершу видаліть один.</string>
     <!-- Shown when the sensor box has not taken the one-time pairing code -->
     <string name="nogps_phone_add_failed">Блок не прийняв код. Спробуйте ще раз.</string>
+    <!-- Shown in the Box sheet under the phones of the box: the code of its recovery window. %s is six digits -->
+    <string name="nogps_phone_recovery_code">Код відновлення: %s. Запишіть його. Якщо ви загубили телефони блока, увімкніть його в живлення й вимкніть протягом хвилини 3 рази, а втретє залиште ввімкненим: 2 хвилини він прийматиме новий телефон із цим кодом, і цей телефон зітре всі інші телефони блока. Це лише поки в блока є телефони; без жодного блок питає 123456</string>
+    <!-- Added to the hint under the sensor box steps while the box is not paired with this phone and its recovery code is known. %s is six digits -->
+    <string name="nogps_box_bt_recovery_code">У вікні відновлення (3 вмикання в живлення) блок питає свій код відновлення замість 123456: %s</string>
     <!-- Shown in the Box sheet when another phone has connected to the sensor box first: this phone gets the data only -->
     <string name="nogps_box_read_only">Інший телефон підключився до блока першим: калібрування, прошивку, ім\'я авто й телефони блока змінюють на ньому</string>
     <!-- Shown instead of the source of the position on the phone that follows the other phone on the sensor box, %@ is the name of the other phone: "Position from Pixel 8" -->
@@ -1186,12 +1190,8 @@
     <!-- Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on -->
     <string name="nogps_about_om_menu">Про застосунок Organic Maps</string>
     <string name="nogps_about_headline">Навігація, коли GPS глушать або підміняють</string>
-    <!-- About NonGPS Maps, under the globe with the GPS satellites that the finger spins -->
+    <!-- About NonGPS Maps, the screen reader label of the globe with the GPS satellites that the finger spins -->
     <string name="nogps_about_globe_hint">Потягніть Землю, торкніться супутника, щоб вимкнути його.</string>
-    <!-- About NonGPS Maps, under the globe: the car stands in the jammed area -->
-    <string name="nogps_about_globe_jammed">У зоні глушіння жоден із них не досягає авто.</string>
-    <!-- About NonGPS Maps, under the globe: %1$d is how many satellites are on, %2$d how many there are -->
-    <string name="nogps_about_globe_sats">Увімкнено супутників: %1$d з %2$d</string>
     <string name="nogps_about_description">Без GPS авто веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю авто з OBD-II. Авто тримається доріг офлайн-карти.</string>
     <!-- NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) -->
     <string name="nogps_version">Версія %s</string>

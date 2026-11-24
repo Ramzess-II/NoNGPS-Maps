@@ -599,6 +599,15 @@
         android:text="@string/nogps_box_read_only"
         android:textColor="?android:textColorSecondary"
         android:textSize="14sp" />
+      <!-- The code of the recovery window of the box, to be written down. -->
+      <TextView
+        android:id="@+id/box_phones_recovery_code"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="?android:textColorSecondary"
+        android:textIsSelectable="true"
+        android:textSize="14sp" />
     </LinearLayout>
 
     <View

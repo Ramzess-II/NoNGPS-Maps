@@ -3,7 +3,7 @@
 *Набирає чинності 24 листопада 2026 року. English version below.*
 
 NonGPS Maps — застосунок для офлайн-навігації автомобілем, зокрема коли GPS недоступний або показує
-неправильне місце. Розробник: Ramzess (NonGPS Maps), контакт: most05062014@gmail.com.
+неправильне місце. Розробник: Ramzess (NonGPS Maps), контакт: nongps.organic@gmail.com.
 
 ## Коротко
 
@@ -37,7 +37,7 @@ NonGPS Maps — застосунок для офлайн-навігації ав
   Місцеположення не передається. Див. політику Organic Maps: https://organicmaps.app/privacy
 - **Звіт про помилку.** Якщо ви натиснете «Повідомити про помилку», застосунок підготує лист у вашому
   поштовому застосунку з описом пристрою і журналом. Журнал поїздки містить координати. Лист буде
-  надіслано лише після того, як ви самі його відправите, на адресу most05062014@gmail.com. Ми
+  надіслано лише після того, як ви самі його відправите, на адресу nongps.organic@gmail.com. Ми
   використовуємо його лише для виправлення помилки і видаляємо після цього.
 - **Звіт про збій.** Коли застосунок аварійно завершується, під час наступного запуску він надсилає
   звіт до служби Sentry (sentry.io, оброблювач даних; дані зберігаються на серверах у ЄС, зазвичай 30
@@ -77,7 +77,7 @@ NonGPS Maps — застосунок для офлайн-навігації ав
 *Effective November 24, 2026.*
 
 NonGPS Maps is an app for offline car navigation, also when GPS is unavailable or shows a wrong place.
-Developer: Ramzess (NonGPS Maps), contact: most05062014@gmail.com.
+Developer: Ramzess (NonGPS Maps), contact: nongps.organic@gmail.com.
 
 ## In short
 
@@ -109,7 +109,7 @@ Google, not by this app.
   (organicmaps.app). Like any internet request, the server sees the IP address of the phone and the
   names of the downloaded maps. Your location is not sent. See https://organicmaps.app/privacy
 - **Bug reports.** If you tap "Report a bug", the app prepares an email in your email app with device
-  information and the log. The trip log contains coordinates. It is sent to most05062014@gmail.com only
+  information and the log. The trip log contains coordinates. It is sent to nongps.organic@gmail.com only
   when you send it yourself. We use it only to fix the bug and delete it afterwards.
 - **Crash reports.** When the app crashes, it sends a report to Sentry (sentry.io, a data processor;
   the data is stored on servers in the EU, usually for 30 days) at the next launch. The report holds no
