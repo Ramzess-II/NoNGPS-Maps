@@ -481,6 +481,10 @@ public final class NoGps
     @Keep
     @NonNull
     public String addPhoneCode = "";
+    // The code of the recovery window of the box of the current car, six digits, empty until the box has told it.
+    @Keep
+    @NonNull
+    public String boxRecoveryCode = "";
     @Keep
     public int addPhoneSecondsLeft;
     // All the sensor box has told in this connection, in the order of BoxValue: the values with their units, empty if
