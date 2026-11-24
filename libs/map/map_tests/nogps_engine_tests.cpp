@@ -5648,6 +5648,39 @@ UNIT_TEST(NoGps_Engine_CarChangingGearAt1KmhIsFollowed)
   TestAlmostEqualAbs(East(env.Last().m_position), car.East(), 3);
 }
 
+UNIT_TEST(NoGps_Engine_SpeedTableIsNotLearnedWhileCarDrivesBack)
+{
+  PieceRoads roads({{-3000, 0, 3000, 0}}, {});
+  for (bool back : {false, true})
+  {
+    Env env(true /* inertial */, &roads);
+    MarkCar(env, -450);
+    BoxCar car(env, -450, true /* accelerometer */);
+    car.SpeedUpAndBrake();
+    if (back)
+    {
+      // Backs at 7 km/h, long enough to measure a range, GPS tells the speed every second.
+      car.Drive(2, -1, 0);
+      car.Drive(1, 0, 0);
+      TEST(env.m_engine.GetTripLine().find(" back=1") != std::string::npos, (env.m_engine.GetTripLine()));
+    }
+    else
+    {
+      car.Drive(2, 1, 0);
+    }
+    double const sign = back ? -1 : 1;
+    for (int i = 0; i < 300; ++i)
+    {
+      car.Drive(1, 0, 0);
+      env.m_engine.OnFix(GpsAt(env.m_clock, car.East(), car.North(), 90.0, std::fabs(car.Speed())));
+    }
+    TEST_EQUAL(sign * car.Speed() > 0, true, ());
+    // Driving forward the same way is learned.
+    TEST_EQUAL(env.m_engine.GetStatus().m_speedTableRanges > 0, !back,
+               (back, env.m_engine.GetStatus().m_speedTableRanges));
+  }
+}
+
 UNIT_TEST(NoGps_Engine_AccelerometerIsNotLearnedFromManeuvers)
 {
   PieceRoads roads({{-2000, 0, 3000, 0}}, {});

@@ -343,7 +343,8 @@ bool InertialNavigator::LearnRoughSpeed(double aheadM, char const * where)
 
 void InertialNavigator::OnSpeedTableGps(Fix const & gps)
 {
-  if (!gps.m_speedMps || !IsSpeedFresh())
+  // Reversing is slow stop-and-go maneuvering, the noise kMinSpeedKmh keeps out, as in AccelSpeed.
+  if (!gps.m_speedMps || !IsSpeedFresh() || m_direction.HasDrivenBackLately())
   {
     m_speedTableGpsMs.reset();
     return;
@@ -1389,7 +1390,8 @@ void InertialNavigator::OnMotion(double yawDeltaDeg, double dtSec, int64_t times
       m_pathMatcher.OnMotion(rotatedDeg, distance, m_deadReckoning.GetHeading());
       TrackRoughStretch(step);
     }
-    m_speedScale.OnDistance(step);
+    if (!back)
+      m_speedScale.OnDistance(step);
     if (IsReady())
       TrackOffRoad(step, timestampNs);
   }
