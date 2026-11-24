@@ -157,6 +157,28 @@ public class LogFileWriterTest
   }
 
   @Test
+  public void timeZoneChange_keepsTheFileWhenTheDayDoesNotGoBack() throws IOException
+  {
+    final TimeZone saved = TimeZone.getDefault();
+    try
+    {
+      TimeZone.setDefault(TimeZone.getTimeZone("GMT+2"));
+      mNow.set(time(2026, Calendar.NOVEMBER, 1, 14, 0, 0));
+      mWriter.writeSync(mLogs, "before");
+      TimeZone.setDefault(TimeZone.getTimeZone("GMT+1"));
+      mWriter.writeSync(mLogs, "after the zone change");
+
+      final List<String> all = files();
+      assertEquals(1, all.size());
+      assertEquals(3, lines(all.get(0)).size());
+    }
+    finally
+    {
+      TimeZone.setDefault(saved);
+    }
+  }
+
+  @Test
   public void clockBack_withinTheDayKeepsTheFile() throws IOException
   {
     mWriter.writeSync(mLogs, "one");

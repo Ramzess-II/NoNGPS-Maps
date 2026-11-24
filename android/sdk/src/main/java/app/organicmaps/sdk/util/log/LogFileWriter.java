@@ -99,7 +99,7 @@ final class LogFileWriter
   private long mDayEndMs;
   // The first moment of the day of the file: a line written before it, after the clock went back, opens a new file.
   private long mDayStartMs;
-  // The zone of mDayStartMs and mDayEndMs: another one moves the day, so the file is a new one.
+  // The zone of mDayStartMs and mDayEndMs: another one moves the day, and a new file opens when that takes the day back.
   private TimeZone mDayZone;
   // When a failed open may be tried again, 0 when the last one worked.
   private long mRetryOpenMs;
@@ -331,23 +331,28 @@ final class LogFileWriter
       mDayEndMs = 0;
     }
     final TimeZone zone = TimeZone.getDefault();
-    final boolean clockWentBack = now < mDayStartMs || (mDayZone != null && !zone.equals(mDayZone));
-    if (now >= mDayEndMs || clockWentBack)
+    final boolean zoneChanged = mDayZone != null && !zone.equals(mDayZone);
+    if (now >= mDayEndMs || now < mDayStartMs || zoneChanged)
     {
-      // The clock or the time zone went back past the start of the day: the file is a new one, named by the new time.
-      if (clockWentBack)
-        mStarted = new Date(now);
-      mDayZone = zone;
+      final boolean rolled = now >= mDayEndMs;
       final Calendar calendar = Calendar.getInstance(zone);
       calendar.setTimeInMillis(now);
       calendar.set(Calendar.HOUR_OF_DAY, 0);
       calendar.set(Calendar.MINUTE, 0);
       calendar.set(Calendar.SECOND, 0);
       calendar.set(Calendar.MILLISECOND, 0);
-      mDayStartMs = calendar.getTimeInMillis();
+      final long dayStartMs = calendar.getTimeInMillis();
+      // The clock, or the time zone, went back past the start of the file's day: the file is a new one, named by
+      // the new time. A zone change that doesn't take the local day back only moves the day's bounds.
+      final boolean clockWentBack = dayStartMs < mDayStartMs;
+      if (clockWentBack)
+        mStarted = new Date(now);
+      mDayZone = zone;
+      mDayStartMs = dayStartMs;
       calendar.add(Calendar.DAY_OF_MONTH, 1);
       mDayEndMs = calendar.getTimeInMillis();
-      mFileName = LogFiles.freeFileName(new File(logsFolder), mInfo.phoneId(), mStarted, new Date(now));
+      if (rolled || clockWentBack)
+        mFileName = LogFiles.freeFileName(new File(logsFolder), mInfo.phoneId(), mStarted, new Date(now));
     }
 
     final File file = new File(logsFolder, mFileName);
