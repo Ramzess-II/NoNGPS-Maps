@@ -691,6 +691,7 @@
 		ED914332300168CF0081DF0B /* CarPlaySceneDelegateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED914331300168CF0081DF0B /* CarPlaySceneDelegateTests.swift */; };
 		ED91433B3001A0000081DF0B /* DeepLinkHandlerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED91433A3001A0000081DF0B /* DeepLinkHandlerTests.swift */; };
 		ED9BEED62FFEB5C8008DB423 /* ColorGridViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED9BEED52FFEB5C8008DB423 /* ColorGridViewController.swift */; };
+		AA01B2C3D4E5F60718293B02 /* LoggerFileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01B2C3D4E5F60718293B01 /* LoggerFileTests.swift */; };
 		ED9DDF9D2D6F6F7900645BC8 /* TrackRecordingManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED9DDF9B2D6F6DA300645BC8 /* TrackRecordingManagerTests.swift */; };
 		EDAA00012F91000000FA103D /* SearchCategoryIconRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDAA00022F91000000FA103D /* SearchCategoryIconRenderer.swift */; };
 		EDBAB6F52E980421007962B5 /* GeoNavigationToOMURLConverterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDBAB6F42E980421007962B5 /* GeoNavigationToOMURLConverterTests.swift */; };
@@ -1871,6 +1872,7 @@
 		ED914331300168CF0081DF0B /* CarPlaySceneDelegateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegateTests.swift; sourceTree = "<group>"; };
 		ED91433A3001A0000081DF0B /* DeepLinkHandlerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepLinkHandlerTests.swift; sourceTree = "<group>"; };
 		ED9BEED52FFEB5C8008DB423 /* ColorGridViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorGridViewController.swift; sourceTree = "<group>"; };
+		AA01B2C3D4E5F60718293B01 /* LoggerFileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggerFileTests.swift; sourceTree = "<group>"; };
 		ED9DDF9B2D6F6DA300645BC8 /* TrackRecordingManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackRecordingManagerTests.swift; sourceTree = "<group>"; };
 		EDAA00022F91000000FA103D /* SearchCategoryIconRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchCategoryIconRenderer.swift; sourceTree = "<group>"; };
 		EDBAB6F42E980421007962B5 /* GeoNavigationToOMURLConverterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeoNavigationToOMURLConverterTests.swift; sourceTree = "<group>"; };
@@ -2167,6 +2169,7 @@
 				C50A71010000000000000002 /* MWMSearchSpotlightTests.mm */,
 				5E0A00000000000000000006 /* CrashReports */,
 				ED91433C3001A0000081DF0B /* DeepLink */,
+				AA01B2C3D4E5F60718293B00 /* Logger */,
 				EDBAB6F12E980415007962B5 /* GeoNavigationToOMURLConverterTests */,
 				AA01B2C3D4E5F60718293A03 /* Routing */,
 				ED9DDF982D6F6D8000645BC8 /* TrackRecorder */,
@@ -4392,6 +4395,14 @@
 			path = DeepLink;
 			sourceTree = "<group>";
 		};
+		AA01B2C3D4E5F60718293B00 /* Logger */ = {
+			isa = PBXGroup;
+			children = (
+				AA01B2C3D4E5F60718293B01 /* LoggerFileTests.swift */,
+			);
+			path = Logger;
+			sourceTree = "<group>";
+		};
 		ED9DDF982D6F6D8000645BC8 /* TrackRecorder */ = {
 			isa = PBXGroup;
 			children = (
@@ -5514,6 +5525,7 @@
 				EDF838C32C00B9D6007E4E67 /* UbiquitousDirectoryMonitorDelegateMock.swift in Sources */,
 				EDF838BE2C00B9D0007E4E67 /* LocalDirectoryMonitorDelegateMock.swift in Sources */,
 				EDC4E3692C5E6F5B009286A2 /* MockRecentlyDeletedCategoriesManager.swift in Sources */,
+				AA01B2C3D4E5F60718293B02 /* LoggerFileTests.swift in Sources */,
 				ED9DDF9D2D6F6F7900645BC8 /* TrackRecordingManagerTests.swift in Sources */,
 				AA01B2C3D4E5F60718293A02 /* MWMRoutePointTests.swift in Sources */,
 				A8D43EE031D5000000000004 /* MWMNavigationDashboardEntityTests.mm in Sources */,
