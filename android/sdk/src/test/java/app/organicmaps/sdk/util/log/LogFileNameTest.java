@@ -127,6 +127,29 @@ public class LogFileNameTest
   }
 
   @Test
+  public void ofDays_takesTheFileOfADriveStartedInTheSameSecond() throws IOException
+  {
+    // The second drive of the second is "-2" before midnight and goes on as the plain name after it.
+    makeFile(path("Pixel_7-a3f9", "2026-11-01", "235907.log"), 10, 1);
+    makeFile(path("Pixel_7-a3f9", "2026-11-01", "235907-2.log"), 10, 1);
+    makeFile(path("Pixel_7-a3f9", "2026-11-02", "235907.log"), 10, 1);
+    makeFile(path("Pixel_7-a3f9", "2026-11-02", "081500.log"), 10, 1);
+    assertEquals(Arrays.asList(path("Pixel_7-a3f9", "2026-11-01", "235907-2.log"),
+                               path("Pixel_7-a3f9", "2026-11-01", "235907.log"),
+                               path("Pixel_7-a3f9", "2026-11-02", "081500.log"),
+                               path("Pixel_7-a3f9", "2026-11-02", "235907.log")),
+                 relative(LogFiles.ofDays(mFolder.getRoot(), Collections.singleton("2026-11-02"))));
+    // The other way round: the drive of the plain name goes on as "-2".
+    makeFile(path("Pixel_7-a3f9", "2026-11-05", "100000.log"), 10, 1);
+    makeFile(path("Pixel_7-a3f9", "2026-11-06", "100000-2.log"), 10, 1);
+    assertTrue(relative(LogFiles.ofDays(mFolder.getRoot(), Collections.singleton("2026-11-06")))
+                   .contains(path("Pixel_7-a3f9", "2026-11-05", "100000.log")));
+    // Another time is not the same drive.
+    assertFalse(relative(LogFiles.ofDays(mFolder.getRoot(), Collections.singleton("2026-11-06")))
+                    .contains(path("Pixel_7-a3f9", "2026-11-01", "235907.log")));
+  }
+
+  @Test
   public void all_takesTheTreeAndTheFilesNamedAsBefore() throws IOException
   {
     makeTree();
