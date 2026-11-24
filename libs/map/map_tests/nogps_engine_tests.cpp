@@ -295,9 +295,6 @@ UNIT_TEST(NoGps_Engine_PlaceMarkByGpsRefusesBadFix)
   TEST(!PlaceByGpsFix(env, 60, 3, 4, Engine::kGpsMaxAgeMs + 1000), ());
   TEST(PlaceByGpsFix(env, 60, 3, 4, Engine::kGpsMaxAgeMs - 1000), ());
   TEST(!PlaceByGpsFix(env, 62, 3, 400), ());
-  env.m_engine.SetGpsDisabled(true);
-  TEST(!PlaceByGpsFix(env, 62, 3, 4), ());
-  env.m_engine.SetGpsDisabled(false);
   TEST(PlaceByGpsFix(env, 62, 3, 4), ());
 
   // GPS is on another continent.
@@ -307,6 +304,20 @@ UNIT_TEST(NoGps_Engine_PlaceMarkByGpsRefusesBadFix)
   env.m_engine.OnFix(spoofed);
   TEST(env.m_engine.GetStatus().m_gpsSpoofed, ());
   TEST(!env.m_engine.PlaceMarkByGps(), ());
+}
+
+UNIT_TEST(NoGps_Engine_PlaceMarkByGpsTakesFixWhenGpsIsTurnedOff)
+{
+  Env env(false /* inertial */);
+  MarkCar(env, 0);
+  env.m_engine.SetGpsDisabled(true);
+  TEST(PlaceByGpsFix(env, 60, 3, 4), ());
+  TestAlmostEqualAbs(East(env.Last().m_position), 60, 0.5);
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST(env.m_engine.GetStatus().m_gpsDisabled, ());
+  // The refusals of the other conditions stay.
+  TEST(!PlaceByGpsFix(env, 62, 3, 400), ());
+  TEST(!PlaceByGpsFix(env, 360, 3, 4), ());
 }
 
 UNIT_TEST(NoGps_Engine_PlaceMarkByGpsTakesFreshFusedFixWhenGpsIsOld)
