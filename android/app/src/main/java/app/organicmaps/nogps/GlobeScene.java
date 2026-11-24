@@ -296,6 +296,43 @@ final class GlobeScene
     return best;
   }
 
+  // Land.
+
+  /** The cells of GlobeCoastline.LAND_RUNS, row by row from the north, each row from lon -180. */
+  private static final boolean[] LAND_CELLS = decodeLand();
+
+  private static boolean[] decodeLand()
+  {
+    final int step = GlobeCoastline.LAND_STEP_DEG;
+    final boolean[] cells = new boolean[(180 / step) * (360 / step)];
+    final short[] runs = GlobeCoastline.LAND_RUNS;
+    int cell = 0;
+    for (int i = 0; i < runs.length; i += runs[i] + 1)
+    {
+      boolean land = false;
+      for (int k = 1; k <= runs[i]; k++)
+      {
+        for (int n = 0; n < runs[i + k]; n++)
+          cells[cell++] = land;
+        land = !land;
+      }
+    }
+    return cells;
+  }
+
+  /** Whether the unit point (x, y, z) of the frame of the Earth is on land. */
+  static boolean isLand(double x, double y, double z)
+  {
+    final double step = GlobeCoastline.LAND_STEP_DEG;
+    final int rows = (int) (180 / step);
+    final int cols = (int) (360 / step);
+    final double lat = Math.toDegrees(Math.asin(Math.max(-1, Math.min(1, y))));
+    final double lon = Math.toDegrees(Math.atan2(x, z));
+    final int row = Math.min((int) ((90 - lat) / step), rows - 1);
+    final int col = Math.min((int) ((lon + 180) / step), cols - 1);
+    return LAND_CELLS[row * cols + col];
+  }
+
   // Coverage.
 
   /**

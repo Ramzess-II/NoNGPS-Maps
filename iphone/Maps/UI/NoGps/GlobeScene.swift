@@ -220,6 +220,37 @@ final class GlobeScene {
     return best
   }
 
+  // MARK: - Land
+
+  /// The cells of `GlobeCoastline.landRuns`, row by row from the north, each row from lon -180.
+  private static let landCells: [Bool] = {
+    let runs = GlobeCoastline.landRuns
+    var cells = [Bool]()
+    var i = 0
+    while i < runs.count {
+      let count = Int(runs[i])
+      var isLand = false
+      for k in 1 ... count {
+        cells += repeatElement(isLand, count: Int(runs[i + k]))
+        isLand.toggle()
+      }
+      i += count + 1
+    }
+    return cells
+  }()
+
+  /// Whether the unit point p of the frame of the Earth is on land.
+  static func isLand(_ p: SIMD3<Double>) -> Bool {
+    let step = Double(GlobeCoastline.landStepDeg)
+    let rows = Int(180 / step)
+    let cols = Int(360 / step)
+    let lat = asin(max(-1, min(1, p.y))).degrees
+    let lon = atan2(p.x, p.z).degrees
+    let row = min(Int((90 - lat) / step), rows - 1)
+    let col = min(Int((lon + 180) / step), cols - 1)
+    return landCells[row * cols + col]
+  }
+
   // MARK: - Coverage
 
   /// Whether the satellite at s stands at least `elevationMaskDeg` above the horizon of the unit point p of the

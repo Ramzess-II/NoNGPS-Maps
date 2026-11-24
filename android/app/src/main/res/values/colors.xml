@@ -178,6 +178,8 @@
   <color name="nogps_globe_jam">#FFE67700</color>
   <color name="nogps_globe_car">#FFFFD500</color>
   <color name="nogps_globe_car_outline">#FF1E2226</color>
+  <!-- The green of the coast: the coast stays drawn over it. -->
+  <color name="nogps_globe_land_fill">#CC4F8A5E</color>
   <!-- Translucent, as the outage: the graticule, the coast and the jam stay readable over them. -->
   <color name="nogps_globe_coverage">#732F6FA8</color>
   <color name="nogps_globe_outage">#73D0342C</color>

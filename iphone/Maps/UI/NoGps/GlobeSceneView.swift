@@ -30,6 +30,8 @@ final class GlobeSceneView: UIView {
     let jam: UIColor
     let car: UIColor
     let carOutline: UIColor
+    /// The green of the coast: the coast stays drawn over it.
+    let landFill: UIColor
     /// Translucent, as the outage: the graticule, the coast and the jam stay readable over them.
     let coverage: UIColor
     let outage: UIColor
@@ -51,6 +53,7 @@ final class GlobeSceneView: UIView {
                                  jam: color(0xE67700, 0xFFA040),
                                  car: color(0xFFD500, 0xFFD500),
                                  carOutline: color(0x1E2226, 0x1E2226),
+                                 landFill: color(0x4F8A5E, 0x6FA77C, alpha: 0.8),
                                  coverage: color(0x2F6FA8, 0x5BB4E6, alpha: 0.45),
                                  outage: color(0xD0342C, 0xFF6B5E, alpha: 0.45))
   }
@@ -206,7 +209,7 @@ final class GlobeSceneView: UIView {
     let disc = CGRect(x: center.x - radius, y: center.y - radius, width: 2 * radius, height: 2 * radius)
     context.setFillColor(color(palette.sea).cgColor)
     context.fillEllipse(in: disc)
-    drawCoverage(context, disc: disc, palette: palette)
+    drawGround(context, disc: disc, palette: palette)
     context.setLineWidth(1)
     context.setStrokeColor(color(palette.graticule).cgColor)
     context.strokeEllipse(in: disc)
@@ -234,10 +237,10 @@ final class GlobeSceneView: UIView {
     }
   }
 
-  /// The ground of the front half that sees enough satellites for a fix carries the coverage tint, the rest the
-  /// outage tint. Each pixel of the bitmap is the front point of the unit disc under it: `satellite(i)` is in the
-  /// frame of the screen too, so no rotation is needed.
-  private func drawCoverage(_ context: CGContext, disc: CGRect, palette: Palette) {
+  /// The land and, over it and the sea, the coverage: the ground of the front half that sees enough satellites for a
+  /// fix carries the coverage tint, the rest the outage tint. Each pixel of the bitmap is the front point of the unit
+  /// disc under it: `satellite(i)` is in the frame of the screen too, and only the land needs the frame of the Earth.
+  private func drawGround(_ context: CGContext, disc: CGRect, palette: Palette) {
     let side = Int((disc.width * Constants.coveragePixelsPerPt).rounded(.up))
     guard side > 0 else { return }
     if coverageBitmap?.width != side {
@@ -247,22 +250,29 @@ final class GlobeSceneView: UIView {
                                    | CGBitmapInfo.byteOrder32Big.rawValue)
     }
     guard let bitmap = coverageBitmap, let data = bitmap.data else { return }
-    let covered = premultipliedRGBA(palette.coverage)
-    let outage = premultipliedRGBA(palette.outage)
+    // Indexed by [covered][land]: a tint over the land fill, or over the sea drawn under the bitmap.
+    let land = premultiplied(palette.landFill)
+    let tints = [premultiplied(palette.outage), premultiplied(palette.coverage)]
+    let colors = tints.map { tint in [tint, tint + land * (1 - tint.w)].map(Self.bytes) }
     let none: [UInt8] = [0, 0, 0, 0]
     let pixels = data.bindMemory(to: UInt8.self, capacity: 4 * side * side)
     let satellites = scene.onSatellites()
+    let toEarth = scene.rotation.transpose
     for row in 0 ..< side {
       // Row 0 is the top of the disc, y up.
       let y = 1 - 2 * (Double(row) + 0.5) / Double(side)
       for col in 0 ..< side {
         let x = 2 * (Double(col) + 0.5) / Double(side) - 1
         let r2 = x * x + y * y
-        let tint = r2 >= 1 ? none
-          : GlobeScene.isCovered(at: SIMD3(x, y, (1 - r2).squareRoot()), by: satellites) ? covered : outage
+        var color = none
+        if r2 < 1 {
+          let p = SIMD3(x, y, (1 - r2).squareRoot())
+          let covered = GlobeScene.isCovered(at: p, by: satellites) ? 1 : 0
+          color = colors[covered][GlobeScene.isLand(toEarth * p) ? 1 : 0]
+        }
         let offset = 4 * (row * side + col)
         for k in 0 ..< 4 {
-          pixels[offset + k] = tint[k]
+          pixels[offset + k] = color[k]
         }
       }
     }
@@ -278,11 +288,16 @@ final class GlobeSceneView: UIView {
     context.restoreGState()
   }
 
-  /// The bytes of a pixel of the coverage bitmap, in their order in memory.
-  private func premultipliedRGBA(_ color: UIColor) -> [UInt8] {
+  /// RGBA with the alpha multiplied in, so a colour over another is `top + bottom * (1 - top.w)`.
+  private func premultiplied(_ color: UIColor) -> SIMD4<Double> {
     var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
     color.resolvedColor(with: traitCollection).getRed(&r, green: &g, blue: &b, alpha: &a)
-    return [r * a, g * a, b * a, a].map { UInt8(($0 * 255).rounded()) }
+    return SIMD4(Double(r * a), Double(g * a), Double(b * a), Double(a))
+  }
+
+  /// The bytes of a pixel of the bitmap, in their order in memory.
+  private static func bytes(_ color: SIMD4<Double>) -> [UInt8] {
+    [color.x, color.y, color.z, color.w].map { UInt8(($0 * 255).rounded()) }
   }
 
   /// The segments of the lines on one side of the globe. A line is a row of unit vectors of the Earth frame, nil

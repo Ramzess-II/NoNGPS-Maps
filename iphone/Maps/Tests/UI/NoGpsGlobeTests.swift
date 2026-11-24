@@ -335,6 +335,34 @@ final class NoGpsGlobeTests: XCTestCase {
     }
   }
 
+  func testLandRowsCoverTheGlobe() {
+    let runs = GlobeCoastline.landRuns
+    var rows = 0
+    var i = 0
+    while i < runs.count {
+      let count = Int(runs[i])
+      XCTAssertEqual(runs[i + 1 ... i + count].reduce(0) { $0 + Int($1) }, 360 / GlobeCoastline.landStepDeg)
+      i += count + 1
+      rows += 1
+    }
+    XCTAssertEqual(rows, 180 / GlobeCoastline.landStepDeg)
+  }
+
+  func testLandKnowsTheContinents() {
+    func land(_ lat: Double, _ lon: Double) -> Bool {
+      Scene.isLand(Scene.earthVector(latDeg: lat, lonDeg: lon))
+    }
+    XCTAssertTrue(land(Scene.jamLatDeg, Scene.jamLonDeg))
+    XCTAssertTrue(land(23, 10)) // Sahara
+    XCTAssertTrue(land(-25, 134)) // Australia
+    XCTAssertTrue(land(-89.9, 0))
+    XCTAssertFalse(land(30, -40)) // Atlantic
+    XCTAssertFalse(land(0, -150)) // Pacific
+    XCTAssertFalse(land(89.9, 0))
+    XCTAssertTrue(land(67, -179.5)) // Chukotka, on both sides of the antimeridian
+    XCTAssertTrue(land(67, 179.5))
+  }
+
   func testCoastlineStaysInItsCapAndRange() {
     let points = GlobeCoastline.points
     XCTAssertEqual(points.count % 2, 0)

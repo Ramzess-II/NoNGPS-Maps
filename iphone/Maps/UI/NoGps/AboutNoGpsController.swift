@@ -23,7 +23,6 @@ final class AboutNoGpsController: MWMViewController {
   private let globeCountLabel = UILabel()
   private let globeCoverageLabel = UILabel()
   private let globeJammedLabel = UILabel()
-  private let descriptionLabel = UILabel()
   /// A text view, not a label: both names of the credit are links of their own.
   private let mapDataTextView = UITextView()
   /// Buy the box, accented, and the source code under it: the full width of the text above.
@@ -87,10 +86,6 @@ private extension AboutNoGpsController {
     headlineLabel.numberOfLines = 0
 
     setupGlobe()
-
-    descriptionLabel.setFontStyle(.regular16, color: .blackPrimary)
-    descriptionLabel.text = L("nogps_about_description")
-    descriptionLabel.numberOfLines = 0
 
     setupMapData()
 
@@ -170,7 +165,6 @@ private extension AboutNoGpsController {
     stackView.setCustomSpacing(Constants.hintSpacing, after: globeView)
     stackView.setCustomSpacing(Constants.hintSpacing, after: globeHintLabel)
     stackView.setCustomSpacing(Constants.hintSpacing, after: globeCountLabel)
-    stackView.addArrangedSubview(descriptionLabel)
     stackView.addArrangedSubview(mapDataTextView)
     stackView.addArrangedSubview(actionsView)
     stackView.addArrangedSubview(linksView)
@@ -186,7 +180,6 @@ private extension AboutNoGpsController {
     globeCountLabel.translatesAutoresizingMaskIntoConstraints = false
     globeCoverageLabel.translatesAutoresizingMaskIntoConstraints = false
     globeJammedLabel.translatesAutoresizingMaskIntoConstraints = false
-    descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
     mapDataTextView.translatesAutoresizingMaskIntoConstraints = false
     actionsView.translatesAutoresizingMaskIntoConstraints = false
     linksView.translatesAutoresizingMaskIntoConstraints = false
@@ -216,7 +209,6 @@ private extension AboutNoGpsController {
       globeCountLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       globeCoverageLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       globeJammedLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
-      descriptionLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       mapDataTextView.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       actionsView.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       linksView.widthAnchor.constraint(equalTo: stackView.widthAnchor),

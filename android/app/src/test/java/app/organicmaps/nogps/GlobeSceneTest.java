@@ -507,6 +507,43 @@ public class GlobeSceneTest
   }
 
   @Test
+  public void landRowsCoverTheGlobe()
+  {
+    final short[] runs = GlobeCoastline.LAND_RUNS;
+    int rows = 0;
+    for (int i = 0; i < runs.length; i += runs[i] + 1)
+    {
+      int cells = 0;
+      for (int k = 1; k <= runs[i]; k++)
+        cells += runs[i + k];
+      assertEquals(360 / GlobeCoastline.LAND_STEP_DEG, cells);
+      rows++;
+    }
+    assertEquals(180 / GlobeCoastline.LAND_STEP_DEG, rows);
+  }
+
+  private static boolean land(double latDeg, double lonDeg)
+  {
+    final double lat = Math.toRadians(latDeg);
+    final double lon = Math.toRadians(lonDeg);
+    return GlobeScene.isLand(Math.cos(lat) * Math.sin(lon), Math.sin(lat), Math.cos(lat) * Math.cos(lon));
+  }
+
+  @Test
+  public void landKnowsTheContinents()
+  {
+    assertTrue(land(GlobeScene.JAM_LAT_DEG, GlobeScene.JAM_LON_DEG));
+    assertTrue(land(23, 10)); // Sahara
+    assertTrue(land(-25, 134)); // Australia
+    assertTrue(land(-89.9, 0));
+    assertFalse(land(30, -40)); // Atlantic
+    assertFalse(land(0, -150)); // Pacific
+    assertFalse(land(89.9, 0));
+    assertTrue(land(67, -179.5)); // Chukotka, on both sides of the antimeridian
+    assertTrue(land(67, 179.5));
+  }
+
+  @Test
   public void coastlineStaysInItsCapAndRange()
   {
     final short[] points = GlobeCoastline.POINTS;
