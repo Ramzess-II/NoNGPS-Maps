@@ -1,6 +1,6 @@
 ---
 name: nogps-merge
-description: Merge the open NonGPS pull requests. Prepare the independent ones in parallel, review each with Fable, post the findings on the PR, let Opus fix them, and merge them one at a time when the review is clean. Use when the user runs /nogps-merge or asks to merge, land or clear the open PRs, or to take the backlog all the way to master.
+description: Merge the open NonGPS pull requests. Prepare the independent ones in parallel, review each with Opus, post the findings on the PR, let Sonnet fix them, and merge them one at a time when the review is clean. Use when the user runs /nogps-merge or asks to merge, land or clear the open PRs, or to take the backlog all the way to master.
 argument-hint: "[<PR numbers>] [--no-roll] [--rounds N] [--slots N] [--dry]"
 ---
 
@@ -79,17 +79,19 @@ train doesn't push commits under the session working there.
    with `parallel` and `serial` as JSON arrays of the PR objects of step 3, each carrying its `repo`, not strings.
    The script refuses a `repo` that is neither of the two before any agent runs. Up to `slots` workers each prep one
    PR of the parallel set in their own worktree `<ws>/worktrees/merge-<slot>` -- its default branch merged in,
-   reviewed by Fable, fixed by Opus, pushed -- so the PRs' checks run together. The merge gate then takes one
-   prepped PR at a time, in `<ws>/worktrees/merge-train`: it sends a PR back for one more round when its branch
-   gained a file the PR touches since its prep, merges the PR into that branch locally and runs the tests on the two
-   together, and merges on GitHub when CI is green. The serial set follows, one PR at a time in the gate worktree. A
-   PR the train can't merge stays open and it goes on to the next one.
+   reviewed by Opus, fixed by Sonnet, pushed -- so the PRs' checks run together. A PR whose first review found
+   nothing is read once more by Fable before it goes to the gate, and that confirmation spends none of its rounds.
+   The merge gate then takes one prepped PR at a time, in `<ws>/worktrees/merge-train`: it sends a PR back for one
+   more round when its branch gained a file the PR touches since its prep, merges the PR into that branch locally
+   and runs the tests on the two together, and merges on GitHub when CI is green. The serial set follows, one PR at
+   a time in the gate worktree. A PR the train can't merge stays open and it goes on to the next one.
 
    A firmware PR runs the same way in a worktree of `<ws>/firmware` whose name ends in `-fw`, made by plain
    `git worktree add` from `origin/main` with `keys/` linked and `sdkconfig` copied from the main checkout -- both
-   are gitignored there, and without them the build is unsigned or built for the wrong chip. `ELMandIMU` has no CI,
-   so the gate's `idf.py build` is the only check a firmware PR gets and it does not wait for checks. Where it cannot run (no ESP-IDF, no
-   signing key) the PR is reported `blocked` with `not built: <why>` and is not merged.
+   are gitignored there, and without them the build is unsigned or built for the wrong chip. A CI build of a firmware
+   PR comes with ELMandIMU#28, but GitHub Actions has started no run in that repo yet (ELMandIMU#29), so the gate's
+   `idf.py build` is the only check a firmware PR gets and it does not wait for checks. Where it cannot run (no
+   ESP-IDF, no signing key) the PR is reported `blocked` with `not built: <why>` and is not merged.
 5. **Report.** Print the table it returns: PR → merged (with the merge commit) / open (with the reason) / blocked,
    with its set, the rounds it took and the number of findings; name the PRs that went back for another round
    because master moved under them (`staleRounds`), and any whose core tests failed only once merged into master
