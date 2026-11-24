@@ -9,7 +9,7 @@ final class AppConstants: NSObject {
   static let maxProgress: Float = 0.95
   static let openStreetMapURL = "https://www.openstreetmap.org/"
   static let omapsURL = "https://omaps.app"
-  static let contactEmail = "most05062014@gmail.com"
+  static let contactEmail = "nongps.organic@gmail.com"
   static let organicMapsEmail = "ios@organicmaps.app"
 }
 

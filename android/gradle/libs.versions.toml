@@ -56,6 +56,9 @@ google-material = "1.13.0"
 
 huawei-plugin = "1.6.0"
 
+sentry = "8.62.0"
+sentry-gradle-plugin = "6.24.0"
+
 microg-gms-location = "0.3.14.250932"
 
 mockito-core = "5.24.0"
@@ -105,6 +108,9 @@ google-material = { module = "com.google.android.material:material", version.ref
 
 ktlint-cli = { module = "com.pinterest.ktlint:ktlint-cli", version.ref = "ktlint" }
 
+sentry-android = { module = "io.sentry:sentry-android", version.ref = "sentry" }
+sentry-android-ndk = { module = "io.sentry:sentry-android-ndk", version.ref = "sentry" }
+
 microg-gms-location = { module = "org.microg.gms:play-services-location", version.ref = "microg-gms-location" }
 
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito-core" }
@@ -124,6 +130,8 @@ huawei-plugin = { id = "ru.cian.huawei-publish-gradle-plugin", version.ref = "hu
 
 nmcp = { id = "com.gradleup.nmcp", version.ref = "nmcp" }
 nmcp-aggregation = { id = "com.gradleup.nmcp.aggregation", version.ref = "nmcp" }
+
+sentry-gradle = { id = "io.sentry.android.gradle", version.ref = "sentry-gradle-plugin" }
 
 triplet-play = { id = "com.github.triplet.play", version.ref = "triplet-play-publisher" }
 

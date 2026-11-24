@@ -316,6 +316,8 @@ std::optional<Info> ParseInfo(Fields const & fields)
         info.m_twoPhones = true;
       else if (ability == "PEER")
         info.m_canPeer = true;
+      else if (ability == "RECOVERY")
+        info.m_hasRecovery = true;
       else if (ability == "AUTH")
         info.m_canAuth = true;
   }
@@ -326,6 +328,19 @@ std::optional<Info> ParseInfo(Fields const & fields)
   if (fields.size() > 13)
     info.m_revision = fields[13];
   return info;
+}
+
+std::optional<std::string> ParseRecoveryCode(Reply const & reply)
+{
+  if (!reply.m_ok || reply.m_values.empty())
+    return {};
+  auto const & code = reply.m_values[0];
+  if (code.size() != kRecoveryCodeSize ||
+      !std::all_of(code.begin(), code.end(), [](char c) { return c >= '0' && c <= '9'; }))
+  {
+    return {};
+  }
+  return code;
 }
 
 std::optional<Phones> ParsePhones(Reply const & reply)

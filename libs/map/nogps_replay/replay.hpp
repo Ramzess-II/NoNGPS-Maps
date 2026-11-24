@@ -15,7 +15,8 @@ namespace nogps
 // trip is built again by a router of its own and lives as the route of the application does, see ReplayRoute.
 //
 // The input is made by tools/python/nogps_replay.py, a record a line, the time is milliseconds of the day:
-//   D <MM-DD>                     the date for the stamps of the output
+//   D <MM-DD> [fresh]             the date for the stamps of the output; "fresh" drives the trip as the first one:
+//                                 the speed scale and tables are not taken from the settings
 //   S <ms> <0|1|2>                the navigation is stopped, started, or the application is started anew
 //   C <ms> <lat> <lon> <bearing or -> <manual 0|1> <age ms>
 //                                 where the application kept the car when it was started anew: the next start shows

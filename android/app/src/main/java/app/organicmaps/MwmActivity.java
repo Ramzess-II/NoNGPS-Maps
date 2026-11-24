@@ -74,6 +74,7 @@ import app.organicmaps.nogps.BoxBottomSheet;
 import app.organicmaps.nogps.HowNoGpsActivity;
 import app.organicmaps.nogps.MainMenuItems;
 import app.organicmaps.nogps.NoGpsLinks;
+import app.organicmaps.nogps.NoGpsMarkBand;
 import app.organicmaps.nogps.ProfileActivity;
 import app.organicmaps.nogps.intro.IntroModalFragment;
 import app.organicmaps.nogps.intro.IntroOverlay;
@@ -1650,7 +1651,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
     if (mDisplayManager.isDeviceDisplayUsed())
     {
       mMapController.updateBottomWidgetsOffset(offsetX, offsetY);
-      mMapController.updateMyPositionRoutingOffset(offsetY);
+      mMapController.updateMyPositionRoutingOffset(
+          NoGpsMarkBand.routingOffsetPx(offsetY, getResources().getDimensionPixelSize(R.dimen.nogps_mark_clearance)));
     }
   }
 

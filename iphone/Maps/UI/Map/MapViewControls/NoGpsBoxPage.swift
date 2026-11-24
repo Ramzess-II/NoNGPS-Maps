@@ -496,7 +496,9 @@ final class NoGpsBoxPage: MWMTableViewController {
     case .obdConnecting: return L("nogps_box_obd_connecting")
     case .obdError: return L("nogps_elm_error")
     case .noCarData: return L("nogps_elm_no_car")
-    case .boxSleeping: return L("nogps_box_sleeping") + " · " + boxSearchText(status)
+    // The sleep is told only while the phone looks for the box: a phone that can't reach it knows nothing of the car.
+    case .boxSleeping:
+      return isBoxSearched(status) ? L("nogps_box_sleeping") + " · " + boxSearchText(status) : boxSearchText(status)
     // A locked-out box comes back only after it is unplugged, and a phone that can't reach it says so too.
     case .boxBatteryLock:
       return L("nogps_box_battery_lock") + (isBoxSearched(status) ? "" : " · " + boxSearchText(status))
@@ -516,7 +518,16 @@ final class NoGpsBoxPage: MWMTableViewController {
   }
 
   /// The box is not heard yet: what the phone does to reach it.
+  /// With the recovery code when the system dialog of the pairing wants it.
   private static func boxSearchText(_ status: NoGpsStatus) -> String {
+    let text = boxSearchBase(status)
+    guard !status.boxRecoveryCode.isEmpty, [.pairingByPhone, .pairingFull, .pairing].contains(status.bleState) else {
+      return text
+    }
+    return text + ". " + String(format: L("nogps_box_bt_recovery_code"), status.boxRecoveryCode)
+  }
+
+  private static func boxSearchBase(_ status: NoGpsStatus) -> String {
     switch status.bleState {
     case .noPermission: return L("nogps_box_bt_no_permission")
     // Off: the phone has no Bluetooth LE.

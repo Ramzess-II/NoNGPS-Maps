@@ -5,6 +5,7 @@ nogps_log_viewer.py and as a text report:
   nogps_log.py trips logs.zip
   nogps_log.py trip logs.zip --trip 3
   nogps_log.py state logs.zip --trip 3 --at 18:02:35
+  nogps_log.py flags trip-logs/<phone>/<yyyy-MM-dd>
   nogps_log.py --help    for all the commands
 
 Logs:
@@ -18,6 +19,12 @@ Logs:
 
 A trip is the car driving with stops shorter than STAND_SPLIT_S. The lines of a phone that stands are kept as
 stationary trips.
+
+Flags: the flags/ folders of the tree that nogps_logs.py fetch makes, <phone>/<yyyy-MM-dd>/flags/, are read with the
+logs of a folder given, and of the day folder of a log file given. A flag goes on the trip of its phone at its time
+(Android: the local time of its name; iOS: UTC, from the offset its day's logs tell, see nogps_db.utc_offset_ms), on
+the nearest trip within STAND_KEEP_S. A flag whose time is not known, or that is on no trip, is listed by its local
+time only.
 """
 
 import bisect
@@ -32,6 +39,7 @@ import tempfile
 import zipfile
 from datetime import datetime, timedelta
 
+import nogps_db
 import nogps_replay
 import nogps_trip_log
 
@@ -249,6 +257,28 @@ def load_paths(paths):
     return result
 
 
+def load_flags(paths):
+    """The flags (nogps_db.read_flags()) of the day folders of the tree in |paths|, a folder with its subfolders and
+    the day folder of a file, each with its phone and day: the names of the folders <phone>/<yyyy-MM-dd>."""
+    folders = set()
+    for path in paths:
+        path = os.path.abspath(path)
+        if os.path.isdir(path):
+            for folder, subfolders, _ in os.walk(path):
+                if nogps_db.FLAG_FOLDER in subfolders:
+                    folders.add(folder)
+        elif os.path.isdir(os.path.join(os.path.dirname(path), nogps_db.FLAG_FOLDER)):
+            folders.add(os.path.dirname(path))
+    result = []
+    for folder in sorted(folders):
+        day = os.path.basename(folder)
+        if not re.fullmatch(r'\d{4}-\d\d-\d\d', day):
+            continue
+        phone = os.path.basename(os.path.dirname(folder))
+        result += [dict(flag, phone=phone, day=day, folder=folder) for flag in nogps_db.day_flags(folder, day)]
+    return result
+
+
 def parse_android(lines, year):
     """[time ms, level, raw line, tag, body] of an Android log, times local."""
     header_month = None
@@ -382,6 +412,7 @@ class Group:
         self.rows = []
         self.events = []
         self.series = dict(accb=[], acc=[], gyro=[])
+        self.error_meter = nogps_trip_log.ErrorMeter()
         for t, level, _, tag, body in unique:
             self.classify(t, level, tag, body)
         self.row_times = [row['t'] for row in self.rows]
@@ -395,7 +426,7 @@ class Group:
         if text.startswith('TRIP '):
             # Only the first line: parse_android appends the header of a joined file's next day to this entry.
             row = nogps_trip_log.parse_trip(text[len('TRIP '):].split('\n', 1)[0])
-            nogps_trip_log.add_error(row)
+            self.error_meter.add(row, t / 1000)
             row['t'] = t
             self.rows.append(row)
             return
@@ -762,6 +793,7 @@ class Trip:
         self.events = group.events[bisect.bisect_left(group.event_times, events_from):
                                    bisect.bisect_right(group.event_times, self.end)]
         self.anomalies = anomalies(self.rows, self.events)
+        self.flags = []
 
     def calibration(self):
         """The calibration of the car the log last wrote before this trip moved, "car=C47D scale=1.04 table=…":
@@ -805,7 +837,7 @@ class Trip:
         return dict(id=self.id, platform=self.group.platform, phone=self.group.phone, zone=self.group.zone,
                     start=self.start, end=self.end, driven=self.driven, km=round(distance_m(self.rows) / 1000, 2),
                     max_kmh=round(max(speeds)) if speeds else None, sources=sources, lines=len(self.rows),
-                    events=len(self.events), anomalies=severities,
+                    events=len(self.events), anomalies=severities, flags=len(self.flags),
                     inertial_error_median=errors[len(errors) // 2] if errors else None)
 
     def rule_counts(self):
@@ -909,13 +941,14 @@ class Trip:
             if position and start <= f['ms'] <= end:
                 track.append([day_start + f['ms'], position[0], position[1], f.get('src')])
         events = [dict(t=day_start + ms, text=text) for ms, text, _ in replayed_others if start <= ms <= end]
-        return dict(stats=stats, stretches=stretches, track=track, events=events, day=day)
+        return dict(stats=stats, stretches=stretches, track=track, events=events, day=day,
+                    date=from_ms(self.start).strftime('%Y-%m-%d'))
 
 
 class Analysis:
     """The trips of all the logs given."""
 
-    def __init__(self, sources, year=None):
+    def __init__(self, sources, year=None, flags=()):
         year = year or datetime.now().year
         entries = {}
         self.notes = []
@@ -948,13 +981,34 @@ class Analysis:
         spans = sorted(((g, first, after, driven) for g in self.groups for first, after, driven in split(g)),
                        key=lambda s: s[0].rows[s[1]]['t'])
         self.trips = [Trip(i, *span) for i, span in enumerate(spans)]
+        self.flags = [self.place(dict(flag)) for flag in sorted(flags, key=lambda f: (f['phone'], f['local_ms']))]
+
+    def place(self, flag):
+        """|flag| with 't', its time on the axis of the trips of its phone (None when unknown), and 'trip', the id
+        of the trip it is on (None when it is on none)."""
+        flag['t'] = flag['trip'] = None
+        best = None
+        for trip in self.trips:
+            if trip.group.phone != flag['phone']:
+                continue
+            t = flag['local_ms'] if trip.group.platform == 'android' else flag['ms']
+            if t is None:
+                continue
+            flag['t'] = t
+            off = max(trip.start - t, t - trip.end, 0)
+            if off <= STAND_KEEP_S * 1000 and (best is None or off < best[0]):
+                best = off, trip
+        if best:
+            flag['trip'] = best[1].id
+            best[1].flags.append(flag)
+        return flag
 
 
 # The report: what the viewer shows, as text.
 
 STATE_GROUPS = [
     ('Position', ['src', 'lat', 'lon', 'acc', 'bear', 'age', 'markAge', 'fill']),
-    ('Error from GPS', ['ref', 'err_m', 'along_m', 'across_m']),
+    ('Error from GPS', ['ref', 'err_m', 'along_m', 'across_m', 'err_why']),
     ('GPS', ['gpsst', 'gps_lat', 'gps_lon', 'gps_acc', 'gps_kmh', 'gps_bear', 'gps_age', 'gpsAge', 'spoofed', 'cmp']),
     ('Fused and network', ['fused_lat', 'fused_lon', 'fused_acc', 'fused_kmh', 'fused_bear', 'fused_age', 'net_lat',
                            'net_lon', 'net_acc', 'net_age']),
@@ -973,6 +1027,7 @@ ROWS_FIELDS = 'src,err_m,along_m,speed,gps_kmh,hdg,gps_bear,road,lost,snapwhy'
 NOISY_LINE = re.compile(r' (LogTrip\(\): TRIP|\w+\(\): (ACCB|ACCB_BEFORE|ACC|GYRO) )')
 EVENTS_AROUND_S = 30
 LINES_AROUND_S = 5
+FLAG_AROUND_S = 30
 
 
 def clock(ms):
@@ -997,11 +1052,32 @@ def short(text, full):
     return text if full or len(text) <= 200 else text[:200] + '…'
 
 
+def flag_text(flag):
+    """"flag 3 18:02:35 voice 7 s, sent" of a flag, at the local time of its name."""
+    voice = flag.get('voice_s')
+    return 'flag %s %s%s%s' % (flag.get('n'), clock(flag['local_ms']), ' voice %g s' % voice if voice else '',
+                               ', sent' if flag.get('sent') else '')
+
+
+def print_flags(analysis):
+    """Every flag with its trip, the time of its name, the voice and where the viewer shows it."""
+    print('%-18s %-10s %4s  %-8s %-8s %5s %5s  %s' % ('phone', 'day', 'trip', 'local', 'on trip', 'voice', 'sent',
+                                                     'viewer'))
+    for f in analysis.flags:
+        on_trip = clock(f['t']) if f['trip'] is not None else '-'
+        print('%-18s %-10s %4s  %-8s %-8s %5s %5s  %s' % (
+            f['phone'][:18], f['day'], f['trip'] if f['trip'] is not None else '-', clock(f['local_ms']), on_trip,
+            '%g s' % f['voice_s'] if f.get('voice_s') else '-', 'yes' if f.get('sent') else 'no',
+            '#trip=%d&t=%d' % (f['trip'], f['t']) if f['trip'] is not None else
+            'no trip' if f['t'] is not None or f['ms'] is not None else 'UTC unknown'))
+    print('%d flags, %d on a trip' % (len(analysis.flags), sum(f['trip'] is not None for f in analysis.flags)))
+
+
 def print_trips(analysis, stationary):
     for zone in sorted({t.group.zone for t in analysis.trips}):
         print('times of %s logs: %s' % ('iOS' if zone == 'UTC' else 'Android', zone))
-    print('%3s  %-16s  %-12s %7s %5s  %-26s %7s  %-12s %s' % ('id', 'start', 'duration', 'km', 'max', 'sources',
-                                                             'box err', 'anomalies', 'events'))
+    print('%3s  %-16s  %-12s %7s %5s  %-26s %7s  %-12s %5s %s' % ('id', 'start', 'duration', 'km', 'max', 'sources',
+                                                                 'box err', 'anomalies', 'flags', 'events'))
     for trip in analysis.trips:
         if not trip.driven and not stationary:
             continue
@@ -1010,10 +1086,11 @@ def print_trips(analysis, stationary):
         sources = ' '.join('%s %d%%' % (k, round(v * 100 / total)) for k, v in s['sources'].items())
         anomalies = '/'.join(str(s['anomalies'].get(k, 0)) for k in ('high', 'medium', 'low'))
         error = s['inertial_error_median']
-        print('%3d  %-16s  %-12s %7.2f %5s  %-26s %7s  %-12s %d%s' % (
+        print('%3d  %-16s  %-12s %7.2f %5s  %-26s %7s  %-12s %5d %d%s' % (
             trip.id, from_ms(trip.start).strftime('%Y-%m-%d %H:%M'), duration(trip.end - trip.start), s['km'],
             s['max_kmh'] if s['max_kmh'] is not None else '-', sources[:26],
-            '%.0f m' % error if error is not None else '-', anomalies, s['events'], '' if trip.driven else ' stands'))
+            '%.0f m' % error if error is not None else '-', anomalies, s['flags'], s['events'],
+            '' if trip.driven else ' stands'))
     print('anomalies: high/medium/low')
     for note in analysis.notes:
         print('note:', note)
@@ -1049,6 +1126,9 @@ def print_trip(trip):
     for a in trip.anomalies:
         print('  %s %8s  %-6s  %s: %s' % (clock(a['start']), duration(a['end'] - a['start'] + 1000), a['severity'],
                                           a['kind'], short(a['text'], False)))
+    print('flags:', len(trip.flags))
+    for f in trip.flags:
+        print('  %s %s (#trip=%d&t=%d)' % (clock(f['t']), flag_text(f), trip.id, f['t']))
 
 
 def print_rules(analysis):
@@ -1085,12 +1165,13 @@ def print_losses(analysis):
     losses = sorted((loss for group in analysis.groups for loss in group.road_losses()), key=lambda l: l['t'])
     for loss in losses:
         day = from_ms(loss['t']).strftime('%m-%d')
+        date = from_ms(loss['t']).strftime('%Y-%m-%d')
         fixed = loss['fixable_s'] is not None
         print('%-6s %s %8s  %-8s %-9s  %s' % (day, clock(loss['t']), duration(loss['seconds'] * 1000),
                                               'map tap' if loss['taps'] else 'no tap',
                                               'after %ds' % loss['fixable_s'] if fixed else 'no',
                                               '' if fixed else loss['why']))
-        t = totals.setdefault(nogps_replay.set_of(day, held_out), collections.Counter())
+        t = totals.setdefault(nogps_replay.set_of(date, held_out), collections.Counter())
         t['losses'] += 1
         t['fixable'] += fixed
         t['taps'] += loss['taps']
@@ -1131,6 +1212,9 @@ def print_state(trip, t, full):
                   for k in keys if k in row]
         if fields:
             print('%s: %s' % (name, ' '.join(fields)))
+    flags = [f for f in trip.flags if abs(f['t'] - t) <= FLAG_AROUND_S * 1000]
+    print('flags within %d s:' % FLAG_AROUND_S, '; '.join('%+d s %s' % (round((f['t'] - t) / 1000), flag_text(f))
+                                                          for f in flags) or 'none')
     now = [a for a in trip.anomalies if a['start'] <= t <= a['end'] + 1000]
     print('anomalies now:', '; '.join('%s %s: %s' % (a['severity'], a['kind'], a['text']) for a in now) or 'none')
     print('events within %d s:' % EVENTS_AROUND_S)
@@ -1166,9 +1250,11 @@ def main():
   events  the events of a trip, --from/--to HH:MM[:SS], --cat road, --grep regex, --full
   state   every TRIP field at --at HH:MM[:SS], anomalies, events and log lines around it
   rows    TRIP fields second by second: --fields a,b,c, --every N s, --from/--to
-  replay  the trip against a nogps-replay-out.txt: --replay file''',
+  replay  the trip against a nogps-replay-out.txt: --replay file
+  flags   every flag of the tree with its trip, the time, the voice and where the viewer shows it''',
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('command', choices=['trips', 'losses', 'rules', 'trip', 'events', 'state', 'rows', 'replay'])
+    parser.add_argument('command', choices=['trips', 'losses', 'rules', 'trip', 'events', 'state', 'rows', 'replay',
+                                            'flags'])
     parser.add_argument('logs', nargs='+', help='the logs tree logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, '
                         'logs.zip or log files')
     parser.add_argument('--year', type=int, help='the year of an Android log without its header')
@@ -1186,7 +1272,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        analysis = Analysis(load_paths(args.logs), args.year)
+        analysis = Analysis(load_paths(args.logs), args.year, load_flags(args.logs))
     except nogps_trip_log.LogFormatError as e:
         parser.error(str(e))
     if args.command == 'trips':
@@ -1195,6 +1281,8 @@ def main():
         return print_losses(analysis)
     if args.command == 'rules':
         return print_rules(analysis)
+    if args.command == 'flags':
+        return print_flags(analysis)
     if args.trip is None or not 0 <= args.trip < len(analysis.trips):
         parser.error('--trip: one of the ids the trips command shows')
     trip = analysis.trips[args.trip]
@@ -1215,7 +1303,7 @@ def main():
     else:
         with open(args.replay, 'rb') as f:
             result = trip.replay(f.read())
-        nogps_replay.print_compare(result['stats'], result['day'], REPLAY_CHANGE_M)
+        nogps_replay.print_compare(result['stats'], result['day'], REPLAY_CHANGE_M, result['date'])
 
 
 if __name__ == '__main__':

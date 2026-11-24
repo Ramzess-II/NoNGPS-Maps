@@ -332,7 +332,7 @@ const base = (label) => {
   check('nothing was moved', !r.logs.some((m) => /moved to the serial set/.test(m)), r.logs)
 }
 
-// --- 18. a firmware PR: its own repo, branch, worktree and no CI ---
+// --- 18. a firmware PR: its own repo, branch, worktree and CI checks ---
 {
   const prompts = {}
   const r = await runScript({
@@ -361,8 +361,15 @@ const base = (label) => {
   const g = prompts['merge:fw#19']
   check('the gate builds the firmware', /idf\.py build/.test(g), g.slice(0, 200))
   check('an unbuilt firmware PR is refused, not merged', /don't merge it/.test(g) && /"blocked" with "not built/.test(g) && !/landed unbuilt/.test(g), g)
-  check('the gate waits for no CI', /No CI to wait for/.test(g) && !/gh pr checks/.test(g), g.slice(0, 200))
+  check('the gate waits for the firmware PR\'s checks', /gh pr checks 19 -R Ramzess-II\/ELMandIMU/.test(g) && !/No CI to wait for/.test(g), g)
   check('the gate merges into main', /checkout --force -B train\/gate refs\/remotes\/origin\/main/.test(g), g.slice(0, 200))
+  // A gate worktree removed under the run is remade, with the firmware's keys/ and sdkconfig.
+  check('the firmware gate remakes a missing worktree with keys and sdkconfig', /leftover directory\), somebody removed it/.test(g)
+    && /worktree add[^\n]*merge-train-fw[^\n]*\n?[^\n]*ln -sfn \/ws\/firmware\/keys \/ws\/worktrees\/merge-train-fw\/keys && cp \/ws\/firmware\/sdkconfig \/ws\/worktrees\/merge-train-fw\/sdkconfig/.test(g.replace(/\\\n/g, '')), g.slice(0, 1500))
+  check('the app gate remakes it with the helper', /nogps_worktree\.sh add merge-train/.test(prompts['merge:#1']), prompts['merge:#1'].slice(0, 800))
+  const m = prompts['merge:#1']
+  check('a leftover directory counts as gone', /worktree list --porcelain/.test(m) && /rm -rf \/ws\/worktrees\/merge-train/.test(m), m.slice(0, 900))
+  check('the app remake keeps unpushed commits of the old branch', /rev-list feature\/merge-train --not --remotes/.test(m) && /branch -m feature\/merge-train/.test(m), m.slice(0, 1200))
   // The app PR is untouched by all this.
   const a = prompts['update:#1']
   check('the app PR still uses master and the helper', /origin\/master/.test(a) && /nogps_worktree\.sh add merge-\d/.test(a), a.slice(0, 400))
@@ -519,6 +526,141 @@ const base = (label) => {
   check('the PR merges', r.out.merged === 1 && r.out.results[0].rounds === 1, r.out.results)
 }
 
+const finding = (extra = {}) => ({ file: 'a.cpp', line: 7, summary: 's', scenario: 'x', ...extra })
+
+// --- 27. a PR at the review cap from earlier runs: no update, no review ---
+{
+  const r = await runScript({ args: { ws: '/ws', parallel: [pr(1, { reviews: 5 }), pr(2)], slots: 2 }, reply: base })
+  console.log('27. a PR with 5 train reviews already')
+  const one = r.out.results.find((x) => x.pr === 1)
+  check('left open with the review limit', one.outcome === 'open' && /review limit: 5 train reviews/.test(one.reason), one)
+  check('no update or review of it ran', !r.order.some((o) => /^\+(update|review|confirm|fix|merge):#1\b/.test(o)), r.order)
+  check('its count is in the report', one.reviews === 5, one)
+  check('the other PR still merged', r.out.results.find((x) => x.pr === 2).outcome === 'merged', r.out.results)
+}
+
+// --- 28. reviews: 3 and findings every round: two more reviews, then the cap, before --rounds ---
+{
+  const seen = []
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1, { reviews: 3 })], slots: 1, rounds: 3 },
+    reply: (label) => {
+      seen.push(label)
+      return label.startsWith('review') ? { findings: [finding()] } : base(label)
+    },
+  })
+  console.log('28. the cap stops a PR before --rounds does')
+  const one = r.out.results[0]
+  check('two reviews ran', seen.filter((l) => l.startsWith('review')).length === 2, seen)
+  check('no round 3', !seen.includes('review:#1/3'), seen)
+  check('open with the review limit', one.outcome === 'open' && /review limit: 5 train reviews/.test(one.reason), one)
+  check('reviews counted to 5', one.reviews === 5 && one.rounds === 2, one)
+  check('the reason says the last fixes went unreviewed', /round 2 fixes pushed unreviewed/.test(one.reason), one)
+}
+
+// --- 29. reviews: 4 and a clean round 1: no review left for the confirmation ---
+{
+  const seen = []
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1, { reviews: 4 })], slots: 1 },
+    reply: (label) => {
+      seen.push(label)
+      return base(label)
+    },
+  })
+  console.log('29. a clean first pass with no review left to confirm it')
+  const one = r.out.results[0]
+  check('no confirmation ran', !seen.some((l) => l.startsWith('confirm')), seen)
+  check('it never reached the gate', !seen.some((l) => l.startsWith('merge')), seen)
+  check('open, saying why', one.outcome === 'open' && /review limit: 5 .*confirm/.test(one.reason), one)
+}
+
+// --- 30. a cycle stops the PR before its fix: undo, and again ---
+for (const kind of ['undo', 'again']) {
+  const seen = []
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1, rounds: 3 },
+    reply: (label) => {
+      seen.push(label)
+      if (label === 'review:#1/1') return { findings: [finding()] }
+      if (label === 'review:#1/2') return { findings: [finding({ cycle: { round: 1, kind } })] }
+      return base(label)
+    },
+  })
+  console.log(`30. a round 2 finding marked ${kind} of round 1`)
+  const one = r.out.results[0]
+  check('open as a review/fix cycle', one.outcome === 'open' && one.reason === `review/fix cycle: \`a.cpp:7\` ${kind} of round 1`, one)
+  check('no fix for round 2', seen.includes('fix:#1/1') && !seen.includes('fix:#1/2'), seen)
+  check('no round 3, no gate', !seen.includes('review:#1/3') && !seen.some((l) => l.startsWith('merge')), seen)
+}
+
+// --- 31. a cycle the confirmation finds stops the PR too ---
+{
+  const seen = []
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1 },
+    reply: (label) => {
+      seen.push(label)
+      if (label === 'confirm:#1/1') return { findings: [finding({ cycle: { round: 2, kind: 'again' } })] }
+      return base(label)
+    },
+  })
+  console.log('31. the confirmation marks a cycle against an earlier run')
+  check('open as a cycle, no fix', /review\/fix cycle/.test(r.out.results[0].reason) && !seen.some((l) => l.startsWith('fix')), [r.out.results[0], seen])
+}
+
+// --- 32. round 3 sees round 1's findings, not only round 2's; every review is told about cycles ---
+{
+  const prompts = {}
+  await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1, rounds: 3 },
+    reply: (label, opts, prompt) => {
+      prompts[label] = prompt
+      if (label === 'review:#1/1') return { findings: [finding({ summary: 'first-round-bug' })] }
+      if (label === 'review:#1/2') return { findings: [finding({ summary: 'second-round-bug' })] }
+      return base(label)
+    },
+  })
+  console.log('32. the history reaches every later round')
+  const p3 = prompts['review:#1/3'] || ''
+  check('round 3 has round 1 and round 2', /first-round-bug/.test(p3) && /second-round-bug/.test(p3), p3.slice(0, 300))
+  check('round 1 has no history', !/first-round-bug/.test(prompts['review:#1/1']))
+  check('every review reads the earlier runs and the cycle rule',
+    ['review:#1/1', 'review:#1/2', 'review:#1/3'].every((l) => /Merge-train fixes/.test(prompts[l]) && /undo:/.test(prompts[l]) && /again:/.test(prompts[l])))
+}
+
+// --- 33. the history survives a send-back by the gate ---
+{
+  const prompts = {}
+  let gated = 0
+  await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1, rounds: 3 },
+    reply: (label, opts, prompt) => {
+      prompts[label] = prompt
+      if (label === 'review:#1/1') return { findings: [finding({ summary: 'first-round-bug' })] }
+      if (label === 'merge:#1' && ++gated === 1) return { status: 'stale', staleFiles: ['a.cpp'] }
+      return base(label)
+    },
+  })
+  console.log('33. a stale send-back keeps the rounds of the first prep')
+  check('round 3 after the send-back still has round 1', /first-round-bug/.test(prompts['review:#1/3'] || ''), Object.keys(prompts))
+}
+
+// --- 34. --max-reviews raises the cap for the run ---
+{
+  const r = await runScript({ args: { ws: '/ws', parallel: [pr(1, { reviews: 5 })], slots: 1, maxReviews: 8 }, reply: base })
+  console.log('34. maxReviews: 8 lets a PR with 5 through')
+  check('merged', r.out.merged === 1, r.out.results)
+  check('the review and its confirmation were counted', r.out.results[0].reviews === 7, r.out.results[0])
+}
+
+// --- 35. the serial set is capped the same way ---
+{
+  const r = await runScript({ args: { ws: '/ws', serial: [pr(1, { reviews: 6 })] }, reply: base })
+  console.log('35. a serial PR over the cap')
+  check('open with the review limit, nothing ran', /review limit: 6/.test(r.out.results[0].reason) && !r.order.some((o) => o.startsWith('+update')), r.out.results)
+}
+
 // --- 17. a bigger mixed run, repeated: it always terminates and merges everything ---
 {
   let bad = 0
@@ -542,6 +684,64 @@ const base = (label) => {
   }
   console.log('17. 25 runs of 8 PRs with random findings and stale masters')
   check('every PR is accounted for in every run', bad === 0, { bad })
+}
+
+{
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [pr(1)], slots: 1 },
+    reply: (label) => (label.startsWith('merge') ? { status: 'merged', mergeCommit: 'c1', remade: true } : base(label)),
+  })
+  console.log('20. the gate reports that it remade its worktree')
+  check('the report says so', /remade/.test(r.out.results[0].reason), r.out.results[0])
+}
+
+{
+  const prompts = {}
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [], serial: [pr(1)], slots: 1 },
+    reply: (label, opts, prompt) => {
+      prompts[label] = prompt
+      return label.startsWith('update') ? { ...base(label), remade: true } : base(label)
+    },
+  })
+  console.log('20b. the serial update step reports that it remade the gate worktree')
+  check('the report says so', /remade/.test(r.out.results[0].reason), r.out.results[0])
+  check('the update prompt treats a prunable worktree as gone', /prunable/.test(prompts['update:#1']) && /Report remade true/.test(prompts['update:#1']), prompts['update:#1'])
+}
+
+{
+  const r = await runScript({
+    args: { ws: '/ws', parallel: [], serial: [pr(1)], slots: 1 },
+    reply: (label) => (label.startsWith('update') ? { status: 'conflict', reason: 'plain conflict', remade: true } : base(label)),
+  })
+  console.log('20c. a serial update that remade the gate and then stopped still says so')
+  check('the report says so', /remade/.test(r.out.results[0].reason), r.out.results[0])
+}
+
+// --- 24. the clean step names its own branches and stays inside its own worktrees ---
+{
+  let appOnly = ''
+  let both = ''
+  await runScript({
+    args: { ws: '/ws', parallel: [pr(1), pr(2)], slots: 2 },
+    reply: (label, opts, prompt) => {
+      if (label === 'clean') appOnly = prompt
+      return base(label)
+    },
+  })
+  await runScript({
+    args: { ws: '/ws', parallel: [pr(1), pr(19, { repo: 'Ramzess-II/ELMandIMU', files: ['main/power.c'] })], slots: 2 },
+    reply: (label, opts, prompt) => {
+      if (label === 'clean') both = prompt
+      return base(label)
+    },
+  })
+  console.log('24. clean touches only what the run made')
+  check('no train/* glob', !/refs\/heads\/train\/\*/.test(appOnly.replace(/Never glob refs\/heads\/train\/\*/, '')) && !/train\/\*'/.test(appOnly), appOnly)
+  check('app-only run names its branches', /\/app: train\/1, train\/2, train\/gate/.test(appOnly), appOnly)
+  check('app-only run leaves the firmware repo out', !/\/ws\/firmware: train/.test(appOnly), appOnly)
+  check('both-repo run names each repo\'s branches', /\/app: train\/1, train\/gate/.test(both) && /\/firmware: train\/19, train\/gate/.test(both), both)
+  check('the closed list is stated', /must not list worktrees to tidy/.test(appOnly) && /merge-train, merge-1, merge-2\b/.test(appOnly), appOnly)
 }
 
 console.log(failures ? `\n${failures} check(s) FAILED` : '\nall checks passed')

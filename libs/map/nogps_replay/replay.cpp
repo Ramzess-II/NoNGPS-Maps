@@ -320,6 +320,18 @@ base::LogMessageFn g_previousLog = nullptr;
 std::thread::id g_replayThread;
 
 void ReplayLogMessage(base::LogLevel level, base::SrcPoint const & src, std::string const & message);
+
+// The first record of the input, "D <MM-DD> [fresh]": "fresh" tells to drive the trip as the first one.
+bool IsFresh(std::string const & inputPath)
+{
+  std::ifstream in(inputPath);
+  std::string line;
+  std::getline(in, line);
+  std::istringstream head(line);
+  std::string kind, date, flag;
+  head >> kind >> date >> flag;
+  return kind == "D" && flag == "fresh";
+}
 }  // namespace
 
 class Replay::Impl
@@ -330,9 +342,7 @@ public:
     : m_input(inputPath)
     , m_output(outputPath, std::ios::trunc)
     , m_donePath(outputPath + ".done")
-    // nogps-replay-fresh.txt next to the input tells to drive the trip as the first one: the application renames
-    // the input before it is driven.
-    , m_storage(std::ifstream(inputPath.substr(0, inputPath.find_last_of('/') + 1) + "nogps-replay-fresh.txt").good())
+    , m_storage(IsFresh(inputPath))
     , m_route(routing, m_clock, [this](std::string const & text) { Write(text); })
     , m_delegate([this](Fix const & fix) { m_route.OnPosition(fix); })
     , m_map(m_route.Get(), dataSource, m_clock, [](double) {})

@@ -9,6 +9,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
@@ -26,6 +27,8 @@ final class LogFiles
   static final long MAX_TOTAL_SIZE = 150_000_000;
   // About 4.5 hours at 6.5 MB an hour.
   static final long MAX_FILE_SIZE = 30_000_000;
+  // A file ends at the first line that brings it to MAX_FILE_SIZE (iOS: that would pass it): not shorter than this.
+  private static final long SPLIT_SLACK = 100_000;
 
   private LogFiles() {}
 
@@ -72,42 +75,126 @@ final class LogFiles
     return name;
   }
 
-  /// The log files of the days, "yyyy-MM-dd", of every phone of the folder, and the files they go on from: a file
+  /// The log files of the days, "yyyy-MM-dd", of every phone of the folder, and the files they go on from. A file
   /// that was started the day before has the same name in the folder of the previous day, so a trip that crossed
-  /// midnight travels with the file it began in. A trip whose file reached MAX_FILE_SIZE before midnight goes on
-  /// under a new name, so the file with its CALIBRATION line is not taken. The files come in the order of the tree.
+  /// midnight travels with the file it began in. A file that reached MAX_FILE_SIZE ended there and the trip went on
+  /// in the next file of the phone, so it travels with it as well. The files come in the order of the tree.
   @NonNull
   static List<File> ofDays(@NonNull File folder, @NonNull Collection<String> days)
   {
     final List<File> files = new ArrayList<>();
     for (File phone : sorted(folder.listFiles(File::isDirectory)))
     {
+      final List<File> all = new ArrayList<>();
       for (File day : sorted(phone.listFiles(File::isDirectory)))
+        Collections.addAll(all, sorted(day.listFiles(file -> file.isFile() && file.getName().endsWith(".log"))));
+      // A file goes on into a later one, but a full after-midnight part into an earlier one: repeat until no file
+      // is added.
+      final boolean[] taken = new boolean[all.size()];
+      for (int i = 0; i < taken.length; ++i)
+        taken[i] = days.contains(all.get(i).getParentFile().getName());
+      boolean added = true;
+      while (added)
       {
-        final String name = day.getName();
-        for (File file : sorted(day.listFiles(file -> file.isFile() && file.getName().endsWith(".log"))))
+        added = false;
+        for (int i = all.size() - 1; i >= 0; --i)
         {
-          if (days.contains(name) || goesOnInto(phone, name, file.getName(), days))
-            files.add(file);
+          if (!taken[i] && goesOnInto(all, i, taken))
+            added = taken[i] = true;
         }
+      }
+      for (int i = 0; i < taken.length; ++i)
+      {
+        if (taken[i])
+          files.add(all.get(i));
       }
     }
     return files;
   }
 
-  /// Whether the file goes on, over midnights, in the folder of one of the days. A drive that began in the same
-  /// second as another is "<HHmmss>-2.log", but goes on as "<HHmmss>.log" after midnight, so the files of the next
-  /// day are matched by their time without the suffix. Both drives of that second are taken then.
-  private static boolean goesOnInto(@NonNull File phone, @NonNull String day, @NonNull String fileName,
-                                    @NonNull Collection<String> days)
+  /// Whether the file goes on into a taken one. A drive that began in the same second as another is
+  /// "<HHmmss>-2.log", but goes on as "<HHmmss>.log" after midnight, so the files of the next day are matched by
+  /// their time without the suffix. Both drives of that second go on then.
+  private static boolean goesOnInto(@NonNull List<File> all, int i, @NonNull boolean[] taken)
   {
-    final String stem = startOf(fileName);
-    for (String next = nextDay(day); next != null && hasStart(new File(phone, next), stem); next = nextDay(next))
+    final File file = all.get(i);
+    final int split = sizeSplitInto(all, i);
+    if (split >= 0 && taken[split])
+      return true;
+    final String stem = startOf(file.getName());
+    final String next = dayAfter(file.getParentFile().getName(), 1);
+    if (next == null)
+      return false;
+    for (int j = i + 1; j < all.size(); ++j)
     {
-      if (days.contains(next))
+      final File other = all.get(j);
+      if (other.getParentFile().getName().equals(next) && startOf(other.getName()).equals(stem) && taken[j])
         return true;
     }
     return false;
+  }
+
+  /// The index of the file a full file goes on in, -1 when it is not full or has none. It is the next file of the
+  /// phone in the tree that is not an after-midnight part of the day before, except for the after-midnight part of a
+  /// trip (the previous day has a file of the same start time, or the file was last written before the time of its own
+  /// name: the file of the day before may be deleted by the size cap): that part keeps the start time of the day
+  /// before, and the file opened by the split is named by a time on its own day, so it is the first file of the day,
+  /// and the next in the tree is another trip.
+  private static int sizeSplitInto(@NonNull List<File> all, int i)
+  {
+    final File file = all.get(i);
+    if (file.length() < MAX_FILE_SIZE - SPLIT_SLACK)
+      return -1;
+    final String day = file.getParentFile().getName();
+    if (!isAfterMidnightPart(all, file))
+    {
+      // The after-midnight parts of the day before, named by a time of this day, are other trips: skip them.
+      for (int j = i + 1; j < all.size(); ++j)
+      {
+        final File other = all.get(j);
+        if (!other.getParentFile().getName().equals(day) || !isAfterMidnightPart(all, other))
+          return j;
+      }
+      return -1;
+    }
+    for (int j = 0; j < i; ++j)
+    {
+      if (all.get(j).getParentFile().getName().equals(day))
+        return j;
+    }
+    return -1;
+  }
+
+  /// Whether the file is a part that began the day before: the previous day has a file of the same start time, or the
+  /// file was last written before the time of its own name.
+  private static boolean isAfterMidnightPart(@NonNull List<File> all, @NonNull File file)
+  {
+    if (writtenBeforeItsName(file))
+      return true;
+    final String previous = dayAfter(file.getParentFile().getName(), -1);
+    final String stem = startOf(file.getName());
+    for (File other : all)
+    {
+      if (other.getParentFile().getName().equals(previous) && startOf(other.getName()).equals(stem))
+        return true;
+    }
+    return false;
+  }
+
+  /// Whether the file was last written before the time its name says on its own day: it is a part that began the day
+  /// before. A file can't be written before it was started.
+  private static boolean writtenBeforeItsName(@NonNull File file)
+  {
+    try
+    {
+      final Date named = new SimpleDateFormat("yyyy-MM-dd HHmmss", Locale.US)
+                             .parse(file.getParentFile().getName() + " " + startOf(file.getName()));
+      return named != null && file.lastModified() < named.getTime();
+    }
+    catch (ParseException e)
+    {
+      return false;
+    }
   }
 
   /// The time a drive started at, "HHmmss", of the name of its file: without the ".log" and the "-N" of a second
@@ -118,15 +205,9 @@ final class LogFiles
     return fileName.replaceFirst("(-\\d+)?\\.log$", "");
   }
 
-  private static boolean hasStart(@NonNull File dayFolder, @NonNull String stem)
-  {
-    final File[] files = dayFolder.listFiles(file -> file.isFile() && startOf(file.getName()).equals(stem));
-    return files != null && files.length > 0;
-  }
-
-  /// The day after the folder name of a day, null when it is not a day.
+  /// The day shifted by days from the folder name of a day, null when it is not a day.
   @Nullable
-  private static String nextDay(@NonNull String day)
+  private static String dayAfter(@NonNull String day, int days)
   {
     final SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd", Locale.US);
     // No daylight saving: a day is always 24 hours.
@@ -134,7 +215,7 @@ final class LogFiles
     try
     {
       final Date date = format.parse(day);
-      return date == null ? null : format.format(new Date(date.getTime() + 24 * 60 * 60 * 1000L));
+      return date == null ? null : format.format(new Date(date.getTime() + days * 24 * 60 * 60 * 1000L));
     }
     catch (ParseException e)
     {

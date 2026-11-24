@@ -1240,6 +1240,12 @@
 /* Toast: the tester tapped the voice flag button to record a voice note, but the app may not use the microphone. The flag is saved without the voice. */
 "nogps_flag_mic_denied" = "The flag is saved without a voice note: allow the microphone in the system settings.";
 
+/* Settings switch: send a report to the developers when the app crashes */
+"nogps_crash_reports" = "Send crash reports";
+
+/* Hint under the Send crash reports switch */
+"nogps_crash_reports_hint" = "Only the crash, the device model and the app version are sent. No location data leaves the phone.";
+
 /* Settings row and screen title: the list of the flags saved in test drives, to send them with the trip logs to the developers by email */
 "nogps_flags_send_title" = "Send logs";
 
@@ -1504,6 +1510,12 @@
 /* Shown when the sensor box has not taken the one-time pairing code */
 "nogps_phone_add_failed" = "The box has not taken the code. Try again.";
 
+/* Shown in the Box sheet under the phones of the box: the code of its recovery window. %s is six digits */
+"nogps_phone_recovery_code" = "Recovery code: %@. Write it down. If you lose the phones of the box, plug it in and unplug it within a minute, 3 times, and leave it plugged in the third time: for 2 minutes it accepts a new phone with this code, and that phone erases all the other phones of the box. It works only while the box still has phones; with none left, the box asks for 123456";
+
+/* Added to the hint of the sensor box (under its steps and in the Box tile) while the box is not paired with this phone and its recovery code is known. %s is six digits */
+"nogps_box_bt_recovery_code" = "In the recovery window (3 plug-ins) the box asks for its recovery code instead of 123456: %@";
+
 /* Shown in the Box sheet when another phone has connected to the sensor box first: this phone gets the data only */
 "nogps_box_read_only" = "Another phone connected to the box first: the calibration, the firmware, the car name and the phones of the box are changed on it";
 
@@ -1585,14 +1597,8 @@
 "nogps_about_om_menu" = "About Organic Maps";
 "nogps_about_headline" = "Navigation when GPS is jammed or spoofed";
 
-/* About NonGPS Maps, under the globe with the GPS satellites that the finger spins */
+/* About NonGPS Maps, the screen reader label of the globe with the GPS satellites that the finger spins */
 "nogps_about_globe_hint" = "Drag the Earth, tap a satellite to switch it off.";
-
-/* About NonGPS Maps, under the globe: the car stands in the jammed area */
-"nogps_about_globe_jammed" = "Inside the jammed area not one of them reaches the car.";
-
-/* About NonGPS Maps, under the globe: %1$d is how many satellites are on, %2$d how many there are */
-"nogps_about_globe_sats" = "%1$d of %2$d satellites on";
 "nogps_about_description" = "Without GPS the car is driven by the inertial navigation: the turns come from the gyroscope, the distance from the car speed via OBD-II. The car is kept on the roads of the offline map.";
 
 /* NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) */

@@ -16,6 +16,7 @@ import androidx.preference.TwoStatePreference;
 import app.organicmaps.BuildConfig;
 import app.organicmaps.MwmApplication;
 import app.organicmaps.R;
+import app.organicmaps.crash.CrashReporter;
 import app.organicmaps.downloader.OnmapDownloader;
 import app.organicmaps.editor.LanguagesFragment;
 import app.organicmaps.editor.ProfileActivity;
@@ -66,6 +67,7 @@ public class SettingsPrefsFragment extends BaseXmlSettingsFragment implements La
     initPerspectivePrefsCallbacks();
     initAutoZoomPrefsCallbacks();
     initLoggingEnabledPrefsCallbacks();
+    initCrashReportsPrefsCallbacks();
     initEmulationBadStorage();
     initUseMobileDataPrefsCallbacks();
     initPowerManagementPrefsCallbacks();
@@ -282,6 +284,17 @@ public class SettingsPrefsFragment extends BaseXmlSettingsFragment implements La
     });
   }
 
+  private void initCrashReportsPrefsCallbacks()
+  {
+    final Preference pref = getPreference(getString(R.string.pref_send_crash_reports));
+    // The F-Droid flavor has no crash reporting.
+    pref.setVisible(CrashReporter.isAvailable());
+    pref.setOnPreferenceChangeListener((preference, newValue) -> {
+      CrashReporter.setEnabled(requireContext(), (Boolean) newValue);
+      return true;
+    });
+  }
+
   private void initEmulationBadStorage()
   {
     final Preference pref = findPreference(getString(R.string.pref_emulate_bad_external_storage));
@@ -462,12 +475,13 @@ public class SettingsPrefsFragment extends BaseXmlSettingsFragment implements La
     pref.setEntries(getThemeEntries(availableThemes));
     pref.setEntryValues(getThemeEntryValues(availableThemes));
 
-    final Config.UiTheme currentTheme = Config.UiTheme.getUiThemePreference();
+    final Config.UiTheme currentTheme =
+        Config.UiTheme.getUiThemePreference(ThemeSwitcher.INSTANCE.isLightSensorAvailable());
     pref.setValue(currentTheme.value);
     pref.setSummary(getString(getThemeTitle(currentTheme)));
     pref.setOnPreferenceChangeListener((preference, newValue) -> {
       final var newTheme = Config.UiTheme.ofValue((String) newValue);
-      if (!Config.UiTheme.setUiThemePreference(newTheme))
+      if (!Config.UiTheme.setUiThemePreference(newTheme, ThemeSwitcher.INSTANCE.isLightSensorAvailable()))
         return true;
 
       ThemeSwitcher.INSTANCE.synchronizeApplicationTheme();
@@ -479,12 +493,14 @@ public class SettingsPrefsFragment extends BaseXmlSettingsFragment implements La
   @NonNull
   private List<Config.UiTheme> getAvailableUiThemes()
   {
-    final List<Config.UiTheme> themes = new ArrayList<>(4);
+    final List<Config.UiTheme> themes = new ArrayList<>(5);
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
       themes.add(Config.UiTheme.SYSTEM);
     themes.add(Config.UiTheme.LIGHT);
     themes.add(Config.UiTheme.DARK);
     themes.add(Config.UiTheme.SCHEDULED);
+    if (ThemeSwitcher.INSTANCE.isLightSensorAvailable())
+      themes.add(Config.UiTheme.LIGHT_SENSOR);
     return themes;
   }
 
@@ -514,6 +530,7 @@ public class SettingsPrefsFragment extends BaseXmlSettingsFragment implements La
       case LIGHT -> R.string.pref_appearance_light;
       case DARK -> R.string.pref_appearance_dark;
       case SCHEDULED -> R.string.pref_appearance_scheduled;
+      case LIGHT_SENSOR -> R.string.pref_appearance_light_sensor;
     };
   }
 

@@ -194,7 +194,7 @@ ktlint).
 - When tests fail, make up to 3 attempts to fix them, then postpone.
 - Postpone when you can't finish: it needs a drive, a phone, a flashed box or a replay you can't run to know what to change; the \
 expected behavior turns out unclear; tests still fail after 3 attempts. Then: commit the WIP, push the branch \
-(app: git push -u origin feature/${t.name}; firmware: git push -u koloboid feature/${t.name}) if it has commits, \
+(git push -u origin feature/${t.name}) if it has commits, \
 ${POSTPONE} Then remove the worktrees and report "postponed".
 - Don't open a PR: a fresh reviewer checks the branch, then a publisher pushes it and opens the PR.
 Report the worktrees with their branches, and the PR text parts: title, why, what, tested (commands and results, \
@@ -216,7 +216,6 @@ code for cases that can't happen. Change nothing: no edits, commits or GitHub wr
 }
 
 function publishPrompt(it, impl, review) {
-  const reviewer = `the other of koloboid and Ramzess-II (gh api user -q .login is you)`
   return `${ENV}
 
 Finish ${ref(it)} "${it.title}" and open its PR. Implementation report: ${JSON.stringify(impl)}
@@ -226,14 +225,13 @@ Review findings: ${JSON.stringify(review ? review.findings : [])}
 and run the tests of the report again. Up to 3 attempts when they fail, then postpone.
 2. git fetch origin. If the branch no longer merges cleanly into the base, merge the base in and resolve; if the \
 resolution isn't clear, postpone.
-3. Push: git -C <worktree> push -u origin <branch> (firmware: push -u koloboid <branch>).
+3. Push: git -C <worktree> push -u origin <branch>.
 4. PR, without asking: gh pr create -R ${APP_REPO} --base master --head <branch> --label roller --title "<title>" \
---body-file -. Firmware: gh pr create -R ${FW_REPO} --base main --head koloboid:<branch> (no label there). The body \
+--body-file -. Firmware: gh pr create -R ${FW_REPO} --base main --head <branch> (no label there). The body \
 is bold-label paragraphs, no ## headings (CI's other-platform check reads only a "**Other platform**" line): \
 "Fixes ${it.repo === APP_REPO ? '#' + it.number : ref(it)}", **Why**:, **What**:, **Tested**:, **Other platform**:, \
 then "Opened by the issue roller (/nogps-roll). Written with Claude Code." and the model name. With PRs in both \
-repos, link each from the other, and the PR in the other repo says "Related ${ref(it)}" instead of Fixes. If the change touches the shared interface, request ${reviewer}: gh pr edit <n> \
---add-reviewer <login>.
+repos, link each from the other, and the PR in the other repo says "Related ${ref(it)}" instead of Fixes.
 5. Remove the worktrees (${WORKTREES}).
 If you postpone: push the branch, ${POSTPONE} Remove the worktrees, report "postponed".`
 }
