@@ -125,3 +125,9 @@ Password for `CertificatesDistr.p12`.
 gh secret set APPSTORE_CERTIFICATE_PASSWORD --env beta
 gh secret set APPSTORE_CERTIFICATE_PASSWORD --env production
 ```
+
+## SENTRY_AUTH_TOKEN
+
+Not a CI secret: this fork has no release workflow, both releases are built on a developer machine. The token lets
+`iphone/upload_to_appstore.sh` and the Android Gradle build upload debug symbols to Sentry. See
+[docs/nogps/crash-reports.md](nogps/crash-reports.md).

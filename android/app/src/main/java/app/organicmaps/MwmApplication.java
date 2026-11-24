@@ -20,6 +20,7 @@ import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.ProcessLifecycleOwner;
 import androidx.preference.PreferenceManager;
 import app.organicmaps.background.OsmUploadWork;
+import app.organicmaps.crash.CrashReporter;
 import app.organicmaps.downloader.DownloaderNotifier;
 import app.organicmaps.location.NoGpsBoxService;
 import app.organicmaps.location.TrackRecordingService;
@@ -33,6 +34,7 @@ import app.organicmaps.sdk.location.LocationHelper;
 import app.organicmaps.sdk.location.LocationState;
 import app.organicmaps.sdk.location.LocationUtils;
 import app.organicmaps.sdk.location.MockLocationShare;
+import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.sdk.location.SensorHelper;
 import app.organicmaps.sdk.location.TrackRecorder;
 import app.organicmaps.sdk.maplayer.isolines.IsolinesManager;
@@ -130,6 +132,9 @@ public class MwmApplication extends Application implements Application.ActivityL
 
     sInstance = this;
 
+    // First, so a crash while the core starts is caught.
+    CrashReporter.start(this);
+
     PreferenceManager.setDefaultValues(this, R.xml.prefs_main, false);
     mOrganicMaps = new OrganicMaps(getApplicationContext(), BuildConfig.FLAVOR, BuildConfig.APPLICATION_ID,
                                    BuildConfig.VERSION_CODE, BuildConfig.VERSION_NAME);
@@ -159,6 +164,26 @@ public class MwmApplication extends Application implements Application.ActivityL
 
     registerActivityLifecycleCallbacks(this);
     mDisplayManager = new DisplayManager();
+  }
+
+  // The tags of a crash report: the screen and what the box does. No position, no log line.
+  private void tagCrashReport(@NonNull Activity activity)
+  {
+    if (!CrashReporter.isAvailable())
+      return;
+    CrashReporter.setScreen(activity.getClass().getSimpleName());
+    if (!mOrganicMaps.arePlatformAndCoreInitialized())
+      return;
+    final NoGps.Status status = NoGps.getStatus();
+    String firmware = "";
+    for (int i = 0; i < status.boxValues.length; i++)
+    {
+      if (status.getBoxValueId(i) == NoGps.BoxValue.FIRMWARE)
+        firmware = status.boxValues[i];
+    }
+    CrashReporter.setTag("box", status.getSourceState().name());
+    CrashReporter.setTag("box.firmware", firmware);
+    CrashReporter.setTag("nogps.source", status.getSource().name());
   }
 
   public boolean initOrganicMaps(@Nullable Runnable onComplete) throws IOException
@@ -205,6 +230,7 @@ public class MwmApplication extends Application implements Application.ActivityL
     Utils.allowScreenRotation(Config.isScreenRotationEnabled(), activity);
     getSensorHelper().setRotation(activity.getWindowManager().getDefaultDisplay().getRotation());
     mTopActivity = new WeakReference<>(activity);
+    tagCrashReport(activity);
   }
 
   @Override

@@ -29,6 +29,17 @@ xcodebuild archive \
     CURRENT_PROJECT_VERSION="$IOS_BUILD"
 
 
+# Upload the dSYMs to Sentry, so the crash reports have readable C++ frames. The token is in credentials/sentry.env, see
+# docs/nogps/crash-reports.md; without it the build is still uploaded.
+SENTRY_ENV="$SCRIPT_DIR/../credentials/sentry.env"
+[ -f "$SENTRY_ENV" ] && source "$SENTRY_ENV"
+if [ -n "${SENTRY_AUTH_TOKEN:-}" ] && command -v sentry-cli > /dev/null; then
+  sentry-cli --org nongps --project nongps-maps-ios debug-files upload "$ARCHIVE_PATH/dSYMs"
+else
+  echo "WARNING: SENTRY_AUTH_TOKEN or sentry-cli is missing: the dSYMs are not uploaded to Sentry" >&2
+fi
+
+
 # Create a plist with upload options.
 PLIST="$BUILD_DIR/export.plist"
 cat > "$PLIST" <<EOM

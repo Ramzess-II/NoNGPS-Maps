@@ -65,6 +65,10 @@
   <!-- Backgrounds -->
   <color name="bg_window">#FFEEEEEE</color>
   <color name="bg_primary">#006C35</color>
+  <!-- The bars: the colour the app launches on. bg_primary stays the upstream green for the rest. -->
+  <color name="nogps_primary">#FFE3E1D2</color>
+  <color name="toolbar_text">@color/text_dark</color>
+  <color name="toolbar_text_hint">@color/text_dark_hint</color>
   <!-- The splash: the map background and its text, as the launch screen on iOS. -->
   <color name="nogps_splash_bg">#FFE3E1D2</color>
   <color name="nogps_splash_text">@color/black_primary</color>

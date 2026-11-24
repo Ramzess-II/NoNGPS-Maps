@@ -226,8 +226,12 @@
 
   <style name="MwmWidget.ToolbarTheme" parent="ThemeOverlay.MaterialComponents.Dark.ActionBar">
     <item name="android:gravity">center_vertical</item>
-    <item name="colorAccent">@android:color/white</item>
-    <item name="iconTint">@color/white_primary</item>
+    <item name="colorAccent">@color/toolbar_text</item>
+    <item name="colorControlNormal">@color/toolbar_text</item>
+    <item name="android:textColorPrimary">@color/toolbar_text</item>
+    <item name="android:textColorSecondary">@color/toolbar_text_hint</item>
+    <item name="iconTint">@color/toolbar_text</item>
+    <item name="actionMenuTextColor">@color/toolbar_text</item>
     <item name="actionButtonStyle">@style/AppTheme.Widget.ActionButton</item>
     <item name="actionMenuTextAppearance">@style/MwmTextAppearance.Body1</item>
   </style>
@@ -239,7 +243,9 @@
 
   <style name="MwmWidget.ToolbarTheme.Transparent" parent="ThemeOverlay.MaterialComponents.Dark.ActionBar">
     <item name="android:gravity">center_vertical</item>
-    <item name="colorAccent">@android:color/white</item>
+    <item name="colorAccent">@color/toolbar_text</item>
+    <item name="colorControlNormal">@color/toolbar_text</item>
+    <item name="android:textColorPrimary">@color/toolbar_text</item>
     <item name="android:windowActionBarOverlay">true</item>
     <item name="windowActionBarOverlay">true</item>
   </style>
@@ -248,7 +254,10 @@
     name="MwmWidget.ToolbarTheme.DownButton"
     parent="ThemeOverlay.MaterialComponents.Dark.ActionBar">
     <item name="android:gravity">center_vertical</item>
-    <item name="colorAccent">@android:color/white</item>
+    <item name="colorAccent">@color/toolbar_text</item>
+    <item name="colorControlNormal">@color/toolbar_text</item>
+    <item name="android:textColorPrimary">@color/toolbar_text</item>
+    <item name="iconTint">@color/toolbar_text</item>
     <item name="android:homeAsUpIndicator">@drawable/ic_down</item>
   </style>
 
@@ -478,6 +487,19 @@
     <item name="backgroundTint">?cardBackground</item>
     <item name="elevationOverlayEnabled">false</item>
     <item name="shapeAppearance">?attr/shapeAppearanceLargeComponent</item>
+  </style>
+
+  <style name="MwmTheme.BoxBottomSheetDialog" parent="MwmTheme.BottomSheetDialog">
+    <item name="bottomSheetStyle">@style/MwmWidget.BoxBottomSheetDialog</item>
+  </style>
+
+  <style name="MwmWidget.BoxBottomSheetDialog" parent="MwmWidget.BottomSheetDialog">
+    <!-- As wide as the window: the content, not the sheet, clears the side insets. -->
+    <item name="android:maxWidth">@dimen/nogps_sheet_max_width</item>
+    <item name="marginLeftSystemWindowInsets">false</item>
+    <item name="marginRightSystemWindowInsets">false</item>
+    <item name="paddingLeftSystemWindowInsets">true</item>
+    <item name="paddingRightSystemWindowInsets">true</item>
   </style>
 
   <style name="MwmWidget.BottomSheet" parent="MwmWidget.BottomSheetDialog">

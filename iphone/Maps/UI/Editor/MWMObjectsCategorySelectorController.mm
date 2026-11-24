@@ -66,7 +66,8 @@ NSString * const kToEditorSegue = @"CategorySelectorToEditorSegue";
 
 - (UIStatusBarStyle)preferredStatusBarStyle
 {
-  return UIStatusBarStyleLightContent;
+  return self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? UIStatusBarStyleLightContent
+                                                                             : UIStatusBarStyleDarkContent;
 }
 
 - (void)configNavBar
