@@ -213,9 +213,9 @@ class ErrorMeter:
     fix repeated with a growing age is not stale: add_error() moves it on by its age."""
 
     def __init__(self):
-        self.anchor = None  # (ref, lat, lon, time) of the fix where the fixes last moved.
-        self.fix_time = None  # Time of the fix of the row before: the time of its row less its age.
-        self.stale = False
+        # Of gps and fused apart, as ref= switches between them: where and since when the fixes stand, the time of
+        # the last fix (the time of its row less its age) and whether they are stale.
+        self.fixes = {}
         self.odometer = [(-math.inf, 0.0)]  # (seconds, metres driven by the car's speed) at each row.
         self.kmh = None
 
@@ -230,15 +230,15 @@ class ErrorMeter:
         row['ref'] = ref
         lat, lon = float(row[ref + '_lat']), float(row[ref + '_lon'])
         fix_time = seconds - (number(row, ref + '_age') or 0)
-        if self.anchor is None or self.anchor[0] != ref or \
-                math.hypot(*offset_m(lat, lon, self.anchor[1], self.anchor[2])) > REF_STALE_MOVE_M:
-            self.anchor, self.stale = (ref, lat, lon, fix_time), False
-        elif abs(fix_time - self.fix_time) > 0.5:
-            self.stale = self.driven_at(fix_time) - self.driven_at(self.anchor[3]) > REF_STALE_DRIVEN_M
-        self.fix_time = fix_time
+        fix = self.fixes.get(ref)
+        if fix is None or math.hypot(*offset_m(lat, lon, fix['lat'], fix['lon'])) > REF_STALE_MOVE_M:
+            fix = self.fixes[ref] = dict(lat=lat, lon=lon, since=fix_time, stale=False)
+        elif abs(fix_time - fix['time']) > 0.5:
+            fix['stale'] = self.driven_at(fix_time) - self.driven_at(fix['since']) > REF_STALE_DRIVEN_M
+        fix['time'] = fix_time
         if not accurate:
             row['err_why'] = 'coarse'
-        elif self.stale:
+        elif fix['stale']:
             row['err_why'] = 'stale'
         else:
             add_error(row, ref)

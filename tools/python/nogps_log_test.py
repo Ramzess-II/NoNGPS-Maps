@@ -226,6 +226,15 @@ class ErrorMeterTest(unittest.TestCase):
         self.assertAlmostEqual(rows[3]['err_m'], 33.0, delta=0.2)
         self.assertAlmostEqual(rows[6]['err_m'], 3.0, delta=0.2)
 
+    def test_stale_fused_between_accurate_gps(self):
+        # The fused fix stands while gps= comes and goes: the fused one stays stale when it is measured against again.
+        lines = [(s, dict(lat=START_LAT + s * 10 * DEG_PER_M, kmh=36.0, fused=self.fix(acc=10),
+                          gps=self.fix(acc=500) if s != 5 else self.fix(START_LAT + s * 10 * DEG_PER_M)))
+                 for s in range(8)]
+        rows = self.rows(lines)
+        self.assertEqual([r['ref'] for r in rows], ['fused'] * 5 + ['gps'] + ['fused'] * 2)
+        self.assertEqual([r.get('err_why') for r in rows], [None] * 4 + ['stale', None, 'stale', 'stale'])
+
     def test_old_fix_repeated(self):
         # One fix of the start, older each second: add_error() moves it on by its age, so it is still measured.
         rows = self.rows([(s, dict(lat=START_LAT + s * 10 * DEG_PER_M, kmh=36.0,
