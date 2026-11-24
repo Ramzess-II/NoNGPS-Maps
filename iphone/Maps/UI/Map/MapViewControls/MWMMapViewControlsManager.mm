@@ -73,14 +73,8 @@ NSString * const kMapToCategorySelectorSegue = @"MapToCategorySelectorSegue";
   MapViewController * ownerController = self.ownerController;
   BOOL const isMenuViewUnderStatusBar = self.menuState == MWMBottomMenuStateActive;
   BOOL const isDirectionViewUnderStatusBar = !self.isDirectionViewHidden;
-  BOOL const isMapPointPickerUnderStatusBar =
-      [ownerController.childViewControllers
-          indexOfObjectPassingTest:^BOOL(UIViewController * controller, NSUInteger, BOOL *) {
-            return [controller isKindOfClass:[MapPointPickerViewController class]];
-          }] != NSNotFound;
   BOOL const isNightMode = ownerController.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-  BOOL const isSomethingUnderStatusBar =
-      isDirectionViewUnderStatusBar || isMenuViewUnderStatusBar || isMapPointPickerUnderStatusBar;
+  BOOL const isSomethingUnderStatusBar = isDirectionViewUnderStatusBar || isMenuViewUnderStatusBar;
 
   return isSomethingUnderStatusBar || isNightMode ? UIStatusBarStyleLightContent : UIStatusBarStyleDefault;
 }

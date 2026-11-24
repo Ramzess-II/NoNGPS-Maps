@@ -2,4 +2,6 @@
 <resources>
   <!-- The splash is light: its status and navigation bars carry dark icons. -->
   <bool name="nogps_splash_light_bars">true</bool>
+  <!-- The bars are light: the status bar behind them carries dark icons. -->
+  <bool name="nogps_light_bars">true</bool>
 </resources>

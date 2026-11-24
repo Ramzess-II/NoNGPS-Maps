@@ -25,6 +25,16 @@ static UIColor * NamedColor(NSString * name)
   return NamedColor(@"greenPrimary");
 }
 
++ (UIColor *)nogpsPrimary
+{
+  return NamedColor(@"nogpsPrimary");
+}
+
++ (UIColor *)nogpsPrimaryText
+{
+  return NamedColor(@"nogpsPrimaryText");
+}
+
 + (UIColor *)pressBackground
 {
   return NamedColor(@"pressBackground");

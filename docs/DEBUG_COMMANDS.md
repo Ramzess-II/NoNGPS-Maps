@@ -57,6 +57,10 @@ All the following commands require an app restart:
 - `?edits`: Shows the list of map edits (local and uploaded) made with the app in the search results. Useful to debug what was not uploaded yet.
 - `?eclear`: Clears the locally stored list of edits. Warning: all local changes that are not yet uploaded to OpenStreetMap.org will be lost! Everything that was already uploaded to OSM stays there untouched.
 
+## Crash reports
+
+- `?nogps-crash`: Fails a `CHECK` in the core on purpose, so the app crashes. With "Send crash reports" on and a build that has a Sentry DSN (not Debug), the report arrives in Sentry on the next launch with the failed condition in its extras (`assert.message`, `assert.source`). It is how the whole path gets re-checked after a change to it, see `docs/nogps/crash-reports.md`.
+
 ## Routing
 
 - `?debug-cam`: Force-enables speed cameras in all countries.

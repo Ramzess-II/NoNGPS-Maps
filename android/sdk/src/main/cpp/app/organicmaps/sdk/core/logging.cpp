@@ -47,6 +47,14 @@ void AndroidLogMessage(base::LogLevel level, base::SrcPoint const & src, std::st
 bool AndroidAssertMessage(base::SrcPoint const & src, std::string const & s)
 {
   AndroidMessage(LCRITICAL, src, s);
+
+  // The crash reporter puts the failed condition on its scope, the native handler writes it with the crash.
+  ScopedEnv env(GetJVM());
+  static jmethodID const reportMethod =
+      GetStaticMethodID(env.get(), g_loggerClazz, "reportAssert", "(Ljava/lang/String;Ljava/lang/String;)V");
+  TScopedLocalRef source(env.get(), ToJavaString(env.get(), DebugPrint(src)));
+  TScopedLocalRef message(env.get(), ToJavaString(env.get(), s));
+  env->CallStaticVoidMethod(g_loggerClazz, reportMethod, source.get(), message.get());
   return true;
 }
 }  // namespace

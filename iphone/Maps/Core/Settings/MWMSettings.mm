@@ -20,6 +20,7 @@ NSString * const kThemeMode = @"ThemeMode";
 NSString * const kUDTrackWarningAlertWasShown = @"TrackWarningAlertWasShown";
 NSString * const kiCLoudSynchronizationEnabledKey = @"iCLoudSynchronizationEnabled";
 NSString * const kUDFileLoggingEnabledKey = @"FileLoggingEnabledKey";
+NSString * const kUDCrashReportsEnabledKey = @"CrashReportsEnabledKey";
 NSString * const kUDDidShowICloudSynchronizationEnablingAlert = @"kUDDidShowICloudSynchronizationEnablingAlert";
 }  // namespace
 
@@ -293,6 +294,19 @@ NSString * const kUDDidShowICloudSynchronizationEnablingAlert = @"kUDDidShowIClo
 {
   [NSUserDefaults.standardUserDefaults setBool:fileLoggingEnabled forKey:kUDFileLoggingEnabledKey];
   [Logger setFileLoggingEnabled:fileLoggingEnabled];
+}
+
++ (BOOL)crashReportsEnabled
+{
+  NSUserDefaults * defaults = NSUserDefaults.standardUserDefaults;
+  return [defaults objectForKey:kUDCrashReportsEnabledKey] == nil ? YES
+                                                                  : [defaults boolForKey:kUDCrashReportsEnabledKey];
+}
+
++ (void)setCrashReportsEnabled:(BOOL)crashReportsEnabled
+{
+  [NSUserDefaults.standardUserDefaults setBool:crashReportsEnabled forKey:kUDCrashReportsEnabledKey];
+  [MWMCrashReporter setEnabled:crashReportsEnabled];
 }
 
 + (uint64_t)logFileSize

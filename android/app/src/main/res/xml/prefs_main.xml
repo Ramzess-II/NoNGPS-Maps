@@ -77,6 +77,13 @@
       app:isPreferenceVisible="false"
       android:order="12" />
     <SwitchPreferenceCompat
+      android:key="@string/pref_send_crash_reports"
+      android:title="@string/nogps_crash_reports"
+      app:singleLineTitle="false"
+      android:summary="@string/nogps_crash_reports_hint"
+      android:defaultValue="true"
+      android:order="12" />
+    <SwitchPreferenceCompat
       android:key="@string/pref_emulate_bad_external_storage"
       android:title="@string/setting_emulate_bad_storage"
       app:singleLineTitle="false"

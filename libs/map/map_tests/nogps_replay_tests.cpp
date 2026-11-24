@@ -67,19 +67,23 @@ std::vector<std::string> TripLines(std::string const & log)
 }
 
 // Drives the input on the test map and returns the trip log of the drive.
-std::string Drive(std::string const & input)
+std::string Drive(std::string const & input, bool fresh = false)
 {
   auto & platform = GetPlatform();
   std::string const inPath = base::JoinPath(platform.WritableDir(), "nogps-replay-test-in.txt");
   std::string const outPath = base::JoinPath(platform.WritableDir(), "nogps-replay-test-out.txt");
   std::string const donePath = outPath + ".done";
+  std::string const freshPath = base::JoinPath(platform.WritableDir(), "nogps-replay-fresh.txt");
   SCOPE_GUARD(removeFiles, [&]
   {
+    std::remove(freshPath.c_str());
     std::remove(inPath.c_str());
     std::remove(outPath.c_str());
     std::remove(donePath.c_str());
   });
   std::ofstream(inPath) << input;
+  if (fresh)
+    std::ofstream(freshPath) << "1\n";
   // The .done file of an earlier drive is not taken for this one.
   std::ofstream(donePath) << "stale\n";
 
@@ -228,5 +232,39 @@ UNIT_TEST(NoGps_Replay_KeptCarOfDriveWins)
     TEST(trip.find(" pos=53.904018,27.5567") != std::string::npos, (trip));
   }
   TEST_GREATER_OR_EQUAL(second, 3, ());
+}
+
+UNIT_TEST(NoGps_Replay_CalibrationOfLog)
+{
+  // The K record puts the car of the log and its values to the navigation before it starts.
+  std::string const input =
+      "D 11-02\n"
+      "K 36000000 car=C47D scale=1.1\n"
+      "S 36000000 2\n"
+      "C 36000000 53.9040184 27.5567595 90.0 1 60000\n"
+      "S 36000000 1\n"
+      "L 36000000 CONNECTED\n"
+      "J 36001000\n" +
+      Standing(36001000, 36003000) + "S 36003000 0\n";
+  auto const log = Drive(input);
+  TEST(log.find("CALIBRATION") != std::string::npos, (log));
+  TEST(log.find(" car=C47D scale=1.1") != std::string::npos, (log));
+}
+
+UNIT_TEST(NoGps_Replay_CalibrationOfLogFresh)
+{
+  // A trip driven as the first one knows no speed errors: the K record does not bring them back.
+  std::string const input =
+      "D 11-02\n"
+      "K 36000000 car=C47D scale=1.1\n"
+      "S 36000000 2\n"
+      "C 36000000 53.9040184 27.5567595 90.0 1 60000\n"
+      "S 36000000 1\n"
+      "L 36000000 CONNECTED\n"
+      "J 36001000\n" +
+      Standing(36001000, 36003000) + "S 36003000 0\n";
+  auto const log = Drive(input, true /* fresh */);
+  TEST(log.find(" car=C47D") != std::string::npos, (log));
+  TEST(log.find(" scale=1.1") == std::string::npos, (log));
 }
 }  // namespace nogps_replay_tests
