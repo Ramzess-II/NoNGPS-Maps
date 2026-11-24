@@ -5,7 +5,7 @@ on:
     branches: [ master ]
     paths:
       - '.github/workflows/nogps-log-tools-check.yaml'
-      - 'tools/python/nogps_*'
+      - 'tools/python/nogps_**'
 
 jobs:
   nogps-log-tools-check:
