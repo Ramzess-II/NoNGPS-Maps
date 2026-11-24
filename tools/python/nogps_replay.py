@@ -186,12 +186,13 @@ def read(paths, day):
 
 
 def logged_map_versions(others):
-    """The map versions of the first MAPS line of the day's lines (newest first), or [] when it has none or no maps."""
+    """The map versions (newest first) of each MAPS line of the day's lines, without the lines that have no maps."""
+    lines = []
     for _, text, _ in others:
         m = MAPS_LINE.match(text)
-        if m:
-            return [] if m.group(1) == '-' else m.group(1).split(',')
-    return []
+        if m and m.group(1) != '-':
+            lines.append(m.group(1).split(','))
+    return lines
 
 
 def tool_map_version(data_path):
@@ -211,14 +212,16 @@ def wrong_maps(args, others):
     """Why the day is not driven on --data_path, or None: its log says the maps of other versions."""
     if args.any_maps:
         return None
-    logged = logged_map_versions(others)
-    if not logged:
+    lines = logged_map_versions(others)
+    if not lines:
         return None
+    logged = list(dict.fromkeys(v for line in lines for v in line))
     version = tool_map_version(args.data_path)
     if version is None:
         return ('the version of --data_path is not known (name its folder by the version, as 260714) and the log '
                 'has %s: --any-maps drives it anyway' % ','.join(logged))
-    if version not in logged:
+    # A phone may download newer maps in the middle of the day: every MAPS line has to have the version.
+    if any(version not in line for line in lines):
         return 'the log was driven on maps %s and --data_path has %s: --any-maps drives it anyway' % (
             ','.join(logged), version)
     return None
@@ -880,7 +883,7 @@ def warn_builds(paths):
             commit = nogps_trip_log.read_header(path).get('commit')
         except nogps_trip_log.LogFormatError:
             continue
-        if commit:
+        if commit and re.fullmatch(r'[0-9a-f]{7,40}', commit):
             commits.add(commit[:8])
     others = sorted(commits - {here.stdout.strip()})
     if others:

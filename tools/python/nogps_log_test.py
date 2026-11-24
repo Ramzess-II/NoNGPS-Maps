@@ -390,8 +390,10 @@ class ReplayLogsTest(unittest.TestCase):
         its output."""
         with tempfile.TemporaryDirectory() as folder:
             lines = self.drive(20)
-            if logged:
-                lines.insert(1, core('10-08', 18 * 3600, 'Start', 'MAPS ms=%d version=%s' % (LOGFMT_MS, logged)))
+            # A tuple is a MAPS line after each other, as when maps are downloaded in the middle of the day.
+            for at, version_line in enumerate((logged,) if isinstance(logged, str) else logged or ()):
+                lines.insert(1 + at, core('10-08', 18 * 3600, 'Start',
+                                          'MAPS ms=%d version=%s' % (LOGFMT_MS, version_line)))
             write_tree(folder, {'Pixel_7-a3f9/2026-10-08/180000.log': with_logfmt(lines)})
             maps = os.path.join(folder, 'maps')
             if version:
@@ -418,6 +420,13 @@ class ReplayLogsTest(unittest.TestCase):
         driven, out = self.run_with_maps('261101', None)
         self.assertFalse(driven)
         self.assertIn('the version of --data_path is not known', out)
+
+    def test_run_refuses_a_day_with_newer_maps_later(self):
+        driven, out = self.run_with_maps(('260714', '261101,260714'), '260714')
+        self.assertTrue(driven)
+        driven, out = self.run_with_maps(('260714', '261101'), '260714')
+        self.assertFalse(driven)
+        self.assertIn('--data_path has 260714', out)
 
     def test_run_drives_a_day_with_no_maps_line(self):
         driven, _ = self.run_with_maps(None, '250101')
