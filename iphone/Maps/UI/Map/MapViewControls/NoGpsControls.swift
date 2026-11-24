@@ -40,6 +40,7 @@ final class NoGpsControls: NSObject {
   private static var logFlags = 0
   private static var lastFlag = ""
   private static var availableArea = CGRect.zero
+  private static var visibleViewportMaxY = CGFloat(0)
   /// The bottom of the turns of the navigation in the window, 0 without them. They are at the edge of the panel.
   private static var turnsBottom = CGFloat(0)
   /// The intro of the first start points at the panels: they are held open while it runs.
@@ -102,14 +103,24 @@ final class NoGpsControls: NSObject {
     timer?.invalidate()
   }
 
-  /// The core takes pixels: the mark rises by the band above the bottom of the free area. CarPlay gives the offset back
-  /// to the default when it leaves the phone, see CarPlayService.
+  /// The core takes pixels from the bottom of the visible viewport: the mark rises by the band above the bottom of the
+  /// free area. CarPlay gives the offset back to the default when it leaves the phone, see CarPlayService.
   static func updateMarkOffset() {
-    guard let controls = shared else { return }
-    // The core measures from the bottom of the map: add what the free area leaves out below.
-    let below = max(0, (controls.buttons.superview?.bounds.maxY ?? availableArea.maxY) - availableArea.maxY)
-    let scale = controls.buttons.traitCollection.displayScale
-    FrameworkHelper.updatePositionArrowOffset(false, offset: Int32((Constants.markClearance + below) * scale))
+    guard shared != nil, !CarPlayService.shared.isCarplayActivated else { return }
+    let scale = MapViewController.shared()?.mapView.contentScaleFactor ?? 1
+    FrameworkHelper.updatePositionArrowOffset(false, offset: Int32(markOffset(areaMaxY: availableArea.maxY,
+                                                                              viewportMaxY: visibleViewportMaxY) * scale))
+  }
+
+  /// In points: the viewport can end below the free area (a sheet under it) or above it.
+  static func markOffset(areaMaxY: CGFloat, viewportMaxY: CGFloat) -> CGFloat {
+    max(0, Constants.markClearance + viewportMaxY - areaMaxY)
+  }
+
+  /// The bottom of the visible viewport the core got, see VisibleArea.
+  static func updateVisibleViewport(_ frame: CGRect) {
+    visibleViewportMaxY = frame.maxY
+    updateMarkOffset()
   }
 
   /// The bottom of the alert of a timed run: above the mark and a gap.

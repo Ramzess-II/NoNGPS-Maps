@@ -18,6 +18,7 @@ final class VisibleArea: AvailableArea {
       return
     }
     FrameworkHelper.setVisibleViewport(availableAreaFrame, scaleFactor: MapViewController.shared()?.mapView.contentScaleFactor ?? 1.0)
+    NoGpsControls.updateVisibleViewport(availableAreaFrame)
   }
 
   private func skipAvailableAreaUpdate(for area: CGRect) -> Bool {
