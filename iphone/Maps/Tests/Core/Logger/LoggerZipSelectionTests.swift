@@ -102,22 +102,23 @@ final class LoggerZipSelectionTests: XCTestCase {
   }
 
   func testTakesTheFilesATripSplitBySizeGoesOnFrom() throws {
-    // Started at 19:00, split by size at 23:30, went on after midnight under the name of the second file.
+    // Started at 19:00, split by size at 23:30, went on in the next file of the phone: the only file asked for.
     makeFile(phone, "2099-11-01", "190000.log", size: fullSize, modified: later)
     makeFile(phone, "2099-11-01", "233000.log", size: fullSize, modified: later)
-    makeFile(phone, "2099-11-02", "233000.log")
-    // A short file before it is another trip, and so is the one after the chain.
-    makeFile(phone, "2099-11-01", "080000.log")
     makeFile(phone, "2099-11-02", "090000.log")
+    // A short file before the chain is another trip, and so is the one after it.
+    makeFile(phone, "2099-11-01", "080000.log")
+    makeFile(phone, "2099-11-03", "090000.log")
     XCTAssertEqual(try zipped(["2099-11-02"]), [
       "\(phone)/2099-11-01/190000.log", "\(phone)/2099-11-01/233000.log", "\(phone)/2099-11-02/090000.log",
-      "\(phone)/2099-11-02/233000.log",
     ])
-    // A full file of another phone does not go on into this one.
-    makeFile(otherPhone, "2099-11-01", "200000.log", size: fullSize, modified: later)
-    XCTAssertFalse(try zipped(["2099-11-02"]).contains("\(otherPhone)/2099-11-01/200000.log"))
-    // The last file of a phone has nothing to go on into.
-    XCTAssertNil(Logger.zipLogFiles(days: ["2099-11-03"]))
+  }
+
+  func testAFullFileDoesNotGoOnIntoAnotherPhone() throws {
+    // The last file of a phone has nothing to go on into, though the next phone's file is asked for.
+    makeFile(phone, "2099-11-04", "120000.log", size: fullSize, modified: later)
+    makeFile(otherPhone, "2099-11-02", "090000.log")
+    XCTAssertEqual(try zipped(["2099-11-02"]), ["\(otherPhone)/2099-11-02/090000.log"])
   }
 
   func testDoesNotTakeAnotherTripAfterAFullAfterMidnightPart() throws {
