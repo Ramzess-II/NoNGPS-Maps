@@ -34,8 +34,9 @@ const ROUNDS = A.rounds ?? 3
 const MIN_FREE_GB = 15
 
 // The train lands the PRs of both repos. Each one has its own checkout, its own default branch -- the firmware repo
-// has no master, its default branch is main -- and its own way of being built and checked: the firmware repo has no
-// CI at all today, so the gate's local build is the only check a firmware PR gets, and it is not optional.
+// has no master, its default branch is main -- and its own way of being built and checked: a firmware PR gets the S3
+// and C3 builds of `.github/workflows/build.yml`, and the gate's local build stays as well, it is not optional: it
+// is the only one that uses the chip-specific sdkconfig of the main checkout.
 // `keys/` and `sdkconfig` are gitignored in the firmware repo, so a fresh worktree has neither and both come from
 // the main checkout: the signing key, because sdkconfig.defaults signs the image with
 // keys/nogps_signing_key.pem, and sdkconfig, because sdkconfig.defaults alone does not reproduce it -- it leaves
@@ -43,8 +44,8 @@ const MIN_FREE_GB = 15
 // scheme, and the build then dies on "Incorrect ECDSA private key". sdkconfig is copied, not linked: idf.py
 // rewrites it, and it has to be in place before the first build, which caches the target in CMakeCache.txt.
 const REPOS = {
-  [APP_REPO]: { dir: APP, base: 'master', ci: true, suffix: '', what: 'the app' },
-  [FW_REPO]: { dir: FIRMWARE, base: 'main', ci: false, suffix: '-fw', what: 'the box firmware' },
+  [APP_REPO]: { dir: APP, base: 'master', suffix: '', what: 'the app' },
+  [FW_REPO]: { dir: FIRMWARE, base: 'main', suffix: '-fw', what: 'the box firmware' },
 }
 const repoName = (pr) => pr.repo || APP_REPO
 const R = (pr) => {
@@ -320,7 +321,7 @@ change it) and report a firmware change that the spec doesn't describe, or that 
   }
 Leave out style preferences, defensive code for cases that can't happen, and whatever CI already gates: \
 formatting, lint, translation keys, the other-platform check.${
-    R(pr).suffix ? ' That repo has no CI at all, so nothing of this PR is gated elsewhere.' : ''
+    R(pr).suffix ? ' The CI of that repo only builds the firmware for S3 and C3, so nothing else of this PR is gated elsewhere.' : ''
   }
 Give every finding a file, a line and a concrete failing scenario. Say nothing about the PR that isn't a finding.
 Then post exactly one comment on the PR: gh pr comment ${pr.number} -R ${repo} --body-file - with a first line \
@@ -361,7 +362,7 @@ simulator. A fix to a behavior both apps show is made on both platforms.`
   }
 5. Tests: ${
     R(pr).suffix
-      ? `build the firmware, the only check this repo has -- it runs no CI: ${FW_BUILD(name)}
+      ? `build the firmware, as the CI of this repo does for S3 and C3: ${FW_BUILD(name)}
    A build that can't run at all (no ~/esp/esp-idf/export.sh, no keys/) is not a failure: say so in the reply and \
 go on. A build that runs and fails is: up to 3 attempts, then report "failed" with the output and push nothing.`
       : `when the fix touches the core, cd ${wt} && cmake --preset debug -B ${BUILD(name)} -DSKIP_QT_GUI=ON \
@@ -419,12 +420,12 @@ git -C ${wt} diff --name-only origin/${base}...HEAD
 ${
   suffix
     ? `   - The firmware, whatever the diff touches: ${FW_BUILD(GATE + suffix)}
-     This repo runs no CI, so this build is the only check the PR gets: it is not optional. The worktree needs \
+     The CI of this repo builds S3 and C3 from its own config, not from the main checkout's sdkconfig, so this build is not optional. The worktree needs \
 ${FIRMWARE}/keys linked and ${FIRMWARE}/sdkconfig copied in, which its setup did; a build that complains about an \
 "Incorrect ECDSA private key" or a target mismatch is missing one of them, so put it there, run idf.py fullclean \
 and build again before calling anything a failure. A build that cannot run at all -- no ~/esp/esp-idf/export.sh, \
-no keys/ to link -- is not a failure of the PR but it is not a build either: nothing else checks this PR, so \
-don't merge it. Report "blocked" with "not built: <why>" in reason and combinedTest, and stop; the PR stays open \
+no keys/ to link -- is not a failure of the PR but it is not a build either: the CI builds do not stand in \
+for it, so don't merge it. Report "blocked" with "not built: <why>" in reason and combinedTest, and stop; the PR stays open \
 and a machine that can build it (or a person) lands it.`
     : `   - libs/: cd ${wt} && cmake --preset debug -B ${BUILD(GATE)} -DSKIP_QT_GUI=ON && \
 just test "NoGps_.*" ${BUILD_REL(GATE)}
@@ -437,18 +438,13 @@ anywhere else configures that checkout -- ${APP}, the other session's work in pr
 gh pr comment ${pr.number} -R ${repo} --body-file - starting with "**Merge-train gate.** The build with current \
 ${base} merged in fails:" -- then stop; the PR stays open. All green, or nothing to build: say which in \
 combinedTest and go on.
-6. ${
-    R(pr).ci
-      ? `CI: gh pr checks ${pr.number} -R ${repo} --watch --interval 60 --fail-fast, with a timeout of 9 minutes \
-on the command; repeat it while checks are queued or running, up to 4 times (the iOS check takes about 8 minutes). \
+6. CI: gh pr checks ${pr.number} -R ${repo} --watch --interval 60 --fail-fast, with a timeout of 9 minutes \
+on the command; repeat it while checks are queued or running, up to 4 times (the iOS check of an app PR takes about 8 minutes). \
 The checks of this PR have been running since its prep pushed, so they are often green already. A failing check: \
 report "ci" with the names of the failing checks and the run's URL; the PR stays open. Skipped, neutral and the \
 Claude review check are not failures. If three minutes after the push no check ran at all for the \
 new head, the hooks missed it: gh pr close ${pr.number} -R ${repo} && gh pr reopen ${pr.number} -R ${repo}, then \
-watch again.`
-      : `No CI to wait for: GitHub Actions has started no run in ${repo}, so it reports no checks and \
-step 5's build is the whole verification. Go straight on to the merge.`
-  }
+watch again.
 7. Merge: gh pr merge ${pr.number} -R ${repo} --merge --delete-branch. Both repos merge with a merge commit, as \
 their history shows; don't squash and don't rebase-merge. A warning that the local branch can't be deleted is \
 fine, the train's local branches are its own.
