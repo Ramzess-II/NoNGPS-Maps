@@ -80,15 +80,22 @@ final class LoggerFileTests: XCTestCase {
     XCTAssertEqual(logFiles().map(\.lastPathComponent), ["120000-2.log", "120000.log"])
   }
 
-  func testStartTripNamesTheFileAfterItsFirstLine() {
+  func testStartTripNamesTheFileAfterItsFirstLine() throws {
     Logger.log(.info, message: "\(marker) drive 1")
     setTime(2099, 1, 1, 12, 0, 9)
     Logger.startTrip()
-    // The clock moves after startTrip: the file is named at its first line, not at the trip's time.
+    // The clock moves after startTrip: the file is named at its first line, not at the trip's time. A line of the app
+    // may open the file in between, so the name is compared with the time of the file's own header, not a fixed one.
     setTime(2099, 1, 1, 12, 0, 20)
     Logger.log(.info, message: "\(marker) drive 2")
 
-    XCTAssertEqual(logFiles().map(\.lastPathComponent), ["120000.log", "120020.log"])
+    let files = logFiles()
+    XCTAssertEqual(files.count, 2)
+    let header = try lines(of: files[1])[0]
+    let ms = try XCTUnwrap(header.components(separatedBy: " ").first { $0.hasPrefix("ms=") }.flatMap { Double($0.dropFirst(3)) })
+    let format = DateFormatter()
+    format.dateFormat = "HHmmss"
+    XCTAssertEqual(files[1].lastPathComponent, format.string(from: Date(timeIntervalSince1970: ms / 1000)) + ".log")
   }
 
   func testMidnightContinuesTheFileInTheFolderOfTheNextDay() throws {
