@@ -540,6 +540,37 @@ class ReplayInputTest(unittest.TestCase):
             with open(out, encoding='ascii') as f:
                 return [line.split() for line in f]
 
+    def calibration_records(self, lines):
+        return [r for r in self.records(lines) if r[0] == 'K']
+
+    def test_calibration_of_the_log_before_the_box_data(self):
+        """The last CALIBRATION line before the box data gives the car, without the unit and with the box first."""
+        lines = self.drive(60, tagged=True)
+        first = 'CALIBRATION ms=1760000001000 car=A1B2 scale=1.02'
+        last = ('CALIBRATION ms=1760000002000 car=C47D scale=1.04 table=3:1,2 rough=3:4 factor=1.01 unit=1.609 '
+                'lag=0.30 accel=C47D:0.9,1')
+        lines[0:0] = [core('10-08', 18 * 3600 - 5, 'LogCalibration', first),
+                      core('10-08', 18 * 3600 - 3, 'LogCalibration', last),
+                      core('10-08', 18 * 3600 + 30, 'LogCalibration', 'CALIBRATION ms=1 car=ZZZZ scale=2')]
+        got = self.calibration_records(lines)
+        self.assertEqual(len(got), 1)
+        self.assertEqual(got[0][2:], ['car=C47D', 'scale=1.04', 'table=3:1,2', 'rough=3:4', 'factor=1.01',
+                                      'lag=0.30', 'accel=C47D:0.9,1'])
+
+    def test_calibration_written_after_the_start_of_the_file(self):
+        """The file begins with the start of the app: the line it writes a moment later is the one taken."""
+        lines = self.drive(60, tagged=True)
+        lines[0:0] = [core('10-08', 18 * 3600 - 9, 'LogCalibration', 'CALIBRATION ms=1 car=OLD1 scale=2'),
+                      core('10-08', 18 * 3600 - 3, 'LogCalibration', 'CALIBRATION ms=2 car=C47D scale=1.04')]
+        records = self.records(lines)
+        started = min(int(r[1]) for r in records if r[0] == 'S')
+        got = [r for r in records if r[0] == 'K']
+        self.assertEqual([r[2:] for r in got], [['car=C47D', 'scale=1.04']])
+        self.assertLessEqual(started, int(got[0][1]))
+
+    def test_no_calibration_in_the_log(self):
+        self.assertEqual(self.calibration_records(self.drive(60, tagged=True)), [])
+
     def switches(self, switch_lines, tagged=False):
         # The switches come while the car drives, after the first second of the box data.
         lines = self.drive(60, tagged)
