@@ -222,6 +222,11 @@ public class StatusBar
   /**
    * GPS allowed by the system: its state from the core.
    */
+  private static boolean isCheckingGpsFixes(@NonNull NoGps.Status status)
+  {
+    return status.manualMode && status.workingGpsAccuracyM >= 0;
+  }
+
   @NonNull
   static Look getGpsLook(@NonNull NoGps.Status status)
   {
@@ -229,9 +234,9 @@ public class StatusBar
     {
       case GOOD -> new Look(R.drawable.ic_nogps_gps, R.color.source_good);
       // Good positions are checked in the manual mode: a steady antenna waits. The satellites searched after the start
-      // pulse.
+      // pulse, also when the manual mode is restored there: no GPS fix is there to check.
       case CHECKING ->
-        status.manualMode ? new Look(R.drawable.ic_nogps_gps, R.color.source_connecting,
+        isCheckingGpsFixes(status) ? new Look(R.drawable.ic_nogps_gps, R.color.source_connecting,
                                      R.drawable.ic_nogps_badge_clock, R.color.source_connecting, false)
                           : new Look(R.drawable.ic_nogps_gps, R.color.source_connecting, 0, 0, true);
       case COARSE -> new Look(R.drawable.ic_nogps_gps, R.color.source_warning);
@@ -346,7 +351,7 @@ public class StatusBar
     {
       case GOOD -> R.string.nogps_gps_why_used;
       // Good positions are checked in the manual mode, the satellites are searched after the start.
-      case CHECKING -> status.manualMode ? R.string.nogps_gps_why_checking : R.string.nogps_gps_why_searching;
+      case CHECKING -> isCheckingGpsFixes(status) ? R.string.nogps_gps_why_checking : R.string.nogps_gps_why_searching;
       case COARSE ->
         status.workingNetworkAccuracyM >= 0 && status.workingGpsAccuracyM < 0 ? R.string.nogps_gps_why_network
                                                                               : R.string.nogps_gps_why_coarse;

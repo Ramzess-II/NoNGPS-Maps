@@ -147,10 +147,23 @@ public class StatusBarTest
   {
     final NoGps.Status status = gpsStatus(GpsState.CHECKING, PositionSource.GPS);
     setManualMode(status);
+    status.workingGpsAccuracyM = 5;
     final StatusBar.Look look = StatusBar.getBarLook(boxSetUp(status));
     assertEquals(R.color.source_connecting, look.color);
     assertEquals(R.drawable.ic_nogps_badge_clock, look.badge);
     assertFalse(look.pulsing);
+  }
+
+  // The manual mode restored at the start has no GPS fix to check: the satellites are searched.
+  @Test
+  public void barShowsGpsSearchPulsingInManualModeWithoutFix()
+  {
+    final NoGps.Status status = gpsStatus(GpsState.CHECKING, PositionSource.GPS);
+    setManualMode(status);
+    status.workingGpsAccuracyM = -1;
+    final StatusBar.Look look = StatusBar.getBarLook(boxSetUp(status));
+    assertEquals(0, look.badge);
+    assertTrue(look.pulsing);
   }
 
   @Test
