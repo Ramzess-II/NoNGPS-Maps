@@ -1,0 +1,27 @@
+name: Log tools checks
+
+on:
+  pull_request:
+    branches: [ master ]
+    paths:
+      - '.github/workflows/nogps-log-tools-check.yaml'
+      - 'tools/python/nogps_*'
+
+jobs:
+  nogps-log-tools-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Run the tests of the log tools
+        # Standard library only. The viewer test runs the page script with the node of the runner.
+        working-directory: tools/python
+        run: |
+          for t in nogps_db nogps_logs nogps_log nogps_log_viewer nogps_imu_speed nogps_globe_coastline; do
+            echo "::group::$t"
+            python3 "${t}_test.py"
+            echo "::endgroup::"
+          done
