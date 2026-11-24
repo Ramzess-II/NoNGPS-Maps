@@ -51,7 +51,7 @@ public:
   }
 
   /// The platform has found the box and has connected to it.
-  void ConnectBox() { m_engine.OnEsp32BleState(BleState::Connected); }
+  void ConnectBox(std::string const & boxId = {}) { m_engine.OnEsp32BleState(BleState::Connected, false, boxId); }
 
   /// The ESP32 box sends its data 50 times a second for |ms|: the car drives at |speedKmh| turning at |yawRateDegS|,
   /// clockwise is positive.
@@ -3997,8 +3997,16 @@ UNIT_TEST(NoGps_Engine_BoxProvesItselfWithTheKeyOfItsCar)
   // A proof of another key is not one: the box is refused and its lines are dropped until a new link.
   env.m_engine.OnEsp32BleBytes(
       BoxLine("NGA," + authId + ",OK," + esp32::AuthProof("ffeeddccbbaa99887766554433221100", nonce)));
+  // The user is told, once: nothing else shows why the box does not work.
+  auto const refused = [&env]
+  {
+    auto const & events = env.m_delegate.m_events;
+    return std::count(events.begin(), events.end(), Event::BoxRefused);
+  };
+  TEST_EQUAL(refused(), 1, ());
   env.Drive(2500, 36, 0);
   TEST_EQUAL(env.m_engine.GetStatus().m_speedKmh, -1, ());
+  TEST_EQUAL(refused(), 1, ());
   env.m_engine.OnEsp32BleState(BleState::Searching);
   env.ConnectBox();
   env.m_engine.OnEsp32BleBytes(BoxLine(authInfo));
@@ -4007,6 +4015,44 @@ UNIT_TEST(NoGps_Engine_BoxProvesItselfWithTheKeyOfItsCar)
   TEST_EQUAL(env.m_engine.GetStatus().m_carId, "C47D", ());
   env.Drive(1000, 36, 0);
   TEST_EQUAL(env.m_engine.GetStatus().m_speedKmh, 36, ());
+}
+
+UNIT_TEST(NoGps_Engine_BoxOfAnotherIdThanTheLinkIsRefused)
+{
+  auto const info = [](std::string const & id)
+  {
+    return "NGI,1,0.5.0,2026-11-23T10:00,esp32s3,s3zero," + id +
+           ",4096,2031616,ota_0,VALID,BLE OTA CAR PHONES AUTH,5,R1";
+  };
+  Env env(true /* inertial */);
+  CarStorage cars(env.m_storage);
+  env.m_delegate.m_boxMustProveItself = true;
+  // The transport has connected the box named NonGPS-C47D: a device under its address that says it is X1 is no
+  // first pairing, no key is given to it and no car is added.
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  env.ConnectBox("C47D");
+  env.m_engine.OnEsp32BleBytes(BoxLine(info("X1")));
+  TEST(LastCommand(env, "AUTH_SET").first.empty(), ());
+  TEST(LastCommand(env, "AUTH").first.empty(), ());
+  env.Drive(2500, 36, 0);
+  TEST(cars.GetCars().empty(), ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedKmh, -1, ());
+
+  // The box of the name is a first pairing as before.
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  env.ConnectBox("C47D");
+  env.m_engine.OnEsp32BleBytes(BoxLine(info("C47D")));
+  auto const [setId, key] = LastCommand(env, "AUTH_SET");
+  TEST_EQUAL(key.size(), 32, (key));
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + setId + ",OK"));
+  TEST_EQUAL(cars.GetCurrentCar(), "C47D", ());
+
+  // A box that tells no name has no id to compare: the proof of its own key is what is left.
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  env.ConnectBox();
+  auto const setId2 = LastCommand(env, "AUTH_SET").first;
+  env.m_engine.OnEsp32BleBytes(BoxLine(info("42FD")));
+  TEST_NOT_EQUAL(LastCommand(env, "AUTH_SET").first, setId2, ());
 }
 
 UNIT_TEST(NoGps_Engine_ThisPhoneRemovedFromBox)

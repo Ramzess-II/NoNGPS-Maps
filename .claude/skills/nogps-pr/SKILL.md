@@ -32,5 +32,4 @@ argument-hint: "[issue number]"
    - **Other platform**: the links of the issues from step 4, or "Nothing to do" and why. CI fails the PR without
      one of them. Add "Xcode project not verified" when that applies;
    - "Written with Claude Code."
-7. **Reviewer.** If the PR touches the shared interface, request the other person:
-   `gh pr edit <n> --add-reviewer <Ramzess-II|koloboid>`.
+7. **Reviewer.** None is requested: the PR doesn't wait for the other person.
