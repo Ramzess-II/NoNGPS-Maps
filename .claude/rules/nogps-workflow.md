@@ -104,7 +104,7 @@ prepped PR at a time:
   that check: each PR's own checks ran before the other one landed.
 
 The rest -- the PRs that touch another queued PR's files, and the dependency chains -- follow after, one at a time in
-the gate worktree, as the whole train worked before. The script is `.claude/workflows/nogps-merge.js` and its
+the gate worktree, as the whole train worked before. A gate worktree that was removed during the run is remade by the gate itself, with `keys/` and `sdkconfig` for firmware, and the report says so. The script is `.claude/workflows/nogps-merge.js` and its
 scheduler is tested by `node .claude/workflows/nogps-merge-test.mjs` (stubbed agents, no network); the worktrees go
 away at the end of the run.
 
