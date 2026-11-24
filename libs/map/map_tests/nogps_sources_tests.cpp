@@ -2051,7 +2051,7 @@ UNIT_TEST(NoGps_Esp32Source_BoxWithoutProofOfFirmware)
   }
 }
 
-UNIT_TEST(NoGps_Esp32Source_RefusalIsToldOnceOverLinks)
+UNIT_TEST(NoGps_Esp32Source_RefusalIsToldAgainAfterAWhile)
 {
   ProvedBox box;
   box.listener.m_keys["C47D"] = {kAuthKey, true};
@@ -2069,6 +2069,14 @@ UNIT_TEST(NoGps_Esp32Source_RefusalIsToldOnceOverLinks)
   box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",ERR,NOKEY"));
   TEST(box.source.IsBoxRefused(), ());
   TEST_EQUAL(box.listener.m_boxRefused, 1, ());
+  // Still refused after a while: told again, in case no screen showed the first notice.
+  box.clock.Advance(Esp32Source::kRefusalRepeatMs);
+  box.source.OnBleState(BleState::Searching);
+  box.source.OnBleState(BleState::Connected);
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  LastAuthArgument(box.delegate, "AUTH", id);
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",ERR,NOKEY"));
+  TEST_EQUAL(box.listener.m_boxRefused, 2, ());
 }
 
 UNIT_TEST(NoGps_Esp32Source_AuthIsSentAgainThenRefused)
