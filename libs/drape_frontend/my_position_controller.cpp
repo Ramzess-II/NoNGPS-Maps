@@ -466,7 +466,7 @@ void MyPositionController::OnLocationUpdate(location::GpsInfo const & info, bool
 
   if (!m_isPositionAssigned)
   {
-    location::EMyPositionMode newMode = m_desiredInitMode;
+    auto const newMode = m_desiredInitMode == location::Follow ? PreferredFollowMode() : m_desiredInitMode;
     ChangeMode(newMode);
 
     if (!m_hints.m_isFirstLaunch || !AnimationSystem::Instance().AnimationExists(Animation::Object::MapPlane))
@@ -492,7 +492,7 @@ void MyPositionController::OnLocationUpdate(location::GpsInfo const & info, bool
     }
     else
     {
-      ChangeMode(location::Follow);
+      ChangeMode(PreferredFollowMode());
       if (m_hints.m_isFirstLaunch)
       {
         if (!AnimationSystem::Instance().AnimationExists(Animation::Object::MapPlane))
