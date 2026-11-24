@@ -224,6 +224,7 @@ private:
   void SendAuth();
   void OnAuthReply(esp32::Reply const & reply);
   void RefuseBox(std::string const & reason);
+  void TellRefusal();
   std::string NewAuthHex(size_t bytes) const;
   void ForgetAuth();
   void SendHello();

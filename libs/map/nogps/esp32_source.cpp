@@ -101,6 +101,9 @@ void Esp32Source::SendHello()
     else
       SendAuth();
   }
+  // A refused box keeps its link: the notice is repeated here, not only when a new link refuses it again.
+  if (m_authRefused && m_bleState == BleState::Connected)
+    TellRefusal();
   if (m_carRead && m_clock.NowMs() - m_carRead->m_sentMs > kCarReplyTimeoutMs)
   {
     LOG(LWARNING, ("No reply to the reading of", m_carRead->m_keys.front()));
@@ -731,6 +734,11 @@ void Esp32Source::RefuseBox(std::string const & reason)
   m_authId = 0;
   m_unprovenInfo.reset();
   m_authKey.clear();
+  TellRefusal();
+}
+
+void Esp32Source::TellRefusal()
+{
   // Not told on every link that drops and comes back, but again after a while: no screen may have shown the first one.
   int64_t const now = m_clock.NowMs();
   if (!m_refusalToldMs || now - *m_refusalToldMs >= kRefusalRepeatMs)

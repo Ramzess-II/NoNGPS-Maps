@@ -2079,6 +2079,22 @@ UNIT_TEST(NoGps_Esp32Source_RefusalIsToldAgainAfterAWhile)
   TEST_EQUAL(box.listener.m_boxRefused, 2, ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_RefusalIsToldAgainOnALinkThatStaysUp)
+{
+  ProvedBox box;
+  box.listener.m_keys["C47D"] = {kAuthKey, true};
+  box.source.OnBleBytes(BoxLine(kAuthInfo));
+  int id = 0;
+  LastAuthArgument(box.delegate, "AUTH", id);
+  box.source.OnBleBytes(BoxLine("NGA," + std::to_string(id) + ",ERR,NOKEY"));
+  TEST_EQUAL(box.listener.m_boxRefused, 1, ());
+  box.clock.Advance(Esp32Source::kRefusalRepeatMs - Esp32Source::kHelloIntervalMs);
+  TEST_EQUAL(box.listener.m_boxRefused, 1, ());
+  box.clock.Advance(2 * Esp32Source::kHelloIntervalMs);
+  TEST(box.source.IsBoxRefused(), ());
+  TEST_EQUAL(box.listener.m_boxRefused, 2, ());
+}
+
 UNIT_TEST(NoGps_Esp32Source_AuthIsSentAgainThenRefused)
 {
   ProvedBox box;
