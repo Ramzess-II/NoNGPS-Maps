@@ -98,13 +98,13 @@ private:
 class ReplayStorage : public Storage
 {
 public:
-  explicit ReplayStorage(bool firstTrip)
+  explicit ReplayStorage(bool firstTrip) : m_firstTrip(firstTrip)
   {
     SettingsStorage app;
     CarStorage const settings(app);
     for (auto const key : {kSpeedScale, kSpeedTable, kRoughSpeedTable, kSpeedLag, kBoxAccel})
     {
-      if (firstTrip && (key == kSpeedScale || key == kSpeedTable || key == kRoughSpeedTable))
+      if (IsSpeedError(key))
         continue;
       if (auto const value = settings.GetString(key))
         m_values[std::string(key)] = *value;
@@ -124,7 +124,14 @@ public:
   void SetString(std::string_view key, std::string const & value) override { m_values[std::string(key)] = value; }
   void Remove(std::string_view key) override { m_values.erase(std::string(key)); }
 
+  // What a trip driven as the first one does not know.
+  bool IsSpeedError(std::string_view key) const
+  {
+    return m_firstTrip && (key == kSpeedScale || key == kSpeedTable || key == kRoughSpeedTable);
+  }
+
 private:
+  bool m_firstTrip;
   std::map<std::string, std::string> m_values;
 };
 
@@ -612,7 +619,9 @@ private:
     if (auto const car = values.find("car"); car != values.end() && car->second != "-")
       cars.OnBoxHeard(car->second, "", m_clock.UnixNowMs());
     for (auto const & [name, key] : kKeys)
-      if (auto const it = values.find(std::string(name)); it != values.end())
+      if (m_storage.IsSpeedError(key))
+        continue;  // The trip is driven as the first one: it learned no speed errors yet.
+      else if (auto const it = values.find(std::string(name)); it != values.end())
         cars.SetString(key, it->second);
       else
         cars.Remove(key);
