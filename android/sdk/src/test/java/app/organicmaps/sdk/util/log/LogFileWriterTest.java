@@ -229,11 +229,11 @@ public class LogFileWriterTest
   }
 
   @Test
-  public void runExclusively_holdsOffTheWritersAndFlushesTheBuffer() throws Exception
+  public void runExclusively_holdsOffTheWriters() throws Exception
   {
     mWriter.writeSync(mLogs, "before");
     final AtomicBoolean written = new AtomicBoolean();
-    final AtomicBoolean sawFlushed = new AtomicBoolean();
+    final AtomicBoolean sawOnlyTheFirstLine = new AtomicBoolean();
     final CountDownLatch inside = new CountDownLatch(1);
     final Thread writer = new Thread(() -> {
       try
@@ -255,7 +255,7 @@ public class LogFileWriterTest
       {
         // Long enough for the writer to be in its line if the lock did not hold it.
         Thread.sleep(300);
-        sawFlushed.set(lines(path("2026-11-01", "120000.log")).size() == 2 && !written.get());
+        sawOnlyTheFirstLine.set(lines(path("2026-11-01", "120000.log")).size() == 2 && !written.get());
       }
       catch (Exception e)
       {
@@ -264,7 +264,7 @@ public class LogFileWriterTest
     });
     writer.join(TimeUnit.SECONDS.toMillis(10));
 
-    assertTrue(sawFlushed.get());
+    assertTrue(sawOnlyTheFirstLine.get());
     assertTrue(written.get());
     assertEquals(3, lines(path("2026-11-01", "120000.log")).size());
   }
