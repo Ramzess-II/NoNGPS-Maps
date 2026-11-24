@@ -332,7 +332,7 @@ const base = (label) => {
   check('nothing was moved', !r.logs.some((m) => /moved to the serial set/.test(m)), r.logs)
 }
 
-// --- 18. a firmware PR: its own repo, branch, worktree and no CI ---
+// --- 18. a firmware PR: its own repo, branch, worktree and CI checks ---
 {
   const prompts = {}
   const r = await runScript({
@@ -361,7 +361,7 @@ const base = (label) => {
   const g = prompts['merge:fw#19']
   check('the gate builds the firmware', /idf\.py build/.test(g), g.slice(0, 200))
   check('an unbuilt firmware PR is refused, not merged', /don't merge it/.test(g) && /"blocked" with "not built/.test(g) && !/landed unbuilt/.test(g), g)
-  check('the gate waits for no CI', /No CI to wait for/.test(g) && !/gh pr checks/.test(g), g.slice(0, 200))
+  check('the gate waits for the firmware PR\'s checks', /gh pr checks 19 -R Ramzess-II\/ELMandIMU/.test(g) && !/No CI to wait for/.test(g), g)
   check('the gate merges into main', /checkout --force -B train\/gate refs\/remotes\/origin\/main/.test(g), g.slice(0, 200))
   // A gate worktree removed under the run is remade, with the firmware's keys/ and sdkconfig.
   check('the firmware gate remakes a missing worktree with keys and sdkconfig', /leftover directory\), somebody removed it/.test(g)
