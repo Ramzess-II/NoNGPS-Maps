@@ -233,6 +233,23 @@ UNIT_TEST(NoGps_Sprint_SingleZeroStartsRun)
   TEST_ALMOST_EQUAL_ABS(to100->m_sec, 12.5, 0.2, ());
 }
 
+UNIT_TEST(NoGps_Sprint_SingleZeroAfterCreepRestartsRun)
+{
+  // A standstill, a creep of 3-5 km/h, one 0, then a launch at 5 Hz: 100 km/h comes at 12.5 s after that 0.
+  std::vector<double> const creep = {0, 0, 0, 3, 5, 3, 0};
+  SprintTimer timer;
+  Results results;
+  for (int i = -6; i <= 120; ++i)
+  {
+    double const kmh = i <= 0 ? creep[i + 6] : 8.0 * i / 5.0;
+    auto const r = timer.OnSample(kmh, kStartMs + i * 200);
+    results.insert(results.end(), r.begin(), r.end());
+  }
+  auto const to100 = Find(results, SprintKind::To100);
+  TEST(to100, ());
+  TEST_ALMOST_EQUAL_ABS(to100->m_sec, 12.5, 0.2, ());
+}
+
 UNIT_TEST(NoGps_Sprint_GapEndsRun)
 {
   auto const profile = Accelerate(8, 4);
