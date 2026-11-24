@@ -204,6 +204,8 @@ def is_mail(folder):
     """Whether |folder| is a saved mail of "Send logs": no logs/ or flags/ folder, but a zip or flag files."""
     if os.path.isdir(os.path.join(folder, 'logs')) or os.path.isdir(os.path.join(folder, nogps_db.FLAG_FOLDER)):
         return False
+    if not os.path.isdir(folder):
+        return False  # merge() skips a missing path quietly
     return any(name.lower().endswith('.zip') or nogps_db.FLAG_NAME.match(name) for name in os.listdir(folder))
 
 

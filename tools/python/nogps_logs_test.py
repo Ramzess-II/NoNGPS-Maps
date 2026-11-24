@@ -187,6 +187,13 @@ class FetchTest(unittest.TestCase):
         self.assertIn("the phone id '..' is no folder name, skipped", out)
         self.assertEqual(os.listdir(self.dir.name), ['app'])
 
+    def test_a_missing_or_plain_file_source_is_not_a_mail(self):
+        with tempfile.TemporaryDirectory() as folder:
+            plain = os.path.join(folder, 'logs.zip')
+            open(plain, 'w').close()
+            self.assertFalse(nogps_logs.is_mail(os.path.join(folder, 'missing')))
+            self.assertFalse(nogps_logs.is_mail(plain))
+
 
 class DevicesTest(unittest.TestCase):
     def test_without_the_tools_of_the_platforms(self):
