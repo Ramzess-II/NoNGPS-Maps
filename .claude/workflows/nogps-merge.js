@@ -86,7 +86,8 @@ git -C ${APP} rev-list feature/${name} --not --remotes prints nothing, and other
 ${APP}/tools/unix/nogps_worktree.sh add ${name}`
 }
 // True when the worktree is missing or only a leftover directory: the check of every step that works in the gate.
-const GONE = (repo, wt) => `${wt} isn't listed by git -C ${repo} worktree list --porcelain (missing, or a leftover directory)`
+const GONE = (repo, wt) => `${wt} isn't listed by git -C ${repo} worktree list --porcelain, or is listed there as prunable \
+(its directory was deleted) (missing, or a leftover directory)`
 const RM_WT = (name) =>
   name.endsWith('-fw')
     ? `git -C ${FIRMWARE} worktree remove --force ${WT(name)}`
@@ -200,6 +201,7 @@ const UPDATE_SCHEMA = {
     prepMaster: { type: 'string', description: 'the sha of origin/master this update merged, for the merge gate' },
     updated: { type: 'boolean', description: 'the branch was behind master and now has it merged in' },
     diffStat: { type: 'string', description: 'git diff --shortstat origin/master...HEAD' },
+    remade: { type: 'boolean', description: 'the gate worktree was missing and step 1 made it again' },
   },
   required: ['status'],
 }
@@ -290,7 +292,7 @@ ${wt}.
 IMPORTANT: never rebase this branch and never force-push it, with or without a lease. The branch is only ever \
 moved forward: ${base} is merged into it, so the push is a fast-forward. A push that would need a force is a \
 "moved" report, not a force push.
-1. If ${GONE(R(pr).suffix ? FIRMWARE : APP, wt)}: ${name.startsWith(GATE) ? REMAKE_GATE(pr, wt) : ADD_WT(pr, name)}
+1. If ${GONE(R(pr).suffix ? FIRMWARE : APP, wt)}: ${name.startsWith(GATE) ? `${REMAKE_GATE(pr, wt)} Report remade true.` : ADD_WT(pr, name)}
    Another step of the train may hold the worktree lock of the main checkout: run it again after a few seconds.
 2. ${CHECKOUT(pr, wt)}
    If the PR's head on GitHub is no longer ${pr.head} (gh pr view ${pr.number} -R ${repo} --json headRefOid), \
@@ -554,6 +556,7 @@ async function prep(pr, slot) {
     record(pr, up.status === 'conflict' ? 'conflict' : 'open', up.reason || up.status)
     return false
   }
+  if (up.remade) pr.gateRemade = true
   pr.head = up.head || pr.head
   pr.prepMaster = up.prepMaster || pr.prepMaster
 
