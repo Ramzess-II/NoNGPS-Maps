@@ -11,6 +11,10 @@ and <output>.done when it is over. Two programs run it:
   It takes the .mwm files of one version (pull the phone's: adb pull /sdcard/Android/data/<package>/files/260714)
   and, for what the navigation has learned about the car, settings.ini of the app (of a debug build:
   adb shell run-as <package> cat files/settings.ini > settings.ini). Without it the car is new.
+  The car comes from the CALIBRATION line the log wrote before the box data of the file begins: its car, scale,
+  tables, factor, lag and accelerometer, with the box id first, so a trip in another car is not driven with the
+  values of this one. what that line does not carry is the default, not what settings.ini has, which fills only a day with no such line;
+  the car speed unit is never taken from it. `run` tells for each day which of the two the car was driven with.
   The accelerometer of a box is taken only for the box the trip was driven with (the logs tell it): the settings of
   another box give the same replay as without them.
 - a debug build of the Android application, on Windows: it drives the file nogps-replay-in.txt put to its folder
@@ -232,6 +236,26 @@ def moves_by(fields):
         except (ValueError, IndexError):
             pass
     return False
+
+
+# The values of a CALIBRATION line the replay takes. The unit is left out: the GYRO lines carry the car speed the
+# phone has already multiplied by it, a replay that took it would multiply it again.
+CALIBRATION_KEYS = ('scale', 'table', 'rough', 'factor', 'lag', 'accel')
+
+
+def car_calibration(others, first, data_start):
+    """The record "K <ms> car=<id> key=value..." of the last CALIBRATION line the log wrote before the box data of
+    the file begins (the car still stands then, and the lines after the box connects come in that time), or None.
+    The file begins at |first|; a line of the day before it is the state the car was left in. What the line does
+    not carry is not in the record: the car has not learned it, and the replay takes the default."""
+    lines = [(ms, text) for ms, text, _ in others if text.startswith('CALIBRATION ') and ms <= data_start]
+    if not lines:
+        return None
+    fields = dict(FIELD.findall(' ' + lines[-1][1]))
+    if 'car' not in fields:
+        return None
+    parts = ['car=' + fields['car']] + ['%s=%s' % (k, fields[k]) for k in CALIBRATION_KEYS if k in fields]
+    return 'K %d %s' % (first, ' '.join(parts))
 
 
 def make_input(args):
@@ -492,10 +516,17 @@ def make_input(args):
     if any(start <= ms <= first for ms in started):
         first = max(ms for ms in started if start <= ms <= first)
 
+    # The box data only: the start of the application of the file is not counted in.
+    data_start = min(r[0] for r in records)
     for ms, order, text, by_user in actions:
         if first <= ms <= end and not (by_user and args.no_taps):
             records.append((ms, order, text))
 
+    calibration = car_calibration(others, first, data_start)
+    if calibration:
+        # Before the start of the application: the engine reads it from the storage when it is made.
+        records.append((first, -5, calibration))
+    args.calibration_source = 'log %s' % calibration.split()[2][len('car='):] if calibration else 'settings'
     # What the navigation was like when the file begins, unless the application is started right then.
     if not any(first <= ms <= first + 10_000 for ms in started):
         i = min(bisect.bisect_left(trip_times, first), len(trips) - 1)
@@ -764,8 +795,9 @@ def run_day(args, day):
                                   no_taps=args.no_taps, no_route=args.no_route)
     with contextlib.redirect_stdout(io.StringIO()):
         make_input(day_args)
+    source = getattr(day_args, 'calibration_source', None)
     if not os.path.exists(day_args.output):
-        return day, None, 'no box data'
+        return day, None, 'no box data', source
     out = base + '-out.txt'
     command = [args.tool, '--data_path', args.data_path, '--resources_path', args.resources_path]
     if args.settings:
@@ -776,7 +808,7 @@ def run_day(args, day):
     seconds = time.monotonic() - started
     # A day the tool has not driven to the end is not compared: the other days are.
     if code != 0 or not os.path.exists(out + '.done'):
-        return day, None, 'the tool has not driven it to the end, exit code %d: see %s-tool.log' % (code, base)
+        return day, None, 'the tool has not driven it to the end, exit code %d: see %s-tool.log' % (code, base), source
     trips, others, _ = read(args.logs, day)
     replayed, replayed_others, _ = read([out], day)
     start = parse_clock(args.start) if args.start else 0
@@ -784,7 +816,7 @@ def run_day(args, day):
     stats = compare_stats(trips, others, replayed, replayed_others, start, end, args.change)
     with open(base + '-compare.txt', 'w') as f, contextlib.redirect_stdout(f):
         print_compare(stats, day, args.change)
-    return day, stats, seconds
+    return day, stats, seconds, source
 
 
 def run(args):
@@ -806,7 +838,7 @@ def run(args):
     for name in ('held out', 'made from'):
         seconds = []
         count = 0
-        for day, stats, tool_seconds in results:
+        for day, stats, tool_seconds, _ in results:
             if set_of(day, held_out) != name:
                 continue
             if not stats:
@@ -823,6 +855,8 @@ def run(args):
             print('%-15s %6d %s %s   (%d days)' % (
                 name + ', all', len(seconds), median_p90(error_stats([was for was, _ in seconds])),
                 median_p90(error_stats([now for _, now in seconds])), count))
+    # The log wins, the settings only fill what it does not carry.
+    print('calibration:', '; '.join('%s %s' % (day, source or '-') for day, _, _, source in results))
     print('driven in %.0f s, the files are in %s' % (time.monotonic() - started, args.output))
 
 

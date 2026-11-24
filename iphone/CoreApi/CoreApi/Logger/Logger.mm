@@ -38,6 +38,7 @@
 + (NSArray<NSString *> *)logFiles;
 + (BOOL)logFile:(NSString *)name goesOnInto:(NSSet<NSString *> *)days among:(NSSet<NSString *> *)all;
 + (nullable NSString *)dayAfter:(NSString *)day;
++ (NSString *)startOfLogFile:(NSString *)fileName;
 + (NSString *)logFileNameStarted:(NSDate *)started now:(NSDate *)now;
 + (NSString *)freeLogFileNameStarted:(NSDate *)started now:(NSDate *)now;
 + (NSString *)phoneId;
@@ -253,22 +254,44 @@ static void * kFileLoggingQueueKey = &kFileLoggingQueueKey;
   return zipURL;
 }
 
-/// Whether the file goes on, over midnights, in the folder of one of the days: it has the same name in the folder of
-/// the next day, so a trip that crossed midnight travels with the file it began in. A trip whose file reached
-/// kMaxLogFileSize before midnight goes on under a new name, so the file with its CALIBRATION line is not taken.
+/// Whether the file goes on, over midnights, in the folder of one of the days: the next day has a file of the same
+/// start time, so a trip that crossed midnight travels with the file it began in. A drive that began in the same
+/// second as another is "<HHmmss>-2.log" but goes on as "<HHmmss>.log", so the files are matched without the suffix
+/// and both drives of that second are taken. A trip whose file reached kMaxLogFileSize before midnight goes on under
+/// a new name, so the file with its CALIBRATION line is not taken.
 + (BOOL)logFile:(NSString *)name goesOnInto:(NSSet<NSString *> *)days among:(NSSet<NSString *> *)all
 {
   NSArray<NSString *> * parts = name.pathComponents;
+  NSString * start = [self startOfLogFile:parts[2]];
   NSString * day = parts[1];
   while ((day = [self dayAfter:day]) != nil)
   {
-    NSString * next = [NSString stringWithFormat:@"%@/%@/%@", parts[0], day, parts[2]];
-    if (![all containsObject:next])
+    BOOL found = NO;
+    for (NSString * other in all)
+    {
+      NSArray<NSString *> * otherParts = other.pathComponents;
+      if (otherParts.count == 3 && [otherParts[0] isEqualToString:parts[0]] && [otherParts[1] isEqualToString:day] &&
+          [[self startOfLogFile:otherParts[2]] isEqualToString:start])
+      {
+        found = YES;
+        break;
+      }
+    }
+    if (!found)
       return NO;
     if ([days containsObject:day])
       return YES;
   }
   return NO;
+}
+
+/// The start time "HHmmss" of the file name: without the ".log" and the "-N" of a second drive of the same second.
++ (NSString *)startOfLogFile:(NSString *)fileName
+{
+  return [fileName stringByReplacingOccurrencesOfString:@"(-[0-9]+)?\\.log$"
+                                             withString:@""
+                                                options:NSRegularExpressionSearch
+                                                  range:NSMakeRange(0, fileName.length)];
 }
 
 /// The day after a folder name "yyyy-MM-dd", nil when it is not a day.
