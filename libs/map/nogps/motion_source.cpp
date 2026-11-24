@@ -16,6 +16,7 @@ std::string DebugPrint(SourceState state)
   case SourceState::ObdError: return "OBD_ERROR";
   case SourceState::NoCarData: return "NO_CAR_DATA";
   case SourceState::BoxSleeping: return "BOX_SLEEPING";
+  case SourceState::BoxBatteryLock: return "BOX_BATTERY_LOCK";
   case SourceState::ObdSleeping: return "OBD_SLEEPING";
   case SourceState::Connected: return "CONNECTED";
   case SourceState::Updating: return "UPDATING";

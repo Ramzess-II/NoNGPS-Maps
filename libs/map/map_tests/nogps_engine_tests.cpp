@@ -3458,6 +3458,28 @@ UNIT_TEST(NoGps_Cars_LegacyValuesGoToCarOfLearnedAccelerometer)
   TEST_EQUAL(otherCars.Get<std::string>(Storage::kSpeedLag, ""), "lag", ());
 }
 
+UNIT_TEST(NoGps_Cars_AuthKeyBelongsToTheCar)
+{
+  TestStorage storage;
+  CarStorage cars(storage);
+  cars.OnBoxHeard("C47D", "0.5.0", 1000);
+  cars.OnBoxHeard("42FD", "0.5.0", 2000);
+  std::string const key = "000102030405060708090a0b0c0d0e0f";
+  cars.SetCarValue("C47D", CarStorage::kCarAuthKey, key);
+  TEST_EQUAL(cars.GetCarValue("C47D", CarStorage::kCarAuthKey), key, ());
+  TEST(!cars.GetCarValue("42FD", CarStorage::kCarAuthKey), ());
+  // The key is not one of the values the car keeps on the box or moves to the first car.
+  TEST(!cars.GetString(CarStorage::kCarAuthKey), ());
+  for (auto const value : CarStorage::kValuesOnBox)
+    TEST_NOT_EQUAL(value, CarStorage::kCarAuthKey, ());
+  // The box of a forgotten car may still keep the key: it stays, unconfirmed, so that box is taken when the car is
+  // added again.
+  cars.ForgetCar("C47D");
+  TEST_EQUAL(cars.GetCarValue("C47D", CarStorage::kCarAuthKey).value_or(""), CarStorage::kAuthKeyUnconfirmed + key, ());
+  cars.ForgetCar("42FD");
+  TEST(!cars.GetCarValue("42FD", CarStorage::kCarAuthKey), ());
+}
+
 UNIT_TEST(NoGps_Cars_ForgetRemovesOnlyThatCar)
 {
   TestStorage storage;
@@ -3926,6 +3948,65 @@ UNIT_TEST(NoGps_BoxCarValues_ValueChangedByPhoneIsWritten)
   TEST_EQUAL(box.m_values["car_name"], "Opel", ());
 }
 
+// The id and the argument of the last |command| the application has sent, empty if it has sent none.
+std::pair<std::string, std::string> LastCommand(Env const & env, std::string const & command)
+{
+  auto const & sent = env.m_delegate.m_esp32BleSent;
+  for (auto it = sent.rbegin(); it != sent.rend(); ++it)
+  {
+    auto const fields = esp32::Parse(*it);
+    if (fields && fields->size() > 3 && (*fields)[2] == command)
+      return {(*fields)[1], (*fields)[3]};
+  }
+  return {};
+}
+
+UNIT_TEST(NoGps_Engine_BoxProvesItselfWithTheKeyOfItsCar)
+{
+  std::string const authInfo =
+      "NGI,1,0.5.0,2026-11-23T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES AUTH,5,R1";
+  Env env(true /* inertial */);
+  CarStorage cars(env.m_storage);
+  // The box of a session of the user has to prove itself; the other tests drive the boxes of the recorded days.
+  env.m_delegate.m_boxMustProveItself = true;
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  env.ConnectBox();
+  env.m_engine.OnEsp32BleBytes(BoxLine(authInfo));
+  // The first session gives the box a key, kept with its car at once in case the reply is lost.
+  auto const [setId, key] = LastCommand(env, "AUTH_SET");
+  TEST_EQUAL(key.size(), 32, (key));
+  TEST_EQUAL(cars.GetCarValue("C47D", CarStorage::kCarAuthKey).value_or(""), CarStorage::kAuthKeyUnconfirmed + key, ());
+  // Nothing of the box is taken until it has answered: its car is not there, its lines do not tell the speed.
+  env.Drive(1000, 36, 0);
+  TEST(cars.GetCars().empty(), ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedKmh, -1, ());
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + setId + ",OK"));
+  TEST_EQUAL(cars.GetCurrentCar(), "C47D", ());
+  TEST_EQUAL(cars.GetCarValue("C47D", CarStorage::kCarAuthKey).value_or(""), key, ());
+  env.Drive(1000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedKmh, 36, ());
+
+  // The next session proves the box with the key of that car, not of another one.
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  env.ConnectBox();
+  env.m_engine.OnEsp32BleBytes(BoxLine(authInfo));
+  auto const [authId, nonce] = LastCommand(env, "AUTH");
+  TEST_EQUAL(nonce.size(), 16, (nonce));
+  // A proof of another key is not one: the box is refused and its lines are dropped until a new link.
+  env.m_engine.OnEsp32BleBytes(
+      BoxLine("NGA," + authId + ",OK," + esp32::AuthProof("ffeeddccbbaa99887766554433221100", nonce)));
+  env.Drive(2500, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedKmh, -1, ());
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  env.ConnectBox();
+  env.m_engine.OnEsp32BleBytes(BoxLine(authInfo));
+  auto const [goodId, goodNonce] = LastCommand(env, "AUTH");
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + goodId + ",OK," + esp32::AuthProof(key, goodNonce)));
+  TEST_EQUAL(env.m_engine.GetStatus().m_carId, "C47D", ());
+  env.Drive(1000, 36, 0);
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedKmh, 36, ());
+}
+
 UNIT_TEST(NoGps_Engine_ThisPhoneRemovedFromBox)
 {
   Env env(true /* inertial */);
@@ -3947,7 +4028,10 @@ UNIT_TEST(NoGps_Engine_ThisPhoneRemovedFromBox)
   env.m_engine.ForgetBoxPhone("BC:D0:74:A9:71:92");
   auto const forget = last();
   TEST_EQUAL(forget[2], "BT_FORGET", ());
+  CarStorage cars(env.m_storage);
+  cars.SetCarValue("C47D", CarStorage::kCarAuthKey, "00112233445566778899aabbccddeeff");
   env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + forget[1] + ",OK"));
+  TEST(cars.GetCarValue("C47D", CarStorage::kCarAuthKey).value_or("").empty(), ());
   // The platform forgets the car after the box has been read.
   TEST(!env.m_delegate.HasEvent(Event::ThisPhoneRemoved), ());
   env.m_clock.Advance(1);

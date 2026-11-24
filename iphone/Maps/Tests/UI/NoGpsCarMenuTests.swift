@@ -20,7 +20,7 @@ final class NoGpsCarMenuTests: XCTestCase {
   }
 
   func testCurrentCarKeepsItsPlaceAndIsMarked() {
-    let menu = entries([car("A111", lastSeen: Self.seen), car("C47D"), car("B222")], connected: true)
+    let menu = entries([car("A111", lastSeen: Self.seen), car("C47D"), car("B222")], connected: true, maxCars: 4)
     XCTAssertEqual(menu, [.car(carId: "A111", name: "Car A111", state: .lastSeen(Self.seen)),
                           .car(carId: "C47D", name: "Car C47D", state: .connected),
                           .car(carId: "B222", name: "Car B222", state: nil),

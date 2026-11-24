@@ -147,6 +147,9 @@ public:
   /// order of the calls, the lines of Esp32BleSend() go between the pieces. Section 18 of the same document.
   virtual void Esp32BleSendFirmware(std::string const & /* piece */) {}
   virtual void Esp32BleClose() {}
+  /// The box has to prove itself before its lines are taken, see Esp32Source. Only a replay of old trips and the tests
+  /// turn it off: the boxes of those days could not.
+  virtual bool Esp32BoxMustProveItself() { return true; }
   /// The model of the phone, e.g. "Pixel 8": the sensor box shows it in the list of its phones.
   virtual std::string GetPhoneName() { return {}; }
 

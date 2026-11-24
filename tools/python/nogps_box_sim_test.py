@@ -10,6 +10,7 @@ import importlib
 import io
 import os
 import sys
+import tempfile
 import types
 import unittest
 
@@ -55,10 +56,10 @@ class Radio(sim.FakeRadio):
         return [raw for raw in found if kind is None or raw[1:4] == kind]
 
 
-def box(take=None, box_id='S1'):
+def box(take=None, box_id='S1', keys_path=None):
     clock = Clock()
     radio = Radio(take)
-    made = sim.Box(sim.State(box_id), radio, clock)
+    made = sim.Box(sim.State(box_id), radio, clock, keys_path=keys_path)
     return made, radio, clock
 
 
@@ -138,14 +139,14 @@ class Lines(unittest.TestCase):
         got = fields(made.state.status().decode('ascii').strip())
         self.assertEqual([got[5], got[6], got[12], got[13]], ['OK', sim.OBD_PROTOCOL, 'NONE', '38400'])
 
-    def test_info_tells_bluetooth_alone(self):
+    def test_info_tells_bluetooth_and_the_proof_alone(self):
         made, _, _ = box()
         got = fields(made.state.info().decode('ascii').strip())
         self.assertEqual(len(got), 14)
         self.assertEqual([got[0], got[1], got[2], got[4], got[5], got[6]],
                          ['NGI', '1', '0.4.4', 'esp32s3', 's3zero', 'S1'])
-        # The abilities the application looks for are not there: it asks for none of them.
-        self.assertEqual(got[11], 'BLE')
+        # The abilities the application looks for are not there but the proof: it asks for none of them.
+        self.assertEqual(got[11], 'BLE AUTH')
         for ability in ('OTA', 'CAR', 'PHONES', 'MULTI', 'PEER'):
             self.assertNotIn(ability, got[11].split(' '))
 
@@ -231,6 +232,116 @@ class Commands(unittest.TestCase):
             made.on_event('write', PHONE, command(number, text))
         made.tick()
         self.assertEqual([fields(raw)[2:] for raw in radio.lines('NGA')], [['ERR', 'UNKNOWN']] * 3)
+
+    def test_the_box_takes_a_key_and_proves_itself(self):
+        made, radio, _ = box()
+        connect(made)
+        key = '000102030405060708090a0b0c0d0e0f'
+        made.on_event('write', PHONE, command(10, 'AUTH,a1b2c3d4e5f60718'))
+        made.on_event('write', PHONE, command(11, 'AUTH_SET,' + key))
+        made.on_event('write', PHONE, command(12, 'AUTH,a1b2c3d4e5f60718'))
+        made.on_event('write', PHONE, command(13, 'AUTH,A1B2C3D4E5F60718'))
+        made.tick()
+        got = [fields(raw)[1:] for raw in radio.lines('NGA')]
+        # The vector is the one of the core's test of esp32::AuthProof.
+        self.assertEqual(got, [['10', 'ERR', 'NOKEY'], ['11', 'OK'], ['12', 'OK', '0620aee41375224a'],
+                               ['13', 'OK', '0620aee41375224a']])
+
+    def test_the_key_is_taken_once_and_kept_for_the_phone(self):
+        made, radio, _ = box()
+        connect(made)
+        key = '000102030405060708090a0b0c0d0e0f'
+        other = 'ff' * 16
+        made.on_event('write', PHONE, command(1, 'AUTH_SET,' + key))
+        # The same key again is taken (its answer may have been lost), another one is not.
+        made.on_event('write', PHONE, command(2, 'AUTH_SET,' + key))
+        made.on_event('write', PHONE, command(3, 'AUTH_SET,' + other))
+        made.on_event('write', PHONE, command(4, 'AUTH_SET,' + key[:-2]))
+        made.on_event('write', PHONE, command(5, 'AUTH_SET,' + 'zz' * 16))
+        made.on_event('write', PHONE, command(6, 'AUTH,a1b2c3d4e5f6071'))
+        made.on_event('write', PHONE, command(7, 'AUTH'))
+        made.tick()
+        got = [fields(raw)[1:] for raw in radio.lines('NGA')]
+        self.assertEqual(got, [['1', 'OK'], ['2', 'OK'], ['3', 'ERR', 'EXISTS'], ['4', 'ERR', 'VALUE'],
+                               ['5', 'ERR', 'VALUE'], ['6', 'ERR', 'VALUE'], ['7', 'ERR', 'VALUE']])
+        # The key stays after the phone has gone and comes back.
+        made.on_event('disconnect', PHONE)
+        connect(made)
+        made.on_event('write', PHONE, command(1, 'AUTH,a1b2c3d4e5f60718'))
+        made.tick()
+        self.assertEqual(fields(radio.lines('NGA')[-1])[2:], ['OK', '0620aee41375224a'])
+
+    def test_the_keys_of_the_phones_outlive_the_program(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, 'keys.json')
+            first, _, _ = box(keys_path=path)
+            connect(first)
+            first.on_event('write', PHONE, command(1, 'AUTH_SET,000102030405060708090a0b0c0d0e0f'))
+            first.tick()
+            # The program starts again, as the box restarts: the key of the phone is where NVS keeps it.
+            again, radio, _ = box(keys_path=path)
+            connect(again)
+            again.on_event('write', PHONE, command(2, 'AUTH,a1b2c3d4e5f60718'))
+            again.tick()
+            self.assertEqual(fields(radio.lines('NGA')[-1])[2:], ['OK', '0620aee41375224a'])
+            # A box of another id has its own keys in the same file.
+            other, other_radio, _ = box(box_id='S2', keys_path=path)
+            connect(other)
+            other.on_event('write', PHONE, command(3, 'AUTH,a1b2c3d4e5f60718'))
+            other.tick()
+            self.assertEqual(fields(other_radio.lines('NGA')[-1])[2:], ['ERR', 'NOKEY'])
+            # The keys the panel makes the box forget are gone from the file too.
+            again.panel_action('forget_keys', '')
+            last, _, _ = box(keys_path=path)
+            self.assertEqual(last.auth_keys, {})
+
+    def test_the_key_follows_the_phone_through_a_new_address(self):
+        made, radio, _ = box()
+        connect(made)
+        made.on_event('write', PHONE, command(1, 'AUTH_SET,000102030405060708090a0b0c0d0e0f'))
+        made.on_event('disconnect', PHONE)
+        # The private address of the phone has changed, so the radio gives the link another id; the name of its
+        # HELLO is the same, and the key is the phone's.
+        made.on_event('connect', 'phone-2', 'Test phone')
+        made.on_event('subscribe', 'phone-2', 182)
+        made.on_event('write', 'phone-2', command(2, 'HELLO,Test phone,1794685761'))
+        made.on_event('write', 'phone-2', command(3, 'AUTH,a1b2c3d4e5f60718'))
+        made.tick()
+        self.assertEqual(fields(radio.lines('NGA')[-1])[1:], ['3', 'OK', '0620aee41375224a'])
+        self.assertEqual(made.panel_state()['keys'], 1)
+
+    def test_the_keys_follow_the_id_the_panel_sets(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, 'keys.json')
+            made, radio, _ = box(keys_path=path)
+            connect(made)
+            first = '000102030405060708090a0b0c0d0e0f'
+            made.on_event('write', PHONE, command(1, 'AUTH_SET,' + first))
+            # Another id is another box: it has no key of this phone, and takes the one the application gives it.
+            made.panel_set({'box_id': 'S2'})
+            self.assertEqual(made.panel_state()['keys'], 0)
+            made.on_event('write', PHONE, command(2, 'AUTH_SET,' + 'ff' * 16))
+            made.tick()
+            self.assertEqual(fields(radio.lines('NGA')[-1])[1:], ['2', 'OK'])
+            # Back at the first id, the first key is the one the box proves itself with.
+            made.panel_set({'box_id': 'S1'})
+            made.on_event('write', PHONE, command(3, 'AUTH,a1b2c3d4e5f60718'))
+            made.tick()
+            self.assertEqual(fields(radio.lines('NGA')[-1])[1:], ['3', 'OK', '0620aee41375224a'])
+            # Both boxes have their keys in the file.
+            with open(path, encoding='utf-8') as kept:
+                self.assertEqual(sorted(sim.json.load(kept)), ['S1', 'S2'])
+
+    def test_the_panel_makes_the_box_forget_the_keys(self):
+        made, radio, _ = box()
+        connect(made)
+        made.on_event('write', PHONE, command(1, 'AUTH_SET,' + '00' * 16))
+        self.assertEqual(made.panel_state()['keys'], 1)
+        made.panel_action('forget_keys', '')
+        self.assertEqual(made.panel_state()['keys'], 0)
+        made.on_event('write', PHONE, command(2, 'AUTH,a1b2c3d4e5f60718'))
+        made.tick()
+        self.assertEqual(fields(radio.lines('NGA')[-1])[2:], ['ERR', 'NOKEY'])
 
     def test_a_line_with_a_wrong_checksum_is_dropped(self):
         made, radio, _ = box()
