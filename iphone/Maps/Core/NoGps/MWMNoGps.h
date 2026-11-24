@@ -189,6 +189,9 @@ typedef NS_ENUM(NSInteger, MWMNoGpsEvent) {
   /// The box has connected after 5 minutes or more without it: a drive starts. A new file of the trip log is started
   /// before the notification is posted.
   MWMNoGpsEventTripStarted,
+  /// The box has not proved itself and is not used until the link is made again: the user may have to forget the car
+  /// and pair the box again.
+  MWMNoGpsEventBoxRefused,
 } NS_SWIFT_NAME(NoGpsEvent);
 
 /// The kinds of the runs from a standing start.
@@ -458,7 +461,9 @@ NS_SWIFT_NAME(NoGps)
 + (void)onEsp32BleBytes:(NSData *)data;
 /// `bondLost`: the pairing is thought lost, MWMNoGpsBleStateConnected then is a probe that carries nothing until the
 /// box is heard.
-+ (void)onEsp32BleState:(MWMNoGpsBleState)state bondLost:(BOOL)bondLost;
+/// `boxId`: the four characters of the name of the box the link is to, nil if the box tells none: another id in the
+/// box's own info refuses it.
++ (void)onEsp32BleState:(MWMNoGpsBleState)state bondLost:(BOOL)bondLost boxId:(nullable NSString *)boxId;
 
 @end
 

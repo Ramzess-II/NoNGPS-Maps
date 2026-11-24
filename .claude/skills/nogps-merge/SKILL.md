@@ -30,11 +30,10 @@ train doesn't push commits under the session working there.
 
    ```bash
    gh pr list -R Ramzess-II/NoNGPS-Maps --state open --limit 100 \
-     --json number,title,headRefName,headRefOid,headRepositoryOwner,isDraft,createdAt,reviewDecision,reviewRequests,labels,url \
+     --json number,title,headRefName,headRefOid,headRepositoryOwner,isDraft,createdAt,labels,url \
      --jq '[.[] | select(.isDraft | not)
            | {number, title, repo: "Ramzess-II/NoNGPS-Maps", branch: .headRefName, head: .headRefOid, createdAt,
-              reviewDecision, url, headOwner: .headRepositoryOwner.login,
-              reviewers: [.reviewRequests[].login], labels: [.labels[].name]}] | sort_by(.createdAt)'
+              url, headOwner: .headRepositoryOwner.login, labels: [.labels[].name]}] | sort_by(.createdAt)'
    git -C <ws>/app worktree list --porcelain | sed -n 's|^branch refs/heads/||p'
    ```
 
@@ -42,8 +41,6 @@ train doesn't push commits under the session working there.
    - a commit of it is authored by anyone but koloboid or Ramzess-II, including an upstream sync PR. A person
      merges those, as `.claude/rules/nogps-workflow.md` says:
      `gh api --paginate repos/<its repo>/pulls/<n>/commits --jq '.[].author.login // "unknown"' | sort -u`
-   - it waits for the other person's review: `reviewers` is not empty, or `reviewDecision` is `REVIEW_REQUIRED` or
-     `CHANGES_REQUESTED`. They approve it;
    - its branch is one of those `git worktree list` printed: a session works in it, and the train would push
      commits under it;
    - `headOwner` is neither `koloboid` nor `Ramzess-II`: the head is in somebody else's fork and the train

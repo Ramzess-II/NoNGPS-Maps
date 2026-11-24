@@ -29,6 +29,7 @@
     <item>@string/pref_appearance_light</item>
     <item>@string/pref_appearance_dark</item>
     <item>@string/pref_appearance_scheduled</item>
+    <item>@string/pref_appearance_light_sensor</item>
   </string-array>
 
   <string-array name="speed_cameras">
