@@ -178,10 +178,6 @@ MyPositionController::MyPositionController(Params && params, ref_ptr<DrapeNotifi
       m_mode = NotFollowNoPosition;
   }
 
-  // A start that follows the position follows it as the user left it, car up or north up.
-  if (m_preferRotate && m_desiredInitMode == Follow)
-    m_desiredInitMode = FollowAndRotate;
-
   if (m_modeChangeCallback)
     m_modeChangeCallback(m_mode, m_isInRouting);
 }
@@ -466,7 +462,11 @@ void MyPositionController::OnLocationUpdate(location::GpsInfo const & info, bool
 
   if (!m_isPositionAssigned)
   {
-    auto const newMode = m_desiredInitMode == location::Follow ? PreferredFollowMode() : m_desiredInitMode;
+    // A start that follows the position outside routing follows it as the user left it, car up or north up,
+    // and car up waits for a direction.
+    bool const followsAtStart =
+        m_desiredInitMode == location::Follow || (m_desiredInitMode == location::FollowAndRotate && !m_isInRouting);
+    auto const newMode = followsAtStart ? PreferredFollowMode() : m_desiredInitMode;
     ChangeMode(newMode);
 
     if (!m_hints.m_isFirstLaunch || !AnimationSystem::Instance().AnimationExists(Animation::Object::MapPlane))

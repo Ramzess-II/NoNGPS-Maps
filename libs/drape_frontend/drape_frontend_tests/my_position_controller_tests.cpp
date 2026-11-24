@@ -219,6 +219,12 @@ UNIT_CLASS_TEST(Map, MyPositionController_ChosenFollowAtStart)
   TEST_EQUAL(start(location::Follow, false, 90.0), location::Follow, ());
   // A start that doesn't follow the position stays so.
   TEST_EQUAL(start(location::NotFollow, true, 90.0), location::NotFollow, ());
+  // A car up saved by a route that was cut short is the chosen mode outside routing.
+  TEST_EQUAL(start(location::FollowAndRotate, false, 90.0), location::Follow, ());
+  TEST_EQUAL(start(location::FollowAndRotate, true, 90.0), location::FollowAndRotate, ());
+  // Car up without a direction waits for one.
+  TEST_EQUAL(start(location::Follow, true, -1.0), location::Follow, ());
+  TEST_EQUAL(start(location::FollowAndRotate, true, -1.0), location::Follow, ());
 }
 
 UNIT_CLASS_TEST(Map, MyPositionController_CarUpWaitsForDirection)
