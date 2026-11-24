@@ -21,6 +21,7 @@ public enum ThemeSwitcher
   INSTANCE;
 
   private SynchronizedThemeController mSynchronizedThemeController;
+  private LightSensorThemeController mLightSensorThemeController;
 
   @SuppressWarnings("NotNullFieldNotInitialized")
   @NonNull
@@ -34,6 +35,19 @@ public enum ThemeSwitcher
     mContext = context;
     mSynchronizedThemeController =
         new SynchronizedThemeController(MwmApplication.from(context).getLocationHelper(), this::setTheme);
+    mLightSensorThemeController = new LightSensorThemeController(context, this::setTheme);
+  }
+
+  public boolean isLightSensorAvailable()
+  {
+    return LightSensorThemeController.isAvailable(mContext);
+  }
+
+  /** The light sensor is read only while the app is in the foreground. */
+  @androidx.annotation.UiThread
+  public void setForeground(boolean foreground)
+  {
+    mLightSensorThemeController.setForeground(foreground);
   }
 
   /**
@@ -48,12 +62,19 @@ public enum ThemeSwitcher
   @androidx.annotation.UiThread
   public void synchronizeApplicationTheme()
   {
-    final Config.UiTheme themePreference = Config.UiTheme.getUiThemePreference();
+    final Config.UiTheme themePreference = Config.UiTheme.getUiThemePreference(isLightSensorAvailable());
     final boolean isScheduledTheme = themePreference == Config.UiTheme.SCHEDULED;
     final boolean isNavigationAutoDark =
         RoutingController.get().isNavigating() && Config.UiTheme.isAutoDarkNavigationEnabled();
 
-    if (isScheduledTheme || isNavigationAutoDark)
+    // The light sensor takes precedence over auto dark navigation, as SYSTEM does.
+    mLightSensorThemeController.setEnabled(themePreference == Config.UiTheme.LIGHT_SENSOR);
+
+    if (themePreference == Config.UiTheme.LIGHT_SENSOR)
+    {
+      mSynchronizedThemeController.stop();
+    }
+    else if (isScheduledTheme || isNavigationAutoDark)
     {
       final var dayTheme = isScheduledTheme ? Config.UiTheme.LIGHT : themePreference;
       mSynchronizedThemeController.synchronizeTimeDependentTheme(dayTheme);
@@ -116,6 +137,7 @@ public enum ThemeSwitcher
       AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM);
       break;
     case SCHEDULED:
+    case LIGHT_SENSOR:
       throw new IllegalArgumentException("Special case, should be handled differently "
                                          + "and converted to either dark or light");
     }
