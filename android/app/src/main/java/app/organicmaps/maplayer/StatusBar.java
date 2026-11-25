@@ -237,8 +237,8 @@ public class StatusBar
       // pulse, also when the manual mode is restored there: no GPS fix is there to check.
       case CHECKING ->
         isCheckingGpsFixes(status) ? new Look(R.drawable.ic_nogps_gps, R.color.source_connecting,
-                                     R.drawable.ic_nogps_badge_clock, R.color.source_connecting, false)
-                          : new Look(R.drawable.ic_nogps_gps, R.color.source_connecting, 0, 0, true);
+                                              R.drawable.ic_nogps_badge_clock, R.color.source_connecting, false)
+                                   : new Look(R.drawable.ic_nogps_gps, R.color.source_connecting, 0, 0, true);
       case COARSE -> new Look(R.drawable.ic_nogps_gps, R.color.source_warning);
       case SPOOFED ->
         new Look(R.drawable.ic_nogps_gps, R.color.source_warning, R.drawable.ic_nogps_badge_alert,
