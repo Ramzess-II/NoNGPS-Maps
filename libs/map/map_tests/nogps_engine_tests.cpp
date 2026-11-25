@@ -5796,6 +5796,88 @@ UNIT_TEST(NoGps_Engine_AccelerometerIsNotLearnedFromManeuvers)
   TEST(env.m_engine.GetTripLine().find(" back=1") != std::string::npos, (env.m_engine.GetTripLine()));
 }
 
+namespace
+{
+/// GPS is lost while navigating and the user turns it off: the manual mode at the car.
+void LoseGpsAndTurnItOff(Env & env)
+{
+  env.m_map.m_navigating = true;
+  env.DriveGps(10, 0, 10);
+  env.m_clock.Advance(Engine::kGpsLostMs + 1500);
+  TEST(env.m_engine.IsManualMode(), ());
+  env.m_engine.SetGpsDisabled(true);
+}
+
+void DriveStandingGps(Env & env, int seconds, double northM)
+{
+  for (int i = 0; i < seconds; ++i)
+  {
+    env.m_clock.Advance(1000);
+    env.m_engine.OnFix(GpsAt(env.m_clock, 90, northM, {}, 0.0));
+  }
+}
+}  // namespace
+
+UNIT_TEST(NoGps_Engine_GpsTurnedOnAfterAgreeingIsTrustedAtOnce)
+{
+  Env env(false /* inertial */);
+  LoseGpsAndTurnItOff(env);
+  // GPS agrees with the mark while the user ignores it: nothing follows it.
+  DriveStandingGps(env, GpsReturnDetector::kMinStreakMs / 1000 + 5, 0);
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST(!env.m_delegate.HasEvent(Event::GpsBack), ());
+
+  env.m_engine.SetGpsDisabled(false);
+  DriveStandingGps(env, 1, 0);
+  TEST(!env.m_engine.IsManualMode(), ());
+  TEST(env.m_delegate.HasEvent(Event::GpsBack), ());
+  TEST_EQUAL(env.Last().m_provider, Provider::Gps, ());
+}
+
+UNIT_TEST(NoGps_Engine_GpsTurnedOnAfterFarFromMarkIsCheckedAgain)
+{
+  Env env(false /* inertial */);
+  LoseGpsAndTurnItOff(env);
+  // GPS is far from the mark while ignored: the mark may have moved 50 m/s since it was set, 5 km is out of reach.
+  DriveStandingGps(env, GpsReturnDetector::kMinStreakMs / 1000 + 5, 5000);
+  env.m_engine.SetGpsDisabled(false);
+  DriveStandingGps(env, 1, 5000);
+  TEST(env.m_engine.IsManualMode(), ());
+  // It never agreed with the mark: the streak after it is turned on does not trust it.
+  DriveStandingGps(env, GpsReturnDetector::kMinStreakMs / 1000 + 2, 5000);
+  TEST(env.m_engine.IsManualMode(), ());
+  TEST(!env.m_delegate.HasEvent(Event::GpsBack), ());
+}
+
+UNIT_TEST(NoGps_Engine_GpsTurnedOnAfterGapOrSpoofingIsCheckedAgain)
+{
+  {
+    Env env(false /* inertial */);
+    LoseGpsAndTurnItOff(env);
+    DriveStandingGps(env, GpsReturnDetector::kMinStreakMs / 1000 + 5, 0);
+    // GPS breaks off for longer than the streak allows.
+    env.m_clock.Advance(GpsReturnDetector::kMaxGapMs + 1000);
+    env.m_engine.SetGpsDisabled(false);
+    DriveStandingGps(env, 1, 0);
+    TEST(env.m_engine.IsManualMode(), ());
+    DriveStandingGps(env, GpsReturnDetector::kMinStreakMs / 1000 + 2, 0);
+    TEST(!env.m_engine.IsManualMode(), ());
+  }
+  {
+    Env env(false /* inertial */);
+    LoseGpsAndTurnItOff(env);
+    DriveStandingGps(env, GpsReturnDetector::kMinStreakMs / 1000 + 5, 0);
+    // A jump of a kilometer is untrusted: the streak starts again.
+    env.m_clock.Advance(1000);
+    env.m_engine.OnFix(GpsAt(env.m_clock, 90, 1000, {}, 0.0));
+    env.m_engine.SetGpsDisabled(false);
+    DriveStandingGps(env, 1, 0);
+    TEST(env.m_engine.IsManualMode(), ());
+    DriveStandingGps(env, GpsReturnDetector::kMinStreakMs / 1000 + 2, 0);
+    TEST(!env.m_engine.IsManualMode(), ());
+  }
+}
+
 UNIT_TEST(NoGps_Engine_ManualModeWhenGpsIsLostWhileNavigating)
 {
   Env env(false /* inertial */);

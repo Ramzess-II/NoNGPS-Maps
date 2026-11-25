@@ -149,7 +149,12 @@ final class NoGpsStatusBar: UIView {
     var look: Look
     switch status.gpsState {
     case .good: look = Look(symbol: antenna, color: goodColor)
-    case .checking: look = Look(symbol: antenna, color: .systemBlue, pulsing: true)
+    // Good positions are checked in the manual mode: a steady antenna waits. The satellites searched after the start
+    // pulse, also when the manual mode is restored there: no GPS fix is there to check.
+    case .checking:
+      look = status.manualMode && status.workingGpsAccuracyM >= 0
+        ? Look(symbol: antenna, color: .systemBlue, badge: ("clock.fill", .systemBlue))
+        : Look(symbol: antenna, color: .systemBlue, pulsing: true)
     case .coarse: look = Look(symbol: antenna, color: .systemOrange)
     case .spoofed: look = Look(symbol: antenna, color: .systemOrange, badge: ("exclamationmark", .systemOrange))
     case .none: look = Look(symbol: slashed, color: .systemRed)
@@ -233,7 +238,7 @@ final class NoGpsStatusBar: UIView {
     switch status.gpsState {
     case .good: return L("nogps_gps_why_used")
     // Good positions are checked in the manual mode, the satellites are searched after the start.
-    case .checking: return L(status.manualMode ? "nogps_gps_why_checking" : "nogps_gps_why_searching")
+    case .checking: return L(status.manualMode && status.workingGpsAccuracyM >= 0 ? "nogps_gps_why_checking" : "nogps_gps_why_searching")
     case .coarse:
       return L(status.workingNetworkAccuracyM >= 0 && status.workingGpsAccuracyM < 0 ? "nogps_gps_why_network"
         : "nogps_gps_why_coarse")

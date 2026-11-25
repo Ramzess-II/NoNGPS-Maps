@@ -214,8 +214,12 @@ void Engine::OnFix(Fix const & location)
     if (IsCarMoving())
       LOG(LDEBUG, ("GPS is disabled, ignoring", location.m_position));
     // The user sees how GPS works though the car does not follow it.
-    if (trusted)
-      TrackWorkingGps(location);
+    if (!trusted)
+      m_gpsReturnDetector.Reset();
+    else if (TrackWorkingGps(location) && m_manualMode && !m_manualUntilGps)
+      // GPS agrees with the mark while ignored: when it is used again, the streak goes on and passes at once. Its
+      // result is dropped, the mark does not follow GPS yet.
+      IsGpsBack(location);
     return;
   }
 
@@ -454,7 +458,7 @@ GpsState Engine::GetGpsState() const
     return GpsState::Spoofed;
   if (auto const gps = GetWorkingGps(); gps && AgeMs(*gps) <= kGpsLostMs)
   {
-    // GPS ignored by the user is not checked by IsGpsBack(): it is told how GPS works.
+    // GPS ignored by the user is checked by IsGpsBack() as well, but nothing acts on it: it is told how GPS works.
     return m_manualMode && !m_gpsDisabled ? GpsState::Checking : GpsState::Good;
   }
   if (MsSince(m_startTimeMs) <= kGpsFirstFixMs)
@@ -1768,9 +1772,13 @@ void Engine::SetGpsDisabled(bool disabled, char const * by)
               "GPS ignored by the user =", disabled));
   m_gpsDisabled = disabled;
   m_storage.Set(Storage::kGpsDisabled, disabled);
-  // GPS ignored by the user is not trusted anew by its first position when it is used again.
+  // GPS ignored by the user is not trusted anew by its first position when it is used again, but by the streak
+  // of GpsReturnDetector, which goes on while it is ignored. Its following of the car does not: it ignores the mark,
+  // which the user may have turned GPS off for.
   if (disabled)
     m_manualUntilGps = false;
+  else
+    m_gpsReturnDetector.ResetFollow();
 }
 
 void Engine::SetManualMode(bool enabled)

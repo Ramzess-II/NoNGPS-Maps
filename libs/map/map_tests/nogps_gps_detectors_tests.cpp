@@ -625,6 +625,22 @@ UNIT_TEST(NoGps_GpsReturn_DistrustsGpsNotFollowingCar)
   TEST(!DriveAwayFromMark(offRoad, 60, 11.0, false), ());
 }
 
+UNIT_TEST(NoGps_GpsReturn_ResetFollowKeepsStreakOnly)
+{
+  // GPS far from the mark follows the car for 29 s, then the following starts anew: 30 s more are needed.
+  GpsReturnDetector detector;
+  TEST(!DriveAwayFromMark(detector, 29, 11.5, true), ());
+  detector.ResetFollow();
+  auto const car = North(kKyiv, 30 * kSmallStep);
+  TEST(!detector.OnGpsPosition(North(car, 500 * kSmallStep / 11), 10, 30'000, Own{car, 20}, 11.0, 11.5, true), ());
+  // The streak of the agreement with the own position goes on.
+  GpsReturnDetector agreeing;
+  TEST(!Drive(agreeing, 0, 14, 0, 20), ());
+  agreeing.ResetFollow();
+  auto const own = North(kKyiv, 15 * kSmallStep);
+  TEST(agreeing.OnGpsPosition(own, 10, 15'000, Own{own, 20}, {}, {}, false), ());
+}
+
 UNIT_TEST(NoGps_GpsReturn_RestartsStreakAfterReset)
 {
   GpsReturnDetector detector;
