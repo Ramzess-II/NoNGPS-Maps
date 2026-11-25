@@ -1773,9 +1773,12 @@ void Engine::SetGpsDisabled(bool disabled, char const * by)
   m_gpsDisabled = disabled;
   m_storage.Set(Storage::kGpsDisabled, disabled);
   // GPS ignored by the user is not trusted anew by its first position when it is used again, but by the streak
-  // of GpsReturnDetector, which goes on while it is ignored.
+  // of GpsReturnDetector, which goes on while it is ignored. Its following of the car does not: it ignores the mark,
+  // which the user may have turned GPS off for.
   if (disabled)
     m_manualUntilGps = false;
+  else
+    m_gpsReturnDetector.ResetFollow();
 }
 
 void Engine::SetManualMode(bool enabled)

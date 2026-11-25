@@ -43,6 +43,13 @@ public:
 
   void Reset() { m_last.reset(); }
 
+  /// Starts the following of the car anew and keeps the streak of the agreement with the own position.
+  void ResetFollow()
+  {
+    m_followStartMs = m_last ? m_last->m_timeMs : 0;
+    m_followDistanceM = 0;
+  }
+
   /// Checks a GPS position trusted by the spoofing detector.
   /// \param timeMs monotonic time of the position, e.g. elapsed realtime.
   /// \param own the position known without GPS, if there is one.
