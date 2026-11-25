@@ -269,8 +269,13 @@ UNIT_CLASS_TEST(VisualParamsFixture, StopFollowModesAndFirstFix)
   for (auto mode : {location::Follow, location::FollowAndRotate, location::NotFollow})
   {
     // A start in car up is kept only when the user's last choice was car up, and it needs a direction.
-    df::MyPositionController controller({mode, 0.0 /* timeInBackground */, {}, false /* isRoutingActive */,
-                                         false /* isAutozoomEnabled */, {}, mode == location::FollowAndRotate},
+    df::MyPositionController controller({mode,
+                                         0.0 /* timeInBackground */,
+                                         {},
+                                         false /* isRoutingActive */,
+                                         false /* isAutozoomEnabled */,
+                                         {},
+                                         mode == location::FollowAndRotate},
                                         nullptr);
     controller.OnUpdateScreen(screen);
     controller.OnLocationUpdate(fix, false /* isNavigable */, screen);
