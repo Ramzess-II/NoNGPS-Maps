@@ -15,6 +15,11 @@
 @property(nullable, nonatomic) NSDate * started;
 /// The first moment of the next day: a line written at it or later goes on in the folder of that day.
 @property(nullable, nonatomic) NSDate * dayEnd;
+/// The first moment of the day of the file: a line written before it, after the clock went back, opens a new file.
+@property(nullable, nonatomic) NSDate * dayStart;
+/// The offset from UTC dayStart and dayEnd were taken at: NSTimeZone.localTimeZone is one auto-updating object, so
+/// the zone itself can't tell that it changed.
+@property(nonatomic) NSInteger dayOffset;
 /// The file under the logs folder, see freeLogFileNameStarted:now:. It is chosen once per file, as the name of a
 /// file that is written already would be taken for a shared one.
 @property(nullable, nonatomic) NSString * fileName;
@@ -534,15 +539,37 @@ bool AssertMessage(base::SrcPoint const & src, std::string const & message)
     logger.started = now;
     logger.dayEnd = nil;
   }
-  if (logger.dayEnd == nil || [now compare:logger.dayEnd] != NSOrderedAscending)
+  NSTimeZone * zone = NSTimeZone.localTimeZone;
+  BOOL const zoneChanged = logger.dayStart != nil && [zone secondsFromGMTForDate:now] != logger.dayOffset;
+  if (logger.dayEnd == nil || logger.dayStart == nil || zoneChanged ||
+      [now compare:logger.dayStart] == NSOrderedAscending || [now compare:logger.dayEnd] != NSOrderedAscending)
   {
-    [self closeFile];
-    NSCalendar * calendar = NSCalendar.currentCalendar;
-    logger.dayEnd = [calendar dateByAddingUnit:NSCalendarUnitDay
-                                         value:1
-                                        toDate:[calendar startOfDayForDate:now]
-                                       options:0];
-    logger.fileName = [self freeLogFileNameStarted:logger.started now:now];
+    NSCalendar * calendar = [NSCalendar.currentCalendar copy];
+    calendar.timeZone = zone;
+    NSDate * dayStart = [calendar startOfDayForDate:now];
+    // The clock, or the time zone, went back past the start of the file's day: the file is a new one, named by the
+    // new time. A zone change that doesn't take the local day back only moves the day's bounds.
+    // Compared as local days: the bounds in seconds move with the zone.
+    NSInteger const kDaySeconds = 24 * 60 * 60;
+    NSInteger const newDay =
+        (NSInteger)floor(([dayStart timeIntervalSince1970] + [zone secondsFromGMTForDate:now]) / kDaySeconds);
+    NSInteger const oldDay =
+        logger.dayStart == nil
+            ? 0
+            : (NSInteger)floor(([logger.dayStart timeIntervalSince1970] + logger.dayOffset) / kDaySeconds);
+    BOOL const hadDay = logger.dayStart != nil;
+    BOOL const rolled =
+        logger.dayEnd == nil || [now compare:logger.dayEnd] != NSOrderedAscending || (hadDay && newDay > oldDay);
+    BOOL const clockWentBack = hadDay && newDay < oldDay;
+    if (rolled || clockWentBack)
+      [self closeFile];
+    if (clockWentBack)
+      logger.started = now;
+    logger.dayOffset = [zone secondsFromGMTForDate:now];
+    logger.dayStart = dayStart;
+    logger.dayEnd = [calendar dateByAddingUnit:NSCalendarUnitDay value:1 toDate:dayStart options:0];
+    if (rolled || clockWentBack)
+      logger.fileName = [self freeLogFileNameStarted:logger.started now:now];
   }
 
   if (logger.fileHandle != nil)

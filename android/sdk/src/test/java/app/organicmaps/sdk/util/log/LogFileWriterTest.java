@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.List;
+import java.util.TimeZone;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -116,6 +117,96 @@ public class LogFileWriterTest
     mWriter.writeSync(mLogs, "b");
     // A day with no lines has no folder.
     assertEquals(List.of(path("2026-11-01", "230000.log"), path("2026-11-03", "230000.log")), files());
+  }
+
+  @Test
+  public void clockBack_beforeTheDayOfTheFileOpensANewFile() throws IOException
+  {
+    mNow.set(time(2026, Calendar.NOVEMBER, 2, 0, 0, 10));
+    mWriter.writeSync(mLogs, "before");
+    mNow.set(time(2026, Calendar.NOVEMBER, 1, 23, 59, 50));
+    mWriter.writeSync(mLogs, "after the jump");
+    mWriter.writeSync(mLogs, "after the jump too");
+
+    assertEquals(List.of(path("2026-11-01", "235950.log"), path("2026-11-02", "000010.log")), files());
+    assertEquals(2, lines(path("2026-11-02", "000010.log")).size());
+    final List<String> second = lines(path("2026-11-01", "235950.log"));
+    assertEquals(HEADER.trim(), second.get(0));
+    assertEquals(3, second.size());
+  }
+
+  @Test
+  public void timeZoneBack_acrossMidnightOpensANewFileInTheFolderOfTheNewDay() throws IOException
+  {
+    final TimeZone saved = TimeZone.getDefault();
+    try
+    {
+      // 00:30 on Nov 2 in UTC+3 is 22:30 on Nov 1 in UTC+1.
+      TimeZone.setDefault(TimeZone.getTimeZone("GMT+3"));
+      mNow.set(time(2026, Calendar.NOVEMBER, 2, 0, 30, 0));
+      mWriter.writeSync(mLogs, "before");
+      TimeZone.setDefault(TimeZone.getTimeZone("GMT+1"));
+      mWriter.writeSync(mLogs, "after the zone change");
+
+      assertEquals(List.of(path("2026-11-01", "223000.log"), path("2026-11-02", "003000.log")), files());
+    }
+    finally
+    {
+      TimeZone.setDefault(saved);
+    }
+  }
+
+  @Test
+  public void timeZoneForward_acrossMidnightMovesTheFileToTheFolderOfTheNewDay() throws IOException
+  {
+    final TimeZone saved = TimeZone.getDefault();
+    try
+    {
+      // 23:30 on Nov 1 in UTC+1 is 01:30 on Nov 2 in UTC+3.
+      TimeZone.setDefault(TimeZone.getTimeZone("GMT+1"));
+      mNow.set(time(2026, Calendar.NOVEMBER, 1, 23, 30, 0));
+      mWriter.writeSync(mLogs, "before");
+      TimeZone.setDefault(TimeZone.getTimeZone("GMT+3"));
+      mWriter.writeSync(mLogs, "after the zone change");
+
+      assertEquals(List.of(path("2026-11-01", "233000.log"), path("2026-11-02", "013000.log")), files());
+    }
+    finally
+    {
+      TimeZone.setDefault(saved);
+    }
+  }
+
+  @Test
+  public void timeZoneChange_keepsTheFileWhenTheDayDoesNotGoBack() throws IOException
+  {
+    final TimeZone saved = TimeZone.getDefault();
+    try
+    {
+      TimeZone.setDefault(TimeZone.getTimeZone("GMT+2"));
+      mNow.set(time(2026, Calendar.NOVEMBER, 1, 14, 0, 0));
+      mWriter.writeSync(mLogs, "before");
+      TimeZone.setDefault(TimeZone.getTimeZone("GMT+1"));
+      mWriter.writeSync(mLogs, "after the zone change");
+
+      final List<String> all = files();
+      assertEquals(1, all.size());
+      assertEquals(3, lines(all.get(0)).size());
+    }
+    finally
+    {
+      TimeZone.setDefault(saved);
+    }
+  }
+
+  @Test
+  public void clockBack_withinTheDayKeepsTheFile() throws IOException
+  {
+    mWriter.writeSync(mLogs, "one");
+    mNow.addAndGet(-60000);
+    mWriter.writeSync(mLogs, "two");
+    assertEquals(List.of(path("2026-11-01", "120000.log")), files());
+    assertEquals(3, lines(path("2026-11-01", "120000.log")).size());
   }
 
   @Test

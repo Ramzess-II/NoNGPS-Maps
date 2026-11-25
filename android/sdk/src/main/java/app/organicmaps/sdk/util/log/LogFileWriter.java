@@ -11,6 +11,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Locale;
+import java.util.TimeZone;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -96,6 +97,12 @@ final class LogFileWriter
   private String mFileName = "";
   // The first moment of the next day: a line written at it or later goes on in the folder of that day.
   private long mDayEndMs;
+  // The first moment of the day of the file: a line written before it, after the clock went back, opens a new file.
+  private long mDayStartMs;
+  // The zone of mDayStartMs and mDayEndMs: another one moves the day, and a new file opens when that takes the day
+  // back.
+  private static final long DAY_MS = 24L * 60 * 60 * 1000;
+  private TimeZone mDayZone;
   // When a failed open may be tried again, 0 when the last one worked.
   private long mRetryOpenMs;
   // The size of the open file in chars, which are bytes for the ASCII log.
@@ -325,17 +332,33 @@ final class LogFileWriter
       mStarted = new Date(now);
       mDayEndMs = 0;
     }
-    if (now >= mDayEndMs)
+    final TimeZone zone = TimeZone.getDefault();
+    final boolean zoneChanged = mDayZone != null && !zone.equals(mDayZone);
+    if (now >= mDayEndMs || now < mDayStartMs || zoneChanged)
     {
-      final Calendar calendar = Calendar.getInstance();
+      final Calendar calendar = Calendar.getInstance(zone);
       calendar.setTimeInMillis(now);
       calendar.set(Calendar.HOUR_OF_DAY, 0);
       calendar.set(Calendar.MINUTE, 0);
       calendar.set(Calendar.SECOND, 0);
       calendar.set(Calendar.MILLISECOND, 0);
+      final long dayStartMs = calendar.getTimeInMillis();
+      // The clock, or the time zone, went back past the start of the file's day: the file is a new one, named by
+      // the new time. A zone change that doesn't take the local day back only moves the day's bounds.
+      // Compared as local days: the bounds in milliseconds move with the zone.
+      final long oldDay = mDayZone == null ? 0 : Math.floorDiv(mDayStartMs + mDayZone.getOffset(mDayStartMs), DAY_MS);
+      final long newDay = Math.floorDiv(dayStartMs + zone.getOffset(dayStartMs), DAY_MS);
+      final boolean zoneDayForward = mDayZone != null && newDay > oldDay;
+      final boolean rolled = now >= mDayEndMs || zoneDayForward;
+      final boolean clockWentBack = mDayZone != null && newDay < oldDay;
+      if (clockWentBack)
+        mStarted = new Date(now);
+      mDayZone = zone;
+      mDayStartMs = dayStartMs;
       calendar.add(Calendar.DAY_OF_MONTH, 1);
       mDayEndMs = calendar.getTimeInMillis();
-      mFileName = LogFiles.freeFileName(new File(logsFolder), mInfo.phoneId(), mStarted, new Date(now));
+      if (rolled || clockWentBack)
+        mFileName = LogFiles.freeFileName(new File(logsFolder), mInfo.phoneId(), mStarted, new Date(now));
     }
 
     final File file = new File(logsFolder, mFileName);
