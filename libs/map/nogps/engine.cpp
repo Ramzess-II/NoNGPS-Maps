@@ -391,14 +391,14 @@ void Engine::OnEsp32BleBytes(std::string_view bytes)
   SaveHeardBox();
 }
 
-void Engine::OnEsp32BleState(BleState state, bool bondLost)
+void Engine::OnEsp32BleState(BleState state, bool bondLost, std::string const & boxId)
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());
   if (!m_inertial)
     return;
   // Before the box hears of it: the new file of a trip starts with its connection.
   OnBoxLink(state == BleState::Connected && !bondLost && m_inertial->GetEsp32());
-  m_inertial->OnEsp32BleState(state, bondLost);
+  m_inertial->OnEsp32BleState(state, bondLost, boxId);
 }
 
 void Engine::OnBoxLink(bool linked)
@@ -1175,6 +1175,11 @@ void Engine::OnThisPhoneRemoved()
   m_phoneRemovedTimer.Start(0, [this] { m_delegate.OnEvent(Event::ThisPhoneRemoved); });
 }
 
+void Engine::OnBoxRefused()
+{
+  Notify(Event::BoxRefused);
+}
+
 std::vector<Sprint> Engine::GetSprints() const
 {
   auto sprints = ParseSprints(m_storage.Get<std::string>(Storage::kSprints, ""));
@@ -1848,8 +1853,6 @@ bool Engine::PlaceMarkByGps()
                                             : (m_rawGps ? m_rawGps : m_rawFused);
   if (!fix)
     return fail("no fix");
-  if (m_gpsDisabled)
-    return fail("GPS is turned off");
   if (m_spoofingDetector.IsSpoofed())
     return fail("GPS is spoofed");
   if (AgeMs(*fix) > kGpsMaxAgeMs)
@@ -1869,6 +1872,9 @@ bool Engine::PlaceMarkByGps()
   auto const road = FindMarkRoad(fix->m_position, GetCarBearing(), radiusM);
   if (!road)
     return fail("no road near the fix");
+  // The tap asks for GPS this once: the fix is taken even when the user turned GPS off, which stays off.
+  if (m_gpsDisabled)
+    LOG(LINFO, ("The fix is taken while GPS is turned off"));
   SetManualMode(true, "gps_mark");
   PutMark(fix->m_position, *road, "gps_mark", std::max(kManualAccuracyM, fix->m_accuracyM));
   m_markByTap = false;

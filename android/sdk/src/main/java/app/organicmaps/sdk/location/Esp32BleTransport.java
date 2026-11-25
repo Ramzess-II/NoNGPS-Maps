@@ -40,6 +40,7 @@ import app.organicmaps.sdk.util.log.Logger;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -181,6 +182,9 @@ class Esp32BleTransport
   // The box connected, null if its name is not known.
   @Nullable
   private String mBoxId;
+  // The id the core was told with the last state.
+  @Nullable
+  private String mReportedBoxId;
 
   private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
     @Override
@@ -388,12 +392,13 @@ class Esp32BleTransport
    */
   private void setState(int state)
   {
-    if (state == mState && mBondLost == mReportedBondLost)
+    if (state == mState && mBondLost == mReportedBondLost && Objects.equals(mBoxId, mReportedBoxId))
       return;
     Logger.i(TAG, "state = " + state + (mBondLost ? " bond lost" : ""));
     mState = state;
     mReportedBondLost = mBondLost;
-    NoGps.nativeOnEsp32BleState(state, mBondLost);
+    mReportedBoxId = mBoxId;
+    NoGps.nativeOnEsp32BleState(state, mBondLost, mBoxId);
   }
 
   /**

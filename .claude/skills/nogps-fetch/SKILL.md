@@ -12,7 +12,8 @@ where `trip-logs/` is. It adds to the tree and never deletes: the phone keeps fl
 archive. Its docstring tells the rules.
 
 1. **Fetch.** `just fetch`, or `python3 tools/python/nogps_logs.py fetch [--device <id>] [--from <folder>]`.
-   `--from` takes a folder of `logs/` and `flags/` already on disk, an unpacked copy.
+   `--from` takes a folder of `logs/` and `flags/` already on disk, an unpacked copy, or a mail of "Send logs" saved into a folder (its `logs.zip`,
+   the `.png` and `.m4a` attachments and the text with the `FLAG` lines).
 2. **Read the summary.** A line per app: new and grown logs, new and changed flag files, files skipped (the names of
    the earlier versions, OSLog text without `LOGFMT`). Then the phone-days it imported into `trip-logs/db/`, the
    notes, the driven trips of those days and their flags. Tell the user what came in, and every note: a phone that

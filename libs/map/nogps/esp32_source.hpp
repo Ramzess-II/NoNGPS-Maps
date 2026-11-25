@@ -65,6 +65,9 @@ public:
   // The box answers AUTH at once: a command without a reply is sent again, this many times in all.
   static int64_t constexpr kAuthReplyTimeoutMs = 2000;
   static int constexpr kMaxAuthSends = 5;
+  // A box that is still refused is told again after this long: the first notice may have fallen on an app in the
+  // background.
+  static int64_t constexpr kRefusalRepeatMs = 10 * 60 * 1000;
 
   /// What the box does about a new phone, see StartAddPhone().
   enum class AddPhone
@@ -119,7 +122,9 @@ public:
   void OnBleBytes(std::string_view bytes);
   /// `bondLost`: the box is thought to have forgotten the phone, see BleState::BondLost. A link made then, Connected
   /// for the HELLO the box waits for, is a probe: it is not a working link until the box is heard.
-  void OnBleState(BleState state, bool bondLost = false);
+  /// `boxId`: the id of the box the transport has connected, the four characters of its name, empty if the box tells
+  /// none. Another id in its NGI refuses the box. Taken as it comes, also when the state is the same.
+  void OnBleState(BleState state, bool bondLost = false, std::string const & boxId = {});
   BleState GetBleState() const { return m_bleState; }
   bool IsBondLost() const { return m_bondLost; }
   DataRate GetDataRate() const;
@@ -221,6 +226,7 @@ private:
   void SendAuth();
   void OnAuthReply(esp32::Reply const & reply);
   void RefuseBox(std::string const & reason);
+  void TellRefusal();
   std::string NewAuthHex(size_t bytes) const;
   void ForgetAuth();
   void SendHello();
@@ -252,6 +258,7 @@ private:
 
   BleState m_bleState = BleState::Off;
   bool m_bondLost = false;
+  std::string m_linkBoxId;
   // The line being received over Bluetooth, from its "$" on.
   std::string m_bleLine;
   // When the data lines of the last second came.
@@ -306,6 +313,8 @@ private:
   bool m_mustProve = false;
   bool m_proven = true;
   bool m_authRefused = false;
+  // When OnBoxRefused() was called last, if no box has proved itself since; kept over links.
+  std::optional<int64_t> m_refusalToldMs;
   // The info of the box heard before the proof: it is taken when the box has proved itself.
   std::optional<esp32::Fields> m_unprovenInfo;
   // The command waiting for its reply, 0 if none.
