@@ -50,13 +50,16 @@ public:
   struct Params
   {
     Params(location::EMyPositionMode initMode, double timeInBackground, Hints const & hints, bool isRoutingActive,
-           bool isAutozoomEnabled, location::TMyPositionModeChanged && fn)
+           bool isAutozoomEnabled, location::TMyPositionModeChanged && fn, bool preferRotate = false,
+           std::function<void(bool)> && preferRotateChanged = {})
       : m_initMode(initMode)
       , m_timeInBackground(timeInBackground)
       , m_hints(hints)
       , m_isRoutingActive(isRoutingActive)
       , m_isAutozoomEnabled(isAutozoomEnabled)
       , m_myPositionModeCallback(std::move(fn))
+      , m_preferRotate(preferRotate)
+      , m_preferRotateCallback(std::move(preferRotateChanged))
     {}
 
     location::EMyPositionMode m_initMode;
@@ -65,6 +68,9 @@ public:
     bool m_isRoutingActive;
     bool m_isAutozoomEnabled;
     location::TMyPositionModeChanged m_myPositionModeCallback;
+    // The user's last choice with the position button: car up (true) or north up.
+    bool m_preferRotate;
+    std::function<void(bool)> m_preferRotateCallback;
   };
 
   MyPositionController(Params && params, ref_ptr<DrapeNotifier> notifier);
@@ -123,6 +129,7 @@ public:
   void Render(ref_ptr<dp::GraphicsContext> context, ref_ptr<gpu::ProgramManager> mng, ScreenBase const & screen,
               int zoomLevel, FrameValues const & frameValues);
 
+  bool IsPreferRotate() const { return m_preferRotate; }
   bool IsRotationAvailable() const { return m_isDirectionAssigned; }
   bool IsInRouting() const { return m_isInRouting; }
   bool IsRouteFollowingActive() const;
@@ -134,6 +141,9 @@ public:
 
 private:
   void ChangeMode(location::EMyPositionMode newMode);
+  // Where the map goes when it follows the position again outside routing: the user's last choice.
+  location::EMyPositionMode PreferredFollowMode() const;
+  void SetPreferRotate(bool preferRotate);
   void SetDirection(double bearing);
 
   void ChangeModelView(m2::PointD const & center, int zoomLevel);
@@ -163,6 +173,8 @@ private:
   location::EMyPositionMode m_mode;
   location::EMyPositionMode m_desiredInitMode;
   location::TMyPositionModeChanged m_modeChangeCallback;
+  std::function<void(bool)> m_preferRotateCallback;
+  bool m_preferRotate;
   Hints m_hints;
 
   bool m_isInRouting = false;

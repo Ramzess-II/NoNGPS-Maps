@@ -24,6 +24,7 @@ using namespace std::placeholders;
 namespace
 {
 std::string_view constexpr kLocationStateMode = "LastLocationStateMode";
+std::string_view constexpr kPreferRotateMode = "LastFollowMode";
 std::string_view constexpr kLastEnterBackground = "LastEnterBackground";
 }  // namespace
 
@@ -73,6 +74,9 @@ DrapeEngine::DrapeEngine(Params && params)
   if (!Get(kLastEnterBackground, m_startBackgroundTime))
     m_startBackgroundTime = base::Timer::LocalTime();
 
+  bool preferRotate = false;
+  (void)Get(kPreferRotateMode, preferRotate);
+
   (void)Get(kBookmarksTextPlacement, m_bookmarksTextPlacement);
 
   std::vector<PostprocessRenderer::Effect> effects;
@@ -90,7 +94,8 @@ DrapeEngine::DrapeEngine(Params && params)
 
   MyPositionController::Params mpParams(mode, base::Timer::LocalTime() - m_startBackgroundTime, params.m_hints,
                                         params.m_isRoutingActive, params.m_isAutozoomEnabled,
-                                        std::bind(&DrapeEngine::MyPositionModeChanged, this, _1, _2));
+                                        std::bind(&DrapeEngine::MyPositionModeChanged, this, _1, _2), preferRotate,
+                                        [](bool prefer) { settings::Set(kPreferRotateMode, prefer); });
 
   FrontendRenderer::Params frParams(
       params.m_apiVersion, make_ref(m_threadCommutator), params.m_factory, make_ref(m_textureManager),

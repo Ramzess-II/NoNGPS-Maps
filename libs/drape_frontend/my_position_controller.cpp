@@ -122,6 +122,8 @@ bool IsModeChangeViewport(location::EMyPositionMode mode)
 MyPositionController::MyPositionController(Params && params, ref_ptr<DrapeNotifier> notifier)
   : m_notifier(notifier)
   , m_modeChangeCallback(std::move(params.m_myPositionModeCallback))
+  , m_preferRotateCallback(std::move(params.m_preferRotateCallback))
+  , m_preferRotate(params.m_preferRotate)
   , m_hints(params.m_hints)
   , m_isInRouting(params.m_isRoutingActive)
   , m_needBlockAnimation(false)
@@ -376,7 +378,7 @@ void MyPositionController::NextMode(ScreenBase const & screen)
     if (currentZoom < closeZoom)
       preferredZoomLevel = closeZoom;
 
-    ChangeMode(m_isInRouting ? location::FollowAndRotate : location::Follow);
+    ChangeMode(m_isInRouting ? location::FollowAndRotate : PreferredFollowMode());
     // The user asks to show the position now: the scale by the speed doesn't wait until the map calms down.
     m_needBlockAutoZoom = false;
     if (!UpdateViewportWithAutoZoom())
@@ -390,6 +392,8 @@ void MyPositionController::NextMode(ScreenBase const & screen)
   {
     if (IsRotationAvailable() || m_isInRouting)
     {
+      if (!m_isInRouting)
+        SetPreferRotate(true);
       ChangeMode(location::FollowAndRotate);
       UpdateViewport(preferredZoomLevel);
     }
@@ -401,6 +405,8 @@ void MyPositionController::NextMode(ScreenBase const & screen)
   {
     if (m_isInRouting && screen.isPerspective())
       preferredZoomLevel = static_cast<int>(GetZoomLevel(ScreenBase::GetStartPerspectiveScale() * 1.1));
+    if (!m_isInRouting)
+      SetPreferRotate(false);
     ChangeMode(location::Follow);
     ChangeModelView(m_position, 0.0, m_visiblePixelRect.Center(), preferredZoomLevel);
   }
@@ -456,7 +462,11 @@ void MyPositionController::OnLocationUpdate(location::GpsInfo const & info, bool
 
   if (!m_isPositionAssigned)
   {
-    location::EMyPositionMode newMode = m_desiredInitMode;
+    // A start that follows the position outside routing follows it as the user left it, car up or north up,
+    // and car up waits for a direction.
+    bool const followsAtStart =
+        m_desiredInitMode == location::Follow || (m_desiredInitMode == location::FollowAndRotate && !m_isInRouting);
+    auto const newMode = followsAtStart ? PreferredFollowMode() : m_desiredInitMode;
     ChangeMode(newMode);
 
     if (!m_hints.m_isFirstLaunch || !AnimationSystem::Instance().AnimationExists(Animation::Object::MapPlane))
@@ -482,7 +492,7 @@ void MyPositionController::OnLocationUpdate(location::GpsInfo const & info, bool
     }
     else
     {
-      ChangeMode(location::Follow);
+      ChangeMode(PreferredFollowMode());
       if (m_hints.m_isFirstLaunch)
       {
         if (!AnimationSystem::Instance().AnimationExists(Animation::Object::MapPlane))
@@ -629,8 +639,30 @@ bool MyPositionController::AlmostCurrentAzimut(double azimut) const
 
 void MyPositionController::SetDirection(double bearing)
 {
+  bool const isFirstDirection = !m_isDirectionAssigned;
   m_drawDirection = bearing;
   m_isDirectionAssigned = true;
+
+  // Car up waited for the first direction.
+  if (isFirstDirection && m_preferRotate && !m_isInRouting && m_mode == location::Follow)
+  {
+    ChangeMode(location::FollowAndRotate);
+    m_isDirtyViewport = true;
+  }
+}
+
+location::EMyPositionMode MyPositionController::PreferredFollowMode() const
+{
+  return m_preferRotate && IsRotationAvailable() ? location::FollowAndRotate : location::Follow;
+}
+
+void MyPositionController::SetPreferRotate(bool preferRotate)
+{
+  if (m_preferRotate == preferRotate)
+    return;
+  m_preferRotate = preferRotate;
+  if (m_preferRotateCallback)
+    m_preferRotateCallback(preferRotate);
 }
 
 void MyPositionController::ChangeMode(location::EMyPositionMode newMode)
@@ -671,7 +703,7 @@ void MyPositionController::OnEnterForeground(double backgroundTime)
     // When location was active during previous session the app will try to follow the user.
     if (m_mode == location::NotFollow)
     {
-      ChangeMode(m_isInRouting ? location::FollowAndRotate : location::Follow);
+      ChangeMode(m_isInRouting ? location::FollowAndRotate : PreferredFollowMode());
       UpdateViewport(kDoNotChangeZoom);
     }
 
@@ -689,6 +721,8 @@ void MyPositionController::OnCompassTapped()
 {
   if (m_mode == location::FollowAndRotate)
   {
+    if (!m_isInRouting)
+      SetPreferRotate(false);
     ChangeMode(location::Follow);
     ChangeModelView(m_position, 0.0, m_visiblePixelRect.Center(), kDoNotChangeZoom);
   }
@@ -869,10 +903,13 @@ void MyPositionController::DeactivateRouting()
     m_isInRouting = false;
     m_isArrowGluedInRouting = false;
 
+    // The route's direction is the last known one: car up goes on with it until a new one comes.
+    auto const mode = PreferredFollowMode();
     m_isDirectionAssigned = m_isCompassAvailable && m_isDirectionAssigned;
 
-    ChangeMode(location::Follow);
-    ChangeModelView(m_position, 0.0, m_visiblePixelRect.Center(), kDoNotChangeZoom);
+    ChangeMode(mode);
+    ChangeModelView(m_position, mode == location::FollowAndRotate ? m_drawDirection : 0.0, m_visiblePixelRect.Center(),
+                    kDoNotChangeZoom);
   }
 }
 
