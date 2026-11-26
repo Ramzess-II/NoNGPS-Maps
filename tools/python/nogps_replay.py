@@ -91,6 +91,7 @@ IOS_LINE = re.compile(r'^\w\((\d+)\) (\d+\.\d+) (.*)$')
 IOS_LOCAL_TIME = re.compile(
     r'Local time: (\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) \+0000(?: , Time Zone: GMT(?:([+-])(\d+)(?::(\d\d))?)?)?')
 IOS_CORE_SOURCE = re.compile(r'^\S+\.(?:cpp|hpp):\d+ ')
+IOS_TRIP = re.compile(r'^LOGFMT .* trip=(\d\d)(\d\d)(\d\d)')
 IOS_STARTED = ' started, detected CPU cores'
 FIELD = re.compile(r' (\w+)=(\S+)')
 SOURCE = re.compile(r'^\S+:\d+ (\w+)\(\): (.*)$')
@@ -152,12 +153,17 @@ def log_lines(f):
     marks; a line before the "Local time:" line of its run has no time and is skipped."""
     launch = None  # the local time of the start of the run
     previous = 0
+    trip = None  # the local start time of the file, its name "<HHmmss>": the zone of a file that has no "Time Zone:"
     for raw in f:
         line = raw.rstrip('\n')
         m = LINE.match(line)
         if m:
             ms = ((int(m.group(2)) * 60 + int(m.group(3))) * 60 + int(m.group(4))) * 1000 + int(m.group(5))
             yield raw, m.group(1), ms, m.group(7), m.group(8)
+            continue
+        started = IOS_TRIP.match(line)
+        if started:
+            trip = (int(started.group(1)) * 60 + int(started.group(2))) * 60 + int(started.group(3))
             continue
         m = IOS_LINE.match(line)
         if not m:
@@ -168,11 +174,17 @@ def log_lines(f):
         previous = seconds
         anchor = IOS_LOCAL_TIME.search(body)
         if anchor:
+            utc = datetime.datetime.strptime(anchor.group(1), '%Y-%m-%d %H:%M:%S')
             offset = 0
             if anchor.group(3):
                 minutes = int(anchor.group(3)) * 60 + int(anchor.group(4) or 0)
                 offset = -minutes * 60 if anchor.group(2) == '-' else minutes * 60
-            utc = datetime.datetime.strptime(anchor.group(1), '%Y-%m-%d %H:%M:%S')
+            elif 'Time Zone: GMT' not in body and trip is not None:
+                # Only the first file of a launch has the zone, and not always as "GMT+N" ("EST", "CET"): the
+                # file name is local, so the zone is its distance from the UTC time of the same moment.
+                utc_seconds = (utc.hour * 60 + utc.minute) * 60 + utc.second
+                offset = (trip - utc_seconds + 12 * 3600) % 86400 - 12 * 3600
+                offset = round(offset / 900) * 900
             launch = utc + datetime.timedelta(seconds=offset, milliseconds=-seconds)
         if launch is None:
             continue

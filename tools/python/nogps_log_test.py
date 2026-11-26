@@ -483,6 +483,23 @@ class ReplayLogsTest(unittest.TestCase):
             self.assertEqual(started, [3590040])
             self.assertEqual(others, [])
 
+    def test_ios_file_without_the_zone_line_takes_the_zone_from_its_name(self):
+        """Only the first file of a launch has "Time Zone:", and it can be "EST": the zone is then the distance of the
+        file name (local) from the UTC time of the "Local time:" line."""
+        for zone_line, utc, trip in ((None, '2026-11-25 22:30:00', '003000'),
+                                     ('EST', '2026-11-26 05:30:00', '003000'),
+                                     (None, '2026-11-26 05:30:00', '003000')):
+            run = ['I(1) 0.00000 Local time: %s +0000' % utc]
+            if zone_line:
+                run.append('I(1) 0.00040 Local time: %s +0000 , Time Zone: %s' % (utc, zone_line))
+            run.append('I(1) 10.00000 nogps/engine.cpp:2312 LogTrip(): %s' % trip_line())
+            with tempfile.TemporaryDirectory() as folder:
+                path = os.path.join(folder, 'iPhone17_1-3b77', '2026-11-26', trip + '.log')
+                write_tree(folder, {'iPhone17_1-3b77/2026-11-26/%s.log' % trip:
+                                    with_logfmt(run, 'iPhone17_1-3b77', trip=trip)})
+                trips, _, _ = nogps_replay.read([path], '11-26')
+                self.assertEqual([t['ms'] for t in trips], [1810000], (zone_line, utc))
+
     def test_input_of_a_tree_of_two_phones_is_a_file_a_phone(self):
         with tempfile.TemporaryDirectory() as folder:
             self.two_phones(folder)
