@@ -16,6 +16,30 @@ ARCHIVE_PATH="$BUILD_DIR/OM-$IOS_VERSION-$IOS_BUILD.xcarchive"
 IPA_PATH="$BUILD_DIR"
 rm -rf "$ARCHIVE_PATH"
 
+# A release without the DSN sends no crash reports, see docs/nogps/crash-reports.md.
+SENTRY_DSN_FILE="$SCRIPT_DIR/../trip-logs/config/sentry_dsn.h"
+if ! grep -Eqs '^#define SENTRY_DSN_IOS "https://' "$SENTRY_DSN_FILE"; then
+  echo "ERROR: no SENTRY_DSN_IOS in $SENTRY_DSN_FILE: the release would send no crash reports" >&2
+  exit 1
+fi
+
+# Without the token or sentry-cli the dSYMs can't reach Sentry: stop before the slow archive.
+SENTRY_ENV="$SCRIPT_DIR/../credentials/sentry.env"
+# No tracing around the token.
+set +x
+if [ -f "$SENTRY_ENV" ]; then
+  source "$SENTRY_ENV"
+fi
+if [ -z "${SENTRY_AUTH_TOKEN:-}" ]; then
+  echo "ERROR: SENTRY_AUTH_TOKEN is missing, see docs/nogps/crash-reports.md" >&2
+  exit 1
+fi
+set -x
+if ! command -v sentry-cli > /dev/null; then
+  echo "ERROR: sentry-cli is not in PATH ($PATH): brew install getsentry/tools/sentry-cli" >&2
+  exit 1
+fi
+
 
 # Build release archive.
 xcodebuild archive \
@@ -29,15 +53,8 @@ xcodebuild archive \
     CURRENT_PROJECT_VERSION="$IOS_BUILD"
 
 
-# Upload the dSYMs to Sentry, so the crash reports have readable C++ frames. The token is in credentials/sentry.env, see
-# docs/nogps/crash-reports.md; without it the build is still uploaded.
-SENTRY_ENV="$SCRIPT_DIR/../credentials/sentry.env"
-[ -f "$SENTRY_ENV" ] && source "$SENTRY_ENV"
-if [ -n "${SENTRY_AUTH_TOKEN:-}" ] && command -v sentry-cli > /dev/null; then
-  sentry-cli --org nongps --project nongps-maps-ios debug-files upload "$ARCHIVE_PATH/dSYMs"
-else
-  echo "WARNING: SENTRY_AUTH_TOKEN or sentry-cli is missing: the dSYMs are not uploaded to Sentry" >&2
-fi
+# Upload the dSYMs to Sentry, so the crash reports have readable C++ frames.
+sentry-cli debug-files upload --org nongps --project nongps-maps-ios "$ARCHIVE_PATH/dSYMs"
 
 
 # Create a plist with upload options.

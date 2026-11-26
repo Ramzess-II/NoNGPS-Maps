@@ -8,8 +8,10 @@ Crashes of both apps go to Sentry (organization `nongps`, EU region), one projec
 - On by default in beta and release builds; off in Debug builds of the app (iOS: `DEBUG`, Android: `BuildConfig.DEBUG`).
 - The switch "Send crash reports" (`nogps_crash_reports`) in the settings turns it off at once and keeps it off:
   iOS `MWMSettings.crashReportsEnabled`, Android the `SendCrashReports` preference.
-- The DSN is `SENTRY_DSN_IOS` / `SENTRY_DSN_ANDROID` in `private.h`. An empty value disables reporting on that
-  platform. A DSN is not a secret: it only permits sending events.
+- The DSN is `SENTRY_DSN_IOS` / `SENTRY_DSN_ANDROID` in `config/sentry_dsn.h` of the private logs repo
+  `koloboid/NoNGPS-Logs`, checked out as `trip-logs/` (worktrees link it). `private.h` includes it when it is there
+  and has empty DSNs otherwise, which disable reporting: CI and clones without the logs repo send nothing. Android
+  Gradle reads the same file. A DSN only permits sending events, and the shipped binaries carry it.
 - Android: every flavor but `fdroid`, which links no Sentry (the real `CrashReporter` is in `src/sentry`, the no-op one
   in `src/nosentry`).
 - Not sent: coordinates, trip logs, logcat or NSLog lines, screenshots, view hierarchy, network breadcrumbs, IP
@@ -31,8 +33,9 @@ Reports have readable C++ frames only after the symbols are uploaded. The token 
 export SENTRY_AUTH_TOKEN=...
 ```
 
-- iOS: `iphone/upload_to_appstore.sh` sources it and runs `sentry-cli debug-files upload` over the archive's dSYMs; it
-  warns and goes on when the token or `sentry-cli` is missing.
+- iOS: `iphone/upload_to_appstore.sh` sources it and runs `sentry-cli debug-files upload` over the archive's dSYMs. It
+  stops before the archive when the token or `sentry-cli` is missing or
+  `SENTRY_DSN_IOS` is empty.
 - Android: the `io.sentry.android.gradle` plugin (`uploadNativeSymbols`) is applied only when `SENTRY_AUTH_TOKEN` is in
   the environment of the Gradle build.
 

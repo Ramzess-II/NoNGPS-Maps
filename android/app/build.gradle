@@ -25,10 +25,13 @@ if (googleFirebaseServicesEnabled) {
 }
 
 // Sentry crash reports, see docs/nogps/privacy-policy.md. Every flavor but fdroid links the SDK. The DSN is
-// SENTRY_DSN_ANDROID of ../private.h: empty or missing disables the reporting. The plugin uploads the native symbols
-// when SENTRY_AUTH_TOKEN is set, see docs/nogps/crash-reports.md.
+// SENTRY_DSN_ANDROID of ../trip-logs/config/sentry_dsn.h, which ../private.h includes: empty or missing disables the
+// reporting. The plugin uploads the native symbols when SENTRY_AUTH_TOKEN is set, see docs/nogps/crash-reports.md.
 def sentryDsn = {
-  def match = rootProject.file('../private.h').text =~ /#define\s+SENTRY_DSN_ANDROID\s+"([^"]*)"/
+  def file = rootProject.file('../trip-logs/config/sentry_dsn.h')
+  if (!file.exists())
+    return ''
+  def match = file.text =~ /#define\s+SENTRY_DSN_ANDROID\s+"([^"]*)"/
   return match.find() ? match.group(1) : ''
 }()
 def sentryUploadEnabled = !isFdroid && !(System.getenv('SENTRY_AUTH_TOKEN') ?: '').isEmpty()
