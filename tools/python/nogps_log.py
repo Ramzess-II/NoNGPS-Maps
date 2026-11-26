@@ -40,6 +40,7 @@ import zipfile
 from datetime import datetime, timedelta
 
 import nogps_db
+import nogps_rating
 import nogps_replay
 import nogps_trip_log
 
@@ -1155,6 +1156,32 @@ def print_rules(analysis):
                                                 '; '.join(notes)))
 
 
+def print_rating(analysis):
+    """The driver rating of the driven trips, rebuilt from lim= and speed= of the TRIP lines, see nogps_rating.py:
+    for each trip the share of the driven km that was rated and the episodes by band, then the score of the
+    window the app shows. A trip logged before lim= was written has no rated driving."""
+    print('%3s  %-16s %7s %7s %6s  %-9s %5s' % ('id', 'start', 'km', 'rated', 'share', 'episodes', 'score'))
+    results = []
+    for trip in analysis.trips:
+        if not trip.driven:
+            continue
+        r = nogps_rating.rate_rows(trip.rows, num)
+        results.append(r)
+        km = trip.summary()['km']
+        print('%3d  %-16s %7.2f %7.2f %5.0f%%  %-9s %5s' % (
+            trip.id, from_ms(trip.start).strftime('%Y-%m-%d %H:%M'), km, r['rated_km'],
+            100 * r['rated_km'] / km if km else 0, '/'.join(str(b) for b in r['bands']),
+            r['score'] if r['rated_s'] else '-'))
+        for e in r['episodes']:
+            print('       SPEEDING %s dur=%.1f dist=%d lim=%d peak=%d mean=%d band=%d' % (
+                clock(e['ms']), e['dur'], e['dist'], e['lim'], e['peak'], e['mean'], e['band']))
+    w = nogps_rating.window(results)
+    print('window: %.0f km rated, %s, score %d, episodes %s' % (
+        w['rated_km'], 'enough' if w['enough'] else 'not enough (under %d km)' % nogps_rating.SCORE_MIN_KM, w['score'],
+        '/'.join(str(b) for b in w['bands'])))
+    print('episodes: +20..40 / +40..60 / over +60')
+
+
 def print_losses(analysis):
     """The road losses of the logs: for each, whether a tap on the road lost panel would have placed the mark by
     GPS (see Group.road_losses), and the totals per set of nogps_replay.py days. The trip logs have no taps on the
@@ -1244,6 +1271,7 @@ def main():
         description='What the trip log viewer shows, as text: for a terminal and for Claude Code.',
         epilog='''commands:
   trips   the trips of the logs, --all with the stationary ones
+  rating  the driver rating from the lim= and speed= of the TRIP lines: rated km, episodes by band, score
   losses  the road losses: would a tap on the road lost panel have placed the mark by GPS
   rules   how often each rule of the core fired over all the trips, and what came next
   trip    a trip: stats, error from GPS, counts, events, anomalies
@@ -1253,7 +1281,7 @@ def main():
   replay  the trip against a nogps-replay-out.txt: --replay file
   flags   every flag of the tree with its trip, the time, the voice and where the viewer shows it''',
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('command', choices=['trips', 'losses', 'rules', 'trip', 'events', 'state', 'rows', 'replay',
+    parser.add_argument('command', choices=['trips', 'rating', 'losses', 'rules', 'trip', 'events', 'state', 'rows', 'replay',
                                             'flags'])
     parser.add_argument('logs', nargs='+', help='the logs tree logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, '
                         'logs.zip or log files')
@@ -1277,6 +1305,8 @@ def main():
         parser.error(str(e))
     if args.command == 'trips':
         return print_trips(analysis, args.all)
+    if args.command == 'rating':
+        return print_rating(analysis)
     if args.command == 'losses':
         return print_losses(analysis)
     if args.command == 'rules':
