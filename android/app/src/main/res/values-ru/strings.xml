@@ -1511,14 +1511,4 @@
     <string name="nogps_intro_left">Поверните машину или укажите её рукой. Удержание двигает панель.</string>
     <!-- Menu row and title of the page that explains the app and plays the intro again -->
     <string name="nogps_how_title">Как работает NonGPS</string>
-    <!-- Heading of the part of the How NonGPS works page about the panels of the map -->
-    <string name="nogps_how_panels">Панели карты</string>
-    <!-- Line of the How NonGPS works page about the bottom bar -->
-    <string name="nogps_how_bottom">Нижняя панель: машины, датчик и GPS.</string>
-    <!-- Line of the How NonGPS works page about the panel with the zoom buttons -->
-    <string name="nogps_how_right">Правая панель: масштаб и поворот карты. Удержание двигает панель.</string>
-    <!-- Line of the How NonGPS works page about the panel with the car buttons -->
-    <string name="nogps_how_left">Левая панель: повернуть машину или указать её рукой. Удержание двигает панель.</string>
-    <!-- Button of the How NonGPS works page that plays the intro of the first start again -->
-    <string name="nogps_how_intro_again">Показать подсказки снова</string>
 </resources>
