@@ -2139,6 +2139,7 @@ double Engine::ShiftPosition(double distanceM)
   m_lastPositionSource = PositionSource::Manual;
   if (shifted->m_atCrossing)
     BlockShift(forward, location.m_position);
+  SharePlace(PeerTrigger::PlaceSet, 'T', location);
 
   // Moving back returns the car to the passed part of the route, which is cut off, so it is rebuilt.
   RebuildRouteIfOffRoute(location);
