@@ -199,6 +199,18 @@ class Esp32BleTransport
   private BluetoothGatt mWakeGatt;
   @Nullable
   private Runnable mWakeListener;
+  // Arms the pending connection again when the 5 minutes after a wake are over and nothing has called close() since.
+  private final Runnable mRearmWake = this::leaveWakeIfClosed;
+  private boolean mWakeStateReceiverRegistered;
+  // Bluetooth switched off drops the pending connection without notice: it is made again when Bluetooth is on.
+  private final BroadcastReceiver mWakeStateReceiver = new BroadcastReceiver() {
+    @Override
+    public void onReceive(Context context, Intent intent)
+    {
+      if (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR) == BluetoothAdapter.STATE_ON && !mOpen && !mBondLost)
+        leaveWake();
+    }
+  };
 
   private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
     @Override
@@ -234,6 +246,7 @@ class Esp32BleTransport
   {
     closeAll();
     releaseWake();
+    mMainHandler.removeCallbacks(mRearmWake);
     mOpen = true;
     mRetryDelayMs = RETRY_DELAY_MS;
     mSilentConnections = 0;
@@ -397,10 +410,20 @@ class Esp32BleTransport
   {
     if (!mOpen)
       return;
-    final boolean wake = waitsForBox(mWakeBox != null, mBondLost, mWakeGatt != null,
-                                   SystemClock.elapsedRealtime() - mWokeMs);
+    final long sinceWakeMs = SystemClock.elapsedRealtime() - mWokeMs;
+    final boolean wake = waitsForBox(mWakeBox != null, mBondLost, mWakeGatt != null, sinceWakeMs);
+    final boolean wakeLater = !wake && sinceWakeMs < WAKE_REARM_MS
+                              && waitsForBox(mWakeBox != null, mBondLost, mWakeGatt != null, WAKE_REARM_MS);
     closeAll();
     if (wake)
+      leaveWake();
+    else if (wakeLater)
+      mMainHandler.postDelayed(mRearmWake, WAKE_REARM_MS - sinceWakeMs);
+  }
+
+  private void leaveWakeIfClosed()
+  {
+    if (!mOpen && mWakeGatt == null && !mBondLost)
       leaveWake();
   }
 
@@ -918,8 +941,18 @@ class Esp32BleTransport
   private void leaveWake()
   {
     releaseWake();
+    mMainHandler.removeCallbacks(mRearmWake);
     final BluetoothDevice box = mWakeBox;
-    if (box == null || !hasPermission() || box.getBondState() != BluetoothDevice.BOND_BONDED)
+    if (box == null)
+      return;
+    if (!mWakeStateReceiverRegistered)
+    {
+      ContextCompat.registerReceiver(mContext, mWakeStateReceiver,
+                                     new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
+                                     ContextCompat.RECEIVER_NOT_EXPORTED);
+      mWakeStateReceiverRegistered = true;
+    }
+    if (!hasPermission() || box.getBondState() != BluetoothDevice.BOND_BONDED)
       return;
     Logger.i(TAG, "Waiting for the box " + box.getAddress() + " in the background");
     try
@@ -935,6 +968,11 @@ class Esp32BleTransport
   @SuppressLint("MissingPermission")
   private void releaseWake()
   {
+    if (mWakeStateReceiverRegistered)
+    {
+      mWakeStateReceiverRegistered = false;
+      mContext.unregisterReceiver(mWakeStateReceiver);
+    }
     final BluetoothGatt gatt = mWakeGatt;
     mWakeGatt = null;
     if (gatt == null)
