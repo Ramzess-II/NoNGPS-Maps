@@ -92,6 +92,10 @@ IOS_LOCAL_TIME = re.compile(
     r'Local time: (\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) \+0000(?: , Time Zone: GMT(?:([+-])(\d+)(?::(\d\d))?)?)?')
 IOS_CORE_SOURCE = re.compile(r'^\S+\.(?:cpp|hpp):\d+ ')
 IOS_TRIP = re.compile(r'^LOGFMT .* trip=(\d\d)(\d\d)(\d\d)')
+# A line earlier than the previous one by more than this starts a new run of the app.
+IOS_NEW_RUN_MS = 60_000
+# The file name matches a zone when its distance from the UTC time is a quarter of an hour this close.
+IOS_ZONE_TOLERANCE_S = 120
 IOS_STARTED = ' started, detected CPU cores'
 FIELD = re.compile(r' (\w+)=(\S+)')
 SOURCE = re.compile(r'^\S+:\d+ (\w+)\(\): (.*)$')
@@ -169,7 +173,8 @@ def log_lines(f):
         if not m:
             continue
         seconds, body = round(float(m.group(2)) * 1000), m.group(3)
-        if seconds + 1000 < previous:
+        # A line is logged late by a few seconds; a new run starts again from 0.
+        if seconds + IOS_NEW_RUN_MS < previous:
             launch = None
         previous = seconds
         anchor = IOS_LOCAL_TIME.search(body)
@@ -180,11 +185,20 @@ def log_lines(f):
                 minutes = int(anchor.group(3)) * 60 + int(anchor.group(4) or 0)
                 offset = -minutes * 60 if anchor.group(2) == '-' else minutes * 60
             elif 'Time Zone: GMT' not in body and trip is not None:
-                # Only the first file of a launch has the zone, and not always as "GMT+N" ("EST", "CET"): the
-                # file name is local, so the zone is its distance from the UTC time of the same moment.
+                # Only the first file of a launch has the zone, and not always as "GMT+N" ("EST", "CET"). The file
+                # name is local, but it is the time of the file or of the launch it continues: take the zone that
+                # either makes a whole quarter of an hour, and none when neither does.
                 utc_seconds = (utc.hour * 60 + utc.minute) * 60 + utc.second
-                offset = (trip - utc_seconds + 12 * 3600) % 86400 - 12 * 3600
-                offset = round(offset / 900) * 900
+                best = None
+                for start in (utc_seconds, utc_seconds - seconds // 1000):
+                    distance = (trip - start + 12 * 3600) % 86400 - 12 * 3600
+                    error = abs(distance - round(distance / 900) * 900)
+                    if best is None or error < best[0]:
+                        best = (error, round(distance / 900) * 900)
+                if best[0] > IOS_ZONE_TOLERANCE_S:
+                    launch = None
+                    continue
+                offset = best[1]
             launch = utc + datetime.timedelta(seconds=offset, milliseconds=-seconds)
         if launch is None:
             continue

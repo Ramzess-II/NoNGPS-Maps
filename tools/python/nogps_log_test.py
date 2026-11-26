@@ -501,6 +501,27 @@ class ReplayLogsTest(unittest.TestCase):
                 trips, _, _ = nogps_replay.read([path], '11-26')
                 self.assertEqual([t['ms'] for t in trips], [1810000], (zone_line, utc))
 
+    def test_ios_file_that_continues_a_launch_takes_the_zone_from_the_launch_start(self):
+        """The name of a file can be the local time of the launch it continues: 45338 s before 05:47:23 UTC is 17:11:45
+        UTC, 19:11:45 in GMT+2. A name that fits neither gives no zone and no lines, not a wrong day."""
+        for trip, line_day in (('191145', '11-25'), ('185210', None)):
+            run = ['I(1) 45338.00000 Local time: 2026-11-25 05:47:23 +0000',
+                   'I(1) 45348.00000 nogps/engine.cpp:2312 LogTrip(): %s' % trip_line()]
+            with tempfile.TemporaryDirectory() as folder:
+                path = os.path.join(folder, 'iPhone17_1-3b77', '2026-11-25', trip + '.log')
+                write_tree(folder, {'iPhone17_1-3b77/2026-11-25/%s.log' % trip:
+                                    with_logfmt(run, 'iPhone17_1-3b77', trip=trip)})
+                self.assertEqual(sorted(nogps_replay.trip_days([path])), [line_day] if line_day else [])
+
+    def test_ios_line_logged_late_does_not_drop_the_lines_after_it(self):
+        run = ['I(1) 100.00000 Local time: 2026-11-25 10:00:00 +0000 , Time Zone: GMT+2',
+               'I(1) 97.00000 nogps/engine.cpp:2252 operator()(): EVENT gps_signal ms=1 from=GOOD to=NONE late',
+               'I(1) 100.10000 nogps/engine.cpp:2312 LogTrip(): %s' % trip_line()]
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, 'iPhone17_1-3b77', '2026-11-25', '115820.log')
+            write_tree(folder, {'iPhone17_1-3b77/2026-11-25/115820.log': with_logfmt(run, 'iPhone17_1-3b77')})
+            self.assertEqual(nogps_replay.trip_days([path]), {'11-25': 1})
+
     def test_input_of_a_tree_of_two_phones_is_a_file_a_phone(self):
         with tempfile.TemporaryDirectory() as folder:
             self.two_phones(folder)
