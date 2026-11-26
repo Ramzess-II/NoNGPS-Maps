@@ -34,6 +34,15 @@ def sentryDsn = {
   def match = file.text =~ /#define\s+SENTRY_DSN_ANDROID\s+"([^"]*)"/
   return match.find() ? match.group(1) : ''
 }()
+// A release built without the DSN ships with crash reports off and nothing says so: warn loudly.
+if (sentryDsn.isEmpty() && !isFdroid) {
+  gradle.taskGraph.whenReady { graph ->
+    if (graph.allTasks.any { it.project == project && it.name ==~ /(assemble|bundle|package)(Google|Web|Huawei)Release/ }) {
+      logger.warn('\n' + '*' * 78 + '\nWARNING: SENTRY_DSN_ANDROID is empty, this release has crash reports off.\n' +
+          'Clone trip-logs/ (koloboid/NoNGPS-Logs) next to the app, see docs/nogps/crash-reports.md.\n' + '*' * 78 + '\n')
+    }
+  }
+}
 def sentryUploadEnabled = !isFdroid && !(System.getenv('SENTRY_AUTH_TOKEN') ?: '').isEmpty()
 if (sentryUploadEnabled) {
   apply plugin: 'io.sentry.android.gradle'
