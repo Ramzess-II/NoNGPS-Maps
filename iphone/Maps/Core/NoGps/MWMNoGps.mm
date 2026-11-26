@@ -157,7 +157,7 @@ namespace
 {
 NSArray<NSNumber *> * BandCountsToObjC(std::array<int, 3> const & counts)
 {
-  return @[ @(counts[0]), @(counts[1]), @(counts[2]) ];
+  return @[@(counts[0]), @(counts[1]), @(counts[2])];
 }
 }  // namespace
 
