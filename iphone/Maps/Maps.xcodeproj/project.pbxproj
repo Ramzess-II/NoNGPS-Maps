@@ -12,6 +12,7 @@
 		5E0A00000000000000000009 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 5E0A00000000000000000008 /* Sentry */; };
 		N0GPS1B00000000000000B01 /* NoGpsButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS1A00000000000000B01 /* NoGpsButton.swift */; };
 		N0GPS3B00000000000000008 /* NoGpsGlobeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B00000000000000007 /* NoGpsGlobeTests.swift */; };
+		N0GPS3B000000000000AB01 /* NoGpsAboutLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B000000000000AB02 /* NoGpsAboutLayoutTests.swift */; };
 		N0GPS3B00000000000000006 /* GlobeCoastline.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B00000000000000005 /* GlobeCoastline.swift */; };
 		N0GPS3B00000000000000004 /* GlobeSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B00000000000000003 /* GlobeSceneView.swift */; };
 		N0GPS3B00000000000000002 /* GlobeScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B00000000000000001 /* GlobeScene.swift */; };
@@ -851,6 +852,7 @@
 		5E0A00000000000000000002 /* CrashReporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporter.swift; sourceTree = "<group>"; };
 		5E0A00000000000000000005 /* CrashReporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporterTests.swift; sourceTree = "<group>"; };
 		N0GPS3B00000000000000007 /* NoGpsGlobeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsGlobeTests.swift; sourceTree = "<group>"; };
+		N0GPS3B000000000000AB02 /* NoGpsAboutLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsAboutLayoutTests.swift; sourceTree = "<group>"; };
 		N0GPS3B00000000000000005 /* GlobeCoastline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobeCoastline.swift; sourceTree = "<group>"; };
 		N0GPS3B00000000000000003 /* GlobeSceneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobeSceneView.swift; sourceTree = "<group>"; };
 		N0GPS3B00000000000000001 /* GlobeScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobeScene.swift; sourceTree = "<group>"; };
@@ -2462,6 +2464,7 @@
 				0E779A1A71BDFB9F9F1BA779 /* NoGpsFlagsTests.swift */,
 				5B4A00000000000000000F01 /* NoGpsBarColorsTests.swift */,
 				N0GPS3B00000000000000007 /* NoGpsGlobeTests.swift */,
+				N0GPS3B000000000000AB02 /* NoGpsAboutLayoutTests.swift */,
 				E4B1C0DE7A52C3F100A1B2C4 /* Esp32BleTransportTests.swift */,
 				N0GPS1A00000000000000006 /* NoGpsIntroTests.swift */,
 				A0C47D010000000000000001 /* NoGpsCarMenuTests.swift */,
@@ -5516,6 +5519,7 @@
 				D560CC6FC73D20258FF65C5E /* NoGpsFlagsTests.swift in Sources */,
 				5B4A00000000000000000B01 /* NoGpsBarColorsTests.swift in Sources */,
 				N0GPS3B00000000000000008 /* NoGpsGlobeTests.swift in Sources */,
+				N0GPS3B000000000000AB01 /* NoGpsAboutLayoutTests.swift in Sources */,
 				E4B1C0DE7A52C3F100A1B2C3 /* Esp32BleTransportTests.swift in Sources */,
 				5C0A7E1B3D2F4A6890B1D007 /* BottomMenuPresenterTests.swift in Sources */,
 				N0GPS1B00000000000000006 /* NoGpsIntroTests.swift in Sources */,

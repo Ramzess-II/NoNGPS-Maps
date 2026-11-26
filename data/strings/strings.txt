@@ -46660,12 +46660,6 @@ tags = android-app,apple-maps
 en = Drag the Earth, tap a satellite to switch it off.
 uk = Потягніть Землю, торкніться супутника, щоб вимкнути його.
 
-[nogps_about_description]
-tags = android-app,apple-maps
-en = Without GPS the car is driven by the inertial navigation: the turns come from the gyroscope, the distance from the car speed via OBD-II. The car is kept on the roads of the offline map.
-ru = Без GPS машину ведёт инерциальная навигация: повороты — по гироскопу, расстояние — по скорости автомобиля из OBD-II. Машина держится дорог офлайн-карты.
-uk = Без GPS авто веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю авто з OBD-II. Авто тримається доріг офлайн-карти.
-
 [nogps_version]
 comment = NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12)
 tags = android-app,apple-maps
