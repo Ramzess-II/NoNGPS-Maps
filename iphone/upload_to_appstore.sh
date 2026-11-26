@@ -17,8 +17,9 @@ IPA_PATH="$BUILD_DIR"
 rm -rf "$ARCHIVE_PATH"
 
 # A release without the DSN sends no crash reports, see docs/nogps/crash-reports.md.
-if ! grep -Eq '^#define SENTRY_DSN_IOS "https://' "$SCRIPT_DIR/../private.h"; then
-  echo "ERROR: SENTRY_DSN_IOS of private.h is empty: the release would send no crash reports" >&2
+SENTRY_DSN_FILE="$SCRIPT_DIR/../trip-logs/config/sentry_dsn.h"
+if ! grep -Eqs '^#define SENTRY_DSN_IOS "https://' "$SENTRY_DSN_FILE"; then
+  echo "ERROR: no SENTRY_DSN_IOS in $SENTRY_DSN_FILE: the release would send no crash reports" >&2
   exit 1
 fi
 

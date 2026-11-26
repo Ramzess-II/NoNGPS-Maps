@@ -16,6 +16,11 @@
 #define USER_BINDING_PKCS12 ""
 #define USER_BINDING_PKCS12_PASSWORD ""
 #define KAYAK_AFFILIATE_ID "kan_267335"
-// Crash reports to Sentry, one project per platform. An empty value disables them on that platform.
+// Crash reports to Sentry, one project per platform. The DSNs are in the private logs repo checked out as trip-logs/,
+// see docs/nogps/crash-reports.md. Without it they are empty, which disables the reports.
+#if __has_include("trip-logs/config/sentry_dsn.h")
+#include "trip-logs/config/sentry_dsn.h"
+#else
 #define SENTRY_DSN_IOS ""
 #define SENTRY_DSN_ANDROID ""
+#endif
