@@ -742,6 +742,10 @@ for (const kind of ['undo', 'again']) {
   check('app-only run leaves the firmware repo out', !/\/ws\/firmware: train/.test(appOnly), appOnly)
   check('both-repo run names each repo\'s branches', /\/app: train\/1, train\/gate/.test(both) && /\/firmware: train\/19, train\/gate/.test(both), both)
   check('the closed list is stated', /must not list worktrees to tidy/.test(appOnly) && /merge-train, merge-1, merge-2\b/.test(appOnly), appOnly)
+  console.log('25. build and test commands go through nogps_quiet.sh')
+  const bare = SRC.split('\n').filter((l) => /(&& |then |^)(just test|\.\/gradlew|idf\.py build|cmake --build|ctest)/.test(l) && !/QUIET|nogps_quiet/.test(l))
+  check('firmware build takes the script from the app checkout', /FW_QUIET = .*\$\{APP\}\/\$\{QUIET\}/.test(SRC) && /FW_BUILD = .*\$\{FW_QUIET\} idf\.py build/.test(SRC))
+  check('no bare build or test command in a prompt', bare.length === 0, bare.join('\n'))
 }
 
 console.log(failures ? `\n${failures} check(s) FAILED` : '\nall checks passed')

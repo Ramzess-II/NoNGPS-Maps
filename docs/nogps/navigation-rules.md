@@ -966,11 +966,11 @@
   (`manual` і `inertial`) і в листі «Блок».
 - Ведучий шле (`PEER,<kind>,<dist_mm>,<lat_e7>,<lon_e7>,<heading_cdeg>,<acc_dm>,<src>`, `esp32::Peer`), `dist_mm` —
   шлях блока (`NGD`) у мить місця:
-  - якір `A` щоразу, як місце задано: тап, розворот, перемикання дороги (`src` `T`, `R`, `W`), хороший GPS (`G`, не
+  - якір `A` щоразу, як місце задано: тап, зсув (`ShiftPosition`), розворот, перемикання дороги (`src` `T`, `R`, `W`), хороший GPS (`G`, не
     частіше ніж раз на `kPeerSnapshotIntervalMs` 5 с), і як відповідь на виправлення слідуючого;
   - знімок `S` кожні `kPeerSnapshotIntervalMs`, якщо за пів інтервалу не йшов якір: місце зараз, `src` `G`, коли
     ведучий довіряє GPS, і `M` в ручному режимі.
-- Слідуючий шле виправлення `C` (тап, розворот, перемикання дороги) і, поки ведучий у ручному режимі (його останній
+- Слідуючий шле виправлення `C` (тап, зсув (`ShiftPosition`), розворот, перемикання дороги) і, поки ведучий у ручному режимі (його останній
   `A`/`S` має `src` не `G`), кожну свою хорошу точку GPS (`G`). Свого рахунку не шле ніхто, отримане далі не шлеться.
 - Слідуючий несе місце ведучого від `dist_mm` до зараз своїм `NGD`: за останні `kPeerHistoryMs` 10 с він пам'ятає
   `dist_mm` і `yaw_mdeg` кожного рядка; від останнього рядка з `dist_mm` не більше за якір крок за кроком іде за
@@ -987,7 +987,6 @@
   задане користувачем (`T`): його скаже знімок з `M`.
 - Місце іншого телефону (`NGX`, `ParsePeer`) відкидається, коли широта поза ±90°, довгота поза ±180°, точність поза
   0…`esp32::kMaxPeerAccuracyDm` 1 000 000 дм чи відстань від’ємна.
-- Відома межа: зсув, пересунутий користувачем (`ShiftPosition`), не шлеться.
 
 ### Вибір GPS і нижня панель
 
@@ -1258,7 +1257,7 @@
     `mark_switched_stand_lost`, `mark_switched_by_user`;
   - `ACTION <назва>`: що відтворення виконує знову: `start`, `stop`, `ble_state` (рядок `Bluetooth = … bond lost = 0|1`, дія `L`, де прапорець — останнє поле),
     `box_info` (рядок `Box <id> firmware = …`, дія `I`), `gps_off` (`disabled=`, `by=`), `manual`
-    (`enabled=`, `by=`), `tap` (`by=`), `reverse`, `switch_mark`, `shift` (`m=`), `restore_car`. `by=` каже, хто
+    (`enabled=`, `by=`), `tap` (`by=`), `reverse`, `switch_mark`, `shift` (`m=`), `restore_car`, `route` і `route_follow` (рядок `Route state = <стан> was <попередній>`; пише `RoutingManager` годинником рушія через `Engine::LogRouteAction`: `route` — маршрут будується, перебудовується, знятий, завершений або без стеження, `route_follow` — користувач їде за маршрутом). `by=` каже, хто
     перемкнув: `user`, а решта (`core`, `gps_back`, `network_back`, `restore`, `box`, `tap`, `gps_mark`, `peer`) —
     ядро саме. У `tap` `by=` каже, хто поставив позначку: `user` або `tap` — користувач на карті, `gps_mark` — тап
     на панелі втрати дороги, `peer` — місце з іншого телефона, `core` — здогад ядра. Рядок `manual` перед позначкою
@@ -1269,7 +1268,8 @@
     `gps_spoofed`, `gps_untrusted`, `gps_off_roads`, `gps_trusted`, `network_back`, `manual_by_itself`,
     `last_trusted`, `obd_state`, `box_event`, `speed_factor`, `speed_rough_table`, `speed_table`,
     `speed_table_cleared`; рядки `Routing session state`, `Calculating the route` і `EnableFollowMode`
-    пишуть платформи й `libs/routing`, без тегу (#498);
+    пише `libs/routing`, без тегу й часу: він не бачить годинника рушія, а відтворення читає їх за назвою
+    функції (`nogps_replay.py`); теговані `ACTION route` і `route_follow` пише `RoutingManager`;
   - `MAPS ms=… version=261101,260714`: версії карт на диску, від новішої (`MapApi::GetMapsVersion`) — версії
     зареєстрованих карт країн, без World, бо дороги навігації беруться з карт країн; без карт — `version=-`. Це не
     версія списку країн (`Storage::GetCurrentDataVersion`): карта лежить такою, якою її завантажили, доки її не
@@ -1301,9 +1301,9 @@
   першої поїздки файлу, — першої. Якщо в одному файлі двигун запускали вдруге (застосунок повертався з фону), поїздка
   того запуску починається від його `ACTION start`: рядки, які `Engine::Start` пише за кілька мілісекунд до першого
   TRIP (`start`, `MAPS`, `CALIBRATION`, `restore_car`, `gps_off by=restore`, перша подія стану), належать їй, а не
-  попередній поїздці, хоч і стоять раніше за її `started_ms`. Маршрути лежать у журналі лише реченнями без часу, тож
-  у базі їх поки немає; id коробки й стан Bluetooth — теговані рядки (`ACTION box_info` і `ble_state`), вони лежать
-  у `action`.
+  попередній поїздці, хоч і стоять раніше за її `started_ms`. Рядки `libs/routing` про маршрут (`Routing session state` та інші) не мають часу, тож
+  у базі їх немає; маршрут, id коробки й стан Bluetooth — теговані рядки (`ACTION route`, `route_follow`, `box_info` і
+  `ble_state`), вони лежать у `action`.
 - Локальне дерево: `nogps_logs.py fetch` (`just fetch`, скіл `/nogps-fetch`) копіює `logs/` і `flags/` обох
   застосунків (release і debug) з телефонів, під'єднаних до комп'ютера: iOS — `xcrun devicectl` з контейнера
   застосунку (`Documents/`, лише macOS, застосунок з App Store контейнера не дає), Android — `adb pull` з

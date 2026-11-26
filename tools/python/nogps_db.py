@@ -10,7 +10,7 @@ core (#463) cannot go unseen.
 
 Not mapped: the ordinary lines of the application, which have no `ms=`; their sentences are not data. The routes the
 replay needs are in a log only as sentences without a time yet, so the tables below do not have them; the box id and
-the Bluetooth state are tagged lines (ACTION box_info and ble_state) and go to `action`.
+the Bluetooth state and the route are tagged lines (ACTION box_info, ble_state, route and route_follow) and go to `action`.
 
 Tables (times are unix ms, UTC, as the core writes them):
   file        one row per log file: the LOGFMT line, the maps (the first MAPS line)
@@ -26,7 +26,7 @@ Tables (times are unix ms, UTC, as the core writes them):
               written in it
   calibration the CALIBRATION lines: what the car had learned, as the core serializes it
   action      what the replay drives again -- start, stop, gps_off, manual, tap, reverse, switch_mark, shift,
-              restore_car -- and what the box tells about itself: ble_state, box_info. payload is the JSON of the
+              restore_car -- and what the box and the router tell about themselves: ble_state, box_info, route, route_follow. payload is the JSON of the
               keys of the line, text its sentence
   rule        the rules that move the mark, event what happened to the state of the core: the same
   note        BOXACC, TURN, RPM, POTHOLE, SPRINT and MAPS lines, the text after the tag
@@ -62,7 +62,7 @@ RULES = frozenset((
     'loop fork_branch wait_ahead wait_at_roundabout roundabout_exit followed_apart back_on_road mark_switched_by_way '
     'far_mark_taken mark_switched_road_lost mark_switched_turn mark_switched_stand_lost mark_switched_by_user'
 ).split())
-ACTIONS = frozenset('start stop ble_state box_info gps_off manual tap reverse switch_mark shift restore_car'.split())
+ACTIONS = frozenset('start stop ble_state box_info gps_off manual tap reverse switch_mark shift restore_car route route_follow'.split())
 EVENTS = frozenset((
     'position_source gps_signal box_state box_ble peer_role gps_spoofed gps_untrusted gps_off_roads gps_trusted '
     'network_back manual_by_itself last_trusted obd_state box_event speed_factor speed_rough_table speed_table '

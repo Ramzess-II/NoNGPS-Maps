@@ -76,6 +76,8 @@ RESTARTED = [
 # The lines of the core that carry a tag and a name but no keys: their sentence is the data (#563).
 PROSE = [
     ('OnBleState', 'ACTION ble_state', 'Bluetooth = CONNECTED'),
+    ('operator()', 'ACTION route', 'Route state = RouteBuilding was NoValidRoute'),
+    ('operator()', 'ACTION route_follow', 'Route state = OnRoute was RouteNotStarted'),
     ('OnInfo', 'ACTION box_info', 'Box C47D firmware = 1.2 ESP32 S3 rev 1 updates = 1'),
     ('RestoreTrustedPosition', 'EVENT last_trusted', 'Last trusted position = 10.000000,20.000000,%d' % T0),
     ('OnLine', 'EVENT obd_state', 'OBD state = NO_ADAPTER'),
@@ -185,7 +187,7 @@ class ImportTest(unittest.TestCase):
                                     in enumerate(PROSE)])
         conn = self.db()
         self.assertEqual([r[0] for r in conn.execute('SELECT kind FROM action ORDER BY ms')],
-                         ['ble_state', 'box_info'])
+                         ['ble_state', 'route', 'route_follow', 'box_info'])
         self.assertEqual([r[0] for r in conn.execute('SELECT name FROM event ORDER BY ms')],
                          ['last_trusted', 'obd_state', 'box_event', 'speed_factor', 'speed_rough_table',
                           'speed_table', 'speed_table_cleared'])

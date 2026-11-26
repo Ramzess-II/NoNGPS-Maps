@@ -184,7 +184,10 @@ Triage notes: ${JSON.stringify(t)}
 - Follow .claude/rules/nogps-workflow.md and steps 1-4 of .claude/skills/nogps-pr/SKILL.md (read it in the \
 worktree): scope, verification, living docs in a separate [docs] commit, both platforms, follow-up issues for \
 everything left. Build in <worktree>/build-${t.name}. Core tests: cmake --preset debug -B build-${t.name} \
--DSKIP_QT_GUI=ON, then just test "NoGps_.*" build-${t.name}. iOS: build with -derivedDataPath \
+-DSKIP_QT_GUI=ON, then just test "NoGps_.*" build-${t.name}. Run each build and test command (cmake --build, just \
+test, ctest, ./gradlew, xcodebuild, idf.py) as tools/unix/nogps_quiet.sh <command> from the app worktree root (../tools/... \
+in android/; in a firmware worktree use ${APP}/tools/unix/nogps_quiet.sh, or run bare while that file is missing): it prints the tail, or on failure the error lines and the tail, and names the file with the full output. \
+iOS: build with -derivedDataPath \
 <worktree>/build-${t.name}-ios, so removing the worktree frees it. Firmware: build it with ESP-IDF the way \
 ${FW}/README.md says (". ~/esp/esp-idf/export.sh" on the Mac); build unsigned when the signing key is missing.
 - Commits: the "Commit messages" format of CLAUDE.md, git commit -s. Run the formatters and checks CI gates for \
