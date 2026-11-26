@@ -6829,6 +6829,27 @@ UNIT_TEST(NoGps_Engine_PeerFollowerTapReachesLeaderAndIsAnswered)
   TEST_EQUAL(TwoPhones::CountSent(follower, 'A'), 0, ());
 }
 
+UNIT_TEST(NoGps_Engine_PeerShiftReachesTheOtherPhone)
+{
+  TwoPhones phones;
+  auto & leader = phones.m_leader;
+  auto & follower = phones.m_follower;
+  MarkCar(leader, 150);
+  phones.Drive(1000, 0, 0);
+  TestAlmostEqualAbs(East(follower.Last().m_position), 150, 1);
+  size_t const before = TwoPhones::CountSent(leader, 'A');
+
+  // Not a snapshot interval later: the shift is told at once.
+  double const applied = leader.m_engine.ShiftPosition(20);
+  TEST_GREATER(applied, 0, ());
+  phones.Drive(300, 0, 0);
+  TEST_EQUAL(TwoPhones::CountSent(leader, 'A'), before + 1, ());
+  TestAlmostEqualAbs(East(follower.Last().m_position), East(leader.Last().m_position), 1);
+  TestAlmostEqualAbs(East(follower.Last().m_position), 150 + applied, 1);
+  // What it has got it doesn't send on.
+  TEST_EQUAL(TwoPhones::CountSent(follower, 'C'), 0, ());
+}
+
 UNIT_TEST(NoGps_Engine_PeerReversalAndSwitchReachTheOtherPhone)
 {
   TwoPhones phones;
