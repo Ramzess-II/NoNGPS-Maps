@@ -112,6 +112,10 @@ the gate worktree, as the whole train worked before. A gate worktree that was re
 scheduler is tested by `node .claude/workflows/nogps-merge-test.mjs` (stubbed agents, no network); the worktrees go
 away at the end of the run.
 
+The agents of the train and of the roller run their builds and tests through `tools/unix/nogps_quiet.sh <command>`:
+it prints the last lines on success, and the error lines and the tail on failure, and names the file with the full
+output, so a build log doesn't fill an agent's context. Do the same when you drive a long build yourself.
+
 IMPORTANT: nothing here rebases a PR branch or force-pushes it, with or without a lease. A branch of an open PR is
 only moved forward: master is merged into it, so every push is a fast-forward. This holds for the train, for a
 session and for an agent, and a push that would need a force is a reason to stop and tell the user.
