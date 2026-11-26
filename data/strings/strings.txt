@@ -47841,9 +47841,9 @@ uk = Ваша машина, датчик NonGPS і GPS. Натисніть, що
 [nogps_intro_right]
 comment = Balloon of the first start pointing at the panel with the zoom buttons
 tags = android-app,apple-maps
-en = Zoom and turn the map. Hold the panel to move it anywhere on the screen.
-ru = Масштаб и поворот карты. Удержите панель, чтобы переместить её в любое место экрана.
-uk = Масштаб і поворот мапи. Утримуйте панель, щоб перемістити її в будь-яке місце екрана.
+en = Zoom and turn the map. Hold the panel to move it up or down.
+ru = Масштаб и поворот карты. Удержите панель, чтобы переместить её вверх или вниз.
+uk = Масштаб і поворот мапи. Утримуйте панель, щоб перемістити її вгору або вниз.
 
 [nogps_intro_right_swipe]
 comment = Appended to nogps_intro_right, the zoom buttons also take a slide

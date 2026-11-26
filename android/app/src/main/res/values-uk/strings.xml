@@ -1517,7 +1517,7 @@
     <!-- Balloon of the first start pointing at the bottom bar -->
     <string name="nogps_intro_bottom">Ваша машина, датчик NonGPS і GPS. Натисніть, щоб вибрати машину, підключити датчик або побачити сигнал GPS.</string>
     <!-- Balloon of the first start pointing at the panel with the zoom buttons -->
-    <string name="nogps_intro_right">Масштаб і поворот мапи. Утримуйте панель, щоб перемістити її в будь-яке місце екрана.</string>
+    <string name="nogps_intro_right">Масштаб і поворот мапи. Утримуйте панель, щоб перемістити її вгору або вниз.</string>
     <!-- Appended to nogps_intro_right, the zoom buttons also take a slide -->
     <string name="nogps_intro_right_swipe">Проведіть уздовж +/−, щоб плавно змінювати масштаб.</string>
     <!-- Balloon of the first start pointing at the panel with the car buttons -->
