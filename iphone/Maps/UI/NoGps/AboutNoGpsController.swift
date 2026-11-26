@@ -4,6 +4,7 @@ final class AboutNoGpsController: MWMViewController {
   private enum Constants {
     static let logoSize: CGFloat = 64
     static let versionSpacing: CGFloat = 4
+    static let globeMinHeight: CGFloat = 200
     static let stackSpacing: CGFloat = 15
     static let stackInset: CGFloat = 20
     static let actionsSpacing: CGFloat = 12
@@ -18,7 +19,6 @@ final class AboutNoGpsController: MWMViewController {
   private let upstreamVersionLabel = UILabel()
   private let headlineLabel = UILabel()
   private let globeView = GlobeSceneView()
-  private let descriptionLabel = UILabel()
   /// A text view, not a label: both names of the credit are links of their own.
   private let mapDataTextView = UITextView()
   /// Buy the box, accented, and the source code under it: the full width of the text above.
@@ -81,10 +81,6 @@ private extension AboutNoGpsController {
     headlineLabel.textAlignment = .center
     headlineLabel.numberOfLines = 0
 
-    descriptionLabel.setFontStyle(.regular16, color: .blackPrimary)
-    descriptionLabel.text = L("nogps_about_description")
-    descriptionLabel.numberOfLines = 0
-
     setupMapData()
 
     actionsView.axis = .vertical
@@ -138,7 +134,6 @@ private extension AboutNoGpsController {
     stackView.setCustomSpacing(Constants.versionSpacing, after: versionLabel)
     stackView.addArrangedSubview(headlineLabel)
     stackView.addArrangedSubview(globeView)
-    stackView.addArrangedSubview(descriptionLabel)
     stackView.addArrangedSubview(mapDataTextView)
     stackView.addArrangedSubview(actionsView)
     stackView.addArrangedSubview(linksView)
@@ -150,12 +145,18 @@ private extension AboutNoGpsController {
     logoImageView.translatesAutoresizingMaskIntoConstraints = false
     headlineLabel.translatesAutoresizingMaskIntoConstraints = false
     globeView.translatesAutoresizingMaskIntoConstraints = false
-    descriptionLabel.translatesAutoresizingMaskIntoConstraints = false
     mapDataTextView.translatesAutoresizingMaskIntoConstraints = false
     actionsView.translatesAutoresizingMaskIntoConstraints = false
     linksView.translatesAutoresizingMaskIntoConstraints = false
 
+    // The globe is what grows, up to the screen; a taller page gives way and scrolls.
+    globeView.setContentHuggingPriority(.init(1), for: .vertical)
+    let fitsScreen = stackView.heightAnchor.constraint(equalTo: view.safeAreaLayoutGuide.heightAnchor,
+                                                       constant: -2 * Constants.stackInset)
+    fitsScreen.priority = .defaultHigh
+
     NSLayoutConstraint.activate([
+      fitsScreen,
       scrollView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
       scrollView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
       scrollView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -175,8 +176,8 @@ private extension AboutNoGpsController {
       headlineLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       // Past the insets of the text: the orbits set the size of the Earth, so every point of width makes it larger.
       globeView.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
-      globeView.heightAnchor.constraint(equalToConstant: GlobeScene.sceneHeightPt),
-      descriptionLabel.widthAnchor.constraint(equalTo: stackView.widthAnchor),
+      globeView.heightAnchor.constraint(lessThanOrEqualToConstant: GlobeScene.sceneHeightPt),
+      globeView.heightAnchor.constraint(greaterThanOrEqualToConstant: Constants.globeMinHeight),
       mapDataTextView.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       actionsView.widthAnchor.constraint(equalTo: stackView.widthAnchor),
       linksView.widthAnchor.constraint(equalTo: stackView.widthAnchor),
