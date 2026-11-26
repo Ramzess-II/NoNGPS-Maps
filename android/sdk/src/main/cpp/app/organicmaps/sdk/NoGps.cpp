@@ -321,9 +321,9 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeCalibrateWhenStill(
   NoGpsEngine().CalibrateWhenStill();
 }
 
-JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeCancelCalibrateWhenStill(JNIEnv *, jclass)
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeDeclineAutoCalibration(JNIEnv *, jclass)
 {
-  NoGpsEngine().CancelCalibrateWhenStill();
+  NoGpsEngine().DeclineAutoCalibration();
 }
 
 JNIEXPORT jintArray Java_app_organicmaps_sdk_location_NoGps_nativeGetBoxShake(JNIEnv * env, jclass)
@@ -518,6 +518,7 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
         phones.get());
   }
   SetNoGpsField(env, out, "boxReadOnly", status.m_boxReadOnly);
+  SetNoGpsField(env, out, "boxNeedsCalibration", status.m_boxNeedsCalibration);
   SetNoGpsField(env, out, "peerRole", static_cast<int>(status.m_peerRole));
   SetNoGpsString(env, out, "peerName", status.m_peerName);
   SetNoGpsField(env, out, "addPhone", static_cast<int>(status.m_addPhone));

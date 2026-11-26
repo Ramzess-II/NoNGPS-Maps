@@ -192,31 +192,22 @@ extension NavigationSourceButtonTests {
     }
   }
 
-  /// The bar on the map asks to calibrate the box while this phone can: the box is connected and not read-only.
-  func test_GivenCalibration_WhenBoxIsConnected_ThenTheMapAsksToCalibrate() {
-    let cases: [(calibration: NoGpsCalibrationState, advised: Bool, asks: Bool)] = [
-      (.none, false, true),
-      (.calibrating, true, false),
-      (.done, false, false),
-      (.done, true, true),
-      (.failedMoving, false, true),
-      (.mountMoved, false, true),
-      (.linkLost, false, true),
-    ]
-    for c in cases {
-      let status = FakeStatus(source: .inertial, gpsState: .none, inertialEnabled: true, sourceState: .connected)
-      status.fakeCalibration = c.calibration
-      status.fakeCalibrationAdvised = c.advised
-      XCTAssertEqual(NoGpsBoxPage.needsCalibration(status), c.asks, "Calibration \(c.calibration.rawValue)")
-    }
-    let readOnly = FakeStatus(source: .inertial, gpsState: .none, inertialEnabled: true, sourceState: .connected)
-    readOnly.fakeReadOnly = true
-    XCTAssertFalse(NoGpsBoxPage.needsCalibration(readOnly))
-    let away = FakeStatus(source: .inertial, gpsState: .none, inertialEnabled: true, sourceState: .connected)
+  /// The speed stays on the map while the box is connected, with no position source too: the calibration bar slides
+  /// out of it.
+  func test_GivenBox_WhenItIsConnected_ThenTheSpeedStaysOnTheMap() {
+    let connected = FakeStatus(source: .none, gpsState: .none, inertialEnabled: true, sourceState: .connected)
+    XCTAssertTrue(NoGpsSpeedView.isBoxConnected(connected))
+    let away = FakeStatus(source: .none, gpsState: .none, inertialEnabled: true, sourceState: .connected)
     away.fakeBleState = .searching
-    XCTAssertFalse(NoGpsBoxPage.needsCalibration(away))
-    let notHeard = FakeStatus(source: .inertial, gpsState: .none, inertialEnabled: true, sourceState: .connecting)
-    XCTAssertFalse(NoGpsBoxPage.needsCalibration(notHeard))
+    XCTAssertFalse(NoGpsSpeedView.isBoxConnected(away))
+    let off = FakeStatus(source: .none, gpsState: .none, inertialEnabled: false, sourceState: .disconnected)
+    XCTAssertFalse(NoGpsSpeedView.isBoxConnected(off))
+
+    let view = NoGpsSpeedView()
+    view.update(status: connected, location: nil)
+    XCTAssertFalse(view.isHidden)
+    view.update(status: away, location: nil)
+    XCTAssertTrue(view.isHidden)
   }
 }
 
@@ -301,8 +292,6 @@ final class FakeStatus: NoGpsStatus {
   var fakeGpsDisabled = false
   var fakeBleState = NoGpsBleState.connected
   var fakeCalibration = NoGpsCalibrationState.done
-  var fakeCalibrationAdvised = false
-  var fakeReadOnly = false
 
   init(source: NoGpsPositionSource, gpsState: NoGpsGpsState, inertialEnabled: Bool, sourceState: NoGpsSourceState) {
     fakeSource = source
@@ -320,6 +309,4 @@ final class FakeStatus: NoGpsStatus {
   override var sourceState: NoGpsSourceState { fakeSourceState }
   override var bleState: NoGpsBleState { fakeBleState }
   override var calibration: NoGpsCalibrationState { fakeCalibration }
-  override var boxCalibrationAdvised: Bool { fakeCalibrationAdvised }
-  override var boxReadOnly: Bool { fakeReadOnly }
 }

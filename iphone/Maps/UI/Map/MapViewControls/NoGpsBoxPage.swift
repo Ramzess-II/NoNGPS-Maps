@@ -561,16 +561,6 @@ final class NoGpsBoxPage: MWMTableViewController {
     return NoGpsBoxPage.sentenceCase(text)
   }
 
-  /// The box should be calibrated and this phone can do it now: the map shows a bar until it is done.
-  static func needsCalibration(_ status: NoGpsStatus) -> Bool {
-    guard NoGpsBoxSheet.isBoxHeard(status), status.bleState == .connected, !status.boxReadOnly else { return false }
-    switch status.calibration {
-    case .none, .failedMoving, .mountMoved, .linkLost: return true
-    case .done: return status.boxCalibrationAdvised
-    default: return false
-    }
-  }
-
   /// The firmware of the box, or how its update goes.
   static func firmwareText(_ status: NoGpsStatus) -> String {
     switch status.firmwareUpdate {

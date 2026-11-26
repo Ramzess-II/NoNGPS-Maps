@@ -95,6 +95,7 @@ public class SpeedHintsTest
     setState(status, "sourceState", SourceState.CONNECTED.ordinal());
     setState(status, "bleState", BleState.CONNECTED.ordinal());
     setState(status, "calibration", calibration.ordinal());
+    status.boxNeedsCalibration = calibration == CalibrationState.NONE;
     return status;
   }
 
