@@ -10,6 +10,7 @@
 #include "map/nogps/speed_lag.hpp"
 #include "map/nogps/speed_table.hpp"
 #include "map/nogps/storage.hpp"
+#include "map/routing_manager.hpp"
 
 #include "base/logging.hpp"
 #include "base/math.hpp"
@@ -7104,6 +7105,31 @@ UNIT_TEST(NoGps_LogFormat_MapsVersionIsWrittenAtStartAndAtNewFile)
   // The new file has its own line, with the time of that moment.
   TEST_EQUAL(LoggedLines::Starting("MAPS ms=" + std::to_string(clock.UnixNowMs()) + " version=261101,260714").size(), 1,
              ());
+}
+
+UNIT_TEST(NoGps_LogFormat_RouteIsAnAction)
+{
+  Env env(true /* inertial */);
+  LoggedLines lines;
+  env.m_clock.Advance(1000);
+  env.m_engine.LogRouteAction("route", "Route state = RouteBuilding was NoValidRoute");
+  env.m_engine.LogRouteAction("route_follow", "Route state = OnRoute was RouteNotStarted");
+  auto const ms = " ms=" + std::to_string(env.m_clock.UnixNowMs());
+  TEST_EQUAL(LoggedLines::Starting("ACTION route" + ms).size(), 1, ());
+  TEST_EQUAL(LoggedLines::Starting("ACTION route_follow" + ms).size(), 1, ());
+}
+
+UNIT_TEST(NoGps_LogFormat_RouteStatesMapToTags)
+{
+  using routing::SessionState;
+  TEST_EQUAL(RouteLogActionName(SessionState::OnRoute), "route_follow", ());
+  TEST_EQUAL(RouteLogActionName(SessionState::RouteBuilding), "route", ());
+  TEST_EQUAL(RouteLogActionName(SessionState::RouteRebuilding), "route", ());
+  TEST_EQUAL(RouteLogActionName(SessionState::NoValidRoute), "route", ());
+  TEST(RouteLogActionName(SessionState::RouteNotStarted).empty(), ());
+  // The route stays open but the user no longer follows it.
+  TEST_EQUAL(RouteLogActionName(SessionState::RouteFinished), "route", ());
+  TEST_EQUAL(RouteLogActionName(SessionState::RouteNoFollowing), "route", ());
 }
 
 UNIT_TEST(NoGps_LogFormat_SwitchesOfTheUserAreActions)
