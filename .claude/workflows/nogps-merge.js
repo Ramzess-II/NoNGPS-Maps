@@ -99,7 +99,11 @@ const RM_WT = (name) =>
     : `${APP}/tools/unix/nogps_worktree.sh remove ${WT(name)}`
 // The firmware build of the PR merged into main: the only build that uses the main checkout's sdkconfig. A missing toolchain or
 // signing key is not a test failure: nothing was built, so the gate refuses to merge the PR ("blocked") and says why.
-const FW_BUILD = (name) => `cd ${WT(name)} && . ~/esp/esp-idf/export.sh >/dev/null && idf.py build`
+// Relative to the worktree (or its android/ for the gradle calls): the main checkout may not have the script on its branch.
+const QUIET = 'tools/unix/nogps_quiet.sh'
+const FW_BUILD = (name) => `cd ${WT(name)} && . ~/esp/esp-idf/export.sh >/dev/null && ${QUIET} idf.py build`
+// Why every build and test command below goes through QUIET: it prints the tail on success and the error lines plus the
+// tail on failure, so a build log doesn't fill the agent's context. The full output is in the log file it names.
 
 // The skill splits the queue in step 3. args.queue, the single queue of the serial train, is taken as the serial
 // set, so a call written by hand still works.
@@ -414,11 +418,11 @@ simulator. A fix to a behavior both apps show is made on both platforms.`
       ? `build the firmware, as the CI of this repo does for S3 and C3: ${FW_BUILD(name)}
    A build that can't run at all (no ~/esp/esp-idf/export.sh, no keys/) is not a failure: say so in the reply and \
 go on. A build that runs and fails is: up to 3 attempts, then report "failed" with the output and push nothing.`
-      : `when the fix touches the core, cd ${wt} && cmake --preset debug -B ${BUILD(name)} -DSKIP_QT_GUI=ON \
+      : `when the fix touches the core, cd ${wt} && ${QUIET} cmake --preset debug -B ${BUILD(name)} -DSKIP_QT_GUI=ON \
 (the cd comes first: --preset takes the source tree from the working directory, and configuring ${APP} into this \
 build dir would build the other session's work; the dir is this slot's own and is reused by the PRs that come \
-through it, so this is mostly a no-op after the first) and then cd ${wt} && just test "NoGps_.*" \
-${BUILD_REL(name)}. Android Java: cd ${wt}/android && ./gradlew \
+through it, so this is mostly a no-op after the first) and then cd ${wt} && ${QUIET} just test "NoGps_.*" \
+${BUILD_REL(name)}. Android Java: cd ${wt}/android && ../${QUIET} ./gradlew \
 :app:compileGoogleDebugJavaWithJavac -Parm64. iOS code is checked by CI. Up to 3 attempts when a test fails, then \
 report "failed" with the output and push nothing.`
   }
@@ -479,11 +483,11 @@ and build again before calling anything a failure. A build that cannot run at al
 no keys/ to link -- is not a failure of the PR but it is not a build either: the CI builds do not stand in \
 for it, so don't merge it. Report "blocked" with "not built: <why>" in reason and combinedTest, and stop; the PR stays open \
 and a machine that can build it (or a person) lands it.`
-    : `   - libs/: cd ${wt} && cmake --preset debug -B ${BUILD(GATE)} -DSKIP_QT_GUI=ON && \
-just test "NoGps_.*" ${BUILD_REL(GATE)}
+    : `   - libs/: cd ${wt} && ${QUIET} cmake --preset debug -B ${BUILD(GATE)} -DSKIP_QT_GUI=ON && \
+${QUIET} just test "NoGps_.*" ${BUILD_REL(GATE)}
      The cd comes first: cmake --preset takes the source tree from the working directory, so running it from \
 anywhere else configures that checkout -- ${APP}, the other session's work in progress -- into the gate's build dir.
-   - android/: cd ${wt}/android && ./gradlew :app:compileGoogleDebugJavaWithJavac -Parm64
+   - android/: cd ${wt}/android && ../${QUIET} ./gradlew :app:compileGoogleDebugJavaWithJavac -Parm64
    - iOS code is left to the PR's own CI; say so in combinedTest when the merge touches iphone/ or xcode/.`
 }
    A failure: report "test" with what failed in reason, the output in combinedTest, and post it on the PR -- \
