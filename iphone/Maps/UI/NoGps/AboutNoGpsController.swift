@@ -153,7 +153,8 @@ private extension AboutNoGpsController {
     globeView.setContentHuggingPriority(.init(1), for: .vertical)
     let fitsScreen = stackView.heightAnchor.constraint(equalTo: view.safeAreaLayoutGuide.heightAnchor,
                                                        constant: -2 * Constants.stackInset)
-    fitsScreen.priority = .defaultHigh
+    // Below the 750 compression resistance of the text rows: an overflow scrolls instead of squeezing them.
+    fitsScreen.priority = .init(UILayoutPriority.defaultHigh.rawValue - 1)
 
     NSLayoutConstraint.activate([
       fitsScreen,
