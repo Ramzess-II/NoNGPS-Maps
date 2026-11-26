@@ -139,6 +139,9 @@ private:
   SwapAlternativeFn m_swapAlternative;
 };
 
+/// Tag of the trip log action for a new session state, empty when the state isn't logged.
+std::string_view RouteLogActionName(routing::SessionState state);
+
 class RoutingManager final
 {
 public:

@@ -347,11 +347,8 @@ RoutingManager::RoutingManager(Callbacks && callbacks, Delegate & delegate)
     if (m_routeLogCallback)
     {
       std::string const sentence = "Route state = " + DebugPrint(state) + " was " + DebugPrint(previous);
-      if (state == SessionState::OnRoute)
-        m_routeLogCallback("route_follow", sentence);
-      else if (state == SessionState::RouteBuilding || state == SessionState::RouteRebuilding ||
-               state == SessionState::NoValidRoute)
-        m_routeLogCallback("route", sentence);
+      if (auto const name = RouteLogActionName(state); !name.empty())
+        m_routeLogCallback(name, sentence);
     }
     if (state == SessionState::RouteBuilding || state == SessionState::RouteRebuilding)
       ClearAlternativeRoutes();
@@ -413,6 +410,18 @@ RoutingManager::RoutingManager(Callbacks && callbacks, Delegate & delegate)
 
   // NoGPS: a car application, the arrow moves between GPS positions without a route too.
   m_extrapolator.Enable(true);
+}
+
+std::string_view RouteLogActionName(SessionState state)
+{
+  switch (state)
+  {
+  case SessionState::OnRoute: return "route_follow";
+  case SessionState::RouteBuilding:
+  case SessionState::RouteRebuilding:
+  case SessionState::NoValidRoute: return "route";
+  default: return {};
+  }
 }
 
 void RoutingManager::SetBookmarkManager(BookmarkManager * bmManager)

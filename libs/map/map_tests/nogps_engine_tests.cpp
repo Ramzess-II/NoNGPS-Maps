@@ -10,6 +10,7 @@
 #include "map/nogps/speed_lag.hpp"
 #include "map/nogps/speed_table.hpp"
 #include "map/nogps/storage.hpp"
+#include "map/routing_manager.hpp"
 
 #include "base/logging.hpp"
 #include "base/math.hpp"
@@ -7095,6 +7096,17 @@ UNIT_TEST(NoGps_LogFormat_RouteIsAnAction)
   auto const ms = " ms=" + std::to_string(env.m_clock.UnixNowMs());
   TEST_EQUAL(LoggedLines::Starting("ACTION route" + ms).size(), 1, ());
   TEST_EQUAL(LoggedLines::Starting("ACTION route_follow" + ms).size(), 1, ());
+}
+
+UNIT_TEST(NoGps_LogFormat_RouteStatesMapToTags)
+{
+  using routing::SessionState;
+  TEST_EQUAL(RouteLogActionName(SessionState::OnRoute), "route_follow", ());
+  TEST_EQUAL(RouteLogActionName(SessionState::RouteBuilding), "route", ());
+  TEST_EQUAL(RouteLogActionName(SessionState::RouteRebuilding), "route", ());
+  TEST_EQUAL(RouteLogActionName(SessionState::NoValidRoute), "route", ());
+  TEST(RouteLogActionName(SessionState::RouteNotStarted).empty(), ());
+  TEST(RouteLogActionName(SessionState::RouteFinished).empty(), ());
 }
 
 UNIT_TEST(NoGps_LogFormat_SwitchesOfTheUserAreActions)
