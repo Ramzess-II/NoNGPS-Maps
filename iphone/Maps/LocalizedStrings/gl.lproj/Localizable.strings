@@ -1586,6 +1586,9 @@
 "nogps_clear_speed_title" = "Reset the speed calibration?";
 "nogps_clear_speed_message" = "The speed corrections learned from GPS at different speeds and from your corrections will be forgotten. Do it after new tyres or another car. They are learned anew while GPS works.";
 
+/* Main menu row that opens the second sheet with the Organic Maps tools: share location, bookmarks, maps, tracks, add place */
+"nogps_menu_map_tools" = "Map tools";
+
 /* Main menu row opening the screen with the records of every car of the user */
 "nogps_menu_profile" = "Profile";
 
