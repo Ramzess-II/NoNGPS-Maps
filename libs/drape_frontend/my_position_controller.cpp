@@ -11,6 +11,7 @@
 
 #include "platform/measurement_utils.hpp"
 
+#include "base/logging.hpp"
 #include "base/math.hpp"
 
 #include <algorithm>
@@ -30,9 +31,23 @@ double const kMinSpeedThresholdMps = 0.7;  // for the pedestrian mode 2.5 km/h
 double const kGpsBearingLifetimeSec = 3.0;
 
 double const kMaxTimeInBackgroundSec = 60.0 * 60 * 30;  // 30 hours before starting detecting position again
-double const kMaxNotFollowRoutingTimeSec = 20.0;
+double const kMaxNotFollowTimeSec = 20.0;
 double const kMaxUpdateLocationInvervalSec = 30.0;
 double const kMaxBlockAutoZoomTimeSec = 10.0;
+
+char const * ModeName(location::EMyPositionMode mode)
+{
+  using namespace location;
+  switch (mode)
+  {
+  case PendingPosition: return "PendingPosition";
+  case NotFollowNoPosition: return "NotFollowNoPosition";
+  case NotFollow: return "NotFollow";
+  case Follow: return "Follow";
+  case FollowAndRotate: return "FollowAndRotate";
+  }
+  UNREACHABLE();
+}
 
 int const kZoomThreshold = 10;
 int const kMaxScaleZoomLevel = 16;
@@ -150,7 +165,7 @@ MyPositionController::MyPositionController(Params && params, ref_ptr<DrapeNotifi
   , m_isCompassAvailable(false)
   , m_positionIsObsolete(false)
   , m_needBlockAutoZoom(false)
-  , m_routingNotFollowNotifyId(DrapeNotifier::kInvalidId)
+  , m_notFollowNotifyId(DrapeNotifier::kInvalidId)
   , m_blockAutoZoomNotifyId(DrapeNotifier::kInvalidId)
   , m_updateLocationNotifyId(DrapeNotifier::kInvalidId)
 {
@@ -172,6 +187,10 @@ MyPositionController::MyPositionController(Params && params, ref_ptr<DrapeNotifi
   else
   {
     m_desiredInitMode = params.m_initMode;
+
+    // A map left moved away follows the car again at the next start.
+    if (m_desiredInitMode == NotFollow || m_desiredInitMode == PendingPosition)
+      m_desiredInitMode = Follow;
 
     // Do not start position if we ended previous session without it.
     if (!m_isInRouting && m_desiredInitMode == NotFollowNoPosition)
@@ -280,14 +299,11 @@ void MyPositionController::Scrolled(m2::PointD const & distance)
   UpdateViewport(kDoNotChangeZoom);
 }
 
-void MyPositionController::ResetRoutingNotFollowTimer(bool blockTimer)
+void MyPositionController::ResetNotFollowTimer(bool blockTimer)
 {
-  if (m_isInRouting)
-  {
-    m_routingNotFollowTimer.Reset();
-    m_blockRoutingNotFollowTimer = blockTimer;
-    ResetNotification(m_routingNotFollowNotifyId);
-  }
+  m_notFollowTimer.Reset();
+  m_blockNotFollowTimer = blockTimer;
+  ResetNotification(m_notFollowNotifyId);
 }
 
 void MyPositionController::ResetBlockAutoZoomTimer()
@@ -441,6 +457,7 @@ void MyPositionController::OnLocationUpdate(location::GpsInfo const & info, bool
   // OnLocationUpdate(): in OnCompassUpdate() the angle always has the original value.
   // 3. Device is moving faster then pedestrian.
   bool const isMovingFast = info.HasSpeed() && info.m_speed > kMinSpeedThresholdMps;
+  m_isMoving = isMovingFast;
   bool const glueArrowInRouting = isNavigable && m_isArrowGluedInRouting;
 
   if ((!m_isCompassAvailable || glueArrowInRouting || isMovingFast) && info.HasBearing())
@@ -585,7 +602,7 @@ bool MyPositionController::UpdateViewportWithAutoZoom()
 void MyPositionController::Render(ref_ptr<dp::GraphicsContext> context, ref_ptr<gpu::ProgramManager> mng,
                                   ScreenBase const & screen, int zoomLevel, FrameValues const & frameValues)
 {
-  CheckNotFollowRouting();
+  CheckNotFollow();
 
   if (m_shape != nullptr && IsModeHasPosition())
   {
@@ -670,6 +687,9 @@ void MyPositionController::ChangeMode(location::EMyPositionMode newMode)
   if (m_isInRouting && (m_mode != newMode) && (newMode == location::FollowAndRotate))
     ResetBlockAutoZoomTimer();
 
+  if (m_mode != newMode)
+    LOG(LINFO, ("My position mode", ModeName(m_mode), "->", ModeName(newMode), "routing", m_isInRouting));
+
   m_mode = newMode;
   if (m_modeChangeCallback)
     m_modeChangeCallback(m_mode, m_isInRouting);
@@ -692,7 +712,7 @@ void MyPositionController::StopLocationFollow()
     ChangeMode(location::NotFollow);
   m_desiredInitMode = location::NotFollow;
 
-  ResetRoutingNotFollowTimer();
+  ResetNotFollowTimer();
 }
 
 void MyPositionController::OnEnterForeground(double backgroundTime)
@@ -892,7 +912,7 @@ void MyPositionController::ActivateRouting(int zoomLevel, bool enableAutoZoom, b
     ChangeMode(location::FollowAndRotate);
     ChangeModelView(m_position, m_isDirectionAssigned ? m_drawDirection : 0.0, GetRoutingRotationPixelCenter(),
                     zoomLevel, [this](ref_ptr<Animation> anim) { UpdateViewport(kDoNotChangeZoom); });
-    ResetRoutingNotFollowTimer();
+    ResetNotFollowTimer();
   }
 }
 
@@ -928,14 +948,16 @@ void MyPositionController::DeactivateRouting()
     });                                                                                                            \
   }
 
-void MyPositionController::CheckNotFollowRouting()
+void MyPositionController::CheckNotFollow()
 {
-  if (!m_blockRoutingNotFollowTimer && IsInRouting() && m_mode == location::NotFollow)
+  // Outside a route the map comes back only while the car moves: a parked car stays where the map was moved.
+  if (!m_blockNotFollowTimer && m_mode == location::NotFollow && (m_isInRouting || m_isMoving))
   {
-    CHECK_ON_TIMEOUT(m_routingNotFollowNotifyId, kMaxNotFollowRoutingTimeSec, CheckNotFollowRouting);
-    if (m_routingNotFollowTimer.ElapsedSeconds() >= kMaxNotFollowRoutingTimeSec)
+    if (m_notifier)
+      CHECK_ON_TIMEOUT(m_notFollowNotifyId, kMaxNotFollowTimeSec, CheckNotFollow);
+    if (m_notFollowTimer.ElapsedSeconds() >= m_notFollowTimeoutSec)
     {
-      ChangeMode(location::FollowAndRotate);
+      ChangeMode(m_isInRouting ? location::FollowAndRotate : PreferredFollowMode());
       UpdateViewport(kDoNotChangeZoom);
     }
   }

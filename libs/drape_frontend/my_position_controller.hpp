@@ -97,7 +97,10 @@ public:
 
   void Scrolled(m2::PointD const & distance);
 
-  void ResetRoutingNotFollowTimer(bool blockTimer = false);
+  void ResetNotFollowTimer(bool blockTimer = false);
+  // Brings the map back to following if it was moved away long enough ago.
+  void CheckNotFollow();
+  void SetNotFollowTimeoutForTesting(double sec) { m_notFollowTimeoutSec = sec; }
   void ResetBlockAutoZoomTimer();
 
   void CorrectScalePoint(m2::PointD & pt) const;
@@ -164,7 +167,6 @@ private:
   bool AlmostCurrentPosition(m2::PointD const & pos) const;
   bool AlmostCurrentAzimut(double azimut) const;
 
-  void CheckNotFollowRouting();
   void CheckBlockAutoZoom();
   void CheckUpdateLocation();
 
@@ -201,8 +203,11 @@ private:
   double m_autoScale3d;
 
   base::Timer m_lastGPSBearingTimer;
-  base::Timer m_routingNotFollowTimer;
-  bool m_blockRoutingNotFollowTimer = false;
+  base::Timer m_notFollowTimer;
+  bool m_blockNotFollowTimer = false;
+  double m_notFollowTimeoutSec = 20.0;  // kMaxNotFollowTimeSec
+  // The last fix has a speed above the pedestrian threshold.
+  bool m_isMoving = false;
   base::Timer m_blockAutoZoomTimer;
   base::Timer m_updateLocationTimer;
   double m_lastLocationTimestamp;
@@ -224,7 +229,7 @@ private:
   bool m_positionIsObsolete;
   bool m_needBlockAutoZoom;
 
-  uint64_t m_routingNotFollowNotifyId;
+  uint64_t m_notFollowNotifyId;
   uint64_t m_blockAutoZoomNotifyId;
   uint64_t m_updateLocationNotifyId;
 };

@@ -9,6 +9,7 @@
 
 #include "geometry/screenbase.hpp"
 
+#include <memory>
 #include <optional>
 
 namespace my_position_controller_tests
@@ -217,8 +218,9 @@ UNIT_CLASS_TEST(Map, MyPositionController_ChosenFollowAtStart)
   };
   TEST_EQUAL(start(location::Follow, true, 90.0), location::FollowAndRotate, ());
   TEST_EQUAL(start(location::Follow, false, 90.0), location::Follow, ());
-  // A start that doesn't follow the position stays so.
-  TEST_EQUAL(start(location::NotFollow, true, 90.0), location::NotFollow, ());
+  // A map left moved away follows at the next start.
+  TEST_EQUAL(start(location::NotFollow, true, 90.0), location::FollowAndRotate, ());
+  TEST_EQUAL(start(location::NotFollow, false, 90.0), location::Follow, ());
   // A car up saved by a route that was cut short is the chosen mode outside routing.
   TEST_EQUAL(start(location::FollowAndRotate, false, 90.0), location::Follow, ());
   TEST_EQUAL(start(location::FollowAndRotate, true, 90.0), location::FollowAndRotate, ());
@@ -229,14 +231,12 @@ UNIT_CLASS_TEST(Map, MyPositionController_ChosenFollowAtStart)
 
 UNIT_CLASS_TEST(Map, MyPositionController_CarUpWaitsForDirection)
 {
-  df::MyPositionController controller({location::NotFollow,
-                                       0.0 /* timeInBackground */,
-                                       {},
-                                       false /* isRoutingActive */,
-                                       true /* isAutozoomEnabled */,
-                                       [](location::EMyPositionMode, bool) {},
-                                       true /* preferRotate */},
-                                      nullptr);
+  df::Hints deepLink;
+  deepLink.m_isLaunchByDeepLink = true;
+  df::MyPositionController controller(
+      {location::NotFollow, 0.0 /* timeInBackground */, deepLink, false /* isRoutingActive */,
+       true /* isAutozoomEnabled */, [](location::EMyPositionMode, bool) {}, true /* preferRotate */},
+      nullptr);
   controller.SetListener(make_ref(&m_listener));
   location::GpsInfo info;
   info.m_timestamp = 1.0;
@@ -279,7 +279,8 @@ UNIT_CLASS_TEST(VisualParamsFixture, StopFollowModesAndFirstFix)
                                         nullptr);
     controller.OnUpdateScreen(screen);
     controller.OnLocationUpdate(fix, false /* isNavigable */, screen);
-    TEST_EQUAL(controller.GetCurrentMode(), mode, ());
+    // A saved NotFollow is a map moved away: the start follows.
+    TEST_EQUAL(controller.GetCurrentMode(), mode == location::NotFollow ? location::Follow : mode, ());
     controller.StopLocationFollow();
     TEST_EQUAL(controller.GetCurrentMode(), location::NotFollow, ());
   }
@@ -297,4 +298,99 @@ UNIT_CLASS_TEST(VisualParamsFixture, StopFollowModesAndFirstFix)
   pending.OnLocationUpdate(fix, false /* isNavigable */, screen);
   TEST_EQUAL(pending.GetCurrentMode(), location::NotFollow, ());
 }
+
+// The map moved away outside a route comes back to the car after the timeout, while the car moves.
+UNIT_CLASS_TEST(Map, MyPositionController_NotFollowComesBackWhileMoving)
+{
+  Locate(15.0 /* accuracyM */, 10.0 /* speedMps */, 90.0 /* bearingDeg */);
+  m_controller.SetNotFollowTimeoutForTesting(0.0);
+
+  // North up chosen.
+  m_controller.Scrolled({100.0, 0.0});
+  TEST_EQUAL(m_controller.GetCurrentMode(), location::NotFollow, ());
+  m_controller.CheckNotFollow();
+  TEST_EQUAL(m_controller.GetCurrentMode(), location::Follow, ());
+
+  // Car up chosen.
+  Press(16);
+  TEST_EQUAL(m_controller.GetCurrentMode(), location::FollowAndRotate, ());
+  m_controller.Scrolled({100.0, 0.0});
+  m_controller.CheckNotFollow();
+  TEST_EQUAL(m_controller.GetCurrentMode(), location::FollowAndRotate, ());
+}
+
+UNIT_CLASS_TEST(Map, MyPositionController_NotFollowStaysWhenParked)
+{
+  Locate(15.0 /* accuracyM */, 0.0 /* speedMps */, 90.0 /* bearingDeg */);
+  m_controller.SetNotFollowTimeoutForTesting(0.0);
+  m_controller.Scrolled({100.0, 0.0});
+  m_controller.CheckNotFollow();
+  TEST_EQUAL(m_controller.GetCurrentMode(), location::NotFollow, ());
+
+  // No speed at all.
+  Locate(15.0 /* accuracyM */, -1.0 /* speedMps */);
+  m_controller.CheckNotFollow();
+  TEST_EQUAL(m_controller.GetCurrentMode(), location::NotFollow, ());
+}
+
+UNIT_CLASS_TEST(Map, MyPositionController_NotFollowWaitsForTimeoutAndTouch)
+{
+  Locate(15.0 /* accuracyM */, 10.0 /* speedMps */);
+  m_controller.Scrolled({100.0, 0.0});
+  // The default timeout is far.
+  m_controller.CheckNotFollow();
+  TEST_EQUAL(m_controller.GetCurrentMode(), location::NotFollow, ());
+
+  // A touch in progress blocks the check.
+  m_controller.SetNotFollowTimeoutForTesting(0.0);
+  m_controller.ResetNotFollowTimer(true /* blockTimer */);
+  m_controller.CheckNotFollow();
+  TEST_EQUAL(m_controller.GetCurrentMode(), location::NotFollow, ());
+  m_controller.ResetNotFollowTimer();
+  m_controller.CheckNotFollow();
+  TEST_EQUAL(m_controller.GetCurrentMode(), location::Follow, ());
+}
+
+static std::unique_ptr<df::MyPositionController> StartController(location::EMyPositionMode saved, bool preferRotate,
+                                                                 bool deepLink, location::EMyPositionMode & mode)
+{
+  df::Hints hints;
+  hints.m_isLaunchByDeepLink = deepLink;
+  df::MyPositionController::Params params(saved, 0.0 /* timeInBackground */, hints, false /* isRoutingActive */,
+                                          true /* isAutozoomEnabled */,
+                                          [&mode](location::EMyPositionMode m, bool) { mode = m; });
+  params.m_preferRotate = preferRotate;
+  return std::make_unique<df::MyPositionController>(std::move(params), nullptr /* notifier */);
+}
+
+UNIT_CLASS_TEST(Map, MyPositionController_StartFollowsAfterMovedMap)
+{
+  ScreenBase const screen = Screen(16);
+  location::GpsInfo info;
+  info.m_timestamp = 1.0;
+  info.m_horizontalAccuracy = 15.0;
+  info.m_speed = 10.0;
+  info.m_bearing = 90.0;
+
+  for (auto saved : {location::NotFollow, location::PendingPosition})
+  {
+    location::EMyPositionMode mode = location::PendingPosition;
+    auto c = StartController(saved, true /* preferRotate */, false /* deepLink */, mode);
+    c->OnLocationUpdate(info, false, screen);
+    TEST_EQUAL(mode, location::FollowAndRotate, (saved));
+
+    c = StartController(saved, false /* preferRotate */, false /* deepLink */, mode);
+    c->OnLocationUpdate(info, false, screen);
+    TEST_EQUAL(mode, location::Follow, (saved));
+  }
+
+  // A start without position and from a deep link stays as it is.
+  location::EMyPositionMode mode = location::PendingPosition;
+  auto c = StartController(location::NotFollowNoPosition, true, false, mode);
+  TEST_EQUAL(mode, location::NotFollowNoPosition, ());
+  c = StartController(location::NotFollow, true, true /* deepLink */, mode);
+  c->OnLocationUpdate(info, false, screen);
+  TEST_EQUAL(mode, location::NotFollow, ());
+}
+
 }  // namespace my_position_controller_tests

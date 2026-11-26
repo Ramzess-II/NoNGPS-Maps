@@ -835,7 +835,7 @@ void FrontendRenderer::AcceptMessage(ref_ptr<Message> message)
 
   case Message::Type::Invalidate:
   {
-    m_myPositionController->ResetRoutingNotFollowTimer();
+    m_myPositionController->ResetNotFollowTimer();
     m_myPositionController->ResetBlockAutoZoomTimer();
     break;
   }
@@ -2330,7 +2330,7 @@ void FrontendRenderer::OnTouchMapAction(TouchEvent::ETouchType touchType, bool i
   // Here we block timer on start of touch actions. Timer will be unblocked on
   // the completion of touch actions. It helps to prevent the creation of redundant checks.
   auto const blockTimer = (touchType == TouchEvent::TOUCH_DOWN || touchType == TouchEvent::TOUCH_MOVE);
-  m_myPositionController->ResetRoutingNotFollowTimer(blockTimer);
+  m_myPositionController->ResetNotFollowTimer(blockTimer);
   if (isMapTouch)
     m_selectionTrackInfo.reset();
 }
