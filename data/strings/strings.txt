@@ -47375,6 +47375,83 @@ en = No runs yet: stop, then accelerate hard from a standstill
 ru = Заездов пока нет: остановитесь и резко разгонитесь с места
 uk = Заїздів поки немає: зупиніться й різко розженіться з місця
 
+[nogps_driving_title]
+comment = Header of the Profile screen section with how the driver drives
+tags = android-app,apple-maps
+en = Driving
+ru = Вождение
+uk = Водіння
+
+[nogps_driving_score]
+comment = Row of the Profile screen: the driving score out of 100, the value is on the right
+tags = android-app,apple-maps
+en = Driving score
+ru = Оценка вождения
+uk = Оцінка водіння
+
+[nogps_driving_distance]
+comment = Row of the Profile screen: how far the driving score is taken over, the value is on the right
+tags = android-app,apple-maps
+en = Rated driving
+ru = Оценено езды
+uk = Оцінено їзди
+
+[nogps_driving_km]
+comment = A distance in kilometers
+tags = android-app,apple-maps
+en = %d km
+ru = %d км
+uk = %d км
+
+[nogps_driving_not_enough]
+comment = Profile screen: the driving score is not shown yet, %d is the kilometers of rated driving it needs
+tags = android-app,apple-maps
+en = Not enough driving yet: the score is shown after %d km where the speed and the speed limit of the road are known
+ru = Пока мало поездок: оценка появится после %d км там, где известны скорость и ограничение скорости на дороге
+uk = Поки замало поїздок: оцінка з'явиться після %d км там, де відомі швидкість і обмеження швидкості на дорозі
+
+[nogps_driving_band1]
+comment = Row of the Profile screen: how many times the driver went over the speed limit by 20 to 40 km/h
+tags = android-app,apple-maps
+en = Over the limit by 20–40 km/h
+ru = Превышение на 20–40 км/ч
+uk = Перевищення на 20–40 км/год
+
+[nogps_driving_band2]
+comment = Row of the Profile screen: how many times the driver went over the speed limit by 40 to 60 km/h
+tags = android-app,apple-maps
+en = Over the limit by 40–60 km/h
+ru = Превышение на 40–60 км/ч
+uk = Перевищення на 40–60 км/год
+
+[nogps_driving_band3]
+comment = Row of the Profile screen: how many times the driver went over the speed limit by more than 60 km/h
+tags = android-app,apple-maps
+en = Over the limit by more than 60 km/h
+ru = Превышение более чем на 60 км/ч
+uk = Перевищення більш ніж на 60 км/год
+
+[nogps_driving_trips]
+comment = Row of the Profile screen opening the list of trips with their driving scores
+tags = android-app,apple-maps
+en = Trips
+ru = Поездки
+uk = Поїздки
+
+[nogps_driving_trips_none]
+comment = The list of trips with the driving scores, when there is no rated driving yet
+tags = android-app,apple-maps
+en = No rated driving yet: it is counted where the speed and the speed limit of the road are known
+ru = Оценённых поездок пока нет: езда считается там, где известны скорость и ограничение скорости на дороге
+uk = Оцінених поїздок поки немає: їзда рахується там, де відомі швидкість і обмеження швидкості на дорозі
+
+[nogps_driving_trip_detail]
+comment = A trip of the driving list: the rated kilometers, then the episodes over the limit by 20-40, 40-60 and more than 60 km/h
+tags = android-app,apple-maps
+en = %1$d km · episodes %2$d / %3$d / %4$d
+ru = %1$d км · превышений %2$d / %3$d / %4$d
+uk = %1$d км · перевищень %2$d / %3$d / %4$d
+
 [nogps_speed_lag]
 comment = Row of the Box sheet: how late the car tells its speed, the value is on the right
 tags = android-app,apple-maps
