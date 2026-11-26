@@ -312,11 +312,9 @@ UNIT_CLASS_TEST(Map, MyPositionController_CarHeadingIsNotDropped)
   m_controller.OnCompassUpdate(location::CompassInfo{math::DegToRad(276.0), true /* isCarHeading */}, Screen(16));
   TEST_ALMOST_EQUAL_ABS(m_controller.GetDirection(), math::DegToRad(276.0), 1e-9, ());
 
-  // And in the routing with the arrow glued to the route.
+  // In the routing with the arrow glued to the route the route bearing stays, the car direction included.
   m_controller.ActivateRouting(17 /* zoomLevel */, true /* enableAutoZoom */, true /* isArrowGlued */);
-  m_controller.OnCompassUpdate(location::CompassInfo{1.0}, Screen(16));
-  TEST_ALMOST_EQUAL_ABS(m_controller.GetDirection(), math::DegToRad(276.0), 1e-9, ());
   m_controller.OnCompassUpdate(location::CompassInfo{math::DegToRad(96.0), true /* isCarHeading */}, Screen(16));
-  TEST_ALMOST_EQUAL_ABS(m_controller.GetDirection(), math::DegToRad(96.0), 1e-9, ());
+  TEST_ALMOST_EQUAL_ABS(m_controller.GetDirection(), math::DegToRad(276.0), 1e-9, ());
 }
 }  // namespace my_position_controller_tests
