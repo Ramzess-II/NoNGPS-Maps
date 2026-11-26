@@ -352,11 +352,12 @@ UNIT_CLASS_TEST(Map, MyPositionController_NotFollowWaitsForTimeoutAndTouch)
 }
 
 static std::unique_ptr<df::MyPositionController> StartController(location::EMyPositionMode saved, bool preferRotate,
-                                                                 bool deepLink, location::EMyPositionMode & mode)
+                                                                 bool deepLink, location::EMyPositionMode & mode,
+                                                                 bool routing = false)
 {
   df::Hints hints;
   hints.m_isLaunchByDeepLink = deepLink;
-  df::MyPositionController::Params params(saved, 0.0 /* timeInBackground */, hints, false /* isRoutingActive */,
+  df::MyPositionController::Params params(saved, 0.0 /* timeInBackground */, hints, routing,
                                           true /* isAutozoomEnabled */,
                                           [&mode](location::EMyPositionMode m, bool) { mode = m; });
   params.m_preferRotate = preferRotate;
@@ -391,6 +392,11 @@ UNIT_CLASS_TEST(Map, MyPositionController_StartFollowsAfterMovedMap)
   c = StartController(location::NotFollow, true, true /* deepLink */, mode);
   c->OnLocationUpdate(info, false, screen);
   TEST_EQUAL(mode, location::NotFollow, ());
+
+  // A saved NotFollow in a route starts in car up whatever the preferred mode is.
+  c = StartController(location::NotFollow, false /* preferRotate */, false /* deepLink */, mode, true /* routing */);
+  c->OnLocationUpdate(info, false, screen);
+  TEST_EQUAL(mode, location::FollowAndRotate, ());
 }
 
 }  // namespace my_position_controller_tests

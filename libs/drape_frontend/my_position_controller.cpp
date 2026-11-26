@@ -190,7 +190,7 @@ MyPositionController::MyPositionController(Params && params, ref_ptr<DrapeNotifi
 
     // A map left moved away follows the car again at the next start.
     if (m_desiredInitMode == NotFollow || m_desiredInitMode == PendingPosition)
-      m_desiredInitMode = Follow;
+      m_desiredInitMode = m_isInRouting ? FollowAndRotate : Follow;
 
     // Do not start position if we ended previous session without it.
     if (!m_isInRouting && m_desiredInitMode == NotFollowNoPosition)
@@ -535,7 +535,8 @@ void MyPositionController::OnLocationUpdate(location::GpsInfo const & info, bool
     }
     else
     {
-      // Here we silently get the position and go to NotFollow mode.
+      // Here we silently get the position and go to NotFollow mode. The 20 s count from here, not from an old touch.
+      ResetNotFollowTimer();
       ChangeMode(location::NotFollow);
     }
   }
