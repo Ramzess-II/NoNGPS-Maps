@@ -1157,6 +1157,8 @@
     <string name="nogps_firmware_title">Прошивка блока датчиків</string>
     <!-- Question shown when the sensor box works with another firmware than the app comes with: the version of the box and of the app -->
     <string name="nogps_firmware_offer">У блоці прошивка %1$s, а цю версію застосунку перевірено з %2$s. Встановити її? Це триватиме кілька хвилин: автомобіль має стояти, блок не виймайте.</string>
+    <!-- Note in the window of the sensor box firmware update -->
+    <string name="nogps_firmware_keep_still">Автомобіль має стояти, а блок лишатися підключеним, поки оновлення не закінчиться.</string>
     <!-- State of the update of the sensor box firmware, shown after "Box firmware:" -->
     <string name="nogps_firmware_starting">підготовка…</string>
     <!-- State of the update of the sensor box firmware, shown after "Box firmware:", with the percent sent -->
