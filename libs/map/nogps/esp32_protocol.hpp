@@ -93,24 +93,15 @@ struct Info
   std::string m_board;
   // The box takes a new firmware over Bluetooth.
   bool m_canUpdate = false;
-  // The box keeps the values of its car for every phone, see BoxCarValues.
-  bool m_canStoreCarValues = false;
-  // The box lists its phones, forgets one of them and takes a new one with a code of the app.
-  bool m_hasPhones = false;
-  // Two phones get the data at once, the one connected first changes the box.
-  bool m_twoPhones = false;
-  // The box proves itself with a key it has been given, see AuthProof().
-  bool m_canAuth = false;
-  // The box passes the places of the phones between them, see Peer.
-  bool m_canPeer = false;
-  // The box tells the code of its recovery window to the phone it listens to: BT_RECOVERY.
-  bool m_hasRecovery = false;
-  // The four characters of the name of the box, NoGPS-XXXX.
+  // The four characters of the name of the box, NonGPS-XXXX.
   std::string m_id;
   // How many times the box was powered on, nothing from a firmware that doesn't count it.
   std::optional<int64_t> m_powerOns;
   // The hardware revision of the board, "R1", empty from a firmware that doesn't tell it.
   std::string m_revision;
+
+  /// The firmware is older than kMinFirmware: the box can take an update and nothing else.
+  bool IsTooOld() const;
 };
 
 /// A value the box sends in its status and info lines, for the page that shows them all. The platforms show them in
@@ -190,12 +181,15 @@ struct Phones
 };
 
 int constexpr kMaxPhones = 4;
-// The code of the recovery window of the box: this many digits.
-size_t constexpr kRecoveryCodeSize = 6;
 size_t constexpr kMaxPhoneNameSize = 20;
 // A new phone pairs with a code of this many digits, the box takes it this long.
 int constexpr kPairingCodeDigits = 6;
 int64_t constexpr kPairingWindowMs = 120'000;
+// The code of every window the phone has not opened with its own code: the one after a power-on of a box with no
+// phones and the one of 3 quick power-ons, BLE-12 and BLE-16. The system dialog of the pairing asks for it.
+std::string_view constexpr kDefaultPairingCode = "123456";
+// The oldest firmware this application drives. An older box is offered the update and nothing else.
+std::string_view constexpr kMinFirmware = "0.6.0";
 
 /// What a phone tells the other phone on the same box about the place of the car, see PeerSync. The box passes the
 /// payload of "PEER,<payload>" on to the other phones as "NGX,1,<payload>".
@@ -265,10 +259,10 @@ std::optional<Event> ParseEvent(Fields const & fields);
 std::optional<Info> ParseInfo(Fields const & fields);
 /// \returns the phones from the reply to BT_LIST.
 std::optional<Phones> ParsePhones(Reply const & reply);
+/// \returns true if the version of a firmware ("0.5.1", "0.6.0-dirty") is lower than `than`. A version with no numbers
+/// is lower than any.
+bool IsFirmwareBefore(std::string_view version, std::string_view than);
 
-/// \returns the code from the reply to BT_RECOVERY, nothing if the box has refused or the code is not kRecoveryCodeSize
-/// digits.
-std::optional<std::string> ParseRecoveryCode(Reply const & reply);
 /// \returns the place of the other phone from an NGX line.
 std::optional<Peer> ParsePeer(Fields const & fields);
 /// \returns the progress of a firmware update from an NGO line.

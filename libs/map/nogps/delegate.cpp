@@ -40,6 +40,8 @@ std::string DebugPrint(Event event)
   case Event::SprintMeasured: return "SprintMeasured";
   case Event::TripStarted: return "TripStarted";
   case Event::BoxRefused: return "BoxRefused";
+  case Event::BoxReset: return "BoxReset";
+  case Event::BoxResetFailed: return "BoxResetFailed";
   }
   UNREACHABLE();
 }

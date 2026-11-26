@@ -158,6 +158,11 @@ public:
   bool IsBoxProven() const { return m_proven; }
   /// \returns true if the box has failed to prove itself: its lines are not taken until the link is made again.
   bool IsBoxRefused() const { return m_authRefused; }
+  /// \returns true if the refusal is of a box that doesn't know the key of this phone (NOKEY on a key the box has
+  /// confirmed, EXISTS) or has another one: the car is forgotten and paired again, nothing else helps.
+  bool CanPairAgain() const { return m_authRefused && m_pairAgain; }
+  /// \returns true if the firmware of the box is older than esp32::kMinFirmware: it takes an update and nothing else.
+  bool IsBoxTooOld() const { return m_info && m_info->IsTooOld(); }
 
   /// \returns true if the box is connected and keeps the values of its car, see BoxCarValues.
   bool CanStoreCarValues() const;
@@ -175,8 +180,6 @@ public:
   void ListPhonesThrottled();
   /// The phones of the box from its last list in this connection.
   std::optional<esp32::Phones> const & GetPhones() const { return m_phones; }
-  /// \returns true if the box tells the code of its recovery window, see Esp32Source::OnPhonesReply().
-  bool HasRecovery() const { return HasPhones() && m_info->m_hasRecovery; }
   /// Removes a phone from the box, this one too: the listener is told then.
   void ForgetPhone(std::string const & address);
   /// \returns true if another phone has connected to the box first: the box takes from it the commands that change
@@ -197,6 +200,9 @@ public:
   bool IsPeerLeaderManual() const { return m_peer.IsLeaderManual(); }
   /// The distance the box has counted by its last data line.
   std::optional<int64_t> GetDistMm() const { return m_peer.GetDistMm(); }
+  /// Erases everything of the box on the box, FACTORY_RESET: the phones, the keys, the calibration, the values of the
+  /// car and the settings. Only from the phone that changes the box. The listener gets the reply.
+  void FactoryReset();
   /// Makes a new code and lets the box take a new phone with it for esp32::kPairingWindowMs. The code is not kept.
   void StartAddPhone();
   void EndAddPhone() { m_addPhone.reset(); }
@@ -225,7 +231,7 @@ private:
   void OnAuthInfo(esp32::Fields const & fields);
   void SendAuth();
   void OnAuthReply(esp32::Reply const & reply);
-  void RefuseBox(std::string const & reason);
+  void RefuseBox(std::string const & reason, bool pairAgain = false);
   void TellRefusal();
   std::string NewAuthHex(size_t bytes) const;
   void ForgetAuth();
@@ -242,7 +248,6 @@ private:
   bool OnCarReply(esp32::Reply const & reply);
   void ForgetCarRequests();
   bool OnPhonesReply(esp32::Reply const & reply);
-  void AskRecoveryCode();
   void ForgetPhoneRequests();
   void RequestLostEvents(int64_t fromNumber);
   void ForgetJournal();
@@ -313,6 +318,8 @@ private:
   bool m_mustProve = false;
   bool m_proven = true;
   bool m_authRefused = false;
+  // The refusal is one that a new pairing mends, see CanPairAgain().
+  bool m_pairAgain = false;
   // When OnBoxRefused() was called last, if no box has proved itself since; kept over links.
   std::optional<int64_t> m_refusalToldMs;
   // The info of the box heard before the proof: it is taken when the box has proved itself.
@@ -363,11 +370,9 @@ private:
     int64_t m_sentMs = 0;
   };
   std::optional<ForgetRequest> m_forget;
-  // The code of the recovery window is asked once in a connection, by the phone that changes the box, and again when
-  // the box renews it.
-  bool m_recoveryAsked = false;
-  int m_recoveryId = 0;
-  int64_t m_recoverySentMs = 0;
+  // FACTORY_RESET waiting for its reply, 0 if none.
+  int m_factoryResetId = 0;
+  int64_t m_factoryResetSentMs = 0;
   // The last list says another phone changes the box. Not set without the list or a link.
   bool m_readOnly = false;
   struct AddPhoneRequest

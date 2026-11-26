@@ -315,7 +315,6 @@ UNIT_TEST(NoGps_Esp32_ParsesLinesOfFirmware)
       *Parse("$NGI,1,0.3.5,2026-10-10T11:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,WIFI BLE OTA,12*94E1"));
   TEST(countingInfo, ());
   TEST(countingInfo->m_canUpdate, ());
-  TEST(!countingInfo->m_canStoreCarValues, ());
   TEST(countingInfo->m_powerOns, ());
   TEST_EQUAL(*countingInfo->m_powerOns, 12, ());
   TEST(countingInfo->m_revision.empty(), ());
@@ -330,7 +329,6 @@ UNIT_TEST(NoGps_Esp32_ParsesLinesOfFirmware)
       *Parse(WithCrc("NGI,1,0.4.1,2026-11-15T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR,3")));
   TEST(carInfo, ());
   TEST(carInfo->m_canUpdate, ());
-  TEST(carInfo->m_canStoreCarValues, ());
   // The first firmware with Bluetooth didn't take a firmware over it.
   auto const oldInfo =
       ParseInfo(*Parse("$NGI,1,0.3.0,2026-10-08T19:43,esp32s3,s3zero,1B00,4096,2031616,ota_0,VALID,WIFI BLE*BBC4"));
@@ -373,23 +371,7 @@ UNIT_TEST(NoGps_Esp32_CarValueCommands)
 
 UNIT_TEST(NoGps_Esp32_ParsesPhones)
 {
-  auto const info = ParseInfo(*Parse(
-      WithCrc("NGI,1,0.4.2,2026-11-14T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE CAR PHONES MULTI,3")));
-  TEST(info && info->m_hasPhones && info->m_twoPhones && info->m_canStoreCarValues && !info->m_canUpdate, ());
-  auto const old = ParseInfo(
-      *Parse(WithCrc("NGI,1,0.4.1,2026-11-14T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR,3")));
-  TEST(old && !old->m_hasPhones && !old->m_twoPhones, ());
-
-  auto const recoveryInfo =
-      ParseInfo(*Parse(WithCrc("NGI,1,0.4.5,2026-11-20T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR "
-                               "PHONES MULTI RECOVERY,3")));
-  TEST(recoveryInfo && recoveryInfo->m_hasRecovery && !info->m_hasRecovery, ());
-
   auto const reply = [](std::string const & body) { return *ParseReply(*Parse(WithCrc("NGA,4," + body))); };
-  TEST_EQUAL(ParseRecoveryCode(reply("OK,123456")), std::optional<std::string>("123456"), ());
-  TEST_EQUAL(ParseRecoveryCode(reply("OK,000042")), std::optional<std::string>("000042"), ());
-  for (auto const * bad : {"OK", "OK,12345", "OK,1234567", "OK,12345a", "ERR,BUSY", "ERR,UNKNOWN"})
-    TEST(!ParseRecoveryCode(reply(bad)), (bad));
   auto const phones = ParsePhones(reply("OK,BC:D0:74:A9:71:92|Mac mini|1794685760|1;D0:56:FB:11:00:88|||0,0"));
   TEST(phones, ());
   TEST_EQUAL(phones->m_phones.size(), 2, ());
@@ -461,17 +443,6 @@ UNIT_TEST(NoGps_PeerSync_PeerLineFormat)
   {
     TEST(!ParsePeer(*Parse(WithCrc(body))), (body));
   }
-}
-
-UNIT_TEST(NoGps_PeerSync_InfoHasPeerAbility)
-{
-  auto const info = [](std::string const & abilities)
-  {
-    return ParseInfo(*Parse(
-        WithCrc("NGI,1,0.4.3,2026-11-18T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID," + abilities + ",3")));
-  };
-  TEST(info("BLE OTA CAR PHONES MULTI PEER")->m_canPeer, ());
-  TEST(!info("BLE OTA CAR PHONES MULTI")->m_canPeer, ());
 }
 
 UNIT_TEST(NoGps_Esp32_HelloWithNameOfPhone)
@@ -560,18 +531,23 @@ UNIT_TEST(NoGps_Esp32_AuthProof)
   TEST(AuthProof(key, "a1b2c3d4e5f60719") != AuthProof(key, "a1b2c3d4e5f60718"), ());
 }
 
-UNIT_TEST(NoGps_Esp32_InfoTellsAuthAbility)
+UNIT_TEST(NoGps_Esp32_InfoTellsTooOldFirmware)
 {
-  auto const info =
-      ParseInfo(*Parse(WithCrc("NGI,1,0.5.0,2026-11-23T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,"
-                               "BLE OTA CAR PHONES AUTH,5,R1")));
-  TEST(info, ());
-  TEST(info->m_canAuth, ());
-  TEST(info->m_canStoreCarValues, ());
-  auto const old =
-      ParseInfo(*Parse(WithCrc("NGI,1,0.4.5,2026-11-23T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,"
-                               "BLE OTA CAR PHONES")));
-  TEST(old, ());
-  TEST(!old->m_canAuth, ());
+  auto const info = [](std::string const & firmware)
+  {
+    return *ParseInfo(*Parse(
+        WithCrc("NGI,1," + firmware + ",2026-11-23T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA,5,R1")));
+  };
+  TEST(!info("0.6.0").IsTooOld(), ());
+  TEST(!info("0.6.0-dirty").IsTooOld(), ());
+  TEST(!info("0.10.1").IsTooOld(), ());
+  TEST(!info("1.0.0").IsTooOld(), ());
+  TEST(info("0.5.9").IsTooOld(), ());
+  TEST(info("0.4.6").IsTooOld(), ());
+  TEST(info("0.3.3").IsTooOld(), ());
+  TEST(info("").IsTooOld(), ());
+  TEST(IsFirmwareBefore("0.5.0", "0.6.0"), ());
+  TEST(!IsFirmwareBefore("0.6.0", "0.6.0"), ());
+  TEST(!IsFirmwareBefore("0.6.1", "0.6.0"), ());
 }
 }  // namespace nogps_esp32_protocol_tests

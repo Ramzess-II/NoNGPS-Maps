@@ -117,13 +117,12 @@ void Esp32Source::SendHello()
     m_listId = 0;
     ListPhones();
   }
-  if (m_recoveryId != 0 && m_clock.NowMs() - m_recoverySentMs > kCarReplyTimeoutMs)
+  if (m_factoryResetId != 0 && m_clock.NowMs() - m_factoryResetSentMs > kCarReplyTimeoutMs)
   {
-    LOG(LWARNING, ("No reply to the recovery code"));
-    m_recoveryId = 0;
-    m_recoveryAsked = false;
+    LOG(LWARNING, ("No reply to the full reset"));
+    m_factoryResetId = 0;
+    m_listener.OnBoxFactoryReset("NOREPLY");
   }
-  AskRecoveryCode();
   // The box may have dropped the command: the list is asked again, the code is not kept.
   if (m_addPhone && m_addPhone->m_state == AddPhone::Opening &&
       m_clock.NowMs() - m_addPhone->m_sentMs > kCarReplyTimeoutMs)
@@ -166,8 +165,7 @@ void Esp32Source::StartUpdate(Firmware const & firmware)
 
 bool Esp32Source::CanStoreCarValues() const
 {
-  return m_running && m_bleState == BleState::Connected && m_info && m_info->m_canStoreCarValues &&
-         !m_update.IsActive();
+  return m_running && m_bleState == BleState::Connected && m_info && !m_info->IsTooOld() && !m_update.IsActive();
 }
 
 void Esp32Source::ReadCarValues(std::vector<std::string> keys)
@@ -238,7 +236,7 @@ void Esp32Source::ForgetCarRequests()
 
 bool Esp32Source::HasPhones() const
 {
-  return m_running && m_bleState == BleState::Connected && m_info && m_info->m_hasPhones;
+  return m_running && m_bleState == BleState::Connected && m_info && !m_info->IsTooOld();
 }
 
 void Esp32Source::ListPhones()
@@ -301,26 +299,25 @@ int64_t Esp32Source::GetAddPhoneMsLeft() const
   return std::max<int64_t>(0, m_addPhone->m_openMs + esp32::kPairingWindowMs - m_clock.NowMs());
 }
 
-void Esp32Source::AskRecoveryCode()
+void Esp32Source::FactoryReset()
 {
-  // Only the phone the box listens to gets the code, and the list tells which one it is.
-  if (m_recoveryAsked || !HasRecovery() || !m_phones || m_readOnly)
+  // The box answers BUSY to a phone that doesn't change it: the list tells which one this is.
+  if (!HasPhones() || IsReadOnly() || m_factoryResetId != 0)
     return;
-  m_recoveryAsked = true;
-  m_recoveryId = m_nextCommandId++;
-  m_recoverySentMs = m_clock.NowMs();
-  Send("BT_RECOVERY", m_recoveryId);
+  LOG(LINFO, (LogHead(m_clock, "ACTION", "box_factory_reset"), "Full reset of the box"));
+  m_factoryResetId = m_nextCommandId++;
+  m_factoryResetSentMs = m_clock.NowMs();
+  Send("FACTORY_RESET", m_factoryResetId);
 }
 
 bool Esp32Source::OnPhonesReply(esp32::Reply const & reply)
 {
-  if (m_recoveryId != 0 && reply.m_id == m_recoveryId)
+  if (m_factoryResetId != 0 && reply.m_id == m_factoryResetId)
   {
-    m_recoveryId = 0;
-    if (auto const code = esp32::ParseRecoveryCode(reply))
-      m_listener.OnBoxRecoveryCode(*code);
-    else
-      LOG(LWARNING, ("The box has not told the recovery code, error =", reply.m_error));
+    m_factoryResetId = 0;
+    if (!reply.m_ok)
+      LOG(LWARNING, ("The box has not reset itself, error =", reply.m_error));
+    m_listener.OnBoxFactoryReset(reply.m_ok ? "" : reply.m_error);
     return true;
   }
   if (reply.m_id == m_listId)
@@ -368,8 +365,7 @@ void Esp32Source::ForgetPhoneRequests()
   m_listId = 0;
   m_phones.reset();
   m_readOnly = false;
-  m_recoveryAsked = false;
-  m_recoveryId = 0;
+  m_factoryResetId = 0;
   // The box keeps the window open without the link, but this phone can't hear the new one pair.
   if (m_addPhone && m_addPhone->m_state == AddPhone::Opening)
     m_addPhone->m_state = AddPhone::Failed;
@@ -380,7 +376,7 @@ void Esp32Source::OnInfo(esp32::Info const & info)
   if (!m_info || m_info->m_firmware != info.m_firmware)
     LOG(LINFO, (LogHead(m_clock, "ACTION", "box_info"), "Box", info.m_id, "firmware =", info.m_firmware, info.m_chip,
                 info.m_board, info.m_revision, "updates =", info.m_canUpdate));
-  bool const phonesNew = info.m_hasPhones && (!m_info || !m_info->m_hasPhones);
+  bool const phonesNew = !info.IsTooOld() && (!m_info || m_info->IsTooOld());
   m_info = info;
   m_update.OnBoxFirmware(info.m_firmware);
   m_listener.OnBoxHeard(info.m_id, info.m_firmware);
@@ -522,7 +518,9 @@ void Esp32Source::OnLine(std::string_view text)
   }
   if (auto const data = esp32::ParseData(*fields))
   {
-    OnData(*data);
+    // A box of an old firmware drives no session: it is offered the update and nothing else.
+    if (!IsBoxTooOld())
+      OnData(*data);
     return;
   }
   if (auto const reply = esp32::ParseReply(*fields))
@@ -591,6 +589,7 @@ void Esp32Source::ForgetAuth()
   m_mustProve = m_delegate.Esp32BoxMustProveItself();
   m_proven = !m_mustProve;
   m_authRefused = false;
+  m_pairAgain = false;
   m_unprovenInfo.reset();
   m_authId = 0;
   m_authSends = 0;
@@ -640,17 +639,11 @@ void Esp32Source::OnAuthInfo(esp32::Fields const & fields)
   m_unprovenInfo = fields;
   if (m_authId != 0 || info->m_id.empty())
     return;
-  bool confirmed = false;
-  auto const key = m_listener.GetBoxAuthKey(info->m_id, confirmed);
-  if (!info->m_canAuth)
+  if (info->IsTooOld())
   {
-    // A box that could prove itself must not become one that can't: a box of a firmware before the proof is taken
-    // only for a car whose box has never proved one. An unconfirmed key is no proof -- the box may never have taken
-    // it, and the firmware that took it may be rolled back (FW-6) -- so such a box is taken and keeps its key for the
-    // day it can prove itself again.
-    if (confirmed)
-      return RefuseBox("the box of a car that proved it no longer can");
-    LOG(LWARNING, ("The firmware", info->m_firmware, "of the box", info->m_id, "can not prove itself"));
+    // A box of a firmware before esp32::kMinFirmware can't prove itself: it is taken for the update, which sends
+    // the application's own image, and for nothing else, see IsBoxTooOld().
+    LOG(LWARNING, ("The firmware", info->m_firmware, "of the box", info->m_id, "is too old"));
     m_authCar = info->m_id;
     m_proven = true;
     OnInfo(*info);
@@ -658,6 +651,8 @@ void Esp32Source::OnAuthInfo(esp32::Fields const & fields)
     m_unprovenInfo.reset();
     return;
   }
+  bool confirmed = false;
+  auto const key = m_listener.GetBoxAuthKey(info->m_id, confirmed);
   m_authCar = info->m_id;
   m_authSetsKey = key.empty();
   m_authKey = key;
@@ -705,7 +700,8 @@ void Esp32Source::OnAuthReply(esp32::Reply const & reply)
       SendAuth();
       return;
     }
-    return RefuseBox("the box says " + reply.m_error);
+    // The box has no key of this phone or has another one: only a new pairing mends it, and the user decides on it.
+    return RefuseBox("the box says " + reply.m_error, reply.m_error == "NOKEY" || reply.m_error == "EXISTS");
   }
   if (!m_authSetsKey)
   {
@@ -733,11 +729,12 @@ void Esp32Source::OnAuthReply(esp32::Reply const & reply)
   }
 }
 
-void Esp32Source::RefuseBox(std::string const & reason)
+void Esp32Source::RefuseBox(std::string const & reason, bool pairAgain)
 {
   LOG(LWARNING, ("The box", m_authCar, "is refused:", reason));
   m_proven = false;
   m_authRefused = true;
+  m_pairAgain = pairAgain;
   m_authId = 0;
   m_unprovenInfo.reset();
   m_authKey.clear();
@@ -858,7 +855,7 @@ void Esp32Source::OnData(esp32::Data const & data)
 
 bool Esp32Source::CanPeer() const
 {
-  return HasPhones() && m_info->m_canPeer;
+  return HasPhones();
 }
 
 PeerRole Esp32Source::GetPeerRole() const
@@ -941,12 +938,10 @@ void Esp32Source::OnEvent(esp32::Event const & event)
     m_addPhone->m_state = AddPhone::Added;
     ListPhones();
   }
-  // The phones are erased but this one and the code is renewed: the list is asked, the code follows it. Only a live
-  // event: the same one replayed from the journal after a reconnect would blink the phone rows and spend a BT_LIST.
-  else if (event.m_code == "BT_RESET" && event.m_number > lastNumber)
+  // A full box has dropped the phone with the oldest HELLO for a new one: the list is asked. Only a live event: the
+  // same one replayed from the journal after a reconnect would blink the phone rows and spend a BT_LIST.
+  else if (event.m_code == "BT_DROP" && event.m_number > lastNumber)
   {
-    m_recoveryAsked = false;
-    m_recoveryId = 0;
     m_phones.reset();
     m_readOnly = false;
     m_listId = 0;
