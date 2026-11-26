@@ -1157,6 +1157,8 @@
     <string name="nogps_firmware_title">Прошивка блока датчиків</string>
     <!-- Question shown when the sensor box works with another firmware than the app comes with: the version of the box and of the app -->
     <string name="nogps_firmware_offer">У блоці прошивка %1$s, а цю версію застосунку перевірено з %2$s. Встановити її? Це триватиме кілька хвилин: автомобіль має стояти, блок не виймайте.</string>
+    <!-- Note in the window of the sensor box firmware update -->
+    <string name="nogps_firmware_keep_still">Автомобіль має стояти, а блок лишатися підключеним, поки оновлення не закінчиться.</string>
     <!-- State of the update of the sensor box firmware, shown after "Box firmware:" -->
     <string name="nogps_firmware_starting">підготовка…</string>
     <!-- State of the update of the sensor box firmware, shown after "Box firmware:", with the percent sent -->
@@ -1186,13 +1188,15 @@
     <string name="nogps_clear_speed">Скинути</string>
     <string name="nogps_clear_speed_title">Скинути калібрування швидкості?</string>
     <string name="nogps_clear_speed_message">Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або авто. Поки працює GPS, вони вимірюються наново.</string>
+    <!-- Main menu row that opens the second sheet with the Organic Maps tools: share location, bookmarks, maps, tracks, add place -->
+    <string name="nogps_menu_map_tools">Інструменти мапи</string>
     <!-- Main menu row opening the screen with the records of every car of the user -->
     <string name="nogps_menu_profile">Профіль</string>
     <!-- Footer of the Profile screen: what the screen will hold later -->
     <string name="nogps_profile_soon">Тут з\'являться обліковий запис, пристрої, гарантія та замовлення</string>
     <string name="nogps_about_title">Про NonGPS Maps</string>
     <!-- Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on -->
-    <string name="nogps_about_om_menu">Про застосунок Organic Maps</string>
+    <string name="nogps_about_om_menu">Про Organic Maps</string>
     <string name="nogps_about_headline">Навігація, коли GPS глушать або підміняють</string>
     <!-- About NonGPS Maps, the screen reader label of the globe with the GPS satellites that the finger spins -->
     <string name="nogps_about_globe_hint">Потягніть Землю, торкніться супутника, щоб вимкнути його.</string>
