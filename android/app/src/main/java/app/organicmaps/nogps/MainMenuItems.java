@@ -70,7 +70,7 @@ public final class MainMenuItems
     if (donate)
       about.add(new Row(R.string.donate, R.drawable.ic_donate, handlers::donate));
 
-    return toItems(List.of(setup, tools, about));
+    return toItems(List.of(setup, tools, about), true);
   }
 
   /**
@@ -92,20 +92,20 @@ public final class MainMenuItems
                         handlers::toggleTrackRecording)));
     if (mapEditing)
       rows.add(new Row(R.string.placepage_add_place_button, R.drawable.ic_plus, handlers::addPlace));
-    return toItems(List.of(rows));
+    return toItems(List.of(rows), false);
   }
 
   @NonNull
-  private static ArrayList<MenuBottomSheetItem> toItems(@NonNull List<List<Row>> groups)
+  private static ArrayList<MenuBottomSheetItem> toItems(@NonNull List<List<Row>> groups, boolean dividerAboveFirst)
   {
     final ArrayList<MenuBottomSheetItem> items = new ArrayList<>();
     for (List<Row> group : groups)
       for (int i = 0; i < group.size(); ++i)
       {
         final Row row = group.get(i);
-        // The first group of the main menu has the map styles above it, the one of the sheet has nothing.
+        // The main menu has the map styles above its first group, the sheet has nothing above it.
         items.add(new MenuBottomSheetItem(row.titleRes(), row.iconRes(), row.badgeCount(),
-                                          i == 0 && group != groups.get(0), row.onClick()));
+                                          i == 0 && (dividerAboveFirst || group != groups.get(0)), row.onClick()));
       }
     return items;
   }
