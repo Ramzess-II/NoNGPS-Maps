@@ -341,8 +341,15 @@ RoutingManager::RoutingManager(Callbacks && callbacks, Delegate & delegate)
   { OnRebuildRouteReady(result, code); }, [this](uint64_t routeId, storage::CountriesSet const & absentCountries)
   { OnNeedMoreMaps(routeId, absentCountries); }, [this](RouterResultCode code) { OnRemoveRoute(code); });
 
-  m_routingSession.SetChangeSessionStateCallback([this](SessionState, SessionState state)
+  m_routingSession.SetChangeSessionStateCallback([this](SessionState previous, SessionState state)
   {
+    // The lines of the routing library stay as they are for the tools that read them: these are the tagged ones.
+    if (m_routeLogCallback)
+    {
+      std::string const sentence = "Route state = " + DebugPrint(state) + " was " + DebugPrint(previous);
+      if (auto const name = RouteLogActionName(state); !name.empty())
+        m_routeLogCallback(name, sentence);
+    }
     if (state == SessionState::RouteBuilding || state == SessionState::RouteRebuilding)
       ClearAlternativeRoutes();
   });
@@ -403,6 +410,20 @@ RoutingManager::RoutingManager(Callbacks && callbacks, Delegate & delegate)
 
   // NoGPS: a car application, the arrow moves between GPS positions without a route too.
   m_extrapolator.Enable(true);
+}
+
+std::string_view RouteLogActionName(SessionState state)
+{
+  switch (state)
+  {
+  case SessionState::OnRoute: return "route_follow";
+  case SessionState::RouteBuilding:
+  case SessionState::RouteRebuilding:
+  case SessionState::NoValidRoute:
+  case SessionState::RouteFinished:
+  case SessionState::RouteNoFollowing: return "route";
+  default: return {};
+  }
 }
 
 void RoutingManager::SetBookmarkManager(BookmarkManager * bmManager)

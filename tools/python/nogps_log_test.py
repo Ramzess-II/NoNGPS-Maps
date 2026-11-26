@@ -375,6 +375,7 @@ class EventsTest(unittest.TestCase):
             core(day, t + 9, 'SetState', 'Routing session state: RouteNotStarted -> RouteBuilding',
                  file='routing/routing_session.cpp:273'),
             core(day, t + 10, 'Something', 'A new line of the core'),
+            core(day, t + 10, 'operator()', 'ACTION route ms=1791417610000 Route state = RouteBuilding was NoValidRoute'),
             core(day, t + 10, 'OnBoxEvent', 'EVENT box_event ms=1791417610000 Box event # 4 at 11 ms: MOUNT_MOVED'),
             '%s (main) D/LocationState: LocationHelper.java:525 start(): ' % android_time(day, t + 11),
             '%s (main) I/Other: Other.java:1 run(): not a NoGPS line' % android_time(day, t + 12),
@@ -383,7 +384,7 @@ class EventsTest(unittest.TestCase):
         self.assertEqual([(e['cat'], e['name']) for e in events if e['name'] not in ('app started',
                                                                                    'navigation started')], [
             ('user', 'tap'), ('state', 'GPS signal'), ('road', 'road lost'), ('box', 'box event'),
-            ('route', 'route asked for'), ('other', 'A new line of'), ('box', 'box event'), ('app', 'location started')])
+            ('route', 'route asked for'), ('other', 'A new line of'), ('route', 'routing state'), ('box', 'box event'), ('app', 'location started')])
         self.assertEqual((events[2]['lat'], events[2]['lon']), (10.0001, 20.0002))
 
 
