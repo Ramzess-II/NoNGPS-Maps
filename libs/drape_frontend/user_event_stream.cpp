@@ -403,7 +403,12 @@ bool UserEventStream::OnMove(ref_ptr<MoveEvent> moveEvent)
   ScreenBase screen;
   GetTargetScreen(screen);
   auto const & rect = screen.PixelRectIn3d();
-  screen.Move(factorX * rect.SizeX(), -factorY * rect.SizeY());
+  m2::PointD const distance(factorX * rect.SizeX(), -factorY * rect.SizeY());
+  screen.Move(distance.x, distance.y);
+
+  // Moving the map by buttons (CarPlay pan arrows) leaves the car like a scroll does.
+  if (m_listener)
+    m_listener->OnScrolled(distance);
 
   return SetScreen(screen, moveEvent->IsAnim());
 }
