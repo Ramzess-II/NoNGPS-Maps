@@ -207,7 +207,8 @@ class Esp32BleTransport
     @Override
     public void onReceive(Context context, Intent intent)
     {
-      if (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR) == BluetoothAdapter.STATE_ON && !mOpen && !mBondLost)
+      if (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR) == BluetoothAdapter.STATE_ON
+          && !mOpen && !mBondLost)
         leaveWake();
     }
   };
@@ -413,7 +414,7 @@ class Esp32BleTransport
     final long sinceWakeMs = SystemClock.elapsedRealtime() - mWokeMs;
     final boolean wake = waitsForBox(mWakeBox != null, mBondLost, mWakeGatt != null, sinceWakeMs);
     final boolean wakeLater = !wake && sinceWakeMs < WAKE_REARM_MS
-                              && waitsForBox(mWakeBox != null, mBondLost, mWakeGatt != null, WAKE_REARM_MS);
+                           && waitsForBox(mWakeBox != null, mBondLost, mWakeGatt != null, WAKE_REARM_MS);
     closeAll();
     if (wake)
       leaveWake();
