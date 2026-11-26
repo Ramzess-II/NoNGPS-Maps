@@ -171,4 +171,13 @@ public class Esp32BleTransportTest
     assertEquals(Esp32BleTransport.FoundBox.CONNECT, Esp32BleTransport.foundBox(false, false, false, true, true, 3000));
     assertEquals(Esp32BleTransport.FoundBox.CONNECT, Esp32BleTransport.foundBox(false, false, true, true, true, 0));
   }
+
+  @Test
+  public void waitsForBox_onlyForPairedBoxThatKnowsThePhone()
+  {
+    assertTrue(Esp32BleTransport.waitsForBox(true /* hasBox */, false /* bondLost */, false /* waiting */));
+    assertFalse(Esp32BleTransport.waitsForBox(false /* hasBox */, false /* bondLost */, false /* waiting */));
+    assertFalse(Esp32BleTransport.waitsForBox(true /* hasBox */, true /* bondLost */, false /* waiting */));
+    assertFalse(Esp32BleTransport.waitsForBox(true /* hasBox */, false /* bondLost */, true /* waiting */));
+  }
 }

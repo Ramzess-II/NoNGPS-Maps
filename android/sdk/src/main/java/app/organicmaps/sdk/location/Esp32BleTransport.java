@@ -185,6 +185,14 @@ class Esp32BleTransport
   // The id the core was told with the last state.
   @Nullable
   private String mReportedBoxId;
+  // The last paired box of a car that was found: after close() a pending connection to it wakes the app (#541).
+  @Nullable
+  private BluetoothDevice mWakeBox;
+  // The pending connection (autoConnect), which the system keeps while the app is in the background.
+  @Nullable
+  private BluetoothGatt mWakeGatt;
+  @Nullable
+  private Runnable mWakeListener;
 
   private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
     @Override
@@ -206,10 +214,20 @@ class Esp32BleTransport
     mContext = context;
   }
 
+  /**
+   * Tells that the paired box connected while the transport was closed, e.g. the car is started after a parking.
+   */
+  @UiThread
+  void setWakeListener(@Nullable Runnable listener)
+  {
+    mWakeListener = listener;
+  }
+
   @UiThread
   void open()
   {
-    close();
+    closeAll();
+    releaseWake();
     mOpen = true;
     mRetryDelayMs = RETRY_DELAY_MS;
     mSilentConnections = 0;
@@ -358,8 +376,31 @@ class Esp32BleTransport
     return mOpen && !id.equals(mBoxId) && mNearbyBoxes.isNearby(id, SystemClock.elapsedRealtime());
   }
 
+  /**
+   * Stops the search and the connection. A paired box of a car stays in a pending connection: the system links it
+   * in the background when it wakes, and the wake listener is called.
+   */
   @UiThread
   void close()
+  {
+    if (!mOpen)
+      return;
+    final boolean wake = waitsForBox(mWakeBox != null, mBondLost, mWakeGatt != null);
+    closeAll();
+    if (wake)
+      leaveWake();
+  }
+
+  /**
+   * A paired box that has forgotten the phone doesn't connect: nothing to wait for.
+   */
+  @VisibleForTesting
+  static boolean waitsForBox(boolean hasBox, boolean bondLost, boolean waiting)
+  {
+    return hasBox && !bondLost && !waiting;
+  }
+
+  private void closeAll()
   {
     if (!mOpen)
       return;
@@ -595,6 +636,7 @@ class Esp32BleTransport
     }
     Logger.i(TAG, "Found " + device.getAddress() + " " + id + " rssi " + result.getRssi() + " bonded " + bonded);
     mBoxId = id;
+    mWakeBox = bonded && !mNewBoxOnly ? device : null;
     mMainHandler.removeCallbacks(mStarter);
     mMainHandler.removeCallbacks(mPairingClosedEnd);
     stopScan();
@@ -853,6 +895,61 @@ class Esp32BleTransport
       Logger.w(TAG, "Can't close: " + e.getMessage());
     }
   }
+
+  /**
+   * autoConnect makes the system wait for the box in the background, which a scan can't do for long.
+   */
+  @SuppressLint("MissingPermission")
+  private void leaveWake()
+  {
+    final BluetoothDevice box = mWakeBox;
+    if (box == null || !hasPermission() || box.getBondState() != BluetoothDevice.BOND_BONDED)
+      return;
+    Logger.i(TAG, "Waiting for the box " + box.getAddress() + " in the background");
+    try
+    {
+      mWakeGatt = box.connectGatt(mContext, true /* autoConnect */, mWakeCallback, BluetoothDevice.TRANSPORT_LE);
+    }
+    catch (SecurityException e)
+    {
+      Logger.w(TAG, "Can't wait for the box: " + e.getMessage());
+    }
+  }
+
+  @SuppressLint("MissingPermission")
+  private void releaseWake()
+  {
+    final BluetoothGatt gatt = mWakeGatt;
+    mWakeGatt = null;
+    if (gatt == null)
+      return;
+    try
+    {
+      gatt.disconnect();
+      gatt.close();
+    }
+    catch (SecurityException e)
+    {
+      Logger.w(TAG, "Can't close: " + e.getMessage());
+    }
+  }
+
+  private void onWakeConnection(@NonNull BluetoothGatt gatt, int status, int newState)
+  {
+    if (gatt != mWakeGatt || newState != BluetoothProfile.STATE_CONNECTED || status != BluetoothGatt.GATT_SUCCESS)
+      return;
+    Logger.i(TAG, "The box has woken");
+    if (mWakeListener != null)
+      mWakeListener.run();
+  }
+
+  private final BluetoothGattCallback mWakeCallback = new BluetoothGattCallback() {
+    @Override
+    public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState)
+    {
+      mMainHandler.post(() -> onWakeConnection(gatt, status, newState));
+    }
+  };
 
   private void restartLater()
   {
