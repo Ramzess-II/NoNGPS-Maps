@@ -24,13 +24,15 @@ and <output>.done when it is over. Two programs run it:
 Compare a change only with a build of the same kind, on the same maps and settings: a few diagnostic values differ
 in the last digit.
 
-The logs are the files of the Android app, logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, the tree as the phone writes it
+The logs are the files of the Android and the iOS app, logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, the tree as the phone writes it
 (the names of the earlier versions are not read). A folder given is read with its subfolders: give the whole tree,
 a phone or a day. The first line of a file, LOGFMT, tells its phone, and its path does for the OSLog text of iOS;
 a file of another layout, or of a format the tools do not know, is skipped with a note and refused when no file is
 left. The logs of each phone are driven apart and labeled with the phone, since the lines of two
 would be mixed: `days`, `run` and `input` take a tree of several phones, `compare` one phone, as it takes one
 replay.
+A day is a date of the phone's local time, MM-DD: an iOS line has none, so it is the "Local time:" of its run (UTC)
+plus the "Time Zone:" next to it.
 
   nogps_replay.py input logs --day 10-11 -o nogps-replay-in.txt [--no-taps] [--no-route] [--from HH:MM]
       [--to HH:MM] [--fresh]
@@ -70,6 +72,7 @@ import bisect
 import collections
 import concurrent.futures
 import contextlib
+import datetime
 import io
 import math
 import os
@@ -82,6 +85,18 @@ import nogps_trip_log
 
 MAPS_LINE = re.compile(r'^MAPS (?:ms=\d+ )?version=(\S+)')
 LINE = re.compile(r'^(\d\d-\d\d) (\d\d):(\d\d):(\d\d)\.(\d\d\d) \(([^)]*)\) \w/(\w+): (.*)$')
+# "I(1) 520.00789 nogps/engine.cpp:2312 LogTrip(): TRIP ...": iOS, seconds since the app started; the "Local time:"
+# line of each run (UTC, then its "Time Zone: GMT+2") tells when that was.
+IOS_LINE = re.compile(r'^\w\((\d+)\) (\d+\.\d+) (.*)$')
+IOS_LOCAL_TIME = re.compile(
+    r'Local time: (\d{4}-\d\d-\d\d \d\d:\d\d:\d\d) \+0000(?: , Time Zone: GMT(?:([+-])(\d+)(?::(\d\d))?)?)?')
+IOS_CORE_SOURCE = re.compile(r'^\S+\.(?:cpp|hpp):\d+ ')
+IOS_TRIP = re.compile(r'^LOGFMT .* trip=(\d\d)(\d\d)(\d\d)')
+# A line earlier than the previous one by more than this starts a new run of the app.
+IOS_NEW_RUN_MS = 60_000
+# The file name matches a zone when its distance from the UTC time is a quarter of an hour this close.
+IOS_ZONE_TOLERANCE_S = 120
+IOS_STARTED = ' started, detected CPU cores'
 FIELD = re.compile(r' (\w+)=(\S+)')
 SOURCE = re.compile(r'^\S+:\d+ (\w+)\(\): (.*)$')
 BOX_INFO = re.compile(r'^Box (?!firmware\b)(\S+) firmware')
@@ -136,17 +151,81 @@ def dates_of(paths):
     return result
 
 
+def log_lines(f, zone=None):
+    """The lines of a log of either platform as (raw line, MM-DD, ms of the day, tag, body), in the device's local time
+    as Android writes it. An iOS line has the tag OMcore when it comes from the C++ core, which is what the Android tag
+    marks; a line before the "Local time:" line of its run has no time and is skipped. |zone| is a list of one item, the
+    zone in seconds of the last file read of the phone, or None: only the first file of a launch has "Time Zone:", and
+    the files that continue it take the zone from it. It is kept up to date here, give the same list for every file."""
+    if zone is None:
+        zone = [None]
+    launch = None  # the local time of the start of the run
+    previous = 0
+    trip = None  # the local start time of the file, its name "<HHmmss>": the zone of a file that has no "Time Zone:"
+    for raw in f:
+        line = raw.rstrip('\n')
+        m = LINE.match(line)
+        if m:
+            ms = ((int(m.group(2)) * 60 + int(m.group(3))) * 60 + int(m.group(4))) * 1000 + int(m.group(5))
+            yield raw, m.group(1), ms, m.group(7), m.group(8)
+            continue
+        started = IOS_TRIP.match(line)
+        if started:
+            trip = (int(started.group(1)) * 60 + int(started.group(2))) * 60 + int(started.group(3))
+            continue
+        m = IOS_LINE.match(line)
+        if not m:
+            continue
+        seconds, body = round(float(m.group(2)) * 1000), m.group(3)
+        # A line is logged late by a few seconds; a new run starts again from 0.
+        if seconds + IOS_NEW_RUN_MS < previous:
+            launch = None
+        previous = seconds
+        anchor = IOS_LOCAL_TIME.search(body)
+        if anchor:
+            utc = datetime.datetime.strptime(anchor.group(1), '%Y-%m-%d %H:%M:%S')
+            offset = 0
+            if anchor.group(3):
+                minutes = int(anchor.group(3)) * 60 + int(anchor.group(4) or 0)
+                offset = -minutes * 60 if anchor.group(2) == '-' else minutes * 60
+            elif 'Time Zone: GMT' not in body and zone[0] is not None:
+                offset = zone[0]
+            elif 'Time Zone: GMT' not in body and trip is not None:
+                # The first file of a launch has the zone, but not always as "GMT+N" ("EST", "CET"), and no earlier
+                # file is known. Its name is local, and it is the time of the file or of the launch it continues:
+                # take the zone that either makes a whole quarter of an hour, and none when neither does.
+                utc_seconds = (utc.hour * 60 + utc.minute) * 60 + utc.second
+                best = None
+                for start in (utc_seconds, utc_seconds - seconds // 1000):
+                    distance = (trip - start + 12 * 3600) % 86400 - 12 * 3600
+                    error = abs(distance - round(distance / 900) * 900)
+                    if best is None or error < best[0]:
+                        best = (error, round(distance / 900) * 900)
+                if best[0] > IOS_ZONE_TOLERANCE_S:
+                    launch = None
+                    continue
+                offset = best[1]
+            zone[0] = offset
+            launch = utc + datetime.timedelta(seconds=offset, milliseconds=-seconds)
+        if launch is None:
+            continue
+        local = launch + datetime.timedelta(milliseconds=seconds)
+        ms = ((local.hour * 60 + local.minute) * 60 + local.second) * 1000 + local.microsecond // 1000
+        tag = 'OMcore' if IOS_CORE_SOURCE.match(body) else 'iOS'
+        yield raw, local.strftime('%m-%d'), ms, tag, body
+
+
 def trip_days(paths):
     """The seconds of TRIP lines of every day of the logs."""
     counts = collections.Counter()
+    zone = [None]
     for path in paths:
         seen = set()
         with open(path, encoding='utf-8', errors='replace') as f:
-            for line in f:
-                m = LINE.match(line.rstrip('\n'))
-                if m and m.group(7) == 'OMcore' and ' TRIP ' in m.group(8) and line not in seen:
-                    seen.add(line)
-                    counts[m.group(1)] += 1
+            for raw, day, _, tag, body in log_lines(f, zone):
+                if tag == 'OMcore' and ' TRIP ' in body and raw not in seen:
+                    seen.add(raw)
+                    counts[day] += 1
     return counts
 
 
@@ -177,19 +256,15 @@ def read(paths, day):
     trips = []
     others = []
     started = []
+    zone = [None]
     for path in paths:
         with open(path, encoding='utf-8', errors='replace') as f:
-            for line in f:
-                if not line.startswith(day):
+            for raw, line_day, ms, tag, body in log_lines(f, zone):
+                if line_day != day or raw in seen:
                     continue
-                m = LINE.match(line.rstrip('\n'))
-                if not m or line in seen:
-                    continue
-                seen.add(line)
-                ms = ((int(m.group(2)) * 60 + int(m.group(3))) * 60 + int(m.group(4))) * 1000 + int(m.group(5))
-                body = m.group(8)
-                if m.group(7) != 'OMcore':
-                    if 'initNativePlatform()' in body:
+                seen.add(raw)
+                if tag != 'OMcore':
+                    if 'initNativePlatform()' in body or IOS_STARTED in body:
                         started.append(ms)
                     continue
                 source = SOURCE.match(body)

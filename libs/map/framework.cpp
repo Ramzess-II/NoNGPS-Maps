@@ -261,6 +261,11 @@ nogps::Engine & Framework::CreateNoGps(nogps::Delegate & delegate)
     if (m_drapeEngine != nullptr)
       m_drapeEngine->SetCompassInfo(CompassInfo{math::DegToRad(bearingDeg), true /* isCarHeading */});
   });
+  m_routingManager.SetRouteLogListener([this](std::string_view name, std::string const & sentence)
+  {
+    if (m_noGps)
+      m_noGps->GetEngine().LogRouteAction(name, sentence);
+  });
   m_noGps->GetEngine().SetParkedCarsListener([this] { UpdateNoGpsCarMarks(); });
   UpdateNoGpsCarMarks();
   m_noGps->GetEngine().SetPotholesListener([this] { UpdateNoGpsPotholeMarks(); });
