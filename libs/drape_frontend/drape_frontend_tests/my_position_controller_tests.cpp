@@ -319,6 +319,20 @@ UNIT_CLASS_TEST(Map, MyPositionController_NotFollowComesBackWhileMoving)
   TEST_EQUAL(m_controller.GetCurrentMode(), location::FollowAndRotate, ());
 }
 
+UNIT_CLASS_TEST(Map, MyPositionController_NotFollowStaysWhileChoosingPosition)
+{
+  Locate(15.0 /* accuracyM */, 10.0 /* speedMps */, 90.0 /* bearingDeg */);
+  m_controller.SetNotFollowTimeoutForTesting(0.0);
+  m_controller.SetChoosePositionMode(true);
+  m_controller.Scrolled({100.0, 0.0});
+  m_controller.CheckNotFollow();
+  TEST_EQUAL(m_controller.GetCurrentMode(), location::NotFollow, ());
+
+  m_controller.SetChoosePositionMode(false);
+  m_controller.CheckNotFollow();
+  TEST_EQUAL(m_controller.GetCurrentMode(), location::Follow, ());
+}
+
 UNIT_CLASS_TEST(Map, MyPositionController_NotFollowStaysWhenParked)
 {
   Locate(15.0 /* accuracyM */, 0.0 /* speedMps */, 90.0 /* bearingDeg */);

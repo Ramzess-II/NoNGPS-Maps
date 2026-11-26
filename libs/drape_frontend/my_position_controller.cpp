@@ -952,7 +952,7 @@ void MyPositionController::DeactivateRouting()
 void MyPositionController::CheckNotFollow()
 {
   // Outside a route the map comes back only while the car moves: a parked car stays where the map was moved.
-  if (!m_blockNotFollowTimer && m_mode == location::NotFollow && (m_isInRouting || m_isMoving))
+  if (!m_blockNotFollowTimer && !m_choosePositionMode && m_mode == location::NotFollow && (m_isInRouting || m_isMoving))
   {
     if (m_notifier)
       CHECK_ON_TIMEOUT(m_notFollowNotifyId, kMaxNotFollowTimeSec, CheckNotFollow);

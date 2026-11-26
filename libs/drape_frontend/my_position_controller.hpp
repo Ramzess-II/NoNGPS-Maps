@@ -100,6 +100,8 @@ public:
   void ResetNotFollowTimer(bool blockTimer = false);
   // Brings the map back to following if it was moved away long enough ago.
   void CheckNotFollow();
+  // The map is moved to pick a point: it must not jump back to the car.
+  void SetChoosePositionMode(bool enable) { m_choosePositionMode = enable; }
   void SetNotFollowTimeoutForTesting(double sec) { m_notFollowTimeoutSec = sec; }
   void ResetBlockAutoZoomTimer();
 
@@ -208,6 +210,7 @@ private:
   double m_notFollowTimeoutSec = 20.0;  // kMaxNotFollowTimeSec
   // The last fix has a speed above the pedestrian threshold.
   bool m_isMoving = false;
+  bool m_choosePositionMode = false;
   base::Timer m_blockAutoZoomTimer;
   base::Timer m_updateLocationTimer;
   double m_lastLocationTimestamp;

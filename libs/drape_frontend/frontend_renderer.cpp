@@ -377,6 +377,7 @@ void FrontendRenderer::AcceptMessage(ref_ptr<Message> message)
     m_choosePositionMode = m_guiRenderer->HasWidget(gui::WIDGET_CHOOSE_POSITION_MARK);
     if (oldMode != m_choosePositionMode)
     {
+      m_myPositionController->SetChoosePositionMode(m_choosePositionMode);
       ScreenBase const & screen = m_userEventStream.GetCurrentScreen();
       CheckIsometryMinScale(screen);
       UpdateDisplacementEnabled();
