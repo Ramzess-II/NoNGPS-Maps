@@ -402,6 +402,10 @@ final class NoGpsControls: NSObject {
     if status.firmwareOfferPending {
       offerFirmwareUpdate()
     }
+    // An update goes on while the app was away.
+    if UIApplication.shared.applicationState == .active {
+      NoGpsFirmwareUpdateAlert.show()
+    }
     // The mark stands and waits for the user: a toast about it is easy to miss while driving. The bottom bar tells the
     // source and the accuracy.
     statusButton.isHidden = !status.roadLost
@@ -525,23 +529,10 @@ final class NoGpsControls: NSObject {
     alert.addAction(UIAlertAction(title: String(format: L("nogps_firmware_install"), status.bundledFirmware),
                                   style: .default) { _ in
         NoGps.startFirmwareUpdate()
-        // It shows how the update goes.
-        NoGpsBoxSheet.show(.box(firmware: true))
+        NoGpsFirmwareUpdateAlert.show()
       })
     UIViewController.topViewController().present(alert, animated: true)
     firmwareAlert = alert
-  }
-
-  private func firmwareErrorText(_ code: String) -> String {
-    switch code {
-    case "MOVING": return L("nogps_firmware_error_moving")
-    case "LOW_VOLTAGE": return L("nogps_firmware_error_voltage")
-    case "LINK": return L("nogps_firmware_error_link")
-    case "CANCELED", "ABORTED": return L("nogps_firmware_error_canceled")
-    case "ROLLBACK": return L("nogps_firmware_error_rollback")
-    case "PENDING": return L("nogps_firmware_error_pending")
-    default: return String(format: L("nogps_firmware_error_code"), code)
-    }
   }
 
   /// The log of a test drive is analysed afterwards: the tester marks the moments the car was shown wrong at. The flag
@@ -668,9 +659,13 @@ final class NoGpsControls: NSObject {
     case .firmwareUpdateAvailable:
       offerFirmwareUpdate()
       text = nil
-    case .firmwareUpdateDone: text = String(format: L("nogps_firmware_done"), NoGps.status().boxFirmware)
+    // The card of the update tells how it ended.
+    case .firmwareUpdateDone:
+      text = NoGpsFirmwareUpdateAlert.isShown ? nil : String(format: L("nogps_firmware_done"), NoGps.status().boxFirmware)
     case .firmwareUpdateFailed:
-      text = String(format: L("nogps_firmware_failed"), firmwareErrorText(NoGps.status().firmwareUpdateError))
+      text = NoGpsFirmwareUpdateAlert.isShown ? nil
+        : String(format: L("nogps_firmware_failed"),
+                 NoGpsBoxPage.firmwareErrorText(NoGps.status().firmwareUpdateError))
     // The box doesn't take this phone any more: its car is forgotten as by the user. The old system pairing of the box
     // only blocks the next connection, and an app can't remove it: the user is told to.
     case .thisPhoneRemoved:

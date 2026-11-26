@@ -1149,6 +1149,8 @@
     <string name="nogps_firmware_title">Прошивка блока датчиков</string>
     <!-- Question shown when the sensor box works with another firmware than the app comes with: the version of the box and of the app -->
     <string name="nogps_firmware_offer">В блоке прошивка %1$s, а эта версия приложения проверена с %2$s. Установить её? Это займёт несколько минут: машина должна стоять, блок не вынимайте.</string>
+    <!-- Note in the window of the sensor box firmware update -->
+    <string name="nogps_firmware_keep_still">Машина должна стоять, а блок остаться подключённым, пока обновление не закончится.</string>
     <!-- State of the update of the sensor box firmware, shown after "Box firmware:" -->
     <string name="nogps_firmware_starting">подготовка…</string>
     <!-- State of the update of the sensor box firmware, shown after "Box firmware:", with the percent sent -->
@@ -1178,15 +1180,16 @@
     <string name="nogps_clear_speed">Сбросить</string>
     <string name="nogps_clear_speed_title">Сбросить калибровку скорости?</string>
     <string name="nogps_clear_speed_message">Поправки скорости, измеренные по GPS на разных скоростях и по вашим сдвигам, будут забыты. Делайте это после смены шин или машины. Пока работает GPS, они измеряются заново.</string>
+    <!-- Main menu row that opens the second sheet with the Organic Maps tools: share location, bookmarks, maps, tracks, add place -->
+    <string name="nogps_menu_map_tools">Инструменты карты</string>
     <!-- Main menu row opening the screen with the records of every car of the user -->
     <string name="nogps_menu_profile">Профиль</string>
     <!-- Footer of the Profile screen: what the screen will hold later -->
     <string name="nogps_profile_soon">Здесь появятся аккаунт, устройства, гарантия и заказы</string>
     <string name="nogps_about_title">О NonGPS Maps</string>
     <!-- Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on -->
-    <string name="nogps_about_om_menu">О приложении Organic Maps</string>
+    <string name="nogps_about_om_menu">Об Organic Maps</string>
     <string name="nogps_about_headline">Навигация, когда GPS глушат или подменяют</string>
-    <string name="nogps_about_description">Без GPS машину ведёт инерциальная навигация: повороты — по гироскопу, расстояние — по скорости автомобиля из OBD-II. Машина держится дорог офлайн-карты.</string>
     <!-- NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) -->
     <string name="nogps_version">Версия %s</string>
     <!-- Under the NonGPS Maps version in About, %@ is the Organic Maps version like 2026.10.27-10 -->
