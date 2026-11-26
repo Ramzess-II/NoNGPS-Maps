@@ -1402,7 +1402,8 @@ bool Engine::NeedsBoxCalibration()
 
 void Engine::CheckAutoCalibration()
 {
-  if (!m_inertial || m_inertial->GetSpeedKmh() > 0)
+  // -1 is an unknown speed (no OBD or stale): not a stop.
+  if (!m_inertial || m_inertial->GetSpeedKmh() != 0)
   {
     m_stoppedSinceMs.reset();
     return;
@@ -1452,7 +1453,7 @@ void Engine::CheckCalibrateWhenStill()
     }
   }
   // The car that was still has moved: the stop is over, the next one starts the calibration again.
-  bool const moved = m_calibrationAuto && !m_calibrationSent && m_inertial->GetSpeedKmh() > 0;
+  bool const moved = m_calibrationAuto && !m_calibrationSent && m_inertial->GetSpeedKmh() != 0;
   if (lost || moved || m_calibrationFailures >= kCalibrateWhenStillMaxFailures ||
       (!m_calibrationAuto && !m_calibrationSent && now - m_calibrateWaitMs >= kCalibrateWhenStillTimeoutMs))
   {

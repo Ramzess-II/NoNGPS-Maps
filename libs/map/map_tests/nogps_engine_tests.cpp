@@ -3114,6 +3114,16 @@ UNIT_TEST(NoGps_Engine_AutoCalibrationEndsWhenCarMoves)
   TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
 }
 
+UNIT_TEST(NoGps_Engine_AutoCalibrationIgnoresUnknownSpeed)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env, false /* calibrated */);
+  // No OBD speed is not a stop: the car may be driving.
+  box.Drive(2 * Engine::kAutoCalibrateStopMs, -1, 150);
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedKmh, -1, ());
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+}
+
 UNIT_TEST(NoGps_Engine_AutoCalibrationStartsAgainAfterFailedMoving)
 {
   Env env(true /* inertial */);
