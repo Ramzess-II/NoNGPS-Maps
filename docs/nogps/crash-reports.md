@@ -37,7 +37,7 @@ export SENTRY_AUTH_TOKEN=...
   stops before the archive when the token or `sentry-cli` is missing or
   `SENTRY_DSN_IOS` is empty.
 - Android: the `io.sentry.android.gradle` plugin (`uploadNativeSymbols`) is applied only when `SENTRY_AUTH_TOKEN` is in
-  the environment of the Gradle build. A release task (`assemble`, `bundle` or `package` of a non-fdroid `Release`)
+  the environment of the Gradle build. A release, beta or profileable task (`assemble`, `bundle` or `package` of a non-fdroid variant)
   with an empty `SENTRY_DSN_ANDROID` prints a warning; it does not fail the build.
 
 Both developers need the file.
