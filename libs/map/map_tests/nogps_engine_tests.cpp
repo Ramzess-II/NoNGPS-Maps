@@ -7085,6 +7085,18 @@ UNIT_TEST(NoGps_LogFormat_MapsVersionIsWrittenAtStartAndAtNewFile)
              ());
 }
 
+UNIT_TEST(NoGps_LogFormat_RouteIsAnAction)
+{
+  Env env(true /* inertial */);
+  LoggedLines lines;
+  env.m_clock.Advance(1000);
+  env.m_engine.LogRouteAction("route", "Route state = RouteBuilding was NoValidRoute");
+  env.m_engine.LogRouteAction("route_follow", "Route state = OnRoute was RouteNotStarted");
+  auto const ms = " ms=" + std::to_string(env.m_clock.UnixNowMs());
+  TEST_EQUAL(LoggedLines::Starting("ACTION route" + ms).size(), 1, ());
+  TEST_EQUAL(LoggedLines::Starting("ACTION route_follow" + ms).size(), 1, ());
+}
+
 UNIT_TEST(NoGps_LogFormat_SwitchesOfTheUserAreActions)
 {
   Env env(true /* inertial */);

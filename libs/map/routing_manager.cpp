@@ -341,8 +341,18 @@ RoutingManager::RoutingManager(Callbacks && callbacks, Delegate & delegate)
   { OnRebuildRouteReady(result, code); }, [this](uint64_t routeId, storage::CountriesSet const & absentCountries)
   { OnNeedMoreMaps(routeId, absentCountries); }, [this](RouterResultCode code) { OnRemoveRoute(code); });
 
-  m_routingSession.SetChangeSessionStateCallback([this](SessionState, SessionState state)
+  m_routingSession.SetChangeSessionStateCallback([this](SessionState previous, SessionState state)
   {
+    // The lines of the routing library stay as they are for the tools that read them: these are the tagged ones.
+    if (m_routeLogCallback)
+    {
+      std::string const sentence = "Route state = " + DebugPrint(state) + " was " + DebugPrint(previous);
+      if (state == SessionState::OnRoute)
+        m_routeLogCallback("route_follow", sentence);
+      else if (state == SessionState::RouteBuilding || state == SessionState::RouteRebuilding ||
+               state == SessionState::NoValidRoute)
+        m_routeLogCallback("route", sentence);
+    }
     if (state == SessionState::RouteBuilding || state == SessionState::RouteRebuilding)
       ClearAlternativeRoutes();
   });

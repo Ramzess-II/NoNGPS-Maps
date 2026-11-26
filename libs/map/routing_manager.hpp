@@ -30,6 +30,7 @@
 #include <mutex>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace storage
@@ -225,6 +226,10 @@ public:
   // users.
   bool DisableFollowMode();
   kml::TrackId SaveRoute();
+
+  /// Gets the tagged trip log lines about the route: |name| (`route` or `route_follow`) and the sentence after them.
+  using RouteLogCallback = std::function<void(std::string_view name, std::string const & sentence)>;
+  void SetRouteLogListener(RouteLogCallback && routeLogCallback) { m_routeLogCallback = std::move(routeLogCallback); }
 
   void SetRouteBuildingListener(RouteBuildingCallback const & buildingCallback)
   {
@@ -454,6 +459,7 @@ private:
 
   void OnExtrapolatedLocationUpdate(location::GpsInfo const & info);
 
+  RouteLogCallback m_routeLogCallback;
   RouteBuildingCallback m_routingBuildingCallback;
   RouteSpeedCamShowCallback m_routeSpeedCamShowCallback;
   RouteSpeedCamsClearCallback m_routeSpeedCamsClearCallback;
