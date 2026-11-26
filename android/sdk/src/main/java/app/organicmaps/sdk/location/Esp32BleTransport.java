@@ -1184,9 +1184,17 @@ class Esp32BleTransport
   /**
    * The box sends data: a new one ends the search for it, a forgotten one is added again.
    */
+  @SuppressLint("MissingPermission")
   private void onBoxHeard()
   {
     mNewBoxOnly = false;
+    // A box paired or added in this process is the one to wait for after the parking, as a box found paired is.
+    final BluetoothGatt gatt = mGatt;
+    if (gatt != null && mBoxId != null && gatt.getDevice().getBondState() == BluetoothDevice.BOND_BONDED)
+    {
+      mWakeBox = gatt.getDevice();
+      mWakeBoxId = mBoxId;
+    }
     final Set<String> forgotten = getForgottenBoxes();
     if (mBoxId != null && forgotten.remove(mBoxId))
       getPrefs().edit().putStringSet(FORGOTTEN_BOXES, forgotten).apply();
