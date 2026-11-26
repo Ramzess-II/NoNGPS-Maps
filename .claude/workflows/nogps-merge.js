@@ -101,7 +101,9 @@ const RM_WT = (name) =>
 // signing key is not a test failure: nothing was built, so the gate refuses to merge the PR ("blocked") and says why.
 // Relative to the worktree (or its android/ for the gradle calls): the main checkout may not have the script on its branch.
 const QUIET = 'tools/unix/nogps_quiet.sh'
-const FW_BUILD = (name) => `cd ${WT(name)} && . ~/esp/esp-idf/export.sh >/dev/null && ${QUIET} idf.py build`
+// The firmware repo has no such script: take the app checkout's, and run the build bare while that checkout lacks it.
+const FW_QUIET = `$(test -x ${APP}/${QUIET} && echo ${APP}/${QUIET})`
+const FW_BUILD = (name) => `cd ${WT(name)} && . ~/esp/esp-idf/export.sh >/dev/null && ${FW_QUIET} idf.py build`
 // Why every build and test command below goes through QUIET: it prints the tail on success and the error lines plus the
 // tail on failure, so a build log doesn't fill the agent's context. The full output is in the log file it names.
 
