@@ -335,6 +335,12 @@ NSString * const kMapToCategorySelectorSegue = @"MapToCategorySelectorSegue";
   {
   case MWMBottomMenuStateActive:
     _tabBarController.isHidden = NO;
+    // The Map tools sheet is replaced by the menu.
+    if (_menuController != nil && previousState == MWMBottomMenuStateMapTools)
+    {
+      [_menuController dismissViewControllerAnimated:NO completion:nil];
+      _menuController = nil;
+    }
     if (_menuController == nil)
     {
       _menuController = [BottomMenuBuilder buildMenuWithMapViewController:ownerController
