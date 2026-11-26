@@ -183,7 +183,7 @@ std::vector<SpeedingEpisode> SpeedingMeter::OnSample(Sample const & sample)
   bool const gap = !m_prevMs || sample.m_timeMs <= *m_prevMs || sample.m_timeMs - *m_prevMs > kMaxGapMs;
   int64_t const dtMs = gap ? 0 : sample.m_timeMs - *m_prevMs;
   m_prevMs = sample.m_timeMs;
-  bool const rated = sample.m_kmh && sample.m_limitKmh > 0 && sample.m_trusted;
+  bool const rated = sample.m_kmh && *sample.m_kmh >= kMinRatedKmh && sample.m_limitKmh > 0 && sample.m_trusted;
   m_rated = rated;
   if (gap)
   {

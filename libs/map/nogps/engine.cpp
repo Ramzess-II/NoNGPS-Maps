@@ -144,6 +144,8 @@ void Engine::Stop()
     return;
   LOG(LINFO, (LogHead(m_clock, "ACTION", "stop"), "Stop"));
   SaveCarPosition(true /* now */);
+  // An episode that goes on or is held for a continuation would be lost with the process.
+  LogSpeeding(m_speedingMeter.Flush());
   SaveSpeeding();
   if (m_inertial)
     m_inertial->Stop();

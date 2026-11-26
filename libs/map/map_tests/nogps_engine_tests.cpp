@@ -7256,6 +7256,19 @@ UNIT_TEST(NoGps_Speeding_RatedAfterHandMoveAndClosedAtTripStart)
   TEST_EQUAL(rating.m_bandCounts[1], 1, ());
 }
 
+UNIT_TEST(NoGps_Speeding_StopKeepsEpisodeThatGoesOn)
+{
+  speeding::Drive car;
+  auto & env = car.m_env;
+  car.Go(10000, 50);
+  car.Go(8000, 100);
+  env.m_engine.Stop();
+  Env after(true /* inertial */, nullptr, SavedBy(env));
+  auto const rating = after.m_engine.GetDrivingRating();
+  TEST_EQUAL(rating.m_trips.size(), 1, ());
+  TEST_EQUAL(rating.m_trips[0].m_episodes.size(), 1, ());
+}
+
 UNIT_TEST(NoGps_Speeding_KeepsHundredTrips)
 {
   auto const save = [](TestStorage & storage)

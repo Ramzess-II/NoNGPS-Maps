@@ -89,6 +89,8 @@ public:
   static double constexpr kScoreMinKm = 20;
   // The trips kept.
   static size_t constexpr kMaxTrips = 100;
+  // Standing is not driving: a jam or a stop would dilute the score.
+  static double constexpr kMinRatedKmh = 5;
   // A longer pause between the samples breaks the driving.
   static int64_t constexpr kMaxGapMs = 2500;
 

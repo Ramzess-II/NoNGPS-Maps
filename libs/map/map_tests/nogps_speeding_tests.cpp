@@ -45,6 +45,15 @@ struct Driver
   }
 };
 
+UNIT_TEST(NoGps_SpeedingMeter_StandingIsNotRated)
+{
+  Driver d;
+  d.Drive(10, 60, 60);
+  d.Drive(100, 0, 60);
+  d.Drive(10, 60, 60);
+  TEST_ALMOST_EQUAL_ABS(d.m_meter.GetTrip().m_ratedS, 19.0, 1.01, ());
+}
+
 UNIT_TEST(NoGps_SpeedingMeter_StartsAfterThreeSeconds)
 {
   Driver d;

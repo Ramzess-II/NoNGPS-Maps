@@ -25,6 +25,9 @@ SCORE_MIN_KM = 20
 MAX_GAP_MS = 2500
 
 
+MIN_RATED_KMH = 5
+
+
 def band_of(excess_kmh):
     """1, 2 or 3."""
     if excess_kmh >= BAND3_KMH:
@@ -88,7 +91,7 @@ class Meter:
         gap = self._prev is None or t <= self._prev or t - self._prev > MAX_GAP_MS
         dt = 0 if gap else t - self._prev
         self._prev = t
-        rated = kmh is not None and limit is not None and limit > 0
+        rated = kmh is not None and kmh >= MIN_RATED_KMH and limit is not None and limit > 0
         if gap:
             self._end_rated()
             self._limit, self._lower_m = None, 0.0
