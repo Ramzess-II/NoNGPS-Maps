@@ -1599,7 +1599,6 @@
 
 /* About NonGPS Maps, the screen reader label of the globe with the GPS satellites that the finger spins */
 "nogps_about_globe_hint" = "Потягніть Землю, торкніться супутника, щоб вимкнути його.";
-"nogps_about_description" = "Без GPS авто веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю авто з OBD-II. Авто тримається доріг офлайн-карти.";
 
 /* NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) */
 "nogps_version" = "Версія %@";
