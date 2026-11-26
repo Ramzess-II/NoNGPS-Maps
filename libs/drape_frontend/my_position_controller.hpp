@@ -131,6 +131,7 @@ public:
 
   bool IsPreferRotate() const { return m_preferRotate; }
   bool IsRotationAvailable() const { return m_isDirectionAssigned; }
+  double GetDirection() const { return m_drawDirection; }
   bool IsInRouting() const { return m_isInRouting; }
   bool IsRouteFollowingActive() const;
   bool IsModeChangeViewport() const;

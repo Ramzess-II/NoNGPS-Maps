@@ -9,6 +9,8 @@
 
 #include "geometry/screenbase.hpp"
 
+#include "base/math.hpp"
+
 #include <optional>
 
 namespace my_position_controller_tests
@@ -296,5 +298,25 @@ UNIT_CLASS_TEST(VisualParamsFixture, StopFollowModesAndFirstFix)
   pending.StopLocationFollow();
   pending.OnLocationUpdate(fix, false /* isNavigable */, screen);
   TEST_EQUAL(pending.GetCurrentMode(), location::NotFollow, ());
+}
+UNIT_CLASS_TEST(Map, MyPositionController_CarHeadingIsNotDropped)
+{
+  // A phone with a compass: the bearing of a moving position is kept for 3 seconds against the compass.
+  m_controller.OnCompassUpdate(location::CompassInfo{1.0}, Screen(16));
+  Locate(15.0 /* accuracyM */, 10.0 /* speedMps */, 90.0 /* bearingDeg */);
+  TEST_ALMOST_EQUAL_ABS(m_controller.GetDirection(), math::DegToRad(90.0), 1e-9, ());
+  m_controller.OnCompassUpdate(location::CompassInfo{1.0}, Screen(16));
+  TEST_ALMOST_EQUAL_ABS(m_controller.GetDirection(), math::DegToRad(90.0), 1e-9, ());
+
+  // The car direction of the core goes through at once.
+  m_controller.OnCompassUpdate(location::CompassInfo{math::DegToRad(276.0), true /* isCarHeading */}, Screen(16));
+  TEST_ALMOST_EQUAL_ABS(m_controller.GetDirection(), math::DegToRad(276.0), 1e-9, ());
+
+  // And in the routing with the arrow glued to the route.
+  m_controller.ActivateRouting(17 /* zoomLevel */, true /* enableAutoZoom */, true /* isArrowGlued */);
+  m_controller.OnCompassUpdate(location::CompassInfo{1.0}, Screen(16));
+  TEST_ALMOST_EQUAL_ABS(m_controller.GetDirection(), math::DegToRad(276.0), 1e-9, ());
+  m_controller.OnCompassUpdate(location::CompassInfo{math::DegToRad(96.0), true /* isCarHeading */}, Screen(16));
+  TEST_ALMOST_EQUAL_ABS(m_controller.GetDirection(), math::DegToRad(96.0), 1e-9, ());
 }
 }  // namespace my_position_controller_tests

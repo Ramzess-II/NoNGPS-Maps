@@ -259,7 +259,7 @@ nogps::Engine & Framework::CreateNoGps(nogps::Delegate & delegate)
                                              [this](double bearingDeg)
   {
     if (m_drapeEngine != nullptr)
-      m_drapeEngine->SetCompassInfo(CompassInfo{math::DegToRad(bearingDeg)});
+      m_drapeEngine->SetCompassInfo(CompassInfo{math::DegToRad(bearingDeg), true /* isCarHeading */});
   });
   m_noGps->GetEngine().SetParkedCarsListener([this] { UpdateNoGpsCarMarks(); });
   UpdateNoGpsCarMarks();

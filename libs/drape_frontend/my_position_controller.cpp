@@ -553,11 +553,16 @@ void MyPositionController::OnCompassUpdate(location::CompassInfo const & info, S
 {
   m_isCompassAvailable = true;
 
-  if (m_isArrowGluedInRouting && IsInRouting())
-    return;
+  // The car direction of the core is the answer to a press of the reverse button: GPS has no say in it, the route
+  // and the 3 seconds after a bearing of the position must not drop it.
+  if (!info.m_isCarHeading)
+  {
+    if (m_isArrowGluedInRouting && IsInRouting())
+      return;
 
-  if (m_lastGPSBearingTimer.ElapsedSeconds() < kGpsBearingLifetimeSec)
-    return;
+    if (m_lastGPSBearingTimer.ElapsedSeconds() < kGpsBearingLifetimeSec)
+      return;
+  }
 
   double const oldAzimut = GetDrawableAzimut();
 
