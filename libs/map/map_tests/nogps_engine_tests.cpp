@@ -7127,7 +7127,9 @@ UNIT_TEST(NoGps_LogFormat_RouteStatesMapToTags)
   TEST_EQUAL(RouteLogActionName(SessionState::RouteRebuilding), "route", ());
   TEST_EQUAL(RouteLogActionName(SessionState::NoValidRoute), "route", ());
   TEST(RouteLogActionName(SessionState::RouteNotStarted).empty(), ());
-  TEST(RouteLogActionName(SessionState::RouteFinished).empty(), ());
+  // The route stays open but the user no longer follows it.
+  TEST_EQUAL(RouteLogActionName(SessionState::RouteFinished), "route", ());
+  TEST_EQUAL(RouteLogActionName(SessionState::RouteNoFollowing), "route", ());
 }
 
 UNIT_TEST(NoGps_LogFormat_SwitchesOfTheUserAreActions)

@@ -419,7 +419,9 @@ std::string_view RouteLogActionName(SessionState state)
   case SessionState::OnRoute: return "route_follow";
   case SessionState::RouteBuilding:
   case SessionState::RouteRebuilding:
-  case SessionState::NoValidRoute: return "route";
+  case SessionState::NoValidRoute:
+  case SessionState::RouteFinished:
+  case SessionState::RouteNoFollowing: return "route";
   default: return {};
   }
 }
