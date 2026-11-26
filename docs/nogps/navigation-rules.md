@@ -1251,7 +1251,7 @@
     `mark_switched_stand_lost`, `mark_switched_by_user`;
   - `ACTION <назва>`: що відтворення виконує знову: `start`, `stop`, `ble_state` (рядок `Bluetooth = … bond lost = 0|1`, дія `L`, де прапорець — останнє поле),
     `box_info` (рядок `Box <id> firmware = …`, дія `I`), `gps_off` (`disabled=`, `by=`), `manual`
-    (`enabled=`, `by=`), `tap` (`by=`), `reverse`, `switch_mark`, `shift` (`m=`), `restore_car`, `route` і `route_follow` (рядок `Route state = <стан> was <попередній>`; пише `RoutingManager` годинником рушія через `Engine::LogRouteAction`: `route` — маршрут будується, перебудовується або знятий, `route_follow` — користувач їде за маршрутом). `by=` каже, хто
+    (`enabled=`, `by=`), `tap` (`by=`), `reverse`, `switch_mark`, `shift` (`m=`), `restore_car`, `route` і `route_follow` (рядок `Route state = <стан> was <попередній>`; пише `RoutingManager` годинником рушія через `Engine::LogRouteAction`: `route` — маршрут будується, перебудовується, знятий, завершений або без стеження, `route_follow` — користувач їде за маршрутом). `by=` каже, хто
     перемкнув: `user`, а решта (`core`, `gps_back`, `network_back`, `restore`, `box`, `tap`, `gps_mark`, `peer`) —
     ядро саме. У `tap` `by=` каже, хто поставив позначку: `user` або `tap` — користувач на карті, `gps_mark` — тап
     на панелі втрати дороги, `peer` — місце з іншого телефона, `core` — здогад ядра. Рядок `manual` перед позначкою
