@@ -96,7 +96,8 @@ public class FirmwareUpdateDialog extends DialogFragment
   }
 
   /**
-   * @return false when the update has ended and there is nothing more to follow.
+   * @return false when there is nothing more to follow. A failed update is still followed: the core takes a late
+   * timeout to Done when the box comes back.
    */
   private boolean update()
   {
@@ -123,7 +124,7 @@ public class FirmwareUpdateDialog extends DialogFragment
                          ? getString(R.string.nogps_firmware_done, status.boxFirmware)
                          : getString(R.string.nogps_firmware_failed,
                                      BoxTexts.firmwareError(requireContext(), status.firmwareUpdateError)));
-      return false;
+      return state == NoGps.FirmwareUpdate.FAILED;
     }
 
     mStage.setText(BoxTexts.capitalize(BoxTexts.firmwareText(requireContext(), status)));
