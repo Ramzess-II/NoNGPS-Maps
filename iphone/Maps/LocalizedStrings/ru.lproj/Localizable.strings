@@ -1544,6 +1544,9 @@
 /* Question shown when the sensor box works with another firmware than the app comes with: the version of the box and of the app */
 "nogps_firmware_offer" = "В блоке прошивка %1$@, а эта версия приложения проверена с %2$@. Установить её? Это займёт несколько минут: машина должна стоять, блок не вынимайте.";
 
+/* Note in the window of the sensor box firmware update */
+"nogps_firmware_keep_still" = "Машина должна стоять, а блок остаться подключённым, пока обновление не закончится.";
+
 /* State of the update of the sensor box firmware, shown after "Box firmware:" */
 "nogps_firmware_starting" = "подготовка…";
 

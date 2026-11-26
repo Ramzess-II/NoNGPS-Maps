@@ -70,7 +70,8 @@ import app.organicmaps.maplayer.MapButtonsController;
 import app.organicmaps.maplayer.MapButtonsViewModel;
 import app.organicmaps.maplayer.ToggleMapLayerFragment;
 import app.organicmaps.nogps.AboutNoGpsActivity;
-import app.organicmaps.nogps.BoxBottomSheet;
+import app.organicmaps.nogps.BoxTexts;
+import app.organicmaps.nogps.FirmwareUpdateDialog;
 import app.organicmaps.nogps.HowNoGpsActivity;
 import app.organicmaps.nogps.MainMenuItems;
 import app.organicmaps.nogps.NoGpsLinks;
@@ -1132,16 +1133,18 @@ public class MwmActivity extends BaseMwmFragmentActivity
   private int onFirmwareEvent(@NonNull NoGps.Event event)
   {
     final NoGps.Status status = NoGps.getStatus();
-    if (event == NoGps.Event.FIRMWARE_UPDATE_DONE)
+    // The dialog tells how it ended.
+    final boolean inDialog = FirmwareUpdateDialog.isShown(getSupportFragmentManager());
+    if (event == NoGps.Event.FIRMWARE_UPDATE_DONE && !inDialog)
     {
       Toast.makeText(this, getString(R.string.nogps_firmware_done, status.boxFirmware), Toast.LENGTH_LONG).show();
     }
-    else if (event == NoGps.Event.FIRMWARE_UPDATE_FAILED)
+    else if (event == NoGps.Event.FIRMWARE_UPDATE_FAILED && !inDialog)
     {
-      final String reason = firmwareError(status.firmwareUpdateError);
+      final String reason = BoxTexts.firmwareError(this, status.firmwareUpdateError);
       Toast.makeText(this, getString(R.string.nogps_firmware_failed, reason), Toast.LENGTH_LONG).show();
     }
-    else
+    else if (event == NoGps.Event.FIRMWARE_UPDATE_AVAILABLE)
     {
       offerFirmwareUpdate();
     }
@@ -1164,8 +1167,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
           .setPositiveButton(getString(R.string.nogps_firmware_install, status.bundledFirmware),
                              (dialog, which) -> {
                                NoGps.nativeStartFirmwareUpdate();
-                               // It shows how the update goes.
-                               showBoxSheet(BoxBottomSheet.Page.ITEM_BOX);
+                               FirmwareUpdateDialog.show(getSupportFragmentManager());
                              })
           .setNegativeButton(R.string.later, null)
           .show();
@@ -1187,26 +1189,6 @@ public class MwmActivity extends BaseMwmFragmentActivity
       return R.string.nogps_phone_removed;
     Toast.makeText(this, getString(R.string.nogps_phone_removed_unpair, carId), Toast.LENGTH_LONG).show();
     return 0;
-  }
-
-  private void showBoxSheet(@NonNull BoxBottomSheet.Page page)
-  {
-    BoxBottomSheet.show(getSupportFragmentManager(), page);
-  }
-
-  @NonNull
-  private String firmwareError(@NonNull String code)
-  {
-    return switch (code)
-    {
-      case "MOVING" -> getString(R.string.nogps_firmware_error_moving);
-      case "LOW_VOLTAGE" -> getString(R.string.nogps_firmware_error_voltage);
-      case "LINK" -> getString(R.string.nogps_firmware_error_link);
-      case "CANCELED", "ABORTED" -> getString(R.string.nogps_firmware_error_canceled);
-      case "ROLLBACK" -> getString(R.string.nogps_firmware_error_rollback);
-      case "PENDING" -> getString(R.string.nogps_firmware_error_pending);
-      default -> getString(R.string.nogps_firmware_error_code, code);
-    };
   }
 
   /**
@@ -1437,6 +1419,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
     RoutingController.get().restore();
     if (NoGps.getStatus().firmwareOfferPending)
       offerFirmwareUpdate();
+    // An update goes on while the app was away.
+    FirmwareUpdateDialog.show(getSupportFragmentManager());
   }
 
   @Override

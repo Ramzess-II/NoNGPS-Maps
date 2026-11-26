@@ -1544,6 +1544,9 @@
 /* Question shown when the sensor box works with another firmware than the app comes with: the version of the box and of the app */
 "nogps_firmware_offer" = "The box works with firmware %1$@, this version of the app is tested with %2$@. Install it? It takes a few minutes: keep the car standing and the box plugged in.";
 
+/* Note in the window of the sensor box firmware update */
+"nogps_firmware_keep_still" = "Keep the car standing and the box plugged in until the update ends.";
+
 /* State of the update of the sensor box firmware, shown after "Box firmware:" */
 "nogps_firmware_starting" = "preparing…";
 

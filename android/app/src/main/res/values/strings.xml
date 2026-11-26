@@ -1147,6 +1147,8 @@
     <string name="nogps_firmware_title">Sensor box firmware</string>
     <!-- Question shown when the sensor box works with another firmware than the app comes with: the version of the box and of the app -->
     <string name="nogps_firmware_offer">The box works with firmware %1$s, this version of the app is tested with %2$s. Install it? It takes a few minutes: keep the car standing and the box plugged in.</string>
+    <!-- Note in the window of the sensor box firmware update -->
+    <string name="nogps_firmware_keep_still">Keep the car standing and the box plugged in until the update ends.</string>
     <!-- State of the update of the sensor box firmware, shown after "Box firmware:" -->
     <string name="nogps_firmware_starting">preparing…</string>
     <!-- State of the update of the sensor box firmware, shown after "Box firmware:", with the percent sent -->

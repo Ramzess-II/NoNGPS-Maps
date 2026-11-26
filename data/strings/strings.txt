@@ -46498,6 +46498,13 @@ en = The box works with firmware %1$@, this version of the app is tested with %2
 ru = В блоке прошивка %1$@, а эта версия приложения проверена с %2$@. Установить её? Это займёт несколько минут: машина должна стоять, блок не вынимайте.
 uk = У блоці прошивка %1$@, а цю версію застосунку перевірено з %2$@. Встановити її? Це триватиме кілька хвилин: автомобіль має стояти, блок не виймайте.
 
+[nogps_firmware_keep_still]
+comment = Note in the window of the sensor box firmware update
+tags = android-app,apple-maps
+en = Keep the car standing and the box plugged in until the update ends.
+ru = Машина должна стоять, а блок остаться подключённым, пока обновление не закончится.
+uk = Автомобіль має стояти, а блок лишатися підключеним, поки оновлення не закінчиться.
+
 [nogps_firmware_starting]
 comment = State of the update of the sensor box firmware, shown after "Box firmware:"
 tags = android-app,apple-maps
