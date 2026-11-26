@@ -151,10 +151,14 @@ def dates_of(paths):
     return result
 
 
-def log_lines(f):
+def log_lines(f, zone=None):
     """The lines of a log of either platform as (raw line, MM-DD, ms of the day, tag, body), in the device's local time
     as Android writes it. An iOS line has the tag OMcore when it comes from the C++ core, which is what the Android tag
-    marks; a line before the "Local time:" line of its run has no time and is skipped."""
+    marks; a line before the "Local time:" line of its run has no time and is skipped. |zone| is a list of one item, the
+    zone in seconds of the last file read of the phone, or None: only the first file of a launch has "Time Zone:", and
+    the files that continue it take the zone from it. It is kept up to date here, give the same list for every file."""
+    if zone is None:
+        zone = [None]
     launch = None  # the local time of the start of the run
     previous = 0
     trip = None  # the local start time of the file, its name "<HHmmss>": the zone of a file that has no "Time Zone:"
@@ -184,10 +188,12 @@ def log_lines(f):
             if anchor.group(3):
                 minutes = int(anchor.group(3)) * 60 + int(anchor.group(4) or 0)
                 offset = -minutes * 60 if anchor.group(2) == '-' else minutes * 60
+            elif 'Time Zone: GMT' not in body and zone[0] is not None:
+                offset = zone[0]
             elif 'Time Zone: GMT' not in body and trip is not None:
-                # Only the first file of a launch has the zone, and not always as "GMT+N" ("EST", "CET"). The file
-                # name is local, but it is the time of the file or of the launch it continues: take the zone that
-                # either makes a whole quarter of an hour, and none when neither does.
+                # The first file of a launch has the zone, but not always as "GMT+N" ("EST", "CET"), and no earlier
+                # file is known. Its name is local, and it is the time of the file or of the launch it continues:
+                # take the zone that either makes a whole quarter of an hour, and none when neither does.
                 utc_seconds = (utc.hour * 60 + utc.minute) * 60 + utc.second
                 best = None
                 for start in (utc_seconds, utc_seconds - seconds // 1000):
@@ -199,6 +205,7 @@ def log_lines(f):
                     launch = None
                     continue
                 offset = best[1]
+            zone[0] = offset
             launch = utc + datetime.timedelta(seconds=offset, milliseconds=-seconds)
         if launch is None:
             continue
@@ -211,10 +218,11 @@ def log_lines(f):
 def trip_days(paths):
     """The seconds of TRIP lines of every day of the logs."""
     counts = collections.Counter()
+    zone = [None]
     for path in paths:
         seen = set()
         with open(path, encoding='utf-8', errors='replace') as f:
-            for raw, day, _, tag, body in log_lines(f):
+            for raw, day, _, tag, body in log_lines(f, zone):
                 if tag == 'OMcore' and ' TRIP ' in body and raw not in seen:
                     seen.add(raw)
                     counts[day] += 1
@@ -248,9 +256,10 @@ def read(paths, day):
     trips = []
     others = []
     started = []
+    zone = [None]
     for path in paths:
         with open(path, encoding='utf-8', errors='replace') as f:
-            for raw, line_day, ms, tag, body in log_lines(f):
+            for raw, line_day, ms, tag, body in log_lines(f, zone):
                 if line_day != day or raw in seen:
                     continue
                 seen.add(raw)

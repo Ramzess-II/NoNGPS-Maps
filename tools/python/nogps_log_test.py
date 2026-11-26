@@ -513,6 +513,22 @@ class ReplayLogsTest(unittest.TestCase):
                                     with_logfmt(run, 'iPhone17_1-3b77', trip=trip)})
                 self.assertEqual(sorted(nogps_replay.trip_days([path])), [line_day] if line_day else [])
 
+    def test_ios_file_that_continues_a_launch_of_an_earlier_file_takes_its_zone(self):
+        """The name of a continuation file is the one of the previous file, reused in the next day folder: it fits
+        neither the file nor the launch start, so the zone is the one of the file before."""
+        first = ['I(1) 100.00000 Local time: 2026-11-23 10:00:29 +0000 , Time Zone: GMT+2',
+                 'I(1) 110.00000 nogps/engine.cpp:2312 LogTrip(): %s' % trip_line()]
+        second = ['I(1) 46906.38600 Local time: 2026-11-23 23:02:12 +0000',
+                  'I(1) 46909.38600 nogps/engine.cpp:2312 LogTrip(): %s' % trip_line()]
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {'iPhone17_1-ed9a/2026-11-23/120029.log': with_logfmt(first, 'iPhone17_1-ed9a',
+                                                                                   trip='120029'),
+                                'iPhone17_1-ed9a/2026-11-24/185210.log': with_logfmt(second, 'iPhone17_1-ed9a',
+                                                                                   trip='185210')})
+            paths = [os.path.join(folder, 'iPhone17_1-ed9a', d, n) for d, n in
+                     (('2026-11-23', '120029.log'), ('2026-11-24', '185210.log'))]
+            self.assertEqual(nogps_replay.trip_days(paths), {'11-23': 1, '11-24': 1})
+
     def test_ios_line_logged_late_does_not_drop_the_lines_after_it(self):
         run = ['I(1) 100.00000 Local time: 2026-11-25 10:00:00 +0000 , Time Zone: GMT+2',
                'I(1) 97.00000 nogps/engine.cpp:2252 operator()(): EVENT gps_signal ms=1 from=GOOD to=NONE late',
