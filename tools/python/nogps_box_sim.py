@@ -26,17 +26,23 @@ and the manufacturer data of an advertisement for itself, so the radio there adv
 is needed as on macOS; it is written without a machine to try it on, see its docstring.
 
 What it doesn't simulate, and why:
-- the pairing rules (BLE-11, BLE-12, BLE-15, BLE-16): on macOS pairing belongs to the system, with no bt_pin and no
-  "display only" capability; so no drop of a link that stays unencrypted and no BT_UNSECURE event, and the
+- the pairing rules (BLE-11, BLE-12, BLE-15, BLE-16): on macOS pairing belongs to the system, with no code of 123456
+  and no "display only" capability; so no drop of a link that stays unencrypted and no BT_UNSECURE event, and the
   write queue of BLE-5 is the radio's, not ours;
 - any motion: no speed, no turns, no jolts;
-- the firmware update, the car values and the places of two phones: NGI tells the abilities "BLE PHONES RECOVERY
-  AUTH" and no more, and the application asks for none of the others;
+- the firmware update, the car values and the places of two phones: NGI tells the ability "BLE" and no more, so the
+  application doesn't update the box, and CAR_GET, CAR_SET and PEER get ERR,UNKNOWN as from any box that doesn't know
+  them (the application reads only OTA from the abilities);
 - the phones: a phone is bonded here at its first HELLO, by its name, as the firmware bonds it at pairing, with an
-  address made from the name, as the system gives the simulator none. BT_PAIR sets the pairing flag of the
-  advertisement and nothing closes it: no window of 120 s, no code asked from the phone. A phone that is bonded
-  and gone stays in the list until the panel or BT_FORGET removes it. The recovery window (BLE-16) never opens by
-  itself: the panel's BT_RESET plays its end, a new code and the phone it names alone in the list.
+  address made from the name, as the system gives the simulator none. BT_PAIR,<code> sets the pairing flag of the
+  advertisement and nothing closes it: no window of 120 s, no code asked from the phone, and bare BT_PAIR gets
+  ERR,VALUE. A phone that is bonded and gone stays in the list until the panel, BT_FORGET,<address> or
+  FACTORY_RESET removes it. The window after a power-on and the recovery window (BLE-16) take the code 123456 on a
+  real box and no code here; the panel's "3 quick power-ons" opens the recovery window, in which a new phone erases
+  nobody and a full box drops the phone with the oldest last HELLO (the event BT_DROP);
+- FACTORY_RESET: the leader gets OK, and half a second later the box is new -- no bond, no key, the pairing window
+  open, every link dropped. The other phone gets ERR,BUSY. The box doesn't restart: the program keeps its panel
+  state.
 
 The box proves itself as section 9.5 says: AUTH_SET takes a key of a phone, AUTH answers with the proof of it. A key
 outlives the program in the file of --keys, as the firmware keeps it in NVS over a restart: otherwise the application,
@@ -75,7 +81,6 @@ import hmac
 import importlib
 import json
 import os
-import secrets
 import sys
 import threading
 import time
@@ -93,9 +98,9 @@ RX_UUID = '02CB0003-C0C3-40D0-819C-5A85998DCD99'
 # NET-9: NonGPS-XXXX; a box that is not updated says NoGPS-XXXX, see State.legacy_name.
 NAME_PREFIX = 'NonGPS-'
 LEGACY_NAME_PREFIX = 'NoGPS-'
-# BLE-13: the company id, a byte of the format version and a byte of the flags.
+# BLE-13: the company id, a byte of the format version, a byte of the flags and the 4 characters of the box id.
 COMPANY_ID = 0xFFFF
-ADV_FORMAT = 1
+ADV_FORMAT = 2
 ADV_FLAGS = [('pairing_open', 1), ('full', 2), ('has_phones', 4)]
 
 # Section 9.2: without any command for this long the box stops sending the data.
@@ -128,14 +133,14 @@ OBD_ABSENT_STATES = {'DISABLED', 'NO_ADAPTER', 'SLEEP'}
 # Section 4.4, the last error of the OBD, from the state the panel sets.
 OBD_ERRORS = {'NO_ADAPTER': 'NO_ADAPTER', 'NO_CAR': 'NO_CAR', 'NO_DATA': 'NO_SPEED', 'ERROR': 'BUS_ERROR'}
 OBD_PROTOCOL = 'ISO 15765-4 (CAN 11/500)'
-# The abilities of NGI: the lines of the box itself, its phones and recovery code, and the proof of the box (AUTH_SET,
-# AUTH). The application gates CAR_GET, PEER and the firmware update on this field, so it asks for nothing the
-# simulator hasn't got.
-ABILITIES = 'BLE PHONES RECOVERY AUTH'
-# BLE-12: the box keeps this many phones. Section 9.5: a code of BT_PAIR and of BT_RECOVERY is 6 digits.
+# The abilities of NGI: the lines of the box itself. The application reads only OTA from this field (9.6), and the
+# simulator doesn't take a firmware.
+ABILITIES = 'BLE'
+# BLE-12: the box keeps this many phones. Section 9.5: a code of BT_PAIR is 6 digits.
 MAX_BONDS = 4
 CODE_DIGITS = 6
-# Section 9.5: a phone that forgets itself is dropped this long after its OK.
+# Section 9.5: a phone that forgets itself is dropped this long after its OK, and the box answers FACTORY_RESET this
+# long before it erases everything.
 FORGET_DROP_S = 0.5
 # Section 9.5: the key is 16 bytes, the nonce 8, and the box answers the first 8 bytes of HMAC-SHA256(key, nonce).
 AUTH_KEY_BYTES = 16
@@ -180,10 +185,6 @@ def line(body):
     return ('$%s*%04X\r\n' % (body, crc16(body))).encode('ascii')
 
 
-def new_code():
-    return ''.join(secrets.choice('0123456789') for _ in range(CODE_DIGITS))
-
-
 def bond_address(name):
     """A made-up address of a phone: the system gives the simulator none. Locally administered, so no vendor's."""
     digest = hashlib.sha256(name.encode('utf-8')).digest()
@@ -216,7 +217,7 @@ class State:
 
     def __init__(self, box_id):
         self.box_id = box_id
-        self.firmware = '0.4.4'
+        self.firmware = '0.6.0'
         self.build = time.strftime('%Y-%m-%dT%H:%M')
         self.chip = 'esp32s3'
         self.board = 's3zero'
@@ -234,7 +235,8 @@ class State:
         self.adv = {'pairing_open': True, 'full': False, 'has_phones': False}
         self.advertising = True
         self.legacy_name = False
-        self.recovery_code = new_code()
+        # BLE-16: the window opened by 3 quick power-ons; a phone that pairs in it closes it and erases nobody.
+        self.recovery_window = False
 
     def name(self):
         return (LEGACY_NAME_PREFIX if self.legacy_name else NAME_PREFIX) + self.box_id
@@ -244,7 +246,7 @@ class State:
         for key, bit in ADV_FLAGS:
             if self.adv.get(key):
                 flags |= bit
-        return bytes([COMPANY_ID & 0xFF, COMPANY_ID >> 8, ADV_FORMAT, flags])
+        return bytes([COMPANY_ID & 0xFF, COMPANY_ID >> 8, ADV_FORMAT, flags]) + self.box_id.ljust(4)[:4].encode('ascii', 'replace')
 
     def flags_value(self):
         value = 0
@@ -369,6 +371,10 @@ class Box:
         self.dropping_at = {}
         # When the panel's Shut down takes the program down, see tick.
         self.quit_at = None
+        # When FACTORY_RESET erases the box: after its OK.
+        self.reset_at = None
+        # The number of the next event of the journal that is sent, see event().
+        self.event_number = 0
 
     def time_ms(self):
         """Section 9.3: the time of the box since it started, which overflows in 49 days."""
@@ -452,7 +458,7 @@ class Box:
             self.status_dirty = True
             self.queue(phone, line('NGA,%s,OK' % command_id))
             return
-        if name in ('BT_LIST', 'BT_PAIR', 'BT_FORGET', 'BT_RECOVERY'):
+        if name in ('BT_LIST', 'BT_PAIR', 'BT_FORGET', 'FACTORY_RESET'):
             self.queue(phone, line('NGA,%s,%s' % (command_id, self.bt_command(phone, name, rest))))
             return
         if name == 'AUTH_SET':
@@ -468,11 +474,35 @@ class Box:
         address = bond_address(self.auth_phone(phone))
         if address not in self.bonds:
             # A new phone is bonded only in the pairing window, and not while its forgotten link is being dropped.
-            if (len(self.bonds) >= MAX_BONDS or not self.state.adv['pairing_open']
-                    or phone.id in self.dropping_at or phone.id in self.dropping):
+            if (not self.state.adv['pairing_open'] or phone.id in self.dropping_at or phone.id in self.dropping
+                    or self.reset_at is not None):
                 return
-        self.bonds[address] = {'name': phone.name, 'unix_s': phone.unix_s}
+            if len(self.bonds) >= MAX_BONDS:
+                # BLE-16: the recovery window takes a phone on a full box and drops the one with the oldest HELLO.
+                if not self.state.recovery_window:
+                    return
+                self.drop_least_recent()
+            if self.state.recovery_window:
+                self.state.recovery_window = False
+                self.state.adv['pairing_open'] = False
+        self.bonds[address] = {'name': phone.name, 'unix_s': phone.unix_s, 'hello_at': self.clock()}
         self.sync_adv()
+
+    def drop_least_recent(self):
+        """A full box in the recovery window forgets the phone with the oldest last HELLO and tells it: BT_DROP."""
+        address = min(self.bonds, key=lambda a: self.bonds[a].get('hello_at', 0))
+        self.forget(address)
+        self.event('W', 'BT_DROP', address)
+
+    def event(self, level, code, text):
+        """Section 10: an event goes to the phones that listen. The journal of the simulator stays empty, so a phone
+        that misses it doesn't ask for it."""
+        now = self.clock()
+        body = 'NGE,%d,%d,%d,%s,%s,%s' % (VERSION, self.event_number, self.time_ms(), level, code, text)
+        self.event_number += 1
+        for phone in self.phones.values():
+            if phone.heard(now):
+                self.queue(phone, line(body))
 
     def sync_adv(self):
         """The advertisement flags follow the bond list (BLE-12): has_phones with any bond, full at MAX_BONDS."""
@@ -490,7 +520,7 @@ class Box:
         return min(live, key=lambda p: p.hello_order) if live else None
 
     def bt_command(self, phone, name, rest):
-        """BT_LIST, BT_PAIR, BT_FORGET and BT_RECOVERY, the answer after 'NGA,<n>,'. A phone that doesn't change
+        """BT_LIST, BT_PAIR, BT_FORGET and FACTORY_RESET, the answer after 'NGA,<n>,'. A phone that doesn't change
         the box is refused with BUSY, but for BT_LIST and the forgetting of its own link."""
         if name == 'BT_LIST':
             changer = self.changer()
@@ -502,18 +532,20 @@ class Box:
         own = name == 'BT_FORGET' and rest and rest[0] == self.address_of(phone) and rest[0] in self.bonds
         if self.changer() is not phone and not own:
             return 'ERR,BUSY'
-        if name == 'BT_RECOVERY':
-            return 'OK,' + self.state.recovery_code
+        if name == 'FACTORY_RESET':
+            self.reset_at = self.clock() + FORGET_DROP_S
+            return 'OK'
         if name == 'BT_PAIR':
-            if rest and not (len(rest[0]) == CODE_DIGITS and rest[0].isascii() and rest[0].isdigit()):
+            # The code is the app's: the window of a bare BT_PAIR is gone, 123456 is of the windows of the box itself.
+            if not (rest and len(rest[0]) == CODE_DIGITS and rest[0].isascii() and rest[0].isdigit()):
                 return 'ERR,VALUE'
             if len(self.bonds) >= MAX_BONDS:
                 return 'ERR,FULL'
             self.state.adv['pairing_open'] = True
             return 'OK'
         if not rest:
-            self.forget_all()
-            return 'OK'
+            # Forgetting every phone is FACTORY_RESET now.
+            return 'ERR,VALUE'
         if rest[0] not in self.bonds:
             return 'ERR,ADDR'
         self.forget(rest[0], FORGET_DROP_S if own else 0)
@@ -533,10 +565,15 @@ class Box:
         self.sync_adv()
         self.save_keys()
 
-    def forget_all(self):
-        """BT_FORGET without an address: no bond is left, the links stay."""
+    def factory_reset(self):
+        """Everything the box keeps in NVS is erased and it starts as new: no phone, no key, every link dropped, the
+        pairing window open as after a power-on of a box with no phones."""
         self.bonds.clear()
         self.auth_keys.clear()
+        self.reset_at = None
+        self.state.recovery_window = False
+        self.state.adv['pairing_open'] = True
+        self.dropping.update(self.phones)
         self.sync_adv()
         self.save_keys()
 
@@ -605,6 +642,8 @@ class Box:
         """Sends what is due: the queue first, then one NGD to every phone the box has heard from."""
         with self.lock:
             now = self.clock()
+            if self.reset_at is not None and now >= self.reset_at:
+                self.factory_reset()
             for phone_id in self.dropping:
                 self.radio.disconnect(phone_id)
             self.dropping.clear()
@@ -714,7 +753,8 @@ class Box:
                 'board': state.board,
                 'imu_name': state.imu_name,
                 'keys': len(self.auth_keys),
-                'recovery_code': state.recovery_code,
+                'recovery_window': state.recovery_window,
+                'resetting': self.reset_at is not None,
                 'bonds': [{'address': address, 'name': bond['name'], 'unix_s': bond['unix_s'],
                            'connected': any(self.address_of(p) == address for p in self.phones.values())}
                           for address, bond in self.bonds.items()],
@@ -758,19 +798,12 @@ class Box:
             self.status_dirty = True
         return self.panel_state()
 
-    def bt_reset(self, label):
-        """BLE-16 ends with a new phone: it stays alone in the list, the other links are dropped and the code of
-        recovery is a new one. The phone is the connected one of this label, none leaves an empty list."""
-        keep = next((p for p in self.phones.values() if p.label == label), None)
-        keep_address = self.address_of(keep) if keep else None
-        for address in list(self.bonds):
-            if address != keep_address:
-                self.forget(address)
-        if keep and keep_address not in self.bonds:
-            # The recovery window takes the new phone whatever the normal pairing window says.
-            self.bonds[keep_address] = {'name': keep.name, 'unix_s': keep.unix_s}
-            self.sync_adv()
-        self.state.recovery_code = new_code()
+    def quick_power_ons(self):
+        """BLE-16: 3 quick power-ons of a box that has phones open the recovery window, code 123456. A box with no
+        phones has the window of a power-on anyway."""
+        if self.bonds:
+            self.state.recovery_window = True
+        self.state.adv['pairing_open'] = True
 
     def panel_action(self, action, label):
         with self.lock:
@@ -791,8 +824,10 @@ class Box:
                 self.log.clear()
             elif action == 'forget_bond' and label in self.bonds:
                 self.forget(label)
-            elif action == 'bt_reset':
-                self.bt_reset(label)
+            elif action == 'quick_power_ons':
+                self.quick_power_ons()
+            elif action == 'factory_reset':
+                self.factory_reset()
             elif action == 'forget_keys':
                 self.auth_keys.clear()
                 self.save_keys()
