@@ -455,6 +455,34 @@ class ReplayLogsTest(unittest.TestCase):
             out, _ = self.run_main('days', os.path.join(folder, 'Pixel_7-a3f9'))
             self.assertNotIn('SM_S918B-0b1c', out)
 
+    @staticmethod
+    def ios_run(utc, zone, seconds, launch=0.0):
+        """One run of the iOS app: its two "Local time:" lines (UTC, then with the zone), the start and |seconds| TRIP
+        lines."""
+        lines = ['I(1) %.5f Local time: %s +0000' % (launch, utc),
+                 'I(1) %.5f Local time: %s +0000 , Time Zone: %s' % (launch + 0.0004, utc, zone),
+                 'I(1) %.5f Maps/main.mm:14 main: Organic Maps com.non-gps 2026.11.25 started, detected CPU cores: 6'
+                 % (launch + 0.04),
+                 'I(1) %.5f Maps/main.mm:20 foo: TRIP : not a core line' % (launch + 0.06)]
+        lines += ['I(1) %.5f nogps/engine.cpp:2312 LogTrip(): %s' % (launch + 10 + s, trip_line())
+                  for s in range(seconds)]
+        return lines
+
+    def test_days_and_input_of_an_ios_log_in_its_local_time(self):
+        """An iOS line has no date: its time is the launch's "Local time:" (UTC) plus its zone, so a run started at
+        23:00 UTC in GMT+2 is a day of the next date, as the folder of the trip is named."""
+        run = self.ios_run('2026-11-25 22:59:50', 'GMT+2', 5) + self.ios_run('2026-11-26 00:00:00', 'GMT-0:30', 3, 7.0)
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {'iPhone17_1-3b77/2026-11-26/005950.log': with_logfmt(run, 'iPhone17_1-3b77')})
+            out, _ = self.run_main('days', folder)
+            self.assertIn('phone iPhone17_1-3b77\n11-25       3 TRIP lines  made from\n11-26       5 TRIP lines', out)
+            trips, others, started = nogps_replay.read([os.path.join(folder, 'iPhone17_1-3b77', '2026-11-26',
+                                                                     '005950.log')], '11-26')
+            # 22:59:50 UTC is 00:59:50 in GMT+2.
+            self.assertEqual([t['ms'] for t in trips], [3590000 + 1000 * (10 + s) for s in range(5)])
+            self.assertEqual(started, [3590040])
+            self.assertEqual(others, [])
+
     def test_input_of_a_tree_of_two_phones_is_a_file_a_phone(self):
         with tempfile.TemporaryDirectory() as folder:
             self.two_phones(folder)
