@@ -48,6 +48,8 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
 
   /// The height of the rows the sheet was fitted to.
   private var fittedHeight = CGFloat(0)
+  private var refitting = false
+  private var refitAgain = false
   /// The bottom of the bar in a shown sheet: iOS moves the bar and makes it higher only as the sheet opens. The sheet
   /// is fitted with it from the start, else it would grow as it opens. Taken again from every shown sheet.
   private static var barBottom: CGFloat = if #available(iOS 26.0, *) {
@@ -236,10 +238,25 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
   /// Rows come and go, the box is found: the sheet follows. Not for the fractions of a point the layout differs by.
   /// Also called by the pages it fits.
   func refit() {
+    // invalidateDetents lays the sheet out at once, which calls this again from the page's viewDidLayoutSubviews.
+    // During a swipe back the height read there flips between the two pages, and the stack overflowed. The call from
+    // inside waits for the layout to end, so the last height still counts.
+    if refitting {
+      if !refitAgain {
+        refitAgain = true
+        DispatchQueue.main.async { [weak self] in
+          self?.refitAgain = false
+          self?.refit()
+        }
+      }
+      return
+    }
     let height = sheetHeight
     if #available(iOS 16.0, *), let sheet = navigationController?.sheetPresentationController,
        abs(height - fittedHeight) >= 1 {
       fittedHeight = height
+      refitting = true
+      defer { refitting = false }
       sheet.animateChanges { sheet.invalidateDetents() }
     }
   }
