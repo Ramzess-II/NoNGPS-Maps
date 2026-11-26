@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<!-- How NonGPS works: the guide of the app. One page, all languages: the apps pass ?lang=uk or ?lang=en.
+     A change of what the app does that a section describes changes the section (see "Living docs" in
+     .claude/rules/nogps-workflow.md). The checks are in tools/python/nogps_guide_test.py. -->
+<html>
+<head>
+  <title>How NonGPS works</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    /* All langs are invisible until the script sets data-lang on the root. */
+    [lang] {
+      display: none;
+    }
+    html[data-lang="en"] [lang="en"],
+    html[data-lang="uk"] [lang="uk"] {
+      display: revert;
+    }
+
+    /* The NonGPS primary is the bar colour of the app: cream on light, graphite on dark. A title can't be that
+       light on white, so the light theme takes a darker shade of the cream and the dark theme the cream itself. */
+    :root {
+      color-scheme: light dark;
+      --text: #1b1b1b;
+      --text-secondary: #555555;
+      --background: #ffffff;
+      --accent: #5e5a3c;
+      --accent-bg: #e3e1d2;
+      --separator: #d4d2c3;
+      --placeholder: #e6e6e6;
+      --mark: #ffe58a;
+    }
+
+    @media screen and (prefers-color-scheme: dark) {
+      :root {
+        --text: #e8e8e8;
+        --text-secondary: #a8a8a8;
+        --background: #1e2226;
+        --accent: #e3e1d2;
+        --accent-bg: #32363a;
+        --separator: #3c4044;
+        --placeholder: #32363a;
+        --mark: #6b5b00;
+      }
+    }
+
+    html {
+      color: var(--text);
+      background: var(--background);
+      font-family: -apple-system, system-ui, Roboto, "Helvetica Neue", sans-serif;
+      font-size: 16px;
+      line-height: 1.45;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+      margin: 0;
+      padding: 0 16px 32px 16px;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    .top {
+      padding-top: 16px;
+    }
+
+    .btn {
+      display: block;
+      box-sizing: border-box;
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 8px;
+      background: var(--accent-bg);
+      color: var(--accent);
+      font-weight: 600;
+      text-align: center;
+      text-decoration: none;
+    }
+
+    .search {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      padding: 12px 0;
+      background: var(--background);
+    }
+
+    .search input {
+      box-sizing: border-box;
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--separator);
+      border-radius: 8px;
+      background: var(--background);
+      color: var(--text);
+      font-size: 16px;
+    }
+
+    #nothing {
+      display: none;
+      color: var(--text-secondary);
+    }
+
+    details {
+      border-bottom: 1px solid var(--separator);
+    }
+
+    summary {
+      padding: 14px 0;
+      color: var(--accent);
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .body {
+      padding-bottom: 16px;
+    }
+
+    .body p {
+      margin: 0 0 10px 0;
+    }
+
+    .body ul {
+      margin: 0 0 10px 0;
+      padding-left: 22px;
+    }
+
+    mark {
+      background: var(--mark);
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      margin: 0 0 10px 0;
+      border-collapse: collapse;
+    }
+
+    td {
+      padding: 6px 4px;
+      border-top: 1px solid var(--separator);
+      vertical-align: top;
+    }
+
+    td:first-child {
+      width: 1%;
+      white-space: nowrap;
+    }
+
+    .dot {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      margin-right: 6px;
+      border-radius: 50%;
+      vertical-align: -2px;
+    }
+
+    .purple { background: #8e44c4; }
+    .green { background: #2e9e4f; }
+    .blue { background: #1e96f0; }
+    .orange { background: #f08a1e; }
+    .red { background: #d93025; }
+    .grey { background: #8c8c8c; }
+    .yellow { background: #f5c518; }
+
+    /* A screenshot cut that is not made yet: a grey frame of a phone screen and what it will show. */
+    figure.shot {
+      margin: 0 0 12px 0;
+      max-width: 240px;
+    }
+
+    figure.shot .frame {
+      aspect-ratio: 9 / 16;
+      border-radius: 12px;
+      background: var(--placeholder);
+    }
+
+    figure.shot figcaption {
+      margin-top: 4px;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="top">
+    <a class="btn" href="nogps-guide://intro" id="intro">
+      <span lang="en">Show the intro again</span>
+      <span lang="uk">Показати підказки знову</span>
+    </a>
+  </div>
+
+  <div class="search">
+    <input type="search" id="q" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" />
+  </div>
+  <p id="nothing">
+    <span lang="en">Nothing found.</span>
+    <span lang="uk">Нічого не знайдено.</span>
+  </p>
+
+  <details id="no-warranty" open>
+    <summary>
+      <span lang="en">No warranty</span>
+      <span lang="uk">Без гарантії</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>The app and the box are provided as is, without warranty of any kind.</p>
+        <p>Navigation without GPS is an estimate, and it can be wrong.</p>
+        <p>You drive. Watch the road and the signs: you are responsible for the drive. Don't use the app where a
+          mistake can cost safety.</p>
+      </div>
+      <div lang="uk">
+        <p>Застосунок і блок надаються як є, без жодних гарантій.</p>
+        <p>Навігація без GPS — це оцінка, і вона може помилятися.</p>
+        <p>За кермом ви. Дивіться на дорогу й знаки: за поїздку відповідаєте ви. Не користуйтеся застосунком там, де
+          помилка може коштувати безпеки.</p>
+      </div>
+    </div>
+  </details>
+
+  <details id="only-with-box">
+    <summary>
+      <span lang="en">NonGPS works only with the box</span>
+      <span lang="uk">NonGPS працює лише з блоком</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>Without the box the app is an ordinary offline map. GPS, the position from cell towers and Wi-Fi, and the
+          mark that you place by hand work as in any map.</p>
+        <p>The inertial navigation and the "Ignore GPS" switch need the box: it holds the motion sensors and reads the
+          speed of the car.</p>
+        <p>Where to buy the box: <a href="https://non-gps.com">non-gps.com</a>. The "Buy the box" row is in the menu
+          and on the box sheet too.</p>
+      </div>
+      <div lang="uk">
+        <p>Без блока застосунок — звичайна офлайн-мапа. GPS, позиція від веж і Wi-Fi та мітка, яку ви ставите
+          рукою, працюють, як в інших мапах.</p>
+        <p>Інерціальна навігація і перемикач «Не використовувати GPS» потребують блока: у ньому датчики руху, і він
+          читає швидкість машини.</p>
+        <p>Де купити блок: <a href="https://non-gps.com">non-gps.com</a>. Рядок «Купити блок» є також у меню й на
+          листі блока.</p>
+      </div>
+      <figure class="shot" data-shot="menu-buy-box">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">The menu with the "Buy the box" row</span>
+          <span lang="uk">Меню з рядком «Купити блок»</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <details id="connect-box">
+    <summary>
+      <span lang="en">Connecting the box to the car</span>
+      <span lang="uk">Підключення блока до машини</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>Plug the ELM327 adapter into the OBD-II socket of the car, and the box into the adapter. The socket is
+          always live, so the box has power whenever the car is.</p>
+        <p>Fix the box firmly. It zeroes the gyroscope on every stop by itself, but a box that moves in its mount
+          needs a new calibration.</p>
+        <p>The box sleeps when the engine stops, and wakes when the voltage of the car rises. If the battery was low,
+          the box switches itself off: "switched off: the battery was low". Unplug the box and plug it back in.</p>
+        <p>The LED of the box:</p>
+        <ul>
+          <li>blinks rarely (0.1 s on): Bluetooth works, the box waits for a phone;</li>
+          <li>blinks often: Bluetooth is starting or has failed;</li>
+          <li>always on: a phone is connected, all is well;</li>
+          <li>on, and goes off 2 times every 2 s: no gyroscope;</li>
+          <li>on, and goes off 3 times every 2 s: no speed from OBD;</li>
+          <li>on, and goes off 4 times every 2 s: the box was moved, calibrate it.</li>
+        </ul>
+      </div>
+      <div lang="uk">
+        <p>Вставте адаптер ELM327 у роз'єм OBD-II машини, а блок — в адаптер. Роз'єм завжди під напругою, тож блок
+          має живлення, поки є воно в машини.</p>
+        <p>Закріпіть блок міцно. Він сам обнуляє гіроскоп на кожній зупинці, але блок, що ворушиться у кріпленні,
+          треба калібрувати знову.</p>
+        <p>Блок спить, коли двигун зупинено, і прокидається, коли напруга машини зростає. Якщо акумулятор був
+          розряджений, блок вимикається сам: «вимкнувся: низький заряд акумулятора». Витягніть блок і вставте
+          знову.</p>
+        <p>Світлодіод блока:</p>
+        <ul>
+          <li>блимає рідко (0,1 с горить): Bluetooth працює, блок чекає телефон;</li>
+          <li>блимає часто: Bluetooth запускається або сталася помилка;</li>
+          <li>горить постійно: телефон підключено, усе гаразд;</li>
+          <li>горить і гасне 2 рази раз на 2 с: немає гіроскопа;</li>
+          <li>горить і гасне 3 рази раз на 2 с: немає швидкості з OBD;</li>
+          <li>горить і гасне 4 рази раз на 2 с: блок зсунули, його треба відкалібрувати.</li>
+        </ul>
+      </div>
+      <figure class="shot" data-shot="box-in-obd-socket">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">The adapter and the box in the OBD-II socket</span>
+          <span lang="uk">Адаптер і блок у роз'ємі OBD-II</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <details id="pairing">
+    <summary>
+      <span lang="en">Pairing the box</span>
+      <span lang="uk">Спарювання з блоком</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>Tap the "+" on the bottom bar: it opens the box sheet. Power the box on near the phone. For 2 minutes it
+          accepts a new phone. When the phone asks for a code, enter 123456.</p>
+        <p>To add another phone from a phone that is paired already: tap the car name at the top of the box sheet,
+          then Phones, then "Add a phone". The app shows a one-time code: enter it on the new phone when it asks.
+          The code works once and expires.</p>
+        <p>A box takes 4 phones at most. Remove one before you add the fifth.</p>
+      </div>
+      <div lang="uk">
+        <p>Торкніться «+» на нижній панелі: відкриється лист блока. Увімкніть живлення блока поруч із телефоном. 2
+          хвилини він приймає новий телефон. Коли телефон попросить код, введіть 123456.</p>
+        <p>Щоб додати ще один телефон із телефона, який уже спарено: торкніться назви машини вгорі листа блока,
+          далі «Телефони» і «Додати телефон». Застосунок покаже одноразовий код: введіть його на новому телефоні, коли
+          він спитає. Код діє один раз і спливає.</p>
+        <p>Блок приймає не більше 4 телефонів. Приберіть один, перш ніж додати п'ятий.</p>
+      </div>
+      <figure class="shot" data-shot="pairing-sheet">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">The box sheet while the box is searched for</span>
+          <span lang="uk">Лист блока, поки блок шукається</span>
+        </figcaption>
+      </figure>
+      <figure class="shot" data-shot="add-phone">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">"Add a phone" with its one-time code</span>
+          <span lang="uk">«Додати телефон» з одноразовим кодом</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <details id="connection-problems">
+    <summary>
+      <span lang="en">Connection troubleshooting</span>
+      <span lang="uk">Якщо немає зв'язку з блоком</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>The box sheet shows the step that stops the connection, and a button for it:</p>
+        <ul>
+          <li>"Bluetooth is off": the button turns it on;</li>
+          <li>"Bluetooth is not allowed", "Nearby devices are not allowed": the button asks for the permission;</li>
+          <li>"Location is not allowed" or "Location is off": the same, for the location, which some Android versions
+            need to search for Bluetooth devices.</li>
+        </ul>
+        <p>When the box is found but does not connect:</p>
+        <ul>
+          <li>"Pairing closed": the box accepts a new phone only for 2 minutes after the power is on. Unplug the box and
+            plug it back in. If the box has phones already, add this phone from a paired one.</li>
+          <li>"Box full": the box has 4 phones. Remove one on a paired phone.</li>
+          <li>"The box has forgotten this phone": remove the box in the Bluetooth settings of the phone, then add the
+            phone again.</li>
+          <li>"The box did not prove it is yours": the box is not used. If it is yours, forget the car and pair the box
+            again.</li>
+        </ul>
+        <p>The state of the OBD adapter: "OBD doesn't answer" means the adapter is not plugged in or is off, "OBD
+          sleeps" means the engine is stopped, "OBD is off in the box" means it was turned off in the box settings.
+          While there is no speed from the car, the car stands still on the map.</p>
+        <p>The app looks for the box in the background, and on Android a notification says that it follows the car by
+          the sensor box.</p>
+        <p>If you lost all the phones of the box: plug it in and unplug it within a minute, 3 times, and leave it
+          plugged in the third time. For 2 minutes it accepts a new phone with the recovery code. The code is on the
+          car page, write it down.</p>
+      </div>
+      <div lang="uk">
+        <p>Лист блока показує крок, на якому зв'язок спиняється, і кнопку до нього:</p>
+        <ul>
+          <li>«Bluetooth вимкнено»: кнопка вмикає його;</li>
+          <li>«Bluetooth не дозволено», «Пристрої поблизу не дозволено»: кнопка просить дозвіл;</li>
+          <li>«Геолокацію не дозволено» або «Геолокацію вимкнено»: те саме для геолокації, яку деякі версії Android
+            вимагають для пошуку Bluetooth-пристроїв.</li>
+        </ul>
+        <p>Коли блок знайдено, але він не підключається:</p>
+        <ul>
+          <li>«Сполучення закрите»: блок приймає новий телефон лише 2 хвилини після подання живлення. Витягніть блок і
+            вставте знову. Якщо в блока вже є телефони, додайте цей з телефона, який уже спарено.</li>
+          <li>«Блок заповнений»: у блока 4 телефони. Приберіть один на телефоні, який уже спарено.</li>
+          <li>«Блок забув цей телефон»: видаліть блок у налаштуваннях Bluetooth телефона, потім додайте телефон
+            знову.</li>
+          <li>«Блок не довів, що він ваш»: блок не використовується. Якщо він ваш, забудьте машину й спаруйте блок
+            знову.</li>
+        </ul>
+        <p>Стан адаптера OBD: «OBD не відповідає» — адаптер не вставлено або він вимкнений, «OBD спить» — двигун
+          зупинено, «OBD вимкнено в блоці» — його вимкнено в налаштуваннях блока. Поки від машини немає швидкості,
+          машина стоїть на мапі.</p>
+        <p>Застосунок шукає блок у фоні, а на Android сповіщення каже, що він слідує за машиною за блоком датчиків.</p>
+        <p>Якщо ви загубили всі телефони блока: ввімкніть блок у живлення й вимкніть упродовж хвилини, 3 рази, а на
+          третій раз лишіть увімкненим. 2 хвилини він приймає новий телефон із кодом відновлення. Код є на сторінці
+          машини, запишіть його.</p>
+      </div>
+      <figure class="shot" data-shot="connection-steps">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">The steps of the connection on the box sheet</span>
+          <span lang="uk">Кроки зв'язку на листі блока</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <details id="imu-calibration">
+    <summary>
+      <span lang="en">IMU calibration</span>
+      <span lang="uk">Калібрування датчика</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>The box must be calibrated once it is installed, and every time it was taken out or moved. The car must
+          stand on a level surface, not on a slope.</p>
+        <p>When it is needed, the map shows the "Calibrate the sensor box" strip. Tap it, then hold still: nobody gets
+          in or out and nobody touches the box. The bar is orange, and the trace of the shaking goes from orange to
+          green as the car settles. Then "Calibrating…" with its percent, and "calibrated". If the car moved, you see
+          "The car moved": calibrate again.</p>
+        <p>The same is on the page Box, then Inertial Measurement Unit, then "Sensor box calibration", with the
+          "Recalibrate" button.</p>
+        <p>While the box is not calibrated or was moved, the car stands still on the map.</p>
+      </div>
+      <div lang="uk">
+        <p>Блок треба калібрувати, коли його встановлено, і щоразу, коли його виймали чи зсували. Машина має стояти на
+          рівній поверхні, не на схилі.</p>
+        <p>Коли це потрібно, мапа показує смужку «Відкалібруйте блок датчиків». Торкніться її й стійте нерухомо: ніхто
+          не сідає й не виходить і ніхто не торкається блока. Смужка оранжева, а слід тремтіння змінюється з
+          оранжевого на зелений, коли машина вгамовується. Потім «Калібрування…» із відсотками і «відкалібровано».
+          Якщо машина рухалась, побачите «Машина зрушила»: відкалібруйте знову.</p>
+        <p>Те саме є на сторінці «Блок», далі «Інерціальний вимірювальний блок», далі «Калібрування блока датчиків» з
+          кнопкою «Відкалібрувати знову».</p>
+        <p>Поки блок не відкалібровано чи його зсунули, машина стоїть на мапі.</p>
+      </div>
+      <figure class="shot" data-shot="calibrate-strip">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">The orange "Hold still" bar with the shake trace</span>
+          <span lang="uk">Оранжева смужка «Стійте нерухомо» зі слідом тремтіння</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <details id="starting-a-drive">
+    <summary>
+      <span lang="en">Starting a drive</span>
+      <span lang="uk">Початок поїздки</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>The mark starts where the car was parked, with the heading it had.</p>
+        <p>The start matters: everything after it is counted from it, so a wrong start is a wrong drive. Check the
+          mark before you drive off.</p>
+        <p>If it is wrong, mark the car by hand (see "Pointing yourself on the map"), or let a good GPS fix take it.</p>
+        <p>With no start position the app says "Not ready to drive without GPS: no start position, mark the car on
+          the map".</p>
+      </div>
+      <div lang="uk">
+        <p>Мітка стартує там, де машину припарковано, із тим курсом, який вона мала.</p>
+        <p>Старт важливий: усе далі рахується від нього, тож хибний старт — це хибна поїздка. Перевірте мітку, перш ніж
+          рушати.</p>
+        <p>Якщо вона хибна, поставте машину рукою (див. «Вказати, де ви») або дайте її взяти доброму GPS.</p>
+        <p>Без стартової позиції застосунок каже «Не готово їхати без GPS: немає стартової позиції, позначте машину
+          на мапі».</p>
+      </div>
+      <figure class="shot" data-shot="start-position">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">The mark where the car is parked, and the "no start position" status</span>
+          <span lang="uk">Мітка там, де припарковано машину, і стан «немає стартової позиції»</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <details id="icons-colors">
+    <summary>
+      <span lang="en">Icons and colors</span>
+      <span lang="uk">Значки й кольори</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>The button on the bottom bar shows the source of the position as a word ("Inertial", "Network",
+          "Manual"), its accuracy as ±m, and an arrow. Its colour tells the state:</p>
+        <table>
+          <tr><td><span class="dot purple"></span>purple</td><td>inertial navigation: the box drives the car</td></tr>
+          <tr><td><span class="dot green"></span>green</td><td>good GPS</td></tr>
+          <tr><td><span class="dot blue"></span>blue, pulsing</td><td>in progress: GPS is being checked, the box is
+            searched for, connecting, waiting for data, or updating its firmware</td></tr>
+          <tr><td><span class="dot orange"></span>orange</td><td>coarse or spoofed GPS, or the box has no data of
+            the car</td></tr>
+          <tr><td><span class="dot red"></span>red</td><td>no position</td></tr>
+          <tr><td><span class="dot grey"></span>grey</td><td>off: GPS is off in the system settings, or OBD
+            sleeps</td></tr>
+        </table>
+        <p>The small badge on the button:</p>
+        <ul>
+          <li>"!": a problem, e.g. a spoofed GPS or the battery lock of the box;</li>
+          <li>pause: GPS is not used, because you ignore it;</li>
+          <li>moon: the box sleeps, the phone goes on searching for it;</li>
+          <li>antenna with a clock: GPS is good again and waits to be trusted;</li>
+          <li>"+": no box is set up yet, tap it to connect or buy one.</li>
+        </ul>
+        <p>The "Road lost" pill appears when the car left the roads of the map. The car stops, tap the pill to place
+          it by GPS, or mark yourself on the map.</p>
+        <p>The potholes the box felt are on the map as marks: yellow below 25%, orange from 25% to 49%, red from
+          50%. Tap one to see its strength and how many times it was hit.</p>
+      </div>
+      <div lang="uk">
+        <p>Кнопка на нижній панелі показує джерело позиції словом («Інерціальна», «Мережа», «Вручну»), його точність
+          ±м і стрілку. Колір каже про стан:</p>
+        <table>
+          <tr><td><span class="dot purple"></span>фіолетовий</td><td>інерціальна навігація: машину веде блок</td></tr>
+          <tr><td><span class="dot green"></span>зелений</td><td>добрий GPS</td></tr>
+          <tr><td><span class="dot blue"></span>синій, пульсує</td><td>триває дія: GPS перевіряється, блок
+            шукається, з'єднується, чекає даних чи оновлює прошивку</td></tr>
+          <tr><td><span class="dot orange"></span>помаранчевий</td><td>грубий чи підмінений GPS, або в блока немає
+            даних машини</td></tr>
+          <tr><td><span class="dot red"></span>червоний</td><td>немає позиції</td></tr>
+          <tr><td><span class="dot grey"></span>сірий</td><td>вимкнено: GPS вимкнено в налаштуваннях системи або
+            OBD спить</td></tr>
+        </table>
+        <p>Малий значок на кнопці:</p>
+        <ul>
+          <li>«!»: проблема, наприклад підмінений GPS чи блокування блока за акумулятором;</li>
+          <li>пауза: GPS не береться, бо ви його не використовуєте;</li>
+          <li>місяць: блок спить, телефон далі його шукає;</li>
+          <li>антена з годинником: GPS знову добрий і чекає довіри;</li>
+          <li>«+»: блок ще не налаштовано, торкніться, щоб підключити або купити.</li>
+        </ul>
+        <p>Плашка «Дорогу втрачено» з'являється, коли машина зійшла з доріг мапи. Машина спиняється: торкніться плашки,
+          щоб поставити її за GPS, або вкажіть себе на мапі.</p>
+        <p>Вибоїни, які відчув блок, є на мапі мітками: жовті до 25 %, помаранчеві від 25 % до 49 %, червоні від
+          50 %. Торкніться мітки, щоб побачити силу удару й скільки разів він був.</p>
+      </div>
+      <figure class="shot" data-shot="bottom-bar-states">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">The bottom bar button in each colour</span>
+          <span lang="uk">Кнопка нижньої панелі в кожному кольорі</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <details id="speed-calibration">
+    <summary>
+      <span lang="en">Speed calibration</span>
+      <span lang="uk">Калібрування швидкості</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>Why: the car reports its speed slightly wrong because of the tyres, and the whole distance without GPS
+          depends on it. The app corrects the speed.</p>
+        <p>How: drive with good GPS about 300 m in each 10 km/h range. A blue strip with segments appears beside the
+          speed button and shows the range that is being learned, "Calibrating 50–60 km/h", and how far is left. The
+          measured segments are filled. When a range is done, the app says "50–60 km/h calibrated!", and again when
+          the city speeds (5–60 km/h), the out-of-town ones (5–100 km/h), or all the ranges are done.</p>
+        <p>With no GPS the strip says "Vital for driving without GPS: turn GPS on".</p>
+        <p>Tap the strip, or open the Speed calibration page from the box page, to see the table. "Reset" forgets it:
+          do it after new tyres or another car. It is learned anew while GPS works.</p>
+      </div>
+      <div lang="uk">
+        <p>Навіщо: машина каже швидкість трохи хибно через шини, а від неї залежить уся відстань без GPS. Застосунок
+          виправляє швидкість.</p>
+        <p>Як: їдьте з добрим GPS близько 300 м у кожному діапазоні по 10 км/год. Збоку від кнопки швидкості
+          з'являється синя смужка із сегментами: вона показує діапазон, що вивчається, «Калібрується 50–60 км/год», і
+          скільки лишилося. Виміряні сегменти залиті. Коли діапазон готовий, застосунок каже «50–60 км/год
+          відкалібровано!», а також коли готові міські швидкості (5–60 км/год), позаміські (5–100 км/год) чи всі
+          діапазони.</p>
+        <p>Без GPS смужка каже «Важливо для їзди без GPS: увімкніть GPS».</p>
+        <p>Торкніться смужки або відкрийте сторінку «Калібрування швидкості» зі сторінки блока, щоб побачити таблицю.
+          «Скинути» її забуває: зробіть це після нових шин чи на іншій машині. Вона вчиться знову, поки працює GPS.</p>
+      </div>
+      <figure class="shot" data-shot="speed-strip">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">The blue strip with its segments</span>
+          <span lang="uk">Синя смужка із сегментами</span>
+        </figcaption>
+      </figure>
+      <figure class="shot" data-shot="speed-table">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">The Speed calibration page</span>
+          <span lang="uk">Сторінка «Калібрування швидкості»</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <details id="pointing">
+    <summary>
+      <span lang="en">Pointing yourself on the map</span>
+      <span lang="uk">Вказати, де ви</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>Tap the finger button on the left panel: it turns red. Then tap the road where the car is. The mark goes
+          there, and GPS is not taken until it is trusted again. A tap away from the roads says "There is no road here"
+          and the button stays red. Tap the button again to cancel.</p>
+        <p>The same from a place page: "I'm here" is its first button.</p>
+        <p>Two more buttons show up on the left panel when they can help:</p>
+        <ul>
+          <li>"Turn the car around on the road": the car faces the other way, after you moved the mark by hand;</li>
+          <li>"Show the car on another road it may be on": it switches the mark to another road where the car could
+            be.</li>
+        </ul>
+        <p>Turns at crossings the app takes by itself: there is no button for them.</p>
+      </div>
+      <div lang="uk">
+        <p>Торкніться кнопки з пальцем на лівій панелі: вона стане червоною. Тоді торкніться дороги, де машина. Мітка
+          стане туди, і GPS не береться, доки йому знову не повірять. Дотик поза дорогами каже «Тут немає дороги», а
+          кнопка лишається червоною. Торкніться кнопки ще раз, щоб скасувати.</p>
+        <p>Те саме з картки місця: «Я тут» — її перша кнопка.</p>
+        <p>Ще дві кнопки з'являються на лівій панелі, коли можуть допомогти:</p>
+        <ul>
+          <li>«Розвернути машину на дорозі»: машина дивиться в інший бік, після того як ви зсунули мітку рукою;</li>
+          <li>«Показати машину на іншій дорозі, де вона може бути»: переносить мітку на іншу дорогу, де могла б бути
+            машина.</li>
+        </ul>
+        <p>Повороти на перехрестях застосунок бере сам: кнопки для них немає.</p>
+      </div>
+      <figure class="shot" data-shot="finger-button">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">The red finger button, then the tap on the road</span>
+          <span lang="uk">Червона кнопка з пальцем і дотик на дорозі</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <details id="map-and-panels">
+    <summary>
+      <span lang="en">Using the map and its tools</span>
+      <span lang="uk">Мапа та її кнопки</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>The right panel zooms and turns the map. Slide on + or − to zoom: the farther the finger goes, the more the
+          map zooms. The button under it sets the direction of the map: the car up, or north up.</p>
+        <p>The left panel holds the buttons that point and turn the car.</p>
+        <p>Hold a panel for 0.8 s, and it lifts: now you can move it up or down. It stays where you leave it, even
+          after you turn the phone or restart the app.</p>
+        <p>In navigation the right panel has a categories button on top: fuel, parking, food, groceries, ATM. Tap a
+          category to search it on the map, and tap the button again to clear it.</p>
+      </div>
+      <div lang="uk">
+        <p>Права панель змінює масштаб і повертає мапу. Проведіть по + або −, щоб змінити масштаб: що далі палець, то
+          більше масштаб. Кнопка під ними задає напрямок мапи: машина вгору чи північ вгору.</p>
+        <p>Ліва панель має кнопки, якими вказують і повертають машину.</p>
+        <p>Утримуйте панель 0,8 с, і вона підніметься: тепер її можна пересунути вгору чи вниз. Вона лишається там, де ви
+          її залишили, навіть після повороту телефона чи перезапуску застосунку.</p>
+        <p>У навігації права панель має вгорі кнопку категорій: пальне, парковка, де поїсти, продукти, банкомат.
+          Торкніться категорії, щоб шукати її на мапі, і торкніться кнопки ще раз, щоб зняти пошук.</p>
+      </div>
+      <figure class="shot" data-shot="lifted-panel">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">A panel lifted by a hold</span>
+          <span lang="uk">Панель, піднята утриманням</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <details id="search-and-maps">
+    <summary>
+      <span lang="en">Search and outdated maps</span>
+      <span lang="uk">Пошук і застарілі мапи</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>Search works offline, on the maps you have downloaded.</p>
+        <p>OpenStreetMap is thin in parts of Ukraine: a house or a shop may be missing, and a search finds nothing.
+          Then search the street or a place nearby, or point on the map.</p>
+        <p>Update the maps in the menu, Download Maps: the data of OpenStreetMap changes every day.</p>
+        <p>You can add a missing place to OpenStreetMap, from the menu. It reaches the maps with their next update.</p>
+      </div>
+      <div lang="uk">
+        <p>Пошук працює офлайн, на завантажених мапах.</p>
+        <p>OpenStreetMap у деяких місцях України неповна: будинку чи магазину може не бути, і пошук нічого не знайде.
+          Тоді шукайте вулицю чи місце поруч або вкажіть на мапі.</p>
+        <p>Оновлюйте мапи в меню, «Завантажити мапи»: дані OpenStreetMap змінюються щодня.</p>
+        <p>Відсутнє місце можна додати в OpenStreetMap із меню. Воно потрапить на мапи з їхнім наступним
+          оновленням.</p>
+      </div>
+    </div>
+  </details>
+
+  <details id="gps-ignoring">
+    <summary>
+      <span lang="en">GPS ignoring</span>
+      <span lang="uk">Ігнорування GPS</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>By itself: the app treats GPS as spoofed when it is far from the cell towers and Wi-Fi, when it jumps too
+          fast, or when its speed disagrees with the car. Then the box and your marks place the car. GPS comes back
+          after it agrees with the car for 15 s.</p>
+        <p>By hand: the "Ignore GPS" switch on the box sheet. It is for places where GPS is spoofed but the app does
+          not see it. It needs the box, because nothing else would move the car. The choice is kept between
+          launches. While it is on, the GPS state is still shown. Tapping the "Road lost" pill takes the GPS once.</p>
+      </div>
+      <div lang="uk">
+        <p>Само: застосунок вважає GPS підміненим, коли він далеко від веж і Wi-Fi, коли надто швидко стрибає чи коли
+          його швидкість не збігається з машинною. Тоді машину ставлять блок і ваші мітки. GPS повертається, коли 15 с
+          узгоджується з машиною.</p>
+        <p>Рукою: перемикач «Не використовувати GPS» на листі блока. Він для місць, де GPS підмінено, а застосунок
+          цього не бачить. Він потребує блока, бо без нього машину нічим вести. Вибір зберігається між запусками.
+          Поки перемикач увімкнений, стан GPS усе одно видно. Дотик по плашці «Дорогу втрачено» бере GPS один раз.</p>
+      </div>
+      <figure class="shot" data-shot="ignore-gps-switch">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">The "Ignore GPS" switch on the box sheet</span>
+          <span lang="uk">Перемикач «Не використовувати GPS» на листі блока</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <details id="routing">
+    <summary>
+      <span lang="en">Building a route</span>
+      <span lang="uk">Прокладання маршруту</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>Build a route as in Organic Maps: from the mark of the car to the place you chose.</p>
+        <p>The route needs a position. Without one the app says "No position: the route has nowhere to start from".
+          Press the finger button and tap the road where you are.</p>
+        <p>The route is rebuilt when the mark leaves it. While you navigate, a tap near the route puts the mark on it.</p>
+      </div>
+      <div lang="uk">
+        <p>Маршрут прокладається, як в Organic Maps: від мітки машини до обраного місця.</p>
+        <p>Маршруту потрібна позиція. Без неї застосунок каже «Немає позиції: маршруту нема звідки починатися».
+          Натисніть кнопку з пальцем і торкніться дороги, де ви.</p>
+        <p>Маршрут перебудовується, коли мітка його полишає. Під час навігації дотик поблизу маршруту ставить мітку на
+          нього.</p>
+      </div>
+      <figure class="shot" data-shot="route-from-mark">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">A route built from the mark of the car</span>
+          <span lang="uk">Маршрут, прокладений від мітки машини</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <details id="cars-phones">
+    <summary>
+      <span lang="en">Several cars and phones</span>
+      <span lang="uk">Кілька машин і телефонів</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>Each box is one car, with its own calibration and parking spot.</p>
+        <p>Cars: tap the car name at the top of the box sheet. The list shows the cars. "Add a car": power on the box
+          of the new car near the phone. The phone keeps 4 cars at most. "Forget the car" removes what the app learned
+          about it.</p>
+        <p>Phones: the same page lists the phones of the box, "Remove" takes one off, and "Add a phone" adds one with a
+          one-time code.</p>
+        <p>Two phones in one car: the first one that connected controls the box (calibration, firmware, the name of the
+          car and the phones). The second only follows and takes the position from it.</p>
+        <p>To start over with a box: forget the car, then use the recovery window (see "Connection
+          troubleshooting").</p>
+      </div>
+      <div lang="uk">
+        <p>Кожен блок — одна машина, зі своїм калібруванням і місцем стоянки.</p>
+        <p>Машини: торкніться назви машини вгорі листа блока. Список показує машини. «Додати машину»: увімкніть
+          живлення блока нової машини поруч із телефоном. Телефон пам'ятає не більше 4 машин. «Забути машину»
+          прибирає все, чого застосунок про неї навчився.</p>
+        <p>Телефони: та сама сторінка показує телефони блока, «Прибрати» знімає один, а «Додати телефон» додає
+          новий з одноразовим кодом.</p>
+        <p>Два телефони в одній машині: той, що підключився першим, керує блоком (калібрування, прошивка, назва
+          машини й телефони). Другий лише слідує і бере позицію від нього.</p>
+        <p>Почати з блоком спочатку: забудьте машину, потім скористайтеся вікном відновлення (див. «Якщо немає
+          зв'язку з блоком»).</p>
+      </div>
+      <figure class="shot" data-shot="car-page">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">The car page with its phones</span>
+          <span lang="uk">Сторінка машини з її телефонами</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <details id="records">
+    <summary>
+      <span lang="en">Records</span>
+      <span lang="uk">Рекорди</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>The app times 0–100 km/h and the ¼ mile, for each car. Stop, then accelerate hard from a standstill.</p>
+        <p>When you beat the best time, a card says "New record!" and shows the time you had before.</p>
+        <p>The records are on the page of the car, and in Profile in the menu.</p>
+      </div>
+      <div lang="uk">
+        <p>Застосунок міряє час 0–100 км/год і ¼ милі, для кожної машини. Зупиніться, тоді різко розганяйтеся з
+          місця.</p>
+        <p>Коли ви б'єте найкращий час, картка каже «Новий рекорд!» і показує попередній.</p>
+        <p>Рекорди є на сторінці машини й у «Профілі» в меню.</p>
+      </div>
+      <figure class="shot" data-shot="record-card">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">The "New record!" card</span>
+          <span lang="uk">Картка «Новий рекорд!»</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <details id="speed-limits">
+    <summary>
+      <span lang="en">Speed limits</span>
+      <span lang="uk">Обмеження швидкості</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>The round speed button at the bottom left shows the speed of the car. The road sign on it is the limit of the
+          road where the mark is, in the direction it goes: ∞ means no limit, no sign means the limit is unknown.</p>
+        <p>Above the limit the number is red. In navigation, above the limit of a speed camera the whole button is red.</p>
+        <p>The limit comes from OpenStreetMap, so it is only as good as the map.</p>
+      </div>
+      <div lang="uk">
+        <p>Кругла кнопка швидкості внизу ліворуч показує швидкість машини. Дорожній знак на ній — обмеження дороги, на
+          якій мітка, у напрямку її руху: ∞ означає, що обмеження немає, без знака — обмеження невідоме.</p>
+        <p>Понад обмеження число червоне. У навігації понад обмеження камери червона вся кнопка.</p>
+        <p>Обмеження береться з OpenStreetMap, тож воно таке добре, як мапа.</p>
+      </div>
+      <figure class="shot" data-shot="speed-button">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">The speed button with a limit sign, and over the limit</span>
+          <span lang="uk">Кнопка швидкості зі знаком обмеження і понад обмеження</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <details id="logs-flags">
+    <summary>
+      <span lang="en">Logs, flags, voice notes, sending</span>
+      <span lang="uk">Журнали, прапорці, голосові нотатки, надсилання</span>
+    </summary>
+    <div class="body">
+      <div lang="en">
+        <p>Settings, then "Enable logging": the app writes a trip log to a file, and the flag and mic buttons appear on
+          the left panel.</p>
+        <p>Tap the flag when the car is shown in the wrong place. It saves the time, the place on the map, and a
+          screenshot. The mic button does the same and records a voice note of up to 15 s: tap it again to stop. The
+          first time it asks for the microphone.</p>
+        <p>Settings, then "Send logs": choose the flags and send the e-mail with the logs.zip of their days. The app
+          asks first if the files are over 20 MB. Flags are kept for 7 days.</p>
+        <p>The logs hold the positions and the sensor data of your trips. They go nowhere until you send them. Read
+          what the app collects and who sees it in the
+          <a href="https://github.com/Ramzess-II/NoNGPS-Maps/blob/master/docs/nogps/privacy-policy.md">privacy
+            policy</a>.</p>
+      </div>
+      <div lang="uk">
+        <p>Налаштування, далі «Увімкнути журнал»: застосунок пише журнал поїздки у файл, а на лівій панелі з'являються
+          кнопки прапорця й мікрофона.</p>
+        <p>Торкніться прапорця, коли машину показано не там. Він зберігає час, місце на мапі й знімок екрана. Кнопка
+          мікрофона робить те саме й записує голосову нотатку до 15 с: торкніться ще раз, щоб зупинити. Вперше вона
+          питає дозвіл на мікрофон.</p>
+        <p>Налаштування, далі «Надіслати журнали»: оберіть прапорці й надішліть листа з logs.zip їхніх днів. Якщо
+          файли більші за 20 МБ, застосунок спершу питає. Прапорці зберігаються 7 днів.</p>
+        <p>Журнали містять позиції й дані датчиків ваших поїздок. Вони нікуди не йдуть, доки ви їх не надішлете. Що
+          збирає застосунок і хто це бачить, читайте в
+          <a href="https://github.com/Ramzess-II/NoNGPS-Maps/blob/master/docs/nogps/privacy-policy.md">політиці
+            конфіденційності</a>.</p>
+      </div>
+      <figure class="shot" data-shot="flags-send">
+        <div class="frame"></div>
+        <figcaption>
+          <span lang="en">The "Send logs" list of flags</span>
+          <span lang="uk">Список прапорців «Надіслати журнали»</span>
+        </figcaption>
+      </figure>
+    </div>
+  </details>
+
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var params = new URLSearchParams(location.search);
+      var lang = params.get("lang") === "uk" ? "uk" : "en";
+      root.setAttribute("data-lang", lang);
+
+      var placeholders = {
+        en: "Search the guide",
+        uk: "Пошук по довіднику"
+      };
+      var input = document.getElementById("q");
+      input.placeholder = placeholders[lang];
+      var nothing = document.getElementById("nothing");
+      var sections = Array.prototype.slice.call(document.querySelectorAll("details"));
+      var openBefore = null;
+
+      function escapeRegExp(s) {
+        return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      }
+
+      // The nodes that hold the text of the chosen language: the others are not shown, searched or highlighted.
+      function langNodes(section) {
+        return Array.prototype.slice.call(section.querySelectorAll('[lang="' + lang + '"]'));
+      }
+
+      function clearMarks(section) {
+        var marks = section.querySelectorAll("mark");
+        for (var i = 0; i < marks.length; i++) {
+          var mark = marks[i];
+          mark.replaceWith(document.createTextNode(mark.textContent));
+        }
+        section.normalize();
+      }
+
+      function highlight(node, re) {
+        var walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+        var texts = [];
+        while (walker.nextNode()) texts.push(walker.currentNode);
+        texts.forEach(function (text) {
+          var value = text.nodeValue;
+          re.lastIndex = 0;
+          if (!re.test(value)) return;
+          re.lastIndex = 0;
+          var frag = document.createDocumentFragment();
+          var last = 0;
+          var m;
+          while ((m = re.exec(value)) !== null) {
+            frag.appendChild(document.createTextNode(value.slice(last, m.index)));
+            var mark = document.createElement("mark");
+            mark.textContent = m[0];
+            frag.appendChild(mark);
+            last = m.index + m[0].length;
+          }
+          frag.appendChild(document.createTextNode(value.slice(last)));
+          text.parentNode.replaceChild(frag, text);
+        });
+      }
+
+      function filter() {
+        var words = input.value.toLowerCase().split(/\s+/).filter(Boolean);
+        var shown = 0;
+        if (words.length && !openBefore) {
+          openBefore = sections.map(function (s) { return s.open; });
+        }
+        var re = words.length
+          ? new RegExp(words.map(escapeRegExp).join("|"), "gi")
+          : null;
+        sections.forEach(function (section, i) {
+          clearMarks(section);
+          if (!words.length) {
+            section.style.display = "";
+            if (openBefore) section.open = openBefore[i];
+            shown++;
+            return;
+          }
+          var nodes = langNodes(section);
+          var text = nodes.map(function (n) { return n.textContent; }).join(" ").toLowerCase();
+          var match = words.every(function (w) { return text.indexOf(w) >= 0; });
+          section.style.display = match ? "" : "none";
+          section.open = match;
+          if (match) {
+            nodes.forEach(function (n) { highlight(n, re); });
+            shown++;
+          }
+        });
+        if (!words.length) openBefore = null;
+        nothing.style.display = shown ? "none" : "block";
+      }
+
+      input.addEventListener("input", filter);
+    })();
+  </script>
+</body>
+</html>
