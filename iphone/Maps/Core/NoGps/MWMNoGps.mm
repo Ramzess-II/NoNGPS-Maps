@@ -153,6 +153,65 @@ std::optional<double> NonNegative(double value)
 
 @end
 
+namespace
+{
+NSArray<NSNumber *> * BandCountsToObjC(std::array<int, 3> const & counts)
+{
+  return @[ @(counts[0]), @(counts[1]), @(counts[2]) ];
+}
+}  // namespace
+
+@interface MWMNoGpsSpeedingTrip ()
+
+- (instancetype)initWithTrip:(nogps::SpeedingTrip const &)trip;
+
+@end
+
+@implementation MWMNoGpsSpeedingTrip
+
+- (instancetype)initWithTrip:(nogps::SpeedingTrip const &)trip
+{
+  self = [super init];
+  if (self)
+  {
+    _date = [NSDate dateWithTimeIntervalSince1970:trip.m_unixTimeMs / 1000.0];
+    _ratedKm = trip.m_ratedM / 1000;
+    _ratedMinutes = trip.m_ratedS / 60;
+    _score = trip.GetScore();
+    _bandCounts = BandCountsToObjC(trip.GetBandCounts());
+  }
+  return self;
+}
+
+@end
+
+@interface MWMNoGpsDrivingRating ()
+
+- (instancetype)initWithRating:(nogps::DrivingRating const &)rating;
+
+@end
+
+@implementation MWMNoGpsDrivingRating
+
+- (instancetype)initWithRating:(nogps::DrivingRating const &)rating
+{
+  self = [super init];
+  if (self)
+  {
+    _enough = rating.m_enough;
+    _score = rating.m_score;
+    _ratedKm = rating.m_ratedKm;
+    _bandCounts = BandCountsToObjC(rating.m_bandCounts);
+    NSMutableArray<MWMNoGpsSpeedingTrip *> * trips = [NSMutableArray array];
+    for (auto const & trip : rating.m_trips)
+      [trips addObject:[[MWMNoGpsSpeedingTrip alloc] initWithTrip:trip]];
+    _trips = trips;
+  }
+  return self;
+}
+
+@end
+
 @interface MWMNoGpsCar ()
 
 - (instancetype)initWithCar:(nogps::Car const &)car;
@@ -428,6 +487,11 @@ static CLLocation * lastPlatformLocation;
   for (auto const & car : Engine().GetCars())
     [cars addObject:[[MWMNoGpsCar alloc] initWithCar:car]];
   return cars;
+}
+
++ (MWMNoGpsDrivingRating *)drivingRating
+{
+  return [[MWMNoGpsDrivingRating alloc] initWithRating:Engine().GetDrivingRating()];
 }
 
 + (NSArray<MWMNoGpsSprint *> *)sprints
