@@ -86,6 +86,8 @@ class Esp32BleTransport
   // A line of the box fits a notification with it, the default of 23 has no room even for a command.
   private static final int MTU = 247;
   private static final long RETRY_DELAY_MS = 2000;
+  // After a wake no new pending connection is left for this long.
+  private static final long WAKE_REARM_MS = 5 * 60_000;
   // A box that is found but drops the connection again and again is tried less and less often.
   private static final long MAX_RETRY_DELAY_MS = 60_000;
   // Android turns a scan lasting half an hour into one that finds nothing, so it is started anew.
@@ -188,6 +190,10 @@ class Esp32BleTransport
   // The last paired box of a car that was found: after close() a pending connection to it wakes the app (#541).
   @Nullable
   private BluetoothDevice mWakeBox;
+  @Nullable
+  private String mWakeBoxId;
+  // When the pending connection last linked: a box that is awake without car data would wake the app again at once.
+  private long mWokeMs = -WAKE_REARM_MS;
   // The pending connection (autoConnect), which the system keeps while the app is in the background.
   @Nullable
   private BluetoothGatt mWakeGatt;
@@ -312,6 +318,12 @@ class Esp32BleTransport
     final Set<String> forgotten = getForgottenBoxes();
     if (forgotten.add(id))
       getPrefs().edit().putStringSet(FORGOTTEN_BOXES, forgotten).apply();
+    if (id.equals(mWakeBoxId))
+    {
+      mWakeBox = null;
+      mWakeBoxId = null;
+      releaseWake();
+    }
   }
 
   /**
@@ -385,19 +397,21 @@ class Esp32BleTransport
   {
     if (!mOpen)
       return;
-    final boolean wake = waitsForBox(mWakeBox != null, mBondLost, mWakeGatt != null);
+    final boolean wake = waitsForBox(mWakeBox != null, mBondLost, mWakeGatt != null,
+                                   SystemClock.elapsedRealtime() - mWokeMs);
     closeAll();
     if (wake)
       leaveWake();
   }
 
   /**
-   * A paired box that has forgotten the phone doesn't connect: nothing to wait for.
+   * A paired box that has forgotten the phone doesn't connect: nothing to wait for. Right after a wake the box is
+   * awake: a new pending connection would link at once, and a box without car data would wake the app in a loop.
    */
   @VisibleForTesting
-  static boolean waitsForBox(boolean hasBox, boolean bondLost, boolean waiting)
+  static boolean waitsForBox(boolean hasBox, boolean bondLost, boolean waiting, long sinceWakeMs)
   {
-    return hasBox && !bondLost && !waiting;
+    return hasBox && !bondLost && !waiting && sinceWakeMs >= WAKE_REARM_MS;
   }
 
   private void closeAll()
@@ -637,6 +651,7 @@ class Esp32BleTransport
     Logger.i(TAG, "Found " + device.getAddress() + " " + id + " rssi " + result.getRssi() + " bonded " + bonded);
     mBoxId = id;
     mWakeBox = bonded && !mNewBoxOnly ? device : null;
+    mWakeBoxId = mWakeBox != null ? id : null;
     mMainHandler.removeCallbacks(mStarter);
     mMainHandler.removeCallbacks(mPairingClosedEnd);
     stopScan();
@@ -902,6 +917,7 @@ class Esp32BleTransport
   @SuppressLint("MissingPermission")
   private void leaveWake()
   {
+    releaseWake();
     final BluetoothDevice box = mWakeBox;
     if (box == null || !hasPermission() || box.getBondState() != BluetoothDevice.BOND_BONDED)
       return;
@@ -939,6 +955,9 @@ class Esp32BleTransport
     if (gatt != mWakeGatt || newState != BluetoothProfile.STATE_CONNECTED || status != BluetoothGatt.GATT_SUCCESS)
       return;
     Logger.i(TAG, "The box has woken");
+    mWokeMs = SystemClock.elapsedRealtime();
+    // The link is not needed: the app searches for the box itself, or it does not want it now.
+    releaseWake();
     if (mWakeListener != null)
       mWakeListener.run();
   }
