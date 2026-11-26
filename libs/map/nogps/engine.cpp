@@ -144,6 +144,7 @@ void Engine::Stop()
     return;
   LOG(LINFO, (LogHead(m_clock, "ACTION", "stop"), "Stop"));
   SaveCarPosition(true /* now */);
+  SaveSpeeding();
   if (m_inertial)
     m_inertial->Stop();
   m_manualRepeatTimer.Stop();
@@ -414,6 +415,7 @@ void Engine::OnBoxLink(bool linked)
   }
   if (now - m_boxLinkEndedMs < kTripFileLinkGapMs)
     return;
+  CloseSpeedingTrip();
   Notify(Event::TripStarted);
   // The platform has started a new file by now: it is to say which maps the trip is on.
   LogMapsVersion();
@@ -1194,6 +1196,86 @@ std::vector<Sprint> Engine::GetSprints(std::string const & carId) const
   return sprints;
 }
 
+std::vector<SpeedingTrip> Engine::GetSpeedingTrips() const
+{
+  if (!m_speedingTrips)
+    return ParseSpeedingTrips(m_storage.Get<std::string>(Storage::kSpeeding, ""));
+  auto trips = *m_speedingTrips;
+  if (m_speedingMeter.GetTrip().m_ratedS > 0)
+    trips.push_back(m_speedingMeter.GetTrip());
+  if (trips.size() > SpeedingMeter::kMaxTrips)
+    trips.erase(trips.begin(), trips.end() - SpeedingMeter::kMaxTrips);
+  return trips;
+}
+
+DrivingRating Engine::GetDrivingRating() const
+{
+  return RateDriving(GetSpeedingTrips());
+}
+
+void Engine::LogSpeeding(std::vector<SpeedingEpisode> const & episodes)
+{
+  // start= is the start of the episode: the line is written when the car has been under the limit for 5 s.
+  for (auto const & episode : episodes)
+  {
+    LOG(LINFO, (LogHead(m_clock, "SPEEDING"), "dur=" + strings::to_string_dac(episode.m_durationS, 1),
+                "dist=" + std::to_string(std::lround(episode.m_distanceM)), "lim=" + std::to_string(episode.m_limitKmh),
+                "peak=" + std::to_string(episode.m_peakKmh), "mean=" + std::to_string(episode.m_meanKmh),
+                "band=" + std::to_string(episode.m_band), "start=" + std::to_string(episode.m_unixTimeMs)));
+  }
+}
+
+bool Engine::IsMarkTrusted() const
+{
+  if (!m_manualMode && MsSince(m_lastTrustedGpsMs) < kGpsFreshMs)
+    return true;
+  if (!m_inertial || !IsInertialActive())
+    return false;
+  return m_inertial->IsOnRoad() && !m_inertial->IsRoadLost() && m_inertial->GetOtherMarksCount() == 0 &&
+         MsSince(m_userMovedMs) >= kRatingAfterHandMoveMs;
+}
+
+void Engine::RateSpeeding()
+{
+  SpeedingMeter::Sample sample;
+  sample.m_timeMs = m_clock.NowMs();
+  sample.m_unixTimeMs = m_clock.UnixNowMs();
+  // The speed the sprints are timed by: the car speed with its correction.
+  if (m_inertial && IsInertialNavigationEnabled() && m_inertial->GetSpeedKmh() >= 0)
+    sample.m_kmh = m_inertial->GetSpeedKmh() * m_inertial->GetSpeedScale();
+  sample.m_trusted = IsMarkTrusted();
+  // Not asked for the limit where nothing is rated by it.
+  if (sample.m_kmh && sample.m_trusted)
+    sample.m_limitKmh = GetSpeedLimitKmh();
+
+  if (!m_speedingTrips)
+    m_speedingTrips = ParseSpeedingTrips(m_storage.Get<std::string>(Storage::kSpeeding, ""));
+  auto const finished = m_speedingMeter.OnSample(sample);
+  LogSpeeding(finished);
+  if (!finished.empty() || m_speedingMeter.GetTrip().m_ratedS - m_speedingSavedRatedS >= kSpeedingSaveEveryS)
+    SaveSpeeding();
+}
+
+void Engine::SaveSpeeding()
+{
+  if (!m_speedingTrips)
+    return;
+  m_storage.Set(Storage::kSpeeding, SerializeSpeedingTrips(GetSpeedingTrips()));
+  m_speedingSavedRatedS = m_speedingMeter.GetTrip().m_ratedS;
+}
+
+void Engine::CloseSpeedingTrip()
+{
+  if (!m_speedingTrips)
+    m_speedingTrips = ParseSpeedingTrips(m_storage.Get<std::string>(Storage::kSpeeding, ""));
+  LogSpeeding(m_speedingMeter.Flush());
+  if (auto trip = m_speedingMeter.CloseTrip())
+    m_speedingTrips->push_back(std::move(*trip));
+  if (m_speedingTrips->size() > SpeedingMeter::kMaxTrips)
+    m_speedingTrips->erase(m_speedingTrips->begin(), m_speedingTrips->end() - SpeedingMeter::kMaxTrips);
+  SaveSpeeding();
+}
+
 void Engine::OnSprint(SprintTimer::Result const & result)
 {
   Sprint const sprint{result.m_kind, m_clock.UnixNowMs(), std::round(result.m_sec * 100) / 100,
@@ -1929,6 +2011,8 @@ void Engine::PutMark(ms::LatLon const & position, RoadPoint const & road, char c
 
   m_manualLocation = location;
   m_manualSetTimeMs = m_clock.NowMs();
+  if (std::string_view(by) != "core" && std::string_view(by) != "peer")
+    m_userMovedMs = m_manualSetTimeMs;
   // The user shows that GPS is wrong, even if it was trusted before the restart.
   m_manualUntilGps = false;
   m_lastPositionSource = PositionSource::Manual;
@@ -2084,6 +2168,7 @@ double Engine::ShiftPosition(double distanceM)
 
   // The position is set by the user now, so it is as fresh as a manual mark.
   m_manualSetTimeMs = m_clock.NowMs();
+  m_userMovedMs = m_manualSetTimeMs;
   if (m_manualLocation)
   {
     m_manualLocation->m_position = shifted->m_position;
@@ -2306,6 +2391,7 @@ void Engine::LogTrip()
   UpdateSpeedHint();
   CheckFirmwareUpdate();
   CheckBoxCalibration();
+  RateSpeeding();
   bool const changed = LogStateChanges();
   SaveCarPosition(false /* now */);
   SaveBoxCarValues(false /* now */);
@@ -2400,6 +2486,8 @@ std::string Engine::GetTripLine()
     line += " obd=" + DebugPrint(m_inertial->GetSourceState()) + " speed=" + std::to_string(m_inertial->GetSpeedKmh());
     // How old the speed is, milliseconds: the car is asked for it a few times a second.
     line += " sage=" + std::to_string(m_inertial->GetSpeedAgeMs());
+    // The limit the speed is compared with for the rating, nothing where the second is not rated.
+    line += " lim=" + (m_speedingMeter.IsRated() ? std::to_string(*m_speedingMeter.GetLimitKmh()) : std::string("-"));
     // The ESP32 box: what Bluetooth does, and how its data came during the last second: the lines and the
     // longest pause between them in milliseconds. "BLE" is from the time the box had Wi-Fi too.
     if (auto const rate = m_inertial->GetEsp32DataRate())

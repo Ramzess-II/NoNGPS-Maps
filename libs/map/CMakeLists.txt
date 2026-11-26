@@ -98,6 +98,8 @@ set(SRC
   nogps/speed_scale.hpp
   nogps/speed_table.cpp
   nogps/speed_table.hpp
+  nogps/speeding_meter.cpp
+  nogps/speeding_meter.hpp
   nogps/sprint_timer.cpp
   nogps/sprint_timer.hpp
   nogps/storage.cpp
