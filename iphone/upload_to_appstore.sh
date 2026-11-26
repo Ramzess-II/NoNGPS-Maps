@@ -23,21 +23,7 @@ if ! grep -Eqs '^#define SENTRY_DSN_IOS "https://' "$SENTRY_DSN_FILE"; then
   exit 1
 fi
 
-
-# Build release archive.
-xcodebuild archive \
-    -workspace "$SCRIPT_DIR/../xcode/omim.xcworkspace" \
-    -configuration Release \
-    -scheme OMaps \
-    -destination generic/platform=iOS \
-    -archivePath "$ARCHIVE_PATH" \
-    -allowProvisioningUpdates \
-    MARKETING_VERSION="$IOS_VERSION" \
-    CURRENT_PROJECT_VERSION="$IOS_BUILD"
-
-
-# Upload the dSYMs to Sentry, so the crash reports have readable C++ frames. The token is in credentials/sentry.env, see
-# docs/nogps/crash-reports.md. Without the token or sentry-cli the script stops before the App Store upload.
+# Without the token or sentry-cli the dSYMs can't reach Sentry: stop before the slow archive.
 SENTRY_ENV="$SCRIPT_DIR/../credentials/sentry.env"
 # No tracing around the token.
 set +x
@@ -53,6 +39,21 @@ if ! command -v sentry-cli > /dev/null; then
   echo "ERROR: sentry-cli is not in PATH ($PATH): brew install getsentry/tools/sentry-cli" >&2
   exit 1
 fi
+
+
+# Build release archive.
+xcodebuild archive \
+    -workspace "$SCRIPT_DIR/../xcode/omim.xcworkspace" \
+    -configuration Release \
+    -scheme OMaps \
+    -destination generic/platform=iOS \
+    -archivePath "$ARCHIVE_PATH" \
+    -allowProvisioningUpdates \
+    MARKETING_VERSION="$IOS_VERSION" \
+    CURRENT_PROJECT_VERSION="$IOS_BUILD"
+
+
+# Upload the dSYMs to Sentry, so the crash reports have readable C++ frames.
 sentry-cli debug-files upload --org nongps --project nongps-maps-ios "$ARCHIVE_PATH/dSYMs"
 
 
