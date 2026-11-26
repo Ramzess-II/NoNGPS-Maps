@@ -654,6 +654,58 @@ public final class NoGps
   }
 
   /**
+   * A trip rated by the speeding of the driver, see SpeedingMeter in the core.
+   */
+  @Keep
+  public static final class SpeedingTrip
+  {
+    public final long unixTimeMs;
+    public final double ratedKm;
+    public final double ratedMin;
+    public final int score;
+    // The episodes of the bands +20...40, +40...60 and over +60.
+    @NonNull
+    public final int[] bandCounts;
+
+    @Keep
+    SpeedingTrip(long unixTimeMs, double ratedKm, double ratedMin, int score, @NonNull int[] bandCounts)
+    {
+      this.unixTimeMs = unixTimeMs;
+      this.ratedKm = ratedKm;
+      this.ratedMin = ratedMin;
+      this.score = score;
+      this.bandCounts = bandCounts;
+    }
+  }
+
+  /**
+   * How the driver drives: the score over the newest trips, and the trips newest first.
+   */
+  @Keep
+  public static final class DrivingRating
+  {
+    // False until there is enough rated driving to show the score.
+    public final boolean enough;
+    public final int score;
+    // The rated driving the score is taken over.
+    public final double ratedKm;
+    @NonNull
+    public final int[] bandCounts;
+    @NonNull
+    public final SpeedingTrip[] trips;
+
+    @Keep
+    DrivingRating(boolean enough, int score, double ratedKm, @NonNull int[] bandCounts, @NonNull SpeedingTrip[] trips)
+    {
+      this.enough = enough;
+      this.score = score;
+      this.ratedKm = ratedKm;
+      this.bandCounts = bandCounts;
+      this.trips = trips;
+    }
+  }
+
+  /**
    * What the platform does for the core.
    */
   @Keep
@@ -925,6 +977,12 @@ public final class NoGps
    */
   @NonNull
   public static native Car[] nativeGetCars();
+
+  /**
+   * How the driver drives by the speeding, see DrivingRating.
+   */
+  @NonNull
+  public static native DrivingRating nativeGetDrivingRating();
 
   /**
    * The timed runs of the current car, newest first.
