@@ -1377,6 +1377,28 @@
     <string name="nogps_sprint_best">Лучший</string>
     <!-- Results of the runs from a standing start, when the car has none yet -->
     <string name="nogps_sprint_none">Заездов пока нет: остановитесь и резко разгонитесь с места</string>
+    <!-- Header of the Profile screen section with how the driver drives -->
+    <string name="nogps_driving_title">Вождение</string>
+    <!-- Row of the Profile screen: the driving score out of 100, the value is on the right -->
+    <string name="nogps_driving_score">Оценка вождения</string>
+    <!-- Row of the Profile screen: how far the driving score is taken over, the value is on the right -->
+    <string name="nogps_driving_distance">Оценено езды</string>
+    <!-- A distance in kilometers -->
+    <string name="nogps_driving_km">%d км</string>
+    <!-- Profile screen: the driving score is not shown yet, %d is the kilometers of rated driving it needs -->
+    <string name="nogps_driving_not_enough">Пока мало поездок: оценка появится после %d км там, где известны скорость и ограничение скорости на дороге</string>
+    <!-- Row of the Profile screen: how many times the driver went over the speed limit by 20 to 40 km/h -->
+    <string name="nogps_driving_band1">Превышение на 20–40 км/ч</string>
+    <!-- Row of the Profile screen: how many times the driver went over the speed limit by 40 to 60 km/h -->
+    <string name="nogps_driving_band2">Превышение на 40–60 км/ч</string>
+    <!-- Row of the Profile screen: how many times the driver went over the speed limit by more than 60 km/h -->
+    <string name="nogps_driving_band3">Превышение более чем на 60 км/ч</string>
+    <!-- Row of the Profile screen opening the list of trips with their driving scores -->
+    <string name="nogps_driving_trips">Поездки</string>
+    <!-- The list of trips with the driving scores, when there is no rated driving yet -->
+    <string name="nogps_driving_trips_none">Оценённых поездок пока нет: езда считается там, где известны скорость и ограничение скорости на дороге</string>
+    <!-- A trip of the driving list: the rated kilometers, then the episodes over the limit by 20-40, 40-60 and more than 60 km/h -->
+    <string name="nogps_driving_trip_detail">%1$d км · превышений %2$d / %3$d / %4$d</string>
     <!-- Row of the Box sheet: how late the car tells its speed, the value is on the right -->
     <string name="nogps_speed_lag">Опоздание скорости</string>
     <!-- Value of the speed delay row of the Box sheet, in seconds, e.g. "1.2 s" -->
