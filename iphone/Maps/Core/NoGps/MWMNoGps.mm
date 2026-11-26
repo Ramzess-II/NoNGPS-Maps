@@ -308,7 +308,10 @@ std::optional<double> NonNegative(double value)
     _addPhone = static_cast<MWMNoGpsAddPhone>(status.m_addPhone);
     _addPhoneCode = @(status.m_addPhoneCode.c_str());
     _addPhoneSecondsLeft = status.m_addPhoneSecondsLeft;
-    _boxRecoveryCode = @(status.m_boxRecoveryCode.c_str());
+    _boxTooOld = status.m_boxTooOld;
+    _boxRefused = status.m_boxRefused;
+    _boxPairAgain = status.m_boxPairAgain;
+    _boxResetError = @(status.m_boxResetError.c_str());
   }
   return self;
 }
@@ -478,6 +481,11 @@ static CLLocation * lastPlatformLocation;
 + (void)forgetBoxPhone:(NSString *)address
 {
   Engine().ForgetBoxPhone(address.UTF8String);
+}
+
++ (void)factoryResetBox
+{
+  Engine().FactoryResetBox();
 }
 
 + (void)startAddPhone

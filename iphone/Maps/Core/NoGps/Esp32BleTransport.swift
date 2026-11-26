@@ -22,16 +22,19 @@ final class Esp32BleTransport: NSObject {
     static let rx = CBUUID(string: "02CB0003-C0C3-40D0-819C-5A85998DCD99")
     /// The pieces of a new firmware of the box, section 18 of the same document.
     static let ota = CBUUID(string: "02CB0004-C0C3-40D0-819C-5A85998DCD99")
-    // The box tells in its advertisement if it accepts a new phone now: company 0xFFFF, format version, flags.
+    // The box tells in its advertisement if it accepts a new phone now and its id: company 0xFFFF, the format version 2,
+    // the flags and the four characters of NonGPS-XXXX.
     static let manufacturerId: [UInt8] = [0xFF, 0xFF]
+    static let manufacturerVersion: UInt8 = 2
+    static let manufacturerIdRange = 4 ..< 8
     static let pairingOpenFlag: UInt8 = 1
     static let fullFlag: UInt8 = 1 << 1
     static let hasPhonesFlag: UInt8 = 1 << 2
     static let knownBoxesKey = "NoGpsKnownBoxes"
     // The boxes of the cars the user has forgotten: still paired, they are not connected until the user adds the car.
     static let forgottenBoxesKey = "NoGpsForgottenBoxes"
-    // The name of the box is NonGPS-XXXX; the boxes that are not updated still say NoGPS-XXXX.
-    static let namePrefixes = ["NonGPS-", "NoGPS-"]
+    // The name of the box is NonGPS-XXXX.
+    static let namePrefix = "NonGPS-"
     static let retryDelay: TimeInterval = 2
     // A box that is found but can't be connected and subscribed to is tried less and less often, e.g. the user has
     // refused to pair with it. One that was is tried again soon: after a parking, the first connections may stay
@@ -341,11 +344,32 @@ final class Esp32BleTransport: NSObject {
     return bytes.count >= 4 && Array(bytes[0 ..< 2]) == Constants.manufacturerId ? bytes[3] : 0
   }
 
-  /// The four characters of the name of the box, NonGPS-XXXX or NoGPS-XXXX, nil if the box doesn't tell it.
+  /// The four characters of the id of the box: its manufacturer data have it, a box seen without its name has them too;
+  /// else the name NonGPS-XXXX. Nil if the box doesn't tell it.
   private static func boxId(_ peripheral: CBPeripheral, _ advertisementData: [String: Any]) -> String? {
+    if let data = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data,
+       let id = boxId(manufacturerData: data) {
+      return id
+    }
     let name = advertisementData[CBAdvertisementDataLocalNameKey] as? String ?? peripheral.name
-    guard let name, let prefix = Constants.namePrefixes.first(where: { name.hasPrefix($0) }) else { return nil }
-    return String(name.dropFirst(prefix.count))
+    return boxId(name: name)
+  }
+
+  static func boxId(name: String?) -> String? {
+    guard let name, name.hasPrefix(Constants.namePrefix) else { return nil }
+    return String(name.dropFirst(Constants.namePrefix.count))
+  }
+
+  /// BLE-13, version 2. CoreBluetooth gives the company too: 0xFFFF, the version, the flags, the id. Version 1 had no
+  /// id.
+  static func boxId(manufacturerData data: Data) -> String? {
+    let bytes = [UInt8](data)
+    guard bytes.count >= Constants.manufacturerIdRange.upperBound, Array(bytes[0 ..< 2]) == Constants.manufacturerId,
+          bytes[2] >= Constants.manufacturerVersion else { return nil }
+    let id = bytes[Constants.manufacturerIdRange]
+    guard id.allSatisfy({ ($0 >= 0x30 && $0 <= 0x39) || ($0 >= 0x41 && $0 <= 0x5A) || ($0 >= 0x61 && $0 <= 0x7A) })
+    else { return nil }
+    return String(decoding: id, as: UTF8.self)
   }
 
   /// The user has the most cars: a box that is not of one of them would drive the mark under the current car's values.

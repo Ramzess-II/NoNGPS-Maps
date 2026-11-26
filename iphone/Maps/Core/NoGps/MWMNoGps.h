@@ -192,6 +192,11 @@ typedef NS_ENUM(NSInteger, MWMNoGpsEvent) {
   /// The box has not proved itself and is not used until the link is made again: the user may have to forget the car
   /// and pair the box again.
   MWMNoGpsEventBoxRefused,
+  /// The box has erased everything on the request of the user and restarts as new: the platform forgets the car of the
+  /// box and tells the user to forget the box in the Bluetooth settings.
+  MWMNoGpsEventBoxReset,
+  /// The box has not reset itself: MWMNoGpsStatus.boxResetError tells why.
+  MWMNoGpsEventBoxResetFailed,
 } NS_SWIFT_NAME(NoGpsEvent);
 
 /// The kinds of the runs from a standing start.
@@ -375,8 +380,15 @@ NS_SWIFT_NAME(NoGpsStatus)
 /// The code to enter on the new phone while addPhone is Open.
 @property(nonatomic, readonly) NSString * addPhoneCode;
 @property(nonatomic, readonly) NSInteger addPhoneSecondsLeft;
-/// The code of the recovery window of the box of the current car, six digits, empty until the box has told it.
-@property(nonatomic, readonly) NSString * boxRecoveryCode;
+/// The firmware of the box is older than the application drives: only the update is offered for it.
+@property(nonatomic, readonly) BOOL boxTooOld;
+/// The box has not proved itself and is not used until the link is made again.
+@property(nonatomic, readonly) BOOL boxRefused;
+/// The refusal is one a new pairing mends: the box has no key of this phone or has another one. The user is offered to
+/// forget the car and add it again.
+@property(nonatomic, readonly) BOOL boxPairAgain;
+/// The error of the box to the last full reset that failed: "BUSY" while another phone changes it.
+@property(nonatomic, readonly) NSString * boxResetError;
 
 @end
 
@@ -452,6 +464,9 @@ NS_SWIFT_NAME(NoGps)
 + (void)listBoxPhones;
 /// Removes the phone from the box. Removing this phone ends with MWMNoGpsEventThisPhoneRemoved.
 + (void)forgetBoxPhone:(NSString *)address;
+/// Erases all of the box: the phones, the keys, the calibration, the values of the car, the settings. Ends with
+/// MWMNoGpsEventBoxReset, or MWMNoGpsEventBoxResetFailed.
++ (void)factoryResetBox;
 /// Lets the box take a new phone with a new code for two minutes, see MWMNoGpsStatus.addPhone.
 + (void)startAddPhone;
 /// The code is not shown any more.
