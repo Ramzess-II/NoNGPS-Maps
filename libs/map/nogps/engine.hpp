@@ -777,6 +777,8 @@ private:
   bool m_calibrationArmed = false;
   // The platform forgets the car on Event::ThisPhoneRemoved and Event::BoxReset: not while the box is being read.
   Timer m_phoneRemovedTimer;
+  // Apart from the one above, so that one event does not replace the other.
+  Timer m_boxResetTimer;
 
   ThreadChecker m_threadChecker;
 };

@@ -1219,7 +1219,10 @@ public class MwmActivity extends BaseMwmFragmentActivity
                                final LocationHelper helper = MwmApplication.from(this).getLocationHelper();
                                helper.forgetCar(carId);
                                // The old system pairing would only block the new one.
-                               helper.unpairBox(carId);
+                               if (!helper.unpairBox(carId))
+                                 Toast.makeText(this, getString(R.string.nogps_box_reset_unpair, carId),
+                                                Toast.LENGTH_LONG)
+                                     .show();
                                showBoxSheet(BoxBottomSheet.Page.ADD_CAR);
                              })
           .setNegativeButton(R.string.later, null)

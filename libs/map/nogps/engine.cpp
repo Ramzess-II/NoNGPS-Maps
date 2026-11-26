@@ -105,6 +105,7 @@ Engine::Engine(Delegate & delegate, MapApi & map, Storage & storage, Clock const
   , m_tripLogTimer(scheduler)
   , m_calibrateTimer(scheduler)
   , m_phoneRemovedTimer(scheduler)
+  , m_boxResetTimer(scheduler)
   , m_boxLinkEndedMs(clock.NowMs())
 {}
 
@@ -1164,14 +1165,16 @@ void Engine::OnBoxFactoryReset(std::string const & error)
   if (!error.empty())
   {
     m_boxResetError = error;
-    m_phoneRemovedTimer.Start(0, [this] { m_delegate.OnEvent(Event::BoxResetFailed); });
+    m_boxResetTimer.Start(0, [this] { m_delegate.OnEvent(Event::BoxResetFailed); });
     return;
   }
-  auto const car = m_cars.GetCurrentCar();
+  m_boxResetError.clear();
+  // The box this link is to, not the car that is current by now.
+  auto const car = m_boxHeardId.empty() ? m_cars.GetCurrentCar() : m_boxHeardId;
   LOG(LINFO, ("The box of the car", car, "is reset"));
   // The box has erased this phone with its key: the next session gives it a new one.
   m_cars.SetCarValue(car, CarStorage::kCarAuthKey, "");
-  m_phoneRemovedTimer.Start(0, [this] { m_delegate.OnEvent(Event::BoxReset); });
+  m_boxResetTimer.Start(0, [this] { m_delegate.OnEvent(Event::BoxReset); });
 }
 
 void Engine::OnThisPhoneRemoved()
@@ -1242,6 +1245,7 @@ void Engine::StartAddPhone()
 
 void Engine::FactoryResetBox()
 {
+  m_boxResetError.clear();
   if (auto * box = m_inertial ? m_inertial->GetEsp32() : nullptr)
     box->FactoryReset();
 }
