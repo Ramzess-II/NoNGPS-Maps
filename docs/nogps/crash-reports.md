@@ -34,7 +34,7 @@ export SENTRY_AUTH_TOKEN=...
 ```
 
 - iOS: `iphone/upload_to_appstore.sh` sources it and runs `sentry-cli debug-files upload` over the archive's dSYMs. It
-  stops before the App Store upload when the token or `sentry-cli` is missing, and before the archive when
+  stops before the archive when the token or `sentry-cli` is missing or
   `SENTRY_DSN_IOS` is empty.
 - Android: the `io.sentry.android.gradle` plugin (`uploadNativeSymbols`) is applied only when `SENTRY_AUTH_TOKEN` is in
   the environment of the Gradle build.
