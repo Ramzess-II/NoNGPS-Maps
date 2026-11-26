@@ -131,6 +131,20 @@ and `sdkconfig` copied from the main checkout, both gitignored there, or the bui
 chip. Two PRs that touch `iphone/` or `xcode/` are never prepped at once: nothing in the train builds iOS, so only
 one of them goes into the parallel set.
 
+## The private repo trip-logs/
+
+`app/trip-logs/` is a checkout of the private repo `koloboid/NoNGPS-Logs` (branch `main`, both of us have write
+access), gitignored by the app repo. It holds the trip logs and flags (`/nogps-fetch` adds them) and
+`config/sentry_dsn.h`, the Sentry DSNs that `private.h` includes. Every machine that builds a beta or release needs it:
+
+- Set it up once from `app/`: `git clone git@github.com:koloboid/NoNGPS-Logs.git trip-logs`. When the clone is
+  refused, the GitHub invitation to the repo isn't accepted yet: ask the user to accept it at
+  `https://github.com/koloboid/NoNGPS-Logs/invitations`.
+- Before a beta or release build, `git -C trip-logs pull --no-rebase`. Without the file, the build compiles with empty
+  DSNs and sends no crash reports: `iphone/upload_to_appstore.sh` refuses to archive, Android Gradle doesn't warn.
+- The DSNs stay in that repo. Never copy them into `private.h` or anything else the app repo tracks: it is public.
+- Worktrees link `trip-logs/` from the main checkout, so a pull there reaches them.
+
 ## Versions
 
 Nobody raises a version by hand. Each build takes them from git: `tools/unix/version.sh` gives the app version
