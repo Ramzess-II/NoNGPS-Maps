@@ -71,7 +71,8 @@ NSString * const kMapToCategorySelectorSegue = @"MapToCategorySelectorSegue";
 - (UIStatusBarStyle)preferredStatusBarStyle
 {
   MapViewController * ownerController = self.ownerController;
-  BOOL const isMenuViewUnderStatusBar = self.menuState == MWMBottomMenuStateActive;
+  BOOL const isMenuViewUnderStatusBar =
+      self.menuState == MWMBottomMenuStateActive || self.menuState == MWMBottomMenuStateMapTools;
   BOOL const isDirectionViewUnderStatusBar = !self.isDirectionViewHidden;
   BOOL const isNightMode = ownerController.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
   BOOL const isSomethingUnderStatusBar = isDirectionViewUnderStatusBar || isMenuViewUnderStatusBar;
@@ -327,6 +328,7 @@ NSString * const kMapToCategorySelectorSegue = @"MapToCategorySelectorSegue";
 
 - (void)setMenuState:(MWMBottomMenuState)menuState
 {
+  MWMBottomMenuState const previousState = _menuState;
   _menuState = menuState;
   MapViewController * ownerController = _ownerController;
   switch (_menuState)
@@ -338,6 +340,22 @@ NSString * const kMapToCategorySelectorSegue = @"MapToCategorySelectorSegue";
       _menuController = [BottomMenuBuilder buildMenuWithMapViewController:ownerController
                                                           controlsManager:self
                                                                  delegate:self];
+      [ownerController presentViewController:_menuController animated:YES completion:nil];
+    }
+    break;
+  case MWMBottomMenuStateMapTools:
+    _tabBarController.isHidden = NO;
+    // The Map tools row of the menu replaces the menu with a second sheet.
+    if (_menuController != nil && previousState != MWMBottomMenuStateMapTools)
+    {
+      [_menuController dismissViewControllerAnimated:NO completion:nil];
+      _menuController = nil;
+    }
+    if (_menuController == nil)
+    {
+      _menuController = [BottomMenuBuilder buildMapToolsWithMapViewController:ownerController
+                                                              controlsManager:self
+                                                                     delegate:self];
       [ownerController presentViewController:_menuController animated:YES completion:nil];
     }
     break;
@@ -373,15 +391,24 @@ NSString * const kMapToCategorySelectorSegue = @"MapToCategorySelectorSegue";
 
 - (void)openMenuFromDeepLink
 {
+  // A link to a cell of the Map tools sheet opens that sheet instead of the menu.
+  MWMBottomMenuState const target =
+      BottomMenuPresenter.pendingHighlightIsInMapTools ? MWMBottomMenuStateMapTools : MWMBottomMenuStateActive;
   switch (_menuState)
   {
-  case MWMBottomMenuStateInactive: self.menuState = MWMBottomMenuStateActive; break;
-  case MWMBottomMenuStateActive: [(BottomMenuViewController *)_menuController highlightRequestedItem]; break;
+  case MWMBottomMenuStateInactive: self.menuState = target; break;
+  case MWMBottomMenuStateActive:
+  case MWMBottomMenuStateMapTools:
+    if (_menuState == target)
+      [(BottomMenuViewController *)_menuController highlightRequestedItem];
+    else
+      self.menuState = target;
+    break;
   case MWMBottomMenuStateLayers:
     // The layers sheet has no menu items, so replace it with the menu.
     [_menuController dismissViewControllerAnimated:NO completion:nil];
     _menuController = nil;
-    self.menuState = MWMBottomMenuStateActive;
+    self.menuState = target;
     break;
   case MWMBottomMenuStateHidden:
     // The controls are hidden in the full screen mode or while adding a place. Keep them hidden and drop the

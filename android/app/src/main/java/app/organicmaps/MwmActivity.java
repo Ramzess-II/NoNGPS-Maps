@@ -164,6 +164,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
   private boolean mPreciseLocationDialogShown = false;
 
   private static final String MAIN_MENU_ID = "MAIN_MENU_BOTTOM_SHEET";
+  private static final String MAP_TOOLS_MENU_ID = "MAP_TOOLS_MENU_BOTTOM_SHEET";
   private static final String LAYERS_MENU_ID = "LAYERS_MENU_BOTTOM_SHEET";
 
   private static final String POWER_SAVE_DISCLAIMER_SHOWN = "POWER_SAVE_DISCLAIMER_SHOWN";
@@ -194,6 +195,14 @@ public class MwmActivity extends BaseMwmFragmentActivity
     public void openSettings()
     {
       onSettingsOptionSelected();
+    }
+
+    @Override
+    public void openMapTools()
+    {
+      closeBottomSheet(MAIN_MENU_ID);
+      MenuBottomSheetFragment.newInstance(MAP_TOOLS_MENU_ID, getString(R.string.nogps_menu_map_tools))
+          .show(getSupportFragmentManager(), MAP_TOOLS_MENU_ID);
     }
 
     @Override
@@ -1277,6 +1286,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
   {
     closeBottomSheet(LAYERS_MENU_ID);
     closeBottomSheet(MAIN_MENU_ID);
+    closeBottomSheet(MAP_TOOLS_MENU_ID);
     forceCloseSearchFragment();
     closePlacePage();
   }
@@ -1516,9 +1526,9 @@ public class MwmActivity extends BaseMwmFragmentActivity
   public boolean handleBackPress()
   {
     final RoutingController routingController = RoutingController.get();
-    return (closeBottomSheet(MAIN_MENU_ID) || closeBottomSheet(LAYERS_MENU_ID) || collapseNavMenu() || closePlacePage()
-            || closePositionChooser() || closeSearchFragment() || routingController.resetToPlanningStateIfNavigating()
-            || routingController.cancel());
+    return (closeBottomSheet(MAIN_MENU_ID) || closeBottomSheet(MAP_TOOLS_MENU_ID) || closeBottomSheet(LAYERS_MENU_ID)
+            || collapseNavMenu() || closePlacePage() || closePositionChooser() || closeSearchFragment()
+            || routingController.resetToPlanningStateIfNavigating() || routingController.cancel());
   }
 
   @Override
@@ -2488,6 +2498,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     mMapButtonsViewModel.setTrackRecorderState(false);
     TrackRecordingService.stopService(getApplicationContext());
     closeBottomSheet(MAIN_MENU_ID);
+    closeBottomSheet(MAP_TOOLS_MENU_ID);
     if (isTrackRecordingPPOpened())
       closePlacePage();
   }
@@ -2537,11 +2548,12 @@ public class MwmActivity extends BaseMwmFragmentActivity
   @Nullable
   public ArrayList<MenuBottomSheetItem> getMenuBottomSheetItems(String id)
   {
+    if (id.equals(MAP_TOOLS_MENU_ID))
+      return MainMenuItems.createMapTools(BuildConfig.MAP_EDITING, getDownloadMapsCounter(), mMainMenuHandlers);
     if (!id.equals(MAIN_MENU_ID))
       return null;
     mDonatesUrl = Utils.getDonateUrl(getApplicationContext());
-    return MainMenuItems.create(BuildConfig.MAP_EDITING, !TextUtils.isEmpty(mDonatesUrl), getDownloadMapsCounter(),
-                                mMainMenuHandlers);
+    return MainMenuItems.create(!TextUtils.isEmpty(mDonatesUrl), getDownloadMapsCounter(), mMainMenuHandlers);
   }
 
   @Override
