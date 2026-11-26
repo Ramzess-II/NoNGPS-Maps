@@ -111,7 +111,7 @@ extension NavigationSourceButtonTests {
     let off: [(NoGpsBleState, String)] = [
       (.off, "nogps_box_bt_disabled"), (.disabled, "nogps_box_bt_disabled"),
       (.noPermission, "nogps_box_bt_no_permission"), (.pairingFailed, "nogps_box_bt_pairing_failed"),
-      (.bondLost, "nogps_box_bt_bond_lost"),
+      (.bondLost, "nogps_box_bt_bond_lost_short"),
     ]
     for (ble, key) in off {
       let status = FakeStatus(source: .gps, gpsState: .good, inertialEnabled: true, sourceState: .boxSleeping)
