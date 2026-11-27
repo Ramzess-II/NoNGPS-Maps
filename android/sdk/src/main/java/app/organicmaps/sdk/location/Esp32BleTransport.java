@@ -2,6 +2,7 @@ package app.organicmaps.sdk.location;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.AlarmManager;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -200,7 +201,8 @@ class Esp32BleTransport
   @Nullable
   private Runnable mWakeListener;
   // Arms the pending connection again when the 5 minutes after a wake are over and nothing has called close() since.
-  private final Runnable mRearmWake = this::leaveWakeIfClosed;
+  // An alarm of the elapsedRealtime clock, like sinceWakeMs: a Handler delay stops while the phone sleeps.
+  private final AlarmManager.OnAlarmListener mRearmWake = this::leaveWakeIfClosed;
   private boolean mWakeStateReceiverRegistered;
   // Bluetooth switched off drops the pending connection without notice: it is made again when Bluetooth is on.
   private final BroadcastReceiver mWakeStateReceiver = new BroadcastReceiver() {
@@ -247,7 +249,7 @@ class Esp32BleTransport
   {
     closeAll();
     releaseWake();
-    mMainHandler.removeCallbacks(mRearmWake);
+    cancelRearmWake();
     mOpen = true;
     mRetryDelayMs = RETRY_DELAY_MS;
     mSilentConnections = 0;
@@ -419,7 +421,19 @@ class Esp32BleTransport
     if (wake)
       leaveWake();
     else if (wakeLater)
-      mMainHandler.postDelayed(mRearmWake, WAKE_REARM_MS - sinceWakeMs);
+      scheduleRearmWake(WAKE_REARM_MS - sinceWakeMs);
+  }
+
+  private void scheduleRearmWake(long delayMs)
+  {
+    final AlarmManager alarms = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
+    alarms.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + delayMs, TAG, mRearmWake,
+               mMainHandler);
+  }
+
+  private void cancelRearmWake()
+  {
+    ((AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE)).cancel(mRearmWake);
   }
 
   private void leaveWakeIfClosed()
@@ -942,7 +956,7 @@ class Esp32BleTransport
   private void leaveWake()
   {
     releaseWake();
-    mMainHandler.removeCallbacks(mRearmWake);
+    cancelRearmWake();
     final BluetoothDevice box = mWakeBox;
     if (box == null)
       return;
