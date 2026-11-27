@@ -9,6 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import app.organicmaps.R;
+import app.organicmaps.nogps.SpeedHints;
 import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.sdk.settings.UnitLocale;
 import app.organicmaps.sdk.util.StringUtils;
@@ -23,6 +24,7 @@ class SpeedView
   private static final float MPS_TO_KMH = 3.6f;
   private static final float MPS_TO_MPH = 2.2369363f;
   private static final String NO_LIMIT = "∞";
+  private static final String NO_SPEED = "–";
   private static final int CAMERA_UNITS_COLOR = 0xCCFFFFFF;
 
   @NonNull
@@ -43,14 +45,23 @@ class SpeedView
   }
 
   /**
-   * @param location the position of the car, null if there is none: the view is hidden, but keeps its place.
+   * @param location the position of the car, null if there is none: a dash while the box is connected, otherwise the
+   *                 view is hidden, but keeps its place.
    * @param camera   the speed is over the limit of a speed camera ahead.
    */
   void update(@NonNull NoGps.Status status, @Nullable Location location, boolean camera)
   {
     if (location == null || status.getSource() == NoGps.PositionSource.NONE)
     {
-      mView.setVisibility(View.INVISIBLE);
+      final Context context = mView.getContext();
+      mView.setVisibility(SpeedHints.isSpeedShown(status, false) ? View.VISIBLE : View.INVISIBLE);
+      mView.setActivated(false);
+      mValue.setText(NO_SPEED);
+      mUnits.setText(StringUtils.nativeFormatSpeedAndUnits(0).second);
+      mValue.setTextColor(ThemeUtils.getColor(context, android.R.attr.textColorSecondary));
+      mUnits.setTextColor(ThemeUtils.getColor(context, android.R.attr.textColorSecondary));
+      mLimit.setVisibility(View.GONE);
+      mView.setContentDescription(context.getString(R.string.nogps_speed_view, NO_SPEED));
       return;
     }
     mView.setVisibility(View.VISIBLE);

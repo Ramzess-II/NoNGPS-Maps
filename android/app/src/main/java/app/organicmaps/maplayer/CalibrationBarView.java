@@ -106,14 +106,14 @@ class CalibrationBarView
     });
     mBar.setClipToOutline(true);
     mBar.setOnClickListener(v -> {
-      NoGps.nativeCancelCalibrateWhenStill();
+      NoGps.nativeDeclineAutoCalibration();
       cancel();
       onTap.run();
     });
   }
 
   /**
-   * The bar is on the screen: the warning to calibrate the box waits.
+   * The bar is on the screen: the bar of the speed range waits.
    */
   boolean isShown()
   {
