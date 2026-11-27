@@ -12,12 +12,14 @@
 		5E0A00000000000000000009 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = 5E0A00000000000000000008 /* Sentry */; };
 		N0GPS1B00000000000000B01 /* NoGpsButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS1A00000000000000B01 /* NoGpsButton.swift */; };
 		N0GPS3B00000000000000008 /* NoGpsGlobeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B00000000000000007 /* NoGpsGlobeTests.swift */; };
+		N0GPS3B000000000000AB01 /* NoGpsAboutLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B000000000000AB02 /* NoGpsAboutLayoutTests.swift */; };
 		N0GPS3B00000000000000006 /* GlobeCoastline.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B00000000000000005 /* GlobeCoastline.swift */; };
 		N0GPS3B00000000000000004 /* GlobeSceneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B00000000000000003 /* GlobeSceneView.swift */; };
 		N0GPS3B00000000000000002 /* GlobeScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS3B00000000000000001 /* GlobeScene.swift */; };
 		00A2630ADA97EB2C42945272 /* NavigationDashboardViewControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEE938673CC3D8E7866C20B8 /* NavigationDashboardViewControllerTests.swift */; };
 		0F13484A0000000000000002 /* UITableViewCell+SeparatorInset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F13484A0000000000000001 /* UITableViewCell+SeparatorInset.swift */; };
 		11E2F6F34E5F12298C3E2AC0 /* NoGpsBoxPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB3EB65C13D5083F5AFA02C8 /* NoGpsBoxPage.swift */; };
+		A1B2C3D4E5F60718293A4B5D /* NoGpsFirmwareUpdateAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* NoGpsFirmwareUpdateAlert.swift */; };
 		15CCDA1EC17F04F7D89CA086 /* ActionBarViewControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8C536FD39F5842BE26742A9 /* ActionBarViewControllerTests.swift */; };
 		165953742CB1D85500CFED7C /* fonts in Resources */ = {isa = PBXBuildFile; fileRef = 165953732CB1D83700CFED7C /* fonts */; };
 		165953942CB44B5600CFED7C /* symbols in Resources */ = {isa = PBXBuildFile; fileRef = 165953932CB44B3B00CFED7C /* symbols */; };
@@ -852,6 +854,7 @@
 		5E0A00000000000000000002 /* CrashReporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporter.swift; sourceTree = "<group>"; };
 		5E0A00000000000000000005 /* CrashReporterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashReporterTests.swift; sourceTree = "<group>"; };
 		N0GPS3B00000000000000007 /* NoGpsGlobeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsGlobeTests.swift; sourceTree = "<group>"; };
+		N0GPS3B000000000000AB02 /* NoGpsAboutLayoutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsAboutLayoutTests.swift; sourceTree = "<group>"; };
 		N0GPS3B00000000000000005 /* GlobeCoastline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobeCoastline.swift; sourceTree = "<group>"; };
 		N0GPS3B00000000000000003 /* GlobeSceneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobeSceneView.swift; sourceTree = "<group>"; };
 		N0GPS3B00000000000000001 /* GlobeScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobeScene.swift; sourceTree = "<group>"; };
@@ -1999,6 +2002,7 @@
 		FAF9DDA22A86DC54000D7037 /* libharfbuzz.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libharfbuzz.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		FAFF42291347F101009BBB14 /* World.mwm */ = {isa = PBXFileReference; lastKnownFileType = file; name = World.mwm; path = ../../data/World.mwm; sourceTree = "<group>"; };
 		FB3EB65C13D5083F5AFA02C8 /* NoGpsBoxPage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsBoxPage.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5C /* NoGpsFirmwareUpdateAlert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoGpsFirmwareUpdateAlert.swift; sourceTree = "<group>"; };
 		FEE938673CC3D8E7866C20B8 /* NavigationDashboardViewControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationDashboardViewControllerTests.swift; sourceTree = "<group>"; };
 		FFB5C171F353C1B71FCA8FC8 /* gl */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = gl; path = gl.lproj/LocalizableTypes.strings; sourceTree = "<group>"; };
 		AFDD95A79747D9FFFF29C15A /* NavigationLiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationLiveActivityManager.swift; sourceTree = "<group>"; };
@@ -2464,6 +2468,7 @@
 				0E779A1A71BDFB9F9F1BA779 /* NoGpsFlagsTests.swift */,
 				5B4A00000000000000000F01 /* NoGpsBarColorsTests.swift */,
 				N0GPS3B00000000000000007 /* NoGpsGlobeTests.swift */,
+				N0GPS3B000000000000AB02 /* NoGpsAboutLayoutTests.swift */,
 				E4B1C0DE7A52C3F100A1B2C4 /* Esp32BleTransportTests.swift */,
 				N0GPS1A00000000000000006 /* NoGpsIntroTests.swift */,
 				N0GPS1A00000000000000G02 /* HowNoGpsTests.swift */,
@@ -3034,6 +3039,7 @@
 				CCBA000623F3162F1ACE63ED /* MapPanelDragger.swift */,
 				ED1D4A8C14925D512AD764B8 /* MapControlsPanel.swift */,
 				FB3EB65C13D5083F5AFA02C8 /* NoGpsBoxPage.swift */,
+				A1B2C3D4E5F60718293A4B5C /* NoGpsFirmwareUpdateAlert.swift */,
 				3A0A2E482F0BC3FF3F47D237 /* NoGpsGpsSheet.swift */,
 				3A5BEE0D7C1A4F2B9E6D8C02 /* NoGpsSpeedView.swift */,
 				64939671DA0B4C42B8CFFB2E /* NoGpsSpeedHintView.swift */,
@@ -4977,6 +4983,7 @@
 				80922D600D3BF8807B842D7F /* NavigationSearchWheel.swift in Sources */,
 				606D0D5C89006E2B70BC9470 /* MapControlsPanel.swift in Sources */,
 				11E2F6F34E5F12298C3E2AC0 /* NoGpsBoxPage.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5D /* NoGpsFirmwareUpdateAlert.swift in Sources */,
 				3ADD6F28B1682842E86CAD7C /* NoGpsGpsSheet.swift in Sources */,
 				3A5BEE0D7C1A4F2B9E6D8C01 /* NoGpsSpeedView.swift in Sources */,
 				183FDFE8CE934746BE36595D /* NoGpsSpeedHintView.swift in Sources */,
@@ -5519,6 +5526,7 @@
 				D560CC6FC73D20258FF65C5E /* NoGpsFlagsTests.swift in Sources */,
 				5B4A00000000000000000B01 /* NoGpsBarColorsTests.swift in Sources */,
 				N0GPS3B00000000000000008 /* NoGpsGlobeTests.swift in Sources */,
+				N0GPS3B000000000000AB01 /* NoGpsAboutLayoutTests.swift in Sources */,
 				E4B1C0DE7A52C3F100A1B2C3 /* Esp32BleTransportTests.swift in Sources */,
 				5C0A7E1B3D2F4A6890B1D007 /* BottomMenuPresenterTests.swift in Sources */,
 				N0GPS1B00000000000000006 /* NoGpsIntroTests.swift in Sources */,

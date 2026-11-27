@@ -145,7 +145,8 @@ access), gitignored by the app repo. It holds the trip logs and flags (`/nogps-f
   refused, the GitHub invitation to the repo isn't accepted yet: ask the user to accept it at
   `https://github.com/koloboid/NoNGPS-Logs/invitations`.
 - Before a beta or release build, `git -C trip-logs pull --no-rebase`. Without the file, the build compiles with empty
-  DSNs and sends no crash reports: `iphone/upload_to_appstore.sh` refuses to archive, Android Gradle doesn't warn.
+  DSNs and sends no crash reports: `iphone/upload_to_appstore.sh` refuses to archive, Android Gradle prints a boxed
+  WARNING for a non-fdroid release, beta or profileable task and doesn't fail.
 - The DSNs stay in that repo. Never copy them into `private.h` or anything else the app repo tracks: it is public.
 - Worktrees link `trip-logs/` from the main checkout, so a pull there reaches them.
 

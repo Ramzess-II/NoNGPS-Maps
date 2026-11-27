@@ -456,6 +456,88 @@ class ReplayLogsTest(unittest.TestCase):
             out, _ = self.run_main('days', os.path.join(folder, 'Pixel_7-a3f9'))
             self.assertNotIn('SM_S918B-0b1c', out)
 
+    @staticmethod
+    def ios_run(utc, zone, seconds, launch=0.0):
+        """One run of the iOS app: its two "Local time:" lines (UTC, then with the zone), the start and |seconds| TRIP
+        lines."""
+        lines = ['I(1) %.5f Local time: %s +0000' % (launch, utc),
+                 'I(1) %.5f Local time: %s +0000 , Time Zone: %s' % (launch + 0.0004, utc, zone),
+                 'I(1) %.5f Maps/main.mm:14 main: Organic Maps com.non-gps 2026.11.25 started, detected CPU cores: 6'
+                 % (launch + 0.04),
+                 'I(1) %.5f Maps/main.mm:20 foo: TRIP : not a core line' % (launch + 0.06)]
+        lines += ['I(1) %.5f nogps/engine.cpp:2312 LogTrip(): %s' % (launch + 10 + s, trip_line())
+                  for s in range(seconds)]
+        return lines
+
+    def test_days_and_input_of_an_ios_log_in_its_local_time(self):
+        """An iOS line has no date: its time is the launch's "Local time:" (UTC) plus its zone, so a run started at
+        23:00 UTC in GMT+2 is a day of the next date, as the folder of the trip is named."""
+        run = self.ios_run('2026-11-25 22:59:50', 'GMT+2', 5) + self.ios_run('2026-11-26 00:00:00', 'GMT-0:30', 3, 7.0)
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {'iPhone17_1-3b77/2026-11-26/005950.log': with_logfmt(run, 'iPhone17_1-3b77')})
+            out, _ = self.run_main('days', folder)
+            self.assertIn('phone iPhone17_1-3b77\n11-25       3 TRIP lines  made from\n11-26       5 TRIP lines', out)
+            trips, others, started = nogps_replay.read([os.path.join(folder, 'iPhone17_1-3b77', '2026-11-26',
+                                                                     '005950.log')], '11-26')
+            # 22:59:50 UTC is 00:59:50 in GMT+2.
+            self.assertEqual([t['ms'] for t in trips], [3590000 + 1000 * (10 + s) for s in range(5)])
+            self.assertEqual(started, [3590040])
+            self.assertEqual(others, [])
+
+    def test_ios_file_without_the_zone_line_takes_the_zone_from_its_name(self):
+        """Only the first file of a launch has "Time Zone:", and it can be "EST": the zone is then the distance of the
+        file name (local) from the UTC time of the "Local time:" line."""
+        for zone_line, utc, trip in ((None, '2026-11-25 22:30:00', '003000'),
+                                     ('EST', '2026-11-26 05:30:00', '003000'),
+                                     (None, '2026-11-26 05:30:00', '003000')):
+            run = ['I(1) 0.00000 Local time: %s +0000' % utc]
+            if zone_line:
+                run.append('I(1) 0.00040 Local time: %s +0000 , Time Zone: %s' % (utc, zone_line))
+            run.append('I(1) 10.00000 nogps/engine.cpp:2312 LogTrip(): %s' % trip_line())
+            with tempfile.TemporaryDirectory() as folder:
+                path = os.path.join(folder, 'iPhone17_1-3b77', '2026-11-26', trip + '.log')
+                write_tree(folder, {'iPhone17_1-3b77/2026-11-26/%s.log' % trip:
+                                    with_logfmt(run, 'iPhone17_1-3b77', trip=trip)})
+                trips, _, _ = nogps_replay.read([path], '11-26')
+                self.assertEqual([t['ms'] for t in trips], [1810000], (zone_line, utc))
+
+    def test_ios_file_that_continues_a_launch_takes_the_zone_from_the_launch_start(self):
+        """The name of a file can be the local time of the launch it continues: 45338 s before 05:47:23 UTC is 17:11:45
+        UTC, 19:11:45 in GMT+2. A name that fits neither gives no zone and no lines, not a wrong day."""
+        for trip, line_day in (('191145', '11-25'), ('185210', None)):
+            run = ['I(1) 45338.00000 Local time: 2026-11-25 05:47:23 +0000',
+                   'I(1) 45348.00000 nogps/engine.cpp:2312 LogTrip(): %s' % trip_line()]
+            with tempfile.TemporaryDirectory() as folder:
+                path = os.path.join(folder, 'iPhone17_1-3b77', '2026-11-25', trip + '.log')
+                write_tree(folder, {'iPhone17_1-3b77/2026-11-25/%s.log' % trip:
+                                    with_logfmt(run, 'iPhone17_1-3b77', trip=trip)})
+                self.assertEqual(sorted(nogps_replay.trip_days([path])), [line_day] if line_day else [])
+
+    def test_ios_file_that_continues_a_launch_of_an_earlier_file_takes_its_zone(self):
+        """The name of a continuation file is the one of the previous file, reused in the next day folder: it fits
+        neither the file nor the launch start, so the zone is the one of the file before."""
+        first = ['I(1) 100.00000 Local time: 2026-11-23 10:00:29 +0000 , Time Zone: GMT+2',
+                 'I(1) 110.00000 nogps/engine.cpp:2312 LogTrip(): %s' % trip_line()]
+        second = ['I(1) 46906.38600 Local time: 2026-11-23 23:02:12 +0000',
+                  'I(1) 46909.38600 nogps/engine.cpp:2312 LogTrip(): %s' % trip_line()]
+        with tempfile.TemporaryDirectory() as folder:
+            write_tree(folder, {'iPhone17_1-ed9a/2026-11-23/120029.log': with_logfmt(first, 'iPhone17_1-ed9a',
+                                                                                   trip='120029'),
+                                'iPhone17_1-ed9a/2026-11-24/185210.log': with_logfmt(second, 'iPhone17_1-ed9a',
+                                                                                   trip='185210')})
+            paths = [os.path.join(folder, 'iPhone17_1-ed9a', d, n) for d, n in
+                     (('2026-11-23', '120029.log'), ('2026-11-24', '185210.log'))]
+            self.assertEqual(nogps_replay.trip_days(paths), {'11-23': 1, '11-24': 1})
+
+    def test_ios_line_logged_late_does_not_drop_the_lines_after_it(self):
+        run = ['I(1) 100.00000 Local time: 2026-11-25 10:00:00 +0000 , Time Zone: GMT+2',
+               'I(1) 97.00000 nogps/engine.cpp:2252 operator()(): EVENT gps_signal ms=1 from=GOOD to=NONE late',
+               'I(1) 100.10000 nogps/engine.cpp:2312 LogTrip(): %s' % trip_line()]
+        with tempfile.TemporaryDirectory() as folder:
+            path = os.path.join(folder, 'iPhone17_1-3b77', '2026-11-25', '115820.log')
+            write_tree(folder, {'iPhone17_1-3b77/2026-11-25/115820.log': with_logfmt(run, 'iPhone17_1-3b77')})
+            self.assertEqual(nogps_replay.trip_days([path]), {'11-25': 1})
+
     def test_input_of_a_tree_of_two_phones_is_a_file_a_phone(self):
         with tempfile.TemporaryDirectory() as folder:
             self.two_phones(folder)
