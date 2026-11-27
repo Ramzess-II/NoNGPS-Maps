@@ -377,6 +377,7 @@ void FrontendRenderer::AcceptMessage(ref_ptr<Message> message)
     m_choosePositionMode = m_guiRenderer->HasWidget(gui::WIDGET_CHOOSE_POSITION_MARK);
     if (oldMode != m_choosePositionMode)
     {
+      m_myPositionController->SetChoosePositionMode(m_choosePositionMode);
       ScreenBase const & screen = m_userEventStream.GetCurrentScreen();
       CheckIsometryMinScale(screen);
       UpdateDisplacementEnabled();
@@ -835,7 +836,7 @@ void FrontendRenderer::AcceptMessage(ref_ptr<Message> message)
 
   case Message::Type::Invalidate:
   {
-    m_myPositionController->ResetRoutingNotFollowTimer();
+    m_myPositionController->ResetNotFollowTimer();
     m_myPositionController->ResetBlockAutoZoomTimer();
     break;
   }
@@ -1587,6 +1588,7 @@ bool FrontendRenderer::RenderScene(ScreenBase const & modelView, bool activeFram
       clearBits |= dp::ClearBits::StencilBit;
     m_context->Clear(clearBits, dp::kClearBitsStoreAll);
 
+    m_myPositionController->SetRouteShown(m_routeRenderer->HasData());
     m_myPositionController->Render(m_context, make_ref(m_gpuProgramManager), modelView, GetCurrentZoom(),
                                    m_frameValues);
   }
@@ -2330,7 +2332,7 @@ void FrontendRenderer::OnTouchMapAction(TouchEvent::ETouchType touchType, bool i
   // Here we block timer on start of touch actions. Timer will be unblocked on
   // the completion of touch actions. It helps to prevent the creation of redundant checks.
   auto const blockTimer = (touchType == TouchEvent::TOUCH_DOWN || touchType == TouchEvent::TOUCH_MOVE);
-  m_myPositionController->ResetRoutingNotFollowTimer(blockTimer);
+  m_myPositionController->ResetNotFollowTimer(blockTimer);
   if (isMapTouch)
     m_selectionTrackInfo.reset();
 }
