@@ -1270,12 +1270,10 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final boolean updating = BoxTexts.isUpdating(update);
     mFirmwareRow.setVisibility(updating || !status.boxFirmware.isEmpty() ? View.VISIBLE : View.GONE);
     mFirmware.setText(firmware);
-    final boolean cancel = BoxTexts.canCancelFirmware(status);
+    // The dialog of the update has its own Cancel.
     final boolean install = BoxTexts.canInstallFirmware(status);
-    mFirmwareAction.setVisibility(cancel || install ? View.VISIBLE : View.GONE);
-    if (cancel)
-      mFirmwareAction.setText(R.string.cancel);
-    else if (install)
+    mFirmwareAction.setVisibility(install ? View.VISIBLE : View.GONE);
+    if (install)
       mFirmwareAction.setText(getString(R.string.nogps_firmware_install, status.bundledFirmware));
 
     final int obdHint = obdHintText(status);
@@ -1479,15 +1477,16 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   }
 
   /**
-   * The row does what it shows, if the update still allows it: the box may have gone on since it was drawn.
+   * Starts the update, if it is still allowed: the box may have gone on since the row was drawn.
    */
   private void onFirmwareAction()
   {
     final NoGps.Status status = NoGps.getStatus();
-    if (BoxTexts.canCancelFirmware(status))
-      NoGps.nativeCancelFirmwareUpdate();
-    else if (BoxTexts.canInstallFirmware(status))
+    if (BoxTexts.canInstallFirmware(status))
+    {
       NoGps.nativeStartFirmwareUpdate();
+      FirmwareUpdateDialog.show(requireActivity().getSupportFragmentManager());
+    }
     update();
   }
 

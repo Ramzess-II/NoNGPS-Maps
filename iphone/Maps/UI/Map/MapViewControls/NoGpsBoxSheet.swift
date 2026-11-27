@@ -5,8 +5,6 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
   /// Where the sheet opens: the map leads the user to the Box page or to the calibration.
   enum Page: Equatable {
     case main
-    /// \param firmware unfolds the Box section to show how the update goes.
-    case box(firmware: Bool)
     case calibration
     /// The speed table, from the bar of the speed calibration on the map.
     case speedCalibration
@@ -125,14 +123,6 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     switch page {
     case .main:
       break
-    case .box(let firmware):
-      // The firmware update is followed on the page of the box itself.
-      let target: NoGpsBoxPage.Part? = firmware ? .box : nil
-      if let shown = navigation.topViewController as? NoGpsBoxPage, shown.part == target {
-        break
-      }
-      navigation.setViewControllers([root, NoGpsBoxPage()] + (firmware ? [NoGpsBoxPage(part: .box)] : []),
-                                    animated: animated)
     case .calibration:
       if navigation.topViewController is NoGpsCalibrationPage {
         break

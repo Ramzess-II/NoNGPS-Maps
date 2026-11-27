@@ -68,6 +68,13 @@ public class MenuAdapter extends RecyclerView.Adapter<MenuAdapter.ViewHolder>
       badge.setVisibility(View.GONE);
     }
 
+    // The Map tools row shows the red icon while recording; its title and badge stay.
+    if (item.iconRes == R.drawable.ic_map_tools && TrackRecorder.nativeIsTrackRecordingEnabled())
+    {
+      iv.setImageResource(R.drawable.ic_track_recording_on);
+      iv.setImageTintMode(null);
+    }
+
     if (item.iconRes == R.drawable.ic_track_recording_off && TrackRecorder.nativeIsTrackRecordingEnabled())
     {
       iv.setImageResource(R.drawable.ic_track_recording_on);

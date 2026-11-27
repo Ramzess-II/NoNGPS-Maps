@@ -4,10 +4,10 @@ protocol BottomMenuPresenterProtocol: UITableViewDelegate, UITableViewDataSource
 }
 
 class BottomMenuPresenter: NSObject {
-  /// In the order the sheet shows them, see groups below.
   enum CellType: Int, CaseIterable {
     case profile
     case settings
+    case mapTools
     case share
     case bookmarks
     case downloadMaps
@@ -20,17 +20,23 @@ class BottomMenuPresenter: NSObject {
     case donate
   }
 
-  /// What the driver taps on a trip stays apart from what is set up once. The map styles cell above is the first
-  /// group; the first cell of every other group draws a line above itself. Mirrors MainMenuItems on Android.
+  /// The main menu. The map styles cell above is the first group; the first cell of every other group draws a line
+  /// above itself. The Organic Maps tools are in a second sheet, see mapToolsGroups. Mirrors MainMenuItems on Android.
   private static let groups: [[CellType]] = [
-    [.profile, .settings, .share],
-    [.bookmarks, .downloadMaps, .recordTrack, .addPlace],
+    [.profile, .settings],
+    [.mapTools],
     [.howItWorks, .about, .aboutOrganicMaps, .buyBox, .donate],
+  ]
+
+  /// The second sheet, opened by the Map tools cell: no map styles above it, so no group draws a line.
+  private static let mapToolsGroups: [[CellType]] = [
+    [.share, .bookmarks, .downloadMaps, .recordTrack, .addPlace],
   ]
 
   enum Sections: Int {
     case layers
     case items
+    case mapTools
   }
 
   private weak var view: BottomMenuViewProtocol?
@@ -54,7 +60,7 @@ class BottomMenuPresenter: NSObject {
     let disableDonate = Settings.donateUrl() == nil
     var cells: [CellType] = []
     var starts: Set<Int> = []
-    for (index, group) in Self.groups.enumerated() {
+    for (index, group) in (sections.contains(.mapTools) ? Self.mapToolsGroups : Self.groups).enumerated() {
       let rows = disableDonate ? group.filter { $0 != .donate } : group
       guard !rows.isEmpty else { continue }
       // The map styles cell draws a line under itself, so the first group needs none of its own.
@@ -75,13 +81,22 @@ class BottomMenuPresenter: NSObject {
     super.init()
   }
 
-  private static func getCellToHighlight() -> CellType? {
-    let featureToHighlightData = DeepLinkHandler.shared.getInAppFeatureHighlightData()
-    guard let featureToHighlightData, featureToHighlightData.urlType == .menu else { return nil }
-    switch featureToHighlightData.feature {
+  private static func cellToHighlight(_ data: DeepLinkInAppFeatureHighlightData?) -> CellType? {
+    guard let data, data.urlType == .menu else { return nil }
+    switch data.feature {
     case .trackRecorder: return .recordTrack
     default: return nil
     }
+  }
+
+  private static func getCellToHighlight() -> CellType? {
+    cellToHighlight(DeepLinkHandler.shared.getInAppFeatureHighlightData())
+  }
+
+  /// The pending menu link points at a cell of the Map tools sheet. Doesn't consume the link.
+  @objc static var pendingHighlightIsInMapTools: Bool {
+    guard let cell = cellToHighlight(DeepLinkHandler.shared.peekInAppFeatureHighlightData()) else { return false }
+    return mapToolsGroups.contains { $0.contains(cell) }
   }
 }
 
@@ -91,8 +106,8 @@ extension BottomMenuPresenter: BottomMenuPresenterProtocol {
   }
 
   func cellToHighlightIndexPath() -> IndexPath? {
-    // Highlighting is enabled only for the .items section.
-    guard let sectionIndex = sections.firstIndex(of: .items),
+    // Highlighting is enabled only for the sections of cells.
+    guard let sectionIndex = sections.firstIndex(where: { $0 == .items || $0 == .mapTools }),
           let cellToHighlight = Self.getCellToHighlight(),
           let cellIndex = menuCells.firstIndex(of: cellToHighlight) else { return nil }
     return IndexPath(row: cellIndex, section: sectionIndex)
@@ -110,7 +125,7 @@ extension BottomMenuPresenter {
     switch sections[section] {
     case .layers:
       return 1
-    case .items:
+    case .items, .mapTools:
       return menuCells.count
     }
   }
@@ -124,12 +139,19 @@ extension BottomMenuPresenter {
         cell.addSeparator(.bottom)
       }
       return cell
-    case .items:
+    case .items, .mapTools:
       let cell = tableView.dequeueReusableCell(cell: BottomMenuItemCell.self)!
       cell.setStartsGroup(groupStarts.contains(indexPath.row))
       switch menuCells[indexPath.row] {
       case .profile:
         cell.configure(image: UIImage(systemName: "person.crop.circle")!, title: L("nogps_menu_profile"))
+      case .mapTools:
+        // The row stands for the sheet: it shows the update badge of Download Maps, and the red icon of a recording.
+        let recording = trackRecorder.recordingState == .active
+        cell.configure(image: recording ? UIImage(resource: .icMenuTrackRecording) : UIImage(systemName: "square.grid.2x2")!,
+                       title: L("nogps_menu_map_tools"),
+                       badgeCount: MapsAppDelegate.theApp().badgeNumber(),
+                       imageStyle: recording ? .red : .black)
       case .bookmarks:
         cell.configure(image: UIImage(resource: .icMenuBookmarkList), title: L("bookmarks"))
       case .addPlace:
@@ -162,7 +184,7 @@ extension BottomMenuPresenter {
       case .about:
         cell.configure(image: UIImage(systemName: "info.circle")!, title: L("nogps_about_title"))
       case .aboutOrganicMaps:
-        cell.configure(image: UIImage(resource: .icMenuQuestion), title: L("nogps_about_om_menu"))
+        cell.configure(image: UIImage(systemName: "info.circle")!, title: L("nogps_about_om_menu"))
       case .buyBox:
         cell.configure(image: UIImage(systemName: "cart")!, title: L("nogps_box_buy"))
       }
@@ -186,10 +208,12 @@ extension BottomMenuPresenter {
     switch sections[indexPath.section] {
     case .layers:
       return;
-    case .items:
+    case .items, .mapTools:
       switch menuCells[indexPath.row] {
       case .profile:
         interactor.openProfile()
+      case .mapTools:
+        interactor.openMapTools()
       case .bookmarks:
         interactor.openBookmarks()
       case .addPlace:

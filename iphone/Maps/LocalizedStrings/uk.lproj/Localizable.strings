@@ -1574,6 +1574,9 @@
 /* Question shown when the sensor box works with another firmware than the app comes with: the version of the box and of the app */
 "nogps_firmware_offer" = "У блоці прошивка %1$@, а цю версію застосунку перевірено з %2$@. Встановити її? Це триватиме кілька хвилин: автомобіль має стояти, блок не виймайте.";
 
+/* Note in the window of the sensor box firmware update */
+"nogps_firmware_keep_still" = "Автомобіль має стояти, а блок лишатися підключеним, поки оновлення не закінчиться.";
+
 /* State of the update of the sensor box firmware, shown after "Box firmware:" */
 "nogps_firmware_starting" = "підготовка…";
 
@@ -1616,6 +1619,9 @@
 "nogps_clear_speed_title" = "Скинути калібрування швидкості?";
 "nogps_clear_speed_message" = "Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або авто. Поки працює GPS, вони вимірюються наново.";
 
+/* Main menu row that opens the second sheet with the Organic Maps tools: share location, bookmarks, maps, tracks, add place */
+"nogps_menu_map_tools" = "Інструменти мапи";
+
 /* Main menu row opening the screen with the records of every car of the user */
 "nogps_menu_profile" = "Профіль";
 
@@ -1624,12 +1630,11 @@
 "nogps_about_title" = "Про NonGPS Maps";
 
 /* Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on */
-"nogps_about_om_menu" = "Про застосунок Organic Maps";
+"nogps_about_om_menu" = "Про Organic Maps";
 "nogps_about_headline" = "Навігація, коли GPS глушать або підміняють";
 
 /* About NonGPS Maps, the screen reader label of the globe with the GPS satellites that the finger spins */
 "nogps_about_globe_hint" = "Потягніть Землю, торкніться супутника, щоб вимкнути його.";
-"nogps_about_description" = "Без GPS авто веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю авто з OBD-II. Авто тримається доріг офлайн-карти.";
 
 /* NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) */
 "nogps_version" = "Версія %@";

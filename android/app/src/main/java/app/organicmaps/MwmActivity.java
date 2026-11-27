@@ -70,7 +70,8 @@ import app.organicmaps.maplayer.MapButtonsController;
 import app.organicmaps.maplayer.MapButtonsViewModel;
 import app.organicmaps.maplayer.ToggleMapLayerFragment;
 import app.organicmaps.nogps.AboutNoGpsActivity;
-import app.organicmaps.nogps.BoxBottomSheet;
+import app.organicmaps.nogps.BoxTexts;
+import app.organicmaps.nogps.FirmwareUpdateDialog;
 import app.organicmaps.nogps.HowNoGpsActivity;
 import app.organicmaps.nogps.MainMenuItems;
 import app.organicmaps.nogps.NoGpsLinks;
@@ -164,6 +165,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
   private boolean mPreciseLocationDialogShown = false;
 
   private static final String MAIN_MENU_ID = "MAIN_MENU_BOTTOM_SHEET";
+  private static final String MAP_TOOLS_MENU_ID = "MAP_TOOLS_MENU_BOTTOM_SHEET";
   private static final String LAYERS_MENU_ID = "LAYERS_MENU_BOTTOM_SHEET";
 
   private static final String POWER_SAVE_DISCLAIMER_SHOWN = "POWER_SAVE_DISCLAIMER_SHOWN";
@@ -194,6 +196,14 @@ public class MwmActivity extends BaseMwmFragmentActivity
     public void openSettings()
     {
       onSettingsOptionSelected();
+    }
+
+    @Override
+    public void openMapTools()
+    {
+      closeBottomSheet(MAIN_MENU_ID);
+      MenuBottomSheetFragment.newInstance(MAP_TOOLS_MENU_ID, getString(R.string.nogps_menu_map_tools))
+          .show(getSupportFragmentManager(), MAP_TOOLS_MENU_ID);
     }
 
     @Override
@@ -1125,16 +1135,18 @@ public class MwmActivity extends BaseMwmFragmentActivity
   private int onFirmwareEvent(@NonNull NoGps.Event event)
   {
     final NoGps.Status status = NoGps.getStatus();
-    if (event == NoGps.Event.FIRMWARE_UPDATE_DONE)
+    // The dialog tells how it ended.
+    final boolean inDialog = FirmwareUpdateDialog.isShown(getSupportFragmentManager());
+    if (event == NoGps.Event.FIRMWARE_UPDATE_DONE && !inDialog)
     {
       Toast.makeText(this, getString(R.string.nogps_firmware_done, status.boxFirmware), Toast.LENGTH_LONG).show();
     }
-    else if (event == NoGps.Event.FIRMWARE_UPDATE_FAILED)
+    else if (event == NoGps.Event.FIRMWARE_UPDATE_FAILED && !inDialog)
     {
-      final String reason = firmwareError(status.firmwareUpdateError);
+      final String reason = BoxTexts.firmwareError(this, status.firmwareUpdateError);
       Toast.makeText(this, getString(R.string.nogps_firmware_failed, reason), Toast.LENGTH_LONG).show();
     }
-    else
+    else if (event == NoGps.Event.FIRMWARE_UPDATE_AVAILABLE)
     {
       offerFirmwareUpdate();
     }
@@ -1157,8 +1169,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
           .setPositiveButton(getString(R.string.nogps_firmware_install, status.bundledFirmware),
                              (dialog, which) -> {
                                NoGps.nativeStartFirmwareUpdate();
-                               // It shows how the update goes.
-                               showBoxSheet(BoxBottomSheet.Page.ITEM_BOX);
+                               FirmwareUpdateDialog.show(getSupportFragmentManager());
                              })
           .setNegativeButton(R.string.later, null)
           .show();
@@ -1234,21 +1245,6 @@ public class MwmActivity extends BaseMwmFragmentActivity
   private void showBoxSheet(@NonNull BoxBottomSheet.Page page)
   {
     BoxBottomSheet.show(getSupportFragmentManager(), page);
-  }
-
-  @NonNull
-  private String firmwareError(@NonNull String code)
-  {
-    return switch (code)
-    {
-      case "MOVING" -> getString(R.string.nogps_firmware_error_moving);
-      case "LOW_VOLTAGE" -> getString(R.string.nogps_firmware_error_voltage);
-      case "LINK" -> getString(R.string.nogps_firmware_error_link);
-      case "CANCELED", "ABORTED" -> getString(R.string.nogps_firmware_error_canceled);
-      case "ROLLBACK" -> getString(R.string.nogps_firmware_error_rollback);
-      case "PENDING" -> getString(R.string.nogps_firmware_error_pending);
-      default -> getString(R.string.nogps_firmware_error_code, code);
-    };
   }
 
   /**
@@ -1328,6 +1324,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
   {
     closeBottomSheet(LAYERS_MENU_ID);
     closeBottomSheet(MAIN_MENU_ID);
+    closeBottomSheet(MAP_TOOLS_MENU_ID);
     forceCloseSearchFragment();
     closePlacePage();
   }
@@ -1478,6 +1475,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
     RoutingController.get().restore();
     if (NoGps.getStatus().firmwareOfferPending)
       offerFirmwareUpdate();
+    // An update goes on while the app was away.
+    FirmwareUpdateDialog.show(getSupportFragmentManager());
   }
 
   @Override
@@ -1567,9 +1566,9 @@ public class MwmActivity extends BaseMwmFragmentActivity
   public boolean handleBackPress()
   {
     final RoutingController routingController = RoutingController.get();
-    return (closeBottomSheet(MAIN_MENU_ID) || closeBottomSheet(LAYERS_MENU_ID) || collapseNavMenu() || closePlacePage()
-            || closePositionChooser() || closeSearchFragment() || routingController.resetToPlanningStateIfNavigating()
-            || routingController.cancel());
+    return (closeBottomSheet(MAIN_MENU_ID) || closeBottomSheet(MAP_TOOLS_MENU_ID) || closeBottomSheet(LAYERS_MENU_ID)
+            || collapseNavMenu() || closePlacePage() || closePositionChooser() || closeSearchFragment()
+            || routingController.resetToPlanningStateIfNavigating() || routingController.cancel());
   }
 
   @Override
@@ -2539,6 +2538,7 @@ public class MwmActivity extends BaseMwmFragmentActivity
     mMapButtonsViewModel.setTrackRecorderState(false);
     TrackRecordingService.stopService(getApplicationContext());
     closeBottomSheet(MAIN_MENU_ID);
+    closeBottomSheet(MAP_TOOLS_MENU_ID);
     if (isTrackRecordingPPOpened())
       closePlacePage();
   }
@@ -2588,11 +2588,12 @@ public class MwmActivity extends BaseMwmFragmentActivity
   @Nullable
   public ArrayList<MenuBottomSheetItem> getMenuBottomSheetItems(String id)
   {
+    if (id.equals(MAP_TOOLS_MENU_ID))
+      return MainMenuItems.createMapTools(BuildConfig.MAP_EDITING, getDownloadMapsCounter(), mMainMenuHandlers);
     if (!id.equals(MAIN_MENU_ID))
       return null;
     mDonatesUrl = Utils.getDonateUrl(getApplicationContext());
-    return MainMenuItems.create(BuildConfig.MAP_EDITING, !TextUtils.isEmpty(mDonatesUrl), getDownloadMapsCounter(),
-                                mMainMenuHandlers);
+    return MainMenuItems.create(!TextUtils.isEmpty(mDonatesUrl), getDownloadMapsCounter(), mMainMenuHandlers);
   }
 
   @Override

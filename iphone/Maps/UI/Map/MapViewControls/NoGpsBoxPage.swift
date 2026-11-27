@@ -1,6 +1,6 @@
 /// The sensor box, the car and how they are calibrated: whether the box can drive without GPS, then one item for each
-/// part, which opens a page of its own, this class too. Opened from the box tile of the Box sheet, from the road-lost
-/// pill and from the firmware offer.
+/// part, which opens a page of its own, this class too. Opened from the box tile of the Box sheet and from the
+/// road-lost pill.
 final class NoGpsBoxPage: MWMTableViewController {
   enum Part: CaseIterable {
     case box
@@ -142,7 +142,7 @@ final class NoGpsBoxPage: MWMTableViewController {
       if !status.boxFirmware.isEmpty || Self.isFirmwareUpdating(status) {
         rows.append(.firmware)
       }
-      if Self.canInstallFirmware(status) || Self.canCancelFirmware(status) {
+      if Self.canInstallFirmware(status) {
         rows.append(.firmwareAction)
       }
       // The firmware row above tells the version.
@@ -226,8 +226,7 @@ final class NoGpsBoxPage: MWMTableViewController {
       content.text = L("nogps_box_value_firmware")
       content.secondaryText = Self.firmwareText(status)
     case .firmwareAction:
-      content.text = Self.canCancelFirmware(status) ? L("cancel")
-        : String(format: L("nogps_firmware_install"), status.bundledFirmware)
+      content.text = String(format: L("nogps_firmware_install"), status.bundledFirmware)
       content.textProperties.color = .linkBlue
       cell.selectionStyle = .default
     case .value(let kind):
@@ -287,13 +286,11 @@ final class NoGpsBoxPage: MWMTableViewController {
     case .item(let part):
       navigationController?.pushViewController(NoGpsBoxPage(part: part, lastValues: lastValues), animated: true)
     case .firmwareAction:
-      // The row does what it shows, if the update still allows it: the box may have gone on since it was drawn.
-      let cancel = Self.canCancelFirmware(status)
+      // Starts the update, if it is still allowed: the box may have gone on since the row was drawn.
       status = NoGps.status()
-      if cancel, Self.canCancelFirmware(status) {
-        NoGps.cancelFirmwareUpdate()
-      } else if !cancel, Self.canInstallFirmware(status) {
+      if Self.canInstallFirmware(status) {
         NoGps.startFirmwareUpdate()
+        NoGpsFirmwareUpdateAlert.show()
       }
       refresh()
     case .clearSpeed:
@@ -577,8 +574,21 @@ final class NoGpsBoxPage: MWMTableViewController {
     }
   }
 
-  private static func isFirmwareUpdating(_ status: NoGpsStatus) -> Bool {
+  static func isFirmwareUpdating(_ status: NoGpsStatus) -> Bool {
     [.starting, .sending, .verifying, .restarting].contains(status.firmwareUpdate)
+  }
+
+  /// Why the update of the firmware ended, by the code of the box.
+  static func firmwareErrorText(_ code: String) -> String {
+    switch code {
+    case "MOVING": return L("nogps_firmware_error_moving")
+    case "LOW_VOLTAGE": return L("nogps_firmware_error_voltage")
+    case "LINK": return L("nogps_firmware_error_link")
+    case "CANCELED", "ABORTED": return L("nogps_firmware_error_canceled")
+    case "ROLLBACK": return L("nogps_firmware_error_rollback")
+    case "PENDING": return L("nogps_firmware_error_pending")
+    default: return String(format: L("nogps_firmware_error_code"), code)
+    }
   }
 
   /// A build may add a suffix to the version ("0.3.3-dirty"): the numbers tell the firmware.
@@ -599,7 +609,7 @@ final class NoGpsBoxPage: MWMTableViewController {
 
   /// A box that has taken the whole firmware checks it and restarts by itself: it ignores OTA_ABORT after that, so
   /// the update can't be stopped any more.
-  private static func canCancelFirmware(_ status: NoGpsStatus) -> Bool {
+  static func canCancelFirmware(_ status: NoGpsStatus) -> Bool {
     isFirmwareUpdating(status) && ![.verifying, .restarting].contains(status.firmwareUpdate)
   }
 
