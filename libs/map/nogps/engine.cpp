@@ -413,6 +413,7 @@ void Engine::OnBoxLink(bool linked)
     return;
   }
   m_autoCalibrateCancelled = false;
+  m_autoCalibrateTried = false;
   if (now - m_boxLinkEndedMs < kTripFileLinkGapMs)
     return;
   Notify(Event::TripStarted);
@@ -1406,17 +1407,19 @@ void Engine::CheckAutoCalibration()
   if (!m_inertial || m_inertial->GetSpeedKmh() != 0)
   {
     m_stoppedSinceMs.reset();
+    m_autoCalibrateTried = false;
     return;
   }
   int64_t const now = m_clock.NowMs();
   if (!m_stoppedSinceMs)
     m_stoppedSinceMs = now;
-  if (!m_calibrationArmed && !m_autoCalibrateCancelled && now - *m_stoppedSinceMs >= kAutoCalibrateStopMs &&
-      NeedsBoxCalibration())
+  if (!m_calibrationArmed && !m_autoCalibrateTried && !m_autoCalibrateCancelled &&
+      now - *m_stoppedSinceMs >= kAutoCalibrateStopMs && NeedsBoxCalibration())
   {
     LOG(LINFO, ("The car has stood for", (now - *m_stoppedSinceMs) / 1000, "s, calibrate the box"));
     CalibrateWhenStill();
     m_calibrationAuto = m_calibrationArmed;
+    m_autoCalibrateTried = true;
   }
 }
 

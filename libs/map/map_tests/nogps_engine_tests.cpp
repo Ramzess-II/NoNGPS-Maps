@@ -3139,6 +3139,29 @@ UNIT_TEST(NoGps_Engine_AutoCalibrationStartsAgainAfterFailedMoving)
   TEST_EQUAL(box.Calibrations(), 2, ());
 }
 
+UNIT_TEST(NoGps_Engine_AutoCalibrationGivesUpAtOneStop)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env, false /* calibrated */);
+  box.Wait(Engine::kAutoCalibrateStopMs, true, 40);
+  for (int i = 0; i < Engine::kCalibrateWhenStillMaxFailures; ++i)
+  {
+    box.Wait(1000, true, 40);
+    box.Reply("ERR,MOVING");
+    box.Wait(500, true, 40);
+  }
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  int const calibrations = box.Calibrations();
+  // The car stands on: the same stop doesn't arm it again.
+  box.Wait(3 * Engine::kAutoCalibrateStopMs, true, 40);
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  TEST_EQUAL(box.Calibrations(), calibrations, ());
+  // The next stop does.
+  box.Drive(2000, 36, 200);
+  box.Wait(Engine::kAutoCalibrateStopMs + 2000, true, 40);
+  TEST_EQUAL(box.Calibrations(), calibrations + 1, ());
+}
+
 UNIT_TEST(NoGps_Engine_AutoCalibrationStopsWhenUserDeclines)
 {
   Env env(true /* inertial */);

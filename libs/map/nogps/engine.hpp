@@ -780,6 +780,8 @@ private:
   bool m_calibrationAuto = false;
   // Since when the car stands, if it does.
   std::optional<int64_t> m_stoppedSinceMs;
+  // CheckAutoCalibration() has armed the calibration during the current stop: it doesn't arm again until the car moves.
+  bool m_autoCalibrateTried = false;
   // The user has cancelled the automatic calibration: it waits for the box to connect again.
   bool m_autoCalibrateCancelled = false;
   // The platform forgets the car on Event::ThisPhoneRemoved: not while the box is being read.
