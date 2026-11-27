@@ -445,6 +445,12 @@ void Esp32Source::OnBleState(BleState state, bool bondLost, std::string const & 
     m_peer.Reset();
     m_update.OnLinkLost();
     ForgetCarRequests();
+    // The reply is lost with the link: the car is not known to be forgotten.
+    if (m_factoryResetId != 0)
+    {
+      LOG(LWARNING, ("The link is lost during the full reset"));
+      m_listener.OnBoxFactoryReset("NOREPLY");
+    }
     ForgetPhoneRequests();
     ForgetJournal();
     if (m_batteryLock == BatteryLock::Told)

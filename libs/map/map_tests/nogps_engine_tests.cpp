@@ -4301,6 +4301,23 @@ UNIT_TEST(NoGps_Engine_FactoryResetRefusedByTheBox)
   TEST(!cars.GetCarValue("C47D", CarStorage::kCarAuthKey).value_or("").empty(), ());
 }
 
+UNIT_TEST(NoGps_Engine_FactoryResetLostWithTheLink)
+{
+  Env env(true /* inertial */);
+  CarStorage cars(env.m_storage);
+  HearBox(env, "C47D");
+  AnswerPhoneList(env);
+  cars.SetCarValue("C47D", CarStorage::kCarAuthKey, "00112233445566778899aabbccddeeff");
+  env.m_engine.FactoryResetBox();
+  TEST(!FactoryResetId(env).empty(), ());
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  env.m_clock.Advance(1);
+  TEST(!env.m_delegate.HasEvent(Event::BoxReset), ());
+  TEST(env.m_delegate.HasEvent(Event::BoxResetFailed), ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_boxResetError, "NOREPLY", ());
+  TEST(!cars.GetCarValue("C47D", CarStorage::kCarAuthKey).value_or("").empty(), ());
+}
+
 UNIT_TEST(NoGps_Engine_FactoryResetIsOnlyForThePhoneThatChangesTheBox)
 {
   Env env(true /* inertial */);
