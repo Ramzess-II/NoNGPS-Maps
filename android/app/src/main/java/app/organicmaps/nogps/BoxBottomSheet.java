@@ -311,22 +311,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     sheet.show(manager, TAG);
   }
 
-  /**
-   * The box is connected and asks to be calibrated, or its calibration has failed: a bar on the map tells so until
-   * the user calibrates it. The phone that connected to the box first calibrates it.
-   */
-  public static boolean needsCalibration(@NonNull NoGps.Status status)
-  {
-    if (!isConnected(status) || status.boxReadOnly)
-      return false;
-    return switch (status.getCalibration())
-    {
-      case CALIBRATING -> false;
-      case DONE -> status.boxCalibrationAdvised;
-      case NONE, FAILED_MOVING, MOUNT_MOVED, LINK_LOST -> true;
-    };
-  }
-
   @Override
   public void onCreate(@Nullable Bundle savedInstanceState)
   {
@@ -804,7 +788,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   /**
    * The box tells the car data and its calibration only while it is in reach.
    */
-  private static boolean isConnected(@NonNull NoGps.Status status)
+  static boolean isConnected(@NonNull NoGps.Status status)
   {
     return isBoxHeard(status) && status.getBleState() == NoGps.BleState.CONNECTED;
   }

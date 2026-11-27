@@ -1,25 +1,41 @@
 package app.organicmaps.nogps;
 
 import static org.junit.Assert.assertEquals;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import android.content.Context;
-import app.organicmaps.R;
 import org.junit.Test;
 
 /**
- * The texts of the How NonGPS works page, see HowNoGpsFragment.
+ * What the How NonGPS works page does with a link and a locale, see HowNoGpsFragment. The same decisions are tested
+ * on iOS in HowNoGpsTests.
  */
 public class HowNoGpsFragmentTest
 {
   @Test
-  public void rightPanelLineTellsAboutTheZoomSlide()
+  public void introLinkPlaysTheIntro()
   {
-    final Context context = mock(Context.class);
-    when(context.getString(R.string.nogps_how_right)).thenReturn("right");
-    when(context.getString(R.string.nogps_intro_right_swipe)).thenReturn("slide");
-    // The same line the balloon of the intro and the page on iOS show: both platforms have the gesture.
-    assertEquals("right slide", HowNoGpsFragment.rightText(context));
+    assertEquals(HowNoGpsFragment.UrlAction.INTRO, HowNoGpsFragment.classify("nogps-guide://intro"));
+  }
+
+  @Test
+  public void webLinksGoToTheBrowser()
+  {
+    assertEquals(HowNoGpsFragment.UrlAction.BROWSER, HowNoGpsFragment.classify("https://non-gps.com"));
+    assertEquals(HowNoGpsFragment.UrlAction.BROWSER, HowNoGpsFragment.classify("http://example.com/a"));
+  }
+
+  @Test
+  public void assetsAreLoaded()
+  {
+    assertEquals(HowNoGpsFragment.UrlAction.LOAD,
+                 HowNoGpsFragment.classify("file:///android_asset/nogps_guide.html?lang=uk"));
+  }
+
+  @Test
+  public void ukrainianForUkAndRuOnly()
+  {
+    assertEquals("uk", HowNoGpsFragment.pageLang("uk"));
+    assertEquals("uk", HowNoGpsFragment.pageLang("ru"));
+    assertEquals("en", HowNoGpsFragment.pageLang("de"));
+    assertEquals("en", HowNoGpsFragment.pageLang("en"));
   }
 }

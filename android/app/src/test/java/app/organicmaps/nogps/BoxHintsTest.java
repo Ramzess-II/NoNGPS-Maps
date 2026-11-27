@@ -11,7 +11,6 @@ import android.content.Context;
 import app.organicmaps.R;
 import app.organicmaps.sdk.location.NoGps;
 import app.organicmaps.sdk.location.NoGps.BleState;
-import app.organicmaps.sdk.location.NoGps.CalibrationState;
 import app.organicmaps.sdk.location.NoGps.SourceState;
 import java.lang.reflect.Field;
 import org.junit.Test;
@@ -135,41 +134,17 @@ public class BoxHintsTest
     assertEquals(0, BoxBottomSheet.obdHintText(status(SourceState.NO_CAR_DATA, BleState.SEARCHING)));
   }
 
-  // The bar on the map stays until the box is calibrated.
+  // The speed stays on the map while the box is connected, with no position source too: the calibration bar slides
+  // out of it.
   @Test
-  public void calibrationNeededUntilDone()
+  public void speedShownWhileBoxIsConnected()
   {
-    assertTrue(BoxBottomSheet.needsCalibration(calibrated(CalibrationState.NONE, false)));
-    assertTrue(BoxBottomSheet.needsCalibration(calibrated(CalibrationState.FAILED_MOVING, false)));
-    assertTrue(BoxBottomSheet.needsCalibration(calibrated(CalibrationState.MOUNT_MOVED, false)));
-    assertTrue(BoxBottomSheet.needsCalibration(calibrated(CalibrationState.LINK_LOST, false)));
-    // The box has been plugged in again since it was calibrated.
-    assertTrue(BoxBottomSheet.needsCalibration(calibrated(CalibrationState.DONE, true)));
-    assertFalse(BoxBottomSheet.needsCalibration(calibrated(CalibrationState.DONE, false)));
-    assertFalse(BoxBottomSheet.needsCalibration(calibrated(CalibrationState.CALIBRATING, true)));
-  }
-
-  // Only the phone that can calibrate the box now is asked to.
-  @Test
-  public void calibrationNotAskedWithoutBoxOrOnReadOnlyBox()
-  {
-    final NoGps.Status readOnly = calibrated(CalibrationState.NONE, true);
-    readOnly.boxReadOnly = true;
-    assertFalse(BoxBottomSheet.needsCalibration(readOnly));
-    final NoGps.Status outOfReach = calibrated(CalibrationState.NONE, true);
-    setState(outOfReach, "bleState", BleState.SEARCHING.ordinal());
-    assertFalse(BoxBottomSheet.needsCalibration(outOfReach));
-    final NoGps.Status notHeard = calibrated(CalibrationState.NONE, true);
-    setState(notHeard, "sourceState", SourceState.CONNECTING.ordinal());
-    assertFalse(BoxBottomSheet.needsCalibration(notHeard));
-  }
-
-  private static NoGps.Status calibrated(CalibrationState calibration, boolean advised)
-  {
-    final NoGps.Status status = status(SourceState.CONNECTED, BleState.CONNECTED);
-    setState(status, "calibration", calibration.ordinal());
-    status.boxCalibrationAdvised = advised;
-    return status;
+    final NoGps.Status connected = status(SourceState.CONNECTED, BleState.CONNECTED);
+    assertTrue(SpeedHints.isSpeedShown(connected, false));
+    assertTrue(SpeedHints.isSpeedShown(status(SourceState.NO_CAR_DATA, BleState.CONNECTED), false));
+    assertFalse(SpeedHints.isSpeedShown(status(SourceState.CONNECTED, BleState.SEARCHING), false));
+    assertFalse(SpeedHints.isSpeedShown(status(SourceState.CONNECTING, BleState.CONNECTED), false));
+    assertTrue(SpeedHints.isSpeedShown(status(SourceState.CONNECTING, BleState.SEARCHING), true));
   }
 
   private static NoGps.Status status(SourceState source, BleState ble)

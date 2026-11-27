@@ -303,6 +303,7 @@ std::optional<double> NonNegative(double value)
       _boxPhones = phones;
     }
     _boxReadOnly = status.m_boxReadOnly;
+    _boxNeedsCalibration = status.m_boxNeedsCalibration;
     _peerRole = static_cast<MWMNoGpsPeerRole>(status.m_peerRole);
     _peerName = @(status.m_peerName.c_str());
     _addPhone = static_cast<MWMNoGpsAddPhone>(status.m_addPhone);
@@ -518,9 +519,9 @@ static CLLocation * lastPlatformLocation;
   Engine().CalibrateWhenStill();
 }
 
-+ (void)cancelCalibrateWhenStill
++ (void)declineAutoCalibration
 {
-  Engine().CancelCalibrateWhenStill();
+  Engine().DeclineAutoCalibration();
 }
 
 + (NSArray<NSNumber *> *)boxShake
