@@ -140,22 +140,62 @@
       android:orientation="vertical"
       android:paddingStart="@dimen/speed_hint_padding_start"
       android:paddingEnd="14dp">
-      <TextView
-        android:id="@+id/calibration_bar_title"
+      <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:includeFontPadding="false"
-        android:maxLines="1"
-        android:textColor="@color/white_primary"
-        android:textSize="14sp"
-        android:textStyle="bold"
-        tools:text="Hold still: no one gets in or out" />
-      <app.organicmaps.maplayer.ShakeTraceView
-        android:id="@+id/calibration_bar_trace"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView
+          android:id="@+id/calibration_bar_title"
+          android:layout_width="0dp"
+          android:layout_height="wrap_content"
+          android:layout_weight="1"
+          android:ellipsize="end"
+          android:includeFontPadding="false"
+          android:maxLines="1"
+          android:textColor="@color/white_primary"
+          android:textSize="11.5sp"
+          android:textStyle="bold"
+          tools:text="Box calibration · hold still" />
+        <TextView
+          android:id="@+id/calibration_bar_chip"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginStart="6dp"
+          android:background="@drawable/bg_calibration_chip"
+          android:fontFeatureSettings="tnum"
+          android:includeFontPadding="false"
+          android:maxLines="1"
+          android:paddingHorizontal="6dp"
+          android:paddingVertical="1dp"
+          android:textColor="@color/white_primary"
+          android:textSize="10.5sp"
+          android:textStyle="bold"
+          android:visibility="gone"
+          tools:text="1.4 / 2 s"
+          tools:visibility="visible" />
+      </LinearLayout>
+      <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="18dp"
-        android:layout_marginTop="5dp" />
+        android:layout_height="30dp"
+        android:layout_marginTop="4dp">
+        <app.organicmaps.maplayer.ShakeTraceView
+          android:id="@+id/calibration_bar_trace"
+          android:layout_width="match_parent"
+          android:layout_height="match_parent" />
+        <TextView
+          android:id="@+id/calibration_bar_ready"
+          android:layout_width="match_parent"
+          android:layout_height="match_parent"
+          android:ellipsize="end"
+          android:gravity="center_vertical"
+          android:maxLines="1"
+          android:text="@string/nogps_calibrate_bar_ready"
+          android:textColor="@color/white_primary"
+          android:textSize="15sp"
+          android:textStyle="bold"
+          android:visibility="gone" />
+      </FrameLayout>
     </LinearLayout>
   </FrameLayout>
 </FrameLayout>

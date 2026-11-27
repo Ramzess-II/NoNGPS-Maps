@@ -49,6 +49,7 @@ GOOD = [
     core('OnData', 'ACCB_BEFORE ms=%d 2 ' % (T0 + 2500) + ' '.join(['0.10,0.00,9.80,0.5'] * 5)),
     core('OnMotion', 'GYRO ms=%d 12.5 0.1 0.2 0.3 0.4 0.5 10 11 12 13 14' % (T0 + 2600)),
     core('X', 'BOXACC ms=%d dir=- n=0 corr=0.00' % (T0 + 2700)),
+    core('OnShake', 'SHAKE ms=%d n=48 max=1430 p90=210 p50=85 still=0 armed=1 speed=0' % (T0 + 2800)),
     '11-22 18:00:01.000 (main) I/OrganicMaps: Foo.java:1 bar(): an ordinary line',
     trip(T0 + 1000_000),
 ]
@@ -167,7 +168,7 @@ class ImportTest(unittest.TestCase):
         self.assertEqual((rule['name'], rule['payload'], rule['text']),
                          ('road_lost', '{"jump": "0", "m": "42"}', 'The road is lost after 120 m'))
         self.assertEqual(conn.execute('SELECT name FROM event').fetchone()[0], 'gps_spoofed')
-        self.assertEqual(sorted(r[0] for r in conn.execute('SELECT tag FROM note')), ['BOXACC', 'MAPS'])
+        self.assertEqual(sorted(r[0] for r in conn.execute('SELECT tag FROM note')), ['BOXACC', 'MAPS', 'SHAKE'])
         # The lines before the first TRIP and in the pause belong to the first trip and the line after it.
         self.assertEqual({r[0] for r in conn.execute('SELECT trip_id FROM action')}, {trips[0]['id']})
 

@@ -1716,17 +1716,32 @@
 /* Start of the subtitle of the Box section of the Box page: the firmware version of the box, then its state */
 "nogps_box_version" = "Версія %1$@";
 
-/* Orange bar next to the speed on the map while the car stands and the box is about to be calibrated */
-"nogps_calibrate_still_hold" = "Не рухайтесь: ніхто не сідає й не виходить";
+/* First row of the orange bar next to the speed on the map: the car must stand still for the box to be calibrated */
+"nogps_calibrate_bar_hold" = "Калібрування блока · не рухайтесь";
 
-/* Orange bar next to the speed on the map while the box calibrates */
-"nogps_calibrate_still_calibrating" = "Калібруємо блок датчиків";
+/* First row of the orange bar next to the speed on the map while the box calibrates */
+"nogps_calibrate_bar_measuring" = "Калібрування блока · міряємо";
 
-/* Green bar next to the speed on the map for 3 seconds after the box is calibrated */
-"nogps_calibrate_still_done" = "Блок датчиків відкалібровано";
+/* First row of the orange bar next to the speed on the map: the car moved during the calibration, it starts again when the car is still */
+"nogps_calibrate_bar_moved" = "Калібрування блока · машина рухалась";
 
-/* Orange bar next to the speed on the map: the car moved during the calibration, it starts again when the car is still */
-"nogps_calibrate_still_moved" = "Машина рухалась";
+/* First row of the green bar next to the speed on the map for 3 seconds after the box is calibrated */
+"nogps_calibrate_bar_done" = "Блок відкалібровано";
+
+/* Second row of the green bar next to the speed on the map after the box is calibrated */
+"nogps_calibrate_bar_ready" = "Готово до їзди без GPS";
+
+/* Chip of the orange calibration bar: how long the car has stood still of the 2 seconds the box needs, %1$@ is seconds like 1.4 */
+"nogps_calibrate_bar_held" = "%1$@ / 2 с";
+
+/* Chip of the orange calibration bar after the car moved: the number of the try and how many tries the app makes */
+"nogps_calibrate_bar_try" = "спроба %1$d з %2$d";
+
+/* Chip of the orange calibration bar: the car has stood still for 2 seconds, the box has not said yet that it is still */
+"nogps_calibrate_bar_waiting_box" = "чекаємо блок";
+
+/* Chip of the orange calibration bar: the strongest shake of the last 3 seconds is %d times the limit */
+"nogps_calibrate_bar_peak" = "пік ×%d";
 
 /* Under the distance left in navigation: the distance driven since navigation started, e.g. 12.4 km covered */
 "nogps_nav_covered" = "пройдено %@";
@@ -2059,16 +2074,16 @@
 "nogps_intro_understand" = "Так, зрозуміло: працює з датчиком";
 
 /* Balloon of the first start pointing at the bottom bar */
-"nogps_intro_bottom" = "Машини, датчик і GPS — тут.";
+"nogps_intro_bottom" = "Звідки береться ваша позиція: датчик NonGPS або GPS. Натисніть, щоб підключити датчик або побачити його стан.";
 
 /* Balloon of the first start pointing at the panel with the zoom buttons */
-"nogps_intro_right" = "Масштаб і поворот мапи. Утримання рухає панель.";
+"nogps_intro_right" = "Масштаб і поворот мапи. Утримуйте панель, щоб перемістити її вгору або вниз.";
 
 /* Appended to nogps_intro_right, the zoom buttons also take a slide */
-"nogps_intro_right_swipe" = "Проведіть по +/− для масштабу.";
+"nogps_intro_right_swipe" = "Проведіть уздовж +/−, щоб плавно змінювати масштаб.";
 
 /* Balloon of the first start pointing at the panel with the car buttons */
-"nogps_intro_left" = "Поверніть машину або вкажіть її рукою. Утримання рухає панель.";
+"nogps_intro_left" = "Якщо GPS зник, розвертайте авто або переносьте його на іншу дорогу цими кнопками чи вкажіть рукою, де воно. Утримуйте панель, щоб перемістити її.";
 
 /* Menu row and title of the page that explains the app and plays the intro again */
 "nogps_how_title" = "Як працює NonGPS";

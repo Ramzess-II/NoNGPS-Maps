@@ -521,6 +521,7 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsField(env, out, "calibration", static_cast<int>(status.m_calibration));
   SetNoGpsField(env, out, "calibrationProgress", status.m_calibrationProgress);
   SetNoGpsField(env, out, "calibrationArmed", status.m_calibrationArmed);
+  SetNoGpsField(env, out, "calibrationTries", status.m_calibrationTries);
   SetNoGpsField(env, out, "boxStill", status.m_boxStill);
   SetNoGpsField(env, out, "hasInertialPosition", status.m_hasInertialPosition);
   SetNoGpsField(env, out, "roadLost", status.m_roadLost);

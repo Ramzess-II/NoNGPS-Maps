@@ -35,6 +35,12 @@ enum NoGpsProfile {
     groups.isEmpty ? 2 : groups.count
   }
 
+  /// The group of a section, nil for a section the groups don't have. During reloadData UIKit still asks about the
+  /// sections of the data it showed before, e.g. the two of the empty state once a car is there.
+  static func group(at section: Int, of groups: [Group]) -> Group? {
+    groups.indices.contains(section) ? groups[section] : nil
+  }
+
   private static func bestText(of kind: NoGpsSprintKind, in runs: [Run], locale: Locale) -> String {
     // The runs come newest first: of equal times the older one is the record.
     guard let best = runs.reversed().filter({ $0.kind == kind }).min(by: { $0.sec < $1.sec }) else {
@@ -150,14 +156,14 @@ final class NoGpsProfileController: MWMTableViewController {
     if section == 0 {
       return drivingRows.count + 1
     }
-    return groups.isEmpty ? 0 : groups[groupIndex(of: section)].rows.count
+    return NoGpsProfile.group(at: groupIndex(of: section), of: groups)?.rows.count ?? 0
   }
 
   override func tableView(_: UITableView, titleForHeaderInSection section: Int) -> String? {
     if section == 0 {
       return L("nogps_driving_title")
     }
-    return groups.isEmpty ? nil : groups[groupIndex(of: section)].title
+    return NoGpsProfile.group(at: groupIndex(of: section), of: groups)?.title
   }
 
   override func tableView(_: UITableView, titleForFooterInSection section: Int) -> String? {

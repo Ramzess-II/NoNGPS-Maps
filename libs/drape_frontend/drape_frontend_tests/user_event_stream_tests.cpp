@@ -20,7 +20,7 @@ using namespace std::placeholders;
 
 namespace
 {
-class UserEventStreamTest : df::UserEventStream::Listener
+class UserEventStreamTest : public df::UserEventStream::Listener
 {
 public:
   explicit UserEventStreamTest(bool filtrateTouches) : m_filtrate(filtrateTouches)
@@ -36,7 +36,7 @@ public:
   void OnDragStarted() override {}
   void OnDragEnded(m2::PointD const & /* distance */) override {}
   void OnRotated() override {}
-  void OnScrolled(m2::PointD const & distance) override {}
+  void OnScrolled(m2::PointD const & distance) override { m_scrolledCount++; }
 
   void OnScaleStarted() override {}
   void CorrectScalePoint(m2::PointD & pt) const override {}
@@ -59,6 +59,13 @@ public:
                                                        false /* useVisibleViewport */,
                                                        nullptr /* parallelAnimCreator */));
   }
+
+  void ListenToScrolls() { m_stream.SetListener(make_ref(this)); }
+  void AddMove(double factorX, double factorY)
+  {
+    m_stream.AddEvent(make_unique_dp<df::MoveEvent>(factorX, factorY, false /* isAnim */));
+  }
+  int GetScrolledCount() const { return m_scrolledCount; }
 
   void AddResizeEvent(uint32_t w, uint32_t h) { m_stream.AddEvent(make_unique_dp<df::ResizeEvent>(w, h)); }
 
@@ -97,6 +104,7 @@ private:
   df::UserEventStream m_stream;
   std::list<char const *> m_expectation;
   bool m_filtrate;
+  int m_scrolledCount = 0;
 };
 
 int touchTimeStamp = 1;
@@ -300,6 +308,20 @@ UNIT_CLASS_TEST(VisualParamsFixture, SetCenter_AlignsToVisibleViewportCenter)
     TEST(std::fabs(pixelPos.y - viewportCenter.y) < kEps,
          (pixelPos.y, "expected", viewportCenter.y, "trackVisibleViewport", trackVisibleViewport));
   }
+}
+
+// The pan arrows of CarPlay move the map with MoveEvent: the position controller must hear of it like of a scroll.
+UNIT_CLASS_TEST(VisualParamsFixture, MoveEventIsReportedAsScroll)
+{
+  UserEventStreamTest test(false);
+  test.AddResizeEvent(1000, 1000);
+  test.SetRect(m2::RectD(-100.0, -100.0, 100.0, 100.0));
+  test.RunTest();
+
+  test.ListenToScrolls();
+  test.AddMove(0.1, 0.0);
+  test.RunTest();
+  TEST_EQUAL(test.GetScrolledCount(), 1, ());
 }
 
 #endif

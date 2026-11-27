@@ -59,18 +59,18 @@ public class IntroTest
   }
 
   @Test
-  public void typesAboutTwentyCharactersASecond()
+  public void typesAboutThirtyCharactersASecond()
   {
     final IntroSequence sequence = new IntroSequence();
     sequence.tap(TEXT, 0);
     assertEquals(IntroStep.BOTTOM, sequence.step());
     assertEquals(0, sequence.revealed(TEXT, 0));
-    assertEquals(10, sequence.revealed(TEXT, 0.5));
-    assertEquals(20, sequence.revealed(TEXT, 1));
+    assertEquals(15, sequence.revealed(TEXT, 0.5));
+    assertEquals(30, sequence.revealed(TEXT, 1));
     // Never past the end of the text.
     assertEquals(TEXT, sequence.revealed(TEXT, 100));
     assertFalse(sequence.isTyping(TEXT, 100));
-    assertEquals(20, IntroSequence.TYPE_CHARS_PER_S, 0.001);
+    assertEquals(30, IntroSequence.TYPE_CHARS_PER_S, 0.001);
   }
 
   @Test
