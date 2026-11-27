@@ -42,9 +42,9 @@ public class IntroOverlay extends View
     View get(@NonNull IntroStep step);
   }
 
-  // A balloon is redrawn on it: the typewriter shows a character every third tick, and the balloon follows a panel
+  // A balloon is redrawn on it: the typewriter shows one or two characters, and the balloon follows a panel
   // the user moves or a screen that turns.
-  private static final long TICK_MS = 100;
+  private static final long TICK_MS = 50;
   private static final int DIM_ALPHA = 0xB0;
   private static final float HOLE_PADDING_DP = 4;
   private static final float HOLE_RADIUS_DP = 16;

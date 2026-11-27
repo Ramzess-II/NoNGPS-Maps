@@ -432,6 +432,9 @@ public final class NoGps
     // The core waits for the car to stand still to calibrate the box, or calibrates it, see nativeCalibrateWhenStill().
     @Keep
     public boolean calibrationArmed;
+    // The number of the try of the calibration while armed, 1 first; 0 when not armed.
+    @Keep
+    public int calibrationTries;
     // The sensor box reports that it stands still.
     @Keep
     public boolean boxStill;

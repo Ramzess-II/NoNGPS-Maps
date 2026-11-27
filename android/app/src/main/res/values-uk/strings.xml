@@ -1308,14 +1308,24 @@
     <string name="nogps_box_imu">Інерціальний вимірювальний блок</string>
     <!-- Start of the subtitle of the Box section of the Box page: the firmware version of the box, then its state -->
     <string name="nogps_box_version">Версія %1$s</string>
-    <!-- Orange bar next to the speed on the map while the car stands and the box is about to be calibrated -->
-    <string name="nogps_calibrate_still_hold">Не рухайтесь: ніхто не сідає й не виходить</string>
-    <!-- Orange bar next to the speed on the map while the box calibrates -->
-    <string name="nogps_calibrate_still_calibrating">Калібруємо блок датчиків</string>
-    <!-- Green bar next to the speed on the map for 3 seconds after the box is calibrated -->
-    <string name="nogps_calibrate_still_done">Блок датчиків відкалібровано</string>
-    <!-- Orange bar next to the speed on the map: the car moved during the calibration, it starts again when the car is still -->
-    <string name="nogps_calibrate_still_moved">Машина рухалась</string>
+    <!-- First row of the orange bar next to the speed on the map: the car must stand still for the box to be calibrated -->
+    <string name="nogps_calibrate_bar_hold">Калібрування блока · не рухайтесь</string>
+    <!-- First row of the orange bar next to the speed on the map while the box calibrates -->
+    <string name="nogps_calibrate_bar_measuring">Калібрування блока · міряємо</string>
+    <!-- First row of the orange bar next to the speed on the map: the car moved during the calibration, it starts again when the car is still -->
+    <string name="nogps_calibrate_bar_moved">Калібрування блока · машина рухалась</string>
+    <!-- First row of the green bar next to the speed on the map for 3 seconds after the box is calibrated -->
+    <string name="nogps_calibrate_bar_done">Блок відкалібровано</string>
+    <!-- Second row of the green bar next to the speed on the map after the box is calibrated -->
+    <string name="nogps_calibrate_bar_ready">Готово до їзди без GPS</string>
+    <!-- Chip of the orange calibration bar: how long the car has stood still of the 2 seconds the box needs, %1$@ is seconds like 1.4 -->
+    <string name="nogps_calibrate_bar_held">%1$s / 2 с</string>
+    <!-- Chip of the orange calibration bar after the car moved: the number of the try and how many tries the app makes -->
+    <string name="nogps_calibrate_bar_try">спроба %1$d з %2$d</string>
+    <!-- Chip of the orange calibration bar: the car has stood still for 2 seconds, the box has not said yet that it is still -->
+    <string name="nogps_calibrate_bar_waiting_box">чекаємо блок</string>
+    <!-- Chip of the orange calibration bar: the strongest shake of the last 3 seconds is %d times the limit -->
+    <string name="nogps_calibrate_bar_peak">пік ×%d</string>
     <!-- Settings item and the switch on its page: the app is the mock location app for other apps -->
     <string name="nogps_share_position">Передавати позицію</string>
     <!-- Share position page of Settings, above the switch -->
@@ -1535,13 +1545,13 @@
     <!-- Button that closes the dialog of the first start -->
     <string name="nogps_intro_understand">Так, зрозуміло: працює з датчиком</string>
     <!-- Balloon of the first start pointing at the bottom bar -->
-    <string name="nogps_intro_bottom">Машини, датчик і GPS — тут.</string>
+    <string name="nogps_intro_bottom">Звідки береться ваша позиція: датчик NonGPS або GPS. Натисніть, щоб підключити датчик або побачити його стан.</string>
     <!-- Balloon of the first start pointing at the panel with the zoom buttons -->
-    <string name="nogps_intro_right">Масштаб і поворот мапи. Утримання рухає панель.</string>
+    <string name="nogps_intro_right">Масштаб і поворот мапи. Утримуйте панель, щоб перемістити її вгору або вниз.</string>
     <!-- Appended to nogps_intro_right, the zoom buttons also take a slide -->
-    <string name="nogps_intro_right_swipe">Проведіть по +/− для масштабу.</string>
+    <string name="nogps_intro_right_swipe">Проведіть уздовж +/−, щоб плавно змінювати масштаб.</string>
     <!-- Balloon of the first start pointing at the panel with the car buttons -->
-    <string name="nogps_intro_left">Поверніть машину або вкажіть її рукою. Утримання рухає панель.</string>
+    <string name="nogps_intro_left">Якщо GPS зник, розвертайте авто або переносьте його на іншу дорогу цими кнопками чи вкажіть рукою, де воно. Утримуйте панель, щоб перемістити її.</string>
     <!-- Menu row and title of the page that explains the app and plays the intro again -->
     <string name="nogps_how_title">Як працює NonGPS</string>
 </resources>

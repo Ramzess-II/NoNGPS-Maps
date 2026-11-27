@@ -7,9 +7,9 @@ final class NoGpsIntroController: NSObject {
     static let shownKey = "NoGpsIntroShown"
     /// The panels of the map are laid out by then and the balloons find them.
     static let startDelay: TimeInterval = 0.7
-    /// A balloon is redrawn on it: the typewriter shows a character every third tick, and the balloon follows a panel
+    /// A balloon is redrawn on it: the typewriter shows one or two characters, and the balloon follows a panel
     /// the user moves or a screen that turns.
-    static let tick: TimeInterval = 0.1
+    static let tick: TimeInterval = 0.05
   }
 
   private static var current: NoGpsIntroController?

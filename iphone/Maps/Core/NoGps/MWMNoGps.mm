@@ -278,6 +278,7 @@ std::optional<double> NonNegative(double value)
     _calibration = static_cast<MWMNoGpsCalibrationState>(status.m_calibration);
     _calibrationProgress = status.m_calibrationProgress;
     _calibrationArmed = status.m_calibrationArmed;
+    _calibrationTries = status.m_calibrationTries;
     _boxStill = status.m_boxStill;
     _firmwareOfferPending = status.m_firmwareOfferPending;
     _boxCalibrationAdvised = status.m_boxCalibrationAdvised;

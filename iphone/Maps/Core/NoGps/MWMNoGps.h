@@ -344,6 +344,8 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly) NSInteger calibrationProgress;
 /// The core waits for the car to stand still to calibrate the box, or calibrates it: see +calibrateWhenStill.
 @property(nonatomic, readonly) BOOL calibrationArmed;
+/// The number of the try of the calibration while armed, 1 first; 0 when not armed.
+@property(nonatomic, readonly) NSInteger calibrationTries;
 /// The sensor box reports that it stands still.
 @property(nonatomic, readonly) BOOL boxStill;
 /// The user has not seen the offer of bundledFirmware: show it and call +firmwareOfferShown.

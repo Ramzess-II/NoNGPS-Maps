@@ -146,6 +146,9 @@ struct Status
   // The core waits for the car to stand still to calibrate the box, see Engine::CalibrateWhenStill(): it has not sent
   // the calibration yet or it runs.
   bool m_calibrationArmed = false;
+  // The number of the try of the calibration while armed: 1 first, then one more after each time the car has moved,
+  // up to Engine::kCalibrateWhenStillMaxFailures. 0 when not armed.
+  int m_calibrationTries = 0;
   // The sensor box reports that it stands still.
   bool m_boxStill = false;
   // The box is connected to this phone and asks to be calibrated, see Engine::NeedsBoxCalibration(): the core

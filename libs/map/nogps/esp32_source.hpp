@@ -44,6 +44,8 @@ public:
   static size_t constexpr kAccelLinesBeforeStart = 3;
   // The shake of the box shown to the user is this many lines long: 3 s of the lines.
   static size_t constexpr kShakeLines = 150;
+  // The shake of the box goes to the trip log once in this time, see MotionSource::Listener::OnShake().
+  static int64_t constexpr kShakeLogMs = 1000;
   // A calibration takes ~3 s on the box.
   static int64_t constexpr kCalibrationTimeoutMs = 10'000;
   // The events missed are asked again not more often than this.
@@ -277,6 +279,9 @@ private:
   std::optional<int64_t> m_wakingLinkMs;
   int m_flags = 0;
   std::deque<int> m_shake;
+  // The shake since the last line of the trip log.
+  std::vector<int> m_shakeLogged;
+  int64_t m_shakeLoggedMs = 0;
   AccelLog m_accelLog;
   // The lines of the accelerometer while the car reports that it stands.
   std::deque<std::string> m_accelLinesBeforeStart;

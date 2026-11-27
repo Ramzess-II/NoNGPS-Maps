@@ -5,6 +5,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace nogps
 {
@@ -93,6 +94,10 @@ public:
     /// A packet of the sensor box: how far the acceleration along `up` went from its mean during the packet, m/s².
     /// \param speedKmh the speed the car reports, -1 if it is not known.
     virtual void OnJolt(double /* joltMs2 */, int /* speedKmh */) {}
+
+    /// The shake of the box (Data::m_shakePct) over the last kShakeLogMs, for the trip log.
+    /// \param still the box tells that the car stands still.
+    virtual void OnShake(std::vector<int> const & /* shakePct */, bool /* still */) {}
 
     /// The sensor box has told about itself: its identifier is the car, see CarStorage.
     virtual void OnBoxHeard(std::string const & /* id */, std::string const & /* firmware */) {}
