@@ -259,7 +259,11 @@ nogps::Engine & Framework::CreateNoGps(nogps::Delegate & delegate)
                                              [this](double bearingDeg)
   {
     if (m_drapeEngine != nullptr)
-      m_drapeEngine->SetCompassInfo(CompassInfo{math::DegToRad(bearingDeg), true /* isCarHeading */});
+    {
+      // The press of the reverse button rebuilds the route before its non-navigable position reaches the controller.
+      m_drapeEngine->SetCompassInfo(
+          CompassInfo{math::DegToRad(bearingDeg), true /* isCarHeading */, m_routingManager.IsRouteRebuildingOnly()});
+    }
   });
   m_routingManager.SetRouteLogListener([this](std::string_view name, std::string const & sentence)
   {

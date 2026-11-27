@@ -334,4 +334,16 @@ UNIT_CLASS_TEST(Map, MyPositionController_CarHeadingWhileRouteIsRebuilt)
   m_controller.OnCompassUpdate(location::CompassInfo{math::DegToRad(276.0), true /* isCarHeading */}, Screen(16));
   TEST_ALMOST_EQUAL_ABS(m_controller.GetDirection(), math::DegToRad(276.0), 1e-9, ());
 }
+
+UNIT_CLASS_TEST(Map, MyPositionController_CarHeadingOfReverseBeforeItsPosition)
+{
+  m_controller.OnCompassUpdate(location::CompassInfo{1.0}, Screen(16));
+  m_controller.ActivateRouting(17 /* zoomLevel */, true /* enableAutoZoom */, true /* isArrowGlued */);
+  Locate(15.0 /* accuracyM */, 10.0 /* speedMps */, 90.0 /* bearingDeg */, true /* isNavigable */);
+
+  // The route is rebuilding already, but the last position is still the navigable one: the car direction goes through.
+  m_controller.OnCompassUpdate(
+      location::CompassInfo{math::DegToRad(270.0), true /* isCarHeading */, true /* isRouteRebuilding */}, Screen(16));
+  TEST_ALMOST_EQUAL_ABS(m_controller.GetDirection(), math::DegToRad(270.0), 1e-9, ());
+}
 }  // namespace my_position_controller_tests

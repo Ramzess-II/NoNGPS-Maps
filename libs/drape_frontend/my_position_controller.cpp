@@ -557,7 +557,7 @@ void MyPositionController::OnCompassUpdate(location::CompassInfo const & info, S
   // On a followed route the route-matched bearing of the position is the direction: the car direction of the core
   // would be set back by the position a moment later. While the positions are not matched to the route (it is
   // rebuilt), the position sets no direction and the car direction of the core turns the arrow.
-  if (m_isArrowGluedInRouting && IsInRouting() && m_isLastPositionNavigable)
+  if (m_isArrowGluedInRouting && IsInRouting() && m_isLastPositionNavigable && !info.m_isRouteRebuilding)
     return;
 
   // The car direction of the core is the answer to a press of the reverse button: the 3 seconds after a bearing of
