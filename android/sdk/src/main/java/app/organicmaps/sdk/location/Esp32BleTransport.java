@@ -202,7 +202,11 @@ class Esp32BleTransport
   private Runnable mWakeListener;
   // Arms the pending connection again when the 5 minutes after a wake are over and nothing has called close() since.
   // An alarm of the elapsedRealtime clock, like sinceWakeMs: a Handler delay stops while the phone sleeps.
-  private final AlarmManager.OnAlarmListener mRearmWake = this::leaveWakeIfClosed;
+  // The listener alarm needs API 24: below it a Handler delay does the same, late by the time the phone slept.
+  @Nullable
+  private final AlarmManager.OnAlarmListener mRearmWake =
+      Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? this::leaveWakeIfClosed : null;
+  private final Runnable mRearmWakeRunnable = this::leaveWakeIfClosed;
   private boolean mWakeStateReceiverRegistered;
   // Bluetooth switched off drops the pending connection without notice: it is made again when Bluetooth is on.
   private final BroadcastReceiver mWakeStateReceiver = new BroadcastReceiver() {
@@ -426,6 +430,11 @@ class Esp32BleTransport
 
   private void scheduleRearmWake(long delayMs)
   {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N)
+    {
+      mMainHandler.postDelayed(mRearmWakeRunnable, delayMs);
+      return;
+    }
     final AlarmManager alarms = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
     alarms.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + delayMs, TAG, mRearmWake,
                mMainHandler);
@@ -433,7 +442,10 @@ class Esp32BleTransport
 
   private void cancelRearmWake()
   {
-    ((AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE)).cancel(mRearmWake);
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N)
+      mMainHandler.removeCallbacks(mRearmWakeRunnable);
+    else
+      ((AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE)).cancel(mRearmWake);
   }
 
   private void leaveWakeIfClosed()
