@@ -306,6 +306,13 @@ void MyPositionController::ResetNotFollowTimer(bool blockTimer)
   ResetNotification(m_notFollowNotifyId);
 }
 
+void MyPositionController::SetRouteShown(bool shown)
+{
+  if (m_isRouteShown && !shown)
+    ResetNotFollowTimer(m_blockNotFollowTimer);
+  m_isRouteShown = shown;
+}
+
 void MyPositionController::ResetBlockAutoZoomTimer()
 {
   if (m_isInRouting && m_enableAutoZoomInRouting)

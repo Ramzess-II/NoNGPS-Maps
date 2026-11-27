@@ -9,8 +9,10 @@
 
 #include "geometry/screenbase.hpp"
 
+#include <chrono>
 #include <memory>
 #include <optional>
+#include <thread>
 
 namespace my_position_controller_tests
 {
@@ -345,6 +347,20 @@ UNIT_CLASS_TEST(Map, MyPositionController_NotFollowStaysInRoutePreview)
   m_controller.SetRouteShown(false);
   m_controller.CheckNotFollow();
   TEST_EQUAL(m_controller.GetCurrentMode(), location::Follow, ());
+}
+
+UNIT_CLASS_TEST(Map, MyPositionController_NotFollowWaitsAgainWhenRouteIsRebuilt)
+{
+  Locate(15.0 /* accuracyM */, 10.0 /* speedMps */, 90.0 /* bearingDeg */);
+  m_controller.SetNotFollowTimeoutForTesting(0.2);
+  m_controller.SetRouteShown(true);
+  m_controller.StopLocationFollow();
+  std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+  // The route is removed to be rebuilt: the timeout counts from now, not from the first build.
+  m_controller.SetRouteShown(false);
+  m_controller.CheckNotFollow();
+  TEST_EQUAL(m_controller.GetCurrentMode(), location::NotFollow, ());
 }
 
 UNIT_CLASS_TEST(Map, MyPositionController_NotFollowStaysWhenParked)

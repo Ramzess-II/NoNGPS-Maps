@@ -103,7 +103,8 @@ public:
   // The map is moved to pick a point: it must not jump back to the car.
   void SetChoosePositionMode(bool enable) { m_choosePositionMode = enable; }
   // A built route not yet followed (the route preview) keeps the map where it shows the whole route.
-  void SetRouteShown(bool shown) { m_isRouteShown = shown; }
+  // When the route goes away (it is rebuilt), the wait for the map to come back starts anew.
+  void SetRouteShown(bool shown);
   void SetNotFollowTimeoutForTesting(double sec) { m_notFollowTimeoutSec = sec; }
   void ResetBlockAutoZoomTimer();
 
