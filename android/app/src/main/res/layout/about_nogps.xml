@@ -68,18 +68,12 @@
     <app.organicmaps.nogps.GlobeSceneView
         android:id="@+id/globe"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/nogps_globe_height"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:minHeight="@dimen/nogps_globe_min_height"
         android:layout_marginHorizontal="@dimen/nogps_globe_bleed"
         android:layout_marginBottom="@dimen/margin_base"
         android:contentDescription="@string/nogps_about_globe_hint" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="@dimen/margin_half"
-        android:text="@string/nogps_about_description"
-        android:textAppearance="@style/MwmTextAppearance.Body1"
-        android:textColor="?android:textColorPrimary" />
 
     <TextView
         android:id="@+id/map_data"
