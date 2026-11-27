@@ -1505,7 +1505,7 @@
     <!-- Button that closes the dialog of the first start -->
     <string name="nogps_intro_understand">Yes, I understand it works with the box</string>
     <!-- Balloon of the first start pointing at the bottom bar -->
-    <string name="nogps_intro_bottom">Your car, the NonGPS box and GPS. Tap one to choose the car, connect the box or see the GPS signal.</string>
+    <string name="nogps_intro_bottom">Where your position comes from: the NonGPS box or GPS. Tap it to connect the box or see its status.</string>
     <!-- Balloon of the first start pointing at the panel with the zoom buttons -->
     <string name="nogps_intro_right">Zoom and turn the map. Hold the panel to move it up or down.</string>
     <!-- Appended to nogps_intro_right, the zoom buttons also take a slide -->

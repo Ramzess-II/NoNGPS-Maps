@@ -1515,7 +1515,7 @@
     <!-- Button that closes the dialog of the first start -->
     <string name="nogps_intro_understand">Так, зрозуміло: працює з датчиком</string>
     <!-- Balloon of the first start pointing at the bottom bar -->
-    <string name="nogps_intro_bottom">Ваша машина, датчик NonGPS і GPS. Натисніть, щоб вибрати машину, підключити датчик або побачити сигнал GPS.</string>
+    <string name="nogps_intro_bottom">Звідки береться ваша позиція: датчик NonGPS або GPS. Натисніть, щоб підключити датчик або побачити його стан.</string>
     <!-- Balloon of the first start pointing at the panel with the zoom buttons -->
     <string name="nogps_intro_right">Масштаб і поворот мапи. Утримуйте панель, щоб перемістити її вгору або вниз.</string>
     <!-- Appended to nogps_intro_right, the zoom buttons also take a slide -->

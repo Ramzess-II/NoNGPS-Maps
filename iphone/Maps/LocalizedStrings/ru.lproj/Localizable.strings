@@ -2029,7 +2029,7 @@
 "nogps_intro_understand" = "Да, я понял: работает с датчиком";
 
 /* Balloon of the first start pointing at the bottom bar */
-"nogps_intro_bottom" = "Ваша машина, датчик NonGPS и GPS. Нажмите, чтобы выбрать машину, подключить датчик или посмотреть сигнал GPS.";
+"nogps_intro_bottom" = "Откуда берётся ваша позиция: датчик NonGPS или GPS. Нажмите, чтобы подключить датчик или посмотреть его состояние.";
 
 /* Balloon of the first start pointing at the panel with the zoom buttons */
 "nogps_intro_right" = "Масштаб и поворот карты. Удержите панель, чтобы переместить её вверх или вниз.";
