@@ -46377,6 +46377,12 @@ tags = android-app
 en = The box is reset, the car is forgotten. Remove the box ending in %1$@ in the Bluetooth settings
 uk = Блок скинуто, авто забуто. Видаліть блок, ім'я якого закінчується на %1$@, у налаштуваннях Bluetooth
 
+[nogps_box_pair_again_unpair]
+comment = Message on Android after the user has chosen to pair the sensor box again, when the app could not remove the old pairing of the phone: the car is forgotten. %1$@ is the id of the box
+tags = android-app
+en = The car is forgotten. Remove the box ending in %1$@ in the Bluetooth settings. Then add the car
+uk = Авто забуто. Видаліть блок, ім'я якого закінчується на %1$@, у налаштуваннях Bluetooth. Потім додайте авто
+
 [nogps_box_reset_forget]
 comment = Message on iOS: the sensor box is erased and the car is forgotten. The old pairing of the phone makes iOS refuse the new one ("peer removed pairing information"), and iOS apps cannot remove it. %1$@ is the id of the box
 tags = apple-maps

@@ -1233,7 +1233,8 @@ public class MwmActivity extends BaseMwmFragmentActivity
                 helper.forgetCar(carId);
                 // The old system pairing would only block the new one.
                 if (!helper.unpairBox(carId))
-                  Toast.makeText(this, getString(R.string.nogps_box_reset_unpair, carId), Toast.LENGTH_LONG).show();
+                  Toast.makeText(this, getString(R.string.nogps_box_pair_again_unpair, carId), Toast.LENGTH_LONG)
+                      .show();
                 showBoxSheet(BoxBottomSheet.Page.ADD_CAR);
               })
           .setNegativeButton(R.string.later, null)
