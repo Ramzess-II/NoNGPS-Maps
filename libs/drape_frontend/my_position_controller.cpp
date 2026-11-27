@@ -493,6 +493,9 @@ void MyPositionController::OnLocationUpdate(location::GpsInfo const & info, bool
         m_desiredInitMode == location::Follow || (m_desiredInitMode == location::FollowAndRotate && !m_isInRouting);
     auto const newMode = followsAtStart ? PreferredFollowMode() : m_desiredInitMode;
     ChangeMode(newMode);
+    // A start that doesn't follow counts the 20 s from this first fix, not from the touch that stopped the follow.
+    if (m_mode == location::NotFollow)
+      ResetNotFollowTimer();
 
     if (!m_hints.m_isFirstLaunch || !AnimationSystem::Instance().AnimationExists(Animation::Object::MapPlane))
     {

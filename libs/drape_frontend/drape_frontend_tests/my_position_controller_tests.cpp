@@ -365,6 +365,19 @@ UNIT_CLASS_TEST(Map, MyPositionController_NotFollowWaitsAgainWhenRouteIsRebuilt)
   TEST_EQUAL(m_controller.GetCurrentMode(), location::NotFollow, ());
 }
 
+UNIT_CLASS_TEST(Map, MyPositionController_NotFollowWaitsFromFirstFix)
+{
+  // A start from a link stops the follow while the position is pending.
+  m_controller.SetNotFollowTimeoutForTesting(0.2);
+  m_controller.StopLocationFollow();
+  std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+  // The first fix comes later than the timeout: the linked place stays until the timeout counted from the fix.
+  Locate(15.0 /* accuracyM */, 10.0 /* speedMps */, 90.0 /* bearingDeg */);
+  m_controller.CheckNotFollow();
+  TEST_EQUAL(m_controller.GetCurrentMode(), location::NotFollow, ());
+}
+
 UNIT_CLASS_TEST(Map, MyPositionController_NotFollowStaysWhenParked)
 {
   Locate(15.0 /* accuracyM */, 0.0 /* speedMps */, 90.0 /* bearingDeg */);
@@ -444,7 +457,6 @@ UNIT_CLASS_TEST(Map, MyPositionController_StartFollowsAfterMovedMap)
   c->OnLocationUpdate(info, false, screen);
   TEST_EQUAL(mode, location::FollowAndRotate, ());
 }
-
 
 UNIT_CLASS_TEST(Map, MyPositionController_CarHeadingIsNotDropped)
 {
