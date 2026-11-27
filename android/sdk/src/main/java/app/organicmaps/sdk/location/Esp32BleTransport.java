@@ -958,7 +958,10 @@ class Esp32BleTransport
     Logger.i(TAG, "Waiting for the box " + box.getAddress() + " in the background");
     try
     {
-      mWakeGatt = box.connectGatt(mContext, true /* autoConnect */, mWakeCallback, BluetoothDevice.TRANSPORT_LE);
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+        mWakeGatt = box.connectGatt(mContext, true /* autoConnect */, mWakeCallback, BluetoothDevice.TRANSPORT_LE);
+      else
+        mWakeGatt = box.connectGatt(mContext, true /* autoConnect */, mWakeCallback);
     }
     catch (SecurityException e)
     {
