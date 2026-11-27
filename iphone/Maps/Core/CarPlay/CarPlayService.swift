@@ -1026,7 +1026,11 @@ extension CarPlayService: CPMapTemplateDelegate {
     } else {
       MapTemplateBuilder.configureBaseUI(mapTemplate, positionMode: currentPositionMode, isOnRoute: isOnRoute)
     }
-    FrameworkHelper.switchMyPositionMode()
+    // The map may have come back to the car while the interface was open: switching from Follow would flip
+    // the saved north-up/car-up choice.
+    if currentPositionMode != .follow, currentPositionMode != .followAndRotate {
+      FrameworkHelper.switchMyPositionMode()
+    }
   }
 
   func mapTemplate(_: CPMapTemplate, panEndedWith direction: CPMapTemplate.PanDirection) {
