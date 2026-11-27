@@ -47848,9 +47848,9 @@ uk = Проведіть уздовж +/−, щоб плавно змінюват
 [nogps_intro_left]
 comment = Balloon of the first start pointing at the panel with the car buttons
 tags = android-app,apple-maps
-en = When GPS is lost, turn the car on a junction with these buttons, or point to where it is by hand. Hold the panel to move it.
-ru = Если GPS пропал, поворачивайте машину на перекрёстке этими кнопками или укажите рукой, где она. Удержите панель, чтобы переместить её.
-uk = Якщо GPS зник, повертайте машину на перехресті цими кнопками або вкажіть рукою, де вона. Утримуйте панель, щоб перемістити її.
+en = When GPS is lost, turn the car around or move it to another road with these buttons, or point to where it is by hand. Hold the panel to move it.
+ru = Если GPS пропал, разворачивайте машину или переносите её на другую дорогу этими кнопками либо укажите рукой, где она. Удержите панель, чтобы переместить её.
+uk = Якщо GPS зник, розвертайте авто або переносьте його на іншу дорогу цими кнопками чи вкажіть рукою, де воно. Утримуйте панель, щоб перемістити її.
 
 [nogps_how_title]
 comment = Menu row and title of the page that explains the app and plays the intro again
