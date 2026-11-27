@@ -120,6 +120,11 @@ class ImportTest(unittest.TestCase):
         self.assertIn(text, str(e.exception))
         self.assertFalse(os.path.exists(os.path.join(self.out, 'Pixel_7-a3f9-2026-11-22.sqlite')))
 
+    def test_speed_limit_key(self):
+        self.run_import([HEADER, trip(T0 + 1000, lim=50), trip(T0 + 2000, lim='-')])
+        rows = self.db().execute('SELECT limit_kmh FROM sample ORDER BY ms').fetchall()
+        self.assertEqual([r['limit_kmh'] for r in rows], [50, None])
+
     def test_tables(self):
         self.run_import(GOOD)
         conn = self.db()
@@ -390,7 +395,7 @@ class FlagTest(unittest.TestCase):
         conn.execute("UPDATE meta SET value = '1'")
         conn.commit()
         conn.close()
-        with self.assertRaisesRegex(nogps_db.ImportError_, 'schema 1, the tools read 2'):
+        with self.assertRaisesRegex(nogps_db.ImportError_, 'schema 1, the tools read 3'):
             nogps_db.open_db(path)
 
 
