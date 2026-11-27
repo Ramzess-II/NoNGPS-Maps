@@ -139,15 +139,21 @@ class CalibrationBarView
     return mOpen || mDoneShown;
   }
 
+  /**
+   * The first try of an arming can still see the failure of an earlier calibration: not a move of this one.
+   */
+  private static boolean moved(@NonNull NoGps.Status status)
+  {
+    return status.getCalibration() == NoGps.CalibrationState.FAILED_MOVING && status.calibrationTries >= 2;
+  }
+
   @StringRes
   private static int title(@NonNull NoGps.Status status)
   {
-    return switch (status.getCalibration())
-    {
-      case CALIBRATING -> R.string.nogps_calibrate_bar_measuring;
-      case FAILED_MOVING -> R.string.nogps_calibrate_bar_moved;
-      default -> R.string.nogps_calibrate_bar_hold;
-    };
+    if (moved(status))
+      return R.string.nogps_calibrate_bar_moved;
+    return status.getCalibration() == NoGps.CalibrationState.CALIBRATING ? R.string.nogps_calibrate_bar_measuring
+                                                                         : R.string.nogps_calibrate_bar_hold;
   }
 
   /**
@@ -158,25 +164,22 @@ class CalibrationBarView
   @Nullable
   static String chipText(@NonNull Resources resources, @NonNull NoGps.Status status, @NonNull int[] values)
   {
-    switch (status.getCalibration())
-    {
-    case CALIBRATING: return status.calibrationProgress + " %";
-    case FAILED_MOVING:
-      return resources.getString(R.string.nogps_calibrate_bar_try, Math.max(2, status.calibrationTries), MAX_TRIES);
-    default:
-      final int held = ShakeTraceView.heldMs(values);
-      if (held >= ShakeTraceView.HOLD_MS && !status.boxStill)
-        return resources.getString(R.string.nogps_calibrate_bar_waiting_box);
-      if (held > 0)
-        return resources.getString(R.string.nogps_calibrate_bar_held,
-                                   String.format(Locale.getDefault(), "%.1f", held / 1000f));
-      int peak = 0;
-      for (int i = Math.max(0, values.length - ShakeTraceView.LINES); i < values.length; ++i)
-        peak = Math.max(peak, values[i]);
-      if (peak >= PEAK_CHIP_PERCENT)
-        return resources.getString(R.string.nogps_calibrate_bar_peak, Math.round(peak / ShakeTraceView.LIMIT_PERCENT));
-      return null;
-    }
+    if (status.getCalibration() == NoGps.CalibrationState.CALIBRATING)
+      return status.calibrationProgress + " %";
+    if (moved(status))
+      return resources.getString(R.string.nogps_calibrate_bar_try, status.calibrationTries, MAX_TRIES);
+    final int held = ShakeTraceView.heldMs(values);
+    if (held >= ShakeTraceView.HOLD_MS && !status.boxStill)
+      return resources.getString(R.string.nogps_calibrate_bar_waiting_box);
+    if (held > 0)
+      return resources.getString(R.string.nogps_calibrate_bar_held,
+                                 String.format(Locale.getDefault(), "%.1f", held / 1000f));
+    int peak = 0;
+    for (int i = Math.max(0, values.length - ShakeTraceView.LINES); i < values.length; ++i)
+      peak = Math.max(peak, values[i]);
+    if (peak >= PEAK_CHIP_PERCENT)
+      return resources.getString(R.string.nogps_calibrate_bar_peak, Math.round(peak / ShakeTraceView.LIMIT_PERCENT));
+    return null;
   }
 
   private void updateChip()

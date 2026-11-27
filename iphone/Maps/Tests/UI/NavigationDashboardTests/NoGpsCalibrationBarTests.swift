@@ -12,6 +12,9 @@ final class NoGpsCalibrationBarTests: XCTestCase {
     XCTAssertEqual(NoGpsCalibrationBarView.state(status), .calibrating)
     XCTAssertEqual(NoGpsCalibrationBarView.State.calibrating.text, L("nogps_calibrate_bar_measuring"))
     status.fakeCalibration = .failedMoving
+    status.fakeTries = 1
+    XCTAssertEqual(NoGpsCalibrationBarView.state(status), .waiting)
+    status.fakeTries = 2
     XCTAssertEqual(NoGpsCalibrationBarView.state(status), .moved)
     XCTAssertEqual(NoGpsCalibrationBarView.State.moved.text, L("nogps_calibrate_bar_moved"))
   }
@@ -61,6 +64,9 @@ final class NoGpsCalibrationBarTests: XCTestCase {
     status.fakeTries = 2
     XCTAssertEqual(NoGpsCalibrationBarView.chipText(status, values: still),
                    String(format: L("nogps_calibrate_bar_try"), 2, 5))
+    status.fakeTries = 1
+    XCTAssertEqual(NoGpsCalibrationBarView.chipText(status, values: [Double](repeating: 10, count: 70)),
+                   String(format: L("nogps_calibrate_bar_held"), String(format: "%.1f", locale: .current, 1.4)))
     status.fakeCalibration = .none
     XCTAssertEqual(NoGpsCalibrationBarView.chipText(status, values: [Double](repeating: 10, count: 70)),
                    String(format: L("nogps_calibrate_bar_held"), String(format: "%.1f", locale: .current, 1.4)))

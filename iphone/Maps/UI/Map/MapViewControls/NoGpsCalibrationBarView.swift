@@ -183,7 +183,8 @@ final class NoGpsCalibrationBarView: UIControl {
   static func state(_ status: NoGpsStatus) -> State {
     switch status.calibration {
     case .calibrating: return .calibrating
-    case .failedMoving: return .moved
+    // The first try of an arming can still see the failure of an earlier calibration: not a move of this one.
+    case .failedMoving where status.calibrationTries >= 2: return .moved
     default: return .waiting
     }
   }
@@ -195,7 +196,7 @@ final class NoGpsCalibrationBarView: UIControl {
     case .calibrating:
       return "\(status.calibrationProgress) %"
     case .moved:
-      return String(format: L("nogps_calibrate_bar_try"), max(2, status.calibrationTries), Constants.maxTries)
+      return String(format: L("nogps_calibrate_bar_try"), status.calibrationTries, Constants.maxTries)
     case .waiting:
       let held = heldMs(values)
       if held >= Constants.holdMs, !status.boxStill {
