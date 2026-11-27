@@ -8,6 +8,8 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     case calibration
     /// The speed table, from the bar of the speed calibration on the map.
     case speedCalibration
+    /// Adds a car: the box of a new car, or of one just forgotten, is searched.
+    case addCar
   }
 
   private enum Constants {
@@ -139,6 +141,11 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
         break
       }
       navigation.setViewControllers([root, NoGpsBoxPage(), NoGpsBoxPage(part: .speed)], animated: animated)
+    case .addCar:
+      if navigation.topViewController is AddCarViewController {
+        break
+      }
+      navigation.setViewControllers([root, AddCarViewController(style: .insetGrouped)], animated: animated)
     }
     root.selectDetent()
   }
@@ -375,8 +382,8 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
   }
 
   /// What the user does for the phone to reach the box, nil if nothing: the steps and their button tell the rest.
-  /// The system dialog of the pairing wants the recovery code of the box, when the box has told it, not 123456.
-  static func linkHintText(_ ble: NoGpsBleState, recoveryCode: String = "") -> String? {
+  /// The full hint, shown once on its own: the row of the box tells a short line.
+  static func linkHintText(_ ble: NoGpsBleState) -> String? {
     let text: String
     switch ble {
     case .pairingClosed: text = L("nogps_box_bt_pairing_closed")
@@ -388,11 +395,7 @@ final class NoGpsBoxSheet: MWMTableViewController, UINavigationControllerDelegat
     case .bondLost: text = L("nogps_box_bt_bond_lost")
     default: return nil
     }
-    var hint = NoGpsBoxPage.sentenceCase(text)
-    if !recoveryCode.isEmpty, [.pairingByPhone, .pairingFull, .pairing].contains(ble) {
-      hint += ". " + String(format: L("nogps_box_bt_recovery_code"), recoveryCode)
-    }
-    return hint
+    return NoGpsBoxPage.sentenceCase(text)
   }
 
   /// The button of the steps and of a box set up, nil if none. Bluetooth is turned on by the user: iOS asks for it
@@ -856,6 +859,8 @@ final class CarPageViewController: MWMTableViewController {
     case name
     case box
     case forget
+    /// At the bottom: the box erases all it keeps and the car is forgotten.
+    case reset
     /// A phone by its Bluetooth address.
     case phone(String)
     case addPhone
@@ -942,10 +947,15 @@ final class CarPageViewController: MWMTableViewController {
       phonesKnown ? phones.map { .phone($0.address) } + [.addPhone] : [.phonesUnknown],
       [.sprint(.to100), .sprint(.quarterMile)],
     ]
+    // Only the phone that changes the box erases it.
+    let canReset = phonesKnown && !status.boxReadOnly
+    if canReset {
+      rows.append([.reset])
+    }
     sprints = NoGps.sprints()
     addPhoneAlert?.update(code: addPhoneCode(), message: addPhoneText())
     // Footers are not updated in place.
-    let footers = [nil, phoneFooter(), nil]
+    let footers = [nil, phoneFooter(), nil] + (canReset ? [nil] : [])
     if footers != shownFooters {
       shownFooters = footers
       shownRows = []
@@ -956,8 +966,6 @@ final class CarPageViewController: MWMTableViewController {
   private func phoneFooter() -> String? {
     let texts = [
       phonesKnown && status.boxReadOnly ? L("nogps_box_read_only") : nil,
-      // The code the box told this phone before: shown while the box is out of reach too, to be written down.
-      status.boxRecoveryCode.isEmpty ? nil : String(format: L("nogps_phone_recovery_code"), status.boxRecoveryCode),
     ].compactMap { $0 }
     return texts.isEmpty ? nil : texts.joined(separator: "\n\n")
   }
@@ -1059,6 +1067,9 @@ final class CarPageViewController: MWMTableViewController {
     case .forget:
       content.text = L("nogps_car_forget")
       content.textProperties.color = .buttonRed
+    case .reset:
+      content.text = L("nogps_box_reset")
+      content.textProperties.color = .buttonRed
     case .phone(let address):
       content = UIListContentConfiguration.subtitleCell()
       if let phone = phones.first(where: { $0.address == address }) {
@@ -1102,6 +1113,8 @@ final class CarPageViewController: MWMTableViewController {
       navigationController?.pushViewController(NoGpsBoxPage(), animated: true)
     case .forget:
       confirmForget(car)
+    case .reset:
+      confirmReset()
     case .phone(let address):
       // Another phone changes the box.
       if !status.boxReadOnly, let phone = phones.first(where: { $0.address == address }) {
@@ -1114,6 +1127,18 @@ final class CarPageViewController: MWMTableViewController {
     case .phonesUnknown, .sprint:
       break
     }
+  }
+
+  /// The box is erased and restarts as new: the phones, the keys, the calibration, the values of the car and the
+  /// settings. The car is forgotten on this phone when the box has answered, see NoGpsControls.
+  private func confirmReset() {
+    let alert = UIAlertController(title: L("nogps_box_reset_title"), message: L("nogps_box_reset_text"),
+                                  preferredStyle: .alert)
+    alert.addAction(UIAlertAction(title: L("cancel"), style: .cancel))
+    alert.addAction(UIAlertAction(title: L("nogps_box_reset"), style: .destructive) { _ in
+      NoGps.factoryResetBox()
+    })
+    present(alert, animated: true)
   }
 
   private func confirmForget(_ car: NoGpsCar) {
@@ -1402,7 +1427,7 @@ private final class BoxSearchView: UIView {
     }
     stepViews[0].label.text = L(ble == .noPermission ? "nogps_box_step_bluetooth_denied"
       : bluetoothFailed ? "nogps_box_step_bluetooth_off" : "nogps_box_step_bluetooth")
-    let hint = NoGpsBoxSheet.linkHintText(ble, recoveryCode: status.boxRecoveryCode)
+    let hint = NoGpsBoxSheet.linkHintText(ble)
     hintLabel.text = hint
     hintLabel.isHidden = hint == nil
     let action = NoGpsBoxSheet.linkActionText(ble)

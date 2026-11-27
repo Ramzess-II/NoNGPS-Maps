@@ -38,22 +38,36 @@ public class Esp32BleTransportTest
   @Test
   public void unpair_takesOnlyTheBoxOfTheCar()
   {
-    assertTrue(Esp32BleTransport.isBoxOf("NoGPS-C47D", "C47D"));
     assertTrue(Esp32BleTransport.isBoxOf("NonGPS-C47D", "C47D"));
-    assertFalse(Esp32BleTransport.isBoxOf("NoGPS-A1B2", "C47D"));
+    assertFalse(Esp32BleTransport.isBoxOf("NoGPS-C47D", "C47D"));
     assertFalse(Esp32BleTransport.isBoxOf("NonGPS-A1B2", "C47D"));
     assertFalse(Esp32BleTransport.isBoxOf("ELM327", "C47D"));
     assertFalse(Esp32BleTransport.isBoxOf(null, "C47D"));
   }
 
-  // A box of the new firmware is NonGPS-XXXX, one that is not updated NoGPS-XXXX: both are found.
+  // A box of the firmware the application drives is NonGPS-XXXX.
   @Test
-  public void boxId_isTakenFromBothPrefixes()
+  public void boxId_isTakenFromTheName()
   {
     assertEquals("C47D", Esp32BleTransport.boxIdOfName("NonGPS-C47D"));
-    assertEquals("C47D", Esp32BleTransport.boxIdOfName("NoGPS-C47D"));
+    assertNull(Esp32BleTransport.boxIdOfName("NoGPS-C47D"));
     assertNull(Esp32BleTransport.boxIdOfName("ELM327"));
     assertNull(Esp32BleTransport.boxIdOfName(null));
+  }
+
+  // BLE-13, version 2: the version, the flags and the four characters of the id; a box seen without its name has them.
+  @Test
+  public void boxId_isTakenFromTheManufacturerData()
+  {
+    assertEquals("C47D", Esp32BleTransport.boxIdOfManufacturerData(new byte[] {2, 1, 'C', '4', '7', 'D'}));
+    assertEquals("42FD", Esp32BleTransport.boxIdOfManufacturerData(new byte[] {2, 5, '4', '2', 'F', 'D', 9}));
+    // Version 1 had no id, a short or a broken record has none.
+    assertNull(Esp32BleTransport.boxIdOfManufacturerData(new byte[] {1, 1}));
+    assertNull(Esp32BleTransport.boxIdOfManufacturerData(new byte[] {1, 1, 'C', '4', '7', 'D'}));
+    assertNull(Esp32BleTransport.boxIdOfManufacturerData(new byte[] {2, 1, 'C', '4', '7'}));
+    assertNull(Esp32BleTransport.boxIdOfManufacturerData(new byte[] {2, 1, 'C', '4', 0, 'D'}));
+    assertNull(Esp32BleTransport.boxIdOfManufacturerData(new byte[] {2, 1, 'C', '4', '-', 'D'}));
+    assertNull(Esp32BleTransport.boxIdOfManufacturerData(null));
   }
 
   @Test
@@ -170,5 +184,21 @@ public class Esp32BleTransportTest
     assertEquals(Esp32BleTransport.FoundBox.WAIT, Esp32BleTransport.foundBox(false, false, false, true, true, 2999));
     assertEquals(Esp32BleTransport.FoundBox.CONNECT, Esp32BleTransport.foundBox(false, false, false, true, true, 3000));
     assertEquals(Esp32BleTransport.FoundBox.CONNECT, Esp32BleTransport.foundBox(false, false, true, true, true, 0));
+  }
+
+  @Test
+  public void waitsForBox_onlyForPairedBoxThatKnowsThePhone()
+  {
+    final long longAgo = 10 * 60_000;
+    assertTrue(Esp32BleTransport.waitsForBox(true /* hasBox */, false /* bondLost */, false /* waiting */, longAgo));
+    assertFalse(Esp32BleTransport.waitsForBox(false /* hasBox */, false /* bondLost */, false /* waiting */, longAgo));
+    assertFalse(Esp32BleTransport.waitsForBox(true /* hasBox */, true /* bondLost */, false /* waiting */, longAgo));
+    assertFalse(Esp32BleTransport.waitsForBox(true /* hasBox */, false /* bondLost */, true /* waiting */, longAgo));
+  }
+
+  @Test
+  public void waitsForBox_notRightAfterAWake()
+  {
+    assertFalse(Esp32BleTransport.waitsForBox(true /* hasBox */, false /* bondLost */, false /* waiting */, 20_000));
   }
 }

@@ -485,6 +485,10 @@ final class NoGpsBoxPage: MWMTableViewController {
 
   /// Also read out by the box segment of the bottom bar.
   static func boxStateText(_ status: NoGpsStatus) -> String {
+    // A box below the firmware the application drives sends nothing it takes: it is offered the update.
+    if status.boxTooOld {
+      return String(format: L("nogps_box_too_old"), status.boxFirmware)
+    }
     switch status.sourceState {
     case .disconnected: return L("nogps_elm_disconnected")
     case .connecting: return boxSearchText(status)
@@ -514,31 +518,21 @@ final class NoGpsBoxPage: MWMTableViewController {
     }
   }
 
-  /// The box is not heard yet: what the phone does to reach it.
-  /// With the recovery code when the system dialog of the pairing wants it.
+  /// The box is not heard yet: what the phone does to reach it, in a short line. What the user does about it is
+  /// NoGpsBoxSheet.linkHintText(), shown once on its own (#663).
   private static func boxSearchText(_ status: NoGpsStatus) -> String {
-    let text = boxSearchBase(status)
-    guard !status.boxRecoveryCode.isEmpty, [.pairingByPhone, .pairingFull, .pairing].contains(status.bleState) else {
-      return text
-    }
-    return text + ". " + String(format: L("nogps_box_bt_recovery_code"), status.boxRecoveryCode)
-  }
-
-  private static func boxSearchBase(_ status: NoGpsStatus) -> String {
     switch status.bleState {
     case .noPermission: return L("nogps_box_bt_no_permission")
     // Off: the phone has no Bluetooth LE.
     case .off, .disabled: return L("nogps_box_bt_disabled")
     case .searching: return L("nogps_box_bt_searching")
-    case .pairingClosed: return L("nogps_box_bt_pairing_closed")
-    case .pairingByPhone: return L("nogps_box_bt_pairing_by_phone")
-    case .pairingFull: return L("nogps_box_bt_pairing_full")
+    case .pairingClosed, .pairingByPhone, .pairingFull: return L("nogps_box_bt_not_paired")
     case .carLimit: return L("nogps_box_bt_car_limit")
     case .connecting: return L("nogps_box_bt_connecting")
     case .pairing: return L("nogps_box_bt_pairing")
     case .connected: return L("nogps_box_bt_waiting")
     case .pairingFailed: return L("nogps_box_bt_pairing_failed")
-    case .bondLost: return L("nogps_box_bt_bond_lost")
+    case .bondLost: return L("nogps_box_bt_bond_lost_short")
     @unknown default: return L("nogps_unknown")
     }
   }

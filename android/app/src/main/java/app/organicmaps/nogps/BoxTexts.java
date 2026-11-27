@@ -37,6 +37,9 @@ public final class BoxTexts
   @NonNull
   public static String boxStateText(@NonNull Context context, @NonNull NoGps.Status status)
   {
+    // A box below the firmware the application drives sends nothing it takes: it is offered the update.
+    if (status.boxTooOld)
+      return context.getString(R.string.nogps_box_too_old, status.boxFirmware);
     // The sleep is told only while the phone looks for the box: a phone that can't reach it knows nothing of the car.
     if (status.getSourceState() == NoGps.SourceState.BOX_SLEEPING && isBoxSearched(status))
       return context.getString(R.string.nogps_box_sleeping) + " · " + boxSearchText(context, status);
@@ -83,15 +86,13 @@ public final class BoxTexts
   }
 
   /**
-   * The box is not heard yet: what the phone does to reach it, with the recovery code when the system dialog wants it.
+   * The box is not heard yet: what the phone does to reach it, in a short line. What the user does about it is the
+   * hint of BoxBottomSheet.linkHintText(), shown once on its own.
    */
   @NonNull
   private static String boxSearchText(@NonNull Context context, @NonNull NoGps.Status status)
   {
-    final String text = context.getString(boxSearchRes(context, status));
-    if (!BoxBottomSheet.hintHasRecoveryCode(status))
-      return text;
-    return text + ". " + context.getString(R.string.nogps_box_bt_recovery_code, status.boxRecoveryCode);
+    return context.getString(boxSearchRes(context, status));
   }
 
   @StringRes
@@ -108,15 +109,13 @@ public final class BoxTexts
       // OFF: the phone has no Bluetooth LE.
       case OFF, DISABLED -> R.string.nogps_box_bt_disabled;
       case SEARCHING -> R.string.nogps_box_bt_searching;
-      case PAIRING_CLOSED -> R.string.nogps_box_bt_pairing_closed;
-      case PAIRING_BY_PHONE -> R.string.nogps_box_bt_pairing_by_phone;
-      case PAIRING_FULL -> R.string.nogps_box_bt_pairing_full;
+      case PAIRING_CLOSED, PAIRING_BY_PHONE, PAIRING_FULL -> R.string.nogps_box_bt_not_paired;
       case CAR_LIMIT -> R.string.nogps_box_bt_car_limit;
       case CONNECTING -> R.string.nogps_box_bt_connecting;
       case PAIRING -> R.string.nogps_box_bt_pairing;
       case CONNECTED -> R.string.nogps_box_bt_waiting;
       case PAIRING_FAILED -> R.string.nogps_box_bt_pairing_failed;
-      case BOND_LOST -> R.string.nogps_box_bt_bond_lost;
+      case BOND_LOST -> R.string.nogps_box_bt_bond_lost_short;
     };
   }
 

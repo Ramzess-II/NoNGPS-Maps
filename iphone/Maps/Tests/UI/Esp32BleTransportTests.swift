@@ -10,6 +10,27 @@ final class Esp32BleTransportTests: XCTestCase {
                                       bondLost: lost, retryDelay: delay)
   }
 
+  func testBoxIdIsTakenFromTheName() {
+    XCTAssertEqual(Esp32BleTransport.boxId(name: "NonGPS-C47D"), "C47D")
+    XCTAssertNil(Esp32BleTransport.boxId(name: "NoGPS-C47D"))
+    XCTAssertNil(Esp32BleTransport.boxId(name: "ELM327"))
+    XCTAssertNil(Esp32BleTransport.boxId(name: nil))
+  }
+
+  /// BLE-13, version 2: CoreBluetooth gives the company too, then the version, the flags and the four characters.
+  func testBoxIdIsTakenFromTheManufacturerData() {
+    let id = { (bytes: [UInt8]) in Esp32BleTransport.boxId(manufacturerData: Data(bytes)) }
+    XCTAssertEqual(id([0xFF, 0xFF, 2, 1] + Array("C47D".utf8)), "C47D")
+    XCTAssertEqual(id([0xFF, 0xFF, 2, 5] + Array("42FD".utf8) + [9]), "42FD")
+    // Version 1 had no id, a short record, another company or a broken id give none.
+    XCTAssertNil(id([0xFF, 0xFF, 1, 1]))
+    XCTAssertNil(id([0xFF, 0xFF, 1, 1] + Array("C47D".utf8)))
+    XCTAssertNil(id([0xFF, 0xFF, 2, 1] + Array("C47".utf8)))
+    XCTAssertNil(id([0x4C, 0x00, 2, 1] + Array("C47D".utf8)))
+    XCTAssertNil(id([0xFF, 0xFF, 2, 1, 0x43, 0x34, 0x00, 0x44]))
+    XCTAssertNil(id([0xFF, 0xFF, 2, 1] + Array("C4-D".utf8)))
+  }
+
   func testSixthSilentConnectionGivesTheHintAndSearchesOnceAMinute() {
     let fifth = end(silent: 4)
     XCTAssertEqual(fifth.silentConnections, 5)

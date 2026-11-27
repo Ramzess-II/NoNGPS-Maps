@@ -111,7 +111,7 @@ extension NavigationSourceButtonTests {
     let off: [(NoGpsBleState, String)] = [
       (.off, "nogps_box_bt_disabled"), (.disabled, "nogps_box_bt_disabled"),
       (.noPermission, "nogps_box_bt_no_permission"), (.pairingFailed, "nogps_box_bt_pairing_failed"),
-      (.bondLost, "nogps_box_bt_bond_lost"),
+      (.bondLost, "nogps_box_bt_bond_lost_short"),
     ]
     for (ble, key) in off {
       let status = FakeStatus(source: .gps, gpsState: .good, inertialEnabled: true, sourceState: .boxSleeping)
@@ -160,15 +160,13 @@ extension NavigationSourceButtonTests {
     }
   }
 
-  /// The system dialog wants the recovery code of the box in the pairing window, when the box has told it.
-  func test_GivenRecoveryCode_WhenBoxIsNotPaired_ThenTheHintHasTheCode() {
-    for ble: NoGpsBleState in [.pairingByPhone, .pairingFull, .pairing] {
-      XCTAssertTrue(NoGpsBoxSheet.linkHintText(ble, recoveryCode: "654321")?.hasSuffix("654321") ?? false,
-                    "Bluetooth \(ble.rawValue)")
+  /// The three ways in, with the code 123456 where the system asks for it. #663: the row of the box has a short line,
+  /// the hint is shown once on its own.
+  func test_GivenBoxNotPaired_WhenHintIsShown_ThenItHasTheCodeOfTheWindow() {
+    for ble: NoGpsBleState in [.pairingClosed, .pairingByPhone, .pairingFull] {
+      XCTAssertTrue(NoGpsBoxSheet.linkHintText(ble)?.contains("123456") ?? false, "Bluetooth \(ble.rawValue)")
     }
-    for ble: NoGpsBleState in [.pairingClosed, .bondLost, .pairingFailed] {
-      XCTAssertEqual(NoGpsBoxSheet.linkHintText(ble, recoveryCode: "654321"), NoGpsBoxSheet.linkHintText(ble))
-    }
+    XCTAssertNotNil(NoGpsBoxSheet.linkHintText(.bondLost))
   }
 
   /// The box is heard but the car gives no speed: the hint names what to check. It doesn't flip while the box searches

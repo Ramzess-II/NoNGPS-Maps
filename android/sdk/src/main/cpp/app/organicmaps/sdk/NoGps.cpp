@@ -444,6 +444,11 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeForgetBoxPhone(JNIE
   NoGpsEngine().ForgetBoxPhone(jni::ToNativeString(env, address));
 }
 
+JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeFactoryResetBox(JNIEnv *, jclass)
+{
+  NoGpsEngine().FactoryResetBox();
+}
+
 JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeStartAddPhone(JNIEnv *, jclass)
 {
   NoGpsEngine().StartAddPhone();
@@ -557,7 +562,11 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsString(env, out, "peerName", status.m_peerName);
   SetNoGpsField(env, out, "addPhone", static_cast<int>(status.m_addPhone));
   SetNoGpsString(env, out, "addPhoneCode", status.m_addPhoneCode);
-  SetNoGpsString(env, out, "boxRecoveryCode", status.m_boxRecoveryCode);
+  SetNoGpsField(env, out, "boxTooOld", status.m_boxTooOld);
+  SetNoGpsField(env, out, "boxRefused", status.m_boxRefused);
+  SetNoGpsField(env, out, "boxPairAgain", status.m_boxPairAgain);
+  SetNoGpsString(env, out, "boxPairAgainId", status.m_boxPairAgainId);
+  SetNoGpsString(env, out, "boxResetError", status.m_boxResetError);
   SetNoGpsField(env, out, "addPhoneSecondsLeft", status.m_addPhoneSecondsLeft);
   std::vector<jint> boxValueIds;
   std::vector<std::string> boxValues;

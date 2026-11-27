@@ -10,6 +10,8 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.UiThread;
@@ -53,6 +55,8 @@ public class MwmApplication extends Application implements Application.ActivityL
 {
   @NonNull
   private static final String TAG = MwmApplication.class.getSimpleName();
+  // The box tells the car data a few seconds after it connects.
+  private static final long BOX_WAKE_CAR_DATA_MS = 15_000;
 
   @SuppressWarnings("NotNullFieldNotInitialized")
   @NonNull
@@ -141,6 +145,7 @@ public class MwmApplication extends Application implements Application.ActivityL
 
     DownloaderNotifier.createNotificationChannel(this);
     initNavigationService();
+    getLocationHelper().setBoxWakeListener(this::onBoxWokeInBackground);
     // Mirror navigation start/stop to a paired Wear OS device from the routing state owner, so every
     // trigger is covered (phone UI, Android Auto, notification stop). No-op unless the Google Wear
     // bridge is present; the initial publish corrects stale state left by a force-killed session.
@@ -303,6 +308,23 @@ public class MwmApplication extends Application implements Application.ActivityL
   {
     if (!ProcessLifecycleOwner.get().getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED))
       stopLocationInBackgroundIfUnused(false /* followCarByBox */);
+  }
+
+  /**
+   * The paired box connected while the location was stopped in the background: the car is started after a parking.
+   * The box needs a few seconds to tell the car data, then the same choice as when the app leaves the screen is made.
+   */
+  private void onBoxWokeInBackground()
+  {
+    if (ProcessLifecycleOwner.get().getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED)
+        || !LocationUtils.checkLocationPermission(this))
+      return;
+    Logger.i(LOCATION_TAG, "The box has woken in the background");
+    getLocationHelper().resumeLocationInForeground();
+    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+      if (!ProcessLifecycleOwner.get().getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED))
+        stopLocationInBackgroundIfUnused();
+    }, BOX_WAKE_CAR_DATA_MS);
   }
 
   /**

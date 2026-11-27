@@ -308,18 +308,6 @@ std::optional<Info> ParseInfo(Fields const & fields)
     for (auto const ability : strings::Tokenize(fields[11], " "))
       if (ability == "OTA")
         info.m_canUpdate = true;
-      else if (ability == "CAR")
-        info.m_canStoreCarValues = true;
-      else if (ability == "PHONES")
-        info.m_hasPhones = true;
-      else if (ability == "MULTI")
-        info.m_twoPhones = true;
-      else if (ability == "PEER")
-        info.m_canPeer = true;
-      else if (ability == "RECOVERY")
-        info.m_hasRecovery = true;
-      else if (ability == "AUTH")
-        info.m_canAuth = true;
   }
   if (fields.size() > 6)
     info.m_id = fields[6];
@@ -330,17 +318,27 @@ std::optional<Info> ParseInfo(Fields const & fields)
   return info;
 }
 
-std::optional<std::string> ParseRecoveryCode(Reply const & reply)
+bool Info::IsTooOld() const
 {
-  if (!reply.m_ok || reply.m_values.empty())
-    return {};
-  auto const & code = reply.m_values[0];
-  if (code.size() != kRecoveryCodeSize ||
-      !std::all_of(code.begin(), code.end(), [](char c) { return c >= '0' && c <= '9'; }))
+  return IsFirmwareBefore(m_firmware, kMinFirmware);
+}
+
+bool IsFirmwareBefore(std::string_view version, std::string_view than)
+{
+  // A build may add a suffix ("0.6.0-dirty"): the numbers tell the firmware.
+  auto const numbers = [](std::string_view text)
   {
-    return {};
-  }
-  return code;
+    std::vector<int> result;
+    text = text.substr(0, text.find_first_not_of("0123456789."));
+    for (auto const part : strings::Tokenize(text, "."))
+    {
+      int number = 0;
+      strings::to_int(part, number);
+      result.push_back(number);
+    }
+    return result;
+  };
+  return numbers(version) < numbers(than);
 }
 
 std::optional<Phones> ParsePhones(Reply const & reply)

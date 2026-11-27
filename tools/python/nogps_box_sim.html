@@ -204,21 +204,20 @@ function showPhones(phones) {
 }
 
 function showBonds(state) {
-  const chosen = $('resetPhone') && $('resetPhone').value;
   const rows = state.bonds.map((bond) => '<tr><td>' + escape(bond.name || '(no name)') + '</td><td>' +
     escape(bond.address) + '</td><td>' + (bond.connected ? 'connected' : 'gone') +
     '</td><td><button data-forget="' + escape(bond.address) + '">Forget</button></td></tr>');
-  const names = state.phones.map((phone) => '<option value="' + escape(phone.label) + '">' +
-    escape(phone.name || phone.label) + '</option>').join('');
-  $('bonds').innerHTML = '<p class="hint">Bonded phones (BT_LIST). Recovery code (BT_RECOVERY): <b>' +
-    escape(state.recovery_code) + '</b></p>' +
+  $('bonds').innerHTML = '<p class="hint">Bonded phones (BT_LIST). The code of the power-on window and of the ' +
+    'recovery window is always <b>123456</b>.' + (state.recovery_window ? ' The recovery window is open.' : '') +
+    '</p>' +
     (rows.length ? '<table><tr><th>phone</th><th>address</th><th></th><th></th></tr>' + rows.join('') + '</table>' : '') +
-    '<p><select id="resetPhone">' + names + '</select> <button id="btReset" title="A new phone paired in the recovery window: it stays alone, the others are forgotten, the code is renewed">BT_RESET</button></p>';
+    '<p><button id="quickOns" title="3 quick power-ons of a box with phones: the recovery window opens, a new phone erases nobody, a full box drops the phone with the oldest last HELLO">3 quick power-ons</button> ' +
+    '<button id="factoryReset" title="What FACTORY_RESET does: no phone, no key, every link dropped, the pairing window open">Full reset</button></p>';
   for (const button of $('bonds').querySelectorAll('button[data-forget]')) {
     button.onclick = () => action('forget_bond', button.dataset.forget);
   }
-  if (chosen) $('resetPhone').value = chosen;
-  $('btReset').onclick = () => action('bt_reset', $('resetPhone').value);
+  $('quickOns').onclick = () => action('quick_power_ons');
+  $('factoryReset').onclick = () => action('factory_reset');
 }
 
 function escape(text) {

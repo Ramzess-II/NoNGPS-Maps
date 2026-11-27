@@ -2,6 +2,7 @@ package app.organicmaps.sdk.location;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.AlarmManager;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
@@ -76,16 +77,22 @@ class Esp32BleTransport
   // The pieces of a new firmware of the box, section 18 of the same document.
   private static final UUID OTA = UUID.fromString("02CB0004-C0C3-40D0-819C-5A85998DCD99");
   private static final UUID CLIENT_CONFIG = UUID.fromString("00002902-0000-1000-8000-00805F9B34FB");
-  // The name of the box is NonGPS-XXXX; the boxes that are not updated still say NoGPS-XXXX.
-  private static final String[] NAME_PREFIXES = {"NonGPS-", "NoGPS-"};
-  // The box tells in its advertisement if it accepts a new phone now: company, format version 1, flags.
+  // The name of the box is NonGPS-XXXX.
+  private static final String NAME_PREFIX = "NonGPS-";
+  // The box tells in its advertisement if it accepts a new phone now and its id: company, then the format version 2,
+  // the flags and the four characters of NonGPS-XXXX.
   private static final int MANUFACTURER_ID = 0xFFFF;
+  private static final int MANUFACTURER_VERSION = 2;
+  private static final int ID_OFFSET = 2;
+  private static final int ID_SIZE = 4;
   private static final int FLAG_PAIRING_OPEN = 1;
   private static final int FLAG_FULL = 1 << 1;
   private static final int FLAG_HAS_PHONES = 1 << 2;
   // A line of the box fits a notification with it, the default of 23 has no room even for a command.
   private static final int MTU = 247;
   private static final long RETRY_DELAY_MS = 2000;
+  // After a wake no new pending connection is left for this long.
+  private static final long WAKE_REARM_MS = 5 * 60_000;
   // A box that is found but drops the connection again and again is tried less and less often.
   private static final long MAX_RETRY_DELAY_MS = 60_000;
   // Android turns a scan lasting half an hour into one that finds nothing, so it is started anew.
@@ -185,6 +192,36 @@ class Esp32BleTransport
   // The id the core was told with the last state.
   @Nullable
   private String mReportedBoxId;
+  // The last paired box of a car that was found: after close() a pending connection to it wakes the app (#541).
+  @Nullable
+  private BluetoothDevice mWakeBox;
+  @Nullable
+  private String mWakeBoxId;
+  // When the pending connection last linked: a box that is awake without car data would wake the app again at once.
+  private long mWokeMs = -WAKE_REARM_MS;
+  // The pending connection (autoConnect), which the system keeps while the app is in the background.
+  @Nullable
+  private BluetoothGatt mWakeGatt;
+  @Nullable
+  private Runnable mWakeListener;
+  // Arms the pending connection again when the 5 minutes after a wake are over and nothing has called close() since.
+  // An alarm of the elapsedRealtime clock, like sinceWakeMs: a Handler delay stops while the phone sleeps.
+  // The listener alarm needs API 24: below it a Handler delay does the same, late by the time the phone slept.
+  @Nullable
+  private final AlarmManager.OnAlarmListener mRearmWake =
+      Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? this::leaveWakeIfClosed : null;
+  private final Runnable mRearmWakeRunnable = this::leaveWakeIfClosed;
+  private boolean mWakeStateReceiverRegistered;
+  // Bluetooth switched off drops the pending connection without notice: it is made again when Bluetooth is on.
+  private final BroadcastReceiver mWakeStateReceiver = new BroadcastReceiver() {
+    @Override
+    public void onReceive(Context context, Intent intent)
+    {
+      if (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR) == BluetoothAdapter.STATE_ON
+          && !mOpen && !mBondLost)
+        leaveWake();
+    }
+  };
 
   private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
     @Override
@@ -206,10 +243,21 @@ class Esp32BleTransport
     mContext = context;
   }
 
+  /**
+   * Tells that the paired box connected while the transport was closed, e.g. the car is started after a parking.
+   */
+  @UiThread
+  void setWakeListener(@Nullable Runnable listener)
+  {
+    mWakeListener = listener;
+  }
+
   @UiThread
   void open()
   {
-    close();
+    closeAll();
+    releaseWake();
+    cancelRearmWake();
     mOpen = true;
     mRetryDelayMs = RETRY_DELAY_MS;
     mSilentConnections = 0;
@@ -294,6 +342,12 @@ class Esp32BleTransport
     final Set<String> forgotten = getForgottenBoxes();
     if (forgotten.add(id))
       getPrefs().edit().putStringSet(FORGOTTEN_BOXES, forgotten).apply();
+    if (id.equals(mWakeBoxId))
+    {
+      mWakeBox = null;
+      mWakeBoxId = null;
+      releaseWake();
+    }
   }
 
   /**
@@ -333,19 +387,36 @@ class Esp32BleTransport
   }
 
   /**
-   * @return the four characters of a name that starts with a prefix of the box, null otherwise.
+   * @return the four characters of a name that starts with the prefix of the box, null otherwise.
    */
   @Nullable
   static String boxIdOfName(@Nullable String name)
   {
-    if (name == null)
+    if (name == null || !name.startsWith(NAME_PREFIX))
       return null;
-    for (String prefix : NAME_PREFIXES)
+    return name.substring(NAME_PREFIX.length());
+  }
+
+  /**
+   * @param data the manufacturer data of the advertisement of company 0xFFFF, without the company: the version, the
+   *             flags and the id.
+   * @return the four characters of the box id the data carries, null if they are not there (version 1 had none).
+   */
+  @VisibleForTesting
+  @Nullable
+  static String boxIdOfManufacturerData(@Nullable byte[] data)
+  {
+    if (data == null || data.length < ID_OFFSET + ID_SIZE || data[0] < MANUFACTURER_VERSION)
+      return null;
+    final StringBuilder id = new StringBuilder();
+    for (int i = ID_OFFSET; i < ID_OFFSET + ID_SIZE; ++i)
     {
-      if (name.startsWith(prefix))
-        return name.substring(prefix.length());
+      final char c = (char) (data[i] & 0xFF);
+      if (c < '0' || c > 'z' || !Character.isLetterOrDigit(c))
+        return null;
+      id.append(c);
     }
-    return null;
+    return id.toString();
   }
 
   /**
@@ -358,8 +429,63 @@ class Esp32BleTransport
     return mOpen && !id.equals(mBoxId) && mNearbyBoxes.isNearby(id, SystemClock.elapsedRealtime());
   }
 
+  /**
+   * Stops the search and the connection. A paired box of a car stays in a pending connection: the system links it
+   * in the background when it wakes, and the wake listener is called.
+   */
   @UiThread
   void close()
+  {
+    if (!mOpen)
+      return;
+    final long sinceWakeMs = SystemClock.elapsedRealtime() - mWokeMs;
+    final boolean wake = waitsForBox(mWakeBox != null, mBondLost, mWakeGatt != null, sinceWakeMs);
+    final boolean wakeLater = !wake && sinceWakeMs < WAKE_REARM_MS
+                           && waitsForBox(mWakeBox != null, mBondLost, mWakeGatt != null, WAKE_REARM_MS);
+    closeAll();
+    if (wake)
+      leaveWake();
+    else if (wakeLater)
+      scheduleRearmWake(WAKE_REARM_MS - sinceWakeMs);
+  }
+
+  private void scheduleRearmWake(long delayMs)
+  {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N)
+    {
+      mMainHandler.postDelayed(mRearmWakeRunnable, delayMs);
+      return;
+    }
+    final AlarmManager alarms = (AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE);
+    alarms.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, SystemClock.elapsedRealtime() + delayMs, TAG, mRearmWake,
+               mMainHandler);
+  }
+
+  private void cancelRearmWake()
+  {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N)
+      mMainHandler.removeCallbacks(mRearmWakeRunnable);
+    else
+      ((AlarmManager) mContext.getSystemService(Context.ALARM_SERVICE)).cancel(mRearmWake);
+  }
+
+  private void leaveWakeIfClosed()
+  {
+    if (!mOpen && mWakeGatt == null && !mBondLost)
+      leaveWake();
+  }
+
+  /**
+   * A paired box that has forgotten the phone doesn't connect: nothing to wait for. Right after a wake the box is
+   * awake: a new pending connection would link at once, and a box without car data would wake the app in a loop.
+   */
+  @VisibleForTesting
+  static boolean waitsForBox(boolean hasBox, boolean bondLost, boolean waiting, long sinceWakeMs)
+  {
+    return hasBox && !bondLost && !waiting && sinceWakeMs >= WAKE_REARM_MS;
+  }
+
+  private void closeAll()
   {
     if (!mOpen)
       return;
@@ -595,6 +721,8 @@ class Esp32BleTransport
     }
     Logger.i(TAG, "Found " + device.getAddress() + " " + id + " rssi " + result.getRssi() + " bonded " + bonded);
     mBoxId = id;
+    mWakeBox = bonded && !mNewBoxOnly ? device : null;
+    mWakeBoxId = mWakeBox != null ? id : null;
     mMainHandler.removeCallbacks(mStarter);
     mMainHandler.removeCallbacks(mPairingClosedEnd);
     stopScan();
@@ -765,13 +893,18 @@ class Esp32BleTransport
   }
 
   /**
-   * @return the four characters of the name of the box, NonGPS-XXXX or NoGPS-XXXX, null if the box doesn't tell it.
+   * @return the four characters of the id of the box: the manufacturer data have it, which a box seen without its name
+   * has too; else the name NonGPS-XXXX. Null if the box doesn't tell it.
    */
   @SuppressLint("MissingPermission")
   @Nullable
   private static String getBoxId(@NonNull ScanResult result)
   {
     final ScanRecord record = result.getScanRecord();
+    final String advertised =
+        boxIdOfManufacturerData(record != null ? record.getManufacturerSpecificData(MANUFACTURER_ID) : null);
+    if (advertised != null)
+      return advertised;
     String name = record != null ? record.getDeviceName() : null;
     if (name == null)
       name = result.getDevice().getName();
@@ -853,6 +986,83 @@ class Esp32BleTransport
       Logger.w(TAG, "Can't close: " + e.getMessage());
     }
   }
+
+  /**
+   * autoConnect makes the system wait for the box in the background, which a scan can't do for long.
+   */
+  @SuppressLint("MissingPermission")
+  private void leaveWake()
+  {
+    releaseWake();
+    cancelRearmWake();
+    final BluetoothDevice box = mWakeBox;
+    if (box == null)
+      return;
+    if (!mWakeStateReceiverRegistered)
+    {
+      ContextCompat.registerReceiver(mContext, mWakeStateReceiver,
+                                     new IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED),
+                                     ContextCompat.RECEIVER_NOT_EXPORTED);
+      mWakeStateReceiverRegistered = true;
+    }
+    if (!hasPermission() || box.getBondState() != BluetoothDevice.BOND_BONDED)
+      return;
+    Logger.i(TAG, "Waiting for the box " + box.getAddress() + " in the background");
+    try
+    {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+        mWakeGatt = box.connectGatt(mContext, true /* autoConnect */, mWakeCallback, BluetoothDevice.TRANSPORT_LE);
+      else
+        mWakeGatt = box.connectGatt(mContext, true /* autoConnect */, mWakeCallback);
+    }
+    catch (SecurityException e)
+    {
+      Logger.w(TAG, "Can't wait for the box: " + e.getMessage());
+    }
+  }
+
+  @SuppressLint("MissingPermission")
+  private void releaseWake()
+  {
+    if (mWakeStateReceiverRegistered)
+    {
+      mWakeStateReceiverRegistered = false;
+      mContext.unregisterReceiver(mWakeStateReceiver);
+    }
+    final BluetoothGatt gatt = mWakeGatt;
+    mWakeGatt = null;
+    if (gatt == null)
+      return;
+    try
+    {
+      gatt.disconnect();
+      gatt.close();
+    }
+    catch (SecurityException e)
+    {
+      Logger.w(TAG, "Can't close: " + e.getMessage());
+    }
+  }
+
+  private void onWakeConnection(@NonNull BluetoothGatt gatt, int status, int newState)
+  {
+    if (gatt != mWakeGatt || newState != BluetoothProfile.STATE_CONNECTED || status != BluetoothGatt.GATT_SUCCESS)
+      return;
+    Logger.i(TAG, "The box has woken");
+    mWokeMs = SystemClock.elapsedRealtime();
+    // The link is not needed: the app searches for the box itself, or it does not want it now.
+    releaseWake();
+    if (mWakeListener != null)
+      mWakeListener.run();
+  }
+
+  private final BluetoothGattCallback mWakeCallback = new BluetoothGattCallback() {
+    @Override
+    public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState)
+    {
+      mMainHandler.post(() -> onWakeConnection(gatt, status, newState));
+    }
+  };
 
   private void restartLater()
   {
@@ -1029,9 +1239,17 @@ class Esp32BleTransport
   /**
    * The box sends data: a new one ends the search for it, a forgotten one is added again.
    */
+  @SuppressLint("MissingPermission")
   private void onBoxHeard()
   {
     mNewBoxOnly = false;
+    // A box paired or added in this process is the one to wait for after the parking, as a box found paired is.
+    final BluetoothGatt gatt = mGatt;
+    if (gatt != null && mBoxId != null && gatt.getDevice().getBondState() == BluetoothDevice.BOND_BONDED)
+    {
+      mWakeBox = gatt.getDevice();
+      mWakeBoxId = mBoxId;
+    }
     final Set<String> forgotten = getForgottenBoxes();
     if (mBoxId != null && forgotten.remove(mBoxId))
       getPrefs().edit().putStringSet(FORGOTTEN_BOXES, forgotten).apply();

@@ -369,7 +369,11 @@ NSArray<NSNumber *> * BandCountsToObjC(std::array<int, 3> const & counts)
     _addPhone = static_cast<MWMNoGpsAddPhone>(status.m_addPhone);
     _addPhoneCode = @(status.m_addPhoneCode.c_str());
     _addPhoneSecondsLeft = status.m_addPhoneSecondsLeft;
-    _boxRecoveryCode = @(status.m_boxRecoveryCode.c_str());
+    _boxTooOld = status.m_boxTooOld;
+    _boxRefused = status.m_boxRefused;
+    _boxPairAgain = status.m_boxPairAgain;
+    _boxPairAgainId = @(status.m_boxPairAgainId.c_str());
+    _boxResetError = @(status.m_boxResetError.c_str());
   }
   return self;
 }
@@ -544,6 +548,11 @@ static CLLocation * lastPlatformLocation;
 + (void)forgetBoxPhone:(NSString *)address
 {
   Engine().ForgetBoxPhone(address.UTF8String);
+}
+
++ (void)factoryResetBox
+{
+  Engine().FactoryResetBox();
 }
 
 + (void)startAddPhone

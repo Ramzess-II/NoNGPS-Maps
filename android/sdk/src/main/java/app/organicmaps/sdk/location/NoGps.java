@@ -251,6 +251,11 @@ public final class NoGps
     // The sensor box has not proved itself and is not used until the link is made again: the user may have to forget
     // the car and pair the box again.
     BOX_REFUSED,
+    // The box has erased everything on the request of the user and restarts as new: the car of the box is
+    // forgotten and its system pairing removed.
+    BOX_RESET,
+    // The box has not reset itself: Status.boxResetError tells why.
+    BOX_RESET_FAILED,
   }
 
   // The kinds of the runs from a standing start.
@@ -490,10 +495,22 @@ public final class NoGps
     @Keep
     @NonNull
     public String addPhoneCode = "";
-    // The code of the recovery window of the box of the current car, six digits, empty until the box has told it.
+    // The firmware of the box is older than the application drives: only the update is offered for it.
+    @Keep
+    public boolean boxTooOld;
+    // The box has not proved itself and is not used until the link is made again.
+    @Keep
+    public boolean boxRefused;
+    // The refusal is one a new pairing mends: the box has no key of this phone or has another one. The user is
+    // offered to forget the car and add it again.
+    @Keep
+    public boolean boxPairAgain;
+    @Keep
+    public String boxPairAgainId = "";
+    // The error of the box to the last full reset that failed: "BUSY" while another phone changes it.
     @Keep
     @NonNull
-    public String boxRecoveryCode = "";
+    public String boxResetError = "";
     @Keep
     public int addPhoneSecondsLeft;
     // All the sensor box has told in this connection, in the order of BoxValue: the values with their units, empty if
@@ -1035,6 +1052,12 @@ public final class NoGps
    * Removes the phone from the box. Removing this phone ends with Event.THIS_PHONE_REMOVED.
    */
   public static native void nativeForgetBoxPhone(@NonNull String address);
+
+  /**
+   * Erases all of the box: the phones, the keys, the calibration, the values of the car, the settings. Ends with
+   * Event.BOX_RESET, or Event.BOX_RESET_FAILED.
+   */
+  public static native void nativeFactoryResetBox();
 
   /**
    * Lets the box take a new phone with a new code for two minutes, see Status.addPhone.

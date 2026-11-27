@@ -120,8 +120,9 @@ public:
                                  std::string const & /* error */)
     {}
 
-    /// The box has told the code of its recovery window, six digits, see esp32::kRecoveryCodeSize.
-    virtual void OnBoxRecoveryCode(std::string const & /* code */) {}
+    /// The box has answered FACTORY_RESET: |error| is empty if it has erased everything and restarts as new, else
+    /// the error it gave.
+    virtual void OnBoxFactoryReset(std::string const & /* error */) {}
 
     /// The box has removed this phone on its request: it doesn't connect to the box any more.
     virtual void OnThisPhoneRemoved() {}

@@ -240,7 +240,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   private View mPhonesUnknown;
   private LinearLayout mPhonesRows;
   private View mPhonesReadOnly;
-  private TextView mPhonesRecoveryCode;
+  private View mCarReset;
   private TextView mAddPhone;
   private ColorStateList mAddPhoneColors;
   // The texts of the phone rows shown: the rows are made again when they change.
@@ -342,6 +342,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     if (args != null)
     {
       mPage = Page.values()[args.getInt(ARG_PAGE)];
+      if (mPage == Page.ADD_CAR)
+        startAddingCar();
     }
   }
 
@@ -448,7 +450,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     mPhonesUnknown.findViewById(R.id.car_state).setVisibility(View.GONE);
     mPhonesRows = view.findViewById(R.id.box_phones_rows);
     mPhonesReadOnly = view.findViewById(R.id.box_phones_read_only);
-    mPhonesRecoveryCode = view.findViewById(R.id.box_phones_recovery_code);
+    mCarReset = view.findViewById(R.id.box_car_reset);
+    mCarReset.setOnClickListener(v -> confirmFactoryReset());
     mAddPhone = view.findViewById(R.id.box_add_phone);
     mAddPhoneColors = mAddPhone.getTextColors();
     mAddPhone.setOnClickListener(v -> addPhone());
@@ -818,30 +821,6 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
   }
 
   /**
-   * The hint of a box not paired with this phone gets the code of its recovery window, when the box has told it: the
-   * system dialog of the pairing wants that code then, not 123456.
-   */
-  static boolean hintHasRecoveryCode(@NonNull NoGps.Status status)
-  {
-    if (status.boxRecoveryCode.isEmpty())
-      return false;
-    return switch (status.getBleState())
-    {
-      case PAIRING_BY_PHONE, PAIRING_FULL, PAIRING -> true;
-      default -> false;
-    };
-  }
-
-  @NonNull
-  private String linkHint(@NonNull NoGps.Status status, @StringRes int hint)
-  {
-    final String text = getString(hint);
-    if (!hintHasRecoveryCode(status))
-      return text;
-    return text + ". " + getString(R.string.nogps_box_bt_recovery_code, status.boxRecoveryCode);
-  }
-
-  /**
    * What the user does for the box to get the car speed, 0 if nothing.
    */
   static int obdHintText(@NonNull NoGps.Status status)
@@ -1042,6 +1021,20 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     });
   }
 
+  /**
+   * The box is erased and restarts as new: the phones, the keys, the calibration, the values of the car and the
+   * settings. The car is forgotten on this phone when the box has answered, see MwmActivity.
+   */
+  private void confirmFactoryReset()
+  {
+    new MaterialAlertDialogBuilder(requireContext())
+        .setTitle(R.string.nogps_box_reset_title)
+        .setMessage(R.string.nogps_box_reset_text)
+        .setPositiveButton(R.string.nogps_box_reset, (dialog, which) -> NoGps.nativeFactoryResetBox())
+        .setNegativeButton(R.string.cancel, null)
+        .show();
+  }
+
   private void confirmForgetCar(@NonNull NoGps.Car car)
   {
     final Context context = requireContext();
@@ -1115,11 +1108,8 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
       updatePhones(status);
     else
       mPhonesReadOnly.setVisibility(View.GONE);
-    // The code the box told this phone before: shown while the box is out of reach too, to be written down.
-    final boolean recovery = !status.boxRecoveryCode.isEmpty();
-    mPhonesRecoveryCode.setVisibility(recovery ? View.VISIBLE : View.GONE);
-    if (recovery)
-      mPhonesRecoveryCode.setText(getString(R.string.nogps_phone_recovery_code, status.boxRecoveryCode));
+    // Only the phone that changes the box of this car erases it.
+    mCarReset.setVisibility(phones && !status.boxReadOnly && car.id.equals(status.carId) ? View.VISIBLE : View.GONE);
     final NoGps.Sprint[] sprints = NoGps.nativeGetSprints();
     mSprintBest[0].setText(Sprints.bestText(this::getString, sprints, NoGps.SprintKind.TO_100));
     mSprintBest[1].setText(Sprints.bestText(this::getString, sprints, NoGps.SprintKind.QUARTER_MILE));
@@ -1585,7 +1575,7 @@ public class BoxBottomSheet extends BottomSheetDialogFragment
     final int hint = linkHintText(status);
     mStepHint.setVisibility(hint != 0 ? View.VISIBLE : View.GONE);
     if (hint != 0)
-      showState(mStepHint, new StatusBar.Look(0, 0), linkHint(status, hint));
+      showState(mStepHint, new StatusBar.Look(0, 0), getString(hint));
     final int action = linkActionText(status);
     mStepAction.setVisibility(action != 0 ? View.VISIBLE : View.GONE);
     if (action != 0)

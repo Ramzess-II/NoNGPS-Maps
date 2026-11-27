@@ -190,9 +190,18 @@ struct Status
   // The code to enter on the new phone while m_addPhone is Open, and how long the box takes it.
   std::string m_addPhoneCode;
   int m_addPhoneSecondsLeft = 0;
-  // The code of the recovery window of the box of the current car, six digits, as the box told it to this phone:
-  // empty until then. The system dialog of the pairing wants it while the box is in the window, see BLE-16.
-  std::string m_boxRecoveryCode;
+  // The firmware of the box is older than esp32::kMinFirmware: it is offered the update (m_bundledFirmware) and
+  // nothing else; no data and no car values are taken from it.
+  bool m_boxTooOld = false;
+  // The box has failed to prove itself and is not used until the link is made again, see Event::BoxRefused.
+  bool m_boxRefused = false;
+  // The refusal is one that a new pairing mends: the box has no key of this phone, or it has another one. The user is
+  // offered to forget the car and add it again.
+  bool m_boxPairAgain = false;
+  // The id of the refused box while m_boxPairAgain: the car to forget, which may be none of the cars of the phone.
+  std::string m_boxPairAgainId;
+  // Why the last Event::BoxResetFailed: the error of the box, "BUSY" while another phone changes it, "NOREPLY".
+  std::string m_boxResetError;
 
   // The phone that changes the box leads the place, the other one follows it: it shows the place of the leader and
   // sends its corrections. None without the ability of the box or with one phone.
@@ -474,6 +483,10 @@ public:
   void StartAddPhone();
   /// The code is not shown any more. The box takes it until its time ends.
   void EndAddPhone();
+  /// Erases all of the box, FACTORY_RESET: the phones, the keys, the calibration, the values of the car, the settings.
+  /// The box answers and restarts as new: Event::BoxReset, or Event::BoxResetFailed. Only the phone that changes the
+  /// box can do it.
+  void FactoryResetBox();
   /// Sends the firmware of Status::m_bundledFirmware to the box.
   void StartFirmwareUpdate();
   void CancelFirmwareUpdate();
@@ -499,7 +512,7 @@ private:
   void OnBoxAuthKey(std::string const & id, std::string const & key, bool confirmed) override;
   void OnBoxCarValues(std::map<std::string, std::string> const & values) override;
   void OnBoxCarWritten(std::string const & key, std::string const & value, std::string const & error) override;
-  void OnBoxRecoveryCode(std::string const & code) override;
+  void OnBoxFactoryReset(std::string const & error) override;
   void OnThisPhoneRemoved() override;
   void OnBoxRefused() override;
   void OnBoxStopping() override;
@@ -687,6 +700,8 @@ private:
   BoxCarValues m_boxCarValues{m_cars, m_clock};
   // The car of the box this link is to, empty when the box is over kMaxCars and is no car of ours.
   std::string m_boxHeardId;
+  // The error of the last FACTORY_RESET that failed.
+  std::string m_boxResetError;
   // The box has told that the engine of the car is stopped: it sleeps in a minute.
   bool m_boxEngineStopped = false;
   std::unique_ptr<InertialNavigator> m_inertial;
@@ -809,8 +824,10 @@ private:
   bool m_autoCalibrateTried = false;
   // The user has cancelled the automatic calibration: it waits for the box to connect again.
   bool m_autoCalibrateCancelled = false;
-  // The platform forgets the car on Event::ThisPhoneRemoved: not while the box is being read.
+  // The platform forgets the car on Event::ThisPhoneRemoved and Event::BoxReset: not while the box is being read.
   Timer m_phoneRemovedTimer;
+  // Apart from the one above, so that one event does not replace the other.
+  Timer m_boxResetTimer;
 
   ThreadChecker m_threadChecker;
 };

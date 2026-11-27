@@ -243,6 +243,16 @@ public class LocationHelper implements BaseLocationProvider.Listener
   }
 
   /**
+   * Tells that the paired box connected while the location was stopped in the background, e.g. the car is started
+   * after a parking.
+   */
+  @UiThread
+  public void setBoxWakeListener(@Nullable Runnable listener)
+  {
+    mEsp32Ble.setWakeListener(listener);
+  }
+
+  /**
    * Creates the navigation without GPS in the core, when the core is initialized.
    */
   @UiThread
