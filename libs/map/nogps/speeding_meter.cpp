@@ -245,7 +245,7 @@ void SpeedingMeter::OnRated(Sample const & sample, int64_t dtMs, std::vector<Spe
     }
     if (!m_over)
     {
-      m_over.emplace();
+      m_over = Stretch{};
       m_over->m_startMs = now;
       m_over->m_unixTimeMs = sample.m_unixTimeMs;
     }
@@ -270,7 +270,7 @@ void SpeedingMeter::OnRated(Sample const & sample, int64_t dtMs, std::vector<Spe
   }
   if (!m_under)
   {
-    m_under.emplace();
+    m_under = Stretch{};
     m_under->m_startMs = now;
   }
   m_under->Add(kmh, limit, dtMs, now);
