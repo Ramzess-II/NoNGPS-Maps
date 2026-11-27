@@ -1588,6 +1588,7 @@ bool FrontendRenderer::RenderScene(ScreenBase const & modelView, bool activeFram
       clearBits |= dp::ClearBits::StencilBit;
     m_context->Clear(clearBits, dp::kClearBitsStoreAll);
 
+    m_myPositionController->SetRouteShown(m_routeRenderer->HasData());
     m_myPositionController->Render(m_context, make_ref(m_gpuProgramManager), modelView, GetCurrentZoom(),
                                    m_frameValues);
   }
