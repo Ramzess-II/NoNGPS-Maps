@@ -63,6 +63,10 @@ public:
 struct CompassInfo
 {
   double m_bearing = 0.0;  //!< positive radians from the true North
+  //! The car direction of the navigation without GPS: it is shown whatever the GPS bearing and speed say.
+  bool m_isCarHeading = false;
+  //! The route is being rebuilt: its positions are not matched yet, so the car direction turns the arrow.
+  bool m_isRouteRebuilding = false;
 };
 
 static inline bool IsLatValid(double lat)
