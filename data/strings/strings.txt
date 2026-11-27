@@ -47834,9 +47834,9 @@ uk = Так, зрозуміло: працює з датчиком
 [nogps_intro_bottom]
 comment = Balloon of the first start pointing at the bottom bar
 tags = android-app,apple-maps
-en = Your car, the NonGPS box and GPS. Tap one to choose the car, connect the box or see the GPS signal.
-ru = Ваша машина, датчик NonGPS и GPS. Нажмите, чтобы выбрать машину, подключить датчик или посмотреть сигнал GPS.
-uk = Ваша машина, датчик NonGPS і GPS. Натисніть, щоб вибрати машину, підключити датчик або побачити сигнал GPS.
+en = Where your position comes from: the NonGPS box or GPS. Tap it to connect the box or see its status.
+ru = Откуда берётся ваша позиция: датчик NonGPS или GPS. Нажмите, чтобы подключить датчик или посмотреть его состояние.
+uk = Звідки береться ваша позиція: датчик NonGPS або GPS. Натисніть, щоб підключити датчик або побачити його стан.
 
 [nogps_intro_right]
 comment = Balloon of the first start pointing at the panel with the zoom buttons
