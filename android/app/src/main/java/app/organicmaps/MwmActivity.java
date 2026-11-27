@@ -70,6 +70,7 @@ import app.organicmaps.maplayer.MapButtonsController;
 import app.organicmaps.maplayer.MapButtonsViewModel;
 import app.organicmaps.maplayer.ToggleMapLayerFragment;
 import app.organicmaps.nogps.AboutNoGpsActivity;
+import app.organicmaps.nogps.BoxBottomSheet;
 import app.organicmaps.nogps.BoxTexts;
 import app.organicmaps.nogps.FirmwareUpdateDialog;
 import app.organicmaps.nogps.HowNoGpsActivity;
@@ -1225,17 +1226,16 @@ public class MwmActivity extends BaseMwmFragmentActivity
       new MaterialAlertDialogBuilder(this, R.style.MwmTheme_AlertDialog)
           .setTitle(R.string.nogps_box_pair_again_title)
           .setMessage(R.string.nogps_box_pair_again_text)
-          .setPositiveButton(R.string.nogps_box_pair_again,
-                             (dialog, which) -> {
-                               final LocationHelper helper = MwmApplication.from(this).getLocationHelper();
-                               helper.forgetCar(carId);
-                               // The old system pairing would only block the new one.
-                               if (!helper.unpairBox(carId))
-                                 Toast.makeText(this, getString(R.string.nogps_box_reset_unpair, carId),
-                                                Toast.LENGTH_LONG)
-                                     .show();
-                               showBoxSheet(BoxBottomSheet.Page.ADD_CAR);
-                             })
+          .setPositiveButton(
+              R.string.nogps_box_pair_again,
+              (dialog, which) -> {
+                final LocationHelper helper = MwmApplication.from(this).getLocationHelper();
+                helper.forgetCar(carId);
+                // The old system pairing would only block the new one.
+                if (!helper.unpairBox(carId))
+                  Toast.makeText(this, getString(R.string.nogps_box_reset_unpair, carId), Toast.LENGTH_LONG).show();
+                showBoxSheet(BoxBottomSheet.Page.ADD_CAR);
+              })
           .setNegativeButton(R.string.later, null)
           .show();
     }
