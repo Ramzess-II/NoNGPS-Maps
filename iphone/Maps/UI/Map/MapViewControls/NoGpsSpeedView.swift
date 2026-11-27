@@ -84,7 +84,7 @@ final class NoGpsSpeedView: UIView {
 
   /// The box is connected to this phone: the calibration bar slides out of the speed, which stays on the screen.
   static func isBoxConnected(_ status: NoGpsStatus) -> Bool {
-    status.inertialStarted && status.bleState == .connected
+    NoGpsBoxSheet.isBoxHeard(status) && status.bleState == .connected
   }
 
   /// Shows the speed of the position that moves the mark: a dash without one while the box is connected, hidden

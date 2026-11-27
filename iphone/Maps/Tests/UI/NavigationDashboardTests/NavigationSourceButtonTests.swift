@@ -202,6 +202,9 @@ extension NavigationSourceButtonTests {
     XCTAssertFalse(NoGpsSpeedView.isBoxConnected(away))
     let off = FakeStatus(source: .none, gpsState: .none, inertialEnabled: false, sourceState: .disconnected)
     XCTAssertFalse(NoGpsSpeedView.isBoxConnected(off))
+    // Connected over Bluetooth but not heard yet, as on Android.
+    let silent = FakeStatus(source: .none, gpsState: .none, inertialEnabled: true, sourceState: .connecting)
+    XCTAssertFalse(NoGpsSpeedView.isBoxConnected(silent))
 
     let view = NoGpsSpeedView()
     view.update(status: connected, location: nil)
