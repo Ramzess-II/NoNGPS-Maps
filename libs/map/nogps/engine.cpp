@@ -2307,6 +2307,8 @@ Status Engine::GetStatus()
       status.m_boxTooOld = box->IsBoxTooOld();
       status.m_boxRefused = box->IsBoxRefused();
       status.m_boxPairAgain = box->CanPairAgain();
+      if (status.m_boxPairAgain)
+        status.m_boxPairAgainId = box->GetRefusedBoxId();
       status.m_boxResetError = m_boxResetError;
       status.m_boxValues = box->GetBoxValues();
       if (auto const * firmware = FindBoxFirmware())

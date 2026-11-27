@@ -639,7 +639,8 @@ private:
 
   void OnBoxInfo(std::string const & id)
   {
-    std::string const body = "NGI,1,0,0,esp32,box," + id;
+    // The firmware is the oldest one that drives: an older box is taken for the update only, see Info::IsTooOld().
+    std::string const body = "NGI,1," + std::string(esp32::kMinFirmware) + ",0,esp32,box," + id;
     char crc[8];
     std::snprintf(crc, sizeof(crc), "%04X", esp32::Crc16(body));
     m_engine->OnEsp32BleBytes("$" + body + "*" + crc + "\r\n");

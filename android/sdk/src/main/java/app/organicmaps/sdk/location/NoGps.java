@@ -502,6 +502,7 @@ public final class NoGps
     // offered to forget the car and add it again.
     @Keep
     public boolean boxPairAgain;
+    public String boxPairAgainId = "";
     // The error of the box to the last full reset that failed: "BUSY" while another phone changes it.
     @Keep
     @NonNull

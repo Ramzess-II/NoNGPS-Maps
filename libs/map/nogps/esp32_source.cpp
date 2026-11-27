@@ -549,6 +549,13 @@ void Esp32Source::OnLine(std::string_view text)
     // The box has proved the id it gave: a device that says it is another box is not taken for it.
     if (m_mustProve && info->m_id != m_authCar)
       return RefuseBox("it says it is " + info->m_id + ", not " + m_authCar);
+    // A box of an old firmware was taken without the proof: with a newer one it is to prove itself first.
+    if (m_mustProve && IsBoxTooOld() && !info->IsTooOld())
+    {
+      m_proven = false;
+      OnAuthInfo(*fields);
+      return;
+    }
     OnInfo(*info);
     StoreBoxValues(*fields);
     return;
@@ -707,6 +714,9 @@ void Esp32Source::OnAuthReply(esp32::Reply const & reply)
       return;
     }
     // The box has no key of this phone or has another one: only a new pairing mends it, and the user decides on it.
+    // The key it has refused is not kept: the next link gives a new one and the box refuses it the same way.
+    if (reply.m_error == "EXISTS" && m_authSetsKey)
+      m_listener.OnBoxAuthKey(m_authCar, "", false /* confirmed */);
     return RefuseBox("the box says " + reply.m_error, reply.m_error == "NOKEY" || reply.m_error == "EXISTS");
   }
   if (!m_authSetsKey)

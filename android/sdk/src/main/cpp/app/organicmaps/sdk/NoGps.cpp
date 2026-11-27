@@ -531,6 +531,7 @@ JNIEXPORT void Java_app_organicmaps_sdk_location_NoGps_nativeGetStatus(JNIEnv * 
   SetNoGpsField(env, out, "boxTooOld", status.m_boxTooOld);
   SetNoGpsField(env, out, "boxRefused", status.m_boxRefused);
   SetNoGpsField(env, out, "boxPairAgain", status.m_boxPairAgain);
+  SetNoGpsString(env, out, "boxPairAgainId", status.m_boxPairAgainId);
   SetNoGpsString(env, out, "boxResetError", status.m_boxResetError);
   SetNoGpsField(env, out, "addPhoneSecondsLeft", status.m_addPhoneSecondsLeft);
   std::vector<jint> boxValueIds;

@@ -194,6 +194,8 @@ struct Status
   // The refusal is one that a new pairing mends: the box has no key of this phone, or it has another one. The user is
   // offered to forget the car and add it again.
   bool m_boxPairAgain = false;
+  // The id of the refused box while m_boxPairAgain: the car to forget, which may be none of the cars of the phone.
+  std::string m_boxPairAgainId;
   // Why the last Event::BoxResetFailed: the error of the box, "BUSY" while another phone changes it, "NOREPLY".
   std::string m_boxResetError;
 

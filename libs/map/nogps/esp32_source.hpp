@@ -161,6 +161,8 @@ public:
   /// \returns true if the refusal is of a box that doesn't know the key of this phone (NOKEY on a key the box has
   /// confirmed, EXISTS) or has another one: the car is forgotten and paired again, nothing else helps.
   bool CanPairAgain() const { return m_authRefused && m_pairAgain; }
+  /// \returns the id the refused box has given: it is not the current car, as the box becomes one after its proof.
+  std::string const & GetRefusedBoxId() const { return m_authCar; }
   /// \returns true if the firmware of the box is older than esp32::kMinFirmware: it takes an update and nothing else.
   bool IsBoxTooOld() const { return m_info && m_info->IsTooOld(); }
 

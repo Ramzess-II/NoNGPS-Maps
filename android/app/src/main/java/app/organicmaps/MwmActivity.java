@@ -1218,11 +1218,11 @@ public class MwmActivity extends BaseMwmFragmentActivity
   private int onBoxRefused()
   {
     final NoGps.Status status = NoGps.getStatus();
-    if (!status.boxPairAgain || status.carId.isEmpty())
+    if (!status.boxPairAgain || status.boxPairAgainId.isEmpty())
       return R.string.nogps_box_refused;
     if (!isFinishing() && !getSupportFragmentManager().isStateSaved())
     {
-      final String carId = status.carId;
+      final String carId = status.boxPairAgainId;
       new MaterialAlertDialogBuilder(this, R.style.MwmTheme_AlertDialog)
           .setTitle(R.string.nogps_box_pair_again_title)
           .setMessage(R.string.nogps_box_pair_again_text)

@@ -389,6 +389,8 @@ NS_SWIFT_NAME(NoGpsStatus)
 /// The refusal is one a new pairing mends: the box has no key of this phone or has another one. The user is offered to
 /// forget the car and add it again.
 @property(nonatomic, readonly) BOOL boxPairAgain;
+/// The id of the refused box while boxPairAgain: the car to forget, it may be none of the cars of the phone.
+@property(nonatomic, readonly) NSString * boxPairAgainId;
 /// The error of the box to the last full reset that failed: "BUSY" while another phone changes it.
 @property(nonatomic, readonly) NSString * boxResetError;
 

@@ -632,8 +632,8 @@ final class NoGpsControls: NSObject {
     case .boxRefused:
       // The box has lost the key of this phone or has another one: one tap forgets the car and adds it again. Nothing
       // changes without it, as a fake box could answer the same.
-      if NoGps.status().boxPairAgain, !NoGps.status().carId.isEmpty {
-        offerPairAgain(carId: NoGps.status().carId)
+      if NoGps.status().boxPairAgain, !NoGps.status().boxPairAgainId.isEmpty {
+        offerPairAgain(carId: NoGps.status().boxPairAgainId)
         text = nil
       } else {
         text = L("nogps_box_refused")

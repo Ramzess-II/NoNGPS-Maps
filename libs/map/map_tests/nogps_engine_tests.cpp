@@ -4356,6 +4356,7 @@ UNIT_TEST(NoGps_Engine_BoxThatForgotTheKeyOffersPairingAgain)
   env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + LastCommand(env, "AUTH").first + ",ERR,NOKEY"));
   auto status = env.m_engine.GetStatus();
   TEST(status.m_boxRefused && status.m_boxPairAgain, ());
+  TEST_EQUAL(status.m_boxPairAgainId, "C47D", ());
   TEST(env.m_delegate.HasEvent(Event::BoxRefused), ());
   TEST_EQUAL(cars.GetCarValue("C47D", CarStorage::kCarAuthKey).value_or(""), key, ());
   TEST(LastCommand(env, "AUTH_SET").first == setId, ());
@@ -4376,16 +4377,32 @@ UNIT_TEST(NoGps_Engine_BoxThatForgotTheKeyOffersPairingAgain)
 UNIT_TEST(NoGps_Engine_BoxThatHasAnotherKeyOffersPairingAgain)
 {
   Env env(true /* inertial */);
+  CarStorage cars(env.m_storage);
   env.m_delegate.m_boxMustProveItself = true;
   env.m_engine.OnEsp32BleState(BleState::Searching);
   env.ConnectBox();
   // The phone has no key of this box and the box keeps one of its own: the key of this phone was lost.
-  env.m_engine.OnEsp32BleBytes(
-      BoxLine("NGI,1,0.6.0,2026-11-23T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA,5,R1"));
-  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + LastCommand(env, "AUTH_SET").first + ",ERR,EXISTS"));
+  std::string const info = "NGI,1,0.6.0,2026-11-23T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA,5,R1";
+  env.m_engine.OnEsp32BleBytes(BoxLine(info));
+  auto const setId = LastCommand(env, "AUTH_SET").first;
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + setId + ",ERR,EXISTS"));
   auto const status = env.m_engine.GetStatus();
   TEST(status.m_boxRefused && status.m_boxPairAgain, ());
+  // The box is no car of the phone, and the dialog is of it all the same.
+  TEST(status.m_carId.empty(), ());
+  TEST_EQUAL(status.m_boxPairAgainId, "C47D", ());
   TEST(env.m_delegate.HasEvent(Event::BoxRefused), ());
+
+  // The key the box has refused is not kept: the link made again is refused the same way, with the same offer.
+  TEST_EQUAL(cars.GetCarValue("C47D", CarStorage::kCarAuthKey).value_or(""), "", ());
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  env.ConnectBox();
+  env.m_engine.OnEsp32BleBytes(BoxLine(info));
+  TEST(LastCommand(env, "AUTH").first.empty(), ());
+  auto const newSetId = LastCommand(env, "AUTH_SET").first;
+  TEST(newSetId != setId, ());
+  env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + newSetId + ",ERR,EXISTS"));
+  TEST(env.m_engine.GetStatus().m_boxPairAgain, ());
 }
 
 UNIT_TEST(NoGps_Engine_BoxBelowMinFirmwareGetsOnlyTheUpdate)
@@ -4415,6 +4432,24 @@ UNIT_TEST(NoGps_Engine_BoxBelowMinFirmwareGetsOnlyTheUpdate)
   env.m_engine.StartFirmwareUpdate();
   TEST(!LastCommand(env, "OTA_BEGIN").first.empty(), ());
   TEST_EQUAL(cars.GetCarValue("C47D", CarStorage::kCarAuthKey).value_or(""), "", ());
+}
+
+UNIT_TEST(NoGps_Engine_BoxTakenAsTooOldProvesItselfWithANewerFirmware)
+{
+  Env env(true /* inertial */);
+  env.m_delegate.m_boxMustProveItself = true;
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  env.ConnectBox();
+  env.m_engine.OnEsp32BleBytes(BoxLine(
+      "NGI,1,0.5.1,2026-11-23T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES AUTH,5,R1"));
+  TEST(LastCommand(env, "AUTH_SET").first.empty(), ());
+  // The same link says the firmware is a new one: the box was taken without the proof, so it is asked for it now.
+  env.m_engine.OnEsp32BleBytes(BoxLine(
+      "NGI,1,0.6.0,2026-11-23T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES AUTH,5,R1"));
+  TEST(!LastCommand(env, "AUTH_SET").first.empty(), ());
+  env.Drive(2500, 36, 0);
+  TEST(LastCommand(env, "BT_LIST").first.empty(), ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedKmh, -1, ());
 }
 
 UNIT_TEST(NoGps_Engine_BoxOfMinFirmwareDrivesASession)

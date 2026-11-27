@@ -312,6 +312,7 @@ std::optional<double> NonNegative(double value)
     _boxTooOld = status.m_boxTooOld;
     _boxRefused = status.m_boxRefused;
     _boxPairAgain = status.m_boxPairAgain;
+    _boxPairAgainId = @(status.m_boxPairAgainId.c_str());
     _boxResetError = @(status.m_boxResetError.c_str());
   }
   return self;
