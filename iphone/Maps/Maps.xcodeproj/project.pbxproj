@@ -68,6 +68,8 @@
 		6741A95C1BF340DE002C974C /* categories.txt in Resources */ = {isa = PBXBuildFile; fileRef = FAAFD696139D9BE2000AE70C /* categories.txt */; };
 		6741A95D1BF340DE002C974C /* types.txt in Resources */ = {isa = PBXBuildFile; fileRef = FA64D9A813F975AD00350ECF /* types.txt */; };
 		6741A9681BF340DE002C974C /* faq.html in Resources */ = {isa = PBXBuildFile; fileRef = 978D4A30199A11E600D72CA7 /* faq.html */; };
+		N0GPS1B00000000000000G01 /* nogps_guide.html in Resources */ = {isa = PBXBuildFile; fileRef = N0GPS1A00000000000000G01 /* nogps_guide.html */; };
+		N0GPS1B00000000000000G02 /* HowNoGpsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = N0GPS1A00000000000000G02 /* HowNoGpsTests.swift */; };
 		6741A9711BF340DE002C974C /* copyright.html in Resources */ = {isa = PBXBuildFile; fileRef = 97A5967E19B9CD47007A963F /* copyright.html */; };
 		6741A9751BF340DE002C974C /* WorldCoasts.mwm in Resources */ = {isa = PBXBuildFile; fileRef = FA459EB314327AF700B5BB3C /* WorldCoasts.mwm */; };
 		6741A9761BF340DE002C974C /* packed_polygons.bin in Resources */ = {isa = PBXBuildFile; fileRef = FA85F632145DDDC20090E1A0 /* packed_polygons.bin */; };
@@ -986,6 +988,8 @@
 		863522C5683F443B5259BC65 /* hr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.stringsdict; name = hr; path = hr.lproj/Localizable.stringsdict; sourceTree = "<group>"; };
 		8AEF8696193E63BBCC4DB72D /* fr-CA */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "fr-CA"; path = "fr-CA.lproj/LocalizableTypes.strings"; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* OMaps.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = OMaps.plist; plistStructureDefinitionIdentifier = "com.apple.xcode.plist.structure-definition.iphone.info-plist"; sourceTree = "<group>"; };
+		N0GPS1A00000000000000G01 /* nogps_guide.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = nogps_guide.html; path = ../../data/nogps_guide.html; sourceTree = "<group>"; };
+		N0GPS1A00000000000000G02 /* HowNoGpsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HowNoGpsTests.swift; sourceTree = "<group>"; };
 		978D4A30199A11E600D72CA7 /* faq.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = faq.html; path = ../../data/faq.html; sourceTree = "<group>"; };
 		97A5967E19B9CD47007A963F /* copyright.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = copyright.html; path = ../../data/copyright.html; sourceTree = "<group>"; };
 		9ED84F46C567471E1F12D0F0 /* ast */ = {isa = PBXFileReference; lastKnownFileType = text.plist.stringsdict; name = ast; path = ast.lproj/Localizable.stringsdict; sourceTree = "<group>"; };
@@ -2467,6 +2471,7 @@
 				N0GPS3B000000000000AB02 /* NoGpsAboutLayoutTests.swift */,
 				E4B1C0DE7A52C3F100A1B2C4 /* Esp32BleTransportTests.swift */,
 				N0GPS1A00000000000000006 /* NoGpsIntroTests.swift */,
+				N0GPS1A00000000000000G02 /* HowNoGpsTests.swift */,
 				A0C47D010000000000000001 /* NoGpsCarMenuTests.swift */,
 				A0C47D0200000000000000B3 /* NoGpsProfileTests.swift */,
 				6DCDADA4CA235047EE2F0639 /* NavigationSearchWheelTests.swift */,
@@ -4501,6 +4506,7 @@
 				DB05F1BE1BF340DE002C974C /* drules_vehicle.bin */,
 				6B9978341C89A316003B8AA0 /* editor.config */,
 				978D4A30199A11E600D72CA7 /* faq.html */,
+				N0GPS1A00000000000000G01 /* nogps_guide.html */,
 				BB7626B41E8559980031D71C /* icudt78l.dat */,
 				F623DA6A1C9C2731006A3436 /* opening_hours_how_to_edit.html */,
 				FA85F632145DDDC20090E1A0 /* packed_polygons.bin */,
@@ -4854,6 +4860,7 @@
 				ED82C6702F90180300FA103D /* Main.storyboard in Resources */,
 				6B9978361C89A316003B8AA0 /* editor.config in Resources */,
 				6741A9681BF340DE002C974C /* faq.html in Resources */,
+				N0GPS1B00000000000000G01 /* nogps_guide.html in Resources */,
 				34F73FA31E08300E00AC1FD6 /* Images.xcassets in Resources */,
 				34F73F9C1E082FF800AC1FD6 /* InfoPlist.strings in Resources */,
 				34F73F9F1E082FF800AC1FD6 /* Localizable.strings in Resources */,
@@ -5523,6 +5530,7 @@
 				E4B1C0DE7A52C3F100A1B2C3 /* Esp32BleTransportTests.swift in Sources */,
 				5C0A7E1B3D2F4A6890B1D007 /* BottomMenuPresenterTests.swift in Sources */,
 				N0GPS1B00000000000000006 /* NoGpsIntroTests.swift in Sources */,
+				N0GPS1B00000000000000G02 /* HowNoGpsTests.swift in Sources */,
 				A0C47D010000000000000002 /* NoGpsCarMenuTests.swift in Sources */,
 				A0C47D0200000000000000B4 /* NoGpsProfileTests.swift in Sources */,
 				57A0D9ACD3DDA2D29AF02FC5 /* NavigationSearchWheelTests.swift in Sources */,

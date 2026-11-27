@@ -2039,18 +2039,3 @@
 
 /* Menu row and title of the page that explains the app and plays the intro again */
 "nogps_how_title" = "How NonGPS works";
-
-/* Heading of the part of the How NonGPS works page about the panels of the map */
-"nogps_how_panels" = "The panels of the map";
-
-/* Line of the How NonGPS works page about the bottom bar */
-"nogps_how_bottom" = "Bottom bar: the cars, the box and GPS.";
-
-/* Line of the How NonGPS works page about the panel with the zoom buttons */
-"nogps_how_right" = "Right panel: zoom and the direction of the map. Hold it to move the panel.";
-
-/* Line of the How NonGPS works page about the panel with the car buttons */
-"nogps_how_left" = "Left panel: turn the car or point it by hand. Hold it to move the panel.";
-
-/* Button of the How NonGPS works page that plays the intro of the first start again */
-"nogps_how_intro_again" = "Show the intro again";

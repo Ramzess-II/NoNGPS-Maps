@@ -1,107 +1,95 @@
-/// How NonGPS works: what the app is and what the three panels of the map do, with a button that plays the intro of
-/// the first start again. The intro itself is NoGpsIntroController; the about screen of the app is
-/// AboutNoGpsController.
+import WebKit
+
+/// How NonGPS works: the guide page data/nogps_guide.html in a WKWebView. Its "Show the intro again" link plays the
+/// intro of the first start. The intro itself is NoGpsIntroController; the about screen of the app is
+/// AboutNoGpsController. The same page is on Android, see nogps.HowNoGpsFragment.
 final class HowNoGpsController: MWMViewController {
-  private enum Constants {
-    static let stackSpacing: CGFloat = 12
-    static let groupSpacing: CGFloat = 24
-    static let stackInset: CGFloat = 20
+  /// What the page's links do.
+  enum LinkAction: Equatable {
+    case intro
+    case browser(URL)
+    case load
   }
 
-  private let scrollView = UIScrollView()
-  private let stackView = UIStackView()
-  private let leadLabel = UILabel()
-  private let panelsLabel = UILabel()
-  private let bottomLabel = UILabel()
-  private let rightLabel = UILabel()
-  private let leftLabel = UILabel()
-  private let introAgainView = ButtonsStackView()
+  static let introURL = "nogps-guide://intro"
+
+  /// Ukrainian for the uk and ru locales, English for the others, as the page expects.
+  static func pageLang(_ language: String?) -> String {
+    switch language?.lowercased() {
+    case "uk", "ru": return "uk"
+    default: return "en"
+    }
+  }
+
+  static func action(for url: URL) -> LinkAction {
+    if url.absoluteString == introURL {
+      return .intro
+    }
+    if url.scheme == "http" || url.scheme == "https" {
+      return .browser(url)
+    }
+    return .load
+  }
+
+  private let webView = WKWebView(frame: .zero, configuration: WKWebViewConfiguration())
 
   // MARK: - Lifecycle
 
   override func viewDidLoad() {
     super.viewDidLoad()
-    setupViews()
-    arrangeViews()
-    layoutViews()
-  }
-}
-
-// MARK: - Private
-
-private extension HowNoGpsController {
-  func setupViews() {
     title = L("nogps_how_title")
     view.setStyle(.pressBackground)
 
-    scrollView.delaysContentTouches = false
-    scrollView.contentInset = UIEdgeInsets(top: Constants.stackInset, left: 0, bottom: Constants.stackInset, right: 0)
-
-    stackView.axis = .vertical
-    stackView.distribution = .fill
-    stackView.alignment = .fill
-    stackView.spacing = Constants.stackSpacing
-
-    // The same text the modal of the intro shows.
-    setupBody(leadLabel, L("nogps_intro_text"))
-
-    panelsLabel.setFontStyle(.semibold18, color: .blackPrimary)
-    panelsLabel.text = L("nogps_how_panels")
-    panelsLabel.numberOfLines = 0
-
-    setupBody(bottomLabel, L("nogps_how_bottom"))
-    // The slide of the zoom buttons, as in the balloon of the right panel and on the same page on Android.
-    setupBody(rightLabel, L("nogps_how_right") + " " + L("nogps_intro_right_swipe"))
-    setupBody(leftLabel, L("nogps_how_left"))
-
-    introAgainView.addButton(title: L("nogps_how_intro_again")) { [weak self] in
-      self?.playIntro()
-    }
-  }
-
-  func setupBody(_ label: UILabel, _ text: String) {
-    label.setFontStyle(.regular16, color: .blackPrimary)
-    label.text = text
-    label.numberOfLines = 0
-  }
-
-  func arrangeViews() {
-    view.addSubview(scrollView)
-    scrollView.addSubview(stackView)
-    stackView.addArrangedSubview(leadLabel)
-    stackView.addArrangedSubview(panelsLabel)
-    stackView.addArrangedSubview(bottomLabel)
-    stackView.addArrangedSubview(rightLabel)
-    stackView.addArrangedSubview(leftLabel)
-    stackView.addArrangedSubview(introAgainView)
-    stackView.setCustomSpacing(Constants.groupSpacing, after: leadLabel)
-    stackView.setCustomSpacing(Constants.groupSpacing, after: leftLabel)
-  }
-
-  func layoutViews() {
-    scrollView.translatesAutoresizingMaskIntoConstraints = false
-    stackView.translatesAutoresizingMaskIntoConstraints = false
-
+    webView.navigationDelegate = self
+    webView.isOpaque = false
+    webView.backgroundColor = .clear
+    webView.translatesAutoresizingMaskIntoConstraints = false
+    view.addSubview(webView)
     NSLayoutConstraint.activate([
-      scrollView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
-      scrollView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
-      scrollView.topAnchor.constraint(equalTo: view.topAnchor),
-      scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-      scrollView.contentLayoutGuide.widthAnchor.constraint(equalTo: scrollView.frameLayoutGuide.widthAnchor),
-
-      stackView.leadingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.leadingAnchor,
-                                         constant: Constants.stackInset),
-      stackView.trailingAnchor.constraint(equalTo: scrollView.contentLayoutGuide.trailingAnchor,
-                                          constant: -Constants.stackInset),
-      stackView.topAnchor.constraint(equalTo: scrollView.contentLayoutGuide.topAnchor),
-      stackView.bottomAnchor.constraint(equalTo: scrollView.contentLayoutGuide.bottomAnchor),
+      webView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+      webView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+      webView.topAnchor.constraint(equalTo: view.topAnchor),
+      webView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
     ])
+    loadGuide()
+  }
+
+  private func loadGuide() {
+    guard let file = Bundle.main.url(forResource: "nogps_guide", withExtension: "html"),
+          var components = URLComponents(url: file, resolvingAgainstBaseURL: false) else { return }
+    components.queryItems = [URLQueryItem(name: "lang", value: Self.pageLang(Locale.current.languageCode))]
+    guard let url = components.url else { return }
+    // The folder of the bundle is the base, so the screenshots of the page can be relative files.
+    webView.loadFileURL(url, allowingReadAccessTo: Bundle.main.resourceURL ?? file.deletingLastPathComponent())
   }
 
   /// Back to the map, where the intro runs as it does on the first start.
-  func playIntro() {
+  private func playIntro() {
     guard let map = MapViewController.shared() else { return }
     navigationController?.popToViewController(map, animated: true)
     NoGpsIntroController.play(in: map)
+  }
+}
+
+// MARK: - WKNavigationDelegate
+
+extension HowNoGpsController: WKNavigationDelegate {
+  func webView(_: WKWebView,
+               decidePolicyFor navigationAction: WKNavigationAction,
+               decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+    guard let url = navigationAction.request.url else {
+      decisionHandler(.allow)
+      return
+    }
+    switch Self.action(for: url) {
+    case .intro:
+      decisionHandler(.cancel)
+      playIntro()
+    case .browser(let link):
+      decisionHandler(.cancel)
+      UIApplication.shared.open(link)
+    case .load:
+      decisionHandler(.allow)
+    }
   }
 }

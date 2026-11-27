@@ -1,0 +1,21 @@
+name: Guide page checks
+
+on:
+  pull_request:
+    branches: [ master ]
+    paths:
+      - '.github/workflows/nogps-guide-check.yaml'
+      - 'data/nogps_guide.html'
+      - 'tools/python/nogps_guide_test.py'
+
+jobs:
+  nogps-guide-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v6
+
+      - name: Check the sections, languages, ids and links of the guide
+        run: python3 tools/python/nogps_guide_test.py
