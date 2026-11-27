@@ -3200,7 +3200,7 @@ UNIT_TEST(NoGps_Engine_AutoCalibrationIsNotForReadOnlyOrDisconnectedBox)
     Env env(true /* inertial */);
     CalibrateWhenStillBox box(env, false /* calibrated */);
     env.m_engine.OnEsp32BleBytes(
-        BoxLine("NGI,1,0.4.1,2026-11-15T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA PHONES"));
+        BoxLine("NGI,1,0.6.0,2026-11-15T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA PHONES"));
     auto const & sent = env.m_delegate.m_esp32BleSent;
     auto const list = std::find_if(sent.begin(), sent.end(),
                                    [](auto const & line) { return line.find(",BT_LIST*") != std::string::npos; });
