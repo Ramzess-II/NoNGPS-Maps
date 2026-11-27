@@ -149,15 +149,10 @@ public class MapButtonsController extends Fragment
   private View mSwitchMarkButton;
   @Nullable
   private TextView mPositionStatus;
-  @Nullable
-  private View mCalibrationStatus;
   private static final long POSITION_STATUS_UPDATE_INTERVAL_MS = 1000;
   // The lost road stops the car on the map: it calls for the user at once.
   private static final long ROAD_LOST_BLINK_MS = 400;
   private static final float ROAD_LOST_BLINK_ALPHA = 0.2f;
-  // The calibration can wait for a stop: it reminds gently.
-  private static final long CALIBRATION_BLINK_MS = 1200;
-  private static final float CALIBRATION_BLINK_ALPHA = 0.5f;
   private final Handler mHandler = new Handler(Looper.getMainLooper());
   private final Runnable mPositionStatusUpdater = new Runnable() {
     @Override
@@ -173,8 +168,6 @@ public class MapButtonsController extends Fragment
   // The status of the position blinks while the user must do something about it.
   @Nullable
   private ObjectAnimator mStatusBlinkingAnimator;
-  @Nullable
-  private ObjectAnimator mCalibrationBlinkingAnimator;
   private float mContentHeight;
   private float mContentWidth;
   // In the navigation only.
@@ -256,9 +249,6 @@ public class MapButtonsController extends Fragment
     final View statusBar = mFrame.findViewById(R.id.status_nav);
     if (statusBar != null)
       mStatusBar = new StatusBar(statusBar, () -> showBoxSheet(BoxBottomSheet.Page.MAIN));
-    mCalibrationStatus = mFrame.findViewById(R.id.calibration_status);
-    if (mCalibrationStatus != null)
-      mCalibrationStatus.setOnClickListener(v -> onCalibrationWarningClick());
     final View speedView = mFrame.findViewById(R.id.speed_view);
     if (speedView != null)
       mSpeedView = new SpeedView(speedView);
@@ -419,17 +409,6 @@ public class MapButtonsController extends Fragment
       mStatusBlinkingAnimator =
           blink(mPositionStatus, status.roadLost, mStatusBlinkingAnimator, ROAD_LOST_BLINK_MS, ROAD_LOST_BLINK_ALPHA);
     }
-    // Until the user calibrates the box: an alert would be easy to miss or to put off.
-    if (mCalibrationStatus != null)
-    {
-      // The bar next to the speed is the calibration now, the warning comes back when it ends without a calibration.
-      final boolean calibrate =
-          BoxBottomSheet.needsCalibration(status) && (mCalibrationBar == null || !mCalibrationBar.isShown());
-      UiUtils.showIf(calibrate, mCalibrationStatus);
-      mCalibrationBlinkingAnimator = blink(mCalibrationStatus, calibrate, mCalibrationBlinkingAnimator,
-                                           CALIBRATION_BLINK_MS, CALIBRATION_BLINK_ALPHA);
-    }
-
     if (mStatusBar != null)
       mStatusBar.update(status);
     updateSpeedView(status);
@@ -489,19 +468,6 @@ public class MapButtonsController extends Fragment
     // The calibration bar of the box comes first: both slide out of the speed.
     if (mSpeedHint != null)
       mSpeedHint.update(status, mCalibrationBar != null && mCalibrationBar.isShown());
-  }
-
-  private void onCalibrationWarningClick()
-  {
-    // The bar slides out of the speed: without it the user calibrates on the page.
-    final View speed = mFrame.findViewById(R.id.speed_view);
-    if (mCalibrationBar == null || speed == null || speed.getVisibility() != View.VISIBLE)
-    {
-      showBoxSheet(BoxBottomSheet.Page.CALIBRATION);
-      return;
-    }
-    NoGps.nativeCalibrateWhenStill();
-    updateSpeedView(NoGps.getStatus());
   }
 
   /**
@@ -1064,9 +1030,6 @@ public class MapButtonsController extends Fragment
     if (mPositionStatus != null)
       mStatusBlinkingAnimator =
           blink(mPositionStatus, false, mStatusBlinkingAnimator, ROAD_LOST_BLINK_MS, ROAD_LOST_BLINK_ALPHA);
-    if (mCalibrationStatus != null)
-      mCalibrationBlinkingAnimator =
-          blink(mCalibrationStatus, false, mCalibrationBlinkingAnimator, CALIBRATION_BLINK_MS, CALIBRATION_BLINK_ALPHA);
     if (mStatusBar != null)
       mStatusBar.stop();
     if (mSearchWheel != null)

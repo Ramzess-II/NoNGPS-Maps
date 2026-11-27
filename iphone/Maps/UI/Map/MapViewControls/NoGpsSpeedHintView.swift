@@ -185,7 +185,7 @@ final class NoGpsSpeedHintView: UIControl {
   /// The bar is shown while the core asks for it, unless the box asks to be calibrated: that comes first, and both are
   /// at the bottom of the map.
   static func isShown(_ status: NoGpsStatus) -> Bool {
-    status.speedHintShown && !NoGpsBoxPage.needsCalibration(status)
+    status.speedHintShown && !status.boxNeedsCalibration
   }
 
   /// While the car drives at a speed GPS has not measured.
@@ -292,7 +292,7 @@ final class NoGpsSpeedHintView: UIControl {
   /// from the bar and a ring from the speed. A milestone rains confetti over the map for longer.
   /// \param speed the speed view, the ring goes out of it.
   func celebrate(status: NoGpsStatus, speed: UIView) {
-    guard !NoGpsBoxPage.needsCalibration(status) else { return }
+    guard !status.boxNeedsCalibration else { return }
     let milestone = status.speedMilestone != .range
     let duration = milestone ? Constants.milestoneDuration : Constants.celebrationDuration
     celebrationEnd = Date().addingTimeInterval(duration)
