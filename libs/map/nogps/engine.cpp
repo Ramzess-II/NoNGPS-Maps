@@ -105,6 +105,7 @@ Engine::Engine(Delegate & delegate, MapApi & map, Storage & storage, Clock const
   , m_tripLogTimer(scheduler)
   , m_calibrateTimer(scheduler)
   , m_phoneRemovedTimer(scheduler)
+  , m_boxResetTimer(scheduler)
   , m_boxLinkEndedMs(clock.NowMs())
 {}
 
@@ -1103,7 +1104,7 @@ void Engine::OnBoxHeard(std::string const & id, std::string const & firmware)
     SaveCarPosition(true /* now */);
   }
   m_cars.OnBoxHeard(id, firmware, m_clock.UnixNowMs());
-  // Over kMaxCars the box is no car of ours and keeps nothing of it, see OnBoxRecoveryCode().
+  // Over kMaxCars the box is no car of ours and keeps nothing of it.
   m_boxHeardId = m_cars.GetCurrentCar() == id ? id : std::string();
   if (m_cars.GetCurrentCar() != before)
   {
@@ -1161,11 +1162,21 @@ void Engine::OnBoxCarWritten(std::string const & key, std::string const & value,
   m_boxCarValues.OnWritten(key, value, error);
 }
 
-void Engine::OnBoxRecoveryCode(std::string const & code)
+void Engine::OnBoxFactoryReset(std::string const & error)
 {
-  // The code is of the box this link is to, not of the car the user may have chosen meanwhile.
-  if (!m_boxHeardId.empty())
-    m_cars.SetCarValue(m_boxHeardId, CarStorage::kCarRecoveryCode, code);
+  if (!error.empty())
+  {
+    m_boxResetError = error;
+    m_boxResetTimer.Start(0, [this] { m_delegate.OnEvent(Event::BoxResetFailed); });
+    return;
+  }
+  m_boxResetError.clear();
+  // The box this link is to, not the car that is current by now.
+  auto const car = m_boxHeardId.empty() ? m_cars.GetCurrentCar() : m_boxHeardId;
+  LOG(LINFO, ("The box of the car", car, "is reset"));
+  // The box has erased this phone with its key: the next session gives it a new one.
+  m_cars.SetCarValue(car, CarStorage::kCarAuthKey, "");
+  m_boxResetTimer.Start(0, [this] { m_delegate.OnEvent(Event::BoxReset); });
 }
 
 void Engine::OnThisPhoneRemoved()
@@ -1232,6 +1243,13 @@ void Engine::StartAddPhone()
 {
   if (auto * box = m_inertial ? m_inertial->GetEsp32() : nullptr)
     box->StartAddPhone();
+}
+
+void Engine::FactoryResetBox()
+{
+  m_boxResetError.clear();
+  if (auto * box = m_inertial ? m_inertial->GetEsp32() : nullptr)
+    box->FactoryReset();
 }
 
 void Engine::EndAddPhone()
@@ -2251,8 +2269,6 @@ Status Engine::GetStatus()
   status.m_inertialEnabled = IsInertialNavigationEnabled();
   status.m_esp32Source = m_storage.IsEsp32Source();
   status.m_carId = m_cars.GetCurrentCar();
-  if (!status.m_carId.empty())
-    status.m_boxRecoveryCode = m_cars.GetCarValue(status.m_carId, CarStorage::kCarRecoveryCode).value_or("");
   status.m_elm327Address = m_storage.Get<std::string>(Storage::kElm327Address, "");
   status.m_inertialStarted = status.m_inertialEnabled && m_inertial;
   if (status.m_inertialStarted)
@@ -2292,6 +2308,12 @@ Status Engine::GetStatus()
     {
       if (box->GetInfo())
         status.m_boxFirmware = box->GetInfo()->m_firmware;
+      status.m_boxTooOld = box->IsBoxTooOld();
+      status.m_boxRefused = box->IsBoxRefused();
+      status.m_boxPairAgain = box->CanPairAgain();
+      if (status.m_boxPairAgain)
+        status.m_boxPairAgainId = box->GetRefusedBoxId();
+      status.m_boxResetError = m_boxResetError;
       status.m_boxValues = box->GetBoxValues();
       if (auto const * firmware = FindBoxFirmware())
         status.m_bundledFirmware = firmware->m_version;

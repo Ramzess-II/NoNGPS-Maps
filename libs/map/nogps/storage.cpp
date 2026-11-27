@@ -247,7 +247,7 @@ void CarStorage::ForgetCar(std::string const & id)
   SetIds(ids);
   for (auto const key : kCarValues)
     m_storage.Remove(GetCarKey(id, key));
-  for (auto const key : {kCarName, kCarFirmware, kCarLastSeen, kCarKnownBoxValues, kCarRecoveryCode})
+  for (auto const key : {kCarName, kCarFirmware, kCarLastSeen, kCarKnownBoxValues})
     m_storage.Remove(GetCarKey(id, key));
   // The box of a forgotten car still knows this phone and may still keep its key: the key is kept unconfirmed, so the
   // car added again is taken whether the box has it or not, see Esp32Source.

@@ -1010,12 +1010,8 @@
     <string name="nogps_box_bt_no_location">приложению не разрешена геолокация</string>
     <!-- State of the sensor box, shown after its name -->
     <string name="nogps_box_bt_disabled">Bluetooth на телефоне выключен</string>
-    <!-- State of the sensor box, shown after its name. The box accepts a new phone only for two minutes after it gets power -->
-    <string name="nogps_box_bt_pairing_closed">найден, но не сопряжён с этим телефоном. Выньте блок из разъёма и вставьте обратно: 2 минуты он принимает новый телефон</string>
     <!-- State of the sensor box, shown after its name -->
     <string name="nogps_box_bt_connecting">подключаюсь по Bluetooth</string>
-    <!-- State of the sensor box, shown after its name while the system asks for the pairing code -->
-    <string name="nogps_box_bt_pairing">введите код блока в окне сопряжения: 123456, если его не меняли</string>
     <!-- State of the sensor box, shown after its name -->
     <string name="nogps_box_bt_waiting">подключён по Bluetooth, жду данные</string>
     <!-- State of the sensor box, shown after its name: the user cancelled the pairing code or entered a wrong one. The phone stops trying until the user asks -->
@@ -1085,10 +1081,6 @@
     <string name="nogps_car_phones_unknown">Телефоны блока видны, пока он подключён к этому телефону.</string>
     <!-- Button under the list of the cars: search the sensor box of another car -->
     <string name="nogps_car_add">Добавить машину</string>
-    <!-- State of the sensor box, shown after its name: the box has phones, a new one is added on one of them -->
-    <string name="nogps_box_bt_pairing_by_phone">найден, но не сопряжён с этим телефоном. На телефоне, сопряжённом с блоком, откройте «Блок», нажмите на имя машины вверху, затем «Добавить телефон» и введите код здесь. Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны</string>
-    <!-- State of the sensor box, shown after its name: the box has 4 phones and takes no new one -->
-    <string name="nogps_box_bt_pairing_full">найден, но не сопряжён с этим телефоном. У блока 4 телефона: удалите один на сопряжённом телефоне («Блок», имя машины вверху). Нет сопряжённого телефона под рукой? Выключите Bluetooth на остальных телефонах, сопряжённых с блоком. Вставьте блок в разъём и выньте его в течение минуты, 3 раза, а в третий раз оставьте вставленным: 2 минуты он принимает этот телефон с кодом 123456, если его не меняли, и забывает остальные телефоны</string>
     <!-- Heading of the group of the best timed runs on the page of a car -->
     <string name="nogps_car_records">Рекорды</string>
     <!-- Heading of the group of the phones paired with the sensor box of the car on the page of a car -->

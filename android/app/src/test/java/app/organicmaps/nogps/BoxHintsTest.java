@@ -3,6 +3,7 @@ package app.organicmaps.nogps;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
@@ -44,23 +45,32 @@ public class BoxHintsTest
                  BoxBottomSheet.linkHintText(status(SourceState.CONNECTING, BleState.BOND_LOST)));
   }
 
-  // The system dialog wants the recovery code of the box in the pairing window, when the box has told it.
+  // #663: the row of the box tells a short line, the full hint is shown once on its own.
   @Test
-  public void pairingHintsHaveRecoveryCode()
+  public void boxRowIsShortWhereTheHintIsLong()
   {
-    for (BleState ble : new BleState[] {BleState.PAIRING_BY_PHONE, BleState.PAIRING_FULL, BleState.PAIRING})
+    final Context context = Mockito.mock(Context.class);
+    when(context.getString(anyInt())).thenAnswer(call -> "#" + call.getArgument(0));
+    for (BleState ble : new BleState[] {BleState.PAIRING_CLOSED, BleState.PAIRING_BY_PHONE, BleState.PAIRING_FULL})
     {
       final NoGps.Status status = status(SourceState.CONNECTING, ble);
-      assertFalse(BoxBottomSheet.hintHasRecoveryCode(status));
-      status.boxRecoveryCode = "123456";
-      assertTrue(BoxBottomSheet.hintHasRecoveryCode(status));
+      assertEquals(ble.name(), "#" + R.string.nogps_box_bt_not_paired, BoxTexts.boxStateText(context, status));
+      assertTrue(ble.name(), BoxBottomSheet.linkHintText(status) != 0);
     }
-    for (BleState ble : new BleState[] {BleState.PAIRING_CLOSED, BleState.BOND_LOST, BleState.SEARCHING})
-    {
-      final NoGps.Status status = status(SourceState.CONNECTING, ble);
-      status.boxRecoveryCode = "123456";
-      assertFalse(BoxBottomSheet.hintHasRecoveryCode(status));
-    }
+    assertEquals("#" + R.string.nogps_box_bt_bond_lost_short,
+                 BoxTexts.boxStateText(context, status(SourceState.CONNECTING, BleState.BOND_LOST)));
+  }
+
+  // A box below the firmware the application drives is offered the update, whatever its link tells.
+  @Test
+  public void tooOldBoxIsToldFirst()
+  {
+    final Context context = Mockito.mock(Context.class);
+    when(context.getString(anyInt(), any())).thenAnswer(call -> "#" + call.getArgument(0) + call.getArgument(1));
+    final NoGps.Status status = status(SourceState.CONNECTED, BleState.CONNECTED);
+    status.boxTooOld = true;
+    status.boxFirmware = "0.5.1";
+    assertEquals("#" + R.string.nogps_box_too_old + "0.5.1", BoxTexts.boxStateText(context, status));
   }
 
   // The steps tell the search and the connection themselves.
@@ -92,7 +102,7 @@ public class BoxHintsTest
     final Context context = Mockito.mock(Context.class);
     when(context.getString(anyInt())).thenAnswer(call -> "#" + call.getArgument(0));
     final String sleeping = "#" + R.string.nogps_box_sleeping;
-    assertEquals("#" + R.string.nogps_box_bt_bond_lost,
+    assertEquals("#" + R.string.nogps_box_bt_bond_lost_short,
                  BoxTexts.boxStateText(context, status(SourceState.BOX_SLEEPING, BleState.BOND_LOST)));
     assertEquals(sleeping + " · #" + R.string.nogps_box_bt_searching,
                  BoxTexts.boxStateText(context, status(SourceState.BOX_SLEEPING, BleState.SEARCHING)));

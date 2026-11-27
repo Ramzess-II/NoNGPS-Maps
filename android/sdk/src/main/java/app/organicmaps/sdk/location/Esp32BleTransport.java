@@ -77,10 +77,14 @@ class Esp32BleTransport
   // The pieces of a new firmware of the box, section 18 of the same document.
   private static final UUID OTA = UUID.fromString("02CB0004-C0C3-40D0-819C-5A85998DCD99");
   private static final UUID CLIENT_CONFIG = UUID.fromString("00002902-0000-1000-8000-00805F9B34FB");
-  // The name of the box is NonGPS-XXXX; the boxes that are not updated still say NoGPS-XXXX.
-  private static final String[] NAME_PREFIXES = {"NonGPS-", "NoGPS-"};
-  // The box tells in its advertisement if it accepts a new phone now: company, format version 1, flags.
+  // The name of the box is NonGPS-XXXX.
+  private static final String NAME_PREFIX = "NonGPS-";
+  // The box tells in its advertisement if it accepts a new phone now and its id: company, then the format version 2,
+  // the flags and the four characters of NonGPS-XXXX.
   private static final int MANUFACTURER_ID = 0xFFFF;
+  private static final int MANUFACTURER_VERSION = 2;
+  private static final int ID_OFFSET = 2;
+  private static final int ID_SIZE = 4;
   private static final int FLAG_PAIRING_OPEN = 1;
   private static final int FLAG_FULL = 1 << 1;
   private static final int FLAG_HAS_PHONES = 1 << 2;
@@ -383,19 +387,36 @@ class Esp32BleTransport
   }
 
   /**
-   * @return the four characters of a name that starts with a prefix of the box, null otherwise.
+   * @return the four characters of a name that starts with the prefix of the box, null otherwise.
    */
   @Nullable
   static String boxIdOfName(@Nullable String name)
   {
-    if (name == null)
+    if (name == null || !name.startsWith(NAME_PREFIX))
       return null;
-    for (String prefix : NAME_PREFIXES)
+    return name.substring(NAME_PREFIX.length());
+  }
+
+  /**
+   * @param data the manufacturer data of the advertisement of company 0xFFFF, without the company: the version, the
+   *             flags and the id.
+   * @return the four characters of the box id the data carries, null if they are not there (version 1 had none).
+   */
+  @VisibleForTesting
+  @Nullable
+  static String boxIdOfManufacturerData(@Nullable byte[] data)
+  {
+    if (data == null || data.length < ID_OFFSET + ID_SIZE || data[0] < MANUFACTURER_VERSION)
+      return null;
+    final StringBuilder id = new StringBuilder();
+    for (int i = ID_OFFSET; i < ID_OFFSET + ID_SIZE; ++i)
     {
-      if (name.startsWith(prefix))
-        return name.substring(prefix.length());
+      final char c = (char) (data[i] & 0xFF);
+      if (c < '0' || c > 'z' || !Character.isLetterOrDigit(c))
+        return null;
+      id.append(c);
     }
-    return null;
+    return id.toString();
   }
 
   /**
@@ -872,13 +893,18 @@ class Esp32BleTransport
   }
 
   /**
-   * @return the four characters of the name of the box, NonGPS-XXXX or NoGPS-XXXX, null if the box doesn't tell it.
+   * @return the four characters of the id of the box: the manufacturer data have it, which a box seen without its name
+   * has too; else the name NonGPS-XXXX. Null if the box doesn't tell it.
    */
   @SuppressLint("MissingPermission")
   @Nullable
   private static String getBoxId(@NonNull ScanResult result)
   {
     final ScanRecord record = result.getScanRecord();
+    final String advertised =
+        boxIdOfManufacturerData(record != null ? record.getManufacturerSpecificData(MANUFACTURER_ID) : null);
+    if (advertised != null)
+      return advertised;
     String name = record != null ? record.getDeviceName() : null;
     if (name == null)
       name = result.getDevice().getName();

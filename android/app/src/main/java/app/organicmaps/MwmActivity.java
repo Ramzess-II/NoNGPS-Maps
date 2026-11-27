@@ -70,6 +70,7 @@ import app.organicmaps.maplayer.MapButtonsController;
 import app.organicmaps.maplayer.MapButtonsViewModel;
 import app.organicmaps.maplayer.ToggleMapLayerFragment;
 import app.organicmaps.nogps.AboutNoGpsActivity;
+import app.organicmaps.nogps.BoxBottomSheet;
 import app.organicmaps.nogps.BoxTexts;
 import app.organicmaps.nogps.FirmwareUpdateDialog;
 import app.organicmaps.nogps.HowNoGpsActivity;
@@ -1106,7 +1107,9 @@ public class MwmActivity extends BaseMwmFragmentActivity
       case SPRINT_MEASURED -> 0;
       // LocationHelper has started a new file of the trip log.
       case TRIP_STARTED -> 0;
-      case BOX_REFUSED -> R.string.nogps_box_refused;
+      case BOX_REFUSED -> onBoxRefused();
+      case BOX_RESET -> onBoxReset();
+      case BOX_RESET_FAILED -> R.string.nogps_box_reset_failed;
       // The buttons show the mode, they are updated every second.
       case MANUAL_MODE_CHANGED -> 0;
       case GPS_BACK -> R.string.nogps_gps_back_auto;
@@ -1189,6 +1192,60 @@ public class MwmActivity extends BaseMwmFragmentActivity
       return R.string.nogps_phone_removed;
     Toast.makeText(this, getString(R.string.nogps_phone_removed_unpair, carId), Toast.LENGTH_LONG).show();
     return 0;
+  }
+
+  /**
+   * The box has erased everything on the request of the user and restarts as new: its car is forgotten and its old
+   * system pairing removed, as when it removes this phone.
+   */
+  private int onBoxReset()
+  {
+    final String carId = NoGps.getStatus().carId;
+    if (carId.isEmpty())
+      return R.string.nogps_box_reset_done;
+    final LocationHelper helper = MwmApplication.from(this).getLocationHelper();
+    helper.forgetCar(carId);
+    if (helper.unpairBox(carId))
+      return R.string.nogps_box_reset_done;
+    Toast.makeText(this, getString(R.string.nogps_box_reset_unpair, carId), Toast.LENGTH_LONG).show();
+    return 0;
+  }
+
+  /**
+   * The box has not proved that it is the box of the car. When it has lost the key of this phone or keeps another,
+   * one tap forgets the car and adds it again; nothing changes without it, as a fake box could answer the same.
+   */
+  private int onBoxRefused()
+  {
+    final NoGps.Status status = NoGps.getStatus();
+    if (!status.boxPairAgain || status.boxPairAgainId.isEmpty())
+      return R.string.nogps_box_refused;
+    if (!isFinishing() && !getSupportFragmentManager().isStateSaved())
+    {
+      final String carId = status.boxPairAgainId;
+      new MaterialAlertDialogBuilder(this, R.style.MwmTheme_AlertDialog)
+          .setTitle(R.string.nogps_box_pair_again_title)
+          .setMessage(R.string.nogps_box_pair_again_text)
+          .setPositiveButton(
+              R.string.nogps_box_pair_again,
+              (dialog, which) -> {
+                final LocationHelper helper = MwmApplication.from(this).getLocationHelper();
+                helper.forgetCar(carId);
+                // The old system pairing would only block the new one.
+                if (!helper.unpairBox(carId))
+                  Toast.makeText(this, getString(R.string.nogps_box_pair_again_unpair, carId), Toast.LENGTH_LONG)
+                      .show();
+                showBoxSheet(BoxBottomSheet.Page.ADD_CAR);
+              })
+          .setNegativeButton(R.string.later, null)
+          .show();
+    }
+    return 0;
+  }
+
+  private void showBoxSheet(@NonNull BoxBottomSheet.Page page)
+  {
+    BoxBottomSheet.show(getSupportFragmentManager(), page);
   }
 
   /**

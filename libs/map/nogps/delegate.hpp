@@ -79,8 +79,13 @@ enum class Event
   // platform starts a new file of the trip log before it returns, the calibration of the car is logged next.
   TripStarted,
   // The sensor box has not proved itself and is not used until the link is made again: the user may have to forget
-  // the car and pair the box again. Told once for a refusal.
+  // the car and pair the box again, see Status::m_boxPairAgain. Told once for a refusal.
   BoxRefused,
+  // The box has erased everything on the request of the user, see Engine::FactoryResetBox(), and restarts as new: the
+  // platform forgets the car of the box. The phone is not paired with it any more.
+  BoxReset,
+  // The box has not reset itself: it is busy or does not answer, see Status::m_boxResetError.
+  BoxResetFailed,
 };
 
 /// What the platform does about the ESP32 sensor box over Bluetooth LE, told to Engine::OnEsp32BleState().

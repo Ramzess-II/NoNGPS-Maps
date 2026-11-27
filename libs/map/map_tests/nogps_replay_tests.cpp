@@ -183,7 +183,7 @@ UNIT_TEST(NoGps_Replay_BoxOfTrip)
       Standing(36001000, 36003000) + "S 36003000 0\n";
   auto const log = Drive(input);
   TEST(log.find("I/OMcore: nogps/esp32_source.cpp:") != std::string::npos, (log));
-  TEST(log.find("Box 42FD firmware") != std::string::npos, (log));
+  TEST(log.find("Box 42FD firmware = 0.6.0") != std::string::npos, (log));  // Not a box too old to drive.
 }
 
 UNIT_TEST(NoGps_Replay_LostPairingProbe)

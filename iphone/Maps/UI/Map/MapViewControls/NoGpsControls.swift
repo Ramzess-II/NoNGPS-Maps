@@ -492,6 +492,23 @@ final class NoGpsControls: NSObject {
     firmwareAlert = alert
   }
 
+  private func offerPairAgain(carId: String) {
+    guard UIApplication.shared.applicationState == .active else {
+      Toast.show(withText: L("nogps_box_refused"))
+      return
+    }
+    let alert = UIAlertController(title: L("nogps_box_pair_again_title"), message: L("nogps_box_pair_again_text"),
+                                  preferredStyle: .alert)
+    alert.addAction(UIAlertAction(title: L("later"), style: .cancel))
+    alert.addAction(UIAlertAction(title: L("nogps_box_pair_again"), style: .default) { _ in
+      NoGps.forgetCar(carId)
+      NoGpsStatusBar.update(NoGps.status())
+      Toast.show(withText: String(format: L("nogps_box_pair_again_forget"), carId))
+      NoGpsBoxSheet.show(.addCar)
+    })
+    UIViewController.topViewController().present(alert, animated: true)
+  }
+
   /// The log of a test drive is analysed afterwards: the tester marks the moments the car was shown wrong at. The flag
   /// is kept with a screenshot to be sent from the settings, see NoGpsFlags.
   @objc
@@ -612,7 +629,26 @@ final class NoGpsControls: NSObject {
       text = nil
     // The bridge has started a new file of the trip log.
     case .tripStarted: text = nil
-    case .boxRefused: text = L("nogps_box_refused")
+    case .boxRefused:
+      // The box has lost the key of this phone or has another one: one tap forgets the car and adds it again. Nothing
+      // changes without it, as a fake box could answer the same.
+      if NoGps.status().boxPairAgain, !NoGps.status().boxPairAgainId.isEmpty {
+        offerPairAgain(carId: NoGps.status().boxPairAgainId)
+        text = nil
+      } else {
+        text = L("nogps_box_refused")
+      }
+    // The box has erased everything on the request of the user: its car is forgotten as by the user, and the user is
+    // told to remove the box in the Bluetooth settings, or iOS refuses the new pairing.
+    case .boxReset:
+      let carId = NoGps.status().carId
+      if carId.isEmpty {
+        text = nil
+      } else {
+        NoGps.forgetCar(carId)
+        text = String(format: L("nogps_box_reset_forget"), carId)
+      }
+    case .boxResetFailed: text = L("nogps_box_reset_failed")
     case .firmwareUpdateAvailable:
       offerFirmwareUpdate()
       text = nil
