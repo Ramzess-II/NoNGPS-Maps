@@ -56,4 +56,12 @@ final class NoGpsProfileTests: XCTestCase {
     XCTAssertEqual(result[0].rows[1].value, L("nogps_unknown"))
     XCTAssertEqual(result[1].rows.map(\.value), [L("nogps_unknown"), L("nogps_unknown")])
   }
+
+  func testASectionWithNoGroupHasNone() {
+    // The two sections of the empty state, asked about once a car is there.
+    let result = groups([car("A111")], [:])
+    XCTAssertEqual(NoGpsProfile.group(at: 0, of: result)?.carId, "A111")
+    XCTAssertNil(NoGpsProfile.group(at: 1, of: result))
+    XCTAssertNil(NoGpsProfile.group(at: 0, of: []))
+  }
 }
