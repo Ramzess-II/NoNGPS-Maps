@@ -27,9 +27,9 @@ enum NoGpsIntroStep: CaseIterable {
 /// IntroSequence.
 final class NoGpsIntroSequence {
   /// The text of a balloon appears at this speed, characters per second: about as fast as it is read, so the eye goes
-  /// to the panel without waiting for the text. The longest balloon, the right panel with the slide line, takes about
-  /// four seconds.
-  static let typeCharsPerS = 20.0
+  /// to the panel without waiting for the text. The longest balloon, the left panel, takes under
+  /// five seconds.
+  static let typeCharsPerS = 30.0
 
   private static let steps = NoGpsIntroStep.allCases
 

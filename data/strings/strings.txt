@@ -47862,30 +47862,30 @@ uk = Так, зрозуміло: працює з датчиком
 [nogps_intro_bottom]
 comment = Balloon of the first start pointing at the bottom bar
 tags = android-app,apple-maps
-en = The cars, the box and GPS are here.
-ru = Машины, датчик и GPS — здесь.
-uk = Машини, датчик і GPS — тут.
+en = Where your position comes from: the NonGPS box or GPS. Tap it to connect the box or see its status.
+ru = Откуда берётся ваша позиция: датчик NonGPS или GPS. Нажмите, чтобы подключить датчик или посмотреть его состояние.
+uk = Звідки береться ваша позиція: датчик NonGPS або GPS. Натисніть, щоб підключити датчик або побачити його стан.
 
 [nogps_intro_right]
 comment = Balloon of the first start pointing at the panel with the zoom buttons
 tags = android-app,apple-maps
-en = Zoom and the direction of the map. Hold to move it.
-ru = Масштаб и поворот карты. Удержание двигает панель.
-uk = Масштаб і поворот мапи. Утримання рухає панель.
+en = Zoom and turn the map. Hold the panel to move it up or down.
+ru = Масштаб и поворот карты. Удержите панель, чтобы переместить её вверх или вниз.
+uk = Масштаб і поворот мапи. Утримуйте панель, щоб перемістити її вгору або вниз.
 
 [nogps_intro_right_swipe]
 comment = Appended to nogps_intro_right, the zoom buttons also take a slide
 tags = android-app,apple-maps
-en = Slide +/− to zoom.
-ru = Проведите по +/− для масштаба.
-uk = Проведіть по +/− для масштабу.
+en = Slide along +/− to zoom smoothly.
+ru = Проведите вдоль +/−, чтобы плавно менять масштаб.
+uk = Проведіть уздовж +/−, щоб плавно змінювати масштаб.
 
 [nogps_intro_left]
 comment = Balloon of the first start pointing at the panel with the car buttons
 tags = android-app,apple-maps
-en = Turn the car or point it by hand. Hold to move it.
-ru = Поверните машину или укажите её рукой. Удержание двигает панель.
-uk = Поверніть машину або вкажіть її рукою. Утримання рухає панель.
+en = When GPS is lost, turn the car around or move it to another road with these buttons, or point to where it is by hand. Hold the panel to move it.
+ru = Если GPS пропал, разворачивайте машину или переносите её на другую дорогу этими кнопками либо укажите рукой, где она. Удержите панель, чтобы переместить её.
+uk = Якщо GPS зник, розвертайте авто або переносьте його на іншу дорогу цими кнопками чи вкажіть рукою, де воно. Утримуйте панель, щоб перемістити її.
 
 [nogps_how_title]
 comment = Menu row and title of the page that explains the app and plays the intro again

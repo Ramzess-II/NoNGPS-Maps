@@ -1523,13 +1523,13 @@
     <!-- Button that closes the dialog of the first start -->
     <string name="nogps_intro_understand">Так, зрозуміло: працює з датчиком</string>
     <!-- Balloon of the first start pointing at the bottom bar -->
-    <string name="nogps_intro_bottom">Машини, датчик і GPS — тут.</string>
+    <string name="nogps_intro_bottom">Звідки береться ваша позиція: датчик NonGPS або GPS. Натисніть, щоб підключити датчик або побачити його стан.</string>
     <!-- Balloon of the first start pointing at the panel with the zoom buttons -->
-    <string name="nogps_intro_right">Масштаб і поворот мапи. Утримання рухає панель.</string>
+    <string name="nogps_intro_right">Масштаб і поворот мапи. Утримуйте панель, щоб перемістити її вгору або вниз.</string>
     <!-- Appended to nogps_intro_right, the zoom buttons also take a slide -->
-    <string name="nogps_intro_right_swipe">Проведіть по +/− для масштабу.</string>
+    <string name="nogps_intro_right_swipe">Проведіть уздовж +/−, щоб плавно змінювати масштаб.</string>
     <!-- Balloon of the first start pointing at the panel with the car buttons -->
-    <string name="nogps_intro_left">Поверніть машину або вкажіть її рукою. Утримання рухає панель.</string>
+    <string name="nogps_intro_left">Якщо GPS зник, розвертайте авто або переносьте його на іншу дорогу цими кнопками чи вкажіть рукою, де воно. Утримуйте панель, щоб перемістити її.</string>
     <!-- Menu row and title of the page that explains the app and plays the intro again -->
     <string name="nogps_how_title">Як працює NonGPS</string>
 </resources>
