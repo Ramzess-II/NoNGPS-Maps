@@ -2035,7 +2035,7 @@
 "nogps_intro_right_swipe" = "Проведіть уздовж +/−, щоб плавно змінювати масштаб.";
 
 /* Balloon of the first start pointing at the panel with the car buttons */
-"nogps_intro_left" = "Якщо GPS зник, повертайте машину на перехресті цими кнопками або вкажіть рукою, де вона. Утримуйте панель, щоб перемістити її.";
+"nogps_intro_left" = "Якщо GPS зник, розвертайте авто або переносьте його на іншу дорогу цими кнопками чи вкажіть рукою, де воно. Утримуйте панель, щоб перемістити її.";
 
 /* Menu row and title of the page that explains the app and plays the intro again */
 "nogps_how_title" = "Як працює NonGPS";

@@ -1509,7 +1509,7 @@
     <!-- Appended to nogps_intro_right, the zoom buttons also take a slide -->
     <string name="nogps_intro_right_swipe">Slide along +/− to zoom smoothly.</string>
     <!-- Balloon of the first start pointing at the panel with the car buttons -->
-    <string name="nogps_intro_left">When GPS is lost, turn the car on a junction with these buttons, or point to where it is by hand. Hold the panel to move it.</string>
+    <string name="nogps_intro_left">When GPS is lost, turn the car around or move it to another road with these buttons, or point to where it is by hand. Hold the panel to move it.</string>
     <!-- Menu row and title of the page that explains the app and plays the intro again -->
     <string name="nogps_how_title">How NonGPS works</string>
     <!-- Heading of the part of the How NonGPS works page about the panels of the map -->

@@ -2035,7 +2035,7 @@
 "nogps_intro_right_swipe" = "Slide along +/− to zoom smoothly.";
 
 /* Balloon of the first start pointing at the panel with the car buttons */
-"nogps_intro_left" = "When GPS is lost, turn the car on a junction with these buttons, or point to where it is by hand. Hold the panel to move it.";
+"nogps_intro_left" = "When GPS is lost, turn the car around or move it to another road with these buttons, or point to where it is by hand. Hold the panel to move it.";
 
 /* Menu row and title of the page that explains the app and plays the intro again */
 "nogps_how_title" = "How NonGPS works";

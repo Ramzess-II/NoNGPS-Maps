@@ -1519,7 +1519,7 @@
     <!-- Appended to nogps_intro_right, the zoom buttons also take a slide -->
     <string name="nogps_intro_right_swipe">Проведіть уздовж +/−, щоб плавно змінювати масштаб.</string>
     <!-- Balloon of the first start pointing at the panel with the car buttons -->
-    <string name="nogps_intro_left">Якщо GPS зник, повертайте машину на перехресті цими кнопками або вкажіть рукою, де вона. Утримуйте панель, щоб перемістити її.</string>
+    <string name="nogps_intro_left">Якщо GPS зник, розвертайте авто або переносьте його на іншу дорогу цими кнопками чи вкажіть рукою, де воно. Утримуйте панель, щоб перемістити її.</string>
     <!-- Menu row and title of the page that explains the app and plays the intro again -->
     <string name="nogps_how_title">Як працює NonGPS</string>
     <!-- Heading of the part of the How NonGPS works page about the panels of the map -->
