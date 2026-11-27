@@ -29,6 +29,12 @@ public class MainMenuItemsTest
     }
 
     @Override
+    public void openMapTools()
+    {
+      calls.add("mapTools");
+    }
+
+    @Override
     public void shareLocation()
     {
       calls.add("share");
@@ -118,57 +124,77 @@ public class MainMenuItemsTest
   }
 
   @Test
-  public void threeGroupsUnderTheMapStyles()
+  public void mainMenuHasTheMapToolsRowInTheMiddle()
   {
-    final List<MenuBottomSheetItem> items = MainMenuItems.create(true, true, 0, new Taps());
-    assertEquals(List.of(R.string.nogps_menu_profile, R.string.settings, R.string.share_my_location, R.string.bookmarks,
-                         R.string.download_maps, R.string.start_track_recording, R.string.placepage_add_place_button,
-                         R.string.nogps_how_title, R.string.nogps_about_title, R.string.nogps_about_om_menu,
-                         R.string.nogps_box_buy, R.string.donate),
-                 titles(items));
-    assertEquals(List.of(R.string.nogps_menu_profile, R.string.bookmarks, R.string.nogps_how_title),
+    final List<MenuBottomSheetItem> items = MainMenuItems.create(true, 0, new Taps());
+    assertEquals(
+        List.of(R.string.nogps_menu_profile, R.string.settings, R.string.nogps_menu_map_tools, R.string.nogps_how_title,
+                R.string.nogps_about_title, R.string.nogps_about_om_menu, R.string.nogps_box_buy, R.string.donate),
+        titles(items));
+    assertEquals(List.of(R.string.nogps_menu_profile, R.string.nogps_menu_map_tools, R.string.nogps_how_title),
                  groupStarts(items));
+  }
+
+  @Test
+  public void aboutRowsShareTheInfoIcon()
+  {
+    final List<MenuBottomSheetItem> items = MainMenuItems.create(true, 0, new Taps());
+    assertEquals(R.drawable.ic_info, items.get(titles(items).indexOf(R.string.nogps_about_title)).iconRes);
+    assertEquals(R.drawable.ic_info, items.get(titles(items).indexOf(R.string.nogps_about_om_menu)).iconRes);
+  }
+
+  @Test
+  public void mapToolsSheetHoldsTheOrganicMapsTools()
+  {
+    final List<MenuBottomSheetItem> items = MainMenuItems.createMapTools(true, 0, new Taps());
+    assertEquals(List.of(R.string.share_my_location, R.string.bookmarks, R.string.download_maps,
+                         R.string.start_track_recording, R.string.placepage_add_place_button),
+                 titles(items));
+    assertEquals(List.of(), groupStarts(items));
   }
 
   @Test
   public void everyRowOpensItsOwnScreen()
   {
     final Taps taps = new Taps();
-    assertEquals(List.of("profile", "settings", "share", "bookmarks", "download", "record", "addPlace", "howItWorks",
-                         "aboutNoGps", "aboutOrganicMaps", "buyBox", "donate"),
-                 tapAll(MainMenuItems.create(true, true, 0, taps), taps));
+    assertEquals(
+        List.of("profile", "settings", "mapTools", "howItWorks", "aboutNoGps", "aboutOrganicMaps", "buyBox", "donate"),
+        tapAll(MainMenuItems.create(true, 0, taps), taps));
+    final Taps toolTaps = new Taps();
+    assertEquals(List.of("share", "bookmarks", "download", "record", "addPlace"),
+                 tapAll(MainMenuItems.createMapTools(true, 0, toolTaps), toolTaps));
   }
 
   @Test
   public void addPlaceOnlyWithMapEditing()
   {
-    final List<MenuBottomSheetItem> items = MainMenuItems.create(false, true, 0, new Taps());
+    final List<MenuBottomSheetItem> items = MainMenuItems.createMapTools(false, 0, new Taps());
     assertEquals(
-        List.of(R.string.nogps_menu_profile, R.string.settings, R.string.share_my_location, R.string.bookmarks,
-                R.string.download_maps, R.string.start_track_recording, R.string.nogps_how_title,
-                R.string.nogps_about_title, R.string.nogps_about_om_menu, R.string.nogps_box_buy, R.string.donate),
+        List.of(R.string.share_my_location, R.string.bookmarks, R.string.download_maps, R.string.start_track_recording),
         titles(items));
-    assertEquals(List.of(R.string.nogps_menu_profile, R.string.bookmarks, R.string.nogps_how_title),
-                 groupStarts(items));
   }
 
   @Test
   public void donateOnlyWithADonateUrl()
   {
-    final List<MenuBottomSheetItem> items = MainMenuItems.create(false, false, 0, new Taps());
-    assertEquals(List.of(R.string.nogps_menu_profile, R.string.settings, R.string.share_my_location, R.string.bookmarks,
-                         R.string.download_maps, R.string.start_track_recording, R.string.nogps_how_title,
-                         R.string.nogps_about_title, R.string.nogps_about_om_menu, R.string.nogps_box_buy),
-                 titles(items));
-    assertEquals(List.of(R.string.nogps_menu_profile, R.string.bookmarks, R.string.nogps_how_title),
-                 groupStarts(items));
+    final List<MenuBottomSheetItem> items = MainMenuItems.create(false, 0, new Taps());
+    assertEquals(
+        List.of(R.string.nogps_menu_profile, R.string.settings, R.string.nogps_menu_map_tools, R.string.nogps_how_title,
+                R.string.nogps_about_title, R.string.nogps_about_om_menu, R.string.nogps_box_buy),
+        titles(items));
+  }
+
+  @Test
+  public void mapToolsRowCarriesTheBadge()
+  {
+    final List<MenuBottomSheetItem> items = MainMenuItems.create(true, 7, new Taps());
+    assertEquals(7, items.get(titles(items).indexOf(R.string.nogps_menu_map_tools)).badgeCount);
   }
 
   @Test
   public void downloadMapsCarriesTheBadge()
   {
-    final List<MenuBottomSheetItem> items = MainMenuItems.create(true, true, 7, new Taps());
-    final MenuBottomSheetItem download = items.get(titles(items).indexOf(R.string.download_maps));
-    assertEquals(7, download.badgeCount);
+    final List<MenuBottomSheetItem> items = MainMenuItems.createMapTools(true, 7, new Taps());
+    assertEquals(7, items.get(titles(items).indexOf(R.string.download_maps)).badgeCount);
   }
 }

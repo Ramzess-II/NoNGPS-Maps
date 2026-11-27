@@ -15,6 +15,7 @@ final class BottomMenuPresenterTests: XCTestCase {
     func openSettings() {}
     func openBookmarks() {}
     func openProfile() {}
+    func openMapTools() {}
     func openHowItWorks() {}
     func openAbout() {}
     func openAboutOrganicMaps() {}
@@ -23,16 +24,15 @@ final class BottomMenuPresenterTests: XCTestCase {
     func toggleTrackRecording() {}
   }
 
-  private func makePresenter() -> BottomMenuPresenter {
+  private func makePresenter(sections: [BottomMenuPresenter.Sections] = [.layers, .items]) -> BottomMenuPresenter {
     BottomMenuPresenter(view: MockBottomMenuView(),
                         interactor: MockBottomMenuInteractor(),
-                        sections: [.layers, .items])
+                        sections: sections)
   }
 
   /// Donate shows only when a donate URL is configured; the fork configures none.
   private var expectedCells: [BottomMenuPresenter.CellType] {
-    var cells: [BottomMenuPresenter.CellType] = [.profile, .settings, .share,
-                                                 .bookmarks, .downloadMaps, .recordTrack, .addPlace,
+    var cells: [BottomMenuPresenter.CellType] = [.profile, .settings, .mapTools,
                                                  .howItWorks, .about, .aboutOrganicMaps, .buyBox]
     if Settings.donateUrl() != nil {
       cells.append(.donate)
@@ -48,18 +48,27 @@ final class BottomMenuPresenterTests: XCTestCase {
     XCTAssertEqual(presenter.numberOfSections(in: UITableView()), 2)
   }
 
-  /// Marks and How NonGPS works open a group; Profile sits under the line of the map styles cell.
-  func testGroupsStartAtMarksAndHowItWorks() {
+  /// Map tools and How NonGPS works open a group; Profile sits under the line of the map styles cell.
+  func testGroupsStartAtMapToolsAndHowItWorks() {
     let presenter = makePresenter()
     let starts = presenter.groupStarts.sorted().map { presenter.menuCells[$0] }
-    XCTAssertEqual(starts, [.bookmarks, .howItWorks])
+    XCTAssertEqual(starts, [.mapTools, .howItWorks])
+  }
+
+  func testMapToolsSheetHoldsTheOrganicMapsTools() {
+    let presenter = makePresenter(sections: [.mapTools])
+    XCTAssertEqual(presenter.menuCells, [.share, .bookmarks, .downloadMaps, .recordTrack, .addPlace])
+    XCTAssertTrue(presenter.groupStarts.isEmpty)
+    XCTAssertEqual(presenter.numberOfSections(in: UITableView()), 1)
+    XCTAssertEqual(presenter.tableView(UITableView(), numberOfRowsInSection: 0), 5)
   }
 
   /// cellToHighlightIndexPath() looks the cell up in menuCells, so the order decides the row it points at.
-  func testRecordTrackCanBeHighlighted() {
-    let presenter = makePresenter()
-    XCTAssertEqual(presenter.menuCells.firstIndex(of: .recordTrack), 5)
+  func testRecordTrackCanBeHighlightedInTheMapToolsSheet() {
+    let presenter = makePresenter(sections: [.mapTools])
+    XCTAssertEqual(presenter.menuCells.firstIndex(of: .recordTrack), 3)
     // Without a pending menu deep link nothing is highlighted.
     XCTAssertNil(presenter.cellToHighlightIndexPath())
+    XCTAssertFalse(BottomMenuPresenter.pendingHighlightIsInMapTools)
   }
 }

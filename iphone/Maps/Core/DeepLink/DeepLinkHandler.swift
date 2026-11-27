@@ -53,6 +53,10 @@
     return (url.queryItems?.first(where: { $0.name == "backurl" })?.value ?? nil)
   }
 
+  func peekInAppFeatureHighlightData() -> DeepLinkInAppFeatureHighlightData? {
+    featureHighlightData
+  }
+
   func getInAppFeatureHighlightData() -> DeepLinkInAppFeatureHighlightData? {
     defer { featureHighlightData = nil }
     return featureHighlightData
