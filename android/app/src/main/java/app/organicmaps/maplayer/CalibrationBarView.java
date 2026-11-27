@@ -4,6 +4,7 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
 import android.content.res.ColorStateList;
+import android.content.res.Resources;
 import android.graphics.Outline;
 import android.os.Handler;
 import android.os.Looper;
@@ -18,12 +19,13 @@ import androidx.annotation.StringRes;
 import androidx.core.content.ContextCompat;
 import app.organicmaps.R;
 import app.organicmaps.sdk.location.NoGps;
+import java.util.Locale;
 
 /**
- * The bar that slides out of the speed after a tap on the warning to calibrate the sensor box: the core calibrates the
- * box when the car stands still. The bar shows how much the box shakes in the last 3 s, so the user sees whether the
- * car is still enough. It is orange while the core waits and calibrates and green for a while after the calibration. A
- * tap cancels it and opens the calibration page.
+ * The bar that slides out of the speed when the core waits for the car to calibrate the sensor box. It shows how much
+ * the box shakes in the last 3 s on a split scale with the last 2 s shaded (the box wants the car still for so long),
+ * and a chip with the try, the time held or the peak. It is orange while the core waits and calibrates and green for a
+ * while after the calibration. A tap cancels it and opens the calibration page.
  */
 class CalibrationBarView
 {
@@ -35,6 +37,10 @@ class CalibrationBarView
   private static final long TRACE_MS = 50;
   // The bar keeps clear of the panel of the end edge when the user has moved it down to the bar.
   private static final float END_GAP_DP = 8;
+  // The chip says "peak" when nothing is held and the peak of the trace is this much of the limit.
+  private static final float PEAK_CHIP_PERCENT = 300;
+  // Engine::kCalibrateWhenStillMaxFailures: the core gives up after so many tries.
+  private static final int MAX_TRIES = 5;
 
   @NonNull
   private final View mFrame;
@@ -44,6 +50,10 @@ class CalibrationBarView
   private final View mProgress;
   @NonNull
   private final TextView mTitle;
+  @NonNull
+  private final TextView mChip;
+  @NonNull
+  private final View mReady;
   @NonNull
   private final ShakeTraceView mTrace;
   @NonNull
@@ -59,11 +69,18 @@ class CalibrationBarView
     @Override
     public void run()
     {
-      mTrace.setValues(NoGps.nativeGetBoxShake());
+      mShake = NoGps.nativeGetBoxShake();
+      mTrace.setValues(mShake);
+      if (!mDoneShown)
+        updateChip();
       mHandler.postDelayed(this, TRACE_MS);
     }
   };
   // How much of the bar is out of the speed, 0..1.
+  @NonNull
+  private int[] mShake = new int[0];
+  @Nullable
+  private NoGps.Status mStatus;
   private float mReveal;
   private boolean mOpen;
   private boolean mDoneShown;
@@ -87,6 +104,8 @@ class CalibrationBarView
     mBar = frame.findViewById(R.id.calibration_bar);
     mProgress = frame.findViewById(R.id.calibration_bar_progress);
     mTitle = frame.findViewById(R.id.calibration_bar_title);
+    mChip = frame.findViewById(R.id.calibration_bar_chip);
+    mReady = frame.findViewById(R.id.calibration_bar_ready);
     mTrace = frame.findViewById(R.id.calibration_bar_trace);
     mSpeed = speed;
     mEndPanel = endPanel;
@@ -125,10 +144,46 @@ class CalibrationBarView
   {
     return switch (status.getCalibration())
     {
-      case CALIBRATING -> R.string.nogps_calibrate_still_calibrating;
-      case FAILED_MOVING -> R.string.nogps_calibrate_still_moved;
-      default -> R.string.nogps_calibrate_still_hold;
+      case CALIBRATING -> R.string.nogps_calibrate_bar_measuring;
+      case FAILED_MOVING -> R.string.nogps_calibrate_bar_moved;
+      default -> R.string.nogps_calibrate_bar_hold;
     };
+  }
+
+  /**
+   * The chip at the right of the first row, null when there is nothing to say.
+   *
+   * @param values the trace of the shake in percent of the limit, the oldest first.
+   */
+  @Nullable
+  static String chipText(@NonNull Resources resources, @NonNull NoGps.Status status, @NonNull int[] values)
+  {
+    switch (status.getCalibration())
+    {
+    case CALIBRATING: return status.calibrationProgress + " %";
+    case FAILED_MOVING:
+      return resources.getString(R.string.nogps_calibrate_bar_try, Math.max(2, status.calibrationTries), MAX_TRIES);
+    default:
+      final int held = ShakeTraceView.heldMs(values);
+      if (held >= ShakeTraceView.HOLD_MS && !status.boxStill)
+        return resources.getString(R.string.nogps_calibrate_bar_waiting_box);
+      if (held > 0)
+        return resources.getString(R.string.nogps_calibrate_bar_held,
+                                   String.format(Locale.getDefault(), "%.1f", held / 1000f));
+      int peak = 0;
+      for (int i = Math.max(0, values.length - ShakeTraceView.LINES); i < values.length; ++i)
+        peak = Math.max(peak, values[i]);
+      if (peak >= PEAK_CHIP_PERCENT)
+        return resources.getString(R.string.nogps_calibrate_bar_peak, Math.round(peak / ShakeTraceView.LIMIT_PERCENT));
+      return null;
+    }
+  }
+
+  private void updateChip()
+  {
+    final String text = mStatus == null ? null : chipText(mFrame.getResources(), mStatus, mShake);
+    mChip.setText(text);
+    mChip.setVisibility(text == null ? View.GONE : View.VISIBLE);
   }
 
   /**
@@ -145,6 +200,11 @@ class CalibrationBarView
     {
       final boolean calibrating = status.getCalibration() == NoGps.CalibrationState.CALIBRATING;
       mSawCalibrating |= calibrating;
+      mStatus = status;
+      mTrace.setShowsHold(!calibrating);
+      mTrace.setVisibility(View.VISIBLE);
+      mReady.setVisibility(View.GONE);
+      updateChip();
       mTitle.setText(title(status));
       mBar.setContentDescription(mTitle.getText());
       mProgress.setPivotX(mBar.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL ? mBar.getWidth() : 0);
@@ -164,7 +224,10 @@ class CalibrationBarView
   private void celebrate()
   {
     mDoneShown = true;
-    mTitle.setText(R.string.nogps_calibrate_still_done);
+    mTitle.setText(R.string.nogps_calibrate_bar_done);
+    mChip.setVisibility(View.GONE);
+    mTrace.setVisibility(View.INVISIBLE);
+    mReady.setVisibility(View.VISIBLE);
     mBar.setContentDescription(mTitle.getText());
     mProgress.setScaleX(0);
     animateColor(mDone);

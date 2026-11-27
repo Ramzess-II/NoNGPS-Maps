@@ -1,7 +1,7 @@
-/// The bar of the calibration of the sensor box when the car stands still: it slides out of the speed to the side after
-/// a tap on the warning to calibrate the box. It shows how much the box shakes in the last 3 s, so the user sees
-/// whether the car is still enough: the core calibrates the box by itself when it is. A tap cancels it and opens the
-/// calibration page.
+/// The bar of the calibration of the sensor box when the car stands still: it slides out of the speed to the side when
+/// the core waits for the car. It shows how much the box shakes in the last 3 s on a split scale, the last 2 s of it
+/// shaded (the box wants the car still for so long), and a chip with the try, the time held or the peak: the core
+/// calibrates the box by itself when the car is still. A tap cancels it and opens the calibration page.
 final class NoGpsCalibrationBarView: UIControl {
   enum Constants {
     static let height = NoGpsSpeedView.side
@@ -13,12 +13,23 @@ final class NoGpsCalibrationBarView: UIControl {
     static let openDuration: TimeInterval = 0.52
     static let closeDuration: TimeInterval = 0.28
     static let doneDuration: TimeInterval = 2.8
-    static let traceHeight = CGFloat(18)
-    // The trace shows this much of the shake, the dashed line is at the limit of the stillness (100).
-    static let tracePercent = 200.0
+    static let traceHeight = CGFloat(30)
+    // The dashed line is at the limit of the stillness (100), at kTraceLimitFraction of the height from the top. Below
+    // it the scale is linear from 0 to the limit, above it log10 up to traceTopPercent: a value over it is on the top
+    // edge with a red tick.
     static let limitPercent = 100.0
+    static let traceTopPercent = 1000.0
+    static let traceLimitFraction = 0.45
     // The box sends a line every 20 ms: the trace of 3 s has so many.
     static let traceLines = 150
+    static let lineMs = 20
+    // The box wants the car still for this long to tell STILL, the last so many lines are shaded.
+    static let holdMs = 2000
+    static let holdLines = holdMs / lineMs
+    // The chip says "peak" when nothing is held and the peak of the trace is this much of the limit.
+    static let peakChipPercent = 300.0
+    // Engine::kCalibrateWhenStillMaxFailures: the core gives up after so many tries.
+    static let maxTries = 5
     static let traceRefreshInterval: TimeInterval = 0.05
   }
 
@@ -30,9 +41,9 @@ final class NoGpsCalibrationBarView: UIControl {
 
     var text: String {
       switch self {
-      case .waiting: return L("nogps_calibrate_still_hold")
-      case .calibrating: return L("nogps_calibrate_still_calibrating")
-      case .moved: return L("nogps_calibrate_still_moved")
+      case .waiting: return L("nogps_calibrate_bar_hold")
+      case .calibrating: return L("nogps_calibrate_bar_measuring")
+      case .moved: return L("nogps_calibrate_bar_moved")
       }
     }
   }
@@ -41,7 +52,11 @@ final class NoGpsCalibrationBarView: UIControl {
   private let progress = UIView()
   private let content = UIStackView()
   private let title = UILabel()
+  private let chip = ChipLabel()
+  private let ready = UILabel()
   private let trace = ShakeTraceView()
+  private var shake: [Double] = []
+  private var lastStatus: NoGpsStatus?
   private var widthConstraint = NSLayoutConstraint()
   private var contentWidth = NSLayoutConstraint()
   private var fullWidth = CGFloat(0)
@@ -94,15 +109,29 @@ final class NoGpsCalibrationBarView: UIControl {
     progress.backgroundColor = UIColor.white.withAlphaComponent(0.3)
     bar.addSubview(progress)
 
-    title.font = .systemFont(ofSize: 14, weight: .bold)
+    title.font = .systemFont(ofSize: 11.5, weight: .bold)
     title.textColor = .white
     title.lineBreakMode = .byTruncatingTail
+    title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+    chip.setContentHuggingPriority(.required, for: .horizontal)
+    chip.setContentCompressionResistancePriority(.required, for: .horizontal)
+    let header = UIStackView(arrangedSubviews: [title, chip])
+    header.spacing = 6
+    header.alignment = .center
     trace.translatesAutoresizingMaskIntoConstraints = false
+    ready.font = .systemFont(ofSize: 15, weight: .semibold)
+    ready.textColor = .white
+    ready.text = L("nogps_calibrate_bar_ready")
+    ready.isHidden = true
+    ready.translatesAutoresizingMaskIntoConstraints = false
+    let body = UIView()
+    body.addSubview(trace)
+    body.addSubview(ready)
 
     content.axis = .vertical
-    content.spacing = 5
-    content.addArrangedSubview(title)
-    content.addArrangedSubview(trace)
+    content.spacing = 4
+    content.addArrangedSubview(header)
+    content.addArrangedSubview(body)
     content.translatesAutoresizingMaskIntoConstraints = false
     content.isUserInteractionEnabled = false
     bar.addSubview(content)
@@ -120,7 +149,14 @@ final class NoGpsCalibrationBarView: UIControl {
       content.leadingAnchor.constraint(equalTo: bar.leadingAnchor, constant: Constants.textInset),
       content.centerYAnchor.constraint(equalTo: bar.centerYAnchor),
       contentWidth,
-      trace.heightAnchor.constraint(equalToConstant: Constants.traceHeight),
+      body.heightAnchor.constraint(equalToConstant: Constants.traceHeight),
+      trace.leadingAnchor.constraint(equalTo: body.leadingAnchor),
+      trace.trailingAnchor.constraint(equalTo: body.trailingAnchor),
+      trace.topAnchor.constraint(equalTo: body.topAnchor),
+      trace.bottomAnchor.constraint(equalTo: body.bottomAnchor),
+      ready.leadingAnchor.constraint(equalTo: body.leadingAnchor),
+      ready.trailingAnchor.constraint(equalTo: body.trailingAnchor),
+      ready.centerYAnchor.constraint(equalTo: body.centerYAnchor),
     ])
   }
 
@@ -152,6 +188,37 @@ final class NoGpsCalibrationBarView: UIControl {
     }
   }
 
+  /// The chip at the right of the first row, nil when there is nothing to say.
+  /// \param values the trace of the shake in percent of the limit, the oldest first.
+  static func chipText(_ status: NoGpsStatus, values: [Double]) -> String? {
+    switch state(status) {
+    case .calibrating:
+      return "\(status.calibrationProgress) %"
+    case .moved:
+      return String(format: L("nogps_calibrate_bar_try"), max(2, status.calibrationTries), Constants.maxTries)
+    case .waiting:
+      let held = heldMs(values)
+      if held >= Constants.holdMs, !status.boxStill {
+        return L("nogps_calibrate_bar_waiting_box")
+      }
+      if held > 0 {
+        let seconds = String(format: "%.1f", locale: Locale.current, Double(held) / 1000)
+        return String(format: L("nogps_calibrate_bar_held"), seconds)
+      }
+      let peak = values.suffix(Constants.traceLines).max() ?? 0
+      if peak >= Constants.peakChipPercent {
+        return String(format: L("nogps_calibrate_bar_peak"), Int((peak / Constants.limitPercent).rounded()))
+      }
+      return nil
+    }
+  }
+
+  /// How long the car has been still by the trace: the newest values under the limit in a row, at most holdMs.
+  static func heldMs(_ values: [Double]) -> Int {
+    let held = values.reversed().prefix { $0 < Constants.limitPercent }.count
+    return min(held * Constants.lineMs, Constants.holdMs)
+  }
+
   /// Shows the bar for the status once a second and right after the tap. Not while it is green: it ends by itself.
   /// \param speedShown the bar slides out of the speed, not without it.
   func update(status: NoGpsStatus, speedShown: Bool) {
@@ -171,9 +238,14 @@ final class NoGpsCalibrationBarView: UIControl {
     }
     let state = Self.state(status)
     sawCalibrating = sawCalibrating || state == .calibrating
+    lastStatus = status
     title.text = state.text
     accessibilityLabel = state.text
     setProgress(state == .calibrating ? CGFloat(status.calibrationProgress) / 100 : 0)
+    trace.showsHold = state != .calibrating
+    ready.isHidden = true
+    trace.isHidden = false
+    updateChip()
     open()
   }
 
@@ -197,8 +269,11 @@ final class NoGpsCalibrationBarView: UIControl {
       self?.doneEnd = nil
       self?.close()
     }
-    title.text = L("nogps_calibrate_still_done")
+    title.text = L("nogps_calibrate_bar_done")
     accessibilityLabel = title.text
+    chip.text = nil
+    trace.isHidden = true
+    ready.isHidden = false
     setProgress(0)
     UIView.animate(withDuration: 0.25) { self.bar.backgroundColor = Constants.done }
     UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -206,7 +281,15 @@ final class NoGpsCalibrationBarView: UIControl {
 
   /// The trace of the shake in percent of the stillness limit, the oldest first: the app polls it while the bar is open.
   func setShake(_ values: [NSNumber]) {
-    trace.values = values.map(\.doubleValue)
+    shake = values.map(\.doubleValue)
+    trace.values = shake
+    if !isDone {
+      updateChip()
+    }
+  }
+
+  private func updateChip() {
+    chip.text = lastStatus.flatMap { Self.chipText($0, values: shake) }
   }
 
   private func open() {
@@ -256,13 +339,57 @@ final class NoGpsCalibrationBarView: UIControl {
   }
 }
 
-/// The trace of the shake: a white track with a dashed line at the limit of the stillness, the line of the trace is
-/// orange above it and green below.
+/// A small rounded label with the text of the chip, hidden without a text.
+final class ChipLabel: UILabel {
+  private static let insets = UIEdgeInsets(top: 1, left: 6, bottom: 1, right: 6)
+
+  override init(frame: CGRect) {
+    super.init(frame: frame)
+    font = .monospacedDigitSystemFont(ofSize: 10.5, weight: .bold)
+    textColor = .white
+    backgroundColor = UIColor.white.withAlphaComponent(0.26)
+    layer.cornerRadius = 7
+    layer.masksToBounds = true
+    isHidden = true
+  }
+
+  @available(*, unavailable)
+  required init?(coder _: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
+  override var text: String? {
+    didSet { isHidden = text == nil }
+  }
+
+  override func drawText(in rect: CGRect) {
+    super.drawText(in: rect.inset(by: Self.insets))
+  }
+
+  override var intrinsicContentSize: CGSize {
+    let size = super.intrinsicContentSize
+    return CGSize(width: size.width + Self.insets.left + Self.insets.right,
+                  height: size.height + Self.insets.top + Self.insets.bottom)
+  }
+}
+
+/// The trace of the shake on a white track. The dashed line is at the limit of the stillness, 45% from the top: below
+/// it the scale is linear from 0 to the limit, above it log10 up to 10 times the limit, with faint guide lines at 3x
+/// and 10x. The line of the trace is orange above the limit and green below. The last 2 s are shaded, green when all
+/// of them are under the limit, a value over the top of the scale has a red tick on the top edge.
 final class ShakeTraceView: UIView {
   var values: [Double] = [] {
     didSet { setNeedsLayout() }
   }
 
+  /// The hold window is shaded: not while the box measures.
+  var showsHold = true {
+    didSet { setNeedsLayout() }
+  }
+
+  private let hold = CALayer()
+  private let guides = CAShapeLayer()
+  private let ticks = CAShapeLayer()
   private let above = CAShapeLayer()
   private let below = CAShapeLayer()
   private let aboveMask = CALayer()
@@ -274,6 +401,11 @@ final class ShakeTraceView: UIView {
     backgroundColor = UIColor.white.withAlphaComponent(0.92)
     layer.cornerRadius = 5
     layer.masksToBounds = true
+    layer.addSublayer(hold)
+    guides.fillColor = nil
+    guides.strokeColor = UIColor.black.withAlphaComponent(0.12).cgColor
+    guides.lineWidth = 1
+    layer.addSublayer(guides)
     for (shape, mask, color) in [(above, aboveMask, UIColor.systemOrange), (below, belowMask, UIColor.systemGreen)] {
       shape.fillColor = nil
       shape.strokeColor = color.cgColor
@@ -283,6 +415,10 @@ final class ShakeTraceView: UIView {
       shape.mask = mask
       layer.addSublayer(shape)
     }
+    ticks.fillColor = nil
+    ticks.strokeColor = UIColor.systemRed.cgColor
+    ticks.lineWidth = 2
+    layer.addSublayer(ticks)
     limit.fillColor = nil
     limit.strokeColor = UIColor.darkGray.cgColor
     limit.lineWidth = 1
@@ -295,19 +431,32 @@ final class ShakeTraceView: UIView {
     fatalError("init(coder:) has not been implemented")
   }
 
+  /// y of a shake value in a view of |height|: 0 is the bottom, the limit is at traceLimitFraction from the top, the top
+  /// of the scale and more is the top edge.
+  static func y(_ value: Double, height: CGFloat) -> CGFloat {
+    let c = NoGpsCalibrationBarView.Constants.self
+    let limitY = height * CGFloat(c.traceLimitFraction)
+    let value = max(value, 0)
+    if value <= c.limitPercent {
+      return height - (height - limitY) * CGFloat(value / c.limitPercent)
+    }
+    let above = log10(min(value, c.traceTopPercent) / c.limitPercent) / log10(c.traceTopPercent / c.limitPercent)
+    return limitY * CGFloat(1 - above)
+  }
+
   /// The points of the trace in the rect: the newest at the end, the oldest first, so it scrolls to the left.
   static func points(_ values: [Double], in size: CGSize) -> [CGPoint] {
     let lines = NoGpsCalibrationBarView.Constants.traceLines
-    let top = NoGpsCalibrationBarView.Constants.tracePercent
     let step = size.width / CGFloat(lines - 1)
     let first = lines - min(values.count, lines)
     return values.suffix(lines).enumerated().map { i, value in
-      CGPoint(x: CGFloat(first + i) * step, y: size.height * (1 - CGFloat(min(max(value, 0), top) / top)))
+      CGPoint(x: CGFloat(first + i) * step, y: y(value, height: size.height))
     }
   }
 
   override func layoutSubviews() {
     super.layoutSubviews()
+    let c = NoGpsCalibrationBarView.Constants.self
     CATransaction.begin()
     CATransaction.setDisableActions(true)
     let path = CGMutablePath()
@@ -316,8 +465,7 @@ final class ShakeTraceView: UIView {
       path.move(to: start)
       points.dropFirst().forEach { path.addLine(to: $0) }
     }
-    let limitY = bounds.height * (1 - CGFloat(NoGpsCalibrationBarView.Constants.limitPercent
-        / NoGpsCalibrationBarView.Constants.tracePercent))
+    let limitY = Self.y(c.limitPercent, height: bounds.height)
     for shape in [above, below] {
       shape.frame = bounds
       shape.path = path
@@ -329,6 +477,27 @@ final class ShakeTraceView: UIView {
     line.addLine(to: CGPoint(x: bounds.width, y: limitY))
     limit.frame = bounds
     limit.path = line
+    let guideLines = CGMutablePath()
+    for percent in [3 * c.limitPercent, c.traceTopPercent] {
+      let y = Self.y(percent, height: bounds.height)
+      guideLines.move(to: CGPoint(x: 0, y: y))
+      guideLines.addLine(to: CGPoint(x: bounds.width, y: y))
+    }
+    guides.frame = bounds
+    guides.path = guideLines
+    let tickPath = CGMutablePath()
+    for (value, point) in zip(values.suffix(c.traceLines), points) where value > c.traceTopPercent {
+      tickPath.move(to: CGPoint(x: point.x, y: 0))
+      tickPath.addLine(to: CGPoint(x: point.x, y: 4))
+    }
+    ticks.frame = bounds
+    ticks.path = tickPath
+    // The last holdLines of the trace, also while the trace is shorter.
+    let holdX = bounds.width * CGFloat(c.traceLines - c.holdLines) / CGFloat(c.traceLines - 1)
+    hold.frame = CGRect(x: holdX, y: 0, width: bounds.width - holdX, height: bounds.height)
+    let still = NoGpsCalibrationBarView.heldMs(values) >= c.holdMs
+    hold.backgroundColor = (still ? UIColor.systemGreen : UIColor.systemOrange).withAlphaComponent(0.16).cgColor
+    hold.isHidden = !showsHold
     CATransaction.commit()
   }
 }
