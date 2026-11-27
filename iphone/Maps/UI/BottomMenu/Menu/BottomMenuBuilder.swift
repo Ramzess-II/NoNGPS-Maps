@@ -17,6 +17,15 @@
                             sections: [.layers])
   }
 
+  @objc static func buildMapTools(mapViewController: MapViewController,
+                                  controlsManager: MWMMapViewControlsManager,
+                                  delegate: BottomMenuDelegate) -> UIViewController {
+    BottomMenuBuilder.build(mapViewController: mapViewController,
+                            controlsManager: controlsManager,
+                            delegate: delegate,
+                            sections: [.mapTools])
+  }
+
   private static func build(mapViewController: MapViewController,
                             controlsManager: MWMMapViewControlsManager,
                             delegate: BottomMenuDelegate,

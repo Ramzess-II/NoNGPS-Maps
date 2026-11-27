@@ -7,6 +7,7 @@ protocol BottomMenuInteractorProtocol: AnyObject {
   func openSettings()
   func openBookmarks()
   func openProfile()
+  func openMapTools()
   func openHowItWorks()
   func openAbout()
   func openAboutOrganicMaps()
@@ -77,6 +78,10 @@ extension BottomMenuInteractor: BottomMenuInteractorProtocol {
   func openProfile() {
     close()
     mapViewController?.navigationController?.pushViewController(NoGpsProfileController(), animated: true)
+  }
+
+  func openMapTools() {
+    controlsManager?.menuState = .mapTools
   }
 
   func openHowItWorks() {
