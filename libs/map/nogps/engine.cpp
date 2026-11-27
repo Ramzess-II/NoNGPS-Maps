@@ -1367,6 +1367,7 @@ void Engine::CalibrateWhenStill()
     return;
   LOG(LINFO, ("Calibrate when the car stands still"));
   m_calibrationArmed = true;
+  m_inertial->SetCalibrationArmed(true);
   m_calibrationAuto = false;
   m_calibrationFailures = 0;
   // A calibration started from the page is followed, not started again.
@@ -1378,6 +1379,8 @@ void Engine::CalibrateWhenStill()
 void Engine::CancelCalibrateWhenStill()
 {
   m_calibrationArmed = false;
+  if (m_inertial)
+    m_inertial->SetCalibrationArmed(false);
   m_calibrationAuto = false;
   m_calibrateTimer.Stop();
 }
@@ -2281,6 +2284,7 @@ Status Engine::GetStatus()
     status.m_calibration = m_inertial->GetCalibrationState();
     status.m_calibrationProgress = m_inertial->GetCalibrationProgressPercent();
     status.m_calibrationArmed = m_calibrationArmed;
+    status.m_calibrationTries = m_calibrationArmed ? m_calibrationFailures + 1 : 0;
     status.m_hasInertialPosition = m_inertial->HasPosition();
     status.m_roadLost = m_inertial->IsUserNeeded();
     status.m_otherMarks = static_cast<int>(m_inertial->GetOtherMarksCount());
