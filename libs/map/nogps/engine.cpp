@@ -1809,6 +1809,12 @@ void Engine::SetGpsDisabled(bool disabled)
   SetGpsDisabled(disabled, "user");
 }
 
+void Engine::LogRouteAction(std::string_view name, std::string const & sentence) const
+{
+  CHECK_THREAD_CHECKER(m_threadChecker, ());
+  LOG(LINFO, (LogHead(m_clock, "ACTION", name), sentence));
+}
+
 void Engine::SetGpsDisabled(bool disabled, char const * by)
 {
   CHECK_THREAD_CHECKER(m_threadChecker, ());

@@ -46498,6 +46498,13 @@ en = The box works with firmware %1$@, this version of the app is tested with %2
 ru = В блоке прошивка %1$@, а эта версия приложения проверена с %2$@. Установить её? Это займёт несколько минут: машина должна стоять, блок не вынимайте.
 uk = У блоці прошивка %1$@, а цю версію застосунку перевірено з %2$@. Встановити її? Це триватиме кілька хвилин: автомобіль має стояти, блок не виймайте.
 
+[nogps_firmware_keep_still]
+comment = Note in the window of the sensor box firmware update
+tags = android-app,apple-maps
+en = Keep the car standing and the box plugged in until the update ends.
+ru = Машина должна стоять, а блок остаться подключённым, пока обновление не закончится.
+uk = Автомобіль має стояти, а блок лишатися підключеним, поки оновлення не закінчиться.
+
 [nogps_firmware_starting]
 comment = State of the update of the sensor box firmware, shown after "Box firmware:"
 tags = android-app,apple-maps
@@ -46607,6 +46614,13 @@ en = The speed corrections learned from GPS at different speeds and from your co
 ru = Поправки скорости, измеренные по GPS на разных скоростях и по вашим сдвигам, будут забыты. Делайте это после смены шин или машины. Пока работает GPS, они измеряются заново.
 uk = Поправки швидкості, виміряні за GPS на різних швидкостях і за вашими зсувами, буде забуто. Робіть це після заміни шин або авто. Поки працює GPS, вони вимірюються наново.
 
+[nogps_menu_map_tools]
+comment = Main menu row that opens the second sheet with the Organic Maps tools: share location, bookmarks, maps, tracks, add place
+tags = android-app,apple-maps
+en = Map tools
+ru = Инструменты карты
+uk = Інструменти мапи
+
 [nogps_menu_profile]
 comment = Main menu row opening the screen with the records of every car of the user
 tags = android-app,apple-maps
@@ -46631,8 +46645,8 @@ uk = Про NonGPS Maps
 comment = Main menu row opening the about screen of Organic Maps, the project NonGPS Maps is based on
 tags = android-app,apple-maps
 en = About Organic Maps
-ru = О приложении Organic Maps
-uk = Про застосунок Organic Maps
+ru = Об Organic Maps
+uk = Про Organic Maps
 
 [nogps_about_headline]
 tags = android-app,apple-maps
@@ -46645,12 +46659,6 @@ comment = About NonGPS Maps, the screen reader label of the globe with the GPS s
 tags = android-app,apple-maps
 en = Drag the Earth, tap a satellite to switch it off.
 uk = Потягніть Землю, торкніться супутника, щоб вимкнути його.
-
-[nogps_about_description]
-tags = android-app,apple-maps
-en = Without GPS the car is driven by the inertial navigation: the turns come from the gyroscope, the distance from the car speed via OBD-II. The car is kept on the roads of the offline map.
-ru = Без GPS машину ведёт инерциальная навигация: повороты — по гироскопу, расстояние — по скорости автомобиля из OBD-II. Машина держится дорог офлайн-карты.
-uk = Без GPS авто веде інерціальна навігація: повороти — за гіроскопом, відстань — за швидкістю авто з OBD-II. Авто тримається доріг офлайн-карти.
 
 [nogps_version]
 comment = NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12)

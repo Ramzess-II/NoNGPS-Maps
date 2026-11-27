@@ -139,7 +139,7 @@ EVENT_KINDS = [
     ('box', 'box accelerometer', r'^BOXACC |accelerometer of the box|accelerometer was learned', None),
     ('box', 'firmware', r'[Ff]irmware|sending again', None),
     ('box', 'box link', r'', r'^Esp32|^NoGpsBox'),
-    ('route', 'routing state', r'^Routing session state|following mode|^\[[SB]\] State', None),
+    ('route', 'routing state', r'^Route state = |^Routing session state|following mode|^\[[SB]\] State', None),
     ('route', 'route calculation', r'^Calculating the route|^ROUTE ', None),
     ('route', 'routing', r'', r'^RoutingController'),
     ('gps', 'GPS spoofed', r'^GPS spoofed', None),

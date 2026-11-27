@@ -10,6 +10,8 @@ import simd
 /// turns the view, so both frames turn together, and the idle spin turns the Earth alone under the orbits.
 /// Distances on the screen are in pt.
 final class GlobeScene {
+  /// The largest height of the globe on screen; About gives it less when the page would not fit, and the scene works at
+  /// any size.
   static let sceneHeightPt: CGFloat = 400
   /// The real orbit, 26 560 km over an Earth of 6 371 km: the coverage on the ground depends on it.
   static let orbitRadiusFactor = 4.16

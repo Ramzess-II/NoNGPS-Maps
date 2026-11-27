@@ -192,6 +192,16 @@ public class GlobeSceneView extends View implements Choreographer.FrameCallback
 
   // Touch.
 
+  /** The layout gives the globe the height the other rows leave: no more than the scene is drawn for. */
+  @Override
+  protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec)
+  {
+    super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    final int max = getResources().getDimensionPixelSize(R.dimen.nogps_globe_height);
+    if (getMeasuredHeight() > max)
+      setMeasuredDimension(getMeasuredWidth(), max);
+  }
+
   @Override
   protected void onSizeChanged(int w, int h, int oldw, int oldh)
   {

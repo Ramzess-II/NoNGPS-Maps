@@ -1544,6 +1544,9 @@
 /* Question shown when the sensor box works with another firmware than the app comes with: the version of the box and of the app */
 "nogps_firmware_offer" = "The box works with firmware %1$@, this version of the app is tested with %2$@. Install it? It takes a few minutes: keep the car standing and the box plugged in.";
 
+/* Note in the window of the sensor box firmware update */
+"nogps_firmware_keep_still" = "Keep the car standing and the box plugged in until the update ends.";
+
 /* State of the update of the sensor box firmware, shown after "Box firmware:" */
 "nogps_firmware_starting" = "preparing…";
 
@@ -1586,6 +1589,9 @@
 "nogps_clear_speed_title" = "Reset the speed calibration?";
 "nogps_clear_speed_message" = "The speed corrections learned from GPS at different speeds and from your corrections will be forgotten. Do it after new tyres or another car. They are learned anew while GPS works.";
 
+/* Main menu row that opens the second sheet with the Organic Maps tools: share location, bookmarks, maps, tracks, add place */
+"nogps_menu_map_tools" = "Map tools";
+
 /* Main menu row opening the screen with the records of every car of the user */
 "nogps_menu_profile" = "Profile";
 
@@ -1599,7 +1605,6 @@
 
 /* About NonGPS Maps, the screen reader label of the globe with the GPS satellites that the finger spins */
 "nogps_about_globe_hint" = "Drag the Earth, tap a satellite to switch it off.";
-"nogps_about_description" = "Without GPS the car is driven by the inertial navigation: the turns come from the gyroscope, the distance from the car speed via OBD-II. The car is kept on the roads of the offline map.";
 
 /* NonGPS Maps version in About, %@ is like 2026.11.08 (26110807, abcdef12) */
 "nogps_version" = "Version %@";

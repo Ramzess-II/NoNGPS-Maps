@@ -320,4 +320,22 @@ public final class BoxTexts
   {
     return text.isEmpty() ? text : text.substring(0, 1).toUpperCase(Locale.getDefault()) + text.substring(1);
   }
+
+  /**
+   * Why the update of the firmware ended, by the code of the box.
+   */
+  @NonNull
+  public static String firmwareError(@NonNull Context context, @NonNull String code)
+  {
+    return switch (code)
+    {
+      case "MOVING" -> context.getString(R.string.nogps_firmware_error_moving);
+      case "LOW_VOLTAGE" -> context.getString(R.string.nogps_firmware_error_voltage);
+      case "LINK" -> context.getString(R.string.nogps_firmware_error_link);
+      case "CANCELED", "ABORTED" -> context.getString(R.string.nogps_firmware_error_canceled);
+      case "ROLLBACK" -> context.getString(R.string.nogps_firmware_error_rollback);
+      case "PENDING" -> context.getString(R.string.nogps_firmware_error_pending);
+      default -> context.getString(R.string.nogps_firmware_error_code, code);
+    };
+  }
 }

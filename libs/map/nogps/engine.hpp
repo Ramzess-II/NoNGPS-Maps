@@ -396,6 +396,9 @@ public:
   /// Ignores GPS as if it were jammed: the user drives by the sensor box where GPS works. It is kept after a
   /// restart, the map shows the choice.
   void SetGpsDisabled(bool disabled);
+  /// "ACTION |name| ms=<unix ms> |sentence|" in the trip log: what the routing of the user does, written with the
+  /// clock of the engine as the routing library can't reach it. See RoutingManager::SetRouteLogListener().
+  void LogRouteAction(std::string_view name, std::string const & sentence) const;
 
   /// A box not set up before is searched and saved once it is heard: the app closed in the search has no box.
   void SetInertialNavigationEnabled(bool enabled);
