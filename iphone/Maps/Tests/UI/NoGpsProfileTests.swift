@@ -65,3 +65,26 @@ final class NoGpsProfileTests: XCTestCase {
     XCTAssertNil(NoGpsProfile.group(at: 0, of: []))
   }
 }
+
+final class NoGpsDrivingTests: XCTestCase {
+  func testNotEnoughDrivingHasNoRowsAndANote() {
+    let rating = NoGpsDriving.Rating(enough: false, score: 100, ratedKm: 12, bandCounts: [0, 0, 0])
+    XCTAssertTrue(NoGpsDriving.rows(rating).isEmpty)
+    XCTAssertEqual(NoGpsDriving.note(), String(format: L("nogps_driving_not_enough"), 20))
+  }
+
+  func testScoreDistanceAndBands() {
+    let rating = NoGpsDriving.Rating(enough: true, score: 85, ratedKm: 411.6, bandCounts: [3, 1, 0])
+    let rows = NoGpsDriving.rows(rating)
+    XCTAssertEqual(rows.map(\.title), [
+      L("nogps_driving_score"), L("nogps_driving_distance"),
+      L("nogps_driving_band1"), L("nogps_driving_band2"), L("nogps_driving_band3"),
+    ])
+    XCTAssertEqual(rows.map(\.value), ["85", String(format: L("nogps_driving_km"), 412), "3", "1", "0"])
+  }
+
+  func testTripDetailHasDistanceAndEpisodes() {
+    let trip = NoGpsDriving.Trip(date: Date(timeIntervalSince1970: 0), ratedKm: 31.6, score: 72, bandCounts: [2, 1, 0])
+    XCTAssertEqual(NoGpsDriving.tripDetail(trip), String(format: L("nogps_driving_trip_detail"), 32, 2, 1, 0))
+  }
+}

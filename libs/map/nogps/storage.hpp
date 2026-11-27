@@ -46,6 +46,9 @@ public:
   static std::string_view constexpr kBoxCalibrationAdvised = "NoGpsBoxCalibrationAdvised";
   // The timed runs of the car, "kind:unixMs:centisec:trapKmh,...", oldest first, see SerializeSprint().
   static std::string_view constexpr kSprints = "NoGpsSprints";
+  // The trips rated by the speeding of the driver, "trip|trip|...", oldest first, up to SpeedingMeter::kMaxTrips of
+  // them, see SerializeSpeedingTrips(). Kept for the phone, not for each car: the driver is rated.
+  static std::string_view constexpr kSpeeding = "NoGpsSpeeding";
   // The identifiers of the boxes of the cars of the user, "C47D,42FD", see CarStorage.
   static std::string_view constexpr kCars = "NoGpsCars";
   // The car of the box heard the last time or chosen by the user.

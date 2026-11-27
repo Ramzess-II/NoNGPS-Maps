@@ -254,6 +254,33 @@ NS_SWIFT_NAME(NoGpsSprint)
 
 @end
 
+/// A trip rated by the speeding of the driver.
+NS_SWIFT_NAME(NoGpsSpeedingTrip)
+@interface MWMNoGpsSpeedingTrip : NSObject
+
+@property(nonatomic, readonly) NSDate * date;
+@property(nonatomic, readonly) double ratedKm;
+@property(nonatomic, readonly) double ratedMinutes;
+@property(nonatomic, readonly) NSInteger score;
+/// The episodes over the limit by 20-40, 40-60 and more than 60 km/h.
+@property(nonatomic, readonly) NSArray<NSNumber *> * bandCounts;
+
+@end
+
+/// How the driver drives: the score by the speeding over the newest trips, and the trips newest first.
+NS_SWIFT_NAME(NoGpsDrivingRating)
+@interface MWMNoGpsDrivingRating : NSObject
+
+/// NO until there is enough rated driving to show the score.
+@property(nonatomic, readonly) BOOL enough;
+@property(nonatomic, readonly) NSInteger score;
+/// The rated driving the score is taken over.
+@property(nonatomic, readonly) double ratedKm;
+@property(nonatomic, readonly) NSArray<NSNumber *> * bandCounts;
+@property(nonatomic, readonly) NSArray<MWMNoGpsSpeedingTrip *> * trips;
+
+@end
+
 /// A phone paired with the sensor box.
 NS_SWIFT_NAME(NoGpsPhone)
 @interface MWMNoGpsPhone : NSObject
@@ -434,6 +461,8 @@ NS_SWIFT_NAME(NoGps)
 + (void)retryBox;
 /// The cars of the user in the order they were added, a car for each box heard.
 + (NSArray<MWMNoGpsCar *> *)cars;
+/// How the driver drives by the speeding, see MWMNoGpsDrivingRating.
++ (MWMNoGpsDrivingRating *)drivingRating;
 /// The timed runs of the current car, newest first.
 + (NSArray<MWMNoGpsSprint *> *)sprints;
 /// The timed runs kept for the car, newest first; none for a car that is not there.

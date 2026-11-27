@@ -1899,6 +1899,39 @@
 /* Results of the runs from a standing start, when the car has none yet */
 "nogps_sprint_none" = "No runs yet: stop, then accelerate hard from a standstill";
 
+/* Header of the Profile screen section with how the driver drives */
+"nogps_driving_title" = "Driving";
+
+/* Row of the Profile screen: the driving score out of 100, the value is on the right */
+"nogps_driving_score" = "Driving score";
+
+/* Row of the Profile screen: how far the driving score is taken over, the value is on the right */
+"nogps_driving_distance" = "Rated driving";
+
+/* A distance in kilometers */
+"nogps_driving_km" = "%d km";
+
+/* Profile screen: the driving score is not shown yet, %d is the kilometers of rated driving it needs */
+"nogps_driving_not_enough" = "Not enough driving yet: the score is shown after %d km where the speed and the speed limit of the road are known";
+
+/* Row of the Profile screen: how many times the driver went over the speed limit by 20 to 40 km/h */
+"nogps_driving_band1" = "Over the limit by 20–40 km/h";
+
+/* Row of the Profile screen: how many times the driver went over the speed limit by 40 to 60 km/h */
+"nogps_driving_band2" = "Over the limit by 40–60 km/h";
+
+/* Row of the Profile screen: how many times the driver went over the speed limit by more than 60 km/h */
+"nogps_driving_band3" = "Over the limit by more than 60 km/h";
+
+/* Row of the Profile screen opening the list of trips with their driving scores */
+"nogps_driving_trips" = "Trips";
+
+/* The list of trips with the driving scores, when there is no rated driving yet */
+"nogps_driving_trips_none" = "No rated driving yet: it is counted where the speed and the speed limit of the road are known";
+
+/* A trip of the driving list: the rated kilometers, then the episodes over the limit by 20-40, 40-60 and more than 60 km/h */
+"nogps_driving_trip_detail" = "%1$d km · episodes %2$d / %3$d / %4$d";
+
 /* Row of the Box sheet: how late the car tells its speed, the value is on the right */
 "nogps_speed_lag" = "Speed delay";
 

@@ -11,6 +11,7 @@
 #include "map/nogps/motion_source.hpp"
 #include "map/nogps/potholes.hpp"
 #include "map/nogps/scheduler.hpp"
+#include "map/nogps/speeding_meter.hpp"
 #include "map/nogps/sprint_timer.hpp"
 #include "map/nogps/storage.hpp"
 
@@ -281,6 +282,10 @@ public:
   static int64_t constexpr kGpsMaxAgeMs = 5000;
   // The state is written to the log every second while the car drives, so a drive can be analysed afterwards.
   static int64_t constexpr kTripLogIntervalMs = 1000;
+  // After the user moves the mark by hand the position is not trusted for the rating this long: it may be anywhere.
+  static int64_t constexpr kRatingAfterHandMoveMs = 10'000;
+  // The trip that goes on is saved after every this many seconds of rated driving, besides each episode it ends.
+  static double constexpr kSpeedingSaveEveryS = 60;
   // A standing car fills the log with the same lines: hours a day at home and at traffic lights. After a stop, and
   // after the position source or the box changes, the state is still written every second for this long: the car
   // reports its speed late, and the stop is seen.
@@ -445,6 +450,9 @@ public:
   std::vector<Sprint> GetSprints() const;
   /// \returns the timed runs kept for the car, newest first; empty for a car that is not there.
   std::vector<Sprint> GetSprints(std::string const & carId) const;
+  /// \returns how the driver drives by the speeding over the newest trips, the trips of the phone newest first, see
+  /// SpeedingMeter. The trip that goes on is among them.
+  DrivingRating GetDrivingRating() const;
   /// The user drives the car, e.g. two boxes are near: the platform connects to its box if it is near too.
   void SelectCar(std::string const & id);
   /// An empty name gives the car its usual name back.
@@ -609,6 +617,14 @@ private:
   std::optional<Fix> GetWorkingNetwork() const;
   PositionSource GetPositionSource() const;
   void LogTrip();
+  // Rates the second of driving that LogTrip() writes.
+  void RateSpeeding();
+  bool IsMarkTrusted() const;
+  /// \returns the trips of the phone, the oldest first, the one that goes on is the last.
+  std::vector<SpeedingTrip> GetSpeedingTrips() const;
+  void LogSpeeding(std::vector<SpeedingEpisode> const & episodes);
+  void SaveSpeeding();
+  void CloseSpeedingTrip();
   // The car drives by the box or by GPS.
   bool IsCarMoving() const;
   // Logs the change of the position source, of the GPS signal, of the box and of its Bluetooth link.
@@ -758,6 +774,12 @@ private:
   std::optional<std::bitset<SpeedTable::kRanges>> m_measuredSpeedRanges;
   // When IsSpeedTableGps() was true the last time.
   std::optional<int64_t> m_speedTableGpsMs;
+  // The trips closed before the one that goes on, the oldest first. Read from the storage at the first rated second.
+  std::optional<std::vector<SpeedingTrip>> m_speedingTrips;
+  SpeedingMeter m_speedingMeter;
+  double m_speedingSavedRatedS = 0;
+  // When the user moved the mark or shifted the position by hand the last time.
+  std::optional<int64_t> m_userMovedMs;
   // The last timed run, see Status::m_sprintKind.
   Sprint m_lastSprint;
   double m_lastSprintBestSec = 0;

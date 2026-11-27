@@ -30,6 +30,7 @@ set(SRC
   nogps_roads_tests.cpp
   nogps_sources_tests.cpp
   nogps_speed_tests.cpp
+  nogps_speeding_tests.cpp
   nogps_sprint_tests.cpp
   nogps_test_env.hpp
   nogps_test_roads.hpp

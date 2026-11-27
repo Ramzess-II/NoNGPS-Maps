@@ -501,6 +501,13 @@
         android:exported="false" />
 
     <activity
+        android:name="app.organicmaps.nogps.DrivingTripsActivity"
+        android:screenOrientation="portrait"
+        android:label="@string/nogps_driving_trips"
+        android:parentActivityName="app.organicmaps.nogps.ProfileActivity"
+        android:exported="false" />
+
+    <activity
         android:name="app.organicmaps.help.HelpActivity"
         android:label="@string/nogps_about_om_menu"
         android:parentActivityName="app.organicmaps.MwmActivity"

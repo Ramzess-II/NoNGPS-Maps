@@ -175,6 +175,34 @@ jobjectArray SprintsToJava(JNIEnv * env, std::vector<nogps::Sprint> const & spri
                           static_cast<jdouble>(sprint.m_sec), static_cast<jint>(sprint.m_trapKmh));
   });
 }
+
+jintArray BandsToJava(JNIEnv * env, std::array<int, 3> const & counts)
+{
+  jintArray result = env->NewIntArray(static_cast<jsize>(counts.size()));
+  env->SetIntArrayRegion(result, 0, static_cast<jsize>(counts.size()), counts.data());
+  return result;
+}
+
+jobject DrivingRatingToJava(JNIEnv * env, nogps::DrivingRating const & rating)
+{
+  static jclass const tripClass = jni::GetGlobalClassRef(env, "app/organicmaps/sdk/location/NoGps$SpeedingTrip");
+  static jmethodID const tripCtor = jni::GetConstructorID(env, tripClass, "(JDDI[I)V");
+  static jclass const ratingClass = jni::GetGlobalClassRef(env, "app/organicmaps/sdk/location/NoGps$DrivingRating");
+  static jmethodID const ratingCtor =
+      jni::GetConstructorID(env, ratingClass, "(ZID[I[Lapp/organicmaps/sdk/location/NoGps$SpeedingTrip;)V");
+  jni::TScopedLocalObjectArrayRef trips(
+      env, jni::ToJavaArray(env, tripClass, rating.m_trips, [](JNIEnv * env, nogps::SpeedingTrip const & trip)
+  {
+    jni::TScopedLocalRef bands(env, BandsToJava(env, trip.GetBandCounts()));
+    return env->NewObject(tripClass, tripCtor, static_cast<jlong>(trip.m_unixTimeMs),
+                          static_cast<jdouble>(trip.m_ratedM / 1000), static_cast<jdouble>(trip.m_ratedS / 60),
+                          static_cast<jint>(trip.GetScore()), bands.get());
+  }));
+  jni::TScopedLocalRef bands(env, BandsToJava(env, rating.m_bandCounts));
+  return env->NewObject(ratingClass, ratingCtor, static_cast<jboolean>(rating.m_enough),
+                        static_cast<jint>(rating.m_score), static_cast<jdouble>(rating.m_ratedKm), bands.get(),
+                        trips.get());
+}
 }  // namespace
 
 extern "C"
@@ -367,6 +395,11 @@ JNIEXPORT jobjectArray Java_app_organicmaps_sdk_location_NoGps_nativeGetCars(JNI
     return env->NewObject(carClass, ctor, id.get(), name.get(), firmware.get(),
                           static_cast<jlong>(car.m_lastSeenUnixMs));
   });
+}
+
+JNIEXPORT jobject Java_app_organicmaps_sdk_location_NoGps_nativeGetDrivingRating(JNIEnv * env, jclass)
+{
+  return DrivingRatingToJava(env, NoGpsEngine().GetDrivingRating());
 }
 
 JNIEXPORT jobjectArray Java_app_organicmaps_sdk_location_NoGps_nativeGetSprints__(JNIEnv * env, jclass)

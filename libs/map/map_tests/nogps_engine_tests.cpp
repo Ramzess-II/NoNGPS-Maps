@@ -7504,6 +7504,116 @@ UNIT_TEST(NoGps_LogFormat_ProseLinesHaveTagAndTime)
   TEST_EQUAL(ble.size(), 1, ());
   TEST(ble[0].find(" Bluetooth = ") != std::string::npos, (ble[0]));
 }
+namespace speeding
+{
+/// A car on the east street with a limit of 50, marked by hand: the mark is trusted 10 s after it.
+struct Drive
+{
+  Drive() : m_env(true /* inertial */, &m_roads)
+  {
+    m_env.m_map.m_maxspeeds[FeatureGridRoads::kEastStreet] =
+        routing::Maxspeed(measurement_utils::Units::Metric, 50, 50);
+    MarkCar(m_env, 60);
+  }
+
+  void Go(int64_t ms, int kmh) { m_env.Drive(ms, kmh, 0); }
+
+  FeatureGridRoads m_roads;
+  Env m_env;
+};
+}  // namespace speeding
+
+UNIT_TEST(NoGps_Speeding_RatedAfterHandMoveAndClosedAtTripStart)
+{
+  speeding::Drive car;
+  auto & env = car.m_env;
+  // The mark was put by hand a moment ago: nothing is rated.
+  car.Go(3000, 100);
+  TEST_EQUAL(TripField(env, "lim"), "-", (env.m_engine.GetTripLine()));
+  TEST(env.m_engine.GetDrivingRating().m_trips.empty(), ());
+
+  car.Go(10000, 50);
+  TEST_EQUAL(TripField(env, "lim"), "50", (env.m_engine.GetTripLine()));
+  // 100 km/h on 50 for 6 s: an episode of the band +40...60, written when the car is back under the limit for 5 s.
+  car.Go(6000, 100);
+  car.Go(8000, 50);
+  auto rating = env.m_engine.GetDrivingRating();
+  TEST_EQUAL(rating.m_trips.size(), 1, ());
+  TEST_EQUAL(rating.m_trips[0].m_episodes.size(), 1, ());
+  auto const & episode = rating.m_trips[0].m_episodes[0];
+  TEST_EQUAL(episode.m_limitKmh, 50, ());
+  TEST_EQUAL(episode.m_band, 2, ());
+  TestAlmostEqualAbs(episode.m_durationS, 6.0, 1.5);
+  TEST_GREATER(rating.m_trips[0].m_ratedM, 200, ());
+
+  // The trips are kept after a restart.
+  Env after(true /* inertial */, nullptr, SavedBy(env));
+  rating = after.m_engine.GetDrivingRating();
+  TEST_EQUAL(rating.m_trips.size(), 1, ());
+  TEST_EQUAL(rating.m_trips[0].m_episodes.size(), 1, ());
+  TEST_EQUAL(rating.m_bandCounts[1], 1, ());
+}
+
+UNIT_TEST(NoGps_Speeding_TripStartClosesTrip)
+{
+  speeding::Drive car;
+  auto & env = car.m_env;
+  car.Go(13000, 50);
+  car.Go(6000, 100);
+
+  // A new file of the trip log starts a new trip: what is rated after it is not in the trip before.
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  env.m_clock.Advance(Engine::kTripFileLinkGapMs);
+  env.ConnectBox();
+  car.Go(5000, 50);
+  auto const rating = env.m_engine.GetDrivingRating();
+  TEST_EQUAL(rating.m_trips.size(), 2, ());
+  // The newest first.
+  TEST(rating.m_trips[0].m_episodes.empty(), ());
+  TEST_GREATER(rating.m_trips[0].m_ratedM, 0, ());
+  TEST_EQUAL(rating.m_trips[1].m_episodes.size(), 1, ());
+}
+
+UNIT_TEST(NoGps_Speeding_StopKeepsEpisodeThatGoesOn)
+{
+  speeding::Drive car;
+  auto & env = car.m_env;
+  car.Go(10000, 50);
+  car.Go(8000, 100);
+  env.m_engine.Stop();
+  Env after(true /* inertial */, nullptr, SavedBy(env));
+  auto const rating = after.m_engine.GetDrivingRating();
+  TEST_EQUAL(rating.m_trips.size(), 1, ());
+  TEST_EQUAL(rating.m_trips[0].m_episodes.size(), 1, ());
+}
+
+UNIT_TEST(NoGps_Speeding_KeepsHundredTrips)
+{
+  auto const save = [](TestStorage & storage)
+  {
+    std::vector<SpeedingTrip> trips;
+    for (int i = 0; i < SpeedingMeter::kMaxTrips; ++i)
+    {
+      SpeedingTrip trip;
+      trip.m_unixTimeMs = 1000 + i;
+      trip.m_ratedM = 1000;
+      trip.m_ratedS = 100;
+      trips.push_back(trip);
+    }
+    storage.Set(Storage::kSpeeding, SerializeSpeedingTrips(trips));
+  };
+  FeatureGridRoads roads;
+  Env env(true /* inertial */, &roads, save);
+  env.m_map.m_maxspeeds[FeatureGridRoads::kEastStreet] = routing::Maxspeed(measurement_utils::Units::Metric, 50, 50);
+  TEST_EQUAL(env.m_engine.GetDrivingRating().m_trips.size(), SpeedingMeter::kMaxTrips, ());
+  MarkCar(env, 60);
+  env.Drive(20000, 50, 0);
+  auto const rating = env.m_engine.GetDrivingRating();
+  TEST_EQUAL(rating.m_trips.size(), SpeedingMeter::kMaxTrips, ());
+  // The newest first: the trip that goes on, and the oldest saved one is dropped.
+  TEST_GREATER(rating.m_trips[0].m_unixTimeMs, 1000 + SpeedingMeter::kMaxTrips, ());
+  TEST_EQUAL(rating.m_trips.back().m_unixTimeMs, 1001, ());
+}
 
 // The shake of the box goes to the trip log once a second while the car stands or the core is armed.
 UNIT_TEST(NoGps_Engine_LogsShakeOfStandingCar)

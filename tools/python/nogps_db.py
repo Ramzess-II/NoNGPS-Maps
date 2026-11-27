@@ -29,7 +29,7 @@ Tables (times are unix ms, UTC, as the core writes them):
               restore_car -- and what the box and the router tell about themselves: ble_state, box_info, route, route_follow. payload is the JSON of the
               keys of the line, text its sentence
   rule        the rules that move the mark, event what happened to the state of the core: the same
-  note        BOXACC, TURN, RPM, POTHOLE, SPRINT, SHAKE and MAPS lines, the text after the tag
+  note        BOXACC, TURN, RPM, POTHOLE, SPRINT, SHAKE, SPEEDING and MAPS lines, the text after the tag
   flag        the flags of the day (<day folder>/flags/<yyyyMMdd-HHmmss>.json|.png|.m4a, see nogps_logs.py fetch):
               name, ms (UTC, NULL when the day's logs don't tell the phone's offset, see utc_offset_ms()), n, lat,
               lon, voice_s, sent, and png and m4a, the paths of the files relative to the day folder (NULL without)
@@ -46,7 +46,7 @@ from datetime import datetime, timezone
 
 import nogps_trip_log
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 # A pause between two TRIP lines that ends a trip: a standing car with the box connected writes one in 30 s, and
 # nogps_log.py ends a trip by the pause of STAND_SPLIT_S.
 TRIP_SPLIT_S = 300
@@ -55,8 +55,8 @@ TRIP_SPLIT_S = 300
 MOVING_GAP_S = 2
 
 TAGS = ('TRIP', 'ACC', 'ACCB', 'ACCB_BEFORE', 'GYRO', 'BOXACC', 'TURN', 'CALIBRATION', 'RPM', 'POTHOLE', 'SPRINT',
-        'SHAKE', 'MAPS', 'RULE', 'ACTION', 'EVENT')
-NOTE_TAGS = ('BOXACC', 'TURN', 'RPM', 'POTHOLE', 'SPRINT', 'SHAKE', 'MAPS')
+        'SHAKE', 'SPEEDING', 'MAPS', 'RULE', 'ACTION', 'EVENT')
+NOTE_TAGS = ('BOXACC', 'TURN', 'RPM', 'POTHOLE', 'SPRINT', 'SHAKE', 'SPEEDING', 'MAPS')
 RULES = frozenset((
     'road_lost late_turn turn_moved_to_crossing turn_followed_roads bend_confirmed bend_moved bend_moved_repeated '
     'loop fork_branch wait_ahead wait_at_roundabout roundabout_exit followed_apart back_on_road mark_switched_by_way '
@@ -135,6 +135,7 @@ SIMPLE_KEYS = {
     'others': ('others', text, 'TEXT'), 'snap': ('snap_m', number, 'REAL'), 'rdiff': ('rdiff', number, 'REAL'),
     'snapwhy': ('snapwhy', text, 'TEXT'), 'wait': ('wait_m', number, 'REAL'), 'fix': ('fix_m', float, 'REAL'),
     'ready': ('ready', flag, 'INTEGER'), 'ring': ('ring', flag, 'INTEGER'),
+    'lim': ('limit_kmh', lambda v: number(v, int), 'INTEGER'),
 }
 SPECIAL_COLUMNS = (
     ('lat', 'REAL'), ('lon', 'REAL'), ('acc_m', 'REAL'), ('bearing', 'REAL'), ('age_s', 'REAL'),
