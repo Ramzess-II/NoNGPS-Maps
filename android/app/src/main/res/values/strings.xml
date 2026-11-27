@@ -1119,6 +1119,8 @@
     <string name="nogps_box_reset_done">The box is reset, the car is forgotten</string>
     <!-- Message on Android: the sensor box is erased and the car is forgotten. The old pairing of the phone only blocks the next connection, and the app could not remove it. %1$@ is the id of the box -->
     <string name="nogps_box_reset_unpair">The box is reset, the car is forgotten. Remove the box ending in %1$s in the Bluetooth settings</string>
+    <!-- Message on Android after the user has chosen to pair the sensor box again, when the app could not remove the old pairing of the phone: the car is forgotten. %1$@ is the id of the box -->
+    <string name="nogps_box_pair_again_unpair">The car is forgotten. Remove the box ending in %1$s in the Bluetooth settings. Then add the car</string>
     <!-- Title of the question when the sensor box has not got the key of this phone or has another one -->
     <string name="nogps_box_pair_again_title">Pair the box again?</string>
     <!-- Question when the sensor box has not got the key of this phone or has another one: the car is forgotten on this phone and added again -->

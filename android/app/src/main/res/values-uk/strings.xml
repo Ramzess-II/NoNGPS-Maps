@@ -1129,6 +1129,8 @@
     <string name="nogps_box_reset_done">Блок скинуто, авто забуто</string>
     <!-- Message on Android: the sensor box is erased and the car is forgotten. The old pairing of the phone only blocks the next connection, and the app could not remove it. %1$@ is the id of the box -->
     <string name="nogps_box_reset_unpair">Блок скинуто, авто забуто. Видаліть блок, ім\'я якого закінчується на %1$s, у налаштуваннях Bluetooth</string>
+    <!-- Message on Android after the user has chosen to pair the sensor box again, when the app could not remove the old pairing of the phone: the car is forgotten. %1$@ is the id of the box -->
+    <string name="nogps_box_pair_again_unpair">Авто забуто. Видаліть блок, ім\'я якого закінчується на %1$s, у налаштуваннях Bluetooth. Потім додайте авто</string>
     <!-- Title of the question when the sensor box has not got the key of this phone or has another one -->
     <string name="nogps_box_pair_again_title">Спарити блок знову?</string>
     <!-- Question when the sensor box has not got the key of this phone or has another one: the car is forgotten on this phone and added again -->
