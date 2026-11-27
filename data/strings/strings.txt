@@ -46991,15 +46991,8 @@ en = Ver %1$@
 ru = Версия %1$@
 uk = Версія %1$@
 
-[nogps_calibration_snackbar]
-comment = Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page
-tags = android-app,apple-maps
-en = Calibrate the sensor box
-ru = Откалибруйте блок датчиков
-uk = Відкалібруйте блок датчиків
-
 [nogps_calibrate_still_hold]
-comment = Orange bar next to the speed on the map after the tap on nogps_calibration_snackbar: the box is calibrated when the car stands still
+comment = Orange bar next to the speed on the map while the car stands and the box is about to be calibrated
 tags = android-app,apple-maps
 en = Hold still: no one gets in or out
 ru = Не двигайтесь: никто не садится и не выходит
