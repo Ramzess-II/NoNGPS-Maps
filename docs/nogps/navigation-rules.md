@@ -1355,7 +1355,7 @@
   з першого `MAPS`), `trip` (ряд рядків TRIP без паузи понад `TRIP_SPLIT_S` = 300 с; `moving_s` — секунди між
   рядками не далі `MOVING_GAP_S` = 2 с; `in_check_set` і `check_reason` порожні, їх ставить запит набору перевірок),
   `sample` (рядок TRIP), `fix` (`gps=`, `fused=`, `net=` рядка з точністю курсу), `sensor` (ACC, ACCB, GYRO по
-  п'ять частин секунди), `calibration`, `action`, `rule`, `event`, `note` (BOXACC, TURN, RPM, POTHOLE, SPRINT, MAPS),
+  п'ять частин секунди), `calibration`, `action`, `rule`, `event`, `note` (BOXACC, TURN, RPM, POTHOLE, SPRINT, SPEEDING, MAPS),
   `check_result` і `baseline` (порожні), `flag` (прапорці дня з теки `flags/` поруч із журналами, див. нижче:
   `name`, `ms` (UTC або NULL), `n`, `lat`, `lon`, `voice_s`, `sent`, `png` і `m4a` — шляхи файлів від теки дня).
   `SCHEMA_VERSION` = 3. Рядок, що належить поїздці, — той, у чий проміжок він потрапив; ті, що до
