@@ -1276,9 +1276,7 @@
     <string name="nogps_box_imu">Инерциальный измерительный блок</string>
     <!-- Start of the subtitle of the Box section of the Box page: the firmware version of the box, then its state -->
     <string name="nogps_box_version">Версия %1$s</string>
-    <!-- Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page -->
-    <string name="nogps_calibration_snackbar">Откалибруйте блок датчиков</string>
-    <!-- Orange bar next to the speed on the map after the tap on nogps_calibration_snackbar: the box is calibrated when the car stands still -->
+    <!-- Orange bar next to the speed on the map while the car stands and the box is about to be calibrated -->
     <string name="nogps_calibrate_still_hold">Не двигайтесь: никто не садится и не выходит</string>
     <!-- Orange bar next to the speed on the map while the box calibrates -->
     <string name="nogps_calibrate_still_calibrating">Калибруем блок датчиков</string>
@@ -1514,14 +1512,4 @@
     <string name="nogps_intro_left">Поверните машину или укажите её рукой. Удержание двигает панель.</string>
     <!-- Menu row and title of the page that explains the app and plays the intro again -->
     <string name="nogps_how_title">Как работает NonGPS</string>
-    <!-- Heading of the part of the How NonGPS works page about the panels of the map -->
-    <string name="nogps_how_panels">Панели карты</string>
-    <!-- Line of the How NonGPS works page about the bottom bar -->
-    <string name="nogps_how_bottom">Нижняя панель: машины, датчик и GPS.</string>
-    <!-- Line of the How NonGPS works page about the panel with the zoom buttons -->
-    <string name="nogps_how_right">Правая панель: масштаб и поворот карты. Удержание двигает панель.</string>
-    <!-- Line of the How NonGPS works page about the panel with the car buttons -->
-    <string name="nogps_how_left">Левая панель: повернуть машину или указать её рукой. Удержание двигает панель.</string>
-    <!-- Button of the How NonGPS works page that plays the intro of the first start again -->
-    <string name="nogps_how_intro_again">Показать подсказки снова</string>
 </resources>

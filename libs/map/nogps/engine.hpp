@@ -148,6 +148,9 @@ struct Status
   bool m_calibrationArmed = false;
   // The sensor box reports that it stands still.
   bool m_boxStill = false;
+  // The box is connected to this phone and asks to be calibrated, see Engine::NeedsBoxCalibration(): the core
+  // calibrates it by itself at a long stop.
+  bool m_boxNeedsCalibration = false;
   bool m_hasInertialPosition = false;
   // The mark waits for the user to put it on a road: the road is lost. It is to be noticed at once.
   bool m_roadLost = false;
@@ -304,6 +307,9 @@ public:
   static int64_t constexpr kNotCalibratedDelayMs = 5000;
   // The car must stand still within this time after the user has asked to calibrate the box.
   static int64_t constexpr kCalibrateWhenStillTimeoutMs = 120'000;
+  // A box that needs calibrating is calibrated when the car has stood this long: a long stop rather than a traffic
+  // light, the ground is more likely level.
+  static int64_t constexpr kAutoCalibrateStopMs = 60'000;
   /// The box reports every failed calibration as the car moving: a still car that keeps failing is a bad mounting.
   static int constexpr kCalibrateWhenStillMaxFailures = 5;
   static int64_t constexpr kCalibrateWhenStillIntervalMs = 200;
@@ -407,6 +413,12 @@ public:
   /// that can't be calibrated now.
   void CalibrateWhenStill();
   void CancelCalibrateWhenStill();
+  /// The user has cancelled the calibration the core started by itself: it doesn't start another until the box
+  /// connects again.
+  void DeclineAutoCalibration();
+  /// The box is connected to this phone, this phone can change it, and it was never calibrated, or the calibration has
+  /// failed, or the box was powered on since, see Event::BoxCalibrationAdvised.
+  bool NeedsBoxCalibration();
   /// \returns the shake of the box in the last 3 s, the oldest first, in percent of the limit under which the box
   /// counts the car still. Empty without a box or with an old firmware. Cheap: the user interface polls it while it
   /// shows the shake.
@@ -518,6 +530,8 @@ private:
   void CheckNotCalibrated();
   /// Sends the calibration to the box when the car stands still, ends the wait. Called while the user waits.
   void CheckCalibrateWhenStill();
+  /// Calibrates the box by itself when the car has stood for kAutoCalibrateStopMs. Called every second.
+  void CheckAutoCalibration();
   /// Shows the bar of the speed calibration while the car speed comes from the box at a speed GPS has not measured, and
   /// tells Event::SpeedRangeCalibrated when GPS has measured a range. Called every second.
   void UpdateSpeedHint();
@@ -762,6 +776,14 @@ private:
   bool m_calibrationSent = false;
   int m_calibrationFailures = 0;
   bool m_calibrationArmed = false;
+  // The calibration was armed by CheckAutoCalibration(), not by the user: it ends when the car moves.
+  bool m_calibrationAuto = false;
+  // Since when the car stands, if it does.
+  std::optional<int64_t> m_stoppedSinceMs;
+  // CheckAutoCalibration() has armed the calibration during the current stop: it doesn't arm again until the car moves.
+  bool m_autoCalibrateTried = false;
+  // The user has cancelled the automatic calibration: it waits for the box to connect again.
+  bool m_autoCalibrateCancelled = false;
   // The platform forgets the car on Event::ThisPhoneRemoved: not while the box is being read.
   Timer m_phoneRemovedTimer;
 
