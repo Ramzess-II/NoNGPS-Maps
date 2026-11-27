@@ -278,6 +278,7 @@ std::optional<double> NonNegative(double value)
     _calibration = static_cast<MWMNoGpsCalibrationState>(status.m_calibration);
     _calibrationProgress = status.m_calibrationProgress;
     _calibrationArmed = status.m_calibrationArmed;
+    _calibrationTries = status.m_calibrationTries;
     _boxStill = status.m_boxStill;
     _firmwareOfferPending = status.m_firmwareOfferPending;
     _boxCalibrationAdvised = status.m_boxCalibrationAdvised;
@@ -303,6 +304,7 @@ std::optional<double> NonNegative(double value)
       _boxPhones = phones;
     }
     _boxReadOnly = status.m_boxReadOnly;
+    _boxNeedsCalibration = status.m_boxNeedsCalibration;
     _peerRole = static_cast<MWMNoGpsPeerRole>(status.m_peerRole);
     _peerName = @(status.m_peerName.c_str());
     _addPhone = static_cast<MWMNoGpsAddPhone>(status.m_addPhone);
@@ -510,9 +512,9 @@ static CLLocation * lastPlatformLocation;
   Engine().CalibrateWhenStill();
 }
 
-+ (void)cancelCalibrateWhenStill
++ (void)declineAutoCalibration
 {
-  Engine().CancelCalibrateWhenStill();
+  Engine().DeclineAutoCalibration();
 }
 
 + (NSArray<NSNumber *> *)boxShake

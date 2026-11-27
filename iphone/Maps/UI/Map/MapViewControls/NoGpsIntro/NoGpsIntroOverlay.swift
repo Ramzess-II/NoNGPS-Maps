@@ -15,6 +15,8 @@ final class NoGpsIntroOverlay: UIView {
     static let balloonRadius = CGFloat(12)
     static let arrowSize = CGSize(width: 20, height: 10)
     static let fontSize = CGFloat(16)
+    /// The gray of the cards of Android in the dark theme (bg_cards): pure black looks like a hole on the dimmed map.
+    static let darkBalloon = UIColor(red: 0x3C / 255, green: 0x40 / 255, blue: 0x44 / 255, alpha: 1)
   }
 
   var onTap: (() -> Void)?
@@ -83,7 +85,8 @@ final class NoGpsIntroOverlay: UIView {
     }
     label.isHidden = false
     // Resolved here: a layer keeps a plain color, and the theme can change under the intro.
-    balloonLayer.fillColor = UIColor.systemBackground.cgColor
+    balloonLayer.fillColor = UIColor { $0.userInterfaceStyle == .dark ? Constants.darkBalloon : .systemBackground }
+      .resolvedColor(with: traitCollection).cgColor
     let hole = convert(anchor.bounds, from: anchor).insetBy(dx: -Constants.holePadding, dy: -Constants.holePadding)
     layoutDim(hole: hole)
     layoutBalloon(hole: hole)

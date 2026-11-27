@@ -22,12 +22,21 @@ public final class SpeedHints
    */
   public static boolean isShown(@NonNull NoGps.Status status)
   {
-    return status.speedHintShown && !BoxBottomSheet.needsCalibration(status);
+    return status.speedHintShown && !status.boxNeedsCalibration;
+  }
+
+  /**
+   * The speed is on the map when the position has one, and while the box is connected without one: the calibration bar
+   * slides out of it.
+   */
+  public static boolean isSpeedShown(@NonNull NoGps.Status status, boolean hasSpeed)
+  {
+    return hasSpeed || BoxBottomSheet.isConnected(status);
   }
 
   public static boolean celebrates(@NonNull NoGps.Status status)
   {
-    return !BoxBottomSheet.needsCalibration(status);
+    return !status.boxNeedsCalibration;
   }
 
   public static boolean isMeasured(@NonNull NoGps.Status status, int range)

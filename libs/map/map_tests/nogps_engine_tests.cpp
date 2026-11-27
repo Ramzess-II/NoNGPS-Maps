@@ -2913,17 +2913,24 @@ UNIT_TEST(NoGps_Engine_AdvisesToCalibratePluggedBox)
 class CalibrateWhenStillBox
 {
 public:
-  explicit CalibrateWhenStillBox(Env & env) : m_env(env)
+  // An uncalibrated box asks to be calibrated by the core, see Engine::NeedsBoxCalibration().
+  explicit CalibrateWhenStillBox(Env & env, bool calibrated = true)
+    : m_env(env)
+    , m_flags(calibrated ? kCalibratedFlags : esp32::kFlagImuOk | esp32::kFlagObdOk)
   {
     env.ConnectBox();
-    env.Drive(1000, 0, 0, kCalibratedFlags, 150);
+    env.Drive(1000, 0, 0, m_flags, 150);
   }
 
   void Wait(int64_t ms, bool still, int shakePct)
   {
-    int const flags = kCalibratedFlags | (still ? esp32::kFlagStill : 0);
-    m_env.Drive(ms, 0, 0, flags, shakePct);
+    m_env.Drive(ms, 0, 0, m_flags | (still ? esp32::kFlagStill : 0), shakePct);
   }
+
+  void Drive(int64_t ms, int speedKmh, int shakePct) { m_env.Drive(ms, speedKmh, 0, m_flags, shakePct); }
+
+  // The box has found its vertical.
+  void SetCalibrated() { m_flags = kCalibratedFlags; }
 
   size_t Calibrations() const
   {
@@ -2944,6 +2951,7 @@ public:
   }
 
   Env & m_env;
+  int m_flags;
 };
 
 UNIT_TEST(NoGps_Engine_CalibratesBoxWhenCarStands)
@@ -2995,6 +3003,29 @@ UNIT_TEST(NoGps_Engine_CalibrationWhenStillStartsAgainAfterMoving)
   TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
 }
 
+UNIT_TEST(NoGps_Engine_CalibrationTriesCountFailures)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env);
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibrationTries, 0, ());
+  env.m_engine.CalibrateWhenStill();
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibrationTries, 1, ());
+  box.Wait(1000, true, 40);
+  box.Reply("ERR,MOVING");
+  box.Wait(1000, false, 200);
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibrationTries, 2, ());
+  box.Wait(1000, true, 40);
+  box.Reply("OK");
+  box.Wait(500, true, 40);
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibrationTries, 0, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibration, CalibrationState::Done, ());
+  // Cancelled by the user.
+  env.m_engine.CalibrateWhenStill();
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibrationTries, 1, ());
+  env.m_engine.CancelCalibrateWhenStill();
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibrationTries, 0, ());
+}
+
 UNIT_TEST(NoGps_Engine_CalibrationWhenStillGivesUpAfterRepeatedFailures)
 {
   // A box that cannot calibrate on a still car (bad mounting) is reported as moving each time.
@@ -3018,6 +3049,8 @@ UNIT_TEST(NoGps_Engine_CalibrationWhenStillIsCancelled)
     // The car does not stand for 2 min.
     Env env(true /* inertial */);
     CalibrateWhenStillBox box(env);
+    // A car that stood for a minute is calibrated by the core.
+    env.m_engine.DeclineAutoCalibration();
     env.m_engine.CalibrateWhenStill();
     box.Wait(Engine::kCalibrateWhenStillTimeoutMs - 2000, false, 150);
     TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
@@ -3063,6 +3096,143 @@ UNIT_TEST(NoGps_Engine_CalibrationWhenStillIsCancelled)
     env.m_engine.OnEsp32BleState(BleState::Searching);
     env.m_engine.CalibrateWhenStill();
     TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  }
+}
+
+UNIT_TEST(NoGps_Engine_CalibratesBoxByItselfAtLongStop)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env, false /* calibrated */);
+  TEST(env.m_engine.GetStatus().m_boxNeedsCalibration, ());
+  // The stop has lasted 1 s so far.
+  box.Wait(Engine::kAutoCalibrateStopMs - 3000, false, 150);
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  box.Wait(3000, false, 150);
+  TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
+  box.Wait(1000, true, 40);
+  TEST_EQUAL(box.Calibrations(), 1, ());
+  box.Reply("OK");
+  box.SetCalibrated();
+  box.Wait(500, true, 40);
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  TEST(!env.m_engine.GetStatus().m_boxNeedsCalibration, ());
+  // Calibrated: nothing starts again.
+  box.Wait(2 * Engine::kAutoCalibrateStopMs, true, 40);
+  TEST_EQUAL(box.Calibrations(), 1, ());
+}
+
+UNIT_TEST(NoGps_Engine_AutoCalibrationEndsWhenCarMoves)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env, false /* calibrated */);
+  box.Wait(Engine::kAutoCalibrateStopMs, false, 150);
+  TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
+  // The car goes before the box tells it is still.
+  box.Drive(2000, 36, 150);
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  TEST_EQUAL(box.Calibrations(), 0, ());
+  // The next stop is the next calibration.
+  box.Wait(Engine::kAutoCalibrateStopMs - 1000, false, 150);
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  box.Wait(2000, false, 150);
+  TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
+}
+
+UNIT_TEST(NoGps_Engine_AutoCalibrationIgnoresUnknownSpeed)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env, false /* calibrated */);
+  // No OBD speed is not a stop: the car may be driving.
+  box.Drive(2 * Engine::kAutoCalibrateStopMs, -1, 150);
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedKmh, -1, ());
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+}
+
+UNIT_TEST(NoGps_Engine_AutoCalibrationStartsAgainAfterFailedMoving)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env, false /* calibrated */);
+  box.Wait(Engine::kAutoCalibrateStopMs, true, 40);
+  TEST_EQUAL(box.Calibrations(), 1, ());
+  box.Reply("ERR,MOVING");
+  box.Drive(2000, 36, 200);
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  TEST(env.m_engine.GetStatus().m_boxNeedsCalibration, ());
+  box.Wait(Engine::kAutoCalibrateStopMs + 2000, true, 40);
+  TEST_EQUAL(box.Calibrations(), 2, ());
+}
+
+UNIT_TEST(NoGps_Engine_AutoCalibrationGivesUpAtOneStop)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env, false /* calibrated */);
+  box.Wait(Engine::kAutoCalibrateStopMs, true, 40);
+  for (int i = 0; i < Engine::kCalibrateWhenStillMaxFailures; ++i)
+  {
+    box.Wait(1000, true, 40);
+    box.Reply("ERR,MOVING");
+    box.Wait(500, true, 40);
+  }
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  int const calibrations = box.Calibrations();
+  // The car stands on: the same stop doesn't arm it again.
+  box.Wait(3 * Engine::kAutoCalibrateStopMs, true, 40);
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  TEST_EQUAL(box.Calibrations(), calibrations, ());
+  // The next stop does.
+  box.Drive(2000, 36, 200);
+  box.Wait(Engine::kAutoCalibrateStopMs + 2000, true, 40);
+  TEST_EQUAL(box.Calibrations(), calibrations + 1, ());
+}
+
+UNIT_TEST(NoGps_Engine_AutoCalibrationStopsWhenUserDeclines)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env, false /* calibrated */);
+  box.Wait(Engine::kAutoCalibrateStopMs, false, 150);
+  TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
+  env.m_engine.DeclineAutoCalibration();
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  box.Wait(2 * Engine::kAutoCalibrateStopMs, true, 40);
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  TEST_EQUAL(box.Calibrations(), 0, ());
+  // The page still calibrates when the user asks.
+  env.m_engine.CalibrateWhenStill();
+  box.Wait(1000, true, 40);
+  TEST_EQUAL(box.Calibrations(), 1, ());
+  // The box connects again: the core calibrates by itself again.
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  box.Wait(1000, false, 150);
+  env.ConnectBox();
+  box.Wait(Engine::kAutoCalibrateStopMs + 2000, false, 150);
+  TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
+}
+
+UNIT_TEST(NoGps_Engine_AutoCalibrationIsNotForReadOnlyOrDisconnectedBox)
+{
+  {
+    Env env(true /* inertial */);
+    CalibrateWhenStillBox box(env, false /* calibrated */);
+    env.m_engine.OnEsp32BleState(BleState::Searching);
+    TEST(!env.m_engine.GetStatus().m_boxNeedsCalibration, ());
+    box.Wait(2 * Engine::kAutoCalibrateStopMs, true, 40);
+    TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+    TEST_EQUAL(box.Calibrations(), 0, ());
+  }
+  {
+    Env env(true /* inertial */);
+    CalibrateWhenStillBox box(env, false /* calibrated */);
+    env.m_engine.OnEsp32BleBytes(
+        BoxLine("NGI,1,0.4.1,2026-11-15T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA PHONES"));
+    auto const & sent = env.m_delegate.m_esp32BleSent;
+    auto const list = std::find_if(sent.begin(), sent.end(),
+                                   [](auto const & line) { return line.find(",BT_LIST*") != std::string::npos; });
+    TEST(list != sent.end(), ());
+    env.m_engine.OnEsp32BleBytes(BoxLine("NGA," + (*esp32::Parse(*list))[1] + ",OK,BC:D0:74:A9:71:92|Pixel 8|1|0,0"));
+    TEST(!env.m_engine.GetStatus().m_boxNeedsCalibration, ());
+    box.Wait(2 * Engine::kAutoCalibrateStopMs, true, 40);
+    TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+    TEST_EQUAL(box.Calibrations(), 0, ());
   }
 }
 
@@ -7197,5 +7367,42 @@ UNIT_TEST(NoGps_LogFormat_ProseLinesHaveTagAndTime)
   auto const ble = LoggedLines::Starting("ACTION ble_state" + ms);
   TEST_EQUAL(ble.size(), 1, ());
   TEST(ble[0].find(" Bluetooth = ") != std::string::npos, (ble[0]));
+}
+
+// The shake of the box goes to the trip log once a second while the car stands or the core is armed.
+UNIT_TEST(NoGps_Engine_LogsShakeOfStandingCar)
+{
+  LoggedLines lines;
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env);
+  // The box sends 60 for a part of a second and 100 for the rest, the car stands: OBD speed 0, the box is not still.
+  env.Drive(500, 0, 0, kCalibratedFlags, 60);
+  env.Drive(500, 0, 0, kCalibratedFlags, 100);
+  env.Drive(2000, 0, 0, kCalibratedFlags, 30);
+  auto const found = LoggedLines::Starting("SHAKE ");
+  TEST_GREATER_OR_EQUAL(found.size(), 3, ());
+  TEST(found[1].find(" n=51 max=100 p90=100 p50=60 still=0 armed=0 speed=0") != std::string::npos, (found[1]));
+  TEST(found.back().find(" max=30 p90=30 p50=30 still=0 armed=0 speed=0") != std::string::npos, (found.back()));
+  // Armed, the box is still.
+  env.m_engine.CalibrateWhenStill();
+  box.Wait(1500, true, 40);
+  TEST(LoggedLines::Starting("SHAKE ").back().find("still=1 armed=1") != std::string::npos, ());
+}
+
+UNIT_TEST(NoGps_Engine_DoesNotLogShakeWhileDriving)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env);
+  LoggedLines lines;
+  env.Drive(3000, 50, 0, kCalibratedFlags, 300);
+  TEST(LoggedLines::Starting("SHAKE ").empty(), ());
+}
+
+UNIT_TEST(NoGps_Engine_DoesNotLogShakeOfOldFirmware)
+{
+  Env env(true /* inertial */);
+  LoggedLines lines;
+  env.Drive(3000, 0, 0, kCalibratedFlags, -1);
+  TEST(LoggedLines::Starting("SHAKE ").empty(), ());
 }
 }  // namespace nogps_engine_tests

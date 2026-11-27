@@ -427,6 +427,9 @@ public final class NoGps
     // The core waits for the car to stand still to calibrate the box, or calibrates it, see nativeCalibrateWhenStill().
     @Keep
     public boolean calibrationArmed;
+    // The number of the try of the calibration while armed, 1 first; 0 when not armed.
+    @Keep
+    public int calibrationTries;
     // The sensor box reports that it stands still.
     @Keep
     public boolean boxStill;
@@ -472,6 +475,9 @@ public final class NoGps
     // Another phone has connected to the box first and changes it: this one gets the data only.
     @Keep
     public boolean boxReadOnly;
+    // The box is connected and asks to be calibrated: the core does it at a long stop of the car.
+    @Keep
+    public boolean boxNeedsCalibration;
     @Keep
     int addPhone;
     @Keep
@@ -897,7 +903,11 @@ public final class NoGps
    */
   public static native void nativeCalibrateWhenStill();
 
-  public static native void nativeCancelCalibrateWhenStill();
+  /**
+   * The user has cancelled the calibration the core started at a long stop: it starts none until the box connects
+   * again.
+   */
+  public static native void nativeDeclineAutoCalibration();
 
   /**
    * @return the shake of the box in the last 3 s, the oldest first, in percent of the limit under which the box counts

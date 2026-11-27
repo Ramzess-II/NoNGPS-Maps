@@ -11,9 +11,9 @@ public final class IntroSequence
 {
   /**
    * The text of a balloon appears at this speed, characters per second: about as fast as it is read, so the eye goes
-   * to the panel without waiting for the text. The longest balloon takes a little over three seconds.
+   * to the panel without waiting for the text. The longest balloon takes under five seconds.
    */
-  public static final float TYPE_CHARS_PER_S = 20;
+  public static final float TYPE_CHARS_PER_S = 30;
 
   private static final IntroStep[] STEPS = IntroStep.values();
 

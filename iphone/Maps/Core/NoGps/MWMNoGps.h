@@ -339,6 +339,8 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly) NSInteger calibrationProgress;
 /// The core waits for the car to stand still to calibrate the box, or calibrates it: see +calibrateWhenStill.
 @property(nonatomic, readonly) BOOL calibrationArmed;
+/// The number of the try of the calibration while armed, 1 first; 0 when not armed.
+@property(nonatomic, readonly) NSInteger calibrationTries;
 /// The sensor box reports that it stands still.
 @property(nonatomic, readonly) BOOL boxStill;
 /// The user has not seen the offer of bundledFirmware: show it and call +firmwareOfferShown.
@@ -368,6 +370,8 @@ NS_SWIFT_NAME(NoGpsStatus)
 @property(nonatomic, readonly, nullable) NSArray<MWMNoGpsPhone *> * boxPhones;
 /// Another phone has connected to the box first and changes it: this one gets the data only.
 @property(nonatomic, readonly) BOOL boxReadOnly;
+/// The box is connected and asks to be calibrated: the core does it at a long stop of the car.
+@property(nonatomic, readonly) BOOL boxNeedsCalibration;
 @property(nonatomic, readonly) MWMNoGpsPeerRole peerRole;
 /// The name of the phone this one follows, empty if the box doesn't know it.
 @property(nonatomic, readonly) NSString * peerName;
@@ -438,7 +442,9 @@ NS_SWIFT_NAME(NoGps)
 /// Calibrates the box as soon as the car stands still, see MWMNoGpsStatus.calibrationArmed. The core disarms itself
 /// after the calibration, with a lost link or 2 min without a still car.
 + (void)calibrateWhenStill;
-+ (void)cancelCalibrateWhenStill;
+/// The user has cancelled the calibration the core started at a long stop: it starts none until the box connects
+/// again.
++ (void)declineAutoCalibration;
 /// The shake of the box in the last 3 s, the oldest first, as NSNumber in percent of the limit under which the box
 /// counts the car still. Empty without a box or with an old firmware.
 + (NSArray<NSNumber *> *)boxShake;

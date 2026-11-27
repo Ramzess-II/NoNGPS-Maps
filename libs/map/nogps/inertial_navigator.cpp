@@ -1517,6 +1517,22 @@ void InertialNavigator::OnSourceAccel(std::array<double, 3> const & accel)
   m_boxAccelSpeed.OnAccel(m_clock.NowMs(), accel);
 }
 
+void InertialNavigator::OnShake(std::vector<int> const & shakePct, bool still)
+{
+  int const speedKmh = GetSpeedKmh();
+  // To tune the scale and the limit of the stillness, not while driving: the trip log stays small.
+  if (shakePct.empty() || !(m_calibrationArmed || still || speedKmh == 0))
+    return;
+  auto sorted = shakePct;
+  std::sort(sorted.begin(), sorted.end());
+  size_t const n = sorted.size();
+  char buf[128];
+  std::snprintf(buf, sizeof(buf), "n=%zu max=%d p90=%d p50=%d still=%d armed=%d speed=%d", n, sorted.back(),
+                sorted[std::min(n - 1, n * 9 / 10)], sorted[n / 2], still ? 1 : 0, m_calibrationArmed ? 1 : 0,
+                speedKmh);
+  LOG(LINFO, (LogHead(m_clock, "SHAKE"), buf));
+}
+
 std::optional<double> InertialNavigator::GetPhoneAccelAheadM() const
 {
   if (!m_phoneAccelSpeed.IsUsable())

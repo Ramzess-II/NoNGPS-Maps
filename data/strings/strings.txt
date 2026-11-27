@@ -46991,40 +46991,68 @@ en = Ver %1$@
 ru = Версия %1$@
 uk = Версія %1$@
 
-[nogps_calibration_snackbar]
-comment = Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page
+[nogps_calibrate_bar_hold]
+comment = First row of the orange bar next to the speed on the map: the car must stand still for the box to be calibrated
 tags = android-app,apple-maps
-en = Calibrate the sensor box
-ru = Откалибруйте блок датчиков
-uk = Відкалібруйте блок датчиків
+en = Box calibration · hold still
+ru = Калибровка блока · не двигайтесь
+uk = Калібрування блока · не рухайтесь
 
-[nogps_calibrate_still_hold]
-comment = Orange bar next to the speed on the map after the tap on nogps_calibration_snackbar: the box is calibrated when the car stands still
+[nogps_calibrate_bar_measuring]
+comment = First row of the orange bar next to the speed on the map while the box calibrates
 tags = android-app,apple-maps
-en = Hold still: no one gets in or out
-ru = Не двигайтесь: никто не садится и не выходит
-uk = Не рухайтесь: ніхто не сідає й не виходить
+en = Box calibration · measuring
+ru = Калибровка блока · измеряем
+uk = Калібрування блока · міряємо
 
-[nogps_calibrate_still_calibrating]
-comment = Orange bar next to the speed on the map while the box calibrates
+[nogps_calibrate_bar_moved]
+comment = First row of the orange bar next to the speed on the map: the car moved during the calibration, it starts again when the car is still
 tags = android-app,apple-maps
-en = Calibrating the sensor box
-ru = Калибруем блок датчиков
-uk = Калібруємо блок датчиків
+en = Box calibration · car moved
+ru = Калибровка блока · машина двигалась
+uk = Калібрування блока · машина рухалась
 
-[nogps_calibrate_still_done]
-comment = Green bar next to the speed on the map for 3 seconds after the box is calibrated
+[nogps_calibrate_bar_done]
+comment = First row of the green bar next to the speed on the map for 3 seconds after the box is calibrated
 tags = android-app,apple-maps
-en = Sensor box calibrated
-ru = Блок датчиков откалиброван
-uk = Блок датчиків відкалібровано
+en = Box calibrated
+ru = Блок откалиброван
+uk = Блок відкалібровано
 
-[nogps_calibrate_still_moved]
-comment = Orange bar next to the speed on the map: the car moved during the calibration, it starts again when the car is still
+[nogps_calibrate_bar_ready]
+comment = Second row of the green bar next to the speed on the map after the box is calibrated
 tags = android-app,apple-maps
-en = The car moved
-ru = Машина двигалась
-uk = Машина рухалась
+en = Ready to drive without GPS
+ru = Готово к езде без GPS
+uk = Готово до їзди без GPS
+
+[nogps_calibrate_bar_held]
+comment = Chip of the orange calibration bar: how long the car has stood still of the 2 seconds the box needs, %1$@ is seconds like 1.4
+tags = android-app,apple-maps
+en = %1$@ / 2 s
+ru = %1$@ / 2 с
+uk = %1$@ / 2 с
+
+[nogps_calibrate_bar_try]
+comment = Chip of the orange calibration bar after the car moved: the number of the try and how many tries the app makes
+tags = android-app,apple-maps
+en = try %1$d of %2$d
+ru = попытка %1$d из %2$d
+uk = спроба %1$d з %2$d
+
+[nogps_calibrate_bar_waiting_box]
+comment = Chip of the orange calibration bar: the car has stood still for 2 seconds, the box has not said yet that it is still
+tags = android-app,apple-maps
+en = waiting for box
+ru = ждём блок
+uk = чекаємо блок
+
+[nogps_calibrate_bar_peak]
+comment = Chip of the orange calibration bar: the strongest shake of the last 3 seconds is %d times the limit
+tags = android-app,apple-maps
+en = peak ×%d
+ru = пик ×%d
+uk = пік ×%d
 
 [nogps_share_position]
 comment = Settings item and the switch on its page: the app is the mock location app for other apps
@@ -47834,30 +47862,30 @@ uk = Так, зрозуміло: працює з датчиком
 [nogps_intro_bottom]
 comment = Balloon of the first start pointing at the bottom bar
 tags = android-app,apple-maps
-en = The cars, the box and GPS are here.
-ru = Машины, датчик и GPS — здесь.
-uk = Машини, датчик і GPS — тут.
+en = Where your position comes from: the NonGPS box or GPS. Tap it to connect the box or see its status.
+ru = Откуда берётся ваша позиция: датчик NonGPS или GPS. Нажмите, чтобы подключить датчик или посмотреть его состояние.
+uk = Звідки береться ваша позиція: датчик NonGPS або GPS. Натисніть, щоб підключити датчик або побачити його стан.
 
 [nogps_intro_right]
 comment = Balloon of the first start pointing at the panel with the zoom buttons
 tags = android-app,apple-maps
-en = Zoom and the direction of the map. Hold to move it.
-ru = Масштаб и поворот карты. Удержание двигает панель.
-uk = Масштаб і поворот мапи. Утримання рухає панель.
+en = Zoom and turn the map. Hold the panel to move it up or down.
+ru = Масштаб и поворот карты. Удержите панель, чтобы переместить её вверх или вниз.
+uk = Масштаб і поворот мапи. Утримуйте панель, щоб перемістити її вгору або вниз.
 
 [nogps_intro_right_swipe]
 comment = Appended to nogps_intro_right, the zoom buttons also take a slide
 tags = android-app,apple-maps
-en = Slide +/− to zoom.
-ru = Проведите по +/− для масштаба.
-uk = Проведіть по +/− для масштабу.
+en = Slide along +/− to zoom smoothly.
+ru = Проведите вдоль +/−, чтобы плавно менять масштаб.
+uk = Проведіть уздовж +/−, щоб плавно змінювати масштаб.
 
 [nogps_intro_left]
 comment = Balloon of the first start pointing at the panel with the car buttons
 tags = android-app,apple-maps
-en = Turn the car or point it by hand. Hold to move it.
-ru = Поверните машину или укажите её рукой. Удержание двигает панель.
-uk = Поверніть машину або вкажіть її рукою. Утримання рухає панель.
+en = When GPS is lost, turn the car around or move it to another road with these buttons, or point to where it is by hand. Hold the panel to move it.
+ru = Если GPS пропал, разворачивайте машину или переносите её на другую дорогу этими кнопками либо укажите рукой, где она. Удержите панель, чтобы переместить её.
+uk = Якщо GPS зник, розвертайте авто або переносьте його на іншу дорогу цими кнопками чи вкажіть рукою, де воно. Утримуйте панель, щоб перемістити її.
 
 [nogps_how_title]
 comment = Menu row and title of the page that explains the app and plays the intro again
@@ -47866,37 +47894,3 @@ en = How NonGPS works
 ru = Как работает NonGPS
 uk = Як працює NonGPS
 
-[nogps_how_panels]
-comment = Heading of the part of the How NonGPS works page about the panels of the map
-tags = android-app,apple-maps
-en = The panels of the map
-ru = Панели карты
-uk = Панелі мапи
-
-[nogps_how_bottom]
-comment = Line of the How NonGPS works page about the bottom bar
-tags = android-app,apple-maps
-en = Bottom bar: the cars, the box and GPS.
-ru = Нижняя панель: машины, датчик и GPS.
-uk = Нижня панель: машини, датчик і GPS.
-
-[nogps_how_right]
-comment = Line of the How NonGPS works page about the panel with the zoom buttons
-tags = android-app,apple-maps
-en = Right panel: zoom and the direction of the map. Hold it to move the panel.
-ru = Правая панель: масштаб и поворот карты. Удержание двигает панель.
-uk = Права панель: масштаб і поворот мапи. Утримання рухає панель.
-
-[nogps_how_left]
-comment = Line of the How NonGPS works page about the panel with the car buttons
-tags = android-app,apple-maps
-en = Left panel: turn the car or point it by hand. Hold it to move the panel.
-ru = Левая панель: повернуть машину или указать её рукой. Удержание двигает панель.
-uk = Ліва панель: повернути машину або вказати її рукою. Утримання рухає панель.
-
-[nogps_how_intro_again]
-comment = Button of the How NonGPS works page that plays the intro of the first start again
-tags = android-app,apple-maps
-en = Show the intro again
-ru = Показать подсказки снова
-uk = Показати підказки знову
