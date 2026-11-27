@@ -180,6 +180,7 @@ private:
 
   bool m_isInRouting = false;
   bool m_isArrowGluedInRouting = false;
+  bool m_isLastPositionNavigable = false;
 
   bool m_needBlockAnimation;
   bool m_wasRotationInScaling;

@@ -65,14 +65,14 @@ public:
     return screen;
   }
 
-  void Locate(double accuracyM, double speedMps, double bearingDeg = -1.0)
+  void Locate(double accuracyM, double speedMps, double bearingDeg = -1.0, std::optional<bool> isNavigable = {})
   {
     location::GpsInfo info;
     info.m_timestamp = ++m_timestamp;
     info.m_horizontalAccuracy = accuracyM;
     info.m_speed = speedMps;
     info.m_bearing = bearingDeg;
-    m_controller.OnLocationUpdate(info, m_controller.IsInRouting(), Screen(16));
+    m_controller.OnLocationUpdate(info, isNavigable.value_or(m_controller.IsInRouting()), Screen(16));
   }
 
   /// The user moves the map away, leaves it at |zoom| and presses the button of the position.
@@ -314,7 +314,24 @@ UNIT_CLASS_TEST(Map, MyPositionController_CarHeadingIsNotDropped)
 
   // In the routing with the arrow glued to the route the route bearing stays, the car direction included.
   m_controller.ActivateRouting(17 /* zoomLevel */, true /* enableAutoZoom */, true /* isArrowGlued */);
+  Locate(15.0 /* accuracyM */, 10.0 /* speedMps */, 276.0 /* bearingDeg */, true /* isNavigable */);
   m_controller.OnCompassUpdate(location::CompassInfo{math::DegToRad(96.0), true /* isCarHeading */}, Screen(16));
+  TEST_ALMOST_EQUAL_ABS(m_controller.GetDirection(), math::DegToRad(276.0), 1e-9, ());
+}
+
+UNIT_CLASS_TEST(Map, MyPositionController_CarHeadingWhileRouteIsRebuilt)
+{
+  m_controller.OnCompassUpdate(location::CompassInfo{1.0}, Screen(16));
+  m_controller.ActivateRouting(17 /* zoomLevel */, true /* enableAutoZoom */, true /* isArrowGlued */);
+
+  // Navigable positions: the route bearing stays against the car direction.
+  Locate(15.0 /* accuracyM */, 10.0 /* speedMps */, 90.0 /* bearingDeg */, true /* isNavigable */);
+  m_controller.OnCompassUpdate(location::CompassInfo{math::DegToRad(276.0), true /* isCarHeading */}, Screen(16));
+  TEST_ALMOST_EQUAL_ABS(m_controller.GetDirection(), math::DegToRad(90.0), 1e-9, ());
+
+  // The last position is not matched to the route (it is rebuilt): the car direction turns the arrow.
+  Locate(15.0 /* accuracyM */, 10.0 /* speedMps */, 90.0 /* bearingDeg */, false /* isNavigable */);
+  m_controller.OnCompassUpdate(location::CompassInfo{math::DegToRad(276.0), true /* isCarHeading */}, Screen(16));
   TEST_ALMOST_EQUAL_ABS(m_controller.GetDirection(), math::DegToRad(276.0), 1e-9, ());
 }
 }  // namespace my_position_controller_tests
