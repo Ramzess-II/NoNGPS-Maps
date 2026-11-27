@@ -7240,20 +7240,32 @@ UNIT_TEST(NoGps_Speeding_RatedAfterHandMoveAndClosedAtTripStart)
   TestAlmostEqualAbs(episode.m_durationS, 6.0, 1.5);
   TEST_GREATER(rating.m_trips[0].m_ratedM, 200, ());
 
-  // A new file of the trip log starts a new trip.
-  env.m_engine.OnEsp32BleState(BleState::Searching);
-  env.m_clock.Advance(Engine::kTripFileLinkGapMs);
-  env.ConnectBox();
-  car.Go(3000, 0);
-  rating = env.m_engine.GetDrivingRating();
-  TEST_EQUAL(rating.m_trips.size(), 1, ());
-
   // The trips are kept after a restart.
   Env after(true /* inertial */, nullptr, SavedBy(env));
   rating = after.m_engine.GetDrivingRating();
   TEST_EQUAL(rating.m_trips.size(), 1, ());
   TEST_EQUAL(rating.m_trips[0].m_episodes.size(), 1, ());
   TEST_EQUAL(rating.m_bandCounts[1], 1, ());
+}
+
+UNIT_TEST(NoGps_Speeding_TripStartClosesTrip)
+{
+  speeding::Drive car;
+  auto & env = car.m_env;
+  car.Go(13000, 50);
+  car.Go(6000, 100);
+
+  // A new file of the trip log starts a new trip: what is rated after it is not in the trip before.
+  env.m_engine.OnEsp32BleState(BleState::Searching);
+  env.m_clock.Advance(Engine::kTripFileLinkGapMs);
+  env.ConnectBox();
+  car.Go(5000, 50);
+  auto const rating = env.m_engine.GetDrivingRating();
+  TEST_EQUAL(rating.m_trips.size(), 2, ());
+  // The newest first.
+  TEST(rating.m_trips[0].m_episodes.empty(), ());
+  TEST_GREATER(rating.m_trips[0].m_ratedM, 0, ());
+  TEST_EQUAL(rating.m_trips[1].m_episodes.size(), 1, ());
 }
 
 UNIT_TEST(NoGps_Speeding_StopKeepsEpisodeThatGoesOn)
