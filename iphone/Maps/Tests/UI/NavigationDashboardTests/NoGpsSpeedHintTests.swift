@@ -79,4 +79,5 @@ private final class FakeHintStatus: NoGpsStatus {
   override var sourceState: NoGpsSourceState { .connected }
   override var bleState: NoGpsBleState { .connected }
   override var calibration: NoGpsCalibrationState { fakeCalibration }
+  override var boxNeedsCalibration: Bool { fakeCalibration == .none }
 }

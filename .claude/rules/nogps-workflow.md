@@ -218,6 +218,9 @@ Update these in the same PR, in a separate `[docs]` commit:
 - `docs/nogps/navigation-rules.md`: the current rules of the core and their constants. Read the section you need
   before changing core behavior, not the whole file. If you change a rule or a threshold, change it here too.
 - `docs/nogps/esp32-firmware-spec.md`: the box protocol and firmware.
+- `data/nogps_guide.html`: the guide "How NonGPS works", in English and Ukrainian. A PR that changes what a section
+  describes updates the section, e.g. pairing and the full reset of the box, the calibration, the driver rating or
+  the menu.
 
 Docs say what is true now. Why it got that way stays in commits and PRs: `git log -- <file>`, `gh pr view <n>`.
 Work left to do lives in issues, not in markdown lists.

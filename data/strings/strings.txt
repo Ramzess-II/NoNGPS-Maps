@@ -46991,15 +46991,8 @@ en = Ver %1$@
 ru = Версия %1$@
 uk = Версія %1$@
 
-[nogps_calibration_snackbar]
-comment = Flashing bar at the bottom of the map until the sensor box is calibrated, opens the Calibration page
-tags = android-app,apple-maps
-en = Calibrate the sensor box
-ru = Откалибруйте блок датчиков
-uk = Відкалібруйте блок датчиків
-
 [nogps_calibrate_still_hold]
-comment = Orange bar next to the speed on the map after the tap on nogps_calibration_snackbar: the box is calibrated when the car stands still
+comment = Orange bar next to the speed on the map while the car stands and the box is about to be calibrated
 tags = android-app,apple-maps
 en = Hold still: no one gets in or out
 ru = Не двигайтесь: никто не садится и не выходит
@@ -47943,37 +47936,3 @@ en = How NonGPS works
 ru = Как работает NonGPS
 uk = Як працює NonGPS
 
-[nogps_how_panels]
-comment = Heading of the part of the How NonGPS works page about the panels of the map
-tags = android-app,apple-maps
-en = The panels of the map
-ru = Панели карты
-uk = Панелі мапи
-
-[nogps_how_bottom]
-comment = Line of the How NonGPS works page about the bottom bar
-tags = android-app,apple-maps
-en = Bottom bar: the cars, the box and GPS.
-ru = Нижняя панель: машины, датчик и GPS.
-uk = Нижня панель: машини, датчик і GPS.
-
-[nogps_how_right]
-comment = Line of the How NonGPS works page about the panel with the zoom buttons
-tags = android-app,apple-maps
-en = Right panel: zoom and the direction of the map. Hold it to move the panel.
-ru = Правая панель: масштаб и поворот карты. Удержание двигает панель.
-uk = Права панель: масштаб і поворот мапи. Утримання рухає панель.
-
-[nogps_how_left]
-comment = Line of the How NonGPS works page about the panel with the car buttons
-tags = android-app,apple-maps
-en = Left panel: turn the car or point it by hand. Hold it to move the panel.
-ru = Левая панель: повернуть машину или указать её рукой. Удержание двигает панель.
-uk = Ліва панель: повернути машину або вказати її рукою. Утримання рухає панель.
-
-[nogps_how_intro_again]
-comment = Button of the How NonGPS works page that plays the intro of the first start again
-tags = android-app,apple-maps
-en = Show the intro again
-ru = Показать подсказки снова
-uk = Показати підказки знову
