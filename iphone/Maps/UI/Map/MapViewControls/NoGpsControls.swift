@@ -412,6 +412,7 @@ final class NoGpsControls: NSObject {
       // The panel is slid out on a fresh install, and the balloon of the intro would point at nothing. The buttons it
       // talks about are held visible; the flags of the testers keep their own rule.
       buttonsHidden[reverseButton] = false
+      buttonsHidden[switchMarkButton] = false
       buttonsHidden[manualButton] = false
     }
     hasButtons = buttonsHidden.values.contains(false)

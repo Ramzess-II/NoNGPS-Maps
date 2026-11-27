@@ -445,6 +445,8 @@ public class MapButtonsController extends Fragment
       // talks about are held visible; the flags of the testers keep their own rule.
       if (mReverseButton != null)
         mCarButtonsShown.put(mReverseButton, true);
+      if (mSwitchMarkButton != null)
+        mCarButtonsShown.put(mSwitchMarkButton, true);
       if (mManualPositionButton != null)
         mCarButtonsShown.put(mManualPositionButton, true);
     }
