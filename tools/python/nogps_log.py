@@ -189,6 +189,13 @@ ACTION_BY = re.compile(r'\bACTION \w+ (?:\w+=\S+ )*by=(\S+)')
 # Engine::SetManualMode writes no line of its own.
 MARK_BY_USER = ('user', 'tap')
 SENSORS = ('ACCB', 'ACCB_BEFORE', 'ACC', 'GYRO')
+# The SHAKE line of the core: the shake_pct of the box over a second while the car stands or the core is armed.
+SHAKE_KEYS = ('n', 'max', 'p90', 'p50', 'still', 'armed', 'speed')
+# The strength of a second of shake: the max of it in percent of the limit of the stillness, under 100, from 100,
+# from 300, from 1000 (kTraceTopPercent of the bar).
+SHAKE_BANDS = ((0, '<100'), (100, '100-300'), (300, '300-1000'), (1000, '>=1000'))
+# The seconds before a failed calibration the shake is read from.
+SHAKE_BEFORE_FAILED_S = 3
 SLICES = 5
 
 
@@ -412,6 +419,7 @@ class Group:
         self.rows = []
         self.events = []
         self.series = dict(accb=[], acc=[], gyro=[])
+        self.shake = []
         self.error_meter = nogps_trip_log.ErrorMeter()
         for t, level, _, tag, body in unique:
             self.classify(t, level, tag, body)
@@ -440,6 +448,11 @@ class Group:
                 self.series['accb'] += sensor_slices(t - int(words[1]) * 1000, words[2:], 4)
             elif words[0] in ('ACCB', 'ACC'):
                 self.series[words[0].lower()] += sensor_slices(t, words[1:], 4)
+            return
+        if words[0] == 'SHAKE':
+            values = dict(w.split('=', 1) for w in words[1:] if '=' in w)
+            if all(k in values and values[k].lstrip('-').isdigit() for k in SHAKE_KEYS):
+                self.shake.append(dict(t=t, **{k: int(values[k]) for k in SHAKE_KEYS}))
             return
         kind = event_of(level, file, func, text)
         if kind:
@@ -1155,6 +1168,50 @@ def print_rules(analysis):
                                                 '; '.join(notes)))
 
 
+def shake_band(value):
+    """The label of the band of SHAKE_BANDS the max of a second is in."""
+    return [label for low, label in SHAKE_BANDS if value >= low][-1]
+
+
+def shake_days(analysis):
+    """The SHAKE seconds of each phone and day, as {(phone, day, still): {band: seconds}}, and for each
+    CAL_UP_FAILED of the box the largest max of the SHAKE_BEFORE_FAILED_S seconds before it:
+    [(phone, day, time ms, max or None)]. The day is the day of the phone's own clock, see Group.zone."""
+    bands = {}
+    failed = []
+    for group in analysis.groups:
+        for second in group.shake:
+            key = group.phone, from_ms(second['t']).strftime('%Y-%m-%d'), second['still']
+            band = bands.setdefault(key, collections.Counter())
+            band[shake_band(second['max'])] += 1
+        for event in group.events:
+            if event['name'] != 'box event' or 'CAL_UP_FAILED' not in event['text']:
+                continue
+            before = [s['max'] for s in group.shake
+                      if event['t'] - SHAKE_BEFORE_FAILED_S * 1000 <= s['t'] <= event['t']]
+            failed.append((group.phone, from_ms(event['t']).strftime('%Y-%m-%d'), event['t'],
+                           max(before) if before else None))
+    return bands, failed
+
+
+def print_shake(analysis):
+    """The seconds a standing car (or an armed core) has shaken the box by, per phone and day, to check the scale and
+    the limit of the calibration bar: if standing seconds rarely pass 1000, lower kTraceTopPercent; if many do, raise
+    it. A second is a SHAKE line, its strength the max of the shake_pct of the box in it."""
+    bands, failed = shake_days(analysis)
+    labels = [label for _, label in SHAKE_BANDS]
+    print('%-18s %-10s %-6s %7s  %s' % ('phone', 'day', 'still', 'seconds', '  '.join('%9s' % l for l in labels)))
+    for (phone, day, still), counter in sorted(bands.items()):
+        total = sum(counter.values())
+        print('%-18s %-10s %-6s %7d  %s' % (phone, day, 'yes' if still else 'no', total, '  '.join(
+            '%8d%%' % round(counter[label] * 100 / total) for label in labels)))
+    if not bands:
+        print('no SHAKE lines: the logs are of a build without them, or the box has an old firmware')
+    for phone, day, t, peak in failed:
+        print('CAL_UP_FAILED %s %s %s: max of the %d s before it %s' % (
+            phone, day, from_ms(t).strftime('%H:%M:%S'), SHAKE_BEFORE_FAILED_S, peak if peak is not None else '-'))
+
+
 def print_losses(analysis):
     """The road losses of the logs: for each, whether a tap on the road lost panel would have placed the mark by
     GPS (see Group.road_losses), and the totals per set of nogps_replay.py days. The trip logs have no taps on the
@@ -1245,6 +1302,8 @@ def main():
         epilog='''commands:
   trips   the trips of the logs, --all with the stationary ones
   losses  the road losses: would a tap on the road lost panel have placed the mark by GPS
+  shake   the shake of the box while the car stands, per day: the seconds by the strength of the shake (max of the
+          second) and by what came before a failed calibration (CAL_UP_FAILED)
   rules   how often each rule of the core fired over all the trips, and what came next
   trip    a trip: stats, error from GPS, counts, events, anomalies
   events  the events of a trip, --from/--to HH:MM[:SS], --cat road, --grep regex, --full
@@ -1253,7 +1312,7 @@ def main():
   replay  the trip against a nogps-replay-out.txt: --replay file
   flags   every flag of the tree with its trip, the time, the voice and where the viewer shows it''',
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('command', choices=['trips', 'losses', 'rules', 'trip', 'events', 'state', 'rows', 'replay',
+    parser.add_argument('command', choices=['trips', 'losses', 'rules', 'shake', 'trip', 'events', 'state', 'rows', 'replay',
                                             'flags'])
     parser.add_argument('logs', nargs='+', help='the logs tree logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, '
                         'logs.zip or log files')
@@ -1281,6 +1340,8 @@ def main():
         return print_losses(analysis)
     if args.command == 'rules':
         return print_rules(analysis)
+    if args.command == 'shake':
+        return print_shake(analysis)
     if args.command == 'flags':
         return print_flags(analysis)
     if args.trip is None or not 0 <= args.trip < len(analysis.trips):

@@ -3003,6 +3003,29 @@ UNIT_TEST(NoGps_Engine_CalibrationWhenStillStartsAgainAfterMoving)
   TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
 }
 
+UNIT_TEST(NoGps_Engine_CalibrationTriesCountFailures)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env);
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibrationTries, 0, ());
+  env.m_engine.CalibrateWhenStill();
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibrationTries, 1, ());
+  box.Wait(1000, true, 40);
+  box.Reply("ERR,MOVING");
+  box.Wait(1000, false, 200);
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibrationTries, 2, ());
+  box.Wait(1000, true, 40);
+  box.Reply("OK");
+  box.Wait(500, true, 40);
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibrationTries, 0, ());
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibration, CalibrationState::Done, ());
+  // Cancelled by the user.
+  env.m_engine.CalibrateWhenStill();
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibrationTries, 1, ());
+  env.m_engine.CancelCalibrateWhenStill();
+  TEST_EQUAL(env.m_engine.GetStatus().m_calibrationTries, 0, ());
+}
+
 UNIT_TEST(NoGps_Engine_CalibrationWhenStillGivesUpAfterRepeatedFailures)
 {
   // A box that cannot calibrate on a still car (bad mounting) is reported as moving each time.
@@ -7344,5 +7367,42 @@ UNIT_TEST(NoGps_LogFormat_ProseLinesHaveTagAndTime)
   auto const ble = LoggedLines::Starting("ACTION ble_state" + ms);
   TEST_EQUAL(ble.size(), 1, ());
   TEST(ble[0].find(" Bluetooth = ") != std::string::npos, (ble[0]));
+}
+
+// The shake of the box goes to the trip log once a second while the car stands or the core is armed.
+UNIT_TEST(NoGps_Engine_LogsShakeOfStandingCar)
+{
+  LoggedLines lines;
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env);
+  // The box sends 60 for a part of a second and 100 for the rest, the car stands: OBD speed 0, the box is not still.
+  env.Drive(500, 0, 0, kCalibratedFlags, 60);
+  env.Drive(500, 0, 0, kCalibratedFlags, 100);
+  env.Drive(2000, 0, 0, kCalibratedFlags, 30);
+  auto const found = LoggedLines::Starting("SHAKE ");
+  TEST_GREATER_OR_EQUAL(found.size(), 3, ());
+  TEST(found[1].find(" n=51 max=100 p90=100 p50=60 still=0 armed=0 speed=0") != std::string::npos, (found[1]));
+  TEST(found.back().find(" max=30 p90=30 p50=30 still=0 armed=0 speed=0") != std::string::npos, (found.back()));
+  // Armed, the box is still.
+  env.m_engine.CalibrateWhenStill();
+  box.Wait(1500, true, 40);
+  TEST(LoggedLines::Starting("SHAKE ").back().find("still=1 armed=1") != std::string::npos, ());
+}
+
+UNIT_TEST(NoGps_Engine_DoesNotLogShakeWhileDriving)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env);
+  LoggedLines lines;
+  env.Drive(3000, 50, 0, kCalibratedFlags, 300);
+  TEST(LoggedLines::Starting("SHAKE ").empty(), ());
+}
+
+UNIT_TEST(NoGps_Engine_DoesNotLogShakeOfOldFirmware)
+{
+  Env env(true /* inertial */);
+  LoggedLines lines;
+  env.Drive(3000, 0, 0, kCalibratedFlags, -1);
+  TEST(LoggedLines::Starting("SHAKE ").empty(), ());
 }
 }  // namespace nogps_engine_tests

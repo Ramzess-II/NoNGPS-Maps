@@ -382,6 +382,9 @@ public:
   /// Starts the gyroscope calibration. The gyroscope must be fixed and the car must stand still for ~3 s.
   void Calibrate();
 
+  /// The core waits for the car to stand still to calibrate the box: its shake goes to the trip log, see OnShake().
+  void SetCalibrationArmed(bool armed) { m_calibrationArmed = armed; }
+
   /// A trusted GPS position. The inertial navigation continues from it.
   void OnGpsPosition(Fix const & gps);
   /// \returns true if the bearing of the GPS position tells where the car goes.
@@ -546,6 +549,7 @@ private:
   void OnSpeed(int speedKmh, int64_t timeMs) override;
   void OnMotion(double yawDeltaDeg, double dtSec, int64_t timestampNs) override;
   void OnSourceAccel(std::array<double, 3> const & accel) override;
+  void OnShake(std::vector<int> const & shakePct, bool still) override;
   void OnBoxHeard(std::string const & id, std::string const & firmware) override;
   std::string GetBoxAuthKey(std::string const & id, bool & confirmed) override
   {
@@ -948,6 +952,7 @@ private:
   // The box the accelerometer is learned with, and when it was saved.
   std::string m_boxAccelId;
   int64_t m_boxAccelSavedMs = 0;
+  bool m_calibrationArmed = false;
   // Since when the car followed apart drives fast enough to be on a road.
   std::optional<int64_t> m_fastSinceMs;
 };

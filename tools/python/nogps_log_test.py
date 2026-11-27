@@ -388,6 +388,40 @@ class EventsTest(unittest.TestCase):
         self.assertEqual((events[2]['lat'], events[2]['lon']), (10.0001, 20.0002))
 
 
+class ShakeTest(unittest.TestCase):
+    def shake(self, second, maximum, still=0, armed=0):
+        return core('10-08', 18 * 3600 + second, 'OnShake', 'SHAKE ms=%d n=50 max=%d p90=%d p50=%d still=%d armed=%d '
+                    'speed=0' % (LOGFMT_MS, maximum, maximum // 2, maximum // 4, still, armed),
+                    file='nogps/inertial_navigator.cpp:1')
+
+    def test_seconds_by_strength_and_what_came_before_a_failure(self):
+        log = android_drive(seconds=20, stand=0)
+        log += [self.shake(1, 50), self.shake(2, 99), self.shake(3, 150), self.shake(4, 2000, armed=1),
+                self.shake(5, 40, still=1), self.shake(6, 300, still=1)]
+        log.append(core('10-08', 18 * 3600 + 7, 'OnBoxEvent', 'EVENT box_event ms=%d Box event # 4 at 11 ms: '
+                        'CAL_UP_FAILED' % LOGFMT_MS, level='W'))
+        analysis = analyse(('app.log', log))
+        # A SHAKE line is no event of the trip.
+        self.assertFalse([e for e in analysis.groups[0].events if e['text'].startswith('SHAKE')])
+        bands, failed = nogps_log.shake_days(analysis)
+        self.assertEqual({k: dict(v) for k, v in bands.items()}, {
+            ('Pixel_7-a3f9', '2026-10-08', 0): {'<100': 2, '100-300': 1, '>=1000': 1},
+            ('Pixel_7-a3f9', '2026-10-08', 1): {'<100': 1, '300-1000': 1}})
+        # The seconds 4..7 are within 3 s of the event at second 7.
+        self.assertEqual([(f[3]) for f in failed], [2000])
+        out = io.StringIO()
+        with redirect_stdout(out):
+            nogps_log.print_shake(analysis)
+        self.assertIn('CAL_UP_FAILED Pixel_7-a3f9 2026-10-08 18:00:07: max of the 3 s before it 2000', out.getvalue())
+        self.assertIn('50%', out.getvalue())
+
+    def test_log_without_the_lines(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            nogps_log.print_shake(analyse(('app.log', android_drive(seconds=5, stand=0))))
+        self.assertIn('no SHAKE lines', out.getvalue())
+
+
 class CalibrationTest(unittest.TestCase):
     def test_trip_starts_with_the_last_line_before_the_car_moves(self):
         day = '10-08'

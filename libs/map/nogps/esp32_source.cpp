@@ -445,6 +445,7 @@ void Esp32Source::OnBleState(BleState state, bool bondLost, std::string const & 
     m_carSilent = false;
     m_boxValues.clear();
     m_shake.clear();
+    m_shakeLogged.clear();
     m_hellosWithoutInfo = 0;
     m_peer.Reset();
     m_update.OnLinkLost();
@@ -777,6 +778,9 @@ void Esp32Source::OnData(esp32::Data const & data)
     m_shake.push_back(data.m_shakePct);
     if (m_shake.size() > kShakeLines)
       m_shake.pop_front();
+    if (m_shakeLogged.empty())
+      m_shakeLoggedMs = now;
+    m_shakeLogged.push_back(data.m_shakePct);
   }
   // The box has restarted, its totals start anew: the places carried by them are lost.
   if (m_hasLast && data.m_timeMs < m_lastTimeMs && m_lastTimeMs - data.m_timeMs < kBoxTimeWrapMs / 2)
@@ -785,6 +789,12 @@ void Esp32Source::OnData(esp32::Data const & data)
   m_speedKmh = data.m_speedKmh;
   if (data.m_speedKmh >= 0)
     m_listener.OnSpeed(data.m_speedKmh, now - data.m_speedAgeMs);
+  // After the speed: the log line tells the speed of this second.
+  if (data.m_shakePct >= 0 && now - m_shakeLoggedMs >= kShakeLogMs)
+  {
+    m_listener.OnShake(m_shakeLogged, IsStill());
+    m_shakeLogged.clear();
+  }
   // For the trip log only, see AccelLog.
   if (data.m_hasAccel)
   {
