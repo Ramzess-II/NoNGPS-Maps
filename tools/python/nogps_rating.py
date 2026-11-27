@@ -73,7 +73,8 @@ class Stretch:
 class Meter:
     """SpeedingMeter in Python: feed one second at a time, then flush()."""
 
-    def __init__(self):
+    def __init__(self, grace_m=LOWER_LIMIT_GRACE_M):
+        self._grace_m = grace_m
         self.rated_m = 0.0
         self.rated_s = 0.0
         self.weighted_s = 0.0
@@ -121,7 +122,7 @@ class Meter:
             self._lower_m = 0.0
         else:
             self._lower_m += distance
-            if self._lower_m >= LOWER_LIMIT_GRACE_M:
+            if self._lower_m >= self._grace_m:
                 self._limit, self._lower_m = limit, 0.0
         limit = self._limit
         excess = kmh - limit
@@ -180,7 +181,8 @@ class Meter:
 
 def rate_rows(rows, num):
     """The rating of the TRIP rows of a trip. \\param num nogps_log.num: the number at the start of a field."""
-    meter = Meter()
+    # The lim= of a row is the limit in force: the core has applied the grace of a lower limit already.
+    meter = Meter(grace_m=0)
     for row in rows:
         speed = num(row, 'speed')
         kmh = None if speed is None or speed < 0 else speed * (num(row, 'scale') or 1)

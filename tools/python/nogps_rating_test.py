@@ -136,6 +136,22 @@ class RowsTest(unittest.TestCase):
         self.assertEqual(result['bands'], [0, 1, 0])
         self.assertEqual(result['episodes'][0]['lim'], 50)
 
+    def test_rows_lim_is_not_graced_again(self):
+        rows = []
+        t = 0
+        # The core logs lim=100 for the grace, then lim=50, and starts its episode 3 s later.
+        for kmh, lim in [(85, '100')] * 10 + [(85, '50')] * 6:
+            t += 1000
+            rows.append(dict(t=t, speed=str(kmh), scale='1.000', lim=lim))
+        t += 1000
+        rows.append(dict(t=t, speed='50', scale='1.000', lim='50'))
+        for _ in range(3):
+            t += 1000
+            rows.append(dict(t=t, speed='50', scale='1.000', lim='50'))
+        result = nogps_rating.rate_rows(rows, nogps_log.num)
+        self.assertEqual(len(result['episodes']), 1)
+        self.assertEqual(result['episodes'][0]['lim'], 50)
+
 
 if __name__ == '__main__':
     unittest.main()
