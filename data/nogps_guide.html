@@ -262,7 +262,7 @@
     </summary>
     <div class="body">
       <div lang="en">
-        <p>Plug the ELM327 adapter into the OBD-II socket of the car, and the box into the adapter. The socket is
+        <p>Plug the NonGPS-OBD box into the OBD-II socket of the car. The socket is
           always live, so the box has power whenever the car is.</p>
         <p>Fix the box firmly. It zeroes the gyroscope on every stop by itself, but a box that moves in its mount
           needs a new calibration.</p>
@@ -279,7 +279,7 @@
         </ul>
       </div>
       <div lang="uk">
-        <p>Вставте адаптер ELM327 у роз'єм OBD-II машини, а блок — в адаптер. Роз'єм завжди під напругою, тож блок
+        <p>Вставте блок NonGPS-OBD у роз'єм OBD-II машини. Роз'єм завжди під напругою, тож блок
           має живлення, поки є воно в машини.</p>
         <p>Закріпіть блок міцно. Він сам обнуляє гіроскоп на кожній зупинці, але блок, що ворушиться у кріпленні,
           треба калібрувати знову.</p>
@@ -299,8 +299,8 @@
       <figure class="shot" data-shot="box-in-obd-socket">
         <div class="frame"></div>
         <figcaption>
-          <span lang="en">The adapter and the box in the OBD-II socket</span>
-          <span lang="uk">Адаптер і блок у роз'ємі OBD-II</span>
+          <span lang="en">The NonGPS-OBD box in the OBD-II socket</span>
+          <span lang="uk">Блок NonGPS-OBD у роз'ємі OBD-II</span>
         </figcaption>
       </figure>
     </div>
@@ -369,7 +369,8 @@
           <li>"The box did not prove it is yours": the box is not used. If it is yours, forget the car and pair the box
             again.</li>
         </ul>
-        <p>The state of the OBD adapter: "OBD doesn't answer" means the adapter is not plugged in or is off, "OBD
+        <p>The state of the OBD link: "OBD doesn't answer" means the box is connected, but its OBD chip
+          gives no answer, "OBD
           sleeps" means the engine is stopped, "OBD is off in the box" means it was turned off in the box settings.
           While there is no speed from the car, the car stands still on the map.</p>
         <p>The app looks for the box in the background, and on Android a notification says that it follows the car by
@@ -396,7 +397,7 @@
           <li>«Блок не довів, що він ваш»: блок не використовується. Якщо він ваш, забудьте машину й спаруйте блок
             знову.</li>
         </ul>
-        <p>Стан адаптера OBD: «OBD не відповідає» — адаптер не вставлено або він вимкнений, «OBD спить» — двигун
+        <p>Стан зв’язку OBD: «OBD не відповідає» — блок підключено, але його чип OBD не відповідає, «OBD спить» — двигун
           зупинено, «OBD вимкнено в блоці» — його вимкнено в налаштуваннях блока. Поки від машини немає швидкості,
           машина стоїть на мапі.</p>
         <p>Застосунок шукає блок у фоні, а на Android сповіщення каже, що він слідує за машиною за блоком датчиків.</p>
@@ -423,7 +424,7 @@
       <div lang="en">
         <p>The box must be calibrated once it is installed, and every time it was taken out or moved. The car must
           stand on a level surface, not on a slope.</p>
-        <p>When it is needed, nothing needs a tap: once the car has stood still for a minute, an orange "Box calibration · hold still"
+        <p>When it is needed, nothing needs a tap: as soon as the box is connected and the car is not driving, an orange "Box calibration · hold still"
           bar slides out from under the speed button. Hold still: nobody gets in or out and nobody touches the box. The
           trace of the shaking goes from orange to green as the car settles. A chip on the right counts the 2 seconds
           of stillness it needs. Then "Box calibration · measuring" with its percent in the chip, and "Box calibrated" with
@@ -438,7 +439,7 @@
       <div lang="uk">
         <p>Блок треба калібрувати, коли його встановлено, і щоразу, коли його виймали чи зсували. Машина має стояти на
           рівній поверхні, не на схилі.</p>
-        <p>Коли це потрібно, торкатись нічого не треба: щойно машина простояла хвилину, з-під кнопки швидкості
+        <p>Коли це потрібно, торкатись нічого не треба: щойно блок на зв'язку, а машина не їде, з-під кнопки швидкості
           висувається оранжева смужка «Калібрування блока · не рухайтесь». Стійте нерухомо: ніхто не сідає й не виходить і ніхто не торкається
           блока. Слід тремтіння змінюється з оранжевого на зелений, коли машина вгамовується. Чіп праворуч рахує 2 секунди
           спокою, потрібні блоку. Потім «Калібрування блока · міряємо» з відсотками в чіпі і «Блок відкалібровано» з
