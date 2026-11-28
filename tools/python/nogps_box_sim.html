@@ -212,11 +212,13 @@ function showBonds(state) {
     '</p>' +
     (rows.length ? '<table><tr><th>phone</th><th>address</th><th></th><th></th></tr>' + rows.join('') + '</table>' : '') +
     '<p><button id="quickOns" title="3 quick power-ons of a box with phones: the recovery window opens, a new phone erases nobody, a full box drops the phone with the oldest last HELLO">3 quick power-ons</button> ' +
+    '<button id="radioOff" title="PWR-6: the box sends WIFI_OFF, and a second later its radio is off and every link dropped, as when the engine has been stopped for a minute">Radio off</button> ' +
     '<button id="factoryReset" title="What FACTORY_RESET does: no phone, no key, every link dropped, the pairing window open">Full reset</button></p>';
   for (const button of $('bonds').querySelectorAll('button[data-forget]')) {
     button.onclick = () => action('forget_bond', button.dataset.forget);
   }
   $('quickOns').onclick = () => action('quick_power_ons');
+  $('radioOff').onclick = () => action('radio_off');
   $('factoryReset').onclick = () => action('factory_reset');
 }
 

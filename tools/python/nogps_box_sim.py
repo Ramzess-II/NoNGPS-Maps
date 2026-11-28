@@ -30,8 +30,8 @@ What it doesn't simulate, and why:
   and no "display only" capability; so no drop of a link that stays unencrypted and no BT_UNSECURE event, and the
   write queue of BLE-5 is the radio's, not ours;
 - any motion: no speed, no turns, no jolts;
-- the firmware update, the car values and the places of two phones: NGI tells the ability "BLE" and no more, so the
-  application doesn't update the box, and CAR_GET, CAR_SET and PEER get ERR,UNKNOWN as from any box that doesn't know
+- the firmware update, the car values and the places of two phones: NGI tells the abilities "BLE RADIO_OFF" and no
+  more, so the application doesn't update the box, and CAR_GET, CAR_SET and PEER get ERR,UNKNOWN as from any box that doesn't know
   them (the application reads only OTA from the abilities);
 - the phones: a phone is bonded here at its first HELLO, by its name, as the firmware bonds it at pairing, with an
   address made from the name, as the system gives the simulator none. BT_PAIR,<code> sets the pairing flag of the
@@ -124,6 +124,8 @@ MIN_PAYLOAD = 20
 LINES_KEPT = 4000
 # The panel's Shut down waits this long, so its answer reaches the page before the program is gone.
 QUIT_DELAY_S = 0.3
+# PWR-6: the radio of the box stays on this long after the event WIFI_OFF.
+RADIO_OFF_GRACE_S = 1.0
 
 # Section 9.3, the bits of the data flags, in their order.
 FLAG_BITS = [('IMU_OK', 0x001), ('BIAS_OK', 0x002), ('UP_OK', 0x004), ('FWD_OK', 0x008), ('OBD_OK', 0x010),
@@ -138,9 +140,9 @@ OBD_ABSENT_STATES = {'DISABLED', 'NO_ADAPTER', 'SLEEP'}
 # Section 4.4, the last error of the OBD, from the state the panel sets.
 OBD_ERRORS = {'NO_ADAPTER': 'NO_ADAPTER', 'NO_CAR': 'NO_CAR', 'NO_DATA': 'NO_SPEED', 'ERROR': 'BUS_ERROR'}
 OBD_PROTOCOL = 'ISO 15765-4 (CAN 11/500)'
-# The abilities of NGI: the lines of the box itself. The application reads only OTA from this field (9.6), and the
-# simulator doesn't take a firmware.
-ABILITIES = 'BLE'
+# The abilities of NGI: the lines of the box itself. The application reads OTA and RADIO_OFF from this field (9.6);
+# the simulator doesn't take a firmware, and its panel's "radio off" does what RADIO_OFF promises (PWR-6).
+ABILITIES = 'BLE RADIO_OFF'
 # BLE-12: the box keeps this many phones. Section 9.5: a code of BT_PAIR is 6 digits.
 MAX_BONDS = 4
 CODE_DIGITS = 6
@@ -380,6 +382,8 @@ class Box:
         self.quit_at = None
         # When FACTORY_RESET erases the box: after its OK.
         self.reset_at = None
+        # When the radio goes off after the panel's "radio off": a second after its event WIFI_OFF.
+        self.radio_off_at = None
         # The number of the next event of the journal that is sent, see event().
         self.event_number = 0
 
@@ -653,6 +657,10 @@ class Box:
             now = self.clock()
             if self.reset_at is not None and now >= self.reset_at:
                 self.factory_reset()
+            if self.radio_off_at is not None and now >= self.radio_off_at:
+                self.radio_off_at = None
+                self.state.advertising = False
+                self.dropping.update(self.phones)
             for phone_id in self.dropping:
                 self.radio.disconnect(phone_id)
             self.dropping.clear()
@@ -764,6 +772,7 @@ class Box:
                 'keys': len(self.auth_keys),
                 'recovery_window': state.recovery_window,
                 'resetting': self.reset_at is not None,
+                'radio_going_off': self.radio_off_at is not None,
                 'bonds': [{'address': address, 'name': bond['name'], 'unix_s': bond['unix_s'],
                            'connected': any(self.address_of(p) == address for p in self.phones.values())}
                           for address, bond in self.bonds.items()],
@@ -829,6 +838,11 @@ class Box:
                 self.state.advertising = False
                 self.dropping.update(self.phones)
                 self.quit_at = self.clock() + QUIT_DELAY_S
+            elif action == 'radio_off':
+                # PWR-6: the event goes to the phones, the radio stays on for a second, then it is off.
+                if self.radio_off_at is None and self.state.advertising:
+                    self.event('I', 'WIFI_OFF', 'engine off 60 s rpm 0 12450 mV')
+                    self.radio_off_at = self.clock() + RADIO_OFF_GRACE_S
             elif action == 'clear':
                 self.log.clear()
             elif action == 'forget_bond' and label in self.bonds:

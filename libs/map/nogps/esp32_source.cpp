@@ -67,7 +67,9 @@ void Esp32Source::Stop()
   m_dataTimesMs.clear();
   m_hasLast = false;
   m_lastDataMs.reset();
-  m_batteryLock = BatteryLock::None;
+  m_batteryLock = Announcement::None;
+  m_radioOff = Announcement::None;
+  m_announcesRadioOff = false;
   m_speedKmh = -1;
   m_wakingLinkMs.reset();
   m_info.reset();
@@ -378,6 +380,7 @@ void Esp32Source::OnInfo(esp32::Info const & info)
                 info.m_board, info.m_revision, "updates =", info.m_canUpdate));
   bool const phonesNew = !info.IsTooOld() && (!m_info || m_info->IsTooOld());
   m_info = info;
+  m_announcesRadioOff = info.m_radioOff;
   m_update.OnBoxFirmware(info.m_firmware);
   m_listener.OnBoxHeard(info.m_id, info.m_firmware);
   // The list tells if this phone changes the box.
@@ -454,8 +457,10 @@ void Esp32Source::OnBleState(BleState state, bool bondLost, std::string const & 
     }
     ForgetPhoneRequests();
     ForgetJournal();
-    if (m_batteryLock == BatteryLock::Told)
-      m_batteryLock = BatteryLock::LinkLost;
+    if (m_batteryLock == Announcement::Told)
+      m_batteryLock = Announcement::LinkLost;
+    if (m_radioOff == Announcement::Told)
+      m_radioOff = Announcement::LinkLost;
     if (m_calibrationId != 0)
     {
       LOG(LWARNING, ("The link is lost during the calibration"));
@@ -780,8 +785,10 @@ void Esp32Source::OnData(esp32::Data const & data)
   // The box answers over a link made after the one that told the lockout: switched off it could not, so it has been
   // plugged back in. Its own time doesn't tell that by itself: the box may have locked seconds after a power-on and
   // be heard later than that, and a time that has run past 2^31 ms looks wrapped around after the restart.
-  if (m_batteryLock == BatteryLock::LinkLost)
-    m_batteryLock = BatteryLock::None;
+  if (m_batteryLock == Announcement::LinkLost)
+    m_batteryLock = Announcement::None;
+  if (m_radioOff == Announcement::LinkLost)
+    m_radioOff = Announcement::None;
   m_dataTimesMs.push_back(now);
   while (now - m_dataTimesMs.front() >= kDataTimeoutMs)
     m_dataTimesMs.pop_front();
@@ -842,7 +849,8 @@ void Esp32Source::OnData(esp32::Data const & data)
     ForgetJournal();
     m_hasLast = false;
     // The data after BATT_LOCK, which the box sends for a second more, doesn't drop the lockout hint, a restart does.
-    m_batteryLock = BatteryLock::None;
+    m_batteryLock = Announcement::None;
+    m_radioOff = Announcement::None;
   }
 
   // The box sends the totals: a lost line loses nothing, the next one has the rotation.
@@ -947,7 +955,11 @@ void Esp32Source::OnEvent(esp32::Event const & event)
   // The box has switched itself off until it is unplugged. A journal replay of an event older than one seen (a later
   // BOOT, say) must not bring the lock back.
   else if (event.m_code == "BATT_LOCK" && event.m_number > lastNumber)
-    m_batteryLock = BatteryLock::Told;
+    m_batteryLock = Announcement::Told;
+  // The radio goes off a second after the event. A replay of an older one from the journal of the box says nothing
+  // about this link.
+  else if (event.m_code == "WIFI_OFF" && m_hasLast && event.m_timeMs + kLiveEventMs >= m_lastTimeMs)
+    m_radioOff = Announcement::Told;
   // "fw 0.3.3 reset POWERON": the box was plugged in. It restarts by itself for other reasons. A BOOT doesn't drop
   // the lockout hint: the box sends it only in the journal of the link, after the events of this link, so the BOOT
   // of a new power-on can't be told from the replayed one of the locked power-on. The data of the new link do.
@@ -1054,7 +1066,7 @@ SourceState Esp32Source::GetState() const
     return SourceState::Updating;
   if (!IsConnected())
   {
-    if (m_batteryLock != BatteryLock::None)
+    if (m_batteryLock != Announcement::None)
       return SourceState::BoxBatteryLock;
     return IsSleeping() ? SourceState::BoxSleeping : SourceState::Connecting;
   }
@@ -1089,6 +1101,8 @@ bool Esp32Source::IsSleeping() const
     return false;
   if (m_wakingLinkMs &&
       ((IsLinked(m_bleState) && !m_bondLost) || m_clock.NowMs() - *m_wakingLinkMs <= kWakingLinkGapMs))
+    return false;
+  if (m_announcesRadioOff && m_radioOff == Announcement::None)
     return false;
   return m_obdState == "SLEEP" || (m_carInfo && m_carInfo->m_engineRunning == false);
 }

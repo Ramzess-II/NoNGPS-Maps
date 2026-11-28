@@ -93,6 +93,8 @@ struct Info
   std::string m_board;
   // The box takes a new firmware over Bluetooth.
   bool m_canUpdate = false;
+  // The box tells WIFI_OFF and keeps the radio on for a second after it (RADIO_OFF).
+  bool m_radioOff = false;
   // The four characters of the name of the box, NonGPS-XXXX.
   std::string m_id;
   // How many times the box was powered on, nothing from a firmware that doesn't count it.

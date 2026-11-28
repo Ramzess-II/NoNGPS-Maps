@@ -322,6 +322,11 @@ UNIT_TEST(NoGps_Esp32_ParsesLinesOfFirmware)
   auto const revisionInfo = ParseInfo(*Parse(
       WithCrc("NGI,1,0.4.3,2026-11-18T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR PHONES,5,R1")));
   TEST(revisionInfo, ());
+  TEST(!revisionInfo->m_radioOff, ());
+  auto const radioOffInfo = ParseInfo(*Parse(
+      WithCrc("NGI,1,0.7.0,2026-11-28T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR RADIO_OFF,5,R1")));
+  TEST(radioOffInfo, ());
+  TEST(radioOffInfo->m_radioOff, ());
   TEST_EQUAL(revisionInfo->m_revision, "R1", ());
   TEST_EQUAL(*revisionInfo->m_powerOns, 5, ());
   // A firmware that keeps the values of the car.

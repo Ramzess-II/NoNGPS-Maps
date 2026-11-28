@@ -40,6 +40,8 @@ public:
   // A box connected again after a parking is awake this long after a silent connection ends: the phone connects
   // again in a few seconds.
   static int64_t constexpr kWakingLinkGapMs = 30'000;
+  // An event this much older than the last data of the box is a replay from its journal, not what has just happened.
+  static int64_t constexpr kLiveEventMs = 3000;
   // The seconds of the accelerometer written to the trip log from before the car has reported that it moves.
   static size_t constexpr kAccelLinesBeforeStart = 3;
   // The shake of the box shown to the user is this many lines long: 3 s of the lines.
@@ -215,14 +217,13 @@ public:
   int64_t GetAddPhoneMsLeft() const;
 
 private:
-  /// What the box has told about switching itself off until it is unplugged, see OnEvent() and GetState().
-  enum class BatteryLock
+  /// What the box has told before it switched itself off (BATT_LOCK, WIFI_OFF), see OnEvent() and GetState().
+  enum class Announcement
   {
     None,
-    // BATT_LOCK came over the link that is up now: the box goes on sending data for a second after the event.
+    // The event came over the link that is up now: the box goes on sending data for a second after it.
     Told,
-    // The link that told it is lost. The box heard again over a new one has been plugged back in: switched off, it
-    // could not answer.
+    // The link that told it is lost. The box heard again over a new one is awake: switched off, it could not answer.
     LinkLost,
   };
 
@@ -303,7 +304,13 @@ private:
   bool m_voltageMismatch = false;
   // The box has told it is off until it is unplugged (BATT_LOCK). Kept over the lost link until the box is heard
   // again: it goes on sending data for a second after the event.
-  BatteryLock m_batteryLock = BatteryLock::None;
+  Announcement m_batteryLock = Announcement::None;
+  // The box has told it switches its radio off (WIFI_OFF), same life as m_batteryLock. A box with the ability
+  // RADIO_OFF is asleep only after that: without it the radio went off by a power loss or a crash.
+  Announcement m_radioOff = Announcement::None;
+  // The box that was heard last tells WIFI_OFF before its radio goes off. Kept over a lost link, it is the box that
+  // is searched for.
+  bool m_announcesRadioOff = false;
   // The numbers of the events of the box written to the log.
   std::set<int64_t> m_loggedEvents;
   std::optional<int64_t> m_eventsRequestMs;

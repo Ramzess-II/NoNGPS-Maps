@@ -151,8 +151,8 @@ class Lines(unittest.TestCase):
         self.assertEqual(len(got), 14)
         self.assertEqual([got[0], got[1], got[2], got[4], got[5], got[6]],
                          ['NGI', '1', '0.6.0', 'esp32s3', 's3zero', 'S1'])
-        # The application reads only OTA from the abilities, and the simulator takes no firmware.
-        self.assertEqual(got[11], 'BLE')
+        # The simulator takes no firmware, and its panel's "radio off" keeps the promise of RADIO_OFF.
+        self.assertEqual(got[11], 'BLE RADIO_OFF')
 
     def test_the_name_fits_the_advertisement(self):
         made, _, _ = box(box_id='S')
@@ -825,6 +825,31 @@ class Session(unittest.TestCase):
         made.panel_action('start', '')
         made.tick()
         self.assertEqual(radio.advertisement, ('NonGPS-S1', None))
+
+    def test_the_panel_tells_wifi_off_and_drops_the_links_a_second_later(self):
+        made, radio, clock = box()
+        connect(made)
+        made.tick()
+        before = len(radio.lines('NGE'))
+        made.panel_action('radio_off', '')
+        made.tick()
+        events = radio.lines('NGE')[before:]
+        self.assertEqual(len(events), 1)
+        self.assertEqual(fields(events[0])[5], 'WIFI_OFF')
+        # The radio stays on while the line goes out.
+        clock.pass_s(sim.RADIO_OFF_GRACE_S / 2)
+        made.tick()
+        self.assertIn(PHONE, made.phones)
+        self.assertIsNotNone(radio.advertisement)
+        clock.pass_s(sim.RADIO_OFF_GRACE_S)
+        made.tick()
+        self.assertEqual(made.phones, {})
+        self.assertIsNone(radio.advertisement)
+        self.assertFalse(made.panel_state()['radio_going_off'])
+        # A box with its radio off tells nothing more.
+        made.panel_action('radio_off', '')
+        made.tick()
+        self.assertEqual(len(radio.lines('NGE')), before + 1)
 
     def test_a_box_that_is_not_updated_advertises_the_old_name(self):
         made, radio, _ = box()
