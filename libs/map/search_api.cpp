@@ -212,23 +212,27 @@ bool SearchAPI::SearchEverywhere(EverywhereSearchParams params)
     pivotKind = "center";
   }
   m_lastEverywhere.reset();
+  uint64_t const id = ++m_everywhereId;
   size_t const chars = strings::MakeUniString(p.m_query).size();
   bool const isCategory = p.m_categorialRequest;
-  p.m_onResults =
-      [this, pivot, pivotKind, chars, isCategory, onResults = std::move(params.m_onResults)](Results const & results)
+  p.m_onResults = [this, id, pivot, pivotKind, chars, isCategory,
+                   onResults = std::move(params.m_onResults)](Results const & results)
   {
     // The core adds the results batch by batch: a near one found later is put first.
     Results ordered = results;
     if (pivot)
       OrderNearestFirst(*pivot, ordered);
     // The end marker has no results: the count is the one of the last batch.
-    RunUITask([this, pivot, pivotKind, chars, isCategory, onResults, results = std::move(ordered)]() mutable
+    RunUITask([this, id, pivot, pivotKind, chars, isCategory, onResults, results = std::move(ordered)]() mutable
     {
-      if (!results.IsEndMarker())
-        m_lastEverywhere = EverywhereLog{pivot, results.GetCount()};
-      else if (results.IsEndedNormal() && m_lastEverywhere && m_lastEverywhere->m_results > 0)
-        LOG(LINFO, (nogps::LogHead(s_logClock, "SEARCH", "query"),
-                    FormatQueryLog(chars, isCategory, m_lastEverywhere->m_results, pivotKind)));
+      if (id == m_everywhereId)
+      {
+        if (!results.IsEndMarker())
+          m_lastEverywhere = EverywhereLog{pivot, results.GetCount()};
+        else if (results.IsEndedNormal() && m_lastEverywhere && m_lastEverywhere->m_results > 0)
+          LOG(LINFO, (nogps::LogHead(s_logClock, "SEARCH", "query"),
+                      FormatQueryLog(chars, isCategory, m_lastEverywhere->m_results, pivotKind)));
+      }
       onResults(std::move(results));
     });
   };

@@ -168,6 +168,8 @@ private:
     size_t m_results = 0;
   };
   std::optional<EverywhereLog> m_lastEverywhere;
+  // Bumped by each Everywhere search: a batch of a cancelled one arriving late is dropped.
+  uint64_t m_everywhereId = 0;
 
   // Viewport search callback should be changed every time when SearchAPI::PokeSearchInViewport
   // is called and we need viewport search params to construct it.
