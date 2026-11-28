@@ -1509,10 +1509,16 @@ bool Engine::NeedsBoxCalibration()
 void Engine::CheckAutoCalibration()
 {
   // Only a car that drives waits: the calibration itself waits for the box to tell it is still. An unknown speed
-  // (-1, no OBD) is no reason to wait, as on a table.
-  if (!m_inertial || m_inertial->GetSpeedKmh() > 0)
+  // (-1, no OBD) is no reason to wait, as on a table, unless the car drove a moment ago: OBD answers can lag.
+  if (!m_inertial)
+    return;
+  int64_t const now = m_clock.NowMs();
+  int const speedKmh = m_inertial->GetSpeedKmh();
+  if (speedKmh > 0)
+    m_lastDrivingMs = now;
+  if (speedKmh > 0 || (speedKmh < 0 && now - m_lastDrivingMs < kAutoCalibrateDrivingHoldMs))
   {
-    m_autoCalibrateTried = false;
+    m_autoCalibrateTried = speedKmh > 0 ? false : m_autoCalibrateTried;
     return;
   }
   if (!m_calibrationArmed && !m_autoCalibrateTried && !m_autoCalibrateCancelled && NeedsBoxCalibration())

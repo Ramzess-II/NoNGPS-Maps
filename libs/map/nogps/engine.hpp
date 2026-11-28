@@ -327,6 +327,8 @@ public:
   /// The box reports every failed calibration as the car moving: a still car that keeps failing is a bad mounting.
   static int constexpr kCalibrateWhenStillMaxFailures = 5;
   static int64_t constexpr kCalibrateWhenStillIntervalMs = 200;
+  // An unknown speed (no OBD answer) this soon after a known one above 0 is a car that drives, not one that stands.
+  static int64_t constexpr kAutoCalibrateDrivingHoldMs = 30'000;
   // The bar of the speed calibration slides out after this long at a speed GPS has not measured, and stays this long
   // after the speed leaves for a measured one or slows down below SpeedTable::kMinSpeedKmh: 49-51 km/h doesn't make
   // it flicker. GPS measures the speed now if it was good for that this recently.
@@ -817,6 +819,8 @@ private:
   bool m_calibrationAuto = false;
   // CheckAutoCalibration() has armed the calibration during the current stop: it doesn't arm again until the car moves.
   bool m_autoCalibrateTried = false;
+  // When CheckAutoCalibration() last saw a speed above 0.
+  int64_t m_lastDrivingMs = std::numeric_limits<int64_t>::min() / 2;
   // The user has cancelled the automatic calibration: it waits for the box to connect again.
   bool m_autoCalibrateCancelled = false;
   // The platform forgets the car on Event::ThisPhoneRemoved and Event::BoxReset: not while the box is being read.

@@ -3155,6 +3155,21 @@ UNIT_TEST(NoGps_Engine_AutoCalibrationArmsWithUnknownSpeed)
   TEST_EQUAL(box.Calibrations(), 1, ());
 }
 
+UNIT_TEST(NoGps_Engine_AutoCalibrationWaitsWhenSpeedGoesStaleWhileDriving)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env, false /* calibrated */);
+  box.Drive(3000, 36, 150);
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  // OBD answers stop for a while: the car that drove a moment ago still drives.
+  box.Drive(15'000, -1, 150);
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedKmh, -1, ());
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  // No speed for long: no better than a table.
+  box.Drive(30'000, -1, 150);
+  TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
+}
+
 UNIT_TEST(NoGps_Engine_AutoCalibrationStartsAgainAfterFailedMoving)
 {
   Env env(true /* inertial */);
