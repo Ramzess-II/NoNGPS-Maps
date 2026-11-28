@@ -148,6 +148,7 @@ final class SearchOnMapInteractor: NSObject {
       searchManager.save(query)
       if let routePointSelector, routePointSelector.isActive {
         guard routePointSelector.select(searchResult: result) else { return .none }
+        searchManager.logResultTap(at: result.index)
         return closeSearch()
       }
       searchManager.showResult(at: result.index)

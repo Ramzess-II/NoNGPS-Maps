@@ -692,6 +692,7 @@ public class SearchFragment extends Fragment
       // once, instead of repeating it as its own subtitle.
       final String subtitle = result.description == null ? "" : result.description.localizedFeatureType;
       pickRoutePoint(result.name, subtitle, result.lat, result.lon);
+      SearchEngine.INSTANCE.logResultTap(resultIndex);
       return;
     }
 

@@ -31,6 +31,7 @@ final class SearchOnMapTests: XCTestCase {
     searchManager.setSearchMode(.everywhere)
     searchManager.updateViewportCallsCount = 0
     searchManager.showResultCallCount = 0
+    searchManager.loggedTapIndices = []
     searchManager.clearCallCount = 0
     routePointSelector = nil
     searchManager = nil
@@ -353,6 +354,7 @@ final class SearchOnMapTests: XCTestCase {
 
     XCTAssertTrue(routePointSelector.selectedSearchResult === result)
     XCTAssertEqual(searchManager.showResultCallCount, 0)
+    XCTAssertEqual(searchManager.loggedTapIndices, [result.index])
     XCTAssertEqual(view.closeCallCount, 1)
     XCTAssertEqual(currentState, .closed)
     assertRoutePointSearchClosed()
@@ -664,6 +666,7 @@ private class SearchManagerMock: SearchManager {
   private static var _searchMode: SearchMode = .everywhere
   static var updateViewportCallsCount = 0
   static var showResultCallCount = 0
+  static var loggedTapIndices: [UInt] = []
   static var clearCallCount = 0
 
   static func add(_ observer: any MWMSearchObserver) {
@@ -681,6 +684,7 @@ private class SearchManagerMock: SearchManager {
     showResultCallCount += 1
   }
 
+  static func logResultTap(at index: UInt) { loggedTapIndices.append(index) }
   static func updateViewportWithResults() { updateViewportCallsCount += 1 }
   static func clear() { clearCallCount += 1 }
   static func getResults() -> [SearchResult] { results.results }

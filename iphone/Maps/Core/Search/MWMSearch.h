@@ -30,6 +30,8 @@ typedef NS_ENUM(NSUInteger, SearchMode) {
 + (BOOL)searchQuery:(SearchQuery *)query;
 
 + (void)showResultAtIndex:(NSUInteger)index;
+// Writes the trip log tap line of a result picked as a route point, which opens no place page.
++ (void)logResultTapAtIndex:(NSUInteger)index;
 // Applies the search results viewport policy, see Framework::UpdateViewport().
 + (void)updateViewportWithResults;
 + (SearchMode)searchMode;
