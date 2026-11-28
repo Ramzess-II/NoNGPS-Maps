@@ -706,19 +706,21 @@ void Esp32Source::OnAuthReply(esp32::Reply const & reply)
 {
   if (reply.m_progress)
     return;
+  // The phone gives the box the key it keeps unconfirmed. Nothing is given away that a new pairing would not get, as a
+  // car whose box never took its key trusts the first box that answers.
+  auto const giveKeyAgain = [this](char const * why)
+  {
+    LOG(LINFO, ("The box", m_authCar, why, ": it is given the key again"));
+    m_authSetsKey = true;
+    m_authSends = 0;
+    m_authId = 0;
+    SendAuth();
+  };
   if (!reply.m_ok)
   {
-    // The box has not got the key the phone keeps unconfirmed: the phone gives it the same one. Nothing is given away
-    // that a new pairing would not get, as a car whose box never took its key trusts the first box that answers.
+    // The box has not got the key the phone keeps unconfirmed.
     if (reply.m_error == "NOKEY" && m_authKeyUnconfirmed && !m_authSetsKey)
-    {
-      LOG(LINFO, ("The box", m_authCar, "has not got the key it was given: it is given it again"));
-      m_authSetsKey = true;
-      m_authSends = 0;
-      m_authId = 0;
-      SendAuth();
-      return;
-    }
+      return giveKeyAgain("has not got the key it was given");
     // The box has no key of this phone or has another one: only a new pairing mends it, and the user decides on it.
     // The key it has refused is not kept: the next link gives a new one and the box refuses it the same way.
     if (reply.m_error == "EXISTS" && m_authSetsKey)
@@ -731,7 +733,13 @@ void Esp32Source::OnAuthReply(esp32::Reply const & reply)
     std::string answer = reply.m_values.empty() ? "" : reply.m_values.front();
     std::transform(answer.begin(), answer.end(), answer.begin(), [](unsigned char c) { return std::tolower(c); });
     if (proof.empty() || answer != proof)
+    {
+      // The box keeps another key than the unconfirmed one: on a pairing link it replaces it, elsewhere it answers
+      // ERR,EXISTS and is refused with the offer to pair again.
+      if (m_authKeyUnconfirmed)
+        return giveKeyAgain("proves with another key");
       return RefuseBox("the proof is wrong");
+    }
   }
   // The box has it: the first session of a pairing is trusted, the system has bonded the box and the key goes over
   // that link.
