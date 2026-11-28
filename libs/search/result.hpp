@@ -121,7 +121,8 @@ public:
   ErrorsMade GetErrorsMade() const { return m_errorsMade; }
   void SetErrorsMade(ErrorsMade errorsMade) { m_errorsMade = errorsMade; }
 
-  // How well the best name matched the query, ZERO for suggestions, coordinates and postcodes.
+  // How well the best name matched the query, ZERO for suggestions, coordinates, postcodes and the results that
+  // left some query words unmatched.
   NameScore GetNameScore() const { return m_nameScore; }
   void SetNameScore(NameScore nameScore) { m_nameScore = nameScore; }
 

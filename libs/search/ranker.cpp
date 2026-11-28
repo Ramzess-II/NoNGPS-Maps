@@ -776,7 +776,8 @@ Result Ranker::MakeResult(RankerResult const & rankerResult, bool needAddress, b
   // Coordinates and postcodes are parsed from the query as is.
   bool const isFeature = res.GetResultType() == Result::Type::Feature;
   res.SetErrorsMade(isFeature ? rankerResult.GetRankingInfo().m_errorsMade : ErrorsMade(0));
-  if (isFeature)
+  // A relaxed result left query words unmatched: its name score covers only the matched part of the query.
+  if (isFeature && rankerResult.AllTokensUsed())
     res.SetNameScore(rankerResult.GetRankingInfo().m_nameScore);
 
   if (needHighlighting)
