@@ -2,6 +2,7 @@
 
 #include "map/bookmarks_search_params.hpp"
 #include "map/everywhere_search_params.hpp"
+#include "map/nogps/log_line.hpp"
 
 #include "search/geometry_utils.hpp"
 #include "search/utils.hpp"
@@ -18,6 +19,8 @@
 
 #include "base/assert.hpp"
 #include "base/checked_cast.hpp"
+#include "base/logging.hpp"
+#include "base/string_utils.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -28,6 +31,11 @@
 #include <type_traits>
 
 using namespace search;
+
+namespace
+{
+nogps::SystemClock const s_logClock;
+}  // namespace
 namespace
 {
 using BookmarkIdDoc = std::pair<bookmarks::Id, bookmarks::Doc>;
@@ -197,18 +205,66 @@ bool SearchAPI::SearchEverywhere(EverywhereSearchParams params)
   // The list is ordered nearest first from where the core counts the distance from: the position while it is on
   // the screen, the middle of the screen otherwise.
   std::optional<m2::PointD> pivot = p.m_position;
+  char const * pivotKind = pivot ? "mark" : "none";
   if (m_isViewportInitialized && (!pivot || !p.m_viewport.IsPointInside(*pivot)))
+  {
     pivot = p.m_viewport.Center();
-  p.m_onResults = [this, pivot, onResults = std::move(params.m_onResults)](Results const & results)
+    pivotKind = "center";
+  }
+  m_lastEverywhere.reset();
+  uint64_t const id = ++m_everywhereId;
+  size_t const chars = strings::MakeUniString(p.m_query).size();
+  bool const isCategory = p.m_categorialRequest;
+  p.m_onResults = [this, id, pivot, pivotKind, chars, isCategory, query = p.m_query,
+                   onResults = std::move(params.m_onResults)](Results const & results)
   {
     // The core adds the results batch by batch: a near one found later is put first.
     Results ordered = results;
     if (pivot)
       OrderNearestFirst(*pivot, ordered);
-    RunUITask([onResults, results = std::move(ordered)]() mutable { onResults(std::move(results)); });
+    // The end marker carries the final list, bigger than the last batch or the only one: count it too.
+    RunUITask([this, id, pivot, pivotKind, chars, isCategory, query, onResults, results = std::move(ordered)]() mutable
+    {
+      if (id == m_everywhereId)
+      {
+        if (!results.IsEndMarker() || results.GetCount() > 0)
+        {
+          bool const logged = m_lastEverywhere && m_lastEverywhere->m_queryLogged;
+          m_lastEverywhere = EverywhereLog{pivot, results.GetCount(), chars, isCategory, pivotKind, logged, query};
+        }
+        if (results.IsEndMarker() && results.IsEndedNormal())
+          LogSearchQuery();
+      }
+      onResults(std::move(results));
+    });
   };
 
   return Search(std::move(p), true /* forceSearch */);
+}
+
+void SearchAPI::LogSearchQuery()
+{
+  if (!m_lastEverywhere || m_lastEverywhere->m_queryLogged || m_lastEverywhere->m_results == 0)
+    return;
+  m_lastEverywhere->m_queryLogged = true;
+  if (m_lastEverywhere->m_query == m_loggedQuery)
+    return;
+  m_loggedQuery = m_lastEverywhere->m_query;
+  LOG(LINFO, (nogps::LogHead(s_logClock, "SEARCH", "query"),
+              FormatQueryLog(m_lastEverywhere->m_chars, m_lastEverywhere->m_isCategory, m_lastEverywhere->m_results,
+                             m_lastEverywhere->m_pivotKind)));
+}
+
+void SearchAPI::LogSearchTap(Result const & result)
+{
+  if (!m_lastEverywhere)
+    return;
+  // A tap before the end marker (or after a cancel) still follows its query line.
+  LogSearchQuery();
+  LOG(LINFO, (nogps::LogHead(s_logClock, "SEARCH", "tap"),
+              FormatTapLog(result, m_lastEverywhere->m_results, m_lastEverywhere->m_pivot)));
+  // The map move that the tap causes (iPad) repeats the search: not a new query.
+  m_loggedQuery = m_lastEverywhere->m_query;
 }
 
 bool SearchAPI::SearchInViewport(ViewportSearchParams params)
@@ -297,6 +353,8 @@ void SearchAPI::CancelSearch(Mode mode)
 
   if (mode == Mode::Viewport)
     m_delegate.ClearViewportSearchResults();
+  else if (mode == Mode::Everywhere)
+    m_loggedQuery.clear();
 
   auto & intent = m_searchIntents[static_cast<size_t>(mode)];
   intent.m_params.Clear();
@@ -591,5 +649,29 @@ void OrderNearestFirst(m2::PointD const & pivot, Results & results)
     place[order[i]] = i;
   results.SortBy([&place](Result const & a, Result const & b)
   { return place[a.GetPositionInResults()] < place[b.GetPositionInResults()]; });
+}
+
+std::string FormatQueryLog(size_t chars, bool isCategory, size_t results, char const * pivot)
+{
+  return "chars=" + std::to_string(chars) + " category=" + (isCategory ? "1" : "0") +
+         " results=" + std::to_string(results) + " pivot=" + pivot;
+}
+
+std::string FormatTapLog(Result const & result, size_t results, std::optional<m2::PointD> const & pivot)
+{
+  char const * type = "feature";
+  switch (result.GetResultType())
+  {
+  case Result::Type::Feature: break;
+  case Result::Type::LatLon: type = "latlon"; break;
+  case Result::Type::Postcode: type = "postcode"; break;
+  case Result::Type::SuggestFromFeature:
+  case Result::Type::PureSuggest: type = "suggest"; break;
+  }
+  long const dist = pivot ? std::lround(mercator::DistanceOnEarth(*pivot, result.GetFeatureCenter())) : -1;
+  return "place=" + std::to_string(result.GetPositionInResults()) + " results=" + std::to_string(results) +
+         " dist=" + std::to_string(dist) +
+         " errors=" + std::to_string(result.GetErrorsMade().IsValid() ? result.GetErrorsMade().m_errorsMade : 0) +
+         " type=" + type;
 }
 }  // namespace search

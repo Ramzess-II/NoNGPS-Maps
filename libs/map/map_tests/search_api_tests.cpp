@@ -19,11 +19,15 @@
 
 #include "indexer/classificator.hpp"
 
+#include "base/logging.hpp"
+
 #include <atomic>
 #include <functional>
 #include <future>
 #include <memory>
+#include <mutex>
 #include <string>
+#include <vector>
 
 namespace search_api_tests
 {
@@ -229,6 +233,73 @@ UNIT_CLASS_TEST(SearchAPITest, Cancellation)
     m_api.SearchEverywhere(params);
     future.wait();
   }
+}
+
+namespace
+{
+mutex g_logMutex;
+vector<string> g_logLines;
+
+void CaptureLog(base::LogLevel, base::SrcPoint const &, string const & msg)
+{
+  lock_guard<mutex> const lock(g_logMutex);
+  g_logLines.push_back(msg);
+}
+
+size_t CountLogLines(string const & what)
+{
+  lock_guard<mutex> const lock(g_logMutex);
+  size_t n = 0;
+  for (auto const & line : g_logLines)
+    if (line.find(what) != string::npos)
+      ++n;
+  return n;
+}
+}  // namespace
+
+// iOS repeats an Everywhere search with the same text after a map move: one query line, also after a tap, until the
+// search is cancelled.
+UNIT_CLASS_TEST(SearchAPITest, QueryLogRepeatedSearch)
+{
+  TestCafe cafe(m2::PointD(0, 0), "cafe", "en");
+  BuildCountry("Wonderland", [&](TestMwmBuilder & builder) { builder.Add(cafe); });
+
+  auto const searchOnce = [&](string const & query, m2::RectD const & viewport)
+  {
+    EverywhereSearchParams params;
+    params.m_query = query;
+    params.m_inputLocale = "en";
+    promise<Results> promise;
+    auto future = promise.get_future();
+    params.m_onResults = [&](Results const & results)
+    {
+      if (results.IsEndMarker())
+        promise.set_value(results);
+    };
+    m_api.OnViewportChanged(viewport);
+    m_api.SearchEverywhere(params);
+    return future.get();
+  };
+
+  auto const prev = base::SetLogMessageFn(&CaptureLog);
+  auto const first = searchOnce("cafe ", m2::RectD(0.0, 0.0, 1.0, 1.0));
+  TEST_GREATER(first.GetCount(), 0, ());
+  searchOnce("cafe ", m2::RectD(0.0, 0.0, 2.0, 2.0));
+  searchOnce("cafe ", m2::RectD(0.0, 0.0, 3.0, 3.0));
+  size_t const afterRepeats = CountLogLines("SEARCH query");
+
+  m_api.LogSearchTap(first[0]);
+  searchOnce("cafe ", m2::RectD(0.0, 0.0, 4.0, 4.0));
+  size_t const afterTap = CountLogLines("SEARCH query");
+
+  m_api.CancelAllSearches();
+  searchOnce("cafe ", m2::RectD(0.0, 0.0, 5.0, 5.0));
+  size_t const afterCancel = CountLogLines("SEARCH query");
+  base::SetLogMessageFn(prev);
+
+  TEST_EQUAL(afterRepeats, 1, ());
+  TEST_EQUAL(afterTap, 1, ());
+  TEST_EQUAL(afterCancel, 2, ());
 }
 
 UNIT_CLASS_TEST(SearchAPITest, BookmarksSearch)

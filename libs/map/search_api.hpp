@@ -125,6 +125,11 @@ public:
   void OnBookmarksAttached(std::vector<BookmarkGroupInfo> const & groupInfos);
   void OnBookmarksDetached(std::vector<BookmarkGroupInfo> const & groupInfos);
 
+  /// Writes the SEARCH tap line of the trip log for the result the user has tapped in the Everywhere list, after the
+  /// query line when the search has not ended yet. The lines are not written when no Everywhere search has shown
+  /// results.
+  void LogSearchTap(search::Result const & result);
+
 private:
   struct SearchIntent
   {
@@ -157,6 +162,25 @@ private:
   m2::RectD m_viewport;
   bool m_isViewportInitialized = false;
 
+  // The last Everywhere search that ended with results, for the SEARCH tap line. UI thread only.
+  struct EverywhereLog
+  {
+    std::optional<m2::PointD> m_pivot;
+    size_t m_results = 0;
+    size_t m_chars = 0;
+    bool m_isCategory = false;
+    char const * m_pivotKind = "none";
+    bool m_queryLogged = false;
+    std::string m_query;
+  };
+  void LogSearchQuery();
+  std::optional<EverywhereLog> m_lastEverywhere;
+  // The text of the query line written last, until the Everywhere search is cancelled (search closed or cleared):
+  // iOS repeats a search after each map move, and a tap moves the map too, which is not a new query.
+  std::string m_loggedQuery;
+  // Bumped by each Everywhere search: a batch of a cancelled one arriving late is dropped.
+  uint64_t m_everywhereId = 0;
+
   // Viewport search callback should be changed every time when SearchAPI::PokeSearchInViewport
   // is called and we need viewport search params to construct it.
   search::ViewportSearchParams m_viewportParams;
@@ -182,4 +206,12 @@ bool AdjustViewportToSearchResults(Results const & results, m2::AnyRectD & viewp
 // the user has typed stay first, in their order. The core weighs the distance little: a street of the same name in
 // a bigger town far away is ranked above the near one.
 void OrderNearestFirst(m2::PointD const & pivot, Results & results);
+
+// The fields of the SEARCH query line of the trip log after its head. The text of the query is not written, only its
+// length |chars|. |pivot| is "mark" for the position, "center" for the middle of the screen, "none" for neither.
+std::string FormatQueryLog(size_t chars, bool isCategory, size_t results, char const * pivot);
+
+// The fields of the SEARCH tap line after its head: |result| is in |results| (as shown, after OrderNearestFirst)
+// at place, |dist| is metres from |pivot|, -1 without one.
+std::string FormatTapLog(Result const & result, size_t results, std::optional<m2::PointD> const & pivot);
 }  // namespace search

@@ -1014,6 +1014,28 @@ class RulesTest(unittest.TestCase):
         self.assertIn('rare: 1 trips', loop)
 
 
+class SearchTest(unittest.TestCase):
+    def search_log(self, day, lines):
+        log = android_drive(day, seconds=3, stand=0)
+        for i, (second, text) in enumerate(lines):
+            log.append(core(day, 18 * 3600 + 10 + second, 'LogSearch', text, file='map/search_api.cpp:1'))
+        return log
+
+    def test_queries_taps_and_places_per_set(self):
+        query = 'SEARCH query ms=%d chars=5 category=0 results=17 pivot=mark' % LOGFMT_MS
+        tap = 'SEARCH tap ms=%d place=%d results=17 dist=840 errors=0 type=feature'
+        # 2026-10-08 is made from, 2026-10-09 is held out by the list of the test.
+        made = self.search_log('10-08', [(0, query), (1, tap % (LOGFMT_MS, 0)), (5, query), (6, tap % (LOGFMT_MS, 3)),
+                                         (7, tap % (LOGFMT_MS, 6)), (9, query)])
+        held = self.search_log('10-09', [(0, query), (1, tap % (LOGFMT_MS, 2))])
+        out = io.StringIO()
+        with mock.patch.object(nogps_replay, 'held_out_days', lambda: {'10-09'}), redirect_stdout(out):
+            nogps_log.print_search(analyse(('a.log', made), ('b.log', held), year=2026))
+        rows = {line.split()[0] + ' ' + line.split()[1]: line.split()[2:] for line in out.getvalue().splitlines()[1:]}
+        self.assertEqual(rows['made from'], ['3', '3', '67%', '3.0', '3.0', '33%'])
+        self.assertEqual(rows['held out'], ['1', '1', '100%', '2.0', '2.0', '0%'])
+
+
 class LossesTest(unittest.TestCase):
     TAP = 'tap = ms::LatLon(10.0, 20.0) location = ms::LatLon(10.0, 20.0) bearing = 0'
 
