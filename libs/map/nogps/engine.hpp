@@ -324,9 +324,6 @@ public:
   static int64_t constexpr kNotCalibratedDelayMs = 5000;
   // The car must stand still within this time after the user has asked to calibrate the box.
   static int64_t constexpr kCalibrateWhenStillTimeoutMs = 120'000;
-  // A box that needs calibrating is calibrated when the car has stood this long: a long stop rather than a traffic
-  // light, the ground is more likely level.
-  static int64_t constexpr kAutoCalibrateStopMs = 60'000;
   /// The box reports every failed calibration as the car moving: a still car that keeps failing is a bad mounting.
   static int constexpr kCalibrateWhenStillMaxFailures = 5;
   static int64_t constexpr kCalibrateWhenStillIntervalMs = 200;
@@ -554,7 +551,7 @@ private:
   void CheckNotCalibrated();
   /// Sends the calibration to the box when the car stands still, ends the wait. Called while the user waits.
   void CheckCalibrateWhenStill();
-  /// Calibrates the box by itself when the car has stood for kAutoCalibrateStopMs. Called every second.
+  /// Calibrates the box by itself as soon as it needs it and the car doesn't drive. Called every second.
   void CheckAutoCalibration();
   /// Shows the bar of the speed calibration while the car speed comes from the box at a speed GPS has not measured, and
   /// tells Event::SpeedRangeCalibrated when GPS has measured a range. Called every second.
@@ -818,8 +815,6 @@ private:
   bool m_calibrationArmed = false;
   // The calibration was armed by CheckAutoCalibration(), not by the user: it ends when the car moves.
   bool m_calibrationAuto = false;
-  // Since when the car stands, if it does.
-  std::optional<int64_t> m_stoppedSinceMs;
   // CheckAutoCalibration() has armed the calibration during the current stop: it doesn't arm again until the car moves.
   bool m_autoCalibrateTried = false;
   // The user has cancelled the automatic calibration: it waits for the box to connect again.
