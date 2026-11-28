@@ -222,14 +222,14 @@ bool SearchAPI::SearchEverywhere(EverywhereSearchParams params)
     Results ordered = results;
     if (pivot)
       OrderNearestFirst(*pivot, ordered);
-    // The end marker has no results: the count is the one of the last batch.
+    // The end marker carries the final list, bigger than the last batch or the only one: count it too.
     RunUITask([this, id, pivot, pivotKind, chars, isCategory, onResults, results = std::move(ordered)]() mutable
     {
       if (id == m_everywhereId)
       {
-        if (!results.IsEndMarker())
+        if (!results.IsEndMarker() || results.GetCount() > 0)
           m_lastEverywhere = EverywhereLog{pivot, results.GetCount()};
-        else if (results.IsEndedNormal() && m_lastEverywhere && m_lastEverywhere->m_results > 0)
+        if (results.IsEndMarker() && results.IsEndedNormal() && m_lastEverywhere && m_lastEverywhere->m_results > 0)
           LOG(LINFO, (nogps::LogHead(s_logClock, "SEARCH", "query"),
                       FormatQueryLog(chars, isCategory, m_lastEverywhere->m_results, pivotKind)));
       }
