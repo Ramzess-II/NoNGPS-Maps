@@ -16,10 +16,12 @@ using namespace search;
 m2::PointD const kPivot = mercator::FromLatLon(0, 0);
 
 // A result this far east of the pivot.
-Result MakeResult(std::string const & name, double eastKm)
+Result MakeResult(std::string const & name, double eastKm, NameScore score = NameScore::FULL_MATCH, uint16_t errors = 0)
 {
   Result result(mercator::FromLatLon(0, eastKm / 111.2), name);
   result.SetType(Result::Type::Feature);
+  result.SetNameScore(score);
+  result.SetErrorsMade(ErrorsMade(errors));
   return result;
 }
 
@@ -45,7 +47,7 @@ UNIT_TEST(OrderNearestFirst_KeepsTypedFirst)
   results.AddResultNoChecks(MakeResult("shop near", 1));
   results.AddResultNoChecks(MakeResult("village", 20));
 
-  OrderNearestFirst(kPivot, results);
+  OrderNearestFirst(kPivot, false /* isCategory */, results);
   // The suggestion and the typed coordinates stay first in their order. The others, towns too, are nearest first,
   // the equally near ones in their order.
   TEST_EQUAL(Names(results),
@@ -56,12 +58,50 @@ UNIT_TEST(OrderNearestFirst_KeepsTypedFirst)
     TEST_EQUAL(results[i].GetPositionInResults(), static_cast<int32_t>(i), ());
 }
 
+UNIT_TEST(OrderNearestFirst_MatchTiers)
+{
+  Results results;
+  results.AddResultNoChecks(MakeResult("substring near", 1, NameScore::SUBSTRING));
+  results.AddResultNoChecks(MakeResult("misprint near", 2, NameScore::FULL_MATCH, 1));
+  results.AddResultNoChecks(MakeResult("prefix far", 20, NameScore::PREFIX));
+  results.AddResultNoChecks(MakeResult("exact far", 30, NameScore::FULL_MATCH));
+  results.AddResultNoChecks(MakeResult("full prefix middle", 10, NameScore::FULL_PREFIX));
+  results.AddResultNoChecks(MakeResult("prefix near", 3, NameScore::PREFIX));
+  results.AddResultNoChecks(MakeResult("exact nearer", 5, NameScore::FULL_MATCH));
+  OrderNearestFirst(kPivot, false /* isCategory */, results);
+  // Exact matches first, then the words matched, then the rest: nearest first inside each.
+  TEST_EQUAL(Names(results),
+             (std::vector<std::string>{"exact nearer", "full prefix middle", "exact far", "prefix near", "prefix far",
+                                       "substring near", "misprint near"}),
+             ());
+}
+
+UNIT_TEST(OrderNearestFirst_SuggestionsStayFirstWithTiers)
+{
+  Results results;
+  results.AddResultNoChecks(MakeResult("rare far", 30));
+  results.AddResultNoChecks(Result("street", "street "));
+  results.AddResultNoChecks(MakeResult("near", 1, NameScore::SUBSTRING));
+  OrderNearestFirst(kPivot, false /* isCategory */, results);
+  TEST_EQUAL(Names(results), (std::vector<std::string>{"street", "rare far", "near"}), ());
+}
+
+UNIT_TEST(OrderNearestFirst_CategoryIgnoresTiers)
+{
+  Results results;
+  results.AddResultNoChecks(MakeResult("exact far", 30));
+  results.AddResultNoChecks(MakeResult("substring near", 1, NameScore::SUBSTRING));
+  results.AddResultNoChecks(MakeResult("misprint middle", 5, NameScore::FULL_MATCH, 1));
+  OrderNearestFirst(kPivot, true /* isCategory */, results);
+  TEST_EQUAL(Names(results), (std::vector<std::string>{"substring near", "misprint middle", "exact far"}), ());
+}
+
 UNIT_TEST(SearchLog_TapIsThePlaceAfterTheOrder)
 {
   Results results;
   results.AddResultNoChecks(MakeResult("far", 30));
   results.AddResultNoChecks(MakeResult("near", 1));
-  OrderNearestFirst(kPivot, results);
+  OrderNearestFirst(kPivot, false /* isCategory */, results);
 
   // "far" was found first, but it is shown second.
   TEST_EQUAL(FormatTapLog(results[1], results.GetCount(), kPivot),

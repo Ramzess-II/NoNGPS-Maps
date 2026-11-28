@@ -125,7 +125,11 @@ public:
   {
     m_finalRank = info.GetLinearModelRank(viewportMode);
     m_info = info;
+    m_allTokensUsed = info.m_allTokensUsed;
   }
+
+  // False for a relaxed result: some query words are left unmatched.
+  bool AllTokensUsed() const { return m_allTokensUsed; }
 
   void SetHNPrefixMatch() { m_hnPrefixMatch = true; }
   bool IsHNPrefixMatch() const { return m_hnPrefixMatch; }
@@ -178,6 +182,7 @@ private:
   Result::Details m_details;
 
   StoredRankingInfo m_info;
+  bool m_allTokensUsed = true;
   std::shared_ptr<RankingInfo> m_dbgInfo;  // used in debug logs and tests, nullptr in production
 
   FeatureID m_id;
