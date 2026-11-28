@@ -1355,6 +1355,14 @@
   лежать на одній осі. Теги:
   - `TRIP`, `ACC`, `ACCB`, `ACCB_BEFORE`, `GYRO`, `BOXACC`, `TURN`, `CALIBRATION`, `RPM`, `POTHOLE`, `SPRINT`, `SHAKE`, `SPEEDING`:
     дані, як і раніше, лише з `ms=` одразу після тегу;
+  - `SEARCH query ms=… chars=5 category=0 results=17 pivot=mark|center|none` — один рядок на пошук «Скрізь», що
+    закінчився з результатами (`SearchAPI::SearchEverywhere`; пишеться, коли пошук закінчено, число — результатів
+    останньої порції), текст запиту не пишеться, лише довжина; `pivot` — звідки список рахує відстань (`mark` — позиція
+    на екрані, `center` — середина екрана). `SEARCH tap ms=… place=3 results=17 dist=840 errors=0
+    type=feature|latlon|postcode` — тап на результаті списку (`Framework::SelectSearchResult`, його викликають обидві
+    платформи): `place` — 0-базове місце в списку, як показано, після `OrderNearestFirst`, `dist` — метри від pivot
+    (-1 без нього). Тап на підказці рядка не пишеться: він запускає новий пошук. `nogps_log.py search <logs>` рахує
+    запити, тапи, частку запитів з тапом, середнє й медіану `place` і частку тапів на місці 0, окремо за наборами днів;
   - `SHAKE ms=… n=48 max=1430 p90=210 p50=85 still=0|1 armed=0|1 speed=0`: раз на секунду (`kShakeLogMs` = 1000,
     `InertialNavigator::OnShake`), поки блок шле поле 15 (`shake_pct`) і машина стоїть (швидкість OBD 0 або `STILL`) або
     ядро зведене до калібрування; `n`, `max`, `p90`, `p50` — число значень і їхні максимум та процентилі за ту секунду,
