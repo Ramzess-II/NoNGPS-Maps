@@ -668,7 +668,9 @@ std::string FormatTapLog(Result const & result, size_t results, std::optional<m2
   case Result::Type::SuggestFromFeature:
   case Result::Type::PureSuggest: type = "suggest"; break;
   }
-  long const dist = pivot ? std::lround(mercator::DistanceOnEarth(*pivot, result.GetFeatureCenter())) : -1;
+  // A suggestion has no point.
+  long const dist =
+      pivot && result.HasPoint() ? std::lround(mercator::DistanceOnEarth(*pivot, result.GetFeatureCenter())) : -1;
   return "place=" + std::to_string(result.GetPositionInResults()) + " results=" + std::to_string(results) +
          " dist=" + std::to_string(dist) +
          " errors=" + std::to_string(result.GetErrorsMade().IsValid() ? result.GetErrorsMade().m_errorsMade : 0) +

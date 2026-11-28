@@ -1026,14 +1026,15 @@ class SearchTest(unittest.TestCase):
         tap = 'SEARCH tap ms=%d place=%d results=17 dist=840 errors=0 type=feature'
         # 2026-10-08 is made from, 2026-10-09 is held out by the list of the test.
         made = self.search_log('10-08', [(0, query), (1, tap % (LOGFMT_MS, 0)), (5, query), (6, tap % (LOGFMT_MS, 3)),
-                                         (7, tap % (LOGFMT_MS, 6)), (9, query)])
+                                         (7, tap % (LOGFMT_MS, 6)), (9, query),
+                                         (10, tap.replace('feature', 'suggest') % (LOGFMT_MS, 0))])
         held = self.search_log('10-09', [(0, query), (1, tap % (LOGFMT_MS, 2))])
         out = io.StringIO()
         with mock.patch.object(nogps_replay, 'held_out_days', lambda: {'10-09'}), redirect_stdout(out):
             nogps_log.print_search(analyse(('a.log', made), ('b.log', held), year=2026))
         rows = {line.split()[0] + ' ' + line.split()[1]: line.split()[2:] for line in out.getvalue().splitlines()[1:]}
-        self.assertEqual(rows['made from'], ['3', '3', '67%', '3.0', '3.0', '33%'])
-        self.assertEqual(rows['held out'], ['1', '1', '100%', '2.0', '2.0', '0%'])
+        self.assertEqual(rows['made from'], ['3', '3', '67%', '3.0', '3.0', '33%', '1'])
+        self.assertEqual(rows['held out'], ['1', '1', '100%', '2.0', '2.0', '0%', '0'])
 
 
 class LossesTest(unittest.TestCase):

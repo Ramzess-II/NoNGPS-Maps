@@ -21,7 +21,7 @@ Each call reads the logs again: a day of Android logs takes a few seconds.
    <logs>` does it over all the trips. `nogps_log.py losses <logs>` lists the road losses and tells which a tap on
    the road lost panel would have placed by GPS (the fix is fresh, accurate, near the mark; the road near it is not
    checked), with totals per set of `nogps_replay.py days`. `nogps_log.py search <logs>` counts the `SEARCH` lines: queries,
-   taps, the share of queries with a tap and the place of the tapped result, per set.
+   taps, the share of queries with a tap and the place of the tapped result, and the taps on a suggestion apart, per set.
 3. **Narrow down** to the moments that matter:
    - `state <logs> --trip N --at HH:MM:SS`: every TRIP field (`*` = changed since the line before), the box flags
      decoded, the anomalies at that moment, the events within 30 s and the other log lines within 5 s.

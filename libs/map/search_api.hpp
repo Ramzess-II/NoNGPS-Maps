@@ -125,9 +125,10 @@ public:
   void OnBookmarksAttached(std::vector<BookmarkGroupInfo> const & groupInfos);
   void OnBookmarksDetached(std::vector<BookmarkGroupInfo> const & groupInfos);
 
-  /// Writes the SEARCH tap line of the trip log for the result the user has tapped in the Everywhere list, after the
-  /// query line when the search has not ended yet. The lines are not written when no Everywhere search has shown
-  /// results.
+  /// Writes the SEARCH tap line of the trip log for the result or suggestion the user has tapped in the Everywhere
+  /// list, after the query line when the search has not ended yet. A list tap reaches it through
+  /// Framework::SelectSearchResult, a suggestion tap from the bridge. The lines are not written when no Everywhere
+  /// search has shown results.
   void LogSearchTap(search::Result const & result);
 
 private:
