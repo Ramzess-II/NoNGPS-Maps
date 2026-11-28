@@ -23,8 +23,7 @@ class BottomMenuPresenter: NSObject {
   /// The main menu. The map styles cell above is the first group; the first cell of every other group draws a line
   /// above itself. The Organic Maps tools are in a second sheet, see mapToolsGroups. Mirrors MainMenuItems on Android.
   private static let groups: [[CellType]] = [
-    [.profile, .settings],
-    [.mapTools],
+    [.profile, .settings, .mapTools],
     [.howItWorks, .about, .aboutOrganicMaps, .buyBox, .donate],
   ]
 

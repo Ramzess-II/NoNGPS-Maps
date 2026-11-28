@@ -8,6 +8,8 @@ final class BottomMenuViewController: MWMViewController {
   }
 
   var presenter: BottomMenuPresenterProtocol?
+  /// Space above the first row, inside the rounded top of the sheet.
+  var topPadding: CGFloat = 0
   private let transitioningManager = BottomMenuTransitioningManager()
 
   @IBOutlet var tableView: UITableView!
@@ -33,6 +35,10 @@ final class BottomMenuViewController: MWMViewController {
     tableView.sectionFooterHeight = 0
     tableView.rowHeight = UITableView.automaticDimension
     tableView.estimatedRowHeight = Constants.estimatedRowHeight
+    if topPadding > 0 {
+      // A header view, not a content inset: updateTableHeight() sizes the sheet by the content size.
+      tableView.tableHeaderView = UIView(frame: CGRect(x: 0, y: 0, width: 0, height: topPadding))
+    }
 
     NotificationCenter.default.addObserver(self,
                                            selector: #selector(contentSizeCategoryDidChange),

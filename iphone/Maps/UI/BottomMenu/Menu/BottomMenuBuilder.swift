@@ -37,6 +37,8 @@
                                           delegate: delegate)
     let presenter = BottomMenuPresenter(view: viewController, interactor: interactor, sections: sections)
     viewController.presenter = presenter
+    // The main menu starts with the map styles cell; the Map tools sheet would start right at its top edge.
+    viewController.topPadding = sections.contains(.layers) ? 0 : 12
     return viewController
   }
 }

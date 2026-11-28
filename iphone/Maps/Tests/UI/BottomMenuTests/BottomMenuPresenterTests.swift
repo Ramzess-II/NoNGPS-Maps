@@ -48,11 +48,12 @@ final class BottomMenuPresenterTests: XCTestCase {
     XCTAssertEqual(presenter.numberOfSections(in: UITableView()), 2)
   }
 
-  /// Map tools and How NonGPS works open a group; Profile sits under the line of the map styles cell.
-  func testGroupsStartAtMapToolsAndHowItWorks() {
+  /// How NonGPS works opens a group; Profile sits under the line of the map styles cell, and Map tools stays in its
+  /// group with Settings.
+  func testGroupStartsAtHowItWorks() {
     let presenter = makePresenter()
     let starts = presenter.groupStarts.sorted().map { presenter.menuCells[$0] }
-    XCTAssertEqual(starts, [.mapTools, .howItWorks])
+    XCTAssertEqual(starts, [.howItWorks])
   }
 
   func testMapToolsSheetHoldsTheOrganicMapsTools() {

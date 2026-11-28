@@ -46,7 +46,7 @@ public final class MainMenuItems
   }
 
   /**
-   * The main menu: what is set up once, then the Map tools row, then the NonGPS and about rows.
+   * The main menu: Profile, Settings and the Map tools row, then the NonGPS and about rows.
    *
    * @param donate         a donate URL is configured
    * @param downloadsBadge how many maps wait for an update, 0 for no badge: the Map tools row carries it
@@ -54,12 +54,10 @@ public final class MainMenuItems
   @NonNull
   public static ArrayList<MenuBottomSheetItem> create(boolean donate, int downloadsBadge, @NonNull Handlers handlers)
   {
-    final List<Row> setup =
-        List.of(new Row(R.string.nogps_menu_profile, R.drawable.profile_generic, handlers::openProfile),
-                new Row(R.string.settings, R.drawable.ic_settings, handlers::openSettings));
-
-    // The adapter shows the running state of the recorder on this row too.
-    final List<Row> tools = List.of(
+    final List<Row> setup = List.of(
+        new Row(R.string.nogps_menu_profile, R.drawable.profile_generic, handlers::openProfile),
+        new Row(R.string.settings, R.drawable.ic_settings, handlers::openSettings),
+        // The adapter shows the running state of the recorder on this row too.
         new Row(R.string.nogps_menu_map_tools, R.drawable.ic_map_tools, downloadsBadge, handlers::openMapTools));
 
     final List<Row> about = new ArrayList<>(
@@ -70,7 +68,7 @@ public final class MainMenuItems
     if (donate)
       about.add(new Row(R.string.donate, R.drawable.ic_donate, handlers::donate));
 
-    return toItems(List.of(setup, tools, about), true);
+    return toItems(List.of(setup, about), true);
   }
 
   /**
