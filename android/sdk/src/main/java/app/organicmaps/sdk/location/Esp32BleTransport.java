@@ -939,6 +939,12 @@ class Esp32BleTransport
     return bondState == BluetoothDevice.BOND_BONDING && state != STATE_PAIRING;
   }
 
+  @VisibleForTesting
+  static int stateAfterHeard(int state)
+  {
+    return state == STATE_PAIRING ? STATE_CONNECTED : state;
+  }
+
   @SuppressLint("MissingPermission")
   private boolean enterMissedPairing(@NonNull BluetoothGatt gatt)
   {
@@ -1250,8 +1256,8 @@ class Esp32BleTransport
         mHeard = true;
         mSilentConnections = 0;
         mBondLost = false;
-        // The probe is a link now.
-        setState(mState);
+        // The probe is a link now. Lines from a paired box end a pairing whose BOND_BONDED was missed.
+        setState(stateAfterHeard(mState));
         mMainHandler.removeCallbacks(mWatchdog);
         onBoxHeard();
       }
