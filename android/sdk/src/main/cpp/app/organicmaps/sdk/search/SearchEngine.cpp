@@ -350,6 +350,13 @@ JNIEXPORT void Java_app_organicmaps_sdk_search_SearchEngine_nativeSelectResult(J
   g_framework->NativeFramework()->SelectSearchResult(g_results[index], true /* animation */);
 }
 
+JNIEXPORT void Java_app_organicmaps_sdk_search_SearchEngine_nativeLogResultTap(JNIEnv * env, jclass clazz, jint index)
+{
+  if (index < 0 || index >= static_cast<jint>(g_results.GetCount()))
+    return;
+  g_framework->NativeFramework()->GetSearchAPI().LogSearchTap(g_results[index]);
+}
+
 JNIEXPORT void Java_app_organicmaps_sdk_search_SearchEngine_nativeUpdateViewportWithLastResults(JNIEnv * env,
                                                                                                 jclass clazz)
 {

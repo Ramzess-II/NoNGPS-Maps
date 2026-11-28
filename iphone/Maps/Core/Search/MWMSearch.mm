@@ -204,6 +204,11 @@ BOOL HandleIOSDebugCommand(NSString * query)
   GetFramework().SelectSearchResult(result, true);
 }
 
++ (void)logResultTapAtIndex:(NSUInteger)index
+{
+  GetFramework().GetSearchAPI().LogSearchTap([MWMSearch manager]->m_everywhereResults[index]);
+}
+
 + (void)updateViewportWithResults
 {
   GetFramework().UpdateViewport([MWMSearch manager]->m_everywhereResults);
