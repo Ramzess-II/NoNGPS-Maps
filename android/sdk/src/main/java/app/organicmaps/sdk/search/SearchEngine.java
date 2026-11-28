@@ -218,6 +218,15 @@ public enum SearchEngine implements SearchListener, MapSearchListener,
   }
 
   /**
+   * Writes the trip log tap line of a result picked as a route point, which opens no place page.
+   */
+  @MainThread
+  public void logResultTap(int index)
+  {
+    nativeLogResultTap(index);
+  }
+
+  /**
    * Applies the search results viewport policy to the last results, see Framework::UpdateViewport().
    */
   @MainThread
@@ -268,6 +277,8 @@ public enum SearchEngine implements SearchListener, MapSearchListener,
   private static native void nativeShowResult(int index);
 
   private static native void nativeSelectResult(int index);
+
+  private static native void nativeLogResultTap(int index);
 
   private static native void nativeUpdateViewportWithLastResults();
 
