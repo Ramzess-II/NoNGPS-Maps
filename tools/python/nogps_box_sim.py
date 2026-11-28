@@ -55,6 +55,11 @@ asks for no pairing, so the system can't resolve the private address of a phone 
 minutes (CBCentral.identifier on macOS, the BlueZ device path on Linux), while the firmware keeps the key with the
 bond. So two phones that give one name share a key here, which the firmware would keep apart.
 
+The bonds do not outlive the program, the keys do. So the first HELLO of a run bonds its phone in the pairing window as
+a phone that has just paired, and AUTH_SET with a new key on that first link replaces the kept key: a 0.6.1 box, which
+keeps the bond, answers ERR,EXISTS there. To see that refusal, send AUTH_SET with another key on a later link of the
+same run, or start with --keys '' (no kept keys).
+
 The radio needs a package -- PyObjC on macOS, dbus-next on Linux, winsdk on Windows -- and the script declares
 them above, each for its own platform, so uv puts them in an environment of its own and nothing is installed into
 the system Python. winsdk has no wheel past Python 3.12 and is declared for those alone: the radio of Windows needs
@@ -324,6 +329,8 @@ class Phone:
         self.info_sent = False
         # The order of the first HELLO among the phones: the box listens to the lowest, 0 before any.
         self.hello_order = 0
+        # Bonded on this link, as a phone that paired with the code: AUTH_SET may replace its key (#37 of ELMandIMU).
+        self.paired = False
         self.queue = collections.deque(maxlen=QUEUE_LINES)
         # The tail of a line that has started going out: BLE-4 sends it whole.
         self.pending = b''
@@ -485,6 +492,7 @@ class Box:
             if self.state.recovery_window:
                 self.state.recovery_window = False
                 self.state.adv['pairing_open'] = False
+            phone.paired = True
         self.bonds[address] = {'name': phone.name, 'unix_s': phone.unix_s, 'hello_at': self.clock()}
         self.sync_adv()
 
@@ -584,12 +592,13 @@ class Box:
         return phone.name or phone.id
 
     def auth_set(self, phone, rest):
-        """AUTH_SET,<32 hex>: the key is taken once; the same key again is taken, another one is refused."""
+        """AUTH_SET,<32 hex>: the key is taken once; the same key again is taken, another one is refused, unless the
+        phone was bonded on this link: a phone that paired again with the code replaces the key it lost."""
         key = hex_bytes(rest[0], AUTH_KEY_BYTES) if rest else None
         if key is None:
             return 'ERR,VALUE'
         name = self.auth_phone(phone)
-        if self.auth_keys.get(name, key) != key:
+        if self.auth_keys.get(name, key) != key and not phone.paired:
             return 'ERR,EXISTS'
         self.auth_keys[name] = key
         self.save_keys()

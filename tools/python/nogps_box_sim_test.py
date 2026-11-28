@@ -552,23 +552,35 @@ class Commands(unittest.TestCase):
         key = '000102030405060708090a0b0c0d0e0f'
         other = 'ff' * 16
         made.on_event('write', PHONE, command(1, 'AUTH_SET,' + key))
-        # The same key again is taken (its answer may have been lost), another one is not.
-        made.on_event('write', PHONE, command(2, 'AUTH_SET,' + key))
-        made.on_event('write', PHONE, command(3, 'AUTH_SET,' + other))
-        made.on_event('write', PHONE, command(4, 'AUTH_SET,' + key[:-2]))
-        made.on_event('write', PHONE, command(5, 'AUTH_SET,' + 'zz' * 16))
-        made.on_event('write', PHONE, command(6, 'AUTH,a1b2c3d4e5f6071'))
-        made.on_event('write', PHONE, command(7, 'AUTH'))
+        made.on_event('write', PHONE, command(2, 'AUTH_SET,' + key[:-2]))
+        made.on_event('write', PHONE, command(3, 'AUTH_SET,' + 'zz' * 16))
+        made.on_event('write', PHONE, command(4, 'AUTH,a1b2c3d4e5f6071'))
+        made.on_event('write', PHONE, command(5, 'AUTH'))
         made.tick()
         got = [fields(raw)[1:] for raw in radio.lines('NGA')]
-        self.assertEqual(got, [['1', 'OK'], ['2', 'OK'], ['3', 'ERR', 'EXISTS'], ['4', 'ERR', 'VALUE'],
-                               ['5', 'ERR', 'VALUE'], ['6', 'ERR', 'VALUE'], ['7', 'ERR', 'VALUE']])
-        # The key stays after the phone has gone and comes back.
+        self.assertEqual(got, [['1', 'OK'], ['2', 'ERR', 'VALUE'], ['3', 'ERR', 'VALUE'], ['4', 'ERR', 'VALUE'],
+                               ['5', 'ERR', 'VALUE']])
+        # The key stays after the phone has gone and comes back with its bond: the same key again is taken (its
+        # answer may have been lost), another one is not.
         made.on_event('disconnect', PHONE)
         connect(made)
         made.on_event('write', PHONE, command(1, 'AUTH,a1b2c3d4e5f60718'))
+        made.on_event('write', PHONE, command(2, 'AUTH_SET,' + key))
+        made.on_event('write', PHONE, command(3, 'AUTH_SET,' + other))
         made.tick()
-        self.assertEqual(fields(radio.lines('NGA')[-1])[2:], ['OK', '0620aee41375224a'])
+        got = [fields(raw)[1:] for raw in radio.lines('NGA')[-3:]]
+        self.assertEqual(got, [['1', 'OK', '0620aee41375224a'], ['2', 'OK'], ['3', 'ERR', 'EXISTS']])
+
+    def test_a_phone_bonded_on_its_link_replaces_its_key(self):
+        # ELMandIMU#37: a phone that paired again with the code and lost its key gives a new one on that link.
+        made, radio, _ = box()
+        phone = connect(made)
+        self.assertTrue(phone.paired)
+        made.on_event('write', PHONE, command(1, 'AUTH_SET,' + '00' * 16))
+        made.on_event('write', PHONE, command(2, 'AUTH_SET,' + 'ff' * 16))
+        made.tick()
+        self.assertEqual([fields(raw)[1:] for raw in radio.lines('NGA')], [['1', 'OK'], ['2', 'OK']])
+        self.assertEqual(made.auth_keys['Test phone'], bytes.fromhex('ff' * 16))
 
     def test_the_keys_of_the_phones_outlive_the_program(self):
         with tempfile.TemporaryDirectory() as folder:
