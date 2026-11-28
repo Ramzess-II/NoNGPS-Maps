@@ -20,8 +20,8 @@ NonGPS Maps — застосунок для офлайн-навігації ав
 |---|---|---|
 | Точне й приблизне місцеположення (GPS, вишки, Wi-Fi) | Показати вас на карті, прокласти маршрут, розпізнати хибні позиції GPS | Лише на телефоні |
 | Дані датчиків руху (гіроскоп, акселерометр) | Інерціальна навігація, коли немає GPS | Лише на телефоні |
-| Швидкість автомобіля від адаптера OBD-II ELM327 (Bluetooth) | Розрахунок пройденої відстані | Лише на телефоні |
-| Дані блоку датчиків ESP32 (Bluetooth) | Поворот і швидкість автомобіля | Лише на телефоні; блок не має доступу до інтернету |
+| Швидкість автомобіля від блоку NonGPS-OBD або адаптера OBD-II ELM327 (Bluetooth) | Розрахунок пройденої відстані | Лише на телефоні |
+| Дані блоку NonGPS-OBD (Bluetooth) | Поворот і швидкість автомобіля | Лише на телефоні; блок не має доступу до інтернету |
 | Журнал поїздки (якщо ви ввімкнули логування в налаштуваннях) | Розбір помилок навігації | Лише на телефоні, доки ви самі його не надішлете |
 | Закладки, треки, маршрути, налаштування | Робота застосунку | Лише на телефоні |
 | Звіт про збій (якщо застосунок аварійно завершився і перемикач «Надсилати звіти про збої» ввімкнений): стан програми в момент збою, умова перевірки, що не пройшла, модель телефона, версія застосунку й системи, назва екрана, стан блоку датчиків. Без координат, журналів, IP-адреси та скриншотів | Знайти й виправити збій | Sentry (sentry.io), сервери в ЄС |
@@ -53,7 +53,7 @@ NonGPS Maps — застосунок для офлайн-навігації ав
 - **Місцеположення** — показ на карті та навігація, у тому числі з вимкненим екраном під час
   навігації або запису треку (фонова служба). Доступ до місцеположення у фоні без активної навігації
   застосунок не запитує.
-- **Пристрої поблизу (Bluetooth)** — з'єднання з адаптером OBD-II ELM327.
+- **Пристрої поблизу (Bluetooth)** — з'єднання з блоком NonGPS-OBD або адаптером OBD-II ELM327.
 - **Сповіщення** — стан завантаження карт, навігації та запису треку.
 - **Інтернет** — завантаження карт.
 
@@ -93,8 +93,8 @@ Developer: Ramzess (NonGPS Maps), contact: nongps.organic@gmail.com.
 |---|---|---|
 | Precise and approximate location (GPS, cell towers, Wi-Fi) | Show you on the map, build routes, detect wrong GPS positions | The phone only |
 | Motion sensors (gyroscope, accelerometer) | Dead reckoning without GPS | The phone only |
-| Car speed from an OBD-II ELM327 adapter (Bluetooth) | Distance driven | The phone only |
-| ESP32 sensor box data (Bluetooth) | Car rotation and speed | The phone only; the box has no internet access |
+| Car speed from the NonGPS-OBD box or an OBD-II ELM327 adapter (Bluetooth) | Distance driven | The phone only |
+| NonGPS-OBD box data (Bluetooth) | Car rotation and speed | The phone only; the box has no internet access |
 | Trip log (if you turn logging on in the settings) | Investigating navigation errors | The phone only, until you send it yourself |
 | Bookmarks, tracks, routes, settings | App features | The phone only |
 | A crash report (if the app crashed and the "Send crash reports" switch is on): the state of the program at the crash, the failed check, phone model, app and system version, screen name, sensor box state. No coordinates, logs, IP address or screenshots | Finding and fixing the crash | Sentry (sentry.io), servers in the EU |
@@ -123,7 +123,7 @@ Google, not by this app.
 
 - **Location** — the map and navigation, also with the screen off while navigating or recording a track
   (a foreground service). The app doesn't request background location access without active navigation.
-- **Nearby devices (Bluetooth)** — connection to the OBD-II ELM327 adapter.
+- **Nearby devices (Bluetooth)** — connection to the NonGPS-OBD box or an OBD-II ELM327 adapter.
 - **Notifications** — status of map downloads, navigation and track recording.
 - **Internet** — map downloads.
 
