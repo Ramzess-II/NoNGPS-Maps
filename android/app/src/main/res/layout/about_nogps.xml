@@ -81,6 +81,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/margin_half"
         android:text="@string/nogps_map_data"
+        android:textAlignment="center"
         android:textAppearance="@style/MwmTextAppearance.Body1"
         android:textColor="?android:textColorPrimary" />
 
@@ -109,8 +110,9 @@
     <TextView
         android:id="@+id/report"
         style="@style/MwmWidget.TextView.Item"
+        android:layout_width="wrap_content"
+        android:layout_gravity="center_horizontal"
         android:text="@string/report_a_bug"
-        android:textAlignment="viewStart"
         app:drawableStartCompat="@drawable/ic_report_a_bug" />
 
   </LinearLayout>

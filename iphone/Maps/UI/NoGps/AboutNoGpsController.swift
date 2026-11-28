@@ -109,9 +109,12 @@ private extension AboutNoGpsController {
     mapDataTextView.textContainer.lineFragmentPadding = 0
     mapDataTextView.linkTextAttributes = [.foregroundColor: UIColor.linkBlue]
 
+    let paragraph = NSMutableParagraphStyle()
+    paragraph.alignment = .center
     let text = NSMutableAttributedString(string: L("nogps_map_data"),
                                          attributes: [.font: UIFont.regular16.dynamic,
-                                                      .foregroundColor: UIColor.blackPrimaryText])
+                                                      .foregroundColor: UIColor.blackPrimaryText,
+                                                      .paragraphStyle: paragraph])
     link(in: text, "OpenStreetMap", Constants.osmCopyrightURL)
     link(in: text, "Organic Maps", NoGpsLinks.organicMaps)
     mapDataTextView.attributedText = text
