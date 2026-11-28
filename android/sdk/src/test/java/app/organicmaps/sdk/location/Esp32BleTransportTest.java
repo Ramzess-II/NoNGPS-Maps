@@ -142,6 +142,24 @@ public class Esp32BleTransportTest
   }
 
   @Test
+  public void bondingSeenLate_switchesToPairing()
+  {
+    assertTrue(Esp32BleTransport.missedBonding(Esp32BleTransport.STATE_CONNECTING, BluetoothDevice.BOND_BONDING));
+    assertTrue(Esp32BleTransport.missedBonding(Esp32BleTransport.STATE_CONNECTED, BluetoothDevice.BOND_BONDING));
+    assertFalse(Esp32BleTransport.missedBonding(Esp32BleTransport.STATE_PAIRING, BluetoothDevice.BOND_BONDING));
+    assertFalse(Esp32BleTransport.missedBonding(Esp32BleTransport.STATE_CONNECTING, BluetoothDevice.BOND_NONE));
+    assertFalse(Esp32BleTransport.missedBonding(Esp32BleTransport.STATE_CONNECTING, BluetoothDevice.BOND_BONDED));
+  }
+
+  @Test
+  public void stateAfterHeardEndsPairing()
+  {
+    assertEquals(Esp32BleTransport.STATE_CONNECTED, Esp32BleTransport.stateAfterHeard(Esp32BleTransport.STATE_PAIRING));
+    assertEquals(Esp32BleTransport.STATE_CONNECTING,
+                 Esp32BleTransport.stateAfterHeard(Esp32BleTransport.STATE_CONNECTING));
+  }
+
+  @Test
   public void bytesOfADeviceThatIsNotPaired_areDropped()
   {
     assertTrue(Esp32BleTransport.takesLines(BluetoothDevice.BOND_BONDED, false));

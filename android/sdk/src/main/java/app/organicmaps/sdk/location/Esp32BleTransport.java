@@ -929,8 +929,37 @@ class Esp32BleTransport
     mMainHandler.postDelayed(mWatchdog, delayMs);
   }
 
+  /**
+   * The system pairs with the box while the app has not seen it: the broadcast of BOND_BONDING came before the link
+   * was taken or never came (#708). The code window allows 60 s, not the connect timeout.
+   */
+  @VisibleForTesting
+  static boolean missedBonding(int state, int bondState)
+  {
+    return bondState == BluetoothDevice.BOND_BONDING && state != STATE_PAIRING;
+  }
+
+  @VisibleForTesting
+  static int stateAfterHeard(int state)
+  {
+    return state == STATE_PAIRING ? STATE_CONNECTED : state;
+  }
+
+  @SuppressLint("MissingPermission")
+  private boolean enterMissedPairing(@NonNull BluetoothGatt gatt)
+  {
+    if (!missedBonding(mState, gatt.getDevice().getBondState()))
+      return false;
+    Logger.i(TAG, "bonding started before the broadcast was seen");
+    setState(STATE_PAIRING);
+    startWatchdog(PAIRING_WATCHDOG_MS);
+    return true;
+  }
+
   private void onWatchdog()
   {
+    if (mGatt != null && enterMissedPairing(mGatt))
+      return;
     Logger.w(TAG, "No data from the box in time, state " + mState);
     // The user has left the code window: asked again at once, it would come back again and again.
     if (mState == STATE_PAIRING)
@@ -1227,8 +1256,8 @@ class Esp32BleTransport
         mHeard = true;
         mSilentConnections = 0;
         mBondLost = false;
-        // The probe is a link now.
-        setState(mState);
+        // The probe is a link now. Lines from a paired box end a pairing whose BOND_BONDED was missed.
+        setState(stateAfterHeard(mState));
         mMainHandler.removeCallbacks(mWatchdog);
         onBoxHeard();
       }
@@ -1370,6 +1399,8 @@ class Esp32BleTransport
     {
       mReady = true;
       // A box that is not paired yet is connected after the pairing, see onBondStateChanged().
+      if (enterMissedPairing(gatt))
+        return;
       if (takesLines(gatt.getDevice().getBondState(), mSimulator))
         setState(STATE_CONNECTED);
     }
