@@ -131,8 +131,8 @@ public class MainMenuItemsTest
         List.of(R.string.nogps_menu_profile, R.string.settings, R.string.nogps_menu_map_tools, R.string.nogps_how_title,
                 R.string.nogps_about_title, R.string.nogps_about_om_menu, R.string.nogps_box_buy, R.string.donate),
         titles(items));
-    assertEquals(List.of(R.string.nogps_menu_profile, R.string.nogps_menu_map_tools, R.string.nogps_how_title),
-                 groupStarts(items));
+    // Map tools stays in the group of Profile and Settings: no divider between them.
+    assertEquals(List.of(R.string.nogps_menu_profile, R.string.nogps_how_title), groupStarts(items));
   }
 
   @Test
