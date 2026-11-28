@@ -63,6 +63,9 @@ struct StoredRankingInfo
   // Number of misprints.
   ErrorsMade m_errorsMade;
 
+  // Score for the feature's name.
+  NameScore m_nameScore = NameScore::ZERO;
+
   // Used for non-categorial requests.
   union
   {
@@ -124,9 +127,6 @@ struct RankingInfo : public StoredRankingInfo
 
   // Popularity rank of the feature.
   uint8_t m_popularity = 0;
-
-  // Score for the feature's name.
-  NameScore m_nameScore = NameScore::ZERO;
 
   // alt_name or old_name is used.
   bool m_isAltOrOldName : 1;

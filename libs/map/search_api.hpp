@@ -202,10 +202,12 @@ namespace search
 // Returns true if |viewport| was changed.
 bool AdjustViewportToSearchResults(Results const & results, m2::AnyRectD & viewport);
 
-// Orders the found places nearest to |pivot| first, towns too. The suggestions and the coordinates and postcodes
-// the user has typed stay first, in their order. The core weighs the distance little: a street of the same name in
-// a bigger town far away is ranked above the near one.
-void OrderNearestFirst(m2::PointD const & pivot, Results & results);
+// Orders the found places by match quality, then nearest to |pivot| first, towns too. The tiers: the whole query
+// matched the name with no misprint; every word matched with no misprint; the rest. A category request has no name
+// to match: it is nearest first only. The suggestions and the coordinates and postcodes the user has typed stay
+// first, in their order. The core weighs the distance little: a street of the same name in a bigger town far away is
+// ranked above the near one.
+void OrderNearestFirst(m2::PointD const & pivot, bool isCategory, Results & results);
 
 // The fields of the SEARCH query line of the trip log after its head. The text of the query is not written, only its
 // length |chars|. |pivot| is "mark" for the position, "center" for the middle of the screen, "none" for neither.

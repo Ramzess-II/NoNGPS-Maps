@@ -121,6 +121,10 @@ public:
   ErrorsMade GetErrorsMade() const { return m_errorsMade; }
   void SetErrorsMade(ErrorsMade errorsMade) { m_errorsMade = errorsMade; }
 
+  // How well the best name matched the query, ZERO for suggestions, coordinates and postcodes.
+  NameScore GetNameScore() const { return m_nameScore; }
+  void SetNameScore(NameScore nameScore) { m_nameScore = nameScore; }
+
   /// @name Used for debug logs and tests only.
   /// @{
   RankingInfo const & GetRankingInfo() const
@@ -159,6 +163,7 @@ private:
   buffer_vector<std::pair<uint16_t, uint16_t>, 4> m_hightlightRanges;
   buffer_vector<std::pair<uint16_t, uint16_t>, 4> m_descHightlightRanges;
   ErrorsMade m_errorsMade;
+  NameScore m_nameScore = NameScore::ZERO;
 
   std::shared_ptr<RankingInfo> m_dbgInfo;  // used in debug logs and tests, nullptr in production
 

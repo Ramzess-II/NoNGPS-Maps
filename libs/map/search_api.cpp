@@ -221,7 +221,7 @@ bool SearchAPI::SearchEverywhere(EverywhereSearchParams params)
     // The core adds the results batch by batch: a near one found later is put first.
     Results ordered = results;
     if (pivot)
-      OrderNearestFirst(*pivot, ordered);
+      OrderNearestFirst(*pivot, isCategory, ordered);
     // The end marker carries the final list, bigger than the last batch or the only one: count it too.
     RunUITask([this, id, pivot, pivotKind, chars, isCategory, query, onResults, results = std::move(ordered)]() mutable
     {
@@ -544,6 +544,20 @@ bool IsMatchedResult(Result const & result)
 {
   return result.HasPoint() && !result.IsSuggest();
 }
+
+// 0: the whole query matched the name, 1: every word matched, 2: the rest, e.g. misprints and substrings.
+int GetMatchTier(Result const & result)
+{
+  if (!result.GetErrorsMade().IsZero())
+    return 2;
+  switch (result.GetNameScore())
+  {
+  case NameScore::FULL_MATCH:
+  case NameScore::FULL_PREFIX: return 0;
+  case NameScore::PREFIX: return 1;
+  default: return 2;
+  }
+}
 }  // namespace
 
 bool AdjustViewportToSearchResults(Results const & results, m2::AnyRectD & viewport)
@@ -625,23 +639,32 @@ bool AdjustViewportToSearchResults(Results const & results, m2::AnyRectD & viewp
   return true;
 }
 
-void OrderNearestFirst(m2::PointD const & pivot, Results & results)
+void OrderNearestFirst(m2::PointD const & pivot, bool isCategory, Results & results)
 {
   size_t const count = results.GetCount();
   // The results staying first are nearer than any.
   std::vector<double> distances(count, -1);
+  std::vector<int> tiers(count, 0);
   for (size_t i = 0; i < count; ++i)
   {
     auto const & result = results[i];
     ASSERT_EQUAL(result.GetPositionInResults(), static_cast<int32_t>(i), ());
     // Coordinates and postcodes are what the user has typed.
     if (IsMatchedResult(result) && result.GetResultType() == Result::Type::Feature)
+    {
       distances[i] = mercator::DistanceOnEarth(pivot, result.GetFeatureCenter());
+      if (!isCategory)
+        tiers[i] = GetMatchTier(result);
+    }
   }
   std::vector<size_t> order(count);
   std::iota(order.begin(), order.end(), 0);
-  std::stable_sort(order.begin(), order.end(),
-                   [&distances](size_t a, size_t b) { return distances[a] < distances[b]; });
+  std::stable_sort(order.begin(), order.end(), [&](size_t a, size_t b)
+  {
+    if (tiers[a] != tiers[b])
+      return tiers[a] < tiers[b];
+    return distances[a] < distances[b];
+  });
 
   // Results::SortBy is not stable: sorting by the place in |order| keeps the equally near results in their order.
   std::vector<size_t> place(count);
