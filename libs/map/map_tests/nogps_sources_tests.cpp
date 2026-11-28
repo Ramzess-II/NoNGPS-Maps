@@ -2287,6 +2287,54 @@ UNIT_TEST(NoGps_Esp32Source_BoxTakesTheSameKeyAgainWhenItHasNone)
   TEST_EQUAL(box.Sent("AUTH_SET"), 2, ());
 }
 
+UNIT_TEST(NoGps_Esp32Source_WrongProofOfUnconfirmedKeyGivesTheKeyAgain)
+{
+  auto const wrongProof = [](ProvedBox & box, std::string & key)
+  {
+    box.listener.m_keys["C47D"] = {kAuthKey, false};
+    box.source.OnBleBytes(BoxLine(kAuthInfo));
+    int id = 0;
+    auto const nonce = LastAuthArgument(box.delegate, "AUTH", id);
+    box.source.OnBleBytes(
+        BoxLine("NGA," + std::to_string(id) + ",OK," + esp32::AuthProof("ffeeddccbbaa99887766554433221100", nonce)));
+    key = kAuthKey;
+  };
+  std::string key;
+  // On a pairing link the box replaces its key: the car keeps the key as confirmed.
+  {
+    ProvedBox box;
+    wrongProof(box, key);
+    TEST(!box.source.IsBoxRefused(), ());
+    int setId = 0;
+    TEST_EQUAL(LastAuthArgument(box.delegate, "AUTH_SET", setId), key, ());
+    box.source.OnBleBytes(BoxLine("NGA," + std::to_string(setId) + ",OK"));
+    TEST(box.source.IsBoxProven(), ());
+    TEST_EQUAL(box.listener.m_keys["C47D"], std::make_pair(key, true), ());
+  }
+  // Elsewhere the box answers ERR,EXISTS: the key is dropped and pairing again is offered.
+  {
+    ProvedBox box;
+    wrongProof(box, key);
+    int setId = 0;
+    LastAuthArgument(box.delegate, "AUTH_SET", setId);
+    box.source.OnBleBytes(BoxLine("NGA," + std::to_string(setId) + ",ERR,EXISTS"));
+    TEST(box.source.IsBoxRefused(), ());
+    TEST(box.source.CanPairAgain(), ());
+  }
+  // A confirmed key is never replaced on a wrong proof.
+  {
+    ProvedBox box;
+    box.listener.m_keys["C47D"] = {kAuthKey, true};
+    box.source.OnBleBytes(BoxLine(kAuthInfo));
+    int id = 0;
+    auto const nonce = LastAuthArgument(box.delegate, "AUTH", id);
+    box.source.OnBleBytes(
+        BoxLine("NGA," + std::to_string(id) + ",OK," + esp32::AuthProof("ffeeddccbbaa99887766554433221100", nonce)));
+    TEST(box.source.IsBoxRefused(), ());
+    TEST_EQUAL(box.Sent("AUTH_SET"), 0, ());
+  }
+}
+
 UNIT_TEST(NoGps_Esp32Source_AsksInfoBeforeProof)
 {
   ProvedBox box;
