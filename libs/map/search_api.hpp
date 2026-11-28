@@ -175,8 +175,8 @@ private:
   };
   void LogSearchQuery();
   std::optional<EverywhereLog> m_lastEverywhere;
-  // The text of the query line written last, until a tap: iOS repeats a search after each map move, which is not a
-  // new query.
+  // The text of the query line written last, until the Everywhere search is cancelled (search closed or cleared):
+  // iOS repeats a search after each map move, and a tap moves the map too, which is not a new query.
   std::string m_loggedQuery;
   // Bumped by each Everywhere search: a batch of a cancelled one arriving late is dropped.
   uint64_t m_everywhereId = 0;

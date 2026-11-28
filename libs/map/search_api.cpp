@@ -263,7 +263,8 @@ void SearchAPI::LogSearchTap(Result const & result)
   LogSearchQuery();
   LOG(LINFO, (nogps::LogHead(s_logClock, "SEARCH", "tap"),
               FormatTapLog(result, m_lastEverywhere->m_results, m_lastEverywhere->m_pivot)));
-  m_loggedQuery.clear();
+  // The map move that the tap causes (iPad) repeats the search: not a new query.
+  m_loggedQuery = m_lastEverywhere->m_query;
 }
 
 bool SearchAPI::SearchInViewport(ViewportSearchParams params)
@@ -352,6 +353,8 @@ void SearchAPI::CancelSearch(Mode mode)
 
   if (mode == Mode::Viewport)
     m_delegate.ClearViewportSearchResults();
+  else if (mode == Mode::Everywhere)
+    m_loggedQuery.clear();
 
   auto & intent = m_searchIntents[static_cast<size_t>(mode)];
   intent.m_params.Clear();

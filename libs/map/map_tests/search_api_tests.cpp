@@ -257,7 +257,8 @@ size_t CountLogLines(string const & what)
 }
 }  // namespace
 
-// iOS repeats an Everywhere search with the same text after a map move: one query line, until a tap.
+// iOS repeats an Everywhere search with the same text after a map move: one query line, also after a tap, until the
+// search is cancelled.
 UNIT_CLASS_TEST(SearchAPITest, QueryLogRepeatedSearch)
 {
   TestCafe cafe(m2::PointD(0, 0), "cafe", "en");
@@ -290,10 +291,15 @@ UNIT_CLASS_TEST(SearchAPITest, QueryLogRepeatedSearch)
   m_api.LogSearchTap(first[0]);
   searchOnce("cafe ", m2::RectD(0.0, 0.0, 4.0, 4.0));
   size_t const afterTap = CountLogLines("SEARCH query");
+
+  m_api.CancelAllSearches();
+  searchOnce("cafe ", m2::RectD(0.0, 0.0, 5.0, 5.0));
+  size_t const afterCancel = CountLogLines("SEARCH query");
   base::SetLogMessageFn(prev);
 
   TEST_EQUAL(afterRepeats, 1, ());
-  TEST_EQUAL(afterTap, 2, ());
+  TEST_EQUAL(afterTap, 1, ());
+  TEST_EQUAL(afterCancel, 2, ());
 }
 
 UNIT_CLASS_TEST(SearchAPITest, BookmarksSearch)
