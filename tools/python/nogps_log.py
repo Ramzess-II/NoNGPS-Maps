@@ -34,6 +34,7 @@ import io
 import math
 import os
 import re
+import statistics
 import sys
 import tempfile
 import zipfile
@@ -1267,6 +1268,47 @@ def print_losses(analysis):
         print('%-10s %7d %9d %9d %17d' % (name, t['losses'], t['fixable'], t['taps'], t['tap_fixable']))
 
 
+SEARCH_LINE = re.compile(r'\bSEARCH (query|tap) ms=\d+ (.*)')
+SEARCH_PLACE = re.compile(r'\bplace=(\d+)')
+
+
+def print_search(analysis):
+    """How well the search list is ordered, from the SEARCH lines: the queries, the taps, the share of queries that
+    ended with a tap, the mean and median place of the tapped result and the share of taps at place 0. The sets are
+    those of nogps_replay.py days."""
+    sets = {}
+    held_out = nogps_replay.held_out_days()
+    for group in analysis.groups:
+        tapped = None
+        for t, _, raw in group.lines:
+            m = SEARCH_LINE.search(raw)
+            if not m:
+                continue
+            total = sets.setdefault(nogps_replay.set_of(from_ms(t).strftime('%Y-%m-%d'), held_out),
+                                    dict(queries=0, queried=0, places=[]))
+            if m.group(1) == 'query':
+                total['queries'] += 1
+                tapped = False
+                continue
+            place = SEARCH_PLACE.search(m.group(2))
+            if not place:
+                continue
+            total['places'].append(int(place.group(1)))
+            if tapped is False:
+                total['queried'] += 1
+                tapped = True
+    print('%-10s %7s %6s %11s %6s %7s %9s' % ('set', 'queries', 'taps', 'with a tap', 'mean', 'median', 'at place 0'))
+    for name in ('made from', 'held out'):
+        t = sets.get(name, dict(queries=0, queried=0, places=[]))
+        places = t['places']
+        print('%-10s %7d %6d %10s%% %6s %7s %8s%%' % (
+            name, t['queries'], len(places),
+            '%.0f' % (100 * t['queried'] / t['queries']) if t['queries'] else '-',
+            '%.1f' % (sum(places) / len(places)) if places else '-',
+            '%.1f' % statistics.median(places) if places else '-',
+            '%.0f' % (100 * places.count(0) / len(places)) if places else '-'))
+
+
 def print_events(trip, start, end, category, text, full):
     rx = re.compile(text, re.I) if text else None
     for e in trip.events:
@@ -1332,6 +1374,7 @@ def main():
   losses  the road losses: would a tap on the road lost panel have placed the mark by GPS
   shake   the shake of the box while the car stands, per day: the seconds by the strength of the shake (max of the
           second) and by what came before a failed calibration (CAL_UP_FAILED)
+  search  how well the search list is ordered: queries, taps, the place of the tapped result, per set
   rules   how often each rule of the core fired over all the trips, and what came next
   trip    a trip: stats, error from GPS, counts, events, anomalies
   events  the events of a trip, --from/--to HH:MM[:SS], --cat road, --grep regex, --full
@@ -1340,7 +1383,7 @@ def main():
   replay  the trip against a nogps-replay-out.txt: --replay file
   flags   every flag of the tree with its trip, the time, the voice and where the viewer shows it''',
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('command', choices=['trips', 'rating', 'losses', 'rules', 'shake', 'trip', 'events', 'state', 'rows', 'replay',
+    parser.add_argument('command', choices=['trips', 'rating', 'losses', 'rules', 'search', 'shake', 'trip', 'events', 'state', 'rows', 'replay',
                                             'flags'])
     parser.add_argument('logs', nargs='+', help='the logs tree logs/<phone>/<yyyy-MM-dd>/<HHmmss>.log, '
                         'logs.zip or log files')
@@ -1370,6 +1413,8 @@ def main():
         return print_losses(analysis)
     if args.command == 'rules':
         return print_rules(analysis)
+    if args.command == 'search':
+        return print_search(analysis)
     if args.command == 'shake':
         return print_shake(analysis)
     if args.command == 'flags':

@@ -2,6 +2,7 @@
 
 #include "map/bookmarks_search_params.hpp"
 #include "map/everywhere_search_params.hpp"
+#include "map/nogps/log_line.hpp"
 
 #include "search/geometry_utils.hpp"
 #include "search/utils.hpp"
@@ -18,6 +19,8 @@
 
 #include "base/assert.hpp"
 #include "base/checked_cast.hpp"
+#include "base/logging.hpp"
+#include "base/string_utils.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -28,6 +31,11 @@
 #include <type_traits>
 
 using namespace search;
+
+namespace
+{
+nogps::SystemClock const s_logClock;
+}  // namespace
 namespace
 {
 using BookmarkIdDoc = std::pair<bookmarks::Id, bookmarks::Doc>;
@@ -197,18 +205,43 @@ bool SearchAPI::SearchEverywhere(EverywhereSearchParams params)
   // The list is ordered nearest first from where the core counts the distance from: the position while it is on
   // the screen, the middle of the screen otherwise.
   std::optional<m2::PointD> pivot = p.m_position;
+  char const * pivotKind = pivot ? "mark" : "none";
   if (m_isViewportInitialized && (!pivot || !p.m_viewport.IsPointInside(*pivot)))
+  {
     pivot = p.m_viewport.Center();
-  p.m_onResults = [this, pivot, onResults = std::move(params.m_onResults)](Results const & results)
+    pivotKind = "center";
+  }
+  m_lastEverywhere.reset();
+  size_t const chars = strings::MakeUniString(p.m_query).size();
+  bool const isCategory = p.m_categorialRequest;
+  p.m_onResults =
+      [this, pivot, pivotKind, chars, isCategory, onResults = std::move(params.m_onResults)](Results const & results)
   {
     // The core adds the results batch by batch: a near one found later is put first.
     Results ordered = results;
     if (pivot)
       OrderNearestFirst(*pivot, ordered);
-    RunUITask([onResults, results = std::move(ordered)]() mutable { onResults(std::move(results)); });
+    // The end marker has no results: the count is the one of the last batch.
+    RunUITask([this, pivot, pivotKind, chars, isCategory, onResults, results = std::move(ordered)]() mutable
+    {
+      if (!results.IsEndMarker())
+        m_lastEverywhere = EverywhereLog{pivot, results.GetCount()};
+      else if (results.IsEndedNormal() && m_lastEverywhere && m_lastEverywhere->m_results > 0)
+        LOG(LINFO, (nogps::LogHead(s_logClock, "SEARCH", "query"),
+                    FormatQueryLog(chars, isCategory, m_lastEverywhere->m_results, pivotKind)));
+      onResults(std::move(results));
+    });
   };
 
   return Search(std::move(p), true /* forceSearch */);
+}
+
+void SearchAPI::LogSearchTap(Result const & result) const
+{
+  if (!m_lastEverywhere)
+    return;
+  LOG(LINFO, (nogps::LogHead(s_logClock, "SEARCH", "tap"),
+              FormatTapLog(result, m_lastEverywhere->m_results, m_lastEverywhere->m_pivot)));
 }
 
 bool SearchAPI::SearchInViewport(ViewportSearchParams params)
@@ -591,5 +624,29 @@ void OrderNearestFirst(m2::PointD const & pivot, Results & results)
     place[order[i]] = i;
   results.SortBy([&place](Result const & a, Result const & b)
   { return place[a.GetPositionInResults()] < place[b.GetPositionInResults()]; });
+}
+
+std::string FormatQueryLog(size_t chars, bool isCategory, size_t results, char const * pivot)
+{
+  return "chars=" + std::to_string(chars) + " category=" + (isCategory ? "1" : "0") +
+         " results=" + std::to_string(results) + " pivot=" + pivot;
+}
+
+std::string FormatTapLog(Result const & result, size_t results, std::optional<m2::PointD> const & pivot)
+{
+  char const * type = "feature";
+  switch (result.GetResultType())
+  {
+  case Result::Type::Feature: break;
+  case Result::Type::LatLon: type = "latlon"; break;
+  case Result::Type::Postcode: type = "postcode"; break;
+  case Result::Type::SuggestFromFeature:
+  case Result::Type::PureSuggest: type = "suggest"; break;
+  }
+  long const dist = pivot ? std::lround(mercator::DistanceOnEarth(*pivot, result.GetFeatureCenter())) : -1;
+  return "place=" + std::to_string(result.GetPositionInResults()) + " results=" + std::to_string(results) +
+         " dist=" + std::to_string(dist) +
+         " errors=" + std::to_string(result.GetErrorsMade().IsValid() ? result.GetErrorsMade().m_errorsMade : 0) +
+         " type=" + type;
 }
 }  // namespace search

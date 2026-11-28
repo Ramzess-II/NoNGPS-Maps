@@ -4,6 +4,8 @@
 
 #include "geometry/mercator.hpp"
 
+#include <cmath>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -52,5 +54,23 @@ UNIT_TEST(OrderNearestFirst_KeepsTypedFirst)
              ());
   for (size_t i = 0; i < results.GetCount(); ++i)
     TEST_EQUAL(results[i].GetPositionInResults(), static_cast<int32_t>(i), ());
+}
+
+UNIT_TEST(SearchLog_TapIsThePlaceAfterTheOrder)
+{
+  Results results;
+  results.AddResultNoChecks(MakeResult("far", 30));
+  results.AddResultNoChecks(MakeResult("near", 1));
+  OrderNearestFirst(kPivot, results);
+
+  // "far" was found first, but it is shown second.
+  TEST_EQUAL(FormatTapLog(results[1], results.GetCount(), kPivot),
+             "place=1 results=2 dist=" +
+                 std::to_string(std::lround(mercator::DistanceOnEarth(kPivot, results[1].GetFeatureCenter()))) +
+                 " errors=0 type=feature",
+             ());
+  TEST_EQUAL(FormatTapLog(results[0], results.GetCount(), std::nullopt),
+             "place=0 results=2 dist=-1 errors=0 type=feature", ());
+  TEST_EQUAL(FormatQueryLog(5, false, 17, "center"), "chars=5 category=0 results=17 pivot=center", ());
 }
 }  // namespace search_nearest_first_tests
