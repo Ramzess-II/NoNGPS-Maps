@@ -682,6 +682,86 @@ UNIT_TEST(NoGps_Esp32Source_TellsSleepingBox)
   TEST_EQUAL(source.GetState(), SourceState::Disconnected, ());
 }
 
+namespace
+{
+char const * const kRadioOffInfo =
+    "NGI,1,0.7.0,2026-11-28T10:00,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR RADIO_OFF,5,R1";
+char const * const kEngineOffStatus = "NGS,1,0.7.0,ICM20602,500,OK,,12,331,0,OK,0x12,NONE,38400,-386,14,OFF,,12480";
+}  // namespace
+
+UNIT_TEST(NoGps_Esp32Source_BoxIsAsleepOnlyAfterItToldRadioOff)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxLine(kRadioOffInfo));
+  source.OnBleBytes(BoxLine(kEngineOffStatus));
+  source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, esp32::kFlagImuOk));
+  // The link is lost without WIFI_OFF: the box was unplugged, flashed or crashed, not parked.
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+  TEST_EQUAL(source.GetState(), SourceState::Connecting, ());
+
+  // The box is heard again, the engine is stopped and the radio goes off after its event.
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxDataLine(2, 6000, 0, 0, esp32::kFlagImuOk));
+  source.OnBleBytes(BoxLine("NGE,1,7,6100,I,WIFI_OFF,engine off 60 s rpm 0 12450 mV"));
+  // The box sends data for a second more: it is not back.
+  clock.Advance(20);
+  source.OnBleBytes(BoxDataLine(3, 6120, 0, 0, esp32::kFlagImuOk));
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+  TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
+  source.OnBleState(BleState::Connecting);
+  TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
+
+  // The data of a link made after it clear the event: this link is lost without a new one.
+  clock.Advance(Esp32Source::kWakingLinkGapMs + 1);
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxLine(kEngineOffStatus));
+  source.OnBleBytes(BoxDataLine(4, 9000, 0, 0, esp32::kFlagImuOk));
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kDataTimeoutMs + Esp32Source::kWakingLinkGapMs + 1);
+  TEST_EQUAL(source.GetState(), SourceState::Connecting, ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_ReplayedRadioOffIsNotAnnouncement)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxLine(kRadioOffInfo));
+  source.OnBleBytes(BoxLine(kEngineOffStatus));
+  source.OnBleBytes(BoxDataLine(1, 600'000, 0, 0, esp32::kFlagImuOk));
+  // The journal of an earlier parking comes with the new link.
+  source.OnBleBytes(BoxLine("NGE,1,7,6100,I,WIFI_OFF,engine off 60 s rpm 0 12450 mV"));
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+  TEST_EQUAL(source.GetState(), SourceState::Connecting, ());
+}
+
+UNIT_TEST(NoGps_Esp32Source_BoxWithoutRadioOffAbilityIsAsleepAsBefore)
+{
+  TestClock clock;
+  TestDelegate delegate;
+  MotionRecorder listener;
+  Esp32Source source(delegate, clock, clock, listener);
+  source.Start();
+  source.OnBleState(BleState::Connected);
+  source.OnBleBytes(BoxLine("NGI,1,0.6.0,2026-11-14T21:35,esp32s3,s3zero,C47D,4096,2031616,ota_0,VALID,BLE OTA CAR,3"));
+  source.OnBleBytes(BoxLine(kEngineOffStatus));
+  source.OnBleBytes(BoxDataLine(1, 5000, 0, 0, esp32::kFlagImuOk));
+  source.OnBleState(BleState::Searching);
+  clock.Advance(Esp32Source::kDataTimeoutMs + 1);
+  TEST_EQUAL(source.GetState(), SourceState::BoxSleeping, ());
+}
+
 UNIT_TEST(NoGps_Esp32Source_SilentCarIsNotSearchedAgain)
 {
   TestClock clock;

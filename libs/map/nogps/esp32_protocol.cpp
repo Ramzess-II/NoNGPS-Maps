@@ -308,6 +308,8 @@ std::optional<Info> ParseInfo(Fields const & fields)
     for (auto const ability : strings::Tokenize(fields[11], " "))
       if (ability == "OTA")
         info.m_canUpdate = true;
+      else if (ability == "RADIO_OFF")
+        info.m_radioOff = true;
   }
   if (fields.size() > 6)
     info.m_id = fields[6];
