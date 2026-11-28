@@ -1514,11 +1514,13 @@ void Engine::CheckAutoCalibration()
     return;
   int64_t const now = m_clock.NowMs();
   int const speedKmh = m_inertial->GetSpeedKmh();
-  if (speedKmh > 0)
+  // GPS speed counts too: a car that drives with GPS and no OBD speed is not on a table.
+  bool const driving = IsCarMoving();
+  if (driving)
     m_lastDrivingMs = now;
-  if (speedKmh > 0 || (speedKmh < 0 && now - m_lastDrivingMs < kAutoCalibrateDrivingHoldMs))
+  if (driving || (speedKmh < 0 && now - m_lastDrivingMs < kAutoCalibrateDrivingHoldMs))
   {
-    m_autoCalibrateTried = speedKmh > 0 ? false : m_autoCalibrateTried;
+    m_autoCalibrateTried = driving ? false : m_autoCalibrateTried;
     return;
   }
   if (!m_calibrationArmed && !m_autoCalibrateTried && !m_autoCalibrateCancelled && NeedsBoxCalibration())
@@ -1563,7 +1565,7 @@ void Engine::CheckCalibrateWhenStill()
     }
   }
   // The car that was still has moved: the stop is over, the next one starts the calibration again.
-  bool const moved = m_calibrationAuto && !m_calibrationSent && m_inertial->GetSpeedKmh() > 0;
+  bool const moved = m_calibrationAuto && !m_calibrationSent && IsCarMoving();
   if (lost || moved || m_calibrationFailures >= kCalibrateWhenStillMaxFailures ||
       (!m_calibrationAuto && !m_calibrationSent && now - m_calibrateWaitMs >= kCalibrateWhenStillTimeoutMs))
   {

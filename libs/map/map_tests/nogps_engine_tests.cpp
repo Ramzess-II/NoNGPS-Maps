@@ -3155,6 +3155,22 @@ UNIT_TEST(NoGps_Engine_AutoCalibrationArmsWithUnknownSpeed)
   TEST_EQUAL(box.Calibrations(), 1, ());
 }
 
+UNIT_TEST(NoGps_Engine_AutoCalibrationWaitsWhenCarDrivesWithGpsAndNoObdSpeed)
+{
+  Env env(true /* inertial */);
+  CalibrateWhenStillBox box(env, false /* calibrated */);
+  TEST(env.m_engine.GetStatus().m_calibrationArmed, ());
+  // No OBD speed, but GPS says the car drives at 72 km/h: the arming ends and doesn't come back.
+  for (int i = 0; i < 90; ++i)
+  {
+    env.m_engine.OnFix(GpsAt(env.m_clock, i * 20.0, 0, 90.0, 20.0));
+    box.Drive(1000, -1, 150);
+  }
+  TEST_EQUAL(env.m_engine.GetStatus().m_speedKmh, -1, ());
+  TEST(!env.m_engine.GetStatus().m_calibrationArmed, ());
+  TEST_EQUAL(box.Calibrations(), 0, ());
+}
+
 UNIT_TEST(NoGps_Engine_AutoCalibrationWaitsWhenSpeedGoesStaleWhileDriving)
 {
   Env env(true /* inertial */);
