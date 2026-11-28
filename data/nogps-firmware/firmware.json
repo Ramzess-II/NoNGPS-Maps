@@ -1,21 +1,21 @@
 {
-  "version": "0.6.1",
+  "version": "0.6.2",
   "files": [
     {
-      "file": "nogps-esp32s3-s3zero-0.6.1.bin",
-      "version": "0.6.1",
+      "file": "nogps-esp32s3-s3zero-0.6.2.bin",
+      "version": "0.6.2",
       "chip": "esp32s3",
       "board": "s3zero",
-      "size": 724992,
-      "sha256": "2205016174c0ee85ce1d3306e685c9c5b8cf35205f85d6b84c38298d55cac7d6"
+      "size": 790528,
+      "sha256": "d0636cf3ed29a140d539751e6a09e7d29460d3c5acf3bb5cc4b0ad95145a8091"
     },
     {
-      "file": "nogps-esp32c3-c3supermini-0.6.1.bin",
-      "version": "0.6.1",
+      "file": "nogps-esp32c3-c3supermini-0.6.2.bin",
+      "version": "0.6.2",
       "chip": "esp32c3",
       "board": "c3supermini",
       "size": 790528,
-      "sha256": "5e1a57b44126129525817f18eb682369a1e4f58546984031aae599c73e581e07"
+      "sha256": "a8ac539f82695ebf78e6e9f792dcd1525a3867c6a072f8fcdb04363314411d80"
     }
   ]
 }
