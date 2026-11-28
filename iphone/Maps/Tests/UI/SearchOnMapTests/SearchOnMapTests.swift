@@ -31,6 +31,7 @@ final class SearchOnMapTests: XCTestCase {
     searchManager.setSearchMode(.everywhere)
     searchManager.updateViewportCallsCount = 0
     searchManager.showResultCallCount = 0
+    searchManager.logSuggestTapCallCount = 0
     searchManager.clearCallCount = 0
     routePointSelector = nil
     searchManager = nil
@@ -299,6 +300,7 @@ final class SearchOnMapTests: XCTestCase {
     XCTAssertEqual(view.viewModel.presentationStep, .expanded)
     XCTAssertEqual(view.viewModel.contentState, .searching)
     XCTAssertEqual(view.viewModel.isTyping, true)
+    XCTAssertEqual(searchManager.logSuggestTapCallCount, 1)
   }
 
   func test_GivenSearchIsActive_WhenPasteDeeplink_ThenShowResult() {
@@ -664,6 +666,7 @@ private class SearchManagerMock: SearchManager {
   private static var _searchMode: SearchMode = .everywhere
   static var updateViewportCallsCount = 0
   static var showResultCallCount = 0
+  static var logSuggestTapCallCount = 0
   static var clearCallCount = 0
 
   static func add(_ observer: any MWMSearchObserver) {
@@ -679,6 +682,10 @@ private class SearchManagerMock: SearchManager {
   static func searchQuery(_ query: SearchQuery) -> Bool { !query.text.hasPrefix("?") }
   static func showResult(at _: UInt) {
     showResultCallCount += 1
+  }
+
+  static func logSuggestTap(at _: UInt) {
+    logSuggestTapCallCount += 1
   }
 
   static func updateViewportWithResults() { updateViewportCallsCount += 1 }

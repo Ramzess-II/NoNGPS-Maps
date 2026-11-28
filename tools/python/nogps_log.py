@@ -1270,11 +1270,13 @@ def print_losses(analysis):
 
 SEARCH_LINE = re.compile(r'\bSEARCH (query|tap) ms=\d+ (.*)')
 SEARCH_PLACE = re.compile(r'\bplace=(\d+)')
+SEARCH_SUGGEST = re.compile(r'\btype=suggest\b')
 
 
 def print_search(analysis):
     """How well the search list is ordered, from the SEARCH lines: the queries, the taps, the share of queries that
-    ended with a tap, the mean and median place of the tapped result and the share of taps at place 0. The sets are
+    ended with a tap, the mean and median place of the tapped result and the share of taps at place 0, and the taps on
+    a suggestion apart (they start a new query, so they are not among the taps). The sets are
     those of nogps_replay.py days."""
     sets = {}
     held_out = nogps_replay.held_out_days()
@@ -1285,10 +1287,13 @@ def print_search(analysis):
             if not m:
                 continue
             total = sets.setdefault(nogps_replay.set_of(from_ms(t).strftime('%Y-%m-%d'), held_out),
-                                    dict(queries=0, queried=0, places=[]))
+                                    dict(queries=0, queried=0, places=[], suggests=0))
             if m.group(1) == 'query':
                 total['queries'] += 1
                 tapped = False
+                continue
+            if SEARCH_SUGGEST.search(m.group(2)):
+                total['suggests'] += 1
                 continue
             place = SEARCH_PLACE.search(m.group(2))
             if not place:
@@ -1297,16 +1302,17 @@ def print_search(analysis):
             if tapped is False:
                 total['queried'] += 1
                 tapped = True
-    print('%-10s %7s %6s %11s %6s %7s %9s' % ('set', 'queries', 'taps', 'with a tap', 'mean', 'median', 'at place 0'))
+    print('%-10s %7s %6s %11s %6s %7s %9s %8s' % ('set', 'queries', 'taps', 'with a tap', 'mean', 'median', 'at place 0',
+                                                    'suggests'))
     for name in ('made from', 'held out'):
-        t = sets.get(name, dict(queries=0, queried=0, places=[]))
+        t = sets.get(name, dict(queries=0, queried=0, places=[], suggests=0))
         places = t['places']
-        print('%-10s %7d %6d %10s%% %6s %7s %8s%%' % (
+        print('%-10s %7d %6d %10s%% %6s %7s %8s%% %8d' % (
             name, t['queries'], len(places),
             '%.0f' % (100 * t['queried'] / t['queries']) if t['queries'] else '-',
             '%.1f' % (sum(places) / len(places)) if places else '-',
             '%.1f' % statistics.median(places) if places else '-',
-            '%.0f' % (100 * places.count(0) / len(places)) if places else '-'))
+            '%.0f' % (100 * places.count(0) / len(places)) if places else '-', t['suggests']))
 
 
 def print_events(trip, start, end, category, text, full):

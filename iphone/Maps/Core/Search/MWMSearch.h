@@ -30,6 +30,8 @@ typedef NS_ENUM(NSUInteger, SearchMode) {
 + (BOOL)searchQuery:(SearchQuery *)query;
 
 + (void)showResultAtIndex:(NSUInteger)index;
+// Writes the tap on a suggestion into the trip log; call it before the suggestion starts a new search.
++ (void)logSuggestTapAtIndex:(NSUInteger)index;
 // Applies the search results viewport policy, see Framework::UpdateViewport().
 + (void)updateViewportWithResults;
 + (SearchMode)searchMode;

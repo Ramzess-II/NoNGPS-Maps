@@ -210,6 +210,15 @@ public enum SearchEngine implements SearchListener, MapSearchListener,
     nativeShowResult(index);
   }
 
+  /**
+   * Writes the tap on a suggestion of the list into the trip log. The tap starts a new query, so call it first.
+   */
+  @MainThread
+  public void logSuggestTap(int index)
+  {
+    nativeLogSuggestTap(index);
+  }
+
   @MainThread
   public void selectResult(int index)
   {
@@ -268,6 +277,8 @@ public enum SearchEngine implements SearchListener, MapSearchListener,
   private static native void nativeShowResult(int index);
 
   private static native void nativeSelectResult(int index);
+
+  private static native void nativeLogSuggestTap(int index);
 
   private static native void nativeUpdateViewportWithLastResults();
 

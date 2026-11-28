@@ -153,6 +153,7 @@ final class SearchOnMapInteractor: NSObject {
       searchManager.showResult(at: result.index)
       return isiPad ? .none : .setSearchScreenHidden(true)
     case .suggestion:
+      searchManager.logSuggestTap(at: result.index)
       let suggestionQuery = SearchQuery(result.suggestion,
                                         locale: query.locale,
                                         source: result.isPureSuggest ? .suggestion : .typedText)

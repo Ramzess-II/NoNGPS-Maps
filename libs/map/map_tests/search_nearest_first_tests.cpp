@@ -71,6 +71,11 @@ UNIT_TEST(SearchLog_TapIsThePlaceAfterTheOrder)
              ());
   TEST_EQUAL(FormatTapLog(results[0], results.GetCount(), std::nullopt),
              "place=0 results=2 dist=-1 errors=0 type=feature", ());
+  // A suggestion has no point: no distance, and no assert for it.
+  Results withSuggest;
+  withSuggest.AddResultNoChecks(Result("street", "street "));
+  TEST_EQUAL(FormatTapLog(withSuggest[0], withSuggest.GetCount(), kPivot),
+             "place=0 results=1 dist=-1 errors=0 type=suggest", ());
   TEST_EQUAL(FormatQueryLog(5, false, 17, "center"), "chars=5 category=0 results=17 pivot=center", ());
 }
 }  // namespace search_nearest_first_tests
