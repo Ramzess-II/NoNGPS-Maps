@@ -228,10 +228,12 @@ bool SearchAPI::SearchEverywhere(EverywhereSearchParams params)
       if (id == m_everywhereId)
       {
         if (!results.IsEndMarker() || results.GetCount() > 0)
-          m_lastEverywhere = EverywhereLog{pivot, results.GetCount()};
-        if (results.IsEndMarker() && results.IsEndedNormal() && m_lastEverywhere && m_lastEverywhere->m_results > 0)
-          LOG(LINFO, (nogps::LogHead(s_logClock, "SEARCH", "query"),
-                      FormatQueryLog(chars, isCategory, m_lastEverywhere->m_results, pivotKind)));
+        {
+          bool const logged = m_lastEverywhere && m_lastEverywhere->m_queryLogged;
+          m_lastEverywhere = EverywhereLog{pivot, results.GetCount(), chars, isCategory, pivotKind, logged};
+        }
+        if (results.IsEndMarker() && results.IsEndedNormal())
+          LogSearchQuery();
       }
       onResults(std::move(results));
     });
@@ -240,10 +242,22 @@ bool SearchAPI::SearchEverywhere(EverywhereSearchParams params)
   return Search(std::move(p), true /* forceSearch */);
 }
 
-void SearchAPI::LogSearchTap(Result const & result) const
+void SearchAPI::LogSearchQuery()
+{
+  if (!m_lastEverywhere || m_lastEverywhere->m_queryLogged || m_lastEverywhere->m_results == 0)
+    return;
+  m_lastEverywhere->m_queryLogged = true;
+  LOG(LINFO, (nogps::LogHead(s_logClock, "SEARCH", "query"),
+              FormatQueryLog(m_lastEverywhere->m_chars, m_lastEverywhere->m_isCategory, m_lastEverywhere->m_results,
+                             m_lastEverywhere->m_pivotKind)));
+}
+
+void SearchAPI::LogSearchTap(Result const & result)
 {
   if (!m_lastEverywhere)
     return;
+  // A tap before the end marker (or after a cancel) still follows its query line.
+  LogSearchQuery();
   LOG(LINFO, (nogps::LogHead(s_logClock, "SEARCH", "tap"),
               FormatTapLog(result, m_lastEverywhere->m_results, m_lastEverywhere->m_pivot)));
 }

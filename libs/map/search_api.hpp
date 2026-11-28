@@ -125,9 +125,10 @@ public:
   void OnBookmarksAttached(std::vector<BookmarkGroupInfo> const & groupInfos);
   void OnBookmarksDetached(std::vector<BookmarkGroupInfo> const & groupInfos);
 
-  /// Writes the SEARCH tap line of the trip log for the result the user has tapped in the Everywhere list. The line
-  /// is not written when no Everywhere search has shown results.
-  void LogSearchTap(search::Result const & result) const;
+  /// Writes the SEARCH tap line of the trip log for the result the user has tapped in the Everywhere list, after the
+  /// query line when the search has not ended yet. The lines are not written when no Everywhere search has shown
+  /// results.
+  void LogSearchTap(search::Result const & result);
 
 private:
   struct SearchIntent
@@ -166,7 +167,12 @@ private:
   {
     std::optional<m2::PointD> m_pivot;
     size_t m_results = 0;
+    size_t m_chars = 0;
+    bool m_isCategory = false;
+    char const * m_pivotKind = "none";
+    bool m_queryLogged = false;
   };
+  void LogSearchQuery();
   std::optional<EverywhereLog> m_lastEverywhere;
   // Bumped by each Everywhere search: a batch of a cancelled one arriving late is dropped.
   uint64_t m_everywhereId = 0;
