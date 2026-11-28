@@ -215,7 +215,7 @@ bool SearchAPI::SearchEverywhere(EverywhereSearchParams params)
   uint64_t const id = ++m_everywhereId;
   size_t const chars = strings::MakeUniString(p.m_query).size();
   bool const isCategory = p.m_categorialRequest;
-  p.m_onResults = [this, id, pivot, pivotKind, chars, isCategory,
+  p.m_onResults = [this, id, pivot, pivotKind, chars, isCategory, query = p.m_query,
                    onResults = std::move(params.m_onResults)](Results const & results)
   {
     // The core adds the results batch by batch: a near one found later is put first.
@@ -223,14 +223,14 @@ bool SearchAPI::SearchEverywhere(EverywhereSearchParams params)
     if (pivot)
       OrderNearestFirst(*pivot, ordered);
     // The end marker carries the final list, bigger than the last batch or the only one: count it too.
-    RunUITask([this, id, pivot, pivotKind, chars, isCategory, onResults, results = std::move(ordered)]() mutable
+    RunUITask([this, id, pivot, pivotKind, chars, isCategory, query, onResults, results = std::move(ordered)]() mutable
     {
       if (id == m_everywhereId)
       {
         if (!results.IsEndMarker() || results.GetCount() > 0)
         {
           bool const logged = m_lastEverywhere && m_lastEverywhere->m_queryLogged;
-          m_lastEverywhere = EverywhereLog{pivot, results.GetCount(), chars, isCategory, pivotKind, logged};
+          m_lastEverywhere = EverywhereLog{pivot, results.GetCount(), chars, isCategory, pivotKind, logged, query};
         }
         if (results.IsEndMarker() && results.IsEndedNormal())
           LogSearchQuery();
@@ -247,6 +247,9 @@ void SearchAPI::LogSearchQuery()
   if (!m_lastEverywhere || m_lastEverywhere->m_queryLogged || m_lastEverywhere->m_results == 0)
     return;
   m_lastEverywhere->m_queryLogged = true;
+  if (m_lastEverywhere->m_query == m_loggedQuery)
+    return;
+  m_loggedQuery = m_lastEverywhere->m_query;
   LOG(LINFO, (nogps::LogHead(s_logClock, "SEARCH", "query"),
               FormatQueryLog(m_lastEverywhere->m_chars, m_lastEverywhere->m_isCategory, m_lastEverywhere->m_results,
                              m_lastEverywhere->m_pivotKind)));
@@ -260,6 +263,7 @@ void SearchAPI::LogSearchTap(Result const & result)
   LogSearchQuery();
   LOG(LINFO, (nogps::LogHead(s_logClock, "SEARCH", "tap"),
               FormatTapLog(result, m_lastEverywhere->m_results, m_lastEverywhere->m_pivot)));
+  m_loggedQuery.clear();
 }
 
 bool SearchAPI::SearchInViewport(ViewportSearchParams params)

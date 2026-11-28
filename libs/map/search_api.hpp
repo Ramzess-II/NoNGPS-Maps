@@ -171,9 +171,13 @@ private:
     bool m_isCategory = false;
     char const * m_pivotKind = "none";
     bool m_queryLogged = false;
+    std::string m_query;
   };
   void LogSearchQuery();
   std::optional<EverywhereLog> m_lastEverywhere;
+  // The text of the query line written last, until a tap: iOS repeats a search after each map move, which is not a
+  // new query.
+  std::string m_loggedQuery;
   // Bumped by each Everywhere search: a batch of a cancelled one arriving late is dropped.
   uint64_t m_everywhereId = 0;
 
