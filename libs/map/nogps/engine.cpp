@@ -1508,20 +1508,24 @@ bool Engine::NeedsBoxCalibration()
 
 void Engine::CheckAutoCalibration()
 {
-  // -1 is an unknown speed (no OBD or stale): not a stop.
-  if (!m_inertial || m_inertial->GetSpeedKmh() != 0)
+  // Only a car that drives waits: the calibration itself waits for the box to tell it is still. An unknown speed
+  // (-1, no OBD) is no reason to wait, as on a table, unless the car drove a moment ago: OBD answers can lag.
+  if (!m_inertial)
+    return;
+  int64_t const now = m_clock.NowMs();
+  int const speedKmh = m_inertial->GetSpeedKmh();
+  // GPS speed counts too: a car that drives with GPS and no OBD speed is not on a table.
+  bool const driving = IsCarMoving();
+  if (driving)
+    m_lastDrivingMs = now;
+  if (driving || (speedKmh < 0 && now - m_lastDrivingMs < kAutoCalibrateDrivingHoldMs))
   {
-    m_stoppedSinceMs.reset();
-    m_autoCalibrateTried = false;
+    m_autoCalibrateTried = driving ? false : m_autoCalibrateTried;
     return;
   }
-  int64_t const now = m_clock.NowMs();
-  if (!m_stoppedSinceMs)
-    m_stoppedSinceMs = now;
-  if (!m_calibrationArmed && !m_autoCalibrateTried && !m_autoCalibrateCancelled &&
-      now - *m_stoppedSinceMs >= kAutoCalibrateStopMs && NeedsBoxCalibration())
+  if (!m_calibrationArmed && !m_autoCalibrateTried && !m_autoCalibrateCancelled && NeedsBoxCalibration())
   {
-    LOG(LINFO, ("The car has stood for", (now - *m_stoppedSinceMs) / 1000, "s, calibrate the box"));
+    LOG(LINFO, ("The box needs calibrating and the car doesn't drive, calibrate the box"));
     CalibrateWhenStill();
     m_calibrationAuto = m_calibrationArmed;
     m_autoCalibrateTried = true;
@@ -1561,7 +1565,7 @@ void Engine::CheckCalibrateWhenStill()
     }
   }
   // The car that was still has moved: the stop is over, the next one starts the calibration again.
-  bool const moved = m_calibrationAuto && !m_calibrationSent && m_inertial->GetSpeedKmh() != 0;
+  bool const moved = m_calibrationAuto && !m_calibrationSent && IsCarMoving();
   if (lost || moved || m_calibrationFailures >= kCalibrateWhenStillMaxFailures ||
       (!m_calibrationAuto && !m_calibrationSent && now - m_calibrateWaitMs >= kCalibrateWhenStillTimeoutMs))
   {
